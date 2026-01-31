@@ -1,0 +1,84 @@
+# 技术选型规范
+
+**优先级**: 高
+
+---
+
+## 技术栈版本
+
+### 前端
+
+| 技术 | 版本 | 用途 |
+|------|------|------|
+| Vue | ^3.4.0 | UI框架 |
+| Element Plus | ^2.5.0 | 组件库 |
+| Vite | ^5.0.0 | 构建工具 |
+| Pinia | ^2.1.0 | 状态管理 |
+| Axios | ^1.6.0 | HTTP客户端 |
+| Vue Router | ^4.0.0 | 路由 |
+
+### 后端
+
+| 技术 | 版本 | 用途 |
+|------|------|------|
+| Node.js | >=18.0.0 | 运行时 |
+| NestJS | ^10.0.0 | API框架 |
+| TypeScript | ^5.3.0 | 类型安全 |
+| Prisma | ^5.7.0 | ORM框架 |
+| @prisma/client | ^5.7.0 | 数据库客户端 |
+
+### 数据库
+
+| 技术 | 版本 | 用途 |
+|------|------|------|
+| PostgreSQL | >=15.0 | 主数据库 |
+| Redis | >=7.0 | 缓存 |
+
+### 基础设施
+
+| 技术 | 版本 | 用途 |
+|------|------|------|
+| Docker | >=24.0 | 容器化 |
+| Docker Compose | >=2.20 | 编排 |
+| MinIO | Latest | 对象存储 |
+
+---
+
+## 允许的库
+
+前端额外可用的库（已审批）：
+- `dayjs` - 日期处理
+- `lodash-es` - 工具函数（仅用于复杂场景）
+
+后端额外可用的库（已审批）：
+- `xlsx` - Excel解析
+- `bcrypt` - 密码加密
+- `jsonwebtoken` - JWT
+- `class-validator` - DTO验证
+
+---
+
+## 禁止使用的库
+
+- ❌ jQuery
+- ❌ Lodash（用 lodash-es 代替）
+- ❌ Axios拦截器替代品
+- ❌ 其他UI框架（Vuetify、Ant Design等）
+- ❌ 其他ORM（TypeORM、Sequelize等）
+
+---
+
+## 依赖安装规则
+
+```bash
+# 允许
+npm install vue@^3.4.0
+npm install element-plus@^2.5.0
+
+# 需要审批
+npm install some-new-library
+
+# 禁止
+npm install vue@latest
+npm install some-random-utility
+```

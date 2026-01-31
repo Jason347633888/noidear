@@ -1,0 +1,113 @@
+# 数据库规范
+
+**优先级**: 中
+
+---
+
+## 数据库选择
+
+- **主数据库**: PostgreSQL >=15.0
+- **缓存**: Redis >=7.0
+
+## ORM
+
+- **必须使用**: Prisma
+- **禁止使用**: TypeORM、Sequelize、Knex等
+
+## Schema规范
+
+- **Schema文件**: `server/src/prisma/schema.prisma`
+- **迁移文件**: `server/src/prisma/migrations/`
+- **所有变更必须通过Prisma迁移**
+
+## 表结构命名
+
+| 表名 | 用途 |
+|------|------|
+| `users` | 用户表 |
+| `departments` | 部门表 |
+| `number_rules` | 编号规则表 |
+| `documents` | 文档文件表（一/二/三级） |
+| `document_versions` | 文档版本历史表 |
+| `templates` | 模板表（四级） |
+| `tasks` | 任务表 |
+| `task_records` | 任务记录表（四级填写） |
+| `approvals` | 审批记录表 |
+| `operation_logs` | 操作日志表 |
+| `notifications` | 站内消息表 |
+
+## 字段命名
+
+- **数据库字段**: snake_case（蛇形命名）
+- **代码变量**: camelCase（驼峰命名）
+
+```prisma
+// 正确
+model User {
+  id              String   @id
+  username        String   @unique
+  created_at      DateTime @default(now())
+  deleted_at      DateTime?
+}
+
+// 错误
+model User {
+  Id              String   @id
+  userName        String
+  CreatedAt       DateTime @default(now())
+}
+```
+
+## 主键类型
+
+- **必须使用**: Snowflake ID（雪花ID）
+- **禁止使用**: 自增ID、UUID
+
+```prisma
+id String @id @default(uuid())  // 禁止
+id String @id                    // 使用雪花ID生成
+```
+
+## 软删除
+
+- **必须使用**: `deleted_at` 字段
+- **禁止使用**: 物理删除
+
+```prisma
+deleted_at DateTime?  // 必须有这个字段
+```
+
+## 关联关系
+
+- **用户-部门**: 多对一
+- **用户-上级**: 一对一自引用
+- **文档-用户**: 创建者和审批者
+- **任务-部门**: 多对一
+
+## 索引
+
+- **必须索引**: 外键字段、查询频繁的字段
+- **禁止索引**: 无需查询的字段
+
+## 迁移命令
+
+```bash
+# 开发环境
+npx prisma migrate dev --name init
+
+# 生产环境
+npx prisma migrate deploy
+
+# 查看迁移状态
+npx prisma migrate status
+
+# 回滚（谨慎使用）
+npx prisma migrate rollback
+```
+
+## 禁止的行为
+
+- ❌ 直接修改数据库，不生成迁移文件
+- ❌ 使用 raw SQL 查询
+- ❌ 物理删除数据（使用软删除）
+- ❌ 修改已存在的迁移文件

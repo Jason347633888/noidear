@@ -1,0 +1,131 @@
+# Git提交规范
+
+**优先级**: 中
+
+---
+
+## 提交信息格式
+
+```
+<类型>: <描述>
+
+示例:
+feat: 添加用户登录功能
+fix: 修复文件上传大小限制bug
+docs: 更新README部署说明
+```
+
+## 提交类型
+
+| 类型 | 说明 |
+|------|------|
+| **feat** | 新功能 |
+| **fix** | 修复bug |
+| **docs** | 文档更新 |
+| **refactor** | 重构（无新功能、无bug修复） |
+| **test** | 测试相关 |
+| **chore** | 其他（构建、依赖等） |
+
+## 提交语言
+
+- **必须使用**: 中文
+- **禁止使用**: 英文
+
+```bash
+# 正确
+git commit -m "feat: 添加用户登录功能"
+git commit -m "fix: 修复审批列表分页bug"
+
+# 错误
+git commit -m "feat: add user login feature"
+git commit -m "fix: fix approval list pagination"
+```
+
+## 分支规范
+
+| 分支 | 用途 |
+|------|------|
+| `main` | 主分支（生产代码） |
+| `develop` | 开发分支 |
+| `feature/*` | 功能分支 |
+| `bugfix/*` | 修复分支 |
+
+## 分支命名
+
+```bash
+# 功能分支
+feature/user-login
+feature/document-upload
+feature/task-distribution
+
+# 修复分支
+bugfix/login-crash
+bugfix/upload-timeout
+```
+
+## 合并流程
+
+```
+1. 从 develop 创建 feature 分支
+2. 开发完成，提交代码
+3. 创建 Pull Request 到 develop
+4. Code Review 后合并
+5. 删除 feature 分支
+```
+
+## 禁止的行为
+
+- ❌ force push（强推）
+- ❌ 直接提交到 main 分支
+- ❌ 提交大文件（>5MB）
+- ❌ 提交敏感信息（密码、密钥）
+- ❌ 提交 node_modules/
+- ❌ 提交 .env 文件
+
+## 敏感信息处理
+
+```bash
+# .env 文件必须加入 .gitignore
+echo ".env" >> .gitignore
+echo ".env.*" >> .gitignore
+```
+
+## 提交粒度
+
+- **推荐**: 小步提交，每个功能一次提交
+- **禁止**: 攒大坨，一次提交多个不相关功能
+
+```bash
+# 推荐
+git add user.service.ts && git commit -m "feat: 实现用户登录逻辑"
+git add user.controller.ts && git commit -m "feat: 添加用户登录接口"
+
+# 不推荐
+git add . && git commit -m "feat: 添加用户模块"
+```
+
+## 提交前检查
+
+```bash
+# 1. 运行测试
+npm test
+
+# 2. 检查代码格式
+npm run lint
+
+# 3. 查看变更
+git diff --stat
+```
+
+## 回滚操作
+
+```bash
+# 回滚最近一次提交（保留代码）
+git reset --soft HEAD~1
+
+# 回滚最近一次提交（删除代码）
+git reset --hard HEAD~1
+
+# 回滚到指定提交
+git reset --hard <commit-hash>
+```

@@ -1,0 +1,67 @@
+# Claude Code 规则索引
+
+> **重要**: Claude Code 会自动读取此目录下的 `.mdc` 规则文件
+> **读取顺序**: constraints.mdc → tech-stack.mdc → ui-standards.mdc → api-spec.mdc → database.mdc → git-flow.mdc
+
+---
+
+## 规则文件列表
+
+| 文件 | 优先级 | 标题 | 说明 |
+|------|--------|------|------|
+| [constraints.mdc](rules/constraints.mdc) | 最高 | AI实现约束清单 | 核心约束，26章约束体系 |
+| [tech-stack.mdc](rules/tech-stack.mdc) | 高 | 技术选型规范 | 技术栈版本、允许/禁止的库 |
+| [ui-standards.mdc](rules/ui-standards.mdc) | 高 | UI设计标准 | Element Plus、布局、颜色 |
+| [api-spec.mdc](rules/api-spec.mdc) | 高 | API设计规范 | 端点、错误码、响应格式 |
+| [database.mdc](rules/database.mdc) | 中 | 数据库规范 | Prisma、Schema、迁移 |
+| [git-flow.mdc](rules/git-flow.mdc) | 中 | Git提交规范 | 分支、提交格式 |
+
+## Claude Code 配置
+
+| 文件 | 说明 |
+|------|------|
+| [settings.local.json](settings.local.json) | Claude Code本地设置，包含执行前Hook检查 |
+
+---
+
+## 禁止的行为（优先级最高）
+
+```
+❌ 引入未在文档中列出的库
+❌ 更换框架（Vue 3 → React）
+❌ 修改项目目录结构
+❌ 添加MVP范围外的功能（Phase 7-14）
+❌ 硬编码密码/密钥
+❌ 直接修改数据库（必须用Prisma迁移）
+❌ 强制推送Git（force push）
+```
+
+## 必须遵循
+
+```
+✅ 使用 Element Plus 组件库
+✅ 使用文档中的API端点
+✅ 按 Prisma Schema 创建数据表
+✅ 环境变量存储敏感信息
+✅ 中文 commit message
+✅ 所有API必须有异常处理（try-catch）
+```
+
+---
+
+## 相关文档
+
+| 文档 | 路径 | 说明 |
+|------|------|------|
+| AI项目指南 | `CLAUDE.md` | 项目入口，AI启动时读取 |
+| 需求设计 | `docs/DESIGN.md` | 完整功能、规则、数据模型 |
+| 测试用例 | `docs/TEST-CASES.md` | 548个测试用例 |
+| 项目结构 | `docs/PROJECT_STRUCTURE.md` | 文件导航 + 开发计划 |
+
+---
+
+## 版本信息
+
+- **规则版本**: 3.0
+- **最后更新**: 2025-01-31
+- **约束章节**: 26章（包含Coding Principle）

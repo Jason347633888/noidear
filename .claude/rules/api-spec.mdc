@@ -1,0 +1,151 @@
+# API设计规范
+
+**优先级**: 高
+
+---
+
+## 基础规范
+
+| 项目 | 值 |
+|------|------|
+| 前缀 | `/api/v1` |
+| 认证 | `Authorization: Bearer <token>` |
+| 分页 | `?page=1&limit=20` |
+| 日期格式 | ISO 8601 (YYYY-MM-DDTHH:mm:ssZ) |
+| 错误格式 | `{ code: number, message: string, details: any }` |
+| 文件上传 | `multipart/form-data` |
+| 超时时间 | 30秒 |
+
+## 端点清单
+
+### 认证模块
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| /api/v1/auth/login | POST | 登录 |
+| /api/v1/auth/me | GET | 当前用户 |
+| /api/v1/auth/password | PUT | 修改密码 |
+| /api/v1/auth/logout | POST | 登出 |
+
+### 用户模块
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| /api/v1/users | GET | 用户列表 |
+| /api/v1/users | POST | 创建用户 |
+| /api/v1/users/:id | GET | 用户详情 |
+| /api/v1/users/:id | PUT | 更新用户 |
+| /api/v1/users/:id | DELETE | 删除用户 |
+
+### 部门模块
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| /api/v1/departments | GET | 部门列表 |
+| /api/v1/departments | POST | 创建部门 |
+| /api/v1/departments/:id | PUT | 更新部门 |
+| /api/v1/departments/:id | DELETE | 删除部门 |
+
+### 文档模块
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| /api/v1/documents/level/:level | GET | 文档列表 |
+| /api/v1/documents | POST | 上传文档 |
+| /api/v1/documents/:id | GET | 文档详情 |
+| /api/v1/documents/:id | PUT | 更新文档 |
+| /api/v1/documents/:id | DELETE | 删除文档 |
+| /api/v1/documents/:id/download | GET | 下载文档 |
+| /api/v1/documents/:id/versions | GET | 版本历史 |
+
+### 审批模块
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| /api/v1/approvals/pending | GET | 待审批列表 |
+| /api/v1/approvals/history | GET | 审批历史 |
+| /api/v1/approvals | POST | 提交审批 |
+| /api/v1/approvals/:id | PUT | 审批操作 |
+
+### 模板模块
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| /api/v1/templates | GET | 模板列表 |
+| /api/v1/templates | POST | 创建模板 |
+| /api/v1/templates/:id | GET | 模板详情 |
+| /api/v1/templates/:id | PUT | 更新模板 |
+| /api/v1/templates/:id | DELETE | 删除模板 |
+| /api/v1/templates/:id/copy | POST | 复制模板 |
+| /api/v1/templates/parse-excel | POST | 解析Excel |
+
+### 任务模块
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| /api/v1/tasks | GET | 任务列表 |
+| /api/v1/tasks | POST | 分发任务 |
+| /api/v1/tasks/:id | GET | 任务详情 |
+| /api/v1/tasks/:id | DELETE | 取消任务 |
+| /api/v1/tasks/:id/submit | POST | 提交任务 |
+
+### 消息模块
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| /api/v1/notifications | GET | 消息列表 |
+| /api/v1/notifications/:id/read | PUT | 标记已读 |
+| /api/v1/notifications/read-all | PUT | 全部已读 |
+
+### 日志模块
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| /api/v1/logs | GET | 操作日志(管理员) |
+
+---
+
+## 错误码规范
+
+| 范围 | 模块 | 示例 |
+|------|------|------|
+| 1000-1999 | 认证模块 | 1001: 用户名或密码错误 |
+| 2000-2999 | 用户模块 | 2001: 用户不存在 |
+| 3000-3999 | 部门模块 | 3001: 部门不存在 |
+| 4000-4999 | 文档模块 | 4001: 文件上传失败 |
+| 5000-5999 | 模板模块 | 5001: Excel解析失败 |
+| 6000-6999 | 任务模块 | 6001: 任务不存在 |
+| 7000-7999 | 审批模块 | 7001: 无审批权限 |
+| 9000-9999 | 系统错误 | 9001: 服务器内部错误 |
+
+## 错误响应格式
+
+```json
+{
+  "code": 1001,
+  "message": "用户名或密码错误",
+  "details": {
+    "attempt": 3,
+    "lockedUntil": "2025-01-31T10:05:00Z"
+  }
+}
+```
+
+## 成功响应格式
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    // 业务数据
+  }
+}
+```
+
+## 禁止的行为
+
+- ❌ 更改已定义的端点路径
+- ❌ 使用文档中未定义的HTTP方法
+- ❌ 改变错误响应格式
+- ❌ 添加额外的响应字段
