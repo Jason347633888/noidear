@@ -29,14 +29,32 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'documents/level2',
         name: 'Level2Documents',
-        component: () => import('@/views/documents/Level2List.vue'),
+        component: () => import('@/views/documents/Level1List.vue'),
         meta: { title: '二级文件', roles: ['admin', 'leader'] },
       },
       {
         path: 'documents/level3',
         name: 'Level3Documents',
-        component: () => import('@/views/documents/Level3List.vue'),
+        component: () => import('@/views/documents/Level1List.vue'),
         meta: { title: '三级文件', roles: ['admin', 'leader'] },
+      },
+      {
+        path: 'documents/upload/:level',
+        name: 'DocumentUpload',
+        component: () => import('@/views/documents/DocumentUpload.vue'),
+        meta: { title: '上传文档' },
+      },
+      {
+        path: 'documents/:id',
+        name: 'DocumentDetail',
+        component: () => import('@/views/documents/DocumentDetail.vue'),
+        meta: { title: '文档详情' },
+      },
+      {
+        path: 'documents/:id/edit',
+        name: 'DocumentEdit',
+        component: () => import('@/views/documents/DocumentUpload.vue'),
+        meta: { title: '编辑文档' },
       },
       // 模板管理
       {
