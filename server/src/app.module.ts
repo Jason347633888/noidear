@@ -5,8 +5,9 @@ import { UserModule } from './modules/user/user.module';
 import { DocumentModule } from './modules/document/document.module';
 import { TemplateModule } from './modules/template/template.module';
 import { TaskModule } from './modules/task/task.module';
+import { NotificationModule } from './modules/notification/notification.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UserModule, DocumentModule, TemplateModule, TaskModule],
+  imports: [PrismaModule, AuthModule, UserModule, DocumentModule, TemplateModule, TaskModule, NotificationModule],
 })
 export class AppModule {}
