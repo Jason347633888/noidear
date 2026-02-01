@@ -88,6 +88,34 @@ export interface DepartmentListResponse {
   total: number;
 }
 
+// 编号规则
+export interface NumberRule {
+  id: string;
+  level: number;
+  departmentId: string;
+  departmentName?: string;
+  sequence: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 审批
+export interface Approval {
+  id: string;
+  documentId: string;
+  recordId: string | null;
+  approverId: string;
+  approverName?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  comment: string | null;
+  createdAt: string;
+}
+
+export interface ApprovalListResponse {
+  list: Approval[];
+  total: number;
+}
+
 // 操作日志
 export interface OperationLog {
   id: string;

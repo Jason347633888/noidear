@@ -1,6 +1,6 @@
 // 文档相关类型
 
-export type DocumentLevel = 1 | 2 | 3;
+export type DocumentLevel = 1 | 2 | 3 | 4;
 
 export type DocumentStatus =
   | 'draft'      // 草稿
