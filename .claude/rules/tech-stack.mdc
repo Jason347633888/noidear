@@ -16,16 +16,23 @@
 | Pinia | ^2.1.0 | 状态管理 |
 | Axios | ^1.6.0 | HTTP客户端 |
 | Vue Router | ^4.0.0 | 路由 |
+| dayjs | ^1.11.0 | 日期处理 |
+| lodash-es | ^4.17.21 | 工具函数（仅复杂场景） |
 
 ### 后端
 
 | 技术 | 版本 | 用途 |
 |------|------|------|
-| Node.js | >=18.0.0 | 运行时 |
+| Node.js | 18.x LTS | 运行时 |
 | NestJS | ^10.0.0 | API框架 |
 | TypeScript | ^5.3.0 | 类型安全 |
 | Prisma | ^5.7.0 | ORM框架 |
 | @prisma/client | ^5.7.0 | 数据库客户端 |
+| xlsx | ^0.18.5 | Excel解析 |
+| bcrypt | ^5.1.0 | 密码加密 |
+| jsonwebtoken | ^9.0.0 | JWT |
+| class-validator | ^0.14.0 | DTO验证 |
+| class-transformer | ^0.5.0 | DTO转换 |
 
 ### 数据库
 
@@ -44,17 +51,23 @@
 
 ---
 
-## 允许的库
+## 代码规范
 
-前端额外可用的库（已审批）：
-- `dayjs` - 日期处理
-- `lodash-es` - 工具函数（仅用于复杂场景）
+### ESLint 配置
 
-后端额外可用的库（已审批）：
-- `xlsx` - Excel解析
-- `bcrypt` - 密码加密
-- `jsonwebtoken` - JWT
-- `class-validator` - DTO验证
+| 端 | 配置 | 说明 |
+|----|------|------|
+| 前端 | Antfu ESLint Config | 严格模式，强制最佳实践 |
+| 后端 | NestJS 默认配置 | 标准 TypeScript 规则 |
+
+### 强制规则
+
+| 规则 | 级别 | 说明 |
+|------|------|------|
+| `no-console` | error | 不允许 console.log |
+| `no-unused-vars` | error | 未使用变量报错 |
+| `prefer-const` | error | 强制使用 const |
+| `vue/multi-word-component-names` | error | 组件名多个单词 |
 
 ---
 

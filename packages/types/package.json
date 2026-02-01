@@ -1,0 +1,15 @@
+{
+  "name": "@noidear/types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types for noidear project",
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "types",
+    "typescript"
+  ],
+  "license": "MIT"
+}

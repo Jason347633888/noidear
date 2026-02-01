@@ -54,8 +54,9 @@
 ### 技术选型检查
 ```
 □ 1. 这个功能在 MVP Phase 1-6 范围内吗？
-□ 2. 这个库在技术栈清单里吗？（前端：dayjs/lodash-es；后端：xlsx/bcrypt/jsonwebtoken）
+□ 2. 这个库在技术栈清单里吗？（前端：dayjs/lodash-es；后端：xlsx/bcrypt/jsonwebtoken/class-validator）
 □ 3. 这个框架是文档中指定的框架吗？（Vue 3 / NestJS）
+□ 3a. 新增类型定义放在 packages/types/ 了吗？
 ```
 
 ### 代码规范检查
@@ -136,6 +137,12 @@
 - ✅ 按 Prisma Schema 创建数据表
 - ✅ 环境变量存储敏感信息
 - ✅ 中文 commit message
+- ✅ 所有API必须有异常处理（try-catch）
+
+### ESLint 配置
+- **前端**: Antfu ESLint Config（严格模式）
+- **后端**: NestJS 默认配置
+- **规则**: `no-console` 报错、`no-unused-vars` 报错、`prefer-const` 强制
 
 ## 检查清单
 
@@ -156,5 +163,5 @@
 ---
 
 **项目状态**: 开发计划已完善，开始实施
-**文档版本**: 2.1
-**更新内容**: PRD已添加52个Issue清单、响应式设计规范、工程化约束
+**文档版本**: 2.2
+**更新内容**: 技术栈版本锁定、添加 Monorepo + packages 目录结构

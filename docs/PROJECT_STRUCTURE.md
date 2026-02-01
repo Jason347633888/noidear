@@ -138,6 +138,14 @@ noidear/
 │   ├── TEST-CASES.md              # 测试用例清单
 │   ├── PROJECT_STRUCTURE.md       # 项目结构导航（本文件）
 │   └── API.md                     # API文档（生成）
+├── packages/                      # 共享包
+│   └── types/                     # TypeScript 类型定义
+│       ├── index.ts               # 导出所有类型
+│       ├── user.ts                # 用户相关类型
+│       ├── document.ts            # 文档相关类型
+│       ├── template.ts            # 模板相关类型
+│       ├── task.ts                # 任务相关类型
+│       └── api.ts                 # API 响应类型
 ├── client/                        # 前端项目
 │   ├── src/
 │   │   ├── api/                   # API请求封装
@@ -347,6 +355,7 @@ noidear/
 
 | 文件类型 | 目录 |
 |----------|------|
+| 共享类型 | packages/types/ |
 | Vue页面 | client/src/views/ |
 | Vue组件 | client/src/components/ |
 | API封装 | client/src/api/ |
@@ -664,5 +673,6 @@ client/src/stores/
 
 ---
 
-**文档版本**: 3.0
-**最后更新**: 2025-01-31
+**文档版本**: 3.1
+**最后更新**: 2026-02-01
+**更新内容**: 添加 Monorepo + packages 共享类型目录

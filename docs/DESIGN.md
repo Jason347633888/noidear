@@ -40,13 +40,14 @@
 
 ### 1.2 技术栈
 
-| 层级 | 技术 | 说明 |
-|------|------|------|
-| 前端 | Vue 3 + Element Plus + Vite + Pinia | 上手简单，生态丰富 |
-| 后端 | Node.js + NestJS + TypeScript + Prisma | 企业级框架，稳定 |
-| 数据库 | PostgreSQL + Redis | JSON支持好，适合动态表单 |
-| 文件存储 | MinIO | 本地部署，数据自主可控 |
-| 部署 | Docker + Docker Compose | 环境一致，不出错 |
+| 层级 | 技术 | 版本 | 说明 |
+|------|------|------|------|
+| 前端 | Vue 3 + Element Plus + Vite + Pinia | ^3.4.0 / ^2.5.0 / ^5.0.0 / ^2.1.0 | 上手简单，生态丰富 |
+| 后端 | Node.js + NestJS + TypeScript + Prisma | 18.x / ^10.0.0 / ^5.3.0 / ^5.7.0 | 企业级框架，稳定 |
+| 数据库 | PostgreSQL + Redis | >=15.0 / >=7.0 | JSON支持好，适合动态表单 |
+| 文件存储 | MinIO | Latest | 本地部署，数据自主可控 |
+| 部署 | Docker + Docker Compose | >=24.0 / >=2.20 | 环境一致，不出错 |
+| 共享 | TypeScript 类型定义 | packages/types | 前后端类型共享 |
 
 ### 1.3 目录结构
 
@@ -69,6 +70,14 @@ noidear/
 │   │   ├── common/           # 公共模块
 │   │   └── prisma/           # 数据库模型
 │   └── package.json
+├── packages/                  # 共享包
+│   └── types/                 # TypeScript 类型定义
+│       ├── index.ts           # 导出所有类型
+│       ├── user.ts            # 用户相关类型
+│       ├── document.ts        # 文档相关类型
+│       ├── template.ts        # 模板相关类型
+│       ├── task.ts            # 任务相关类型
+│       └── api.ts             # API 响应类型
 ├── docker-compose.yml         # 开发环境 Docker 配置
 ├── docker-compose.prod.yml    # 生产环境 Docker 配置
 ├── data/                      # 数据持久化目录
@@ -1214,12 +1223,10 @@ system_config (
 
 ---
 
-**文档版本**: 1.4
+**文档版本**: 1.5
 **最后更新**: 2026-02-01
-**新增内容**:
-- Issue清单（52个Issue，每个Issue包含依赖和约束）
-- 响应式设计规范（手机/iPad/桌面适配规则）
-- 工程化约束（模块化、新增模块步骤、禁止行为）
-- MVP边界明确标注（Phase 1-6 vs 7-14）
+**更新内容**:
+- 技术栈版本锁定（Vue 3.4.x、NestJS 10、Element Plus 2.5）
+- 添加 Monorepo + packages 共享类型目录结构
 
-**状态**: MVP开发计划已完善
+**状态**: MVP开发计划已完善，开始实施
