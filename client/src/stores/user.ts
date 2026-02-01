@@ -6,6 +6,12 @@ interface User {
   username: string;
   name: string;
   role: string;
+  departmentId: string | null;
+}
+
+interface LoginResponse {
+  token: string;
+  user: User;
 }
 
 export const useUserStore = defineStore('user', {
@@ -13,16 +19,22 @@ export const useUserStore = defineStore('user', {
     user: null as User | null,
     token: localStorage.getItem('token') || '',
   }),
+  getters: {
+    isLoggedIn: (state) => !!state.token,
+    isAdmin: (state) => state.user?.role === 'admin',
+    isLeader: (state) => state.user?.role === 'leader' || state.user?.role === 'admin',
+  },
   actions: {
     async login(username: string, password: string) {
-      const res = await request.post('/auth/login', { username, password });
-      if (res.code === 0) {
-        this.token = res.data.token;
-        this.user = res.data.user;
-        localStorage.setItem('token', this.token);
-        return true;
-      }
-      return false;
+      const data = await request.post<LoginResponse>('/auth/login', { username, password });
+      this.token = data.token;
+      this.user = data.user;
+      localStorage.setItem('token', this.token);
+    },
+    async fetchUser() {
+      if (!this.token) return;
+      const user = await request.get<User>('/auth/profile');
+      this.user = user;
     },
     logout() {
       this.user = null;
