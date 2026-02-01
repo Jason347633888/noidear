@@ -96,7 +96,7 @@ export class DocumentService {
     return { list, total, page, limit };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userId: string, role: string) {
     const document = await this.prisma.document.findUnique({
       where: { id, deletedAt: null },
     }) as unknown as any;
@@ -105,11 +105,20 @@ export class DocumentService {
       throw new BusinessException(ErrorCode.NOT_FOUND, '文档不存在');
     }
 
+    // 权限检查：普通用户只能查看自己创建的文档
+    if (role === 'user' && document.creatorId !== userId) {
+      throw new BusinessException(ErrorCode.FORBIDDEN, '无权访问此文档');
+    }
+
     return document;
   }
 
   async update(id: string, dto: UpdateDocumentDto, file: Express.Multer.File | undefined, userId: string) {
-    const document = await this.findOne(id);
+    const document = await this.findOne(id, userId, 'user');
+
+    if (document.creatorId !== userId) {
+      throw new BusinessException(ErrorCode.FORBIDDEN, '只能修改自己创建的文档');
+    }
 
     if (document.status !== 'draft') {
       throw new BusinessException(ErrorCode.CONFLICT, '只能修改草稿状态的文档');
@@ -150,7 +159,7 @@ export class DocumentService {
   }
 
   async remove(id: string, userId: string) {
-    const document = await this.findOne(id);
+    const document = await this.findOne(id, userId, 'user');
 
     if (document.creatorId !== userId) {
       throw new BusinessException(ErrorCode.FORBIDDEN, '只能删除自己创建的文档');
@@ -171,7 +180,7 @@ export class DocumentService {
   }
 
   async submitForApproval(id: string, userId: string) {
-    const document = await this.findOne(id);
+    const document = await this.findOne(id, userId, 'user');
 
     if (document.creatorId !== userId) {
       throw new BusinessException(ErrorCode.FORBIDDEN, '只能提交自己创建的文档');
