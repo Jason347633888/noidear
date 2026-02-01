@@ -8,7 +8,7 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String    @id
   username      String    @unique
   password      String
   name          String
@@ -26,7 +26,7 @@ model User {
 }
 
 model Department {
-  id        String    @id @default(cuid())
+  id        String    @id
   code      String    @unique
   name      String
   parentId  String?
@@ -39,7 +39,7 @@ model Department {
 }
 
 model NumberRule {
-  id           String   @id @default(cuid())
+  id           String   @id
   level        Int
   departmentId String
   sequence     Int      @default(0)
@@ -51,7 +51,7 @@ model NumberRule {
 }
 
 model Document {
-  id          String    @id @default(cuid())
+  id          String    @id
   level       Int
   number      String    @unique
   title       String
@@ -72,7 +72,7 @@ model Document {
 }
 
 model DocumentVersion {
-  id          String   @id @default(cuid())
+  id          String   @id
   documentId  String
   version     Float
   filePath    String
@@ -85,7 +85,7 @@ model DocumentVersion {
 }
 
 model Template {
-  id        String   @id @default(cuid())
+  id        String   @id
   level     Int      @default(4)
   number    String   @unique
   title     String
@@ -101,7 +101,7 @@ model Template {
 }
 
 model Task {
-  id           String    @id @default(cuid())
+  id           String    @id
   templateId   String
   departmentId String
   deadline     DateTime
@@ -115,7 +115,7 @@ model Task {
 }
 
 model TaskRecord {
-  id          String    @id @default(cuid())
+  id          String    @id
   taskId      String
   templateId  String
   dataJson    Json
@@ -132,7 +132,7 @@ model TaskRecord {
 }
 
 model Approval {
-  id         String   @id @default(cuid())
+  id         String   @id
   documentId String
   recordId   String?
   approverId String
@@ -144,7 +144,7 @@ model Approval {
 }
 
 model OperationLog {
-  id         String   @id @default(cuid())
+  id         String   @id
   userId     String
   action     String
   module     String
@@ -158,7 +158,7 @@ model OperationLog {
 }
 
 model Notification {
-  id        String    @id @default(cuid())
+  id        String    @id
   userId    String
   type      String
   title     String
