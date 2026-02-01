@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Worktrees
+.worktrees/
+worktrees/
+
+# Logs
+*.log
+npm-debug.log*
