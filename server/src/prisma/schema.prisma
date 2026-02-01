@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  username      String    @unique
+  password      String
+  name          String
+  departmentId  String?
+  role          String    @default("user")
+  superiorId    String?
+  status        String    @default("active")
+  loginAttempts Int       @default(0)
+  lockedUntil   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  @@map("users")
+}
+
+model Department {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  name      String
+  parentId  String?
+  status    String    @default("active")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("departments")
+}
+
+model NumberRule {
+  id           String   @id @default(cuid())
+  level        Int
+  departmentId String
+  sequence     Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([level, departmentId])
+  @@map("number_rules")
+}
+
+model Document {
+  id          String    @id @default(cuid())
+  level       Int
+  number      String    @unique
+  title       String
+  filePath    String
+  fileName    String
+  fileSize    BigInt
+  fileType    String
+  version     Float     @default(1.0)
+  status      String
+  creatorId   String
+  approverId  String?
+  approvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id          String   @id @default(cuid())
+  documentId  String
+  version     Float
+  filePath    String
+  fileName    String
+  fileSize    BigInt
+  creatorId   String
+  createdAt   DateTime @default(now())
+
+  @@map("document_versions")
+}
+
+model Template {
+  id        String   @id @default(cuid())
+  level     Int      @default(4)
+  number    String   @unique
+  title     String
+  fieldsJson Json
+  version   Float    @default(1.0)
+  status    String   @default("active")
+  creatorId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@map("templates")
+}
+
+model Task {
+  id           String    @id @default(cuid())
+  templateId   String
+  departmentId String
+  deadline     DateTime
+  status       String    @default("pending")
+  creatorId    String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  @@map("tasks")
+}
+
+model TaskRecord {
+  id          String    @id @default(cuid())
+  taskId      String
+  templateId  String
+  dataJson    Json
+  status      String    @default("pending")
+  submitterId String?
+  submittedAt DateTime?
+  approverId  String?
+  approvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@map("task_records")
+}
+
+model Approval {
+  id         String   @id @default(cuid())
+  documentId String
+  recordId   String?
+  approverId String
+  status     String
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  @@map("approvals")
+}
+
+model OperationLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String
+  module     String
+  objectId   String
+  objectType String
+  details    Json?
+  ip         String
+  createdAt  DateTime @default(now())
+
+  @@map("operation_logs")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  content   String?
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@map("notifications")
+}
