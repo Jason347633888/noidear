@@ -1,12 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Snowflake } from '../../common/utils/snowflake';
 import { CreateUserDTO } from './dto/create-user.dto';
 import { UpdateUserDTO } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  private readonly snowflake: Snowflake;
+
+  constructor(private prisma: PrismaService) {
+    this.snowflake = new Snowflake(1, 1);
+  }
 
   async findAll(page = 1, limit = 20, keyword?: string) {
     const where = keyword ? { OR: [{ name: { contains: keyword } }, { username: { contains: keyword } }] } : {};
@@ -26,7 +31,15 @@ export class UserService {
   async create(dto: CreateUserDTO) {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     return this.prisma.user.create({
-      data: { ...dto, password: hashedPassword },
+      data: {
+        id: this.snowflake.nextId(),
+        username: dto.username,
+        password: hashedPassword,
+        name: dto.name,
+        departmentId: dto.departmentId,
+        role: dto.role,
+        superiorId: dto.superiorId,
+      },
     });
   }
 

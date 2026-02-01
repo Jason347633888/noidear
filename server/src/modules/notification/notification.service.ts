@@ -45,7 +45,9 @@ export class NotificationService {
    * 查询通知列表
    */
   async findAll(query: NotificationQueryDto, userId: string) {
-    const { page, limit, unreadOnly } = query;
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const { unreadOnly } = query;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { userId };

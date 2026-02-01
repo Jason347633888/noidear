@@ -152,7 +152,12 @@ export class StorageService {
    */
   async getFile(path: string): Promise<Buffer> {
     try {
-      return await this.client.getObject(this.bucket, path);
+      const stream = await this.client.getObject(this.bucket, path);
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of stream) {
+        chunks.push(chunk);
+      }
+      return Buffer.concat(chunks);
     } catch (error) {
       throw new BusinessException(
         ErrorCode.NOT_FOUND,

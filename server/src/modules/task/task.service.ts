@@ -31,7 +31,9 @@ export class TaskService {
    * 查询任务列表
    */
   async findAll(query: TaskQueryDto, userId: string, role: string) {
-    const { page, limit, status, departmentId } = query;
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const { status, departmentId } = query;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { deletedAt: null };
@@ -51,7 +53,7 @@ export class TaskService {
     }
 
     const [list, total] = await Promise.all([
-      this.prisma.task.findMany({
+      (this.prisma.task.findMany as any)({
         where,
         skip,
         take: limit,
@@ -72,7 +74,7 @@ export class TaskService {
    * 查询单个任务
    */
   async findOne(id: string) {
-    const task = await this.prisma.task.findUnique({
+    const task = await (this.prisma.task.findUnique as any)({
       where: { id, deletedAt: null },
       include: {
         template: true,
@@ -121,7 +123,7 @@ export class TaskService {
       throw new BusinessException(ErrorCode.CONFLICT, '任务已结束，不能提交');
     }
 
-    return this.prisma.taskRecord.create({
+    return (this.prisma.taskRecord.create as any)({
       data: {
         id: this.snowflake.nextId(),
         taskId: dto.taskId,
@@ -138,7 +140,7 @@ export class TaskService {
    * 审批任务记录
    */
   async approve(dto: ApproveTaskDto, userId: string) {
-    const record = await this.prisma.taskRecord.findUnique({
+    const record = await (this.prisma.taskRecord.findUnique as any)({
       where: { id: dto.recordId },
     });
 
@@ -150,13 +152,13 @@ export class TaskService {
       throw new BusinessException(ErrorCode.CONFLICT, '记录已审批');
     }
 
-    await this.prisma.taskRecord.update({
+    await (this.prisma.taskRecord.update as any)({
       where: { id: dto.recordId },
       data: {
         status: dto.status,
         approverId: userId,
         approvedAt: new Date(),
-        comment: dto.comment,
+        comment: dto.comment ?? null,
       },
     });
 
@@ -177,7 +179,7 @@ export class TaskService {
       }
     }
 
-    return this.prisma.taskRecord.findMany({
+    return (this.prisma.taskRecord.findMany as any)({
       where,
       orderBy: { submittedAt: 'desc' },
       include: {

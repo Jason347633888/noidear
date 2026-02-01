@@ -16,10 +16,7 @@ export class TemplateService {
     this.snowflake = new Snowflake(1, 1);
   }
 
-  /**
-   * 生成模板编号
-   */
-  private async generateTemplateNumber(level: number): Promise<string {
+  private async generateTemplateNumber(level: number): Promise<string> {
     const prefix = `TPL${level}`;
     const count = await this.prisma.template.count({
       where: { level, deletedAt: null },
@@ -27,9 +24,6 @@ export class TemplateService {
     return `${prefix}${String(count + 1).padStart(4, '0')}`;
   }
 
-  /**
-   * 创建模板
-   */
   async create(dto: CreateTemplateDto, userId: string) {
     const number = await this.generateTemplateNumber(dto.level);
 
@@ -39,18 +33,14 @@ export class TemplateService {
         level: dto.level,
         number,
         title: dto.title,
-        fieldsJson: dto.fields,
+        fieldsJson: dto.fields as unknown as any,
         creatorId: userId,
       },
     });
   }
 
-  /**
-   * 解析 Excel 创建模板
-   */
   async createFromExcel(file: Express.Multer.File, level: number, userId: string) {
     const parseResult = this.excelParser.parseToTemplateFields(file.buffer);
-
     const number = await this.generateTemplateNumber(level);
 
     return this.prisma.template.create({
@@ -59,17 +49,16 @@ export class TemplateService {
         level,
         number,
         title: `${parseResult.fields[0]?.label || 'Excel模板'}`,
-        fieldsJson: parseResult.fields,
+        fieldsJson: parseResult.fields as unknown as any,
         creatorId: userId,
       },
     });
   }
 
-  /**
-   * 查询模板列表
-   */
   async findAll(query: TemplateQueryDto) {
-    const { page, limit, keyword, level, status } = query;
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const { keyword, level, status } = query;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { deletedAt: null };
@@ -95,26 +84,17 @@ export class TemplateService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: {
-          creator: { select: { id: true, name: true } },
-        },
-      }),
+      }) as unknown as any[],
       this.prisma.template.count({ where }),
     ]);
 
     return { list, total, page, limit };
   }
 
-  /**
-   * 查询单个模板
-   */
   async findOne(id: string) {
     const template = await this.prisma.template.findUnique({
       where: { id, deletedAt: null },
-      include: {
-        creator: { select: { id: true, name: true } },
-      },
-    });
+    }) as unknown as any;
 
     if (!template) {
       throw new BusinessException(ErrorCode.NOT_FOUND, '模板不存在');
@@ -123,9 +103,6 @@ export class TemplateService {
     return template;
   }
 
-  /**
-   * 更新模板
-   */
   async update(id: string, dto: UpdateTemplateDto) {
     await this.findOne(id);
 
@@ -133,19 +110,15 @@ export class TemplateService {
       where: { id },
       data: {
         title: dto.title,
-        fieldsJson: dto.fields,
+        fieldsJson: dto.fields as unknown as any,
         status: dto.status,
         version: { increment: 0.1 },
       },
     });
   }
 
-  /**
-   * 复制模板
-   */
   async copy(id: string, userId: string) {
     const template = await this.findOne(id);
-
     const number = await this.generateTemplateNumber(template.level);
 
     return this.prisma.template.create({
@@ -154,15 +127,12 @@ export class TemplateService {
         level: template.level,
         number,
         title: `${template.title} - 副本`,
-        fieldsJson: template.fieldsJson,
+        fieldsJson: template.fieldsJson as unknown as any,
         creatorId: userId,
       },
     });
   }
 
-  /**
-   * 删除模板（软删除）
-   */
   async remove(id: string) {
     await this.findOne(id);
 
@@ -174,9 +144,6 @@ export class TemplateService {
     return { success: true };
   }
 
-  /**
-   * 切换模板状态
-   */
   async toggleStatus(id: string) {
     const template = await this.findOne(id);
 
@@ -186,9 +153,6 @@ export class TemplateService {
     });
   }
 
-  /**
-   * 解析模板 Excel
-   */
   async parseExcel(file: Express.Multer.File) {
     return this.excelParser.parseToTemplateFields(file.buffer);
   }

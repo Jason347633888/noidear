@@ -16,21 +16,17 @@ export class DocumentService {
     this.snowflake = new Snowflake(1, 1);
   }
 
-  /**
-   * 生成文档编号
-   */
   private async generateDocumentNumber(level: number, departmentId: string): Promise<string> {
     const year = new Date().getFullYear();
     const month = String(new Date().getMonth() + 1).padStart(2, '0');
 
-    // 获取或创建编号规则
     let rule = await this.prisma.numberRule.findUnique({
       where: { level_departmentId: { level, departmentId } },
     });
 
     if (!rule) {
       rule = await this.prisma.numberRule.create({
-        data: { level, departmentId, sequence: 0 },
+        data: { id: this.snowflake.nextId(), level, departmentId, sequence: 0 },
       });
     }
 
@@ -44,17 +40,11 @@ export class DocumentService {
     return `${year}${month}-${level}-${seqStr}`;
   }
 
-  /**
-   * 创建文档
-   */
   async create(dto: CreateDocumentDto, file: Express.Multer.File, userId: string) {
     const number = await this.generateDocumentNumber(dto.level, userId);
-
-    // 上传文件到 MinIO
     const uploadResult = await this.storage.uploadFile(file, `documents/level${dto.level}`);
 
-    // 创建文档记录
-    const document = await this.prisma.document.create({
+    return this.prisma.document.create({
       data: {
         id: this.snowflake.nextId(),
         level: dto.level,
@@ -68,22 +58,15 @@ export class DocumentService {
         creatorId: userId,
       },
     });
-
-    return document;
   }
 
-  /**
-   * 查询文档列表
-   */
   async findAll(query: DocumentQueryDto, userId: string, role: string) {
-    const { page, limit, level, keyword, status } = query;
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const { level, keyword, status } = query;
     const skip = (page - 1) * limit;
 
-    // 普通用户只能看到自己创建的文档
-    const where: Record<string, unknown> = {
-      level,
-      deletedAt: null,
-    };
+    const where: Record<string, unknown> = { level, deletedAt: null };
 
     if (role === 'user') {
       where.creatorId = userId;
@@ -106,29 +89,17 @@ export class DocumentService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: {
-          creator: { select: { id: true, name: true } },
-          approver: { select: { id: true, name: true } },
-        },
-      }),
+      }) as unknown as any[],
       this.prisma.document.count({ where }),
     ]);
 
     return { list, total, page, limit };
   }
 
-  /**
-   * 查询单个文档
-   */
   async findOne(id: string) {
     const document = await this.prisma.document.findUnique({
       where: { id, deletedAt: null },
-      include: {
-        creator: { select: { id: true, name: true } },
-        approver: { select: { id: true, name: true } },
-        versions: { orderBy: { version: 'desc' } },
-      },
-    });
+    }) as unknown as any;
 
     if (!document) {
       throw new BusinessException(ErrorCode.NOT_FOUND, '文档不存在');
@@ -137,9 +108,6 @@ export class DocumentService {
     return document;
   }
 
-  /**
-   * 更新文档
-   */
   async update(id: string, dto: UpdateDocumentDto, file: Express.Multer.File | undefined, userId: string) {
     const document = await this.findOne(id);
 
@@ -148,7 +116,6 @@ export class DocumentService {
     }
 
     if (file) {
-      // 保存旧版本
       await this.prisma.documentVersion.create({
         data: {
           id: this.snowflake.nextId(),
@@ -161,7 +128,6 @@ export class DocumentService {
         },
       });
 
-      // 上传新文件
       const uploadResult = await this.storage.uploadFile(file, `documents/level${document.level}`);
 
       return this.prisma.document.update({
@@ -183,9 +149,6 @@ export class DocumentService {
     });
   }
 
-  /**
-   * 删除文档
-   */
   async remove(id: string, userId: string) {
     const document = await this.findOne(id);
 
@@ -197,21 +160,16 @@ export class DocumentService {
       throw new BusinessException(ErrorCode.CONFLICT, '已发布的文档不能删除');
     }
 
-    // 软删除
     await this.prisma.document.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
 
-    // 删除文件
     await this.storage.deleteFile(document.filePath);
 
     return { success: true };
   }
 
-  /**
-   * 提交审批
-   */
   async submitForApproval(id: string, userId: string) {
     const document = await this.findOne(id);
 
@@ -229,13 +187,9 @@ export class DocumentService {
     });
   }
 
-  /**
-   * 获取待审批列表
-   */
   async findPendingApprovals(userId: string, role: string) {
     const where: Record<string, unknown> = { status: 'pending', deletedAt: null };
 
-    // 部门负责人只能审批本部门创建的文档
     if (role === 'leader') {
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (user) {
@@ -246,9 +200,6 @@ export class DocumentService {
     return this.prisma.document.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: {
-        creator: { select: { id: true, name: true, departmentId: true } },
-      },
-    });
+    }) as unknown as any[];
   }
 }
