@@ -1,4 +1,4 @@
-import { IsInt, IsString, IsNotEmpty, IsOptional, Min, Max, IsArray, ValidateNested } from 'class-validator';
+import { IsInt, IsString, IsNotEmpty, IsOptional, Min, Max, IsArray, ValidateNested, IsBooleanString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -18,8 +18,8 @@ export class TemplateFieldDto {
   type: string;
 
   @ApiProperty({ description: '是否必填' })
-  @IsString()
-  required: boolean;
+  @IsBooleanString()
+  required: string;
 
   @ApiPropertyOptional({ description: '选项列表', type: [Object] })
   @IsArray()
@@ -87,6 +87,7 @@ export class TemplateQueryDto {
   keyword?: string;
 
   @ApiPropertyOptional({ description: '模板级别' })
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(4)

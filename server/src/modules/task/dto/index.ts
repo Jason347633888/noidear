@@ -52,7 +52,8 @@ export class SubmitTaskDto {
   taskId: string;
 
   @ApiProperty({ description: '表单数据' })
-  data: Record<string, unknown>;
+  @IsOptional()
+  data?: Record<string, unknown>;
 }
 
 export class CancelTaskDto {

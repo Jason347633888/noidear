@@ -13,6 +13,7 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
+  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiQuery } from '@nestjs/swagger';
@@ -29,9 +30,8 @@ export class TemplateController {
 
   @Post()
   @ApiOperation({ summary: '创建模板' })
-  async create(@Body() dto: CreateTemplateDto, @Body() body: Record<string, unknown>) {
-    const user = JSON.parse(body.user as string || '{}');
-    return this.templateService.create(dto, user.id);
+  async create(@Body() dto: CreateTemplateDto, @Req() req: any) {
+    return this.templateService.create(dto, req.user.id);
   }
 
   @Post('from-excel')
@@ -49,10 +49,10 @@ export class TemplateController {
     )
     file: Express.Multer.File,
     @Body() body: Record<string, unknown>,
+    @Req() req: any,
   ) {
-    const user = JSON.parse(body.user as string || '{}');
     const level = Number(body.level) || 4;
-    return this.templateService.createFromExcel(file, level, user.id);
+    return this.templateService.createFromExcel(file, level, req.user.id);
   }
 
   @Get()
@@ -80,9 +80,8 @@ export class TemplateController {
 
   @Post(':id/copy')
   @ApiOperation({ summary: '复制模板' })
-  async copy(@Param('id') id: string, @Body() body: Record<string, unknown>) {
-    const user = JSON.parse(body.user as string || '{}');
-    return this.templateService.copy(id, user.id);
+  async copy(@Param('id') id: string, @Req() req: any) {
+    return this.templateService.copy(id, req.user.id);
   }
 
   @Delete(':id')

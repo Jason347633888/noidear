@@ -16,6 +16,20 @@ export class DocumentService {
     this.snowflake = new Snowflake(1, 1);
   }
 
+  private convertBigIntToNumber(obj: any): any {
+    if (obj === null || obj === undefined) return obj;
+    if (typeof obj === 'bigint') return Number(obj);
+    if (Array.isArray(obj)) return obj.map(item => this.convertBigIntToNumber(item));
+    if (typeof obj === 'object') {
+      const result: any = {};
+      for (const key of Object.keys(obj)) {
+        result[key] = this.convertBigIntToNumber(obj[key]);
+      }
+      return result;
+    }
+    return obj;
+  }
+
   private async generateDocumentNumber(level: number, departmentId: string): Promise<string> {
     const year = new Date().getFullYear();
     const month = String(new Date().getMonth() + 1).padStart(2, '0');
@@ -44,7 +58,7 @@ export class DocumentService {
     const number = await this.generateDocumentNumber(dto.level, userId);
     const uploadResult = await this.storage.uploadFile(file, `documents/level${dto.level}`);
 
-    return this.prisma.document.create({
+    const result = await this.prisma.document.create({
       data: {
         id: this.snowflake.nextId(),
         level: dto.level,
@@ -52,12 +66,13 @@ export class DocumentService {
         title: dto.title,
         filePath: uploadResult.path,
         fileName: file.originalname,
-        fileSize: BigInt(file.size),
+        fileSize: Number(file.size),
         fileType: file.mimetype,
         status: 'draft',
         creatorId: userId,
       },
     });
+    return this.convertBigIntToNumber(result);
   }
 
   async findAll(query: DocumentQueryDto, userId: string, role: string) {
@@ -66,7 +81,11 @@ export class DocumentService {
     const { level, keyword, status } = query;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = { level, deletedAt: null };
+    const where: Record<string, unknown> = { deletedAt: null };
+
+    if (level !== undefined && level !== null) {
+      where.level = level;
+    }
 
     if (role === 'user') {
       where.creatorId = userId;
@@ -93,7 +112,7 @@ export class DocumentService {
       this.prisma.document.count({ where }),
     ]);
 
-    return { list, total, page, limit };
+    return { list: this.convertBigIntToNumber(list), total, page, limit };
   }
 
   async findOne(id: string, userId: string, role: string) {
@@ -110,7 +129,7 @@ export class DocumentService {
       throw new BusinessException(ErrorCode.FORBIDDEN, '无权访问此文档');
     }
 
-    return document;
+    return this.convertBigIntToNumber(document);
   }
 
   async update(id: string, dto: UpdateDocumentDto, file: Express.Multer.File | undefined, userId: string) {
@@ -132,30 +151,32 @@ export class DocumentService {
           version: document.version,
           filePath: document.filePath,
           fileName: document.fileName,
-          fileSize: document.fileSize,
+          fileSize: BigInt(document.fileSize),
           creatorId: userId,
         },
       });
 
       const uploadResult = await this.storage.uploadFile(file, `documents/level${document.level}`);
 
-      return this.prisma.document.update({
+      const result = await this.prisma.document.update({
         where: { id },
         data: {
           title: dto.title ?? document.title,
           filePath: uploadResult.path,
           fileName: file.originalname,
-          fileSize: BigInt(file.size),
+          fileSize: Number(file.size),
           fileType: file.mimetype,
           version: { increment: 0.1 },
         },
       });
+      return this.convertBigIntToNumber(result);
     }
 
-    return this.prisma.document.update({
+    const result = await this.prisma.document.update({
       where: { id },
       data: { title: dto.title ?? document.title },
     });
+    return this.convertBigIntToNumber(result);
   }
 
   async remove(id: string, userId: string) {
@@ -190,10 +211,11 @@ export class DocumentService {
       throw new BusinessException(ErrorCode.CONFLICT, '只能提交草稿状态的文档');
     }
 
-    return this.prisma.document.update({
+    const result = await this.prisma.document.update({
       where: { id },
       data: { status: 'pending' },
     });
+    return this.convertBigIntToNumber(result);
   }
 
   async findPendingApprovals(userId: string, role: string) {
@@ -206,9 +228,28 @@ export class DocumentService {
       }
     }
 
-    return this.prisma.document.findMany({
+    const list = await this.prisma.document.findMany({
       where,
       orderBy: { createdAt: 'desc' },
     }) as unknown as any[];
+    return this.convertBigIntToNumber(list);
+  }
+
+  async approve(id: string, status: string, comment: string | undefined, approverId: string) {
+    const document = await this.findOne(id, approverId, 'leader');
+
+    if (document.status !== 'pending') {
+      throw new BusinessException(ErrorCode.CONFLICT, '只能审批待审批状态的文档');
+    }
+
+    const result = await this.prisma.document.update({
+      where: { id },
+      data: {
+        status: status === 'approved' ? 'approved' : 'rejected',
+        approverId,
+        approvedAt: new Date(),
+      },
+    });
+    return this.convertBigIntToNumber(result);
   }
 }

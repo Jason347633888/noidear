@@ -90,4 +90,14 @@ export class DocumentController {
   async submitForApproval(@Param('id') id: string, @Req() req: any) {
     return this.documentService.submitForApproval(id, req.user.id);
   }
+
+  @Post(':id/approve')
+  @ApiOperation({ summary: '审批文档' })
+  async approve(
+    @Param('id') id: string,
+    @Body() body: { status: string; comment?: string },
+    @Req() req: any,
+  ) {
+    return this.documentService.approve(id, body.status, body.comment, req.user.id);
+  }
 }

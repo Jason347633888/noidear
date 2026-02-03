@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { NotificationService } from './notification.service';
 import { CreateNotificationDto, NotificationQueryDto } from './dto';
@@ -13,29 +13,25 @@ export class NotificationController {
 
   @Get()
   @ApiOperation({ summary: '查询通知列表' })
-  async findAll(@Query() query: NotificationQueryDto, @Body() body: Record<string, unknown>) {
-    const user = JSON.parse(body.user as string || '{}');
-    return this.notificationService.findAll(query, user.id);
+  async findAll(@Query() query: NotificationQueryDto, @Req() req: any) {
+    return this.notificationService.findAll(query, req.user.id);
   }
 
   @Post(':id/read')
   @ApiOperation({ summary: '标记已读' })
-  async markAsRead(@Param('id') id: string, @Body() body: Record<string, unknown>) {
-    const user = JSON.parse(body.user as string || '{}');
-    return this.notificationService.markAsRead(id, user.id);
+  async markAsRead(@Param('id') id: string, @Req() req: any) {
+    return this.notificationService.markAsRead(id, req.user.id);
   }
 
   @Post('read-all')
   @ApiOperation({ summary: '全部标记已读' })
-  async markAllAsRead(@Body() body: Record<string, unknown>) {
-    const user = JSON.parse(body.user as string || '{}');
-    return this.notificationService.markAllAsRead(user.id);
+  async markAllAsRead(@Req() req: any) {
+    return this.notificationService.markAllAsRead(req.user.id);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: '删除通知' })
-  async delete(@Param('id') id: string, @Body() body: Record<string, unknown>) {
-    const user = JSON.parse(body.user as string || '{}');
-    return this.notificationService.delete(id, user.id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    return this.notificationService.delete(id, req.user.id);
   }
 }

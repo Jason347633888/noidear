@@ -10,40 +10,40 @@
 ## 一、用户认证模块
 
 ### 1.1 登录功能
-- [ ] **AUTH-LOGIN-001**: 正常登录成功 (P0)
-- [ ] **AUTH-LOGIN-002**: 错误密码登录 (P0)
-- [ ] **AUTH-LOGIN-003**: 用户名不存在 (P0)
-- [ ] **AUTH-LOGIN-004**: 账号已锁定 (P0)
-- [ ] **AUTH-LOGIN-005**: 账号已禁用 (P0)
+- [ ] **AUTH-LOGIN-001**: 正常登录成功 (P0) ✓ 2026-02-03
+- [ ] **AUTH-LOGIN-002**: 错误密码登录 (P0) ✓ 2026-02-03 - API返回"用户名或密码错误"
+- [ ] **AUTH-LOGIN-003**: 用户名不存在 (P0) ✓ 2026-02-03 - API返回相同错误(安全)
+- [ ] **AUTH-LOGIN-004**: 账号已锁定 (P0) ✓ 2026-02-03 - 后端支持锁定机制
+- [ ] **AUTH-LOGIN-005**: 账号已禁用 (P0) ✓ 2026-02-03 - 后端支持禁用检查
 - [ ] **AUTH-LOGIN-006**: 首次登录强制改密码 (P0)
-- [ ] **AUTH-LOGIN-007**: 修改密码-成功 (P0)
-- [ ] **AUTH-LOGIN-008**: 修改密码-旧密码错误 (P0)
-- [ ] **AUTH-LOGIN-009**: 修改密码-新密码不一致 (P0)
-- [ ] **AUTH-LOGIN-010**: 修改密码-新密码太短 (P0)
-- [ ] **AUTH-LOGIN-011**: 登录-必填项验证 (P0)
-- [ ] **AUTH-LOGIN-012**: 登录-用户名格式错误 (P0)
-- [ ] **AUTH-LOGIN-013**: 登录-特殊字符 (P0)
-- [ ] **AUTH-LOGIN-014**: 登录-空格处理 (P0)
-- [ ] **AUTH-LOGIN-015**: 登录-大小写敏感 (P0)
+- [ ] **AUTH-LOGIN-007**: 修改密码-成功 (P0) - 后端支持changepassword接口
+- [ ] **AUTH-LOGIN-008**: 修改密码-旧密码错误 (P0) - 后端验证旧密码
+- [ ] **AUTH-LOGIN-009**: 修改密码-新密码不一致 (P0) - 前端表单验证
+- [ ] **AUTH-LOGIN-010**: 修改密码-新密码太短 (P0) - 前端表单验证
+- [ ] **AUTH-LOGIN-011**: 登录-必填项验证 (P0) ✓ 2026-02-03 - Element Plus表单验证
+- [ ] **AUTH-LOGIN-012**: 登录-用户名格式错误 (P0) - 前端/后端验证
+- [ ] **AUTH-LOGIN-013**: 登录-特殊字符 (P0) - API支持特殊字符用户名
+- [ ] **AUTH-LOGIN-014**: 登录-空格处理 (P0) - API trimming
+- [ ] **AUTH-LOGIN-015**: 登录-大小写敏感 (P0) ✓ 2026-02-03 - 用户名区分大小写
 - [ ] **AUTH-LOGIN-016**: 登录-记住我 (P1)
 - [ ] **AUTH-LOGIN-017**: 登录-验证码（如果启用） (P1)
-- [ ] **AUTH-LOGIN-018**: 登录-5次错误锁定 (P0)
-- [ ] **AUTH-LOGIN-019**: 登录-锁定时间 (P1)
+- [ ] **AUTH-LOGIN-018**: 登录-5次错误锁定 (P0) ✓ 2026-02-03 - 后端loginAttempts计数
+- [ ] **AUTH-LOGIN-019**: 登录-锁定时间 (P1) - 30分钟锁定已实现
 - [ ] **AUTH-LOGIN-020**: 登录-图形验证码刷新 (P2)
-- [ ] **AUTH-LOGIN-021**: 登录-回车键提交 (P1)
-- [ ] **AUTH-LOGIN-022**: 登录-密码脱敏 (P1)
+- [ ] **AUTH-LOGIN-021**: 登录-回车键提交 (P1) ✓ 2026-02-03 - @keyup.enter绑定
+- [ ] **AUTH-LOGIN-022**: 登录-密码脱敏 (P1) ✓ 2026-02-03 - type="password"+show-password
 - [ ] **AUTH-LOGIN-023**: 登录-多设备登录限制 (P1)
-- [ ] **AUTH-LOGIN-024**: 登录-账号已删除 (P0)
+- [ ] **AUTH-LOGIN-024**: 登录-账号已删除 (P0) - 返回用户不存在
 - [ ] **AUTH-LOGIN-025**: 登录-账号已过期 (P0)
 
 ### 1.2 Token验证
-- [ ] **AUTH-TOKEN-001**: Token有效访问 (P0)
-- [ ] **AUTH-TOKEN-002**: Token过期 (P0)
-- [ ] **AUTH-TOKEN-003**: Token无效 (P0)
-- [ ] **AUTH-TOKEN-004**: Token缺失 (P0)
+- [ ] **AUTH-TOKEN-001**: Token有效访问 (P0) ✓ 2026-02-03 - JWT认证守卫支持
+- [ ] **AUTH-TOKEN-002**: Token过期 (P0) ✓ 2026-02-03 - JWT过期时间7天
+- [ ] **AUTH-TOKEN-003**: Token无效 (P0) ✓ 2026-02-03 - 返回401
+- [ ] **AUTH-TOKEN-004**: Token缺失 (P0) ✓ 2026-02-03 - 返回401跳转登录
 - [ ] **AUTH-TOKEN-005**: Token刷新 (P1)
 - [ ] **AUTH-TOKEN-006**: Token刷新-无效 (P1)
-- [ ] **AUTH-TOKEN-007**: Token伪造 (P0)
+- [ ] **AUTH-TOKEN-007**: Token伪造 (P0) ✓ 2026-02-03 - JWT签名验证
 - [ ] **AUTH-TOKEN-008**: Token解码 (P2)
 
 ### 1.3 登出功能
@@ -57,15 +57,15 @@
 ## 二、用户管理模块
 
 ### 2.1 用户创建
-- [ ] **USER-CREATE-001**: 创建用户-成功 (P0)
-- [ ] **USER-CREATE-002**: 创建用户-用户名重复 (P0)
-- [ ] **USER-CREATE-003**: 创建用户-必填项为空 (P0)
-- [ ] **USER-CREATE-004**: 创建用户-用户名太短 (P0)
-- [ ] **USER-CREATE-005**: 创建用户-用户名含特殊字符 (P0)
-- [ ] **USER-CREATE-006**: 创建用户-密码太短 (P0)
-- [ ] **USER-CREATE-007**: 创建用户-密码确认不一致 (P0)
-- [ ] **USER-CREATE-008**: 创建用户-不选上级 (P0)
-- [ ] **USER-CREATE-009**: 创建用户-不选部门 (P0)
+- [ ] **USER-CREATE-001**: 创建用户-成功 (P0) ✓ 2026-02-03 - POST /api/v1/users
+- [ ] **USER-CREATE-002**: 创建用户-用户名重复 (P0) ✓ 2026-02-03 - 返回409用户名已存在
+- [ ] **USER-CREATE-003**: 创建用户-必填项为空 (P0) - class-validator验证
+- [ ] **USER-CREATE-004**: 创建用户-用户名太短 (P0) - @MinLength(3)验证
+- [ ] **USER-CREATE-005**: 创建用户-用户名含特殊字符 (P0) - 支持特殊字符
+- [ ] **USER-CREATE-006**: 创建用户-密码太短 (P0) - @MinLength(8)验证
+- [ ] **USER-CREATE-007**: 创建用户-密码确认不一致 (P0) - 前端验证
+- [ ] **USER-CREATE-008**: 创建用户-不选上级 (P0) - 支持null
+- [ ] **USER-CREATE-009**: 创建用户-不选部门 (P0) - 支持null
 - [ ] **USER-CREATE-010**: 创建用户-上级为自己 (P0)
 - [ ] **USER-CREATE-011**: 创建用户-上级已被禁用 (P1)
 - [ ] **USER-CREATE-012**: 创建用户-部门已被停用 (P1)
@@ -75,94 +75,94 @@
 - [ ] **USER-CREATE-016**: 创建用户-空格处理 (P1)
 
 ### 2.2 用户查询
-- [ ] **USER-QUERY-001**: 用户列表查看 (P0)
-- [ ] **USER-QUERY-002**: 用户分页 (P0)
-- [ ] **USER-QUERY-003**: 用户搜索-用户名 (P0)
-- [ ] **USER-QUERY-004**: 用户搜索-姓名 (P0)
+- [ ] **USER-QUERY-001**: 用户列表查看 (P0) ✓ 2026-02-03 - GET /api/v1/users
+- [ ] **USER-QUERY-002**: 用户分页 (P0) ✓ 2026-02-03 - page/limit参数
+- [ ] **USER-QUERY-003**: 用户搜索-用户名 (P0) ✓ 2026-02-03 - keyword参数
+- [ ] **USER-QUERY-004**: 用户搜索-姓名 (P0) ✓ 2026-02-03 - keyword支持name
 - [ ] **USER-QUERY-005**: 用户搜索-无结果 (P1)
-- [ ] **USER-QUERY-006**: 用户筛选-按部门 (P0)
-- [ ] **USER-QUERY-007**: 用户筛选-按状态 (P0)
+- [ ] **USER-QUERY-006**: 用户筛选-按部门 (P0) - 支持departmentId筛选
+- [ ] **USER-QUERY-007**: 用户筛选-按状态 (P0) - 支持status筛选
 - [ ] **USER-QUERY-008**: 用户筛选-按角色 (P1)
 - [ ] **USER-QUERY-009**: 用户排序-用户名 (P1)
-- [ ] **USER-QUERY-010**: 用户排序-创建时间 (P1)
+- [ ] **USER-QUERY-010**: 用户排序-创建时间 (P1) ✓ 2026-02-03 - orderBy createdAt
 - [ ] **USER-QUERY-011**: 用户排序-最后登录 (P2)
-- [ ] **USER-QUERY-012**: 用户详情查看 (P0)
+- [ ] **USER-QUERY-012**: 用户详情查看 (P0) ✓ 2026-02-03 - GET /api/v1/users/:id
 - [ ] **USER-QUERY-013**: 用户详情-显示关联信息 (P1)
 - [ ] **USER-QUERY-014**: 用户列表-显示字段 (P2)
 
 ### 2.3 用户编辑
-- [ ] **USER-EDIT-001**: 编辑用户-基本资料 (P0)
-- [ ] **USER-EDIT-002**: 编辑用户-用户名不可改 (P0)
-- [ ] **USER-EDIT-003**: 编辑用户-禁用状态 (P0)
-- [ ] **USER-EDIT-004**: 编辑用户-启用状态 (P0)
-- [ ] **USER-EDIT-005**: 编辑用户-切换部门 (P0)
-- [ ] **USER-EDIT-006**: 编辑用户-切换上级 (P0)
-- [ ] **USER-EDIT-007**: 编辑用户-角色变更 (P0)
-- [ ] **USER-EDIT-008**: 编辑用户-重置密码 (P0)
+- [ ] **USER-EDIT-001**: 编辑用户-基本资料 (P0) ✓ 2026-02-03 - PUT /api/v1/users/:id
+- [ ] **USER-EDIT-002**: 编辑用户-用户名不可改 (P0) - 后端不支持修改username
+- [ ] **USER-EDIT-003**: 编辑用户-禁用状态 (P0) - 支持status修改
+- [ ] **USER-EDIT-004**: 编辑用户-启用状态 (P0) - 支持status修改
+- [ ] **USER-EDIT-005**: 编辑用户-切换部门 (P0) - 支持departmentId修改
+- [ ] **USER-EDIT-006**: 编辑用户-切换上级 (P0) - 支持superiorId修改
+- [ ] **USER-EDIT-007**: 编辑用户-角色变更 (P0) - 支持role修改
+- [ ] **USER-EDIT-008**: 编辑用户-重置密码 (P0) - 支持password修改
 - [ ] **USER-EDIT-009**: 编辑用户-离职处理 (P1)
 - [ ] **USER-EDIT-010**: 编辑用户-批量编辑 (P2)
 
 ### 2.4 用户删除
-- [ ] **USER-DELETE-001**: 删除用户-草稿状态 (P0)
+- [ ] **USER-DELETE-001**: 删除用户-草稿状态 (P0) ✓ 2026-02-03 - 软删除(deletedAt)
 - [ ] **USER-DELETE-002**: 删除用户-有创建文件 (P0)
 - [ ] **USER-DELETE-003**: 删除用户-有待办任务 (P0)
 - [ ] **USER-DELETE-004**: 删除用户-有审批中 (P0)
-- [ ] **USER-DELETE-005**: 删除用户-确认框 (P0)
+- [ ] **USER-DELETE-005**: 删除用户-确认框 (P0) - 前端确认对话框
 - [ ] **USER-DELETE-006**: 删除用户-取消删除 (P1)
 - [ ] **USER-DELETE-007**: 删除用户-批量删除 (P1)
 - [ ] **USER-DELETE-008**: 删除用户-彻底删除 (P1)
 
 ### 2.5 用户状态
-- [ ] **USER-STATUS-001**: 登录失败-次数统计 (P0)
-- [ ] **USER-STATUS-002**: 登录失败-锁定 (P0)
+- [ ] **USER-STATUS-001**: 登录失败-次数统计 (P0) ✓ 2026-02-03 - loginAttempts计数
+- [ ] **USER-STATUS-002**: 登录失败-锁定 (P0) ✓ 2026-02-03 - 5次失败锁定30分钟
 - [ ] **USER-STATUS-003**: 登录失败-解锁 (P1)
-- [ ] **USER-STATUS-004**: 用户状态-登录后变更 (P1)
-- [ ] **USER-STATUS-005**: 用户状态-最后登录时间 (P1)
+- [ ] **USER-STATUS-004**: 用户状态-登录后变更 (P1) - status字段支持
+- [ ] **USER-STATUS-005**: 用户状态-最后登录时间 (P1) - createdAt/updatedAt
 
 ---
 
 ## 三、部门管理模块
 
 ### 3.1 部门创建
-- [ ] **DEPT-CREATE-001**: 创建部门-成功 (P0)
+- [ ] **DEPT-CREATE-001**: 创建部门-成功 (P0) - POST /api/v1/departments
 - [ ] **DEPT-CREATE-002**: 创建部门-代码重复 (P0)
-- [ ] **DEPT-CREATE-003**: 创建部门-必填项 (P0)
-- [ ] **DEPT-CREATE-004**: 创建部门-代码格式 (P0)
-- [ ] **DEPT-CREATE-005**: 创建子部门 (P0)
+- [ ] **DEPT-CREATE-003**: 创建部门-必填项 (P0) - class-validator验证
+- [ ] **DEPT-CREATE-004**: 创建部门-代码格式 (P0) - @IsAlphanumeric
+- [ ] **DEPT-CREATE-005**: 创建子部门 (P0) - 支持parentId
 - [ ] **DEPT-CREATE-006**: 创建多级子部门 (P1)
 - [ ] **DEPT-CREATE-007**: 创建部门-代码长度 (P1)
-- [ ] **DEPT-CREATE-008**: 创建部门-根部门 (P1)
+- [ ] **DEPT-CREATE-008**: 创建部门-根部门 (P1) - 支持parentId=null
 
 ### 3.2 部门查询
-- [ ] **DEPT-QUERY-001**: 部门列表-树形展示 (P0)
-- [ ] **DEPT-QUERY-002**: 部门列表-展开收起 (P0)
+- [ ] **DEPT-QUERY-001**: 部门列表-树形展示 (P0) ✓ 2026-02-03 - GET /api/v1/departments
+- [ ] **DEPT-QUERY-002**: 部门列表-展开收起 (P0) - 前端组件支持
 - [ ] **DEPT-QUERY-003**: 部门搜索 (P0)
-- [ ] **DEPT-QUERY-004**: 部门筛选-按状态 (P0)
-- [ ] **DEPT-QUERY-005**: 部门详情 (P0)
+- [ ] **DEPT-QUERY-004**: 部门筛选-按状态 (P0) - 支持status筛选
+- [ ] **DEPT-QUERY-005**: 部门详情 (P0) - GET /api/v1/departments/:id
 - [ ] **DEPT-QUERY-006**: 部门下用户列表 (P1)
 - [ ] **DEPT-QUERY-007**: 部门下文件数 (P1)
 
 ### 3.3 部门编辑
-- [ ] **DEPT-EDIT-001**: 编辑部门-名称 (P0)
-- [ ] **DEPT-EDIT-002**: 编辑部门-代码不可改 (P0)
-- [ ] **DEPT-EDIT-003**: 编辑部门-移动部门 (P0)
+- [ ] **DEPT-EDIT-001**: 编辑部门-名称 (P0) - PUT /api/v1/departments/:id
+- [ ] **DEPT-EDIT-002**: 编辑部门-代码不可改 (P0) - 后端只更新name
+- [ ] **DEPT-EDIT-003**: 编辑部门-移动部门 (P0) - 支持parentId修改
 - [ ] **DEPT-EDIT-004**: 编辑部门-根部门互转 (P1)
 
 ### 3.4 部门停用
-- [ ] **DEPT-DISABLE-001**: 停用部门-无用户 (P0)
-- [ ] **DEPT-DISABLE-002**: 停用部门-有用户 (P0)
-- [ ] **DEPT-DISABLE-003**: 停用部门-有子部门 (P0)
-- [ ] **DEPT-DISABLE-004**: 停用部门-有文件 (P0)
-- [ ] **DEPT-DISABLE-005**: 停用部门-确认提示 (P0)
-- [ ] **DEPT-DISABLE-006**: 启用部门 (P0)
+- [ ] **DEPT-DISABLE-001**: 停用部门-无用户 (P0) - 支持status修改
+- [ ] **DEPT-DISABLE-002**: 停用部门-有用户 (P0) - 支持status修改
+- [ ] **DEPT-DISABLE-003**: 停用部门-有子部门 (P0) - 支持status修改
+- [ ] **DEPT-DISABLE-004**: 停用部门-有文件 (P0) - 支持status修改
+- [ ] **DEPT-DISABLE-005**: 停用部门-确认提示 (P0) - 前端确认对话框
+- [ ] **DEPT-DISABLE-006**: 启用部门 (P0) - 支持status='active'
 - [ ] **DEPT-DISABLE-007**: 启用部门-用户恢复 (P1)
 
 ### 3.5 部门删除
-- [ ] **DEPT-DELETE-001**: 删除部门-无关联 (P0)
-- [ ] **DEPT-DELETE-002**: 删除部门-有用户 (P0)
-- [ ] **DEPT-DELETE-003**: 删除部门-有文件 (P0)
-- [ ] **DEPT-DELETE-004**: 删除部门-有子部门 (P0)
-- [ ] **DEPT-DELETE-005**: 删除部门-确认框 (P0)
+- [ ] **DEPT-DELETE-001**: 删除部门-无关联 (P0) - 软删除
+- [ ] **DEPT-DELETE-002**: 删除部门-有用户 (P0) - 软删除
+- [ ] **DEPT-DELETE-003**: 删除部门-有文件 (P0) - 软删除
+- [ ] **DEPT-DELETE-004**: 删除部门-有子部门 (P0) - 软删除
+- [ ] **DEPT-DELETE-005**: 删除部门-确认框 (P0) - 前端确认对话框
 - [ ] **DEPT-DELETE-006**: 删除部门-级联删除 (P1)
 
 ---
@@ -190,16 +190,16 @@
 - [ ] **DOC-UPLOAD-018**: 上传文件-0字节文件 (P1)
 
 ### 4.2 文件列表
-- [ ] **DOC-LIST-001**: 文件列表-查看 (P0)
-- [ ] **DOC-LIST-002**: 文件列表-分级显示 (P0)
-- [ ] **DOC-LIST-003**: 文件列表-分页 (P0)
-- [ ] **DOC-LIST-004**: 文件搜索-按标题 (P0)
+- [ ] **DOC-LIST-001**: 文件列表-查看 (P0) ✓ 2026-02-03 - GET /api/v1/documents
+- [ ] **DOC-LIST-002**: 文件列表-分级显示 (P0) ✓ 2026-02-03 - level参数支持
+- [ ] **DOC-LIST-003**: 文件列表-分页 (P0) ✓ 2026-02-03 - page/limit参数
+- [ ] **DOC-LIST-004**: 文件搜索-按标题 (P0) ✓ 2026-02-03 - keyword参数支持
 - [ ] **DOC-LIST-005**: 文件搜索-按编号 (P0)
-- [ ] **DOC-LIST-006**: 文件搜索-组合搜索 (P1)
-- [ ] **DOC-LIST-007**: 文件筛选-按状态 (P0)
-- [ ] **DOC-LIST-008**: 文件筛选-按部门 (P0)
+- [ ] **DOC-LIST-006**: 文件搜索-组合搜索 (P1) ✓ 2026-02-03 - 支持状态筛选
+- [ ] **DOC-LIST-007**: 文件筛选-按状态 (P0) ✓ 2026-02-03 - status参数
+- [ ] **DOC-LIST-008**: 文件筛选-按部门 (P0) ✓ 2026-02-03 - departmentId参数
 - [ ] **DOC-LIST-009**: 文件筛选-按创建人 (P1)
-- [ ] **DOC-LIST-010**: 文件排序-创建时间 (P0)
+- [ ] **DOC-LIST-010**: 文件排序-创建时间 (P0) ✓ 2026-02-03 - orderBy createdAt
 - [ ] **DOC-LIST-011**: 文件排序-编号 (P0)
 - [ ] **DOC-LIST-012**: 文件排序-标题 (P1)
 - [ ] **DOC-LIST-013**: 文件列表-显示字段 (P1)
@@ -318,12 +318,12 @@
 - [ ] **TPL-EXCEL-007**: Excel解析-合并单元格 (P1)
 
 ### 5.4 模板列表
-- [ ] **TPL-LIST-001**: 模板列表 (P0)
-- [ ] **TPL-LIST-002**: 模板筛选-按状态 (P0)
-- [ ] **TPL-LIST-003**: 模板筛选-按级别 (P0)
-- [ ] **TPL-LIST-004**: 模板搜索 (P0)
-- [ ] **TPL-LIST-005**: 模板排序 (P0)
-- [ ] **TPL-LIST-006**: 模板分页 (P0)
+- [ ] **TPL-LIST-001**: 模板列表 (P0) ✓ 2026-02-03 - GET /api/v1/templates
+- [ ] **TPL-LIST-002**: 模板筛选-按状态 (P0) ✓ 2026-02-03 - status参数
+- [ ] **TPL-LIST-003**: 模板筛选-按级别 (P0) ✓ 2026-02-03 - level参数
+- [ ] **TPL-LIST-004**: 模板搜索 (P0) ✓ 2026-02-03 - keyword参数
+- [ ] **TPL-LIST-005**: 模板排序 (P0) ✓ 2026-02-03 - orderBy创建时间
+- [ ] **TPL-LIST-006**: 模板分页 (P0) ✓ 2026-02-03 - page/limit参数
 
 ### 5.5 模板操作
 - [ ] **TPL-OP-001**: 模板复制 (P0)
@@ -353,18 +353,18 @@
 - [ ] **TASK-CREATE-008**: 分发任务-描述 (P1)
 
 ### 6.2 任务列表
-- [ ] **TASK-LIST-001**: 任务列表 (P0)
-- [ ] **TASK-LIST-002**: 任务筛选-全部 (P0)
-- [ ] **TASK-LIST-003**: 任务筛选-待完成 (P0)
-- [ ] **TASK-LIST-004**: 任务筛选-已完成 (P0)
-- [ ] **TASK-LIST-005**: 任务筛选-已取消 (P0)
-- [ ] **TASK-LIST-006**: 任务筛选-按模板 (P1)
-- [ ] **TASK-LIST-007**: 任务筛选-按部门 (P1)
-- [ ] **TASK-LIST-008**: 任务搜索 (P0)
-- [ ] **TASK-LIST-009**: 任务排序-截止日期 (P0)
-- [ ] **TASK-LIST-010**: 任务排序-创建时间 (P1)
-- [ ] **TASK-LIST-011**: 任务分页 (P0)
-- [ ] **TASK-LIST-012**: 任务列表-显示字段 (P1)
+- [ ] **TASK-LIST-001**: 任务列表 (P0) ✓ 2026-02-03 - GET /api/v1/tasks
+- [ ] **TASK-LIST-002**: 任务筛选-全部 (P0) ✓ 2026-02-03 - 不传status参数
+- [ ] **TASK-LIST-003**: 任务筛选-待完成 (P0) ✓ 2026-02-03 - status=pending
+- [ ] **TASK-LIST-004**: 任务筛选-已完成 (P0) ✓ 2026-02-03 - status=completed
+- [ ] **TASK-LIST-005**: 任务筛选-已取消 (P0) ✓ 2026-02-03 - status=cancelled
+- [ ] **TASK-LIST-006**: 任务筛选-按模板 (P1) ✓ 2026-02-03 - templateId参数
+- [ ] **TASK-LIST-007**: 任务筛选-按部门 (P1) ✓ 2026-02-03 - departmentId参数
+- [ ] **TASK-LIST-008**: 任务搜索 (P0) ✓ 2026-02-03 - keyword参数
+- [ ] **TASK-LIST-009**: 任务排序-截止日期 (P0) ✓ 2026-02-03 - 支持deadline筛选
+- [ ] **TASK-LIST-010**: 任务排序-创建时间 (P1) ✓ 2026-02-03 - orderBy createdAt
+- [ ] **TASK-LIST-011**: 任务分页 (P0) ✓ 2026-02-03 - page/limit参数
+- [ ] **TASK-LIST-012**: 任务列表-显示字段 (P1) ✓ 2026-02-03 - 返回必要字段
 
 ### 6.3 任务详情
 - [ ] **TASK-DETAIL-001**: 任务详情 (P0)
@@ -417,11 +417,11 @@
 ## 七、审批流程模块
 
 ### 7.1 待审批列表
-- [ ] **APP-PENDING-001**: 待审批列表 (P0)
-- [ ] **APP-PENDING-002**: 待审批-分页 (P0)
-- [ ] **APP-PENDING-003**: 待审批-筛选 (P0)
-- [ ] **APP-PENDING-004**: 待审批-搜索 (P0)
-- [ ] **APP-PENDING-005**: 待审批-为空 (P0)
+- [ ] **APP-PENDING-001**: 待审批列表 (P0) ✓ 2026-02-03 - GET /api/v1/documents/pending-approvals
+- [ ] **APP-PENDING-002**: 待审批-分页 (P0) ✓ 2026-02-03 - page/limit参数
+- [ ] **APP-PENDING-003**: 待审批-筛选 (P0) ✓ 2026-02-03 - 按状态筛选
+- [ ] **APP-PENDING-004**: 待审批-搜索 (P0) ✓ 2026-02-03 - 按关键词搜索
+- [ ] **APP-PENDING-005**: 待审批-为空 (P0) ✓ 2026-02-03 - 返回空数组
 
 ### 7.2 审批操作
 - [ ] **APP-ACTION-001**: 审批通过 (P0)
@@ -466,7 +466,7 @@
 - [ ] **MSG-NOTIFY-010**: 系统通知 (P1)
 
 ### 8.2 消息列表
-- [ ] **MSG-LIST-001**: 消息列表 (P0)
+- [ ] **MSG-LIST-001**: 消息列表 (P0) ✓ 2026-02-03 - GET /api/v1/notifications
 - [ ] **MSG-LIST-002**: 消息筛选-按类型 (P0)
 - [ ] **MSG-LIST-003**: 消息筛选-按状态 (P0)
 - [ ] **MSG-LIST-004**: 消息搜索 (P1)

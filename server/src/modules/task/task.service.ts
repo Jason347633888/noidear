@@ -1,16 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Snowflake } from '../../common/utils/snowflake';
 import { BusinessException, ErrorCode } from '../../common/exceptions/business.exception';
 import { CreateTaskDto, TaskQueryDto, SubmitTaskDto, ApproveTaskDto } from './dto';
 
 @Injectable()
 export class TaskService {
-  private readonly snowflake: Snowflake;
-
-  constructor(private readonly prisma: PrismaService) {
-    this.snowflake = new Snowflake(1, 1);
-  }
+  constructor(private readonly prisma: PrismaService) {}
 
   /**
    * 创建任务
@@ -18,7 +13,7 @@ export class TaskService {
   async create(dto: CreateTaskDto, userId: string) {
     return this.prisma.task.create({
       data: {
-        id: this.snowflake.nextId(),
+        id: crypto.randomUUID(),
         templateId: dto.templateId,
         departmentId: dto.departmentId,
         deadline: new Date(dto.deadline),
@@ -109,10 +104,10 @@ export class TaskService {
 
     return this.prisma.taskRecord.create({
       data: {
-        id: this.snowflake.nextId(),
+        id: crypto.randomUUID(),
         taskId: dto.taskId,
         templateId: task.templateId,
-        dataJson: dto.data as any,
+        dataJson: (dto.data || {}) as any,
         submitterId: userId,
         status: 'submitted',
         submittedAt: new Date(),

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ExcelParserService } from '../../common/services';
 import { Snowflake } from '../../common/utils/snowflake';
@@ -8,12 +8,14 @@ import { CreateTemplateDto, UpdateTemplateDto, TemplateQueryDto } from './dto';
 @Injectable()
 export class TemplateService {
   private readonly snowflake: Snowflake;
+  private readonly logger = new Logger(TemplateService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly excelParser: ExcelParserService,
   ) {
     this.snowflake = new Snowflake(1, 1);
+    this.logger.log('TemplateService initialized');
   }
 
   private async generateTemplateNumber(level: number): Promise<string> {
@@ -25,18 +27,27 @@ export class TemplateService {
   }
 
   async create(dto: CreateTemplateDto, userId: string) {
-    const number = await this.generateTemplateNumber(dto.level);
+    try {
+      this.logger.log(`Creating template: ${JSON.stringify({ title: dto.title, level: dto.level, userId })}`);
+      const number = await this.generateTemplateNumber(dto.level);
+      this.logger.log(`Generated number: ${number}`);
 
-    return this.prisma.template.create({
-      data: {
-        id: this.snowflake.nextId(),
-        level: dto.level,
-        number,
-        title: dto.title,
-        fieldsJson: dto.fields as unknown as any,
-        creatorId: userId,
-      },
-    });
+      const result = await this.prisma.template.create({
+        data: {
+          id: crypto.randomUUID(),
+          level: dto.level,
+          number,
+          title: dto.title,
+          fieldsJson: dto.fields as unknown as any,
+          creatorId: userId,
+        },
+      });
+      this.logger.log(`Template created: ${result.id}`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Error creating template: ${error.message}`, error.stack);
+      throw error;
+    }
   }
 
   async createFromExcel(file: Express.Multer.File, level: number, userId: string) {

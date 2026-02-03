@@ -1,14 +1,21 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import * as dotenv from 'dotenv';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+
+dotenv.config();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // 全局前缀
   app.setGlobalPrefix('api/v1');
+
+  // 全局响应拦截器
+  app.useGlobalInterceptors(new ResponseInterceptor());
 
   // 全局异常过滤器
   app.useGlobalFilters(new HttpExceptionFilter());

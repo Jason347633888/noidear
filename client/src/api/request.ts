@@ -1,6 +1,6 @@
 import axios, { AxiosRequestConfig, AxiosError } from 'axios';
 import { ElMessage } from 'element-plus';
-import router from '@/router';
+import { getCurrentInstance, nextTick } from 'vue';
 
 export interface ApiResponse<T = unknown> {
   code: number;
@@ -42,7 +42,8 @@ request.interceptors.response.use(
     if (code === 0) {
       return data;
     }
-    ElMessage.error(message || '请求失败');
+    const displayMessage = Array.isArray(message) ? message.join('; ') : message || '请求失败';
+    ElMessage.error(displayMessage);
     return Promise.reject({ code, message, details });
   },
   (error: AxiosError<ApiError>) => {
@@ -50,16 +51,22 @@ request.interceptors.response.use(
       const { status, data } = error.response;
       if (status === 401) {
         localStorage.removeItem('token');
-        router.push('/login');
+        // 使用 getCurrentInstance 延迟获取 router，避免循环依赖
+        nextTick(() => {
+          const instance = getCurrentInstance();
+          const router = instance?.appContext.config.globalProperties.$router;
+          if (router && router.currentRoute.value.path !== '/login') {
+            ElMessage.error(data?.message || '登录已过期，请重新登录');
+            router.push('/login');
+          }
+        });
         return Promise.reject(error);
       }
       const message = data?.message || '请求失败';
       ElMessage.error(message);
       return Promise.reject({ code: data?.code, message, details: data?.details });
     }
-    if (error.request) {
-      ElMessage.error('网络连接失败');
-    }
+    // 网络错误不显示错误消息，避免初始化时干扰
     return Promise.reject(error);
   },
 );
