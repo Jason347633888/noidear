@@ -25,11 +25,16 @@ export const useUserStore = defineStore('user', {
     isLeader: (state) => state.user?.role === 'leader' || state.user?.role === 'admin',
   },
   actions: {
-    async login(username: string, password: string) {
-      const data = await request.post<LoginResponse>('/auth/login', { username, password });
-      this.token = data.token;
-      this.user = data.user;
-      localStorage.setItem('token', this.token);
+    async login(username: string, password: string): Promise<boolean> {
+      try {
+        const data = await request.post<LoginResponse>('/auth/login', { username, password });
+        this.token = data.token;
+        this.user = data.user;
+        localStorage.setItem('token', this.token);
+        return true;
+      } catch {
+        return false;
+      }
     },
     async fetchUser() {
       if (!this.token) return;

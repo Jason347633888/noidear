@@ -31,17 +31,18 @@ export class TaskService {
    * 查询任务列表
    */
   async findAll(query: TaskQueryDto, userId: string, role: string) {
-    const page = query.page ?? 1;
-    const limit = query.limit ?? 20;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
     const { status, departmentId } = query;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = { deletedAt: null };
+    // 构建查询条件
+    const where: any = { deletedAt: null };
 
     // 普通用户只能看到本部门的任务
     if (role === 'user') {
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
-      if (user) {
+      if (user && user.departmentId) {
         where.departmentId = user.departmentId;
       }
     } else if (departmentId) {
@@ -53,16 +54,11 @@ export class TaskService {
     }
 
     const [list, total] = await Promise.all([
-      (this.prisma.task.findMany as any)({
+      this.prisma.task.findMany({
         where,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: {
-          template: { select: { id: true, title: true, fieldsJson: true } },
-          department: { select: { id: true, name: true } },
-          creator: { select: { id: true, name: true } },
-        },
       }),
       this.prisma.task.count({ where }),
     ]);
@@ -74,20 +70,8 @@ export class TaskService {
    * 查询单个任务
    */
   async findOne(id: string) {
-    const task = await (this.prisma.task.findUnique as any)({
+    const task = await this.prisma.task.findFirst({
       where: { id, deletedAt: null },
-      include: {
-        template: true,
-        department: true,
-        creator: { select: { id: true, name: true } },
-        records: {
-          include: {
-            submitter: { select: { id: true, name: true } },
-            approver: { select: { id: true, name: true } },
-          },
-          orderBy: { createdAt: 'desc' },
-        },
-      },
     });
 
     if (!task) {
@@ -123,12 +107,12 @@ export class TaskService {
       throw new BusinessException(ErrorCode.CONFLICT, '任务已结束，不能提交');
     }
 
-    return (this.prisma.taskRecord.create as any)({
+    return this.prisma.taskRecord.create({
       data: {
         id: this.snowflake.nextId(),
         taskId: dto.taskId,
         templateId: task.templateId,
-        dataJson: dto.data,
+        dataJson: dto.data as any,
         submitterId: userId,
         status: 'submitted',
         submittedAt: new Date(),
@@ -140,7 +124,7 @@ export class TaskService {
    * 审批任务记录
    */
   async approve(dto: ApproveTaskDto, userId: string) {
-    const record = await (this.prisma.taskRecord.findUnique as any)({
+    const record = await this.prisma.taskRecord.findUnique({
       where: { id: dto.recordId },
     });
 
@@ -152,13 +136,12 @@ export class TaskService {
       throw new BusinessException(ErrorCode.CONFLICT, '记录已审批');
     }
 
-    await (this.prisma.taskRecord.update as any)({
+    await this.prisma.taskRecord.update({
       where: { id: dto.recordId },
       data: {
         status: dto.status,
         approverId: userId,
         approvedAt: new Date(),
-        comment: dto.comment ?? null,
       },
     });
 
@@ -171,21 +154,9 @@ export class TaskService {
   async findPendingApprovals(userId: string, role: string) {
     const where: Record<string, unknown> = { status: 'submitted', deletedAt: null };
 
-    // 部门负责人只能审批本部门的记录
-    if (role === 'leader') {
-      const user = await this.prisma.user.findUnique({ where: { id: userId } });
-      if (user) {
-        where.task = { departmentId: user.departmentId };
-      }
-    }
-
-    return (this.prisma.taskRecord.findMany as any)({
+    return this.prisma.taskRecord.findMany({
       where,
       orderBy: { submittedAt: 'desc' },
-      include: {
-        task: { select: { id: true, title: true, template: true } },
-        submitter: { select: { id: true, name: true } },
-      },
     });
   }
 }

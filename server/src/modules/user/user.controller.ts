@@ -14,8 +14,12 @@ export class UserController {
 
   @Get()
   @ApiOperation({ summary: '用户列表' })
-  async findAll(@Query('page') page: number, @Query('limit') limit: number, @Query('keyword') keyword?: string) {
-    return this.userService.findAll(page, limit, keyword);
+  async findAll(
+    @Query('page') page: string,
+    @Query('limit') limit: string,
+    @Query('keyword') keyword?: string,
+  ) {
+    return this.userService.findAll(Number(page) || 1, Number(limit) || 20, keyword);
   }
 
   @Get(':id')

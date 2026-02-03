@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Snowflake } from '../../common/utils/snowflake';
 import { CreateUserDTO } from './dto/create-user.dto';
 import { UpdateUserDTO } from './dto/update-user.dto';
+import { BusinessException, ErrorCode } from '../../common/exceptions/business.exception';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -29,6 +30,10 @@ export class UserService {
   }
 
   async create(dto: CreateUserDTO) {
+    const existing = await this.prisma.user.findUnique({ where: { username: dto.username } });
+    if (existing) {
+      throw new BusinessException(ErrorCode.CONFLICT, '用户名已存在');
+    }
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     return this.prisma.user.create({
       data: {

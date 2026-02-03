@@ -7,12 +7,12 @@
           <el-input v-model="form.username" placeholder="用户名" prefix-icon="User" />
         </el-form-item>
         <el-form-item prop="password">
-          <el-input v-model="form.password" type="password" placeholder="密码" prefix-icon="Lock" show-password />
+          <el-input v-model="form.password" type="password" placeholder="密码" prefix-icon="Lock" show-password @keyup.enter="handleLogin" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleLogin" :loading="loading"">登录</el-button>
+          <el-button type="primary" @click="handleLogin" :loading="loading" class="login-btn">登录</el-button>
         </el-form-item>
- class="login-btn      </el-form>
+      </el-form>
     </el-card>
   </div>
 </template>
@@ -37,13 +37,18 @@ const rules = {
 const handleLogin = async () => {
   await formRef.value.validate();
   loading.value = true;
-  const success = await userStore.login(form.username, form.password);
-  loading.value = false;
-  if (success) {
-    ElMessage.success('登录成功');
-    router.push('/');
-  } else {
-    ElMessage.error('用户名或密码错误');
+  try {
+    const success = await userStore.login(form.username, form.password);
+    loading.value = false;
+    if (success) {
+      ElMessage.success('登录成功');
+      router.push('/');
+    } else {
+      ElMessage.error(userStore.error || '用户名或密码错误');
+    }
+  } catch (error) {
+    loading.value = false;
+    ElMessage.error('登录失败，请稍后重试');
   }
 };
 </script>

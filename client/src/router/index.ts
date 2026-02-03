@@ -138,7 +138,8 @@ router.beforeEach((to, _from, next) => {
 
   // 角色权限检查
   if (requiredRoles && requiredRoles.length > 0) {
-    const hasPermission = requiredRoles.includes(userStore.user?.role || '');
+    const userRole = userStore.user?.role?.toLowerCase() || '';
+    const hasPermission = requiredRoles.map(r => r.toLowerCase()).includes(userRole);
     if (!hasPermission) {
       next('/dashboard');
       return;

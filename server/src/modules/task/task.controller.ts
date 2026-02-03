@@ -7,6 +7,7 @@ import {
   Param,
   Query,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { TaskService } from './task.service';
@@ -22,9 +23,8 @@ export class TaskController {
 
   @Post()
   @ApiOperation({ summary: '创建任务' })
-  async create(@Body() dto: CreateTaskDto, @Body() body: Record<string, unknown>) {
-    const user = JSON.parse(body.user as string || '{}');
-    return this.taskService.create(dto, user.id);
+  async create(@Body() dto: CreateTaskDto, @Req() req: any) {
+    return this.taskService.create(dto, req.user.id);
   }
 
   @Get()
@@ -33,16 +33,14 @@ export class TaskController {
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'departmentId', required: false })
-  async findAll(@Query() query: TaskQueryDto, @Body() body: Record<string, unknown>) {
-    const user = JSON.parse(body.user as string || '{}');
-    return this.taskService.findAll(query, user.id, user.role);
+  async findAll(@Query() query: TaskQueryDto, @Req() req: any) {
+    return this.taskService.findAll(query, req.user.id, req.user.role);
   }
 
   @Get('pending-approvals')
   @ApiOperation({ summary: '待我审批' })
-  async findPendingApprovals(@Body() body: Record<string, unknown>) {
-    const user = JSON.parse(body.user as string || '{}');
-    return this.taskService.findPendingApprovals(user.id, user.role);
+  async findPendingApprovals(@Req() req: any) {
+    return this.taskService.findPendingApprovals(req.user.id, req.user.role);
   }
 
   @Get(':id')
@@ -53,22 +51,19 @@ export class TaskController {
 
   @Post(':id/cancel')
   @ApiOperation({ summary: '取消任务' })
-  async cancel(@Param('id') id: string, @Body() body: Record<string, unknown>) {
-    const user = JSON.parse(body.user as string || '{}');
-    return this.taskService.cancel(id, user.id, user.role);
+  async cancel(@Param('id') id: string, @Req() req: any) {
+    return this.taskService.cancel(id, req.user.id, req.user.role);
   }
 
   @Post('submit')
   @ApiOperation({ summary: '提交任务' })
-  async submit(@Body() dto: SubmitTaskDto, @Body() body: Record<string, unknown>) {
-    const user = JSON.parse(body.user as string || '{}');
-    return this.taskService.submit(dto, user.id);
+  async submit(@Body() dto: SubmitTaskDto, @Req() req: any) {
+    return this.taskService.submit(dto, req.user.id);
   }
 
   @Post('approve')
   @ApiOperation({ summary: '审批任务' })
-  async approve(@Body() dto: ApproveTaskDto, @Body() body: Record<string, unknown>) {
-    const user = JSON.parse(body.user as string || '{}');
-    return this.taskService.approve(dto, user.id);
+  async approve(@Body() dto: ApproveTaskDto, @Req() req: any) {
+    return this.taskService.approve(dto, req.user.id);
   }
 }

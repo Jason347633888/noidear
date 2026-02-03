@@ -19,10 +19,12 @@ export class DocumentQueryDto {
   limit?: number = 20;
 
   @ApiPropertyOptional({ description: '文档级别', example: 1 })
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(4)
-  level: number;
+  @IsOptional()
+  level?: number;
 
   @ApiPropertyOptional({ description: '搜索关键词' })
   @IsString()
