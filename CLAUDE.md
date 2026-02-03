@@ -13,6 +13,7 @@
 - ❌ 添加MVP范围外的功能（Phase 7-14）
 - ❌ 硬编码密码/密钥
 - ❌ 强制推送 Git（force push）
+- ❌ 本地安装运行 Docker 已有的服务（PostgreSQL/Redis/MinIO）
 
 ### 必须遵循 ✅
 - ✅ 使用 Element Plus 组件库
@@ -22,6 +23,7 @@
 - ✅ 环境变量存储敏感信息
 - ✅ 中文 commit message
 - ✅ 所有API必须有异常处理（try-catch）
+- ✅ PostgreSQL/Redis/MinIO 必须通过 Docker 运行（禁止本地安装）
 
 ### 🎯 Coding Principle（强制标准）✅
 | 原则 | 具体要求 |
@@ -41,7 +43,7 @@
 ## 快速开始
 
 1. **先读文档**: 依次阅读 `.claude/` 目录下的规则文件
-2. **理解约束**: 熟悉 `rules/constraints.mdc` 的26章约束（包含Coding Principle）
+2. **理解约束**: 熟悉 `rules/constraints.mdc` 的27章约束（包含Coding Principle + Docker）
 3. **检查范围**: 确认你要做的功能在 MVP Phase 1-6 范围内
 4. **参考设计**: 对照 `docs/` 目录下的设计文档
 
@@ -130,6 +132,7 @@
 - ❌ 修改项目目录结构
 - ❌ 添加MVP范围外的功能
 - ❌ 硬编码密码/密钥
+- ❌ 本地安装运行 PostgreSQL/Redis/MinIO（必须用 Docker）
 
 ### 必须遵循
 - ✅ 使用 Element Plus 组件库
@@ -138,6 +141,7 @@
 - ✅ 环境变量存储敏感信息
 - ✅ 中文 commit message
 - ✅ 所有API必须有异常处理（try-catch）
+- ✅ PostgreSQL/Redis/MinIO 必须通过 Docker 运行
 
 ### ESLint 配置
 - **前端**: Antfu ESLint Config（严格模式）
@@ -154,6 +158,7 @@
 3. UI 用 Element Plus？
 4. API 端点在文档里？
 5. 密码用环境变量？
+6. PostgreSQL/Redis/MinIO 用 Docker？
 ```
 
 ## 禁止的行为
@@ -163,5 +168,5 @@
 ---
 
 **项目状态**: 开发计划已完善，开始实施
-**文档版本**: 2.2
-**更新内容**: 技术栈版本锁定、添加 Monorepo + packages 目录结构
+**文档版本**: 2.3
+**更新内容**: 添加 Docker 开发环境约束（本机不安装运行 PostgreSQL/Redis/MinIO）
