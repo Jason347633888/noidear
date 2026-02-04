@@ -61,6 +61,15 @@
           <template #default="{ row }">{{ row.approvedAt ? formatDate(row.approvedAt) : '-' }}</template>
         </el-table-column>
         <el-table-column prop="comment" label="意见" min-width="150" show-overflow-tooltip />
+        <el-table-column label="操作" width="150" v-if="canApprove">
+          <template #default="{ row }">
+            <template v-if="row.status === 'submitted'">
+              <el-button type="success" link size="small" @click="handleApprove(row)">通过</el-button>
+              <el-button type="danger" link size="small" @click="handleReject(row)">驳回</el-button>
+            </template>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
       </el-table>
     </el-card>
   </div>
@@ -117,6 +126,11 @@ const canCancel = computed(() => {
   return task.value?.creatorId === currentUserId.value;
 });
 
+const canApprove = computed(() => {
+  // 任务发起人可以审批
+  return task.value?.creatorId === currentUserId.value;
+});
+
 const fetchCurrentUser = async () => {
   try {
     const userStr = localStorage.getItem('user');
@@ -151,6 +165,28 @@ const handleCancel = async () => {
     await ElMessageBox.confirm('确定要取消该任务吗？此操作不可恢复。', '警告', { type: 'warning' });
     await request.post(`/tasks/${task.value?.id}/cancel`);
     ElMessage.success('任务已取消');
+    fetchData();
+  } catch {}
+};
+
+const handleApprove = async (row: Record) => {
+  try {
+    await request.post('/tasks/approve', { recordId: row.id, status: 'approved' });
+    ElMessage.success('审批通过');
+    fetchData();
+  } catch {}
+};
+
+const handleReject = async (row: Record) => {
+  try {
+    const { value: comment } = await ElMessageBox.prompt('请输入驳回意见', '驳回任务', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputPattern: /\S+/,
+      inputErrorMessage: '请输入驳回意见',
+    });
+    await request.post('/tasks/approve', { recordId: row.id, status: 'rejected', comment });
+    ElMessage.success('已驳回');
     fetchData();
   } catch {}
 };
