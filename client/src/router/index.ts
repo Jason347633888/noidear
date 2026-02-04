@@ -101,4 +101,16 @@ const router = createRouter({
   routes,
 });
 
+// 导航守卫
+router.beforeEach((to, from, next) => {
+  const publicPaths = ['/login'];
+  const token = localStorage.getItem('token');
+
+  if (!publicPaths.includes(to.path) && !token) {
+    next('/login');
+  } else {
+    next();
+  }
+});
+
 export default router;

@@ -168,5 +168,126 @@
 ---
 
 **项目状态**: 开发计划已完善，开始实施
-**文档版本**: 2.3
-**更新内容**: 添加 Docker 开发环境约束（本机不安装运行 PostgreSQL/Redis/MinIO）
+**文档版本**: 2.4
+**更新内容**: 添加调试经验记录（减少重复问题）
+
+---
+
+## 📚 调试经验记录
+
+> 本章节记录测试/开发中遇到的问题及解决方案，避免重复踩坑
+
+### 常见问题与解决方案
+
+#### 1. 前端导入问题
+
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| `Dashboard.vue` 导入 `{ request }` 报错 | request.ts 是默认导出，应使用 `import request` | 检查导出方式：默认导出用 `import x`，命名导出用 `import { x }` |
+| `Layout.vue` 路由监听报错 `route.afterEach is not a function` | `useRoute()` 返回 Route 对象，没有 `afterEach` 方法 | 应使用 `router.afterEach`，从 `useRouter()` 获取 router 实例 |
+
+**排查方法**：
+```typescript
+// 确认导入来源
+import { useRoute, useRouter } from 'vue-router';
+
+const route = useRoute();    // Route 对象，无 afterEach
+const router = useRouter();  // Router 实例，有 afterEach
+```
+
+#### 2. 构建问题
+
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| `vue-tsc` 编译报错 | Node.js v25 与 vue-tsc 存在兼容性问题 | 使用 `vite build` 替代，或降级 Node.js |
+| `vite build` 报错模块未找到 | 热更新未生效 | 重启 Vite 开发服务器 |
+| 后端启动 `@prisma/client did not initialize` | Prisma Client 未生成 | 运行 `npx prisma generate --schema=src/prisma/schema.prisma` |
+
+**验证命令**：
+```bash
+# 前端构建
+npx vite build
+
+# 后端构建
+npm run build
+
+# Prisma 生成
+npx prisma generate --schema=src/prisma/schema.prisma
+```
+
+#### 3. E2E 测试问题
+
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| Chrome DevTools MCP 元素 UID 变化 | 页面刷新后 DOM 元素重新生成 UID | 每次操作前重新 `take_snapshot` 获取最新 UID |
+| 页面导航后元素不可见 | 导航是异步的 | 使用 `wait_for` 等待新页面加载完成 |
+
+**测试流程**：
+```typescript
+// 1. 先获取页面快照
+await mcp__chrome-devtools__take_snapshot();
+
+// 2. 获取元素 UID
+// 3. 执行操作
+await mcp__chrome-devtools__click({ uid: 'xxx' });
+
+// 4. 导航后等待
+await mcp__chrome-devtools__wait_for({ text: '目标文本', timeout: 5000 });
+```
+
+#### 4. Worktree 开发环境问题
+
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| worktree Prisma 生成失败 | worktree 目录下缺少 Prisma schema | 从主分支复制 schema 或使用 `npx prisma generate --schema=主路径/server/src/prisma/schema.prisma` |
+| 后端服务端口冲突 | 多个服务实例运行 | `lsof -ti:3000 \| xargs kill -9` 清理残留进程 |
+
+**Worktree 初始化**：
+```bash
+# 创建 worktree
+git worktree add .worktrees/feature-name -b feature-name
+
+# Prisma 生成（使用主分支 schema）
+cd .worktrees/feature-name/server
+npx prisma generate --schema=../server/src/prisma/schema.prisma
+```
+
+#### 5. ESLint 配置缺失
+
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| 前端/后端 ESLint 报错找不到配置 | 项目缺少 `.eslintrc.*` 或 `eslint.config.*` | 当前版本暂不支持，等待后续配置 |
+
+**临时验证**：
+```bash
+# 使用 vite build 替代 lint
+npx vite build
+```
+
+---
+
+### 问题排查流程
+
+1. **构建失败** → 检查 `vite build` / `npm run build`
+2. **运行时错误** → 检查浏览器控制台 `list_console_messages`
+3. **路由错误** → 检查 `router.afterEach` vs `route.afterEach`
+4. **导入错误** → 检查导出方式是默认还是命名
+5. **Prisma 错误** → 运行 `npx prisma generate`
+
+---
+
+### 调试命令速查
+
+```bash
+# 清理并重启前端
+lsof -ti:5173 | xargs kill -9 && npx vite --host 0.0.0.0 --port 5173
+
+# 重启后端
+lsof -ti:3000 | xargs kill -9 && npm run start:prod
+
+# Prisma 生成
+npx prisma generate --schema=src/prisma/schema.prisma
+
+# 构建验证
+npx vite build && npm run build
+```

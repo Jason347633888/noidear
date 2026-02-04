@@ -16,7 +16,7 @@
           <el-input v-model="form.password" type="password" placeholder="密码" size="large" show-password />
         </el-form-item>
         <div class="options">
-          <el-checkbox v-model="remember">记住我</el-checkbox>
+          <span></span>
           <a href="#">忘记密码?</a>
         </div>
         <el-button type="primary" @click="handleLogin" :loading="loading" class="btn">
@@ -40,7 +40,6 @@ const router = useRouter();
 const userStore = useUserStore();
 const formRef = ref<FormInstance>();
 const loading = ref(false);
-const remember = ref(false);
 const form = reactive({ username: '', password: '' });
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
