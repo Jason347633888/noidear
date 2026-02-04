@@ -20,8 +20,8 @@ export class StorageService {
     const endpoint = this.configService.get<string>('MINIO_ENDPOINT', 'localhost');
     const port = this.configService.get<number>('MINIO_PORT', 9000);
     const useSsl = this.configService.get<string>('MINIO_USE_SSL', 'false') === 'true';
-    const accessKey = this.configService.get<string>('MINIO_ACCESS_KEY', 'minioadmin');
-    const secretKey = this.configService.get<string>('MINIO_SECRET_KEY', 'minioadmin');
+    const accessKey = this.configService.getOrThrow<string>('MINIO_ACCESS_KEY');
+    const secretKey = this.configService.getOrThrow<string>('MINIO_SECRET_KEY');
     this.bucket = this.configService.get<string>('MINIO_BUCKET', 'documents');
 
     this.client = new Client({

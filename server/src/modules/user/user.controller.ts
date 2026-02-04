@@ -45,4 +45,10 @@ export class UserController {
   async remove(@Param('id') id: string) {
     return this.userService.remove(id);
   }
+
+  @Post(':id/reset-password')
+  @ApiOperation({ summary: '重置用户密码' })
+  async resetPassword(@Param('id') id: string) {
+    return this.userService.resetPassword(id);
+  }
 }

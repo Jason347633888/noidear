@@ -91,6 +91,11 @@ const routes: RouteRecordRaw[] = [
         name: 'Users',
         component: () => import('@/views/UserList.vue'),
       },
+      {
+        path: 'password',
+        name: 'Password',
+        component: () => import('@/views/Password.vue'),
+      },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/dashboard' },

@@ -57,4 +57,15 @@ export class UserService {
     await this.findOne(id);
     return this.prisma.user.update({ where: { id }, data: { deletedAt: new Date() } });
   }
+
+  async resetPassword(id: string) {
+    await this.findOne(id);
+    const defaultPassword = '12345678';
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    await this.prisma.user.update({
+      where: { id },
+      data: { password: hashedPassword, loginAttempts: 0, lockedUntil: null },
+    });
+    return { message: '密码已重置为默认密码' };
+  }
 }

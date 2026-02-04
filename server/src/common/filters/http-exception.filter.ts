@@ -51,9 +51,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
       code = ErrorCode.VALIDATION_ERROR + (status - 400);
     } else if (exception instanceof Error) {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
-      message = exception.message || '内部服务器错误';
+      message = '内部服务器错误';
       code = ErrorCode.INTERNAL_ERROR;
-      details = exception.stack;
       this.logger.error(
         `Unhandled error: ${exception.message}`,
         exception.stack,

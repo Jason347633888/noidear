@@ -43,7 +43,7 @@ services:
     restart: unless-stopped
     environment:
       MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: password
+      MINIO_ROOT_PASSWORD: noidear123
     volumes:
       - minio_data:/data
     ports:
