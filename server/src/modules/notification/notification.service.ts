@@ -100,4 +100,13 @@ export class NotificationService {
     });
     return { success: true };
   }
+
+  /**
+   * 获取未读通知数量
+   */
+  async getUnreadCount(userId: string): Promise<number> {
+    return this.prisma.notification.count({
+      where: { userId, isRead: false },
+    });
+  }
 }

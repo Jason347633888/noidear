@@ -17,6 +17,13 @@ export class NotificationController {
     return this.notificationService.findAll(query, req.user.id);
   }
 
+  @Get('unread-count')
+  @ApiOperation({ summary: '查询未读通知数量' })
+  async getUnreadCount(@Req() req: any) {
+    const count = await this.notificationService.getUnreadCount(req.user.id);
+    return { count };
+  }
+
   @Post(':id/read')
   @ApiOperation({ summary: '标记已读' })
   async markAsRead(@Param('id') id: string, @Req() req: any) {

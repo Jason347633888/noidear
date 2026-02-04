@@ -97,11 +97,13 @@ import {
   Grid, List, CircleCheck, Message, UserFilled,
 } from '@element-plus/icons-vue';
 
+import request from '@/api/request';
+
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
 const isCollapsed = ref(false);
-const unreadCount = ref(3);
+const unreadCount = ref(0);
 
 const activeMenu = computed(() => route.path);
 const currentTitle = computed(() => route.meta.title as string || '');
@@ -129,6 +131,23 @@ const handleCommand = (command: string) => {
 onMounted(async () => {
   if (userStore.token && !userStore.user) {
     await userStore.fetchUser();
+  }
+  fetchUnreadCount();
+});
+
+const fetchUnreadCount = async () => {
+  try {
+    const res = await request.get<{ count: number }>('/notifications/unread-count');
+    unreadCount.value = res.count || 0;
+  } catch {
+    unreadCount.value = 0;
+  }
+};
+
+// 监听路由变化时刷新未读计数
+route.afterEach(() => {
+  if (userStore.token) {
+    fetchUnreadCount();
   }
 });
 </script>
