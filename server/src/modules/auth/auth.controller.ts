@@ -1,5 +1,6 @@
 import { Controller, Post, Body, HttpCode, HttpStatus, Get, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDTO } from './dto/login.dto';
 import { ChangePasswordDTO } from './dto/change-password.dto';
@@ -11,6 +12,7 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('login')
+  @Throttle({ default: { ttl: 60000, limit: 5 } }) // 每分钟最多 5 次登录尝试
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '用户登录' })
   @ApiResponse({ status: 200, description: '登录成功' })

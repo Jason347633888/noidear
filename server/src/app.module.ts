@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
@@ -10,6 +12,28 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { OperationLogModule } from './modules/operation-log/operation-log.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UserModule, DepartmentModule, DocumentModule, TemplateModule, TaskModule, NotificationModule, OperationLogModule],
+  imports: [
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 1 分钟时间窗口
+        limit: 100, // 每分钟最多 100 次请求
+      },
+    ]),
+    PrismaModule,
+    AuthModule,
+    UserModule,
+    DepartmentModule,
+    DocumentModule,
+    TemplateModule,
+    TaskModule,
+    NotificationModule,
+    OperationLogModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

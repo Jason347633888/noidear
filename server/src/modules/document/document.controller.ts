@@ -38,7 +38,9 @@ export class DocumentController {
       new ParseFilePipe({
         validators: [
           new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB
-          new FileTypeValidator({ fileType: /(pdf|word|excel)/i }),
+          new FileTypeValidator({
+            fileType: /^(application\/pdf|application\/vnd\.(ms-excel|openxmlformats-officedocument\.(spreadsheetml\.sheet|wordprocessingml\.document))|application\/msword)$/,
+          }),
         ],
       }),
     )
