@@ -173,106 +173,158 @@
 
 ---
 
-## 📚 调试经验记录
+## 📚 编码预防清单
 
-> 本章节记录测试/开发中遇到的问题及解决方案，避免重复踩坑
+> **核心原则**：经验要在编码时回顾，而不是事后补救。每次写代码前问自己这些问题。
 
-### 常见问题与解决方案
+### 编码前自查
 
-#### 1. 前端导入问题
-
-| 问题 | 原因 | 解决方案 |
-|------|------|----------|
-| `Dashboard.vue` 导入 `{ request }` 报错 | request.ts 是默认导出，应使用 `import request` | 检查导出方式：默认导出用 `import x`，命名导出用 `import { x }` |
-| `Layout.vue` 路由监听报错 `route.afterEach is not a function` | `useRoute()` 返回 Route 对象，没有 `afterEach` 方法 | 应使用 `router.afterEach`，从 `useRouter()` 获取 router 实例 |
-
-**排查方法**：
+#### 1. Vue Router 导入检查 ✅
 ```typescript
-// 确认导入来源
+// 写路由代码前先确认
 import { useRoute, useRouter } from 'vue-router';
 
-const route = useRoute();    // Route 对象，无 afterEach
-const router = useRouter();  // Router 实例，有 afterEach
+const route = useRoute();    // Route 对象 - 只读，无 afterEach
+const router = useRouter();  // Router 实例 - 有 afterEach 等方法
+
+// 记住：路由监听用 router.afterEach，不是 route.afterEach
 ```
 
-#### 2. 构建问题
+#### 2. 模块导入检查 ✅
+```typescript
+// 写导入前先看导出方式
+import request from '@/api/request';      // 默认导出
+import { request } from '@/api/request';  // 命名导出
 
-| 问题 | 原因 | 解决方案 |
-|------|------|----------|
-| `vue-tsc` 编译报错 | Node.js v25 与 vue-tsc 存在兼容性问题 | 使用 `vite build` 替代，或降级 Node.js |
-| `vite build` 报错模块未找到 | 热更新未生效 | 重启 Vite 开发服务器 |
-| 后端启动 `@prisma/client did not initialize` | Prisma Client 未生成 | 运行 `npx prisma generate --schema=src/prisma/schema.prisma` |
+// 原则：先看源文件怎么导出的，再写导入语句
+```
 
-**验证命令**：
+#### 3. 编码后立即验证 ✅
 ```bash
-# 前端构建
-npx vite build
+# 每次添加新页面/组件后立即运行
+npx vite build  # 构建是否通过？
 
-# 后端构建
-npm run build
+# 每次添加后端 API 后立即运行
+npm run build  # 后端编译是否通过？
 
-# Prisma 生成
+# 每次使用 Prisma 后
 npx prisma generate --schema=src/prisma/schema.prisma
 ```
 
-#### 3. E2E 测试问题
-
-| 问题 | 原因 | 解决方案 |
-|------|------|----------|
-| Chrome DevTools MCP 元素 UID 变化 | 页面刷新后 DOM 元素重新生成 UID | 每次操作前重新 `take_snapshot` 获取最新 UID |
-| 页面导航后元素不可见 | 导航是异步的 | 使用 `wait_for` 等待新页面加载完成 |
-
-**测试流程**：
-```typescript
-// 1. 先获取页面快照
-await mcp__chrome-devtools__take_snapshot();
-
-// 2. 获取元素 UID
-// 3. 执行操作
-await mcp__chrome-devtools__click({ uid: 'xxx' });
-
-// 4. 导航后等待
-await mcp__chrome-devtools__wait_for({ text: '目标文本', timeout: 5000 });
-```
-
-#### 4. Worktree 开发环境问题
-
-| 问题 | 原因 | 解决方案 |
-|------|------|----------|
-| worktree Prisma 生成失败 | worktree 目录下缺少 Prisma schema | 从主分支复制 schema 或使用 `npx prisma generate --schema=主路径/server/src/prisma/schema.prisma` |
-| 后端服务端口冲突 | 多个服务实例运行 | `lsof -ti:3000 \| xargs kill -9` 清理残留进程 |
-
-**Worktree 初始化**：
+#### 4. Worktree 环境初始化 ✅
 ```bash
-# 创建 worktree
-git worktree add .worktrees/feature-name -b feature-name
-
-# Prisma 生成（使用主分支 schema）
+# 创建 worktree 后立即执行
 cd .worktrees/feature-name/server
 npx prisma generate --schema=../server/src/prisma/schema.prisma
+
+# 验证前后端都能构建
+npx vite build && npm run build
 ```
 
-#### 5. ESLint 配置缺失
+#### 5. E2E 测试编码前准备 ✅
+```typescript
+// 使用 Chrome DevTools MCP 前
+// 1. 先 take_snapshot 获取元素 UID
+// 2. 页面导航后重新 take_snapshot
+// 3. 用 wait_for 等待页面加载
+await mcp__chrome-devtools__take_snapshot();
+await mcp__chrome-devtools__click({ uid: 'xxx' });
+await mcp__chrome-devtools__wait_for({ text: '目标', timeout: 5000 });
+```
 
-| 问题 | 原因 | 解决方案 |
-|------|------|----------|
-| 前端/后端 ESLint 报错找不到配置 | 项目缺少 `.eslintrc.*` 或 `eslint.config.*` | 当前版本暂不支持，等待后续配置 |
+#### 6. API 端点选择原则 ✅
+```typescript
+// 问题：前端调用了 /notifications/unread-count，后端路由未生效导致 404
+// 教训：
+// 1. 后端添加 API 后必须重启服务验证路由生效
+// 2. 优先复用已有的端点获取数据，而非依赖新端点
+// 3. 宁可使用已有端点的冗余字段，也不依赖可能未生效的新端点
 
-**临时验证**：
-```bash
-# 使用 vite build 替代 lint
-npx vite build
+// 反例：调用单一路径获取单一数据
+const res = await request.get('/notifications/unread-count');
+
+// 正例：复用已有的列表端点（即使多返回一些数据）
+const res = await request.get('/notifications');
+unreadCount.value = res.unreadCount;
+```
+
+#### 7. 依赖安装验证原则 ✅
+```typescript
+// 问题：SortableJS 未安装导致页面空白
+// 教训：
+// 1. package.json 依赖变动必须提交
+// 2. npm install 后立即验证页面正常
+// 3. worktree 环境必须重新安装依赖
+
+// 验证命令
+npm install && npx vite build && # 检查是否报错
+```
+
+#### 8. 端口冲突排查原则 ✅
+```typescript
+// 问题：Vite 端口 5173 被占用，页面打不开
+// 教训：
+// 1. 启动前检查端口是否被占用
+// 2. 开发时用 lsof -ti:5173 检查
+// 3. 冲突时 kill 掉旧进程再启动
+
+// 端口检查命令
+lsof -ti:5173 | xargs kill -9  # 清理 5173 端口
+lsof -ti:3000 | xargs kill -9  # 清理 3000 端口
+```
+
+#### 9. 动态路由参数原则 ✅
+```typescript
+// 问题：二级/三级文件列表复用了 Level1List.vue，但硬编码了 level=1
+// 教训：
+// 1. 复用组件时必须考虑参数差异，用路由参数驱动
+// 2. 不要在组件内硬编码会变化的常量
+// 3. 复用前先分析：哪些是共性，哪些是个性
+
+// 反例：硬编码级别
+const filterForm = reactive({ level: 1 });
+
+// 正例：从路由读取级别
+const level = computed(() => {
+  const path = route.path;
+  if (path.includes('/level2')) return 2;
+  if (path.includes('/level3')) return 3;
+  return 1;
+});
+```
+
+#### 10. 前端代码修改验证原则 ✅
+```typescript
+// 问题：修改前端代码后，页面没变化（浏览器缓存/HMR 失效）
+// 教训：
+// 1. 开发模式用 Vite HMR，但需确认 HMR 正常
+// 2. 构建后必须 Ctrl+Shift+R 强制刷新
+// 3. 页面无变化时，先检查 Network 标签看是否加载了新 JS
+// 4. 必要时清缓存：rm -rf node_modules/.vite
+
+// 验证命令
+rm -rf node_modules/.vite  # 清理 Vite 缓存
+npx vite build  # 重新构建验证
 ```
 
 ---
 
 ### 问题排查流程
 
-1. **构建失败** → 检查 `vite build` / `npm run build`
-2. **运行时错误** → 检查浏览器控制台 `list_console_messages`
-3. **路由错误** → 检查 `router.afterEach` vs `route.afterEach`
-4. **导入错误** → 检查导出方式是默认还是命名
-5. **Prisma 错误** → 运行 `npx prisma generate`
+1. **页面空白/白屏** → 浏览器控制台看错误
+   - 模块导入错误 → 检查 export 方式（默认vs命名）
+   - 依赖缺失 → npm install 补全依赖
+
+2. **API 404/500** → curl 测试后端路由
+   - 路由未生效 → 重启后端服务
+   - 端点不存在 → 复用已有端点
+
+3. **构建失败** → 检查 `vite build` / `npm run build`
+4. **运行时错误** → 检查浏览器控制台 `list_console_messages`
+5. **路由错误** → 检查 `router.afterEach` vs `route.afterEach`
+6. **导入错误** → 检查导出方式是默认还是命名
+7. **Prisma 错误** → 运行 `npx prisma generate`
+8. **端口被占用** → `lsof -ti:5173` / `lsof -ti:3000`
 
 ---
 
@@ -291,3 +343,7 @@ npx prisma generate --schema=src/prisma/schema.prisma
 # 构建验证
 npx vite build && npm run build
 ```
+
+---
+
+**重要**：每次编码前回顾这份清单，问题在写代码时就能避免，而不是测试时才发现。

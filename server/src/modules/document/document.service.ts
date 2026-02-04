@@ -259,7 +259,6 @@ export class DocumentService {
     const versions = await this.prisma.documentVersion.findMany({
       where: { documentId: id },
       orderBy: { createdAt: 'desc' },
-      include: { creator: { select: { id: true, name: true } } },
     }) as unknown as any[];
 
     return { document, versions: this.convertBigIntToNumber(versions) };

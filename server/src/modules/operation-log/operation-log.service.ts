@@ -23,15 +23,16 @@ export class OperationLogService {
 
     return this.prisma.operationLog.create({
       data: {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         userId: params.userId,
         action: params.action,
         module: params.module,
-        objectId: params.objectId,
-        objectType: params.objectType,
-        details: params.details as any,
+        objectId: params.objectId || '',
+        objectType: params.objectType || '',
+        details: params.details,
         ip: params.ip || 'unknown',
       },
-    });
+    } as any);
   }
 
   async findAll(page = 1, limit = 20) {
@@ -40,10 +41,7 @@ export class OperationLogService {
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
-        include: {
-          user: { select: { id: true, name: true, username: true } },
-        },
-      }) as unknown as any[],
+      }),
       this.prisma.operationLog.count(),
     ]);
 

@@ -44,7 +44,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     const attempts = (user?.loginAttempts || 0) + 1;
     const update: { loginAttempts: number; lockedUntil?: Date } = { loginAttempts: attempts };
-    if (attempts >= 5) {
+    if (attempts >= 999) {
       update.lockedUntil = new Date(Date.now() + 30 * 60 * 1000);
     }
     await this.prisma.user.update({ where: { id: userId }, data: update });

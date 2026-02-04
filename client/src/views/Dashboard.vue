@@ -104,7 +104,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useUserStore } from '@/stores/user';
-import { request } from '@/api/request';
+import request from '@/api/request';
 import {
   Document, Folder, Task, CheckCircle,
   Upload, Files, CircleCheck, Bell

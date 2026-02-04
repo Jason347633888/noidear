@@ -137,15 +137,15 @@ onMounted(async () => {
 
 const fetchUnreadCount = async () => {
   try {
-    const res = await request.get<{ count: number }>('/notifications/unread-count');
-    unreadCount.value = res.count || 0;
+    const res = await request.get<{ unreadCount: number }>('/notifications');
+    unreadCount.value = res.unreadCount || 0;
   } catch {
     unreadCount.value = 0;
   }
 };
 
 // 监听路由变化时刷新未读计数
-route.afterEach(() => {
+router.afterEach(() => {
   if (userStore.token) {
     fetchUnreadCount();
   }

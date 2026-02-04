@@ -5,6 +5,8 @@
         <el-form-item label="文档级别">
           <el-select v-model="filterForm.level" disabled>
             <el-option :value="1" label="一级文件" />
+            <el-option :value="2" label="二级文件" />
+            <el-option :value="3" label="三级文件" />
           </el-select>
         </el-form-item>
         <el-form-item label="关键词">
@@ -28,8 +30,8 @@
     <el-card class="table-card">
       <template #header>
         <div class="card-header">
-          <span>一级文件列表</span>
-          <el-button type="primary" @click="$router.push('/documents/upload/1')">
+          <span>{{ levelText }}文件列表</span>
+          <el-button type="primary" @click="$router.push(`/documents/upload/${level}`)">
             上传文档
           </el-button>
         </div>
@@ -108,7 +110,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import request from '@/api/request';
@@ -125,11 +127,25 @@ interface Document {
 }
 
 const router = useRouter();
+const route = useRoute();
 const loading = ref(false);
 const tableData = ref<Document[]>([]);
 
+const level = computed(() => {
+  const path = route.path;
+  if (path.includes('/level2')) return 2;
+  if (path.includes('/level3')) return 3;
+  return 1;
+});
+
+const levelText = computed(() => {
+  if (level.value === 2) return '二级';
+  if (level.value === 3) return '三级';
+  return '一';
+});
+
 const filterForm = reactive({
-  level: 1,
+  level: level.value,
   keyword: '',
   status: '',
 });
