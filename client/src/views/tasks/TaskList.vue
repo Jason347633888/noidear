@@ -57,9 +57,14 @@
             <el-tag size="small" effect="plain">{{ row.department?.name || '-' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="deadline" label="截止日期" width="120">
+        <el-table-column prop="deadline" label="截止日期" width="140">
           <template #default="{ row }">
-            <span class="date-text">{{ formatDate(row.deadline) }}</span>
+            <span :class="{ 'date-overdue': isOverdue(row.deadline, row.status) }">
+              {{ formatDate(row.deadline) }}
+              <el-tag v-if="isOverdue(row.deadline, row.status)" type="danger" size="small" class="overdue-tag">
+                逾期
+              </el-tag>
+            </span>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
@@ -146,6 +151,10 @@ const pagination = reactive({ page: 1, limit: 20, total: 0 });
 
 const formatDate = (date: string) => new Date(date).toLocaleDateString('zh-CN');
 const formatDateTime = (date: string) => new Date(date).toLocaleString('zh-CN');
+const isOverdue = (deadline: string, status: string): boolean => {
+  if (status === 'completed' || status === 'cancelled') return false;
+  return new Date(deadline) < new Date();
+};
 const getStatusType = (status: string) => ({ pending: 'warning', completed: 'success', cancelled: 'info' }[status] || 'info');
 const getStatusText = (status: string) => ({ pending: '进行中', completed: '已完成', cancelled: '已取消' }[status] || status);
 
@@ -311,6 +320,15 @@ onMounted(fetchData);
 .date-text {
   font-size: 13px;
   color: var(--text);
+}
+
+.date-overdue {
+  color: #f56c6c;
+  font-weight: 500;
+}
+
+.overdue-tag {
+  margin-left: 4px;
 }
 
 .time-text {
