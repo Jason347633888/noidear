@@ -9,12 +9,23 @@
         <el-descriptions-item label="任务ID">{{ task.id }}</el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="getStatusType(task.status)">{{ getStatusText(task.status) }}</el-tag>
+          <el-tag v-if="isOverdue(task.deadline, task.status)" type="danger" size="small" style="margin-left: 8px">
+            已逾期
+          </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="模板">{{ task.template?.title }}</el-descriptions-item>
         <el-descriptions-item label="部门">{{ task.department?.name }}</el-descriptions-item>
-        <el-descriptions-item label="截止日期">{{ formatDate(task.deadline) }}</el-descriptions-item>
+        <el-descriptions-item label="截止日期">
+          <span :class="{ 'overdue-text': isOverdue(task.deadline, task.status) }">
+            {{ formatDate(task.deadline) }}
+          </span>
+        </el-descriptions-item>
         <el-descriptions-item label="创建人">{{ task.creator?.name }}</el-descriptions-item>
       </el-descriptions>
+
+      <div class="task-actions" v-if="task.status === 'pending' && canCancel">
+        <el-button type="danger" @click="handleCancel">取消任务</el-button>
+      </div>
     </el-card>
 
     <el-card class="form-card" v-if="task?.status === 'pending'">
@@ -56,9 +67,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import request from '@/api/request';
 import FormBuilder, { type TemplateField } from '@/components/FormBuilder.vue';
 
@@ -68,6 +79,7 @@ interface Task {
   department: { id: string; name: string };
   deadline: string;
   status: string;
+  creatorId: string;
   creator: { name: string } | null;
 }
 
@@ -87,12 +99,33 @@ const submitting = ref(false);
 const task = ref<Task | null>(null);
 const records = ref<Record[]>([]);
 const formData = reactive<Record<string, unknown>>({});
+const currentUserId = ref('');
 
 const formatDate = (date: string) => new Date(date).toLocaleString('zh-CN');
+
+const isOverdue = (deadline: string, status: string): boolean => {
+  if (status === 'completed' || status === 'cancelled') return false;
+  return new Date(deadline) < new Date();
+};
+
 const getStatusType = (s: string) => ({ pending: 'warning', completed: 'success', cancelled: 'info' }[s] || 'info');
 const getStatusText = (s: string) => ({ pending: '进行中', completed: '已完成', cancelled: '已取消' }[s] || s);
 const getRecordStatusType = (s: string) => ({ submitted: 'info', approved: 'success', rejected: 'danger' }[s] || 'info');
 const getRecordStatusText = (s: string) => ({ submitted: '待审批', approved: '通过', rejected: '驳回' }[s] || s);
+
+const canCancel = computed(() => {
+  return task.value?.creatorId === currentUserId.value;
+});
+
+const fetchCurrentUser = async () => {
+  try {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      currentUserId.value = user.id || '';
+    }
+  } catch {}
+};
 
 const fetchData = async () => {
   loading.value = true;
@@ -113,7 +146,19 @@ const handleSubmit = async () => {
   } catch {} finally { submitting.value = false; }
 };
 
-onMounted(() => fetchData());
+const handleCancel = async () => {
+  try {
+    await ElMessageBox.confirm('确定要取消该任务吗？此操作不可恢复。', '警告', { type: 'warning' });
+    await request.post(`/tasks/${task.value?.id}/cancel`);
+    ElMessage.success('任务已取消');
+    fetchData();
+  } catch {}
+};
+
+onMounted(() => {
+  fetchCurrentUser();
+  fetchData();
+});
 </script>
 
 <style scoped>
@@ -121,4 +166,6 @@ onMounted(() => fetchData());
 .page-title { font-size: 18px; font-weight: bold; }
 .info-card, .form-card, .records-card { margin-top: 16px; }
 .actions { margin-top: 16px; text-align: right; }
+.task-actions { margin-top: 16px; text-align: right; }
+.overdue-text { color: #f56c6c; font-weight: bold; }
 </style>
