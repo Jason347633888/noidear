@@ -31,7 +31,7 @@
       </el-descriptions>
 
       <div class="actions-wrap">
-        <el-button type="primary" @click="handleDownload">
+        <el-button type="primary" @click="handleDownload" :disabled="document.status === 'inactive'">
           <el-icon><Download /></el-icon>
           下载文件
         </el-button>
@@ -56,25 +56,33 @@
         >
           删除文档
         </el-button>
+        <el-button
+          type="warning"
+          v-if="document.status === 'approved'"
+          @click="handleDeactivate"
+        >
+          停用文档
+        </el-button>
       </div>
     </el-card>
 
-    <el-card class="version-card" v-if="document?.versions?.length">
+    <el-card class="version-card" v-if="versionHistory.length">
       <template #header>
         <span>版本历史</span>
       </template>
-      <el-timeline>
-        <el-timeline-item
-          v-for="version in document.versions"
-          :key="version.id"
-          :timestamp="formatDate(version.createdAt)"
-          placement="top"
-        >
-          <p>版本 v{{ version.version }}</p>
-          <p>文件名: {{ version.fileName }}</p>
-          <p>大小: {{ formatSize(Number(version.fileSize)) }}</p>
-        </el-timeline-item>
-      </el-timeline>
+      <el-table :data="versionHistory" stripe>
+        <el-table-column prop="version" label="版本" width="80">
+          <template #default="{ row }">v{{ row.version }}</template>
+        </el-table-column>
+        <el-table-column prop="fileName" label="文件名" min-width="150" />
+        <el-table-column prop="fileSize" label="大小" width="100">
+          <template #default="{ row }">{{ formatSize(Number(row.fileSize)) }}</template>
+        </el-table-column>
+        <el-table-column prop="creator.name" label="操作人" width="100" />
+        <el-table-column prop="createdAt" label="操作时间" width="180">
+          <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
+        </el-table-column>
+      </el-table>
     </el-card>
   </div>
 </template>
@@ -86,12 +94,13 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download } from '@element-plus/icons-vue';
 import request from '@/api/request';
 
-interface DocumentVersion {
+interface VersionItem {
   id: string;
   version: number;
   fileName: string;
   fileSize: string;
   createdAt: string;
+  creator: { name: string } | null;
 }
 
 interface Document {
@@ -108,13 +117,13 @@ interface Document {
   approver: { name: string } | null;
   approvedAt: string | null;
   createdAt: string;
-  versions: DocumentVersion[];
 }
 
 const route = useRoute();
 const router = useRouter();
 const loading = ref(false);
 const document = ref<Document | null>(null);
+const versionHistory = ref<VersionItem[]>([]);
 
 const formatSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
@@ -132,6 +141,7 @@ const getStatusType = (status: string): string => {
     pending: 'warning',
     approved: 'success',
     rejected: 'danger',
+    inactive: 'info',
   };
   return map[status] || 'info';
 };
@@ -142,6 +152,7 @@ const getStatusText = (status: string): string => {
     pending: '待审批',
     approved: '已发布',
     rejected: '已驳回',
+    inactive: '已停用',
   };
   return map[status] || status;
 };
@@ -158,8 +169,20 @@ const fetchData = async () => {
   }
 };
 
+const fetchVersionHistory = async () => {
+  try {
+    const res = await request.get<{ versions: VersionItem[] }>(`/documents/${route.params.id}/versions`);
+    versionHistory.value = res.versions || [];
+  } catch (error) {
+    // 版本历史获取失败不影响主流程
+  }
+};
+
 const handleDownload = () => {
-  // 实际应该调用签名URL下载
+  if (document.value?.status === 'inactive') {
+    ElMessage.warning('该文档已停用，无法下载');
+    return;
+  }
   window.open(`/api/v1/documents/${document.value?.id}/download`, '_blank');
 };
 
@@ -169,7 +192,7 @@ const handleSubmit = async () => {
     await request.post(`/documents/${document.value?.id}/submit`);
     ElMessage.success('提交成功');
     fetchData();
-  } catch (error) {
+  } catch {
     // 用户取消
   }
 };
@@ -182,13 +205,25 @@ const handleDelete = async () => {
     await request.delete(`/documents/${document.value?.id}`);
     ElMessage.success('删除成功');
     router.back();
-  } catch (error) {
+  } catch {
+    // 用户取消
+  }
+};
+
+const handleDeactivate = async () => {
+  try {
+    await ElMessageBox.confirm('确定要停用该文档吗？停用后无法下载。', '提示');
+    await request.post(`/documents/${document.value?.id}/deactivate`);
+    ElMessage.success('停用成功');
+    fetchData();
+  } catch {
     // 用户取消
   }
 };
 
 onMounted(() => {
   fetchData();
+  fetchVersionHistory();
 });
 </script>
 
