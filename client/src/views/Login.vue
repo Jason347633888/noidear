@@ -43,7 +43,10 @@ const loading = ref(false);
 const form = reactive({ username: '', password: '' });
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 8, message: '密码长度至少8位', trigger: 'blur' },
+  ],
 };
 
 const handleLogin = async () => {

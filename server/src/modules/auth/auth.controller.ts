@@ -2,6 +2,7 @@ import { Controller, Post, Body, HttpCode, HttpStatus, Get, UseGuards, Request }
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDTO } from './dto/login.dto';
+import { ChangePasswordDTO } from './dto/change-password.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 @ApiTags('认证')
@@ -25,5 +26,16 @@ export class AuthController {
   @ApiResponse({ status: 200, description: '用户信息' })
   async getProfile(@Request() req: any) {
     return req.user;
+  }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '修改密码' })
+  @ApiResponse({ status: 200, description: '密码修改成功' })
+  @ApiResponse({ status: 400, description: '旧密码错误' })
+  async changePassword(@Request() req: any, @Body() dto: ChangePasswordDTO) {
+    return this.authService.changePassword(req.user.id, dto);
   }
 }

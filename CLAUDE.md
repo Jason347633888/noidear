@@ -168,8 +168,8 @@
 ---
 
 **项目状态**: 开发计划已完善，开始实施
-**文档版本**: 2.4
-**更新内容**: 添加调试经验记录（减少重复问题）
+**文档版本**: 2.5
+**更新内容**: 添加数据库用户数据损坏排查、Vue路由复用数据刷新经验
 
 ---
 
@@ -305,6 +305,66 @@ const level = computed(() => {
 // 验证命令
 rm -rf node_modules/.vite  # 清理 Vite 缓存
 npx vite build  # 重新构建验证
+```
+
+#### 11. 数据库用户数据损坏排查原则 ✅
+```typescript
+// 问题：文档列表偶发不显示，登录一直失败
+// 排查过程：
+// 1. curl 测试 API 返回 401 → Token 获取失败
+// 2. curl 测试登录返回 "用户名或密码错误"
+// 3. 登录逻辑确认 bcrypt.compare 返回 false
+// 4. Prisma Studio 查询发现 admin 用户存在，密码哈希长度为 60（正常）
+// 5. 直接在 Node.js 中对比 bcrypt 哈希，发现不匹配
+// 6. 最终发现数据库中有两个 admin 用户（UUID 格式 vs Snowflake 格式）
+// 7. 真正的 admin 密码哈希已损坏
+
+// 教训：
+// 1. 先用 curl 测试 API，排除前端问题
+// 2. 登录失败时检查数据库是否有重复用户
+// 3. 密码哈希损坏时直接用 bcrypt 重新生成并更新数据库
+// 4. 使用 Prisma Studio 或 SQL 查询确认用户状态
+
+// 修复命令
+node -e "
+const bcrypt = require('bcrypt');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+bcrypt.hash('12345678', 10).then(async (hash) => {
+  const user = await prisma.user.findFirst({ where: { username: 'admin' } });
+  if (user) {
+    await prisma.user.update({ where: { id: user.id }, data: { password: hash } });
+    console.log('Password reset:', user.username);
+  }
+});
+"
+```
+
+#### 12. Vue 组件路由复用不刷新数据原则 ✅
+```typescript
+// 问题：一级/二级/三级文件列表复用 Level1List.vue，切换路由后数据不更新
+// 原因：
+// 1. onMounted 只在组件首次挂载时执行
+// 2. 路由切换时组件被复用，不会重新触发 onMounted
+// 3. 之前的修复用 computed level 解决，但 watch 没加
+
+// 教训：
+// 1. 路由复用组件时，必须用 watch 监听路由参数变化
+// 2. computed 只解决"读取值"问题，不解决"重新请求"问题
+// 3. 任何依赖路由参数的异步操作，都需要 watch 触发
+
+// 正解：
+import { watch } from 'vue';
+
+onMounted(() => {
+  fetchData();
+});
+
+// 监听路由变化，重新获取数据
+watch(level, () => {
+  pagination.page = 1;
+  fetchData();
+});
 ```
 
 ---

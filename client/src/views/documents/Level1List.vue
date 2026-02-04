@@ -110,7 +110,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue';
+import { ref, reactive, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import request from '@/api/request';
@@ -145,7 +145,6 @@ const levelText = computed(() => {
 });
 
 const filterForm = reactive({
-  level: level.value,
   keyword: '',
   status: '',
 });
@@ -193,7 +192,7 @@ const fetchData = async () => {
       params: {
         page: pagination.page,
         limit: pagination.limit,
-        level: filterForm.level,
+        level: level.value,  // 使用实时计算的 level，而不是 filterForm.level
         keyword: filterForm.keyword || undefined,
         status: filterForm.status || undefined,
       },
@@ -251,6 +250,12 @@ const handleDelete = async (row: Document) => {
 };
 
 onMounted(() => {
+  fetchData();
+});
+
+// 监听路由变化，重新获取数据
+watch(level, () => {
+  pagination.page = 1;
   fetchData();
 });
 </script>
