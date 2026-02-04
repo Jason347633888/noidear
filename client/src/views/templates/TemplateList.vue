@@ -208,6 +208,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Delete, Plus } from '@element-plus/icons-vue';
 import request from '@/api/request';
@@ -271,7 +272,8 @@ const handleSearch = () => { pagination.page = 1; fetchData(); };
 const handleReset = () => { filterForm.keyword = ''; filterForm.level = undefined; filterForm.status = ''; handleSearch(); };
 
 const handleView = (row: Template) => { currentTemplate.value = row; showDetailDialog.value = true; };
-const handleEdit = (row: Template) => { /* TODO: 编辑模板 */ };
+const handleEdit = (row: Template) => { router.push(`/templates/${row.id}/edit`); };
+const router = useRouter();
 const handleCopy = async (row: Template) => {
   try {
     await ElMessageBox.confirm('确定要复制该模板吗？', '提示');

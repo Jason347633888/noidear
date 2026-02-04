@@ -52,6 +52,16 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/templates/TemplateList.vue'),
       },
       {
+        path: 'templates/create',
+        name: 'TemplateCreate',
+        component: () => import('@/views/templates/TemplateEdit.vue'),
+      },
+      {
+        path: 'templates/:id/edit',
+        name: 'TemplateEdit',
+        component: () => import('@/views/templates/TemplateEdit.vue'),
+      },
+      {
         path: 'tasks',
         name: 'Tasks',
         component: () => import('@/views/tasks/TaskList.vue'),
