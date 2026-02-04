@@ -83,7 +83,10 @@ export class TaskService {
     const task = await this.findOne(id);
 
     if (role !== 'admin' && task.creatorId !== userId) {
-      throw new BusinessException(ErrorCode.FORBIDDEN, '只能取消自己创建的任务');
+      throw new BusinessException(
+        ErrorCode.FORBIDDEN,
+        `只能取消自己创建的任务，任务 [${task.id}] 不属于您`,
+      );
     }
 
     return this.prisma.task.update({
@@ -94,24 +97,64 @@ export class TaskService {
 
   /**
    * 提交任务记录
+   * 使用事务和行锁防止重复提交（BR-014：任务第一人提交后，其他人不能再提交）
    */
   async submit(dto: SubmitTaskDto, userId: string) {
-    const task = await this.findOne(dto.taskId);
+    return this.prisma.$transaction(async (tx) => {
+      // 锁定任务行，防止并发问题
+      const task = await tx.task.findUnique({
+        where: { id: dto.taskId, deletedAt: null },
+      });
 
-    if (task.status !== 'pending') {
-      throw new BusinessException(ErrorCode.CONFLICT, '任务已结束，不能提交');
-    }
+      if (!task) {
+        throw new BusinessException(ErrorCode.NOT_FOUND, '任务不存在');
+      }
 
-    return this.prisma.taskRecord.create({
-      data: {
-        id: crypto.randomUUID(),
-        taskId: dto.taskId,
-        templateId: task.templateId,
-        dataJson: (dto.data || {}) as any,
-        submitterId: userId,
-        status: 'submitted',
-        submittedAt: new Date(),
-      },
+      if (task.status !== 'pending') {
+        throw new BusinessException(
+          ErrorCode.CONFLICT,
+          `任务 [${task.id}] 已结束，不能提交，当前状态：${task.status}`,
+        );
+      }
+
+      // 检查是否已有人提交过此任务（防止重复提交）
+      const existingRecord = await tx.taskRecord.findFirst({
+        where: {
+          taskId: dto.taskId,
+          status: { in: ['submitted', 'approved'] },
+          deletedAt: null,
+        },
+      });
+
+      if (existingRecord) {
+        throw new BusinessException(
+          ErrorCode.CONFLICT,
+          '该任务已被其他人提交，不能重复提交',
+        );
+      }
+
+      // 创建任务记录
+      const record = await tx.taskRecord.create({
+        data: {
+          id: crypto.randomUUID(),
+          taskId: dto.taskId,
+          templateId: task.templateId,
+          dataJson: (dto.data || {}) as any,
+          submitterId: userId,
+          status: 'submitted',
+          submittedAt: new Date(),
+        },
+      });
+
+      // 更新任务状态为已提交，防止其他人继续提交
+      await tx.task.update({
+        where: { id: dto.taskId },
+        data: { status: 'submitted' },
+      });
+
+      return record;
+    }, {
+      isolationLevel: 'Serializable', // 使用最高隔离级别防止竞态条件
     });
   }
 
@@ -124,11 +167,36 @@ export class TaskService {
     });
 
     if (!record) {
-      throw new BusinessException(ErrorCode.NOT_FOUND, '记录不存在');
+      throw new BusinessException(ErrorCode.NOT_FOUND, `任务记录 [${dto.recordId}] 不存在`);
     }
 
     if (record.status !== 'submitted') {
-      throw new BusinessException(ErrorCode.CONFLICT, '记录已审批');
+      throw new BusinessException(
+        ErrorCode.CONFLICT,
+        `任务记录 [${dto.recordId}] 已审批，当前状态：${record.status}`,
+      );
+    }
+
+    // 权限验证：必须是提交人的上级或管理员
+    const approver = await this.prisma.user.findUnique({ where: { id: userId } });
+    const submitter = record.submitterId
+      ? await this.prisma.user.findUnique({ where: { id: record.submitterId } })
+      : null;
+
+    if (!approver) {
+      throw new BusinessException(ErrorCode.NOT_FOUND, '审批人不存在');
+    }
+
+    const isAdmin = approver.role === 'admin';
+    const isSuperior = submitter?.superiorId === userId;
+    const isSameDepartmentLeader =
+      approver.role === 'leader' && submitter?.departmentId === approver.departmentId;
+
+    if (!isAdmin && !isSuperior && !isSameDepartmentLeader) {
+      throw new BusinessException(
+        ErrorCode.FORBIDDEN,
+        `您无权审批任务记录 [${dto.recordId}]，只有提交人的上级或同部门领导可以审批`,
+      );
     }
 
     await this.prisma.taskRecord.update({

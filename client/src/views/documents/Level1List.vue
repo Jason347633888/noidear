@@ -63,13 +63,13 @@
             {{ formatDate(row.createdAt) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleView(row)">查看</el-button>
             <el-button
               link
               type="primary"
-              v-if="row.status === 'draft'"
+              v-if="row.status === 'draft' || row.status === 'rejected'"
               @click="handleEdit(row)"
             >
               编辑
@@ -84,8 +84,16 @@
             </el-button>
             <el-button
               link
+              type="warning"
+              v-if="row.status === 'rejected'"
+              @click="handleSubmit(row)"
+            >
+              重新提交
+            </el-button>
+            <el-button
+              link
               type="danger"
-              v-if="row.status === 'draft'"
+              v-if="row.status === 'draft' || row.status === 'rejected'"
               @click="handleDelete(row)"
             >
               删除

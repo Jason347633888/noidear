@@ -30,6 +30,15 @@
         </el-descriptions-item>
       </el-descriptions>
 
+      <!-- 驳回原因提示 -->
+      <el-alert
+        v-if="document.status === 'rejected' && latestRejection?.comment"
+        type="error"
+        :title="`驳回原因: ${latestRejection.comment}`"
+        :closable="false"
+        style="margin-top: 16px"
+      />
+
       <div class="actions-wrap">
         <el-button type="primary" @click="handleDownload" :disabled="document.status === 'inactive'">
           <el-icon><Download /></el-icon>
@@ -43,15 +52,22 @@
           提交审批
         </el-button>
         <el-button
+          type="warning"
+          v-if="document.status === 'rejected'"
+          @click="handleSubmit"
+        >
+          重新提交
+        </el-button>
+        <el-button
           type="primary"
-          v-if="document.status === 'draft'"
+          v-if="document.status === 'draft' || document.status === 'rejected'"
           @click="$router.push(`/documents/${document.id}/edit`)"
         >
           编辑文档
         </el-button>
         <el-button
           type="danger"
-          v-if="document.status === 'draft'"
+          v-if="document.status === 'draft' || document.status === 'rejected'"
           @click="handleDelete"
         >
           删除文档
@@ -88,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download } from '@element-plus/icons-vue';
@@ -101,6 +117,13 @@ interface VersionItem {
   fileSize: string;
   createdAt: string;
   creator: { name: string } | null;
+}
+
+interface Approval {
+  id: string;
+  status: string;
+  comment: string | null;
+  createdAt: string;
 }
 
 interface Document {
@@ -117,6 +140,7 @@ interface Document {
   approver: { name: string } | null;
   approvedAt: string | null;
   createdAt: string;
+  approvals?: Approval[];
 }
 
 const route = useRoute();
@@ -124,6 +148,13 @@ const router = useRouter();
 const loading = ref(false);
 const document = ref<Document | null>(null);
 const versionHistory = ref<VersionItem[]>([]);
+
+// 获取最新的驳回审批记录
+const latestRejection = computed(() => {
+  if (!document.value?.approvals) return null;
+  const rejections = document.value.approvals.filter(a => a.status === 'rejected');
+  return rejections.length > 0 ? rejections[0] : null;
+});
 
 const formatSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
