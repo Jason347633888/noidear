@@ -252,4 +252,35 @@ export class DocumentService {
     });
     return this.convertBigIntToNumber(result);
   }
+
+  async getVersionHistory(id: string, userId: string, role: string) {
+    const document = await this.findOne(id, userId, role);
+
+    const versions = await this.prisma.documentVersion.findMany({
+      where: { documentId: id },
+      orderBy: { createdAt: 'desc' },
+      include: { creator: { select: { id: true, name: true } } },
+    }) as unknown as any[];
+
+    return { document, versions: this.convertBigIntToNumber(versions) };
+  }
+
+  async deactivate(id: string, userId: string, role: string) {
+    const document = await this.findOne(id, userId, role);
+
+    if (role !== 'admin' && document.creatorId !== userId) {
+      throw new BusinessException(ErrorCode.FORBIDDEN, '只能停用自己创建的文档');
+    }
+
+    if (document.status !== 'approved') {
+      throw new BusinessException(ErrorCode.CONFLICT, '只能停用已发布的文档');
+    }
+
+    const result = await this.prisma.document.update({
+      where: { id },
+      data: { status: 'inactive' },
+    });
+
+    return this.convertBigIntToNumber(result);
+  }
 }

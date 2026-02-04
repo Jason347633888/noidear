@@ -66,6 +66,18 @@ export class DocumentController {
     return this.documentService.findOne(id, req.user.id, req.user.role);
   }
 
+  @Get(':id/versions')
+  @ApiOperation({ summary: '查询文档版本历史' })
+  async getVersionHistory(@Param('id') id: string, @Req() req: any) {
+    return this.documentService.getVersionHistory(id, req.user.id, req.user.role);
+  }
+
+  @Post(':id/deactivate')
+  @ApiOperation({ summary: '停用文档' })
+  async deactivate(@Param('id') id: string, @Req() req: any) {
+    return this.documentService.deactivate(id, req.user.id, req.user.role);
+  }
+
   @Put(':id')
   @ApiOperation({ summary: '更新文档' })
   @ApiConsumes('multipart/form-data')
