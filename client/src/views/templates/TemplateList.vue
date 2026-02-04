@@ -70,7 +70,7 @@
         <el-table-column prop="createdAt" label="创建时间" width="180">
           <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="250" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleView(row)">查看</el-button>
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
@@ -81,6 +81,14 @@
               @click="handleToggle(row)"
             >
               {{ row.status === 'active' ? '停用' : '启用' }}
+            </el-button>
+            <el-button
+              link
+              type="danger"
+              v-if="row.status === 'draft'"
+              @click="handleDelete(row)"
+            >
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -286,6 +294,17 @@ const handleToggle = async (row: Template) => {
   try {
     await request.post(`/templates/${row.id}/toggle`);
     ElMessage.success('操作成功');
+    fetchData();
+  } catch {}
+};
+
+const handleDelete = async (row: Template) => {
+  try {
+    await ElMessageBox.confirm('确定要删除该模板吗？此操作不可恢复。', '警告', {
+      type: 'warning',
+    });
+    await request.delete(`/templates/${row.id}`);
+    ElMessage.success('删除成功');
     fetchData();
   } catch {}
 };
