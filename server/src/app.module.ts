@@ -10,6 +10,8 @@ import { TemplateModule } from './modules/template/template.module';
 import { TaskModule } from './modules/task/task.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { OperationLogModule } from './modules/operation-log/operation-log.module';
+import { DeviationModule } from './modules/deviation/deviation.module';
+import { ExportModule } from './modules/export/export.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { OperationLogModule } from './modules/operation-log/operation-log.module
     TaskModule,
     NotificationModule,
     OperationLogModule,
+    DeviationModule,
+    ExportModule,
   ],
   providers: [
     {
