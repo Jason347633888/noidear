@@ -62,6 +62,21 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/templates/TemplateEdit.vue'),
       },
       {
+        path: 'templates/:id/tolerance',
+        name: 'ToleranceConfig',
+        component: () => import('@/views/templates/ToleranceConfig.vue'),
+      },
+      {
+        path: 'deviation-reports',
+        name: 'DeviationReports',
+        component: () => import('@/views/deviation/DeviationReportView.vue'),
+      },
+      {
+        path: 'deviation-analytics',
+        name: 'DeviationAnalytics',
+        component: () => import('@/views/deviation/DeviationAnalytics.vue'),
+      },
+      {
         path: 'tasks',
         name: 'Tasks',
         component: () => import('@/views/tasks/TaskList.vue'),
@@ -95,6 +110,11 @@ const routes: RouteRecordRaw[] = [
         path: 'password',
         name: 'Password',
         component: () => import('@/views/Password.vue'),
+      },
+      {
+        path: 'recycle-bin',
+        name: 'RecycleBin',
+        component: () => import('@/views/RecycleBin.vue'),
       },
     ],
   },

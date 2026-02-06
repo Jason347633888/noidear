@@ -12,6 +12,7 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { OperationLogModule } from './modules/operation-log/operation-log.module';
 import { DeviationModule } from './modules/deviation/deviation.module';
 import { ExportModule } from './modules/export/export.module';
+import { RecycleBinModule } from './modules/recycle-bin/recycle-bin.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ExportModule } from './modules/export/export.module';
     OperationLogModule,
     DeviationModule,
     ExportModule,
+    RecycleBinModule,
   ],
   providers: [
     {
