@@ -10,7 +10,7 @@
 - ❌ 引入未在文档中列出的库
 - ❌ 更换框架（Vue 3 → React, NestJS → Express）
 - ❌ 修改项目目录结构
-- ❌ 添加MVP范围外的功能（Phase 7-14）
+- ❌ 添加MVP范围外的功能（Phase 7-12 设计已完成但需用户批准后实施）
 - ❌ 硬编码密码/密钥
 - ❌ 强制推送 Git（force push）
 - ❌ 本地安装运行 Docker 已有的服务（PostgreSQL/Redis/MinIO）
@@ -164,12 +164,6 @@
 ## 禁止的行为
 
 见 [rules/constraints.mdc](rules/constraints.mdc)
-
----
-
-**项目状态**: 开发计划已完善，开始实施
-**文档版本**: 2.5
-**更新内容**: 添加数据库用户数据损坏排查、Vue路由复用数据刷新经验
 
 ---
 
@@ -407,3 +401,19 @@ npx vite build && npm run build
 ---
 
 **重要**：每次编码前回顾这份清单，问题在写代码时就能避免，而不是测试时才发现。
+
+
+---
+
+**文档版本**: 3.0
+**最后更新**: 2026-02-06
+**项目状态**:
+- MVP Phase 1-6: 完成 98.1%（51/52 Issue，仅回收站 UI 待完善）
+- Phase 7-12: PRD + LLD 已完成（见 docs/DESIGN.md 第十六章）
+- 下一步: 完成回收站 UI 或启动 Phase 7-12 实现
+
+**相关文档**:
+- [完整需求设计](docs/DESIGN.md) - 文档版本 3.0
+- [项目结构导航](docs/PROJECT_STRUCTURE.md) - 文档版本 4.0
+- [测试用例清单](docs/TEST-CASES.md)
+- [项目 README](README.md) - 文档版本 3.0

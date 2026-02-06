@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { StorageService } from '../../common/services';
-import { Snowflake } from '../../common/utils/snowflake';
+import { Snowflake, convertBigIntToNumber } from '../../common/utils';
 import { BusinessException, ErrorCode } from '../../common/exceptions/business.exception';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto } from './dto';
 import { NotificationService } from '../notification/notification.service';
@@ -20,49 +21,49 @@ export class DocumentService {
     this.snowflake = new Snowflake(1, 1);
   }
 
-  private convertBigIntToNumber(obj: any): any {
-    if (obj === null || obj === undefined) return obj;
-    if (typeof obj === 'bigint') return Number(obj);
-    if (Array.isArray(obj)) return obj.map(item => this.convertBigIntToNumber(item));
-    if (typeof obj === 'object') {
-      const result: any = {};
-      for (const key of Object.keys(obj)) {
-        result[key] = this.convertBigIntToNumber(obj[key]);
-      }
-      return result;
-    }
-    return obj;
-  }
-
   private async generateDocumentNumber(level: number, departmentId: string): Promise<string> {
-    // 查询部门获取部门代码
-    const department = await this.prisma.department.findUnique({
-      where: { id: departmentId },
-    });
-
-    if (!department) {
-      throw new BusinessException(ErrorCode.NOT_FOUND, '部门不存在');
-    }
-
-    let rule = await this.prisma.numberRule.findUnique({
-      where: { level_departmentId: { level, departmentId } },
-    });
-
-    if (!rule) {
-      rule = await this.prisma.numberRule.create({
-        data: { id: this.snowflake.nextId(), level, departmentId, sequence: 0 },
+    return this.prisma.$transaction(async (tx) => {
+      // 查询部门获取部门代码
+      const department = await tx.department.findUnique({
+        where: { id: departmentId },
       });
-    }
 
-    const sequence = rule.sequence + 1;
-    await this.prisma.numberRule.update({
-      where: { level_departmentId: { level, departmentId } },
-      data: { sequence },
+      if (!department) {
+        throw new BusinessException(ErrorCode.NOT_FOUND, '部门不存在');
+      }
+
+      // 使用 SELECT FOR UPDATE 锁定行，防止并发冲突
+      const rules = await tx.$queryRaw<Array<{ id: string; sequence: number }>>`
+        SELECT id, sequence FROM number_rules
+        WHERE level = ${level} AND department_id = ${departmentId}
+        FOR UPDATE
+      `;
+
+      let rule = rules[0];
+      if (!rule) {
+        // 创建新规则
+        rule = await tx.numberRule.create({
+          data: {
+            id: this.snowflake.nextId(),
+            level,
+            departmentId,
+            sequence: 0,
+          },
+        });
+      }
+
+      const newSequence = rule.sequence + 1;
+
+      // 更新序号
+      await tx.numberRule.update({
+        where: { id: rule.id },
+        data: { sequence: newSequence },
+      });
+
+      const seqStr = String(newSequence).padStart(3, '0');
+      // 格式: {级别}-{部门代码}-{序号} 如 1-HR-001
+      return `${level}-${department.code}-${seqStr}`;
     });
-
-    const seqStr = String(sequence).padStart(3, '0');
-    // 格式: {级别}-{部门代码}-{序号} 如 1-HR-001
-    return `${level}-${department.code}-${seqStr}`;
   }
 
   async create(dto: CreateDocumentDto, file: Express.Multer.File, userId: string) {
@@ -119,7 +120,7 @@ export class DocumentService {
       details: { title: dto.title, level: dto.level, fileName: file.originalname },
     });
 
-    return this.convertBigIntToNumber(result);
+    return convertBigIntToNumber(result);
   }
 
   async findAll(query: DocumentQueryDto, userId: string, role: string) {
@@ -178,7 +179,7 @@ export class DocumentService {
       approver: doc.approverId ? userMap.get(doc.approverId) || null : null,
     }));
 
-    return { list: this.convertBigIntToNumber(enrichedList), total, page, limit };
+    return { list: convertBigIntToNumber(enrichedList), total, page, limit };
   }
 
   async findOne(id: string, userId: string, role: string) {
@@ -198,7 +199,7 @@ export class DocumentService {
       );
     }
 
-    return this.convertBigIntToNumber(document);
+    return convertBigIntToNumber(document);
   }
 
   async update(id: string, dto: UpdateDocumentDto, file: Express.Multer.File | undefined, userId: string) {
@@ -226,7 +227,7 @@ export class DocumentService {
           version: document.version,
           filePath: document.filePath,
           fileName: document.fileName,
-          fileSize: BigInt(document.fileSize),
+          fileSize: Number(document.fileSize),
           creatorId: userId,
         },
       });
@@ -241,17 +242,17 @@ export class DocumentService {
           fileName: file.originalname,
           fileSize: Number(file.size),
           fileType: file.mimetype,
-          version: { increment: 0.1 },
+          version: { increment: new Prisma.Decimal(0.1) },
         },
       });
-      return this.convertBigIntToNumber(result);
+      return convertBigIntToNumber(result);
     }
 
     const result = await this.prisma.document.update({
       where: { id },
       data: { title: dto.title ?? document.title },
     });
-    return this.convertBigIntToNumber(result);
+    return convertBigIntToNumber(result);
   }
 
   async remove(id: string, userId: string) {
@@ -356,7 +357,7 @@ export class DocumentService {
       details: { documentNumber: document.number, title: document.title },
     });
 
-    return this.convertBigIntToNumber(
+    return convertBigIntToNumber(
       await this.prisma.document.findUnique({ where: { id } }),
     );
   }
@@ -397,7 +398,7 @@ export class DocumentService {
       creator: doc.creatorId ? creatorMap.get(doc.creatorId) || null : null,
     }));
 
-    return this.convertBigIntToNumber(enrichedList);
+    return convertBigIntToNumber(enrichedList);
   }
 
   async approve(id: string, status: string, comment: string | undefined, approverId: string) {
@@ -491,7 +492,7 @@ export class DocumentService {
       },
     });
 
-    return this.convertBigIntToNumber(result);
+    return convertBigIntToNumber(result);
   }
 
   async getVersionHistory(id: string, userId: string, role: string) {
@@ -502,7 +503,7 @@ export class DocumentService {
       orderBy: { createdAt: 'desc' },
     }) as unknown as any[];
 
-    return { document, versions: this.convertBigIntToNumber(versions) };
+    return { document, versions: convertBigIntToNumber(versions) };
   }
 
   async deactivate(id: string, userId: string, role: string) {
@@ -527,6 +528,6 @@ export class DocumentService {
       data: { status: 'inactive' },
     });
 
-    return this.convertBigIntToNumber(result);
+    return convertBigIntToNumber(result);
   }
 }

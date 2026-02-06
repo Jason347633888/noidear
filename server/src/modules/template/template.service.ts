@@ -19,11 +19,18 @@ export class TemplateService {
   }
 
   private async generateTemplateNumber(level: number): Promise<string> {
-    const prefix = `TPL${level}`;
-    const count = await this.prisma.template.count({
-      where: { level, deletedAt: null },
+    return this.prisma.$transaction(async (tx) => {
+      // 使用 SELECT FOR UPDATE 锁定表，防止并发冲突
+      const templates = await tx.$queryRaw<Array<{ count: bigint }>>`
+        SELECT COUNT(*) as count FROM templates
+        WHERE level = ${level} AND deleted_at IS NULL
+        FOR UPDATE
+      `;
+
+      const count = Number(templates[0].count);
+      const prefix = `TPL${level}`;
+      return `${prefix}${String(count + 1).padStart(4, '0')}`;
     });
-    return `${prefix}${String(count + 1).padStart(4, '0')}`;
   }
 
   async create(dto: CreateTemplateDto, userId: string) {
@@ -166,5 +173,47 @@ export class TemplateService {
 
   async parseExcel(file: Express.Multer.File) {
     return this.excelParser.parseToTemplateFields(file.buffer);
+  }
+
+  async updateToleranceConfig(
+    templateId: string,
+    toleranceConfig: Record<string, any>,
+  ) {
+    const template = await this.findOne(templateId);
+    const fieldsJson = template.fieldsJson as any[];
+
+    for (const [fieldName, config] of Object.entries(toleranceConfig)) {
+      this.validateToleranceConfig(config);
+      const field = fieldsJson.find((f) => f.name === fieldName);
+      if (field && field.type === 'number') {
+        field.tolerance = config;
+      }
+    }
+
+    return this.prisma.template.update({
+      where: { id: templateId },
+      data: {
+        fieldsJson: fieldsJson as unknown as any,
+        version: { increment: 0.1 },
+      },
+    });
+  }
+
+  private validateToleranceConfig(config: any) {
+    if (config.type === 'range') {
+      if (config.min < 0 || config.max < 0) {
+        throw new BusinessException(
+          ErrorCode.VALIDATION_ERROR,
+          '公差值不能为负数',
+        );
+      }
+    } else if (config.type === 'percentage') {
+      if (config.percentage && config.percentage > 100) {
+        throw new BusinessException(
+          ErrorCode.VALIDATION_ERROR,
+          '百分比公差不能超过100%',
+        );
+      }
+    }
   }
 }

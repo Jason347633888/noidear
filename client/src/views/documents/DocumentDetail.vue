@@ -40,6 +40,10 @@
       />
 
       <div class="actions-wrap">
+        <el-button type="primary" @click="showPreview = true" :disabled="document.status === 'inactive'">
+          <el-icon><View /></el-icon>
+          预览文件
+        </el-button>
         <el-button type="primary" @click="handleDownload" :disabled="document.status === 'inactive'">
           <el-icon><Download /></el-icon>
           下载文件
@@ -100,6 +104,13 @@
         </el-table-column>
       </el-table>
     </el-card>
+
+    <!-- 文件预览对话框 -->
+    <FilePreviewDialog
+      v-model="showPreview"
+      :document-id="document?.id || ''"
+      :filename="document?.fileName || ''"
+    />
   </div>
 </template>
 
@@ -107,8 +118,9 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Download } from '@element-plus/icons-vue';
+import { Download, View } from '@element-plus/icons-vue';
 import request from '@/api/request';
+import FilePreviewDialog from '@/components/FilePreviewDialog.vue';
 
 interface VersionItem {
   id: string;
@@ -148,6 +160,7 @@ const router = useRouter();
 const loading = ref(false);
 const document = ref<Document | null>(null);
 const versionHistory = ref<VersionItem[]>([]);
+const showPreview = ref(false);
 
 // 获取最新的驳回审批记录
 const latestRejection = computed(() => {

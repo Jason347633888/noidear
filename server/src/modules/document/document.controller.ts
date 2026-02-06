@@ -14,10 +14,13 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
   Req,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { DocumentService } from './document.service';
+import { FilePreviewService } from './services';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto } from './dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -26,7 +29,10 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @UseGuards(JwtAuthGuard)
 @Controller('documents')
 export class DocumentController {
-  constructor(private readonly documentService: DocumentService) {}
+  constructor(
+    private readonly documentService: DocumentService,
+    private readonly filePreviewService: FilePreviewService,
+  ) {}
 
   @Post('upload')
   @ApiOperation({ summary: '上传文档' })
@@ -113,5 +119,21 @@ export class DocumentController {
     @Req() req: any,
   ) {
     return this.documentService.approve(id, body.status, body.comment, req.user.id);
+  }
+
+  @Get(':id/download')
+  @ApiOperation({ summary: '下载文档文件' })
+  async downloadFile(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
+    return this.filePreviewService.downloadFile(id, req.user.id, req.user.role, res);
+  }
+
+  @Get(':id/preview')
+  @ApiOperation({ summary: '获取文档预览信息' })
+  async getPreviewUrl(@Param('id') id: string, @Req() req: any) {
+    return this.filePreviewService.getPreviewUrl(id, req.user.id, req.user.role);
   }
 }

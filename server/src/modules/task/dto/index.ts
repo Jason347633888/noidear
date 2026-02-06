@@ -54,6 +54,10 @@ export class SubmitTaskDto {
   @ApiProperty({ description: '表单数据' })
   @IsOptional()
   data?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ description: '偏离原因（字段名 -> 原因）' })
+  @IsOptional()
+  deviationReasons?: Record<string, string>;
 }
 
 export class CancelTaskDto {

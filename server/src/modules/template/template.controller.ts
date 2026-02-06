@@ -113,4 +113,13 @@ export class TemplateController {
   ) {
     return this.templateService.parseExcel(file);
   }
+
+  @Put(':id/tolerance')
+  @ApiOperation({ summary: '更新模板公差配置' })
+  async updateTolerance(
+    @Param('id') id: string,
+    @Body() config: Record<string, any>,
+  ) {
+    return this.templateService.updateToleranceConfig(id, config);
+  }
 }

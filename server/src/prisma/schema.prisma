@@ -13,14 +13,30 @@ model User {
   password      String
   name          String
   departmentId  String?
+  department    Department? @relation("UserDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
   role          String    @default("user")
   superiorId    String?
+  superior      User?     @relation("UserSuperior", fields: [superiorId], references: [id], onDelete: SetNull)
+  subordinates  User[]    @relation("UserSuperior")
   status        String    @default("active")
   loginAttempts Int       @default(0)
   lockedUntil   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
+
+  // 反向关系
+  documentsCreated    Document[]       @relation("DocumentCreator")
+  documentsApproved   Document[]       @relation("DocumentApprover")
+  versionsCreated     DocumentVersion[] @relation("VersionCreator")
+  templatesCreated    Template[]       @relation("TemplateCreator")
+  tasksCreated        Task[]           @relation("TaskCreator")
+  taskRecordsSubmitted TaskRecord[]    @relation("RecordSubmitter")
+  taskRecordsApproved  TaskRecord[]    @relation("RecordApprover")
+  approvalsGiven      Approval[]       @relation("Approver")
+  operationLogs       OperationLog[]
+  notifications       Notification[]
+  managedDepartments  Department[]     @relation("DepartmentManager")
 
   @@map("users")
 }
@@ -30,10 +46,19 @@ model Department {
   code      String    @unique
   name      String
   parentId  String?
+  parent    Department? @relation("DepartmentParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Department[] @relation("DepartmentParent")
+  managerId String?
+  manager   User?     @relation("DepartmentManager", fields: [managerId], references: [id], onDelete: SetNull)
   status    String    @default("active")
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
+  // 反向关系
+  users       User[]       @relation("UserDepartment")
+  numberRules NumberRule[]
+  tasks       Task[]
 
   @@map("departments")
 }
@@ -42,6 +67,7 @@ model NumberRule {
   id           String   @id
   level        Int
   departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
   sequence     Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -57,16 +83,22 @@ model Document {
   title       String
   filePath    String
   fileName    String
-  fileSize    BigInt
+  fileSize    Int
   fileType    String
-  version     Float     @default(1.0)
+  version     Decimal   @default(1.0) @db.Decimal(3, 1)
   status      String
   creatorId   String
+  creator     User      @relation("DocumentCreator", fields: [creatorId], references: [id], onDelete: Restrict)
   approverId  String?
+  approver    User?     @relation("DocumentApprover", fields: [approverId], references: [id], onDelete: SetNull)
   approvedAt  DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
+
+  // 反向关系
+  versions    DocumentVersion[]
+  approvals   Approval[]
 
   @@map("documents")
 }
@@ -74,11 +106,13 @@ model Document {
 model DocumentVersion {
   id          String   @id
   documentId  String
-  version     Float
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version     Decimal  @db.Decimal(3, 1)
   filePath    String
   fileName    String
-  fileSize    BigInt
+  fileSize    Int
   creatorId   String
+  creator     User     @relation("VersionCreator", fields: [creatorId], references: [id], onDelete: Restrict)
   createdAt   DateTime @default(now())
 
   @@map("document_versions")
@@ -90,12 +124,17 @@ model Template {
   number    String   @unique
   title     String
   fieldsJson Json
-  version   Float    @default(1.0)
+  version   Decimal  @default(1.0) @db.Decimal(3, 1)
   status    String   @default("active")
   creatorId String
+  creator   User     @relation("TemplateCreator", fields: [creatorId], references: [id], onDelete: Restrict)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
+
+  // 反向关系
+  tasks       Task[]
+  taskRecords TaskRecord[]
 
   @@map("templates")
 }
@@ -103,13 +142,19 @@ model Template {
 model Task {
   id           String    @id
   templateId   String
+  template     Template  @relation(fields: [templateId], references: [id], onDelete: Restrict)
   departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
   deadline     DateTime
   status       String    @default("pending")
   creatorId    String
+  creator      User      @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Restrict)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
+
+  // 反向关系
+  records     TaskRecord[]
 
   @@map("tasks")
 }
@@ -117,28 +162,51 @@ model Task {
 model TaskRecord {
   id          String    @id
   taskId      String
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
   templateId  String
+  template    Template  @relation(fields: [templateId], references: [id], onDelete: Restrict)
   dataJson    Json
   status      String    @default("pending")
   submitterId String?
+  submitter   User?     @relation("RecordSubmitter", fields: [submitterId], references: [id], onDelete: SetNull)
   submittedAt DateTime?
   approverId  String?
+  approver    User?     @relation("RecordApprover", fields: [approverId], references: [id], onDelete: SetNull)
   approvedAt  DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
+  // Phase 7-8: 配方偏离检测
+  relatedTemplateVersion Decimal?  @db.Decimal(3, 1)
+  hasDeviation          Boolean   @default(false)
+  deviationCount        Int       @default(0)
+
+  // 反向关系
+  approvals        Approval[]
+  deviationReports DeviationReport[]
+
   @@map("task_records")
 }
 
 model Approval {
-  id         String   @id
-  documentId String
-  recordId   String?
-  approverId String
-  status     String
-  comment    String?
-  createdAt  DateTime @default(now())
+  id              String   @id
+  documentId      String?
+  document        Document? @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  recordId        String?
+  record          TaskRecord? @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  approverId      String
+  approver        User     @relation("Approver", fields: [approverId], references: [id], onDelete: Restrict)
+  status          String
+  comment         String?
+  level           Int      @default(1)
+  approvalChainId String?
+  previousLevel   String?
+  nextLevel       String?
+  rejectionReason String?
+  approvedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
 
   @@map("approvals")
 }
@@ -146,6 +214,7 @@ model Approval {
 model OperationLog {
   id         String   @id
   userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   action     String
   module     String
   objectId   String
@@ -160,6 +229,7 @@ model OperationLog {
 model Notification {
   id        String    @id
   userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      String
   title     String
   content   String?
@@ -168,4 +238,31 @@ model Notification {
   createdAt DateTime  @default(now())
 
   @@map("notifications")
+}
+
+model DeviationReport {
+  id              String     @id
+  recordId        String
+  record          TaskRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  templateId      String
+  fieldName       String
+  expectedValue   String
+  actualValue     String
+  toleranceMin    Float
+  toleranceMax    Float
+  deviationAmount Float
+  deviationRate   Float      @default(0)
+  deviationType   String
+  reason          String
+  status          String     @default("pending")
+  reportedBy      String
+  reportedAt      DateTime   @default(now())
+  approvedBy      String?
+  approvedAt      DateTime?
+  comment         String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  deletedAt       DateTime?
+
+  @@map("deviation_reports")
 }

@@ -46,48 +46,46 @@ export class DeviationAnalyticsService {
     endDate: Date,
     granularity: 'day' | 'week' | 'month',
   ): Promise<TrendData[]> {
-    let query: string;
+    let rawData: any[];
     let dateField: string;
 
     if (granularity === 'day') {
       dateField = 'date';
-      query = Prisma.sql`
+      rawData = await this.prisma.$queryRaw<any[]>`
         SELECT
-          TO_CHAR(created_at, 'YYYY-MM-DD') as date,
+          TO_CHAR("createdAt", 'YYYY-MM-DD') as date,
           COUNT(*) as count
         FROM deviation_reports
-        WHERE created_at >= ${startDate} AND created_at <= ${endDate}
-          AND deleted_at IS NULL
-        GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+        WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}
+          AND "deletedAt" IS NULL
+        GROUP BY TO_CHAR("createdAt", 'YYYY-MM-DD')
         ORDER BY date
-      `.text;
+      `;
     } else if (granularity === 'week') {
       dateField = 'week';
-      query = Prisma.sql`
+      rawData = await this.prisma.$queryRaw<any[]>`
         SELECT
-          TO_CHAR(created_at, 'IYYY-"W"IW') as week,
+          TO_CHAR("createdAt", 'IYYY-"W"IW') as week,
           COUNT(*) as count
         FROM deviation_reports
-        WHERE created_at >= ${startDate} AND created_at <= ${endDate}
-          AND deleted_at IS NULL
-        GROUP BY TO_CHAR(created_at, 'IYYY-"W"IW')
+        WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}
+          AND "deletedAt" IS NULL
+        GROUP BY TO_CHAR("createdAt", 'IYYY-"W"IW')
         ORDER BY week
-      `.text;
+      `;
     } else {
       dateField = 'month';
-      query = Prisma.sql`
+      rawData = await this.prisma.$queryRaw<any[]>`
         SELECT
-          TO_CHAR(created_at, 'YYYY-MM') as month,
+          TO_CHAR("createdAt", 'YYYY-MM') as month,
           COUNT(*) as count
         FROM deviation_reports
-        WHERE created_at >= ${startDate} AND created_at <= ${endDate}
-          AND deleted_at IS NULL
-        GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+        WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}
+          AND "deletedAt" IS NULL
+        GROUP BY TO_CHAR("createdAt", 'YYYY-MM')
         ORDER BY month
-      `.text;
+      `;
     }
-
-    const rawData: any[] = await this.prisma.$queryRawUnsafe(query);
 
     const totalTasks = await this.prisma.taskRecord.count({
       where: {
@@ -148,31 +146,41 @@ export class DeviationAnalyticsService {
     startDate?: Date,
     endDate?: Date,
   ): Promise<DepartmentStats[]> {
-    let dateCondition = '';
-    const params: any[] = [];
+    let rawData: any[];
 
     if (startDate && endDate) {
-      dateCondition = 'AND tr.created_at >= $1 AND tr.created_at <= $2';
-      params.push(startDate, endDate);
+      rawData = await this.prisma.$queryRaw<any[]>`
+        SELECT
+          d.id as department_id,
+          d.name as department_name,
+          COUNT(DISTINCT tr.id) as total_tasks,
+          COUNT(DISTINCT CASE WHEN tr."hasDeviation" THEN tr.id END) as deviation_tasks,
+          (COUNT(DISTINCT CASE WHEN tr."hasDeviation" THEN tr.id END) * 100.0 / NULLIF(COUNT(DISTINCT tr.id), 0)) as deviation_rate
+        FROM departments d
+        LEFT JOIN tasks t ON t."departmentId" = d.id
+        LEFT JOIN task_records tr ON tr."taskId" = t.id AND tr."deletedAt" IS NULL
+        WHERE d."deletedAt" IS NULL AND tr."createdAt" >= ${startDate} AND tr."createdAt" <= ${endDate}
+        GROUP BY d.id, d.name
+        HAVING COUNT(DISTINCT tr.id) > 0
+        ORDER BY deviation_rate DESC
+      `;
+    } else {
+      rawData = await this.prisma.$queryRaw<any[]>`
+        SELECT
+          d.id as department_id,
+          d.name as department_name,
+          COUNT(DISTINCT tr.id) as total_tasks,
+          COUNT(DISTINCT CASE WHEN tr."hasDeviation" THEN tr.id END) as deviation_tasks,
+          (COUNT(DISTINCT CASE WHEN tr."hasDeviation" THEN tr.id END) * 100.0 / NULLIF(COUNT(DISTINCT tr.id), 0)) as deviation_rate
+        FROM departments d
+        LEFT JOIN tasks t ON t."departmentId" = d.id
+        LEFT JOIN task_records tr ON tr."taskId" = t.id AND tr."deletedAt" IS NULL
+        WHERE d."deletedAt" IS NULL
+        GROUP BY d.id, d.name
+        HAVING COUNT(DISTINCT tr.id) > 0
+        ORDER BY deviation_rate DESC
+      `;
     }
-
-    const query = `
-      SELECT
-        d.id as department_id,
-        d.name as department_name,
-        COUNT(DISTINCT tr.id) as total_tasks,
-        COUNT(DISTINCT CASE WHEN tr.has_deviation THEN tr.id END) as deviation_tasks,
-        (COUNT(DISTINCT CASE WHEN tr.has_deviation THEN tr.id END) * 100.0 / NULLIF(COUNT(DISTINCT tr.id), 0)) as deviation_rate
-      FROM departments d
-      LEFT JOIN tasks t ON t.department_id = d.id
-      LEFT JOIN task_records tr ON tr.task_id = t.id AND tr.deleted_at IS NULL
-      WHERE d.deleted_at IS NULL ${dateCondition}
-      GROUP BY d.id, d.name
-      HAVING COUNT(DISTINCT tr.id) > 0
-      ORDER BY deviation_rate DESC
-    `;
-
-    const rawData: any[] = await this.prisma.$queryRawUnsafe(query, ...params);
 
     return rawData.map((row) => ({
       departmentId: row.department_id,
@@ -187,30 +195,39 @@ export class DeviationAnalyticsService {
     startDate?: Date,
     endDate?: Date,
   ): Promise<TemplateStats[]> {
-    let dateCondition = '';
-    const params: any[] = [];
+    let rawData: any[];
 
     if (startDate && endDate) {
-      dateCondition = 'AND tr.created_at >= $1 AND tr.created_at <= $2';
-      params.push(startDate, endDate);
+      rawData = await this.prisma.$queryRaw<any[]>`
+        SELECT
+          tpl.id as template_id,
+          tpl.title as template_title,
+          COUNT(DISTINCT tr.id) as total_tasks,
+          COUNT(DISTINCT CASE WHEN tr."hasDeviation" THEN tr.id END) as deviation_tasks,
+          (COUNT(DISTINCT CASE WHEN tr."hasDeviation" THEN tr.id END) * 100.0 / NULLIF(COUNT(DISTINCT tr.id), 0)) as deviation_rate
+        FROM templates tpl
+        LEFT JOIN task_records tr ON tr."templateId" = tpl.id AND tr."deletedAt" IS NULL
+        WHERE tpl."deletedAt" IS NULL AND tr."createdAt" >= ${startDate} AND tr."createdAt" <= ${endDate}
+        GROUP BY tpl.id, tpl.title
+        HAVING COUNT(DISTINCT tr.id) > 0
+        ORDER BY deviation_rate DESC
+      `;
+    } else {
+      rawData = await this.prisma.$queryRaw<any[]>`
+        SELECT
+          tpl.id as template_id,
+          tpl.title as template_title,
+          COUNT(DISTINCT tr.id) as total_tasks,
+          COUNT(DISTINCT CASE WHEN tr."hasDeviation" THEN tr.id END) as deviation_tasks,
+          (COUNT(DISTINCT CASE WHEN tr."hasDeviation" THEN tr.id END) * 100.0 / NULLIF(COUNT(DISTINCT tr.id), 0)) as deviation_rate
+        FROM templates tpl
+        LEFT JOIN task_records tr ON tr."templateId" = tpl.id AND tr."deletedAt" IS NULL
+        WHERE tpl."deletedAt" IS NULL
+        GROUP BY tpl.id, tpl.title
+        HAVING COUNT(DISTINCT tr.id) > 0
+        ORDER BY deviation_rate DESC
+      `;
     }
-
-    const query = `
-      SELECT
-        tpl.id as template_id,
-        tpl.title as template_title,
-        COUNT(DISTINCT tr.id) as total_tasks,
-        COUNT(DISTINCT CASE WHEN tr.has_deviation THEN tr.id END) as deviation_tasks,
-        (COUNT(DISTINCT CASE WHEN tr.has_deviation THEN tr.id END) * 100.0 / NULLIF(COUNT(DISTINCT tr.id), 0)) as deviation_rate
-      FROM templates tpl
-      LEFT JOIN task_records tr ON tr.template_id = tpl.id AND tr.deleted_at IS NULL
-      WHERE tpl.deleted_at IS NULL ${dateCondition}
-      GROUP BY tpl.id, tpl.title
-      HAVING COUNT(DISTINCT tr.id) > 0
-      ORDER BY deviation_rate DESC
-    `;
-
-    const rawData: any[] = await this.prisma.$queryRawUnsafe(query, ...params);
 
     return rawData.map((row) => ({
       templateId: row.template_id,

@@ -183,6 +183,21 @@ export class StorageService {
   }
 
   /**
+   * 获取文件流
+   */
+  async getFileStream(path: string): Promise<NodeJS.ReadableStream> {
+    try {
+      return await this.client.getObject(this.bucket, path);
+    } catch (error) {
+      throw new BusinessException(
+        ErrorCode.NOT_FOUND,
+        '文件不存在',
+        error,
+      );
+    }
+  }
+
+  /**
    * 复制文件
    */
   async copyFile(sourcePath: string, destPath: string): Promise<void> {

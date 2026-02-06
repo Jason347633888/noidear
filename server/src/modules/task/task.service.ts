@@ -1,11 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { DeviationService } from '../deviation/deviation.service';
 import { BusinessException, ErrorCode } from '../../common/exceptions/business.exception';
 import { CreateTaskDto, TaskQueryDto, SubmitTaskDto, ApproveTaskDto } from './dto';
 
 @Injectable()
 export class TaskService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly deviationService: DeviationService,
+  ) {}
 
   /**
    * 创建任务
@@ -101,52 +105,32 @@ export class TaskService {
    */
   async submit(dto: SubmitTaskDto, userId: string) {
     return this.prisma.$transaction(async (tx) => {
-      // 锁定任务行，防止并发问题
-      const task = await tx.task.findUnique({
-        where: { id: dto.taskId, deletedAt: null },
-      });
+      const task = await this.validateTaskForSubmit(tx, dto.taskId);
+      const template = await this.getTemplate(tx, task.templateId);
 
-      if (!task) {
-        throw new BusinessException(ErrorCode.NOT_FOUND, '任务不存在');
-      }
+      const deviations = this.deviationService.detectDeviations(
+        template.fieldsJson as any[],
+        dto.data || {},
+      );
 
-      if (task.status !== 'pending') {
-        throw new BusinessException(
-          ErrorCode.CONFLICT,
-          `任务 [${task.id}] 已结束，不能提交，当前状态：${task.status}`,
+      const record = await this.createTaskRecord(
+        tx,
+        dto,
+        userId,
+        template.version,
+        deviations.length,
+      );
+
+      if (deviations.length > 0) {
+        await this.deviationService.createDeviationReports(
+          record.id,
+          template.id,
+          deviations,
+          dto.deviationReasons || {},
+          userId,
         );
       }
 
-      // 检查是否已有人提交过此任务（防止重复提交）
-      const existingRecord = await tx.taskRecord.findFirst({
-        where: {
-          taskId: dto.taskId,
-          status: { in: ['submitted', 'approved'] },
-          deletedAt: null,
-        },
-      });
-
-      if (existingRecord) {
-        throw new BusinessException(
-          ErrorCode.CONFLICT,
-          '该任务已被其他人提交，不能重复提交',
-        );
-      }
-
-      // 创建任务记录
-      const record = await tx.taskRecord.create({
-        data: {
-          id: crypto.randomUUID(),
-          taskId: dto.taskId,
-          templateId: task.templateId,
-          dataJson: (dto.data || {}) as any,
-          submitterId: userId,
-          status: 'submitted',
-          submittedAt: new Date(),
-        },
-      });
-
-      // 更新任务状态为已提交，防止其他人继续提交
       await tx.task.update({
         where: { id: dto.taskId },
         data: { status: 'submitted' },
@@ -154,7 +138,76 @@ export class TaskService {
 
       return record;
     }, {
-      isolationLevel: 'Serializable', // 使用最高隔离级别防止竞态条件
+      isolationLevel: 'Serializable',
+    });
+  }
+
+  private async validateTaskForSubmit(tx: any, taskId: string) {
+    const task = await tx.task.findUnique({
+      where: { id: taskId, deletedAt: null },
+    });
+
+    if (!task) {
+      throw new BusinessException(ErrorCode.NOT_FOUND, '任务不存在');
+    }
+
+    if (task.status !== 'pending') {
+      throw new BusinessException(
+        ErrorCode.CONFLICT,
+        `任务 [${task.id}] 已结束，不能提交，当前状态：${task.status}`,
+      );
+    }
+
+    const existingRecord = await tx.taskRecord.findFirst({
+      where: {
+        taskId,
+        status: { in: ['submitted', 'approved'] },
+        deletedAt: null,
+      },
+    });
+
+    if (existingRecord) {
+      throw new BusinessException(
+        ErrorCode.CONFLICT,
+        '该任务已被其他人提交，不能重复提交',
+      );
+    }
+
+    return task;
+  }
+
+  private async getTemplate(tx: any, templateId: string) {
+    const template = await tx.template.findUnique({
+      where: { id: templateId, deletedAt: null },
+    });
+
+    if (!template) {
+      throw new BusinessException(ErrorCode.NOT_FOUND, '模板不存在');
+    }
+
+    return template;
+  }
+
+  private async createTaskRecord(
+    tx: any,
+    dto: SubmitTaskDto,
+    userId: string,
+    templateVersion: any,
+    deviationCount: number,
+  ) {
+    return tx.taskRecord.create({
+      data: {
+        id: crypto.randomUUID(),
+        taskId: dto.taskId,
+        templateId: (await tx.task.findUnique({ where: { id: dto.taskId } })).templateId,
+        dataJson: (dto.data || {}) as any,
+        submitterId: userId,
+        status: 'submitted',
+        submittedAt: new Date(),
+        relatedTemplateVersion: templateVersion,
+        hasDeviation: deviationCount > 0,
+        deviationCount,
+      },
     });
   }
 

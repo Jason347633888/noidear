@@ -8,7 +8,6 @@ describe('DeviationAnalyticsService', () => {
 
   const mockPrisma = {
     $queryRaw: jest.fn(),
-    $queryRawUnsafe: jest.fn(),
     deviationReport: {
       groupBy: jest.fn(),
       count: jest.fn(),
@@ -40,7 +39,7 @@ describe('DeviationAnalyticsService', () => {
       const startDate = new Date('2024-01-01');
       const endDate = new Date('2024-01-31');
 
-      mockPrisma.$queryRawUnsafe.mockResolvedValue([
+      mockPrisma.$queryRaw.mockResolvedValue([
         { date: '2024-01-01', count: '10' },
         { date: '2024-01-02', count: '15' },
         { date: '2024-01-03', count: '8' },
@@ -71,7 +70,7 @@ describe('DeviationAnalyticsService', () => {
       const startDate = new Date('2024-01-01');
       const endDate = new Date('2024-01-31');
 
-      mockPrisma.$queryRawUnsafe.mockResolvedValue([
+      mockPrisma.$queryRaw.mockResolvedValue([
         { week: '2024-W01', count: '25' },
         { week: '2024-W02', count: '30' },
       ]);
@@ -96,7 +95,7 @@ describe('DeviationAnalyticsService', () => {
       const startDate = new Date('2024-01-01');
       const endDate = new Date('2024-12-31');
 
-      mockPrisma.$queryRawUnsafe.mockResolvedValue([
+      mockPrisma.$queryRaw.mockResolvedValue([
         { month: '2024-01', count: '50' },
         { month: '2024-02', count: '60' },
       ]);
@@ -179,7 +178,7 @@ describe('DeviationAnalyticsService', () => {
 
   describe('getDeviationRateByDepartment', () => {
     it('应该返回按部门统计的偏离率', async () => {
-      mockPrisma.$queryRawUnsafe.mockResolvedValue([
+      mockPrisma.$queryRaw.mockResolvedValue([
         {
           department_id: 'dept1',
           department_name: '生产部',
@@ -212,17 +211,17 @@ describe('DeviationAnalyticsService', () => {
       const startDate = new Date('2024-01-01');
       const endDate = new Date('2024-01-31');
 
-      mockPrisma.$queryRawUnsafe.mockResolvedValue([]);
+      mockPrisma.$queryRaw.mockResolvedValue([]);
 
       await service.getDeviationRateByDepartment(startDate, endDate);
 
-      expect(mockPrisma.$queryRawUnsafe).toHaveBeenCalled();
+      expect(mockPrisma.$queryRaw).toHaveBeenCalled();
     });
   });
 
   describe('getDeviationRateByTemplate', () => {
     it('应该返回按模板统计的偏离率', async () => {
-      mockPrisma.$queryRawUnsafe.mockResolvedValue([
+      mockPrisma.$queryRaw.mockResolvedValue([
         {
           template_id: 'tpl1',
           template_title: '配方A',
