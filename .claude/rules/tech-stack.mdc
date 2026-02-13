@@ -4,7 +4,9 @@
 
 ---
 
-## 技术栈版本
+## 当前技术栈版本
+
+> **说明**: 以下为当前项目实际使用的技术栈，新功能需求可根据实际情况扩展
 
 ### 前端
 
@@ -17,7 +19,14 @@
 | Axios | ^1.6.0 | HTTP客户端 |
 | Vue Router | ^4.0.0 | 路由 |
 | dayjs | ^1.11.0 | 日期处理 |
-| lodash-es | ^4.17.21 | 工具函数（仅复杂场景） |
+| lodash-es | ^4.17.21 | 工具函数（仅复杂场景，优先使用原生） |
+| echarts | ^6.0.0 | 数据可视化（偏离统计图表） |
+| echarts-wordcloud | ^2.1.0 | 词云图（偏离分析）|
+| sortablejs | ^1.15.6 | 拖拽排序（模板字段排序）|
+
+**Vite 插件**:
+- unplugin-auto-import: ^0.17.0（自动导入）
+- unplugin-vue-components: ^0.26.0（组件自动注册）
 
 ### 后端
 
@@ -28,11 +37,17 @@
 | TypeScript | ^5.3.0 | 类型安全 |
 | Prisma | ^5.7.0 | ORM框架 |
 | @prisma/client | ^5.7.0 | 数据库客户端 |
-| xlsx | ^0.18.5 | Excel解析 |
+| xlsx | ^0.18.5 | Excel 解析 |
+| exceljs | ^4.4.0 | Excel 导出（复杂格式）|
 | bcrypt | ^5.1.0 | 密码加密 |
-| jsonwebtoken | ^9.0.0 | JWT |
-| class-validator | ^0.14.0 | DTO验证 |
-| class-transformer | ^0.5.0 | DTO转换 |
+| @nestjs/jwt | ^10.2.0 | JWT（NestJS 官方）|
+| @nestjs/passport | ^10.0.3 | 认证策略 |
+| @nestjs/throttler | ^6.5.0 | API 限流 |
+| @nestjs/swagger | ^7.1.0 | API 文档生成 |
+| helmet | ^8.1.0 | 安全 HTTP 头 |
+| minio | ^8.0.6 | MinIO 对象存储客户端 |
+| class-validator | ^0.14.0 | DTO 验证 |
+| class-transformer | ^0.5.0 | DTO 转换 |
 
 ### 数据库
 
@@ -57,41 +72,104 @@
 
 | 端 | 配置 | 说明 |
 |----|------|------|
-| 前端 | Antfu ESLint Config | 严格模式，强制最佳实践 |
+| 前端 | @typescript-eslint + eslint-plugin-vue | TypeScript + Vue 3 规则 |
 | 后端 | NestJS 默认配置 | 标准 TypeScript 规则 |
 
 ### 强制规则
 
-| 规则 | 级别 | 说明 |
-|------|------|------|
-| `no-console` | error | 不允许 console.log |
-| `no-unused-vars` | error | 未使用变量报错 |
-| `prefer-const` | error | 强制使用 const |
-| `vue/multi-word-component-names` | error | 组件名多个单词 |
+| 规则 | 开发环境 | 生产环境 | 说明 |
+|------|----------|----------|------|
+| `no-console` | warn | error | 开发时允许调试，构建时必须移除 |
+| `no-unused-vars` | warn | error | 开发时警告，构建时报错 |
+| `prefer-const` | error | error | 始终强制使用 const |
+| `vue/multi-word-component-names` | error | error | 组件名多个单词 |
 
 ---
 
-## 禁止使用的库
+## 开发约束（不限制业务需求）
 
-- ❌ jQuery
-- ❌ Lodash（用 lodash-es 代替）
-- ❌ Axios拦截器替代品
-- ❌ 其他UI框架（Vuetify、Ant Design等）
-- ❌ 其他ORM（TypeORM、Sequelize等）
+> **重要**: 以下约束仅针对**开发实现方式**，不限制业务需求新增
+
+### 核心框架锁定
+
+- ❌ 禁止更换核心框架（Vue 3 → React、NestJS → Express）
+- ❌ 禁止使用其他 UI 框架（Vuetify、Ant Design、TDesign）
+- ❌ 禁止使用其他 ORM（TypeORM、Sequelize、Knex）
+
+### 已淘汰的库
+
+- ❌ jQuery（不符合现代前端开发）
+- ❌ Lodash（用 lodash-es 代替，支持 Tree Shaking）
+- ❌ Moment.js（用 dayjs 代替，体积更小）
 
 ---
 
-## 依赖安装规则
+## 新增库引入流程
+
+### 允许直接引入（无需确认）
+
+**前端**:
+- Vite 插件：vite-plugin-*、@vitejs/*
+- TypeScript 类型：@types/*
+- 轻量工具库：date-fns、zod、nanoid、chalk
+- 测试库：vitest、@testing-library/*
+
+**后端**:
+- NestJS 官方包：@nestjs/*
+- TypeScript 类型：@types/*
+- 轻量工具库：lodash、dayjs、nanoid
+- 测试库：@nestjs/testing、supertest
+
+### 需要评估后引入
+
+引入以下类型的库时，需评估**安全性、维护性、包大小、替代方案**：
+
+- UI 组件库（Element Plus 之外）
+- 状态管理库（Pinia 之外）
+- ORM 库（Prisma 之外）
+- 大型框架级库（体积 > 100KB）
+- 数据可视化库（ECharts、D3.js 等）
+
+**评估标准**:
+1. **安全性**: npm audit 无高危漏洞
+2. **维护性**: 最近 6 个月有更新
+3. **包大小**: 尽量选择轻量级库
+4. **替代方案**: 是否可用原生方法或已有库实现
 
 ```bash
-# 允许
-npm install vue@^3.4.0
-npm install element-plus@^2.5.0
+# ✅ 允许直接引入
+npm install @types/node
+npm install vite-plugin-compression
 
-# 需要审批
-npm install some-new-library
+# ⚠️ 需要评估
+npm install d3  # 大型可视化库，需评估是否必要
 
-# 禁止
-npm install vue@latest
-npm install some-random-utility
+# ❌ 禁止引入
+npm install moment  # 用 dayjs 代替
+npm install jquery  # 不符合现代开发规范
+```
+
+---
+
+## 依赖版本管理
+
+| 版本类型 | 升级规则 | 示例 | 说明 |
+|---------|----------|------|------|
+| **补丁版本** | ✅ 允许自动升级 | 5.0.0 → 5.0.13 | Bug 修复，安全补丁 |
+| **小版本** | ⚠️ 需评估后升级 | 5.0.0 → 5.1.0 | 新特性，向后兼容 |
+| **大版本** | ❌ 需充分测试和批准 | 5.x → 6.x | 破坏性变更 |
+| **安全更新** | ✅ 立即更新 | npm audit fix | 修复安全漏洞 |
+
+```bash
+# ✅ 允许：补丁升级
+npm install vite@~5.0.0  # 允许 5.0.x
+
+# ⚠️ 需评估：小版本升级
+npm install vite@^5.0.0  # 允许 5.x.x，需测试
+
+# ❌ 禁止：使用 latest
+npm install vite@latest
+
+# ✅ 允许：安全修复
+npm audit fix
 ```

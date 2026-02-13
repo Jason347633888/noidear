@@ -1,9 +1,11 @@
 # 文档管理系统 - 前端交互设计规范
 
-> **版本**: 1.0  
-> **最后更新**: 2026-02-13  
-> **技术栈**: Vue 3 + Element Plus + TypeScript  
+> **版本**: 1.1
+> **最后更新**: 2026-02-13
+> **文档行数**: ~1,900 行
+> **技术栈**: Vue 3 + Element Plus + TypeScript
 > **设计参考**: SPMS-Web + Material Design + Apple HIG
+> **新增内容**: UI 状态管理、快捷键、动画、可访问性、异常处理、响应式设计
 
 ---
 
@@ -17,7 +19,13 @@
 6. [模块 5: 权限管理](#模块-5-权限管理)
 7. [模块 6: 回收站](#模块-6-回收站)
 8. [模块 7: 通知系统](#模块-7-通知系统)
-9. [附录: 组件库规范](#附录-组件库规范)
+9. [附录 1: 组件库规范](#附录-组件库规范)
+10. [附录 2: UI 状态管理规范](#附录-2-ui-状态管理规范)
+11. [附录 3: 快捷键支持](#附录-3-快捷键支持)
+12. [附录 4: 动画与过渡效果](#附录-4-动画与过渡效果)
+13. [附录 5: 可访问性（Accessibility）规范](#附录-5-可访问性accessibility规范)
+14. [附录 6: 异常处理规范](#附录-6-异常处理规范)
+15. [附录 7: 响应式设计规范](#附录-7-响应式设计规范)
 
 ---
 
@@ -943,7 +951,7 @@ const rules = {
 
 ---
 
-## 附录: 组件库规范
+## 附录 1: 组件库规范
 
 ### Element Plus 组件使用规范
 
@@ -1069,6 +1077,867 @@ await ElMessageBox.confirm(
 
 ---
 
+## 附录 2: UI 状态管理规范
+
+### 加载状态 (Loading)
+
+#### 全局加载
+
+**使用场景**: 页面初始加载、大数据量请求
+
+```vue
+<script setup lang="ts">
+import { ElLoading } from 'element-plus'
+
+const fetchData = async () => {
+  const loading = ElLoading.service({
+    lock: true,
+    text: '加载中...',
+    background: 'rgba(0, 0, 0, 0.7)'
+  })
+
+  try {
+    await api.getData()
+  } finally {
+    loading.close()
+  }
+}
+</script>
+```
+
+#### 局部加载
+
+**使用场景**: 表格加载、对话框内数据加载
+
+```vue
+<el-table v-loading="loading" :data="tableData">
+  <!-- 表格列 -->
+</el-table>
+```
+
+#### 骨架屏 (Skeleton)
+
+**使用场景**: 首屏加载优化，提升感知性能
+
+```vue
+<template>
+  <el-skeleton v-if="loading" :rows="5" animated />
+  <div v-else>
+    <!-- 实际内容 -->
+  </div>
+</template>
+```
+
+**骨架屏模板**:
+```vue
+<el-skeleton :rows="5" animated>
+  <template #template>
+    <el-skeleton-item variant="h1" style="width: 50%" />
+    <el-skeleton-item variant="text" style="margin-top: 16px" />
+    <el-skeleton-item variant="text" style="width: 60%" />
+  </template>
+</el-skeleton>
+```
+
+### 错误状态 (Error)
+
+#### API 错误提示
+
+**网络错误**:
+```typescript
+try {
+  await api.createDocument(data)
+  ElMessage.success('创建成功')
+} catch (error) {
+  if (error.response?.status === 401) {
+    ElMessage.error('登录已过期，请重新登录')
+    router.push('/login')
+  } else if (error.response?.status === 403) {
+    ElMessage.error('无权限执行此操作')
+  } else if (error.response?.status === 500) {
+    ElMessage.error('服务器错误，请稍后重试')
+  } else {
+    ElMessage.error(error.message || '操作失败')
+  }
+}
+```
+
+#### 表单验证错误
+
+**字段级错误**:
+```vue
+<el-form-item label="文档名称" prop="name" :error="errors.name">
+  <el-input v-model="formData.name" />
+</el-form-item>
+```
+
+**表单提交错误**:
+```typescript
+const submitForm = async () => {
+  try {
+    await formRef.value?.validate()
+    await api.submitForm(formData)
+  } catch (error) {
+    if (error.fields) {
+      // 表单验证失败
+      ElMessage.warning('请检查表单填写')
+    } else {
+      // 提交失败
+      ElMessage.error('提交失败: ' + error.message)
+    }
+  }
+}
+```
+
+#### 空状态 (Empty)
+
+**列表为空**:
+```vue
+<template>
+  <el-table v-if="tableData.length > 0" :data="tableData">
+    <!-- 表格列 -->
+  </el-table>
+
+  <el-empty v-else description="暂无数据">
+    <el-button type="primary" @click="handleCreate">
+      创建第一条记录
+    </el-button>
+  </el-empty>
+</template>
+```
+
+**搜索无结果**:
+```vue
+<el-empty
+  description="未找到匹配的结果"
+  :image-size="120"
+>
+  <el-button @click="resetSearch">清空搜索条件</el-button>
+</el-empty>
+```
+
+### 提交状态
+
+**按钮加载状态**:
+```vue
+<el-button
+  type="primary"
+  :loading="submitting"
+  :disabled="submitting"
+  @click="handleSubmit"
+>
+  {{ submitting ? '提交中...' : '提交' }}
+</el-button>
+```
+
+**表单禁用状态**:
+```vue
+<el-form :disabled="submitting">
+  <!-- 表单字段 -->
+</el-form>
+```
+
+---
+
+## 附录 3: 快捷键支持
+
+### 全局快捷键
+
+| 快捷键 | 功能 | 作用范围 |
+|--------|------|---------|
+| `Ctrl + S` / `⌘ + S` | 保存 | 编辑对话框、表单页 |
+| `Esc` | 关闭对话框 | 所有对话框 |
+| `Ctrl + F` / `⌘ + F` | 聚焦搜索框 | 列表页 |
+| `Ctrl + Enter` / `⌘ + Enter` | 提交表单 | 编辑对话框、表单页 |
+| `Alt + N` | 新建记录 | 列表页 |
+| `Alt + R` | 刷新列表 | 列表页 |
+
+### 表格快捷键
+
+| 快捷键 | 功能 | 说明 |
+|--------|------|------|
+| `↑` / `↓` | 上下选择行 | 表格焦点时 |
+| `Enter` | 编辑当前行 | 表格焦点时 |
+| `Delete` | 删除当前行 | 表格焦点时（需确认） |
+| `Ctrl + A` / `⌘ + A` | 全选 | 表格焦点时 |
+| `Space` | 勾选当前行 | 表格焦点时 |
+
+### 对话框快捷键
+
+| 快捷键 | 功能 | 说明 |
+|--------|------|------|
+| `Tab` | 下一个字段 | 表单内导航 |
+| `Shift + Tab` | 上一个字段 | 表单内导航 |
+| `Enter` | 确定 | 焦点在确定按钮时 |
+| `Esc` | 取消/关闭 | 任意时候 |
+
+### 实现示例
+
+**全局快捷键监听**:
+```typescript
+// composables/useShortcuts.ts
+import { onMounted, onUnmounted } from 'vue'
+
+export function useShortcuts(shortcuts: Record<string, () => void>) {
+  const handleKeydown = (e: KeyboardEvent) => {
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+    const ctrlKey = isMac ? e.metaKey : e.ctrlKey
+
+    // Ctrl/⌘ + S: 保存
+    if (ctrlKey && e.key === 's') {
+      e.preventDefault()
+      shortcuts.save?.()
+    }
+
+    // Esc: 关闭
+    if (e.key === 'Escape') {
+      shortcuts.close?.()
+    }
+
+    // Ctrl/⌘ + Enter: 提交
+    if (ctrlKey && e.key === 'Enter') {
+      e.preventDefault()
+      shortcuts.submit?.()
+    }
+  }
+
+  onMounted(() => {
+    document.addEventListener('keydown', handleKeydown)
+  })
+
+  onUnmounted(() => {
+    document.removeEventListener('keydown', handleKeydown)
+  })
+}
+```
+
+**使用方式**:
+```vue
+<script setup lang="ts">
+import { useShortcuts } from '@/composables/useShortcuts'
+
+useShortcuts({
+  save: handleSave,
+  close: handleClose,
+  submit: handleSubmit
+})
+</script>
+```
+
+---
+
+## 附录 4: 动画与过渡效果
+
+### 页面切换动画
+
+**路由切换动画**:
+```vue
+<template>
+  <router-view v-slot="{ Component }">
+    <transition name="fade" mode="out-in">
+      <component :is="Component" />
+    </transition>
+  </router-view>
+</template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
+```
+
+### 列表项动画
+
+**列表插入/删除动画**:
+```vue
+<template>
+  <transition-group name="list" tag="div">
+    <div v-for="item in items" :key="item.id" class="list-item">
+      {{ item.name }}
+    </div>
+  </transition-group>
+</template>
+
+<style scoped>
+.list-move,
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.3s ease;
+}
+
+.list-enter-from {
+  opacity: 0;
+  transform: translateY(-30px);
+}
+
+.list-leave-to {
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+.list-leave-active {
+  position: absolute;
+}
+</style>
+```
+
+### 对话框动画
+
+**对话框打开/关闭动画**:
+```vue
+<el-dialog
+  v-model="dialogVisible"
+  :append-to-body="true"
+  :close-on-click-modal="false"
+>
+  <template #default>
+    <transition name="dialog-fade" mode="out-in">
+      <div v-if="dialogVisible">
+        <!-- 对话框内容 -->
+      </div>
+    </transition>
+  </template>
+</el-dialog>
+
+<style scoped>
+.dialog-fade-enter-active,
+.dialog-fade-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dialog-fade-enter-from {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.dialog-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+</style>
+```
+
+### 加载动画
+
+**自定义加载动画**:
+```vue
+<template>
+  <div v-if="loading" class="loading-spinner">
+    <div class="spinner"></div>
+    <p>加载中...</p>
+  </div>
+</template>
+
+<style scoped>
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-left-color: #409EFF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>
+```
+
+### 提示消息动画
+
+**Toast 弹出动画**（Element Plus 自带）:
+```typescript
+ElMessage({
+  message: '操作成功',
+  type: 'success',
+  duration: 2000,
+  showClose: true,
+  offset: 60  // 从顶部偏移量
+})
+```
+
+---
+
+## 附录 5: 可访问性（Accessibility）规范
+
+### ARIA 属性使用
+
+#### 按钮角色
+
+```vue
+<button
+  role="button"
+  :aria-label="isOpen ? '关闭菜单' : '打开菜单'"
+  :aria-expanded="isOpen"
+  @click="toggleMenu"
+>
+  <span class="icon" aria-hidden="true">☰</span>
+</button>
+```
+
+#### 对话框角色
+
+```vue
+<div
+  role="dialog"
+  aria-modal="true"
+  :aria-labelledby="dialogTitleId"
+  :aria-describedby="dialogDescId"
+>
+  <h2 :id="dialogTitleId">对话框标题</h2>
+  <p :id="dialogDescId">对话框描述</p>
+</div>
+```
+
+#### 表单标签
+
+```vue
+<label for="document-name">文档名称</label>
+<input
+  id="document-name"
+  v-model="formData.name"
+  aria-required="true"
+  :aria-invalid="!!errors.name"
+  :aria-describedby="errors.name ? 'name-error' : undefined"
+/>
+<span v-if="errors.name" id="name-error" role="alert">
+  {{ errors.name }}
+</span>
+```
+
+### 键盘导航支持
+
+#### 表格键盘导航
+
+```vue
+<template>
+  <table
+    role="grid"
+    aria-label="文档列表"
+    @keydown="handleTableKeydown"
+  >
+    <tbody>
+      <tr
+        v-for="(row, index) in tableData"
+        :key="row.id"
+        :tabindex="index === activeRow ? 0 : -1"
+        :aria-selected="index === activeRow"
+        role="row"
+      >
+        <td role="gridcell">{{ row.name }}</td>
+      </tr>
+    </tbody>
+  </table>
+</template>
+
+<script setup lang="ts">
+const activeRow = ref(0)
+
+const handleTableKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    activeRow.value = Math.min(activeRow.value + 1, tableData.length - 1)
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    activeRow.value = Math.max(activeRow.value - 1, 0)
+  } else if (e.key === 'Enter') {
+    handleEdit(tableData[activeRow.value])
+  }
+}
+</script>
+```
+
+#### 对话框焦点管理
+
+```vue
+<script setup lang="ts">
+import { nextTick, ref, watch } from 'vue'
+
+const dialogVisible = ref(false)
+const firstFocusableElement = ref<HTMLElement>()
+const lastFocusableElement = ref<HTMLElement>()
+
+watch(dialogVisible, async (visible) => {
+  if (visible) {
+    await nextTick()
+    // 自动聚焦第一个可聚焦元素
+    firstFocusableElement.value?.focus()
+  }
+})
+
+const handleDialogKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Tab') {
+    const focusableElements = Array.from(
+      document.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])')
+    ) as HTMLElement[]
+
+    const firstElement = focusableElements[0]
+    const lastElement = focusableElements[focusableElements.length - 1]
+
+    if (e.shiftKey && document.activeElement === firstElement) {
+      e.preventDefault()
+      lastElement.focus()
+    } else if (!e.shiftKey && document.activeElement === lastElement) {
+      e.preventDefault()
+      firstElement.focus()
+    }
+  }
+}
+</script>
+```
+
+### 屏幕阅读器支持
+
+#### 实时更新通知
+
+```vue
+<div
+  role="status"
+  aria-live="polite"
+  aria-atomic="true"
+  class="sr-only"
+>
+  {{ statusMessage }}
+</div>
+
+<style>
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+</style>
+```
+
+#### 错误通知
+
+```vue
+<div
+  v-if="error"
+  role="alert"
+  aria-live="assertive"
+  class="error-message"
+>
+  {{ error }}
+</div>
+```
+
+### 色盲友好设计
+
+#### 状态不仅依赖颜色
+
+```vue
+<!-- ❌ 不好：仅用颜色区分 -->
+<span class="status success">成功</span>
+
+<!-- ✅ 好：颜色 + 图标 + 文字 -->
+<el-tag type="success">
+  <el-icon><Check /></el-icon>
+  成功
+</el-tag>
+```
+
+#### 对比度要求
+
+```css
+/* WCAG AA 标准：文本对比度至少 4.5:1 */
+.text-on-light {
+  color: #333333;  /* 对比度 12.6:1 ✅ */
+  background: #ffffff;
+}
+
+.text-on-dark {
+  color: #ffffff;  /* 对比度 21:1 ✅ */
+  background: #000000;
+}
+
+/* 大文本（18px+）对比度至少 3:1 */
+.large-text {
+  font-size: 18px;
+  color: #666666;  /* 对比度 5.7:1 ✅ */
+  background: #ffffff;
+}
+```
+
+---
+
+## 附录 6: 异常处理规范
+
+### 网络异常
+
+**请求超时**:
+```typescript
+import axios from 'axios'
+
+const request = axios.create({
+  timeout: 10000  // 10秒超时
+})
+
+request.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.code === 'ECONNABORTED') {
+      ElMessage.error('请求超时，请检查网络连接')
+    } else if (!error.response) {
+      ElMessage.error('网络连接失败，请稍后重试')
+    }
+    return Promise.reject(error)
+  }
+)
+```
+
+**请求重试**:
+```typescript
+async function fetchWithRetry(url: string, maxRetries = 3) {
+  let lastError: Error
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await request.get(url)
+    } catch (error) {
+      lastError = error as Error
+      if (i < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)))
+      }
+    }
+  }
+
+  throw lastError!
+}
+```
+
+### 表单验证异常
+
+**自定义验证器**:
+```typescript
+const validateDocumentName = (rule: any, value: string, callback: Function) => {
+  if (!value) {
+    callback(new Error('请输入文档名称'))
+  } else if (value.length > 200) {
+    callback(new Error('文档名称不能超过200字符'))
+  } else if (!/^[a-zA-Z0-9\u4e00-\u9fa5_-]+$/.test(value)) {
+    callback(new Error('文档名称只能包含中英文、数字、下划线和横线'))
+  } else {
+    callback()
+  }
+}
+
+const rules = {
+  name: [
+    { required: true, message: '请输入文档名称', trigger: 'blur' },
+    { validator: validateDocumentName, trigger: 'blur' }
+  ]
+}
+```
+
+### 权限不足处理
+
+**403 权限拦截**:
+```typescript
+request.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response?.status === 403) {
+      ElMessage.error('无权限执行此操作')
+      // 可选：跳转到权限申请页
+      // router.push('/request-permission')
+    }
+    return Promise.reject(error)
+  }
+)
+```
+
+**前端按钮权限控制**:
+```vue
+<template>
+  <el-button
+    v-if="hasPermission('DOCUMENT_DELETE')"
+    type="danger"
+    @click="handleDelete"
+  >
+    删除
+  </el-button>
+</template>
+
+<script setup lang="ts">
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+
+const hasPermission = (permission: string) => {
+  return userStore.permissions.includes(permission)
+}
+</script>
+```
+
+### 数据冲突处理
+
+**乐观锁冲突**:
+```typescript
+try {
+  await api.updateDocument({
+    id: document.id,
+    version: document.version,  // 版本号
+    ...updates
+  })
+  ElMessage.success('保存成功')
+} catch (error) {
+  if (error.response?.status === 409) {
+    ElMessageBox.confirm(
+      '该文档已被其他用户修改，是否重新加载最新版本？',
+      '数据冲突',
+      {
+        confirmButtonText: '重新加载',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    ).then(() => {
+      location.reload()  // 重新加载页面
+    })
+  }
+}
+```
+
+**并发提交冲突**:
+```typescript
+const isSubmitting = ref(false)
+
+const handleSubmit = async () => {
+  if (isSubmitting.value) {
+    ElMessage.warning('操作进行中，请稍候...')
+    return
+  }
+
+  isSubmitting.value = true
+  try {
+    await api.submitForm(formData)
+    ElMessage.success('提交成功')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+```
+
+---
+
+## 附录 7: 响应式设计规范
+
+### 断点定义
+
+| 断点 | 设备类型 | 最小宽度 | 容器宽度 | MVP 支持 |
+|------|---------|---------|---------|---------|
+| `xs` | 手机 | < 768px | 100% | ❌ 不支持 |
+| `sm` | 平板（竖屏） | ≥ 768px | 750px | ❌ 不支持 |
+| `md` | 平板（横屏） | ≥ 992px | 970px | ❌ 不支持 |
+| `lg` | 桌面 | ≥ 1200px | 1170px | ✅ **主要支持** |
+| `xl` | 大屏桌面 | ≥ 1920px | 1200px | ✅ **主要支持** |
+
+**说明**: MVP 阶段仅支持桌面端（≥ 1200px），移动端适配在后续版本实现。
+
+### 桌面端布局规范
+
+**最小支持分辨率**: 1366 × 768（主流桌面）
+
+**布局结构**:
+```
+┌──────────────────────────────────────────┐
+│ Header (固定高度 60px)                    │
+├──────┬───────────────────────────────────┤
+│      │                                   │
+│ 侧边栏│         主内容区                  │
+│ 200px│      (自适应宽度)                 │
+│      │                                   │
+│      │                                   │
+└──────┴───────────────────────────────────┘
+```
+
+**容器最大宽度**:
+```css
+.main-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+```
+
+### 表格响应式处理
+
+**固定操作列**:
+```vue
+<el-table>
+  <el-table-column prop="name" label="名称" min-width="200" />
+  <el-table-column prop="status" label="状态" width="100" />
+  <el-table-column label="操作" width="160" fixed="right" />
+</el-table>
+```
+
+**表格滚动**:
+```vue
+<el-table
+  :max-height="600"
+  :scroll-x="true"
+>
+  <!-- 表格列 -->
+</el-table>
+```
+
+### 表单响应式布局
+
+**2列布局（桌面）**:
+```vue
+<el-form label-width="120px">
+  <el-row :gutter="20">
+    <el-col :span="12">
+      <el-form-item label="文档名称" prop="name">
+        <el-input v-model="formData.name" />
+      </el-form-item>
+    </el-col>
+    <el-col :span="12">
+      <el-form-item label="文档编号" prop="code">
+        <el-input v-model="formData.code" />
+      </el-form-item>
+    </el-col>
+  </el-row>
+</el-form>
+```
+
+**全宽字段（描述性内容）**:
+```vue
+<el-form-item label="文档描述" prop="description">
+  <el-input
+    v-model="formData.description"
+    type="textarea"
+    :rows="4"
+  />
+</el-form-item>
+```
+
+---
+
 ## 总结
 
 本文档详细定义了文档管理系统的前端交互规范，包括：
@@ -1078,6 +1947,12 @@ await ElMessageBox.confirm(
 3. **完整交互流程** - 每个操作的用户步骤和系统响应
 4. **按钮状态映射** - 每个按钮的启用/禁用条件
 5. **组件使用规范** - Element Plus 组件的标准用法
+6. **UI 状态管理** - Loading、Error、Empty、Skeleton 状态处理
+7. **快捷键支持** - 全局快捷键、表格快捷键、对话框快捷键
+8. **动画与过渡** - 页面切换、列表项、对话框、加载动画
+9. **可访问性规范** - ARIA 属性、键盘导航、屏幕阅读器、色盲友好
+10. **异常处理** - 网络异常、表单验证、权限不足、数据冲突
+11. **响应式设计** - 断点定义、桌面端布局、表格/表单响应式处理
 
 开发时请严格按照本规范执行，确保用户体验的一致性和完整性。
 

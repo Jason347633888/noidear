@@ -61,11 +61,38 @@ model User {
 ## 主键类型
 
 - **必须使用**: Snowflake ID（雪花ID）
+- **生成方式**: 使用 `server/src/common/utils/snowflake.ts` 在应用层生成
+- **Prisma 配置**: `id String @id`（不使用 @default，由应用生成）
 - **禁止使用**: 自增ID、UUID
 
 ```prisma
-id String @id @default(uuid())  // 禁止
-id String @id                    // 使用雪花ID生成
+// ✅ 正确：应用层生成雪花 ID
+model User {
+  id String @id  // 由 Snowflake.nextId() 生成
+  username String @unique
+  // ...
+}
+
+// ❌ 错误：不使用 Prisma 自动生成
+model User {
+  id String @id @default(uuid())  // 禁止
+  id String @id @default(cuid())  // 禁止
+}
+```
+
+**使用示例**:
+```typescript
+import { Snowflake } from '@/common/utils/snowflake';
+
+const snowflake = new Snowflake(1, 1);
+const userId = snowflake.nextId();
+
+await prisma.user.create({
+  data: {
+    id: userId,  // 雪花 ID
+    username: 'test'
+  }
+});
 ```
 
 ## 软删除
@@ -105,9 +132,42 @@ npx prisma migrate status
 npx prisma migrate rollback
 ```
 
+## SQL 查询规范
+
+| 约束项 | 具体要求 |
+|--------|----------|
+| **优先使用 Prisma** | 标准 CRUD 操作必须用 Prisma Client |
+| **允许原生 SQL** | 复杂查询（批次追溯、统计分析）可用 `prisma.$queryRaw` 或 `prisma.$executeRaw` |
+| **必须参数化查询** | 原生 SQL 必须使用参数化查询，禁止字符串拼接（防止 SQL 注入）|
+| **需要注释说明** | 使用原生 SQL 时需注释说明原因（性能优化、复杂关联等）|
+
+**允许使用原生 SQL 的场景**:
+- 批次追溯（正向/反向追溯，多表 JOIN）
+- 统计分析（GROUP BY、窗口函数）
+- 全文搜索
+- 数据库特定功能（PostgreSQL JSON 操作）
+
+**正确示例**:
+```typescript
+// ✅ 复杂批次追溯查询
+const result = await prisma.$queryRaw`
+  SELECT pb.*, m.name, s.name as supplier_name
+  FROM production_batches pb
+  LEFT JOIN batch_material_usage bmu ON pb.id = bmu.production_batch_id
+  LEFT JOIN material_batches mb ON bmu.material_batch_id = mb.id
+  LEFT JOIN materials m ON mb.material_id = m.id
+  LEFT JOIN suppliers s ON mb.supplier_id = s.id
+  WHERE pb.batch_number = ${batchNumber}
+`;
+
+// ❌ 简单查询不应该用原生 SQL
+const users = await prisma.$queryRaw`SELECT * FROM users`;  // 应该用 prisma.user.findMany()
+```
+
+---
+
 ## 禁止的行为
 
 - ❌ 直接修改数据库，不生成迁移文件
-- ❌ 使用 raw SQL 查询
 - ❌ 物理删除数据（使用软删除）
 - ❌ 修改已存在的迁移文件

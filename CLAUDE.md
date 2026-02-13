@@ -1,5 +1,7 @@
 # 🚨 文档管理系统 - AI Agent 指南
 
+> **核心理念**: 规则约束**开发实现方式**（HOW），不限制**业务需求扩展**（WHAT）
+
 > **重要**: 在开始任何开发工作之前，必须先阅读 `.claude/` 目录下的所有规则文件
 
 ---
@@ -7,23 +9,23 @@
 ## 🚨 AI必须遵守的核心规则（最高优先级）
 
 ### 绝对禁止 ❌
-- ❌ 引入未在文档中列出的库
 - ❌ 更换框架（Vue 3 → React, NestJS → Express）
 - ❌ 修改项目目录结构
-- ❌ 添加MVP范围外的功能（Phase 7-12 设计已完成但需用户批准后实施）
 - ❌ 硬编码密码/密钥
 - ❌ 强制推送 Git（force push）
 - ❌ 本地安装运行 Docker 已有的服务（PostgreSQL/Redis/MinIO）
 
 ### 必须遵循 ✅
 - ✅ 使用 Element Plus 组件库
-- ✅ 使用 Prisma ORM（禁止裸SQL）
-- ✅ 使用文档中的API端点
-- ✅ 按 Prisma Schema 创建数据表
+- ✅ 使用 Prisma ORM（复杂查询可用 `$queryRaw`，参考 database.mdc）
 - ✅ 环境变量存储敏感信息
 - ✅ 中文 commit message
 - ✅ 所有API必须有异常处理（try-catch）
-- ✅ PostgreSQL/Redis/MinIO 必须通过 Docker 运行（禁止本地安装）
+- ✅ PostgreSQL/Redis/MinIO 必须通过 Docker 运行
+- ✅ 编写代码前先描述方法并等待批准
+- ✅ 修改超过3个文件先拆分任务
+- ✅ 编写代码后列出潜在问题和测试方案
+- ✅ 遇到错误先写测试用例再修复
 
 ### 🎯 Coding Principle（强制标准）✅
 | 原则 | 具体要求 |
@@ -34,9 +36,12 @@
 | **直接犀利** | 技术批评直接，不委婉不模糊 |
 
 ### 文件类型限制 📁
-- ✅ 仅支持：PDF、Word、Excel
+> **范围**: 仅限用户通过系统上传的业务文件，不包括开发文档（.md/.txt）
+
+- ✅ 用户上传业务文件：仅支持 PDF、Word、Excel
 - ✅ 单文件最大：10MB
 - ✅ 必须上传到 MinIO（禁止存数据库）
+- ✅ 开发文档：允许创建 .md、.txt 等临时文档
 
 ---
 
@@ -55,10 +60,11 @@
 
 ### 技术选型检查
 ```
-□ 1. 这个功能在 MVP Phase 1-6 范围内吗？
-□ 2. 这个库在技术栈清单里吗？（前端：dayjs/lodash-es；后端：xlsx/bcrypt/jsonwebtoken/class-validator）
-□ 3. 这个框架是文档中指定的框架吗？（Vue 3 / NestJS）
-□ 3a. 新增类型定义放在 packages/types/ 了吗？
+□ 1. 这个功能在 docs/DESIGN.md 需求文档中吗？
+□ 2. 需要引入新库吗？
+   - 允许直接引入：Vite插件、@types/*、dayjs、nanoid、@nestjs/*（参考 tech-stack.mdc）
+   - 需要评估：UI组件库、大型框架库（体积 > 100KB）
+□ 3. 使用的是指定框架吗？（Vue 3 / NestJS）
 ```
 
 ### 代码规范检查
@@ -82,7 +88,7 @@
 ```
 □ 13. 异常处理是否完整？
 □ 14. ESLint/Prettier 能通过吗？
-□ 15. 函数长度 < 50行吗？
+□ 15. 函数长度合理吗？（建议 < 50行，复杂业务逻辑允许 < 100行）
 □ 16. 重复代码提取了吗？
 ```
 
@@ -94,13 +100,49 @@
 ### Coding Principle 检查
 ```
 □ 18. 是否消除了边界情况？（Good Taste）
-□ 19. 缩进是否超过3层？（Good Taste）
+□ 19. 缩进是否避免超过3层？（Good Taste）
 □ 20. 是否满足向后兼容？（Never break userspace）
 □ 21. 是否验证了这是真问题？（实用主义）
-□ 22. 沟通是否直接犀利？（沟通风格）
 ```
 
 **任何一项检查不通过，必须停止实现，先解决问题！**
+
+---
+
+## 技术栈清单（完整版）
+
+> **说明**: 以下为项目实际使用的技术栈，新增库参考 tech-stack.mdc 引入流程
+
+### 前端核心
+- Vue 3.4+, Element Plus 2.5+, Vite 5.0+, Pinia 2.1+
+- Vue Router 4.0+, Axios 1.6+, dayjs 1.11+, lodash-es 4.17+
+- echarts 6.0+（数据可视化）, sortablejs 1.15+（拖拽排序）
+- unplugin-auto-import, unplugin-vue-components（自动导入）
+
+### 后端核心
+- Node.js 18 LTS, NestJS 10+, TypeScript 5.3+
+- Prisma 5.7+（ORM）, PostgreSQL 15+, Redis 7+
+- xlsx 0.18+（Excel解析）, exceljs 4.4+（Excel导出）
+- bcrypt 5.1+, @nestjs/jwt, @nestjs/passport（认证）
+- @nestjs/throttler（限流）, @nestjs/swagger（API文档）, helmet（安全）
+- minio 8.0+（对象存储客户端）
+
+### 库引入流程
+**允许直接引入**（无需确认）:
+- Vite 插件：vite-plugin-*, @vitejs/*
+- TypeScript 类型：@types/*
+- 轻量工具库：date-fns, zod, nanoid
+- NestJS 官方包：@nestjs/*
+
+**需要评估后引入**:
+- UI 组件库（Element Plus 之外）
+- 大型框架级库（体积 > 100KB）
+- 数据可视化库（ECharts、D3.js）
+
+**版本管理**:
+- 补丁版本（5.0.0 → 5.0.x）：✅ 允许自动升级
+- 小版本（5.0.0 → 5.x.0）：⚠️ 需评估后升级
+- 大版本（5.x → 6.x）：❌ 需充分测试和批准
 
 ---
 
@@ -120,50 +162,17 @@
 | 文档 | 路径 | 说明 |
 |------|------|------|
 | **需求设计** | `docs/DESIGN.md` | 完整功能、规则、数据模型 |
-| **测试用例** | `docs/TEST-CASES.md` | 548个测试用例 |
 | **项目结构** | `docs/PROJECT_STRUCTURE.md` | 文件导航 + 前端开发计划 |
 | **README** | `README.md` | 快速开始、访问地址 |
 
-## 关键约束（必读）
+---
 
-### 绝对禁止
-- ❌ 引入未在文档中列出的库
-- ❌ 更换框架（Vue 3 → React）
-- ❌ 修改项目目录结构
-- ❌ 添加MVP范围外的功能
-- ❌ 硬编码密码/密钥
-- ❌ 本地安装运行 PostgreSQL/Redis/MinIO（必须用 Docker）
+## ESLint 配置
 
-### 必须遵循
-- ✅ 使用 Element Plus 组件库
-- ✅ 使用文档中的API端点
-- ✅ 按 Prisma Schema 创建数据表
-- ✅ 环境变量存储敏感信息
-- ✅ 中文 commit message
-- ✅ 所有API必须有异常处理（try-catch）
-- ✅ PostgreSQL/Redis/MinIO 必须通过 Docker 运行
-
-### ESLint 配置
-- **前端**: Antfu ESLint Config（严格模式）
-- **后端**: NestJS 默认配置
-- **规则**: `no-console` 报错、`no-unused-vars` 报错、`prefer-const` 强制
-
-## 检查清单
-
-实现前回答：
-
-```
-1. 功能在 MVP Phase 1-6 范围内？
-2. 库在技术栈清单里？
-3. UI 用 Element Plus？
-4. API 端点在文档里？
-5. 密码用环境变量？
-6. PostgreSQL/Redis/MinIO 用 Docker？
-```
-
-## 禁止的行为
-
-见 [rules/constraints.mdc](rules/constraints.mdc)
+- **前端**: @typescript-eslint + eslint-plugin-vue（TypeScript + Vue 3 规则）
+- **后端**: NestJS 默认配置（标准 TypeScript 规则）
+- **开发环境**: `no-console` warn, `no-unused-vars` warn
+- **生产环境**: `no-console` error, `no-unused-vars` error
 
 ---
 
@@ -405,15 +414,17 @@ npx vite build && npm run build
 
 ---
 
-**文档版本**: 3.0
-**最后更新**: 2026-02-06
+**文档版本**: 4.0
+**最后更新**: 2026-02-13
+**变更**: 同步 rules/ 目录修改，明确开发约束 vs 业务需求，补充完整技术栈，修正 ESLint/Prisma 描述，精简冗余内容
+
 **项目状态**:
-- MVP Phase 1-6: 完成 98.1%（51/52 Issue，仅回收站 UI 待完善）
-- Phase 7-12: PRD + LLD 已完成（见 docs/DESIGN.md 第十六章）
-- 下一步: 完成回收站 UI 或启动 Phase 7-12 实现
+- MVP Phase 1-6: 完成 98.1%（51/52 Issue）
+- Phase 7-12: 部分完成（Phase 7-9, 12 已实现）
+- 技术债务: 已识别 3 个 P1 问题（P1-1 归档字段、P1-2 权限表、P1-3 工作流表）
 
 **相关文档**:
-- [完整需求设计](docs/DESIGN.md) - 文档版本 3.0
-- [项目结构导航](docs/PROJECT_STRUCTURE.md) - 文档版本 4.0
-- [测试用例清单](docs/TEST-CASES.md)
-- [项目 README](README.md) - 文档版本 3.0
+- [完整需求设计](docs/DESIGN.md) - 文档版本 10.1
+- [项目结构导航](docs/PROJECT_STRUCTURE.md) - 文档版本 5.0
+- [变更日志](docs/CHANGELOG.md) - 记录版本变更
+- [项目 README](README.md) - 文档版本 3.1

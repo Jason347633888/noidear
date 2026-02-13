@@ -1,9 +1,9 @@
 # 项目结构导航
 
-> 文档版本: 4.0
-> 最后更新: 2026-02-06
+> 文档版本: 5.0
+> 最后更新: 2026-02-13
 > 用途: AI Agent 快速定位文件 + 项目结构参考
-> 项目状态: MVP 98.1% 完成 | Phase 7-12 设计完成
+> 项目状态: MVP 98.1% 完成 | Phase 7-12 部分完成 | 技术债务: 3个P1待实施
 
 ---
 
@@ -28,10 +28,11 @@
 | 项目 | 值 |
 |------|------|
 | 项目名称 | 文档管理系统 (Document Management System) |
-| 技术栈前端 | Vue 3 + Element Plus + Vite + Pinia + Axios |
-| 技术栈后端 | Node.js + NestJS + TypeScript + Prisma |
-| 数据库 | PostgreSQL + Redis |
-| 文件存储 | MinIO |
+| 技术栈前端 | Vue 3.4+ + Element Plus 2.5+ + Vite 5.0+ + Pinia 2.1+ + echarts 6.0+ + sortablejs 1.15+ |
+| 技术栈后端 | Node.js 18 + NestJS 10+ + TypeScript 5.3+ + Prisma 5.7+ |
+| 数据库 | PostgreSQL 15+ + Redis 7+ |
+| 文件存储 | MinIO 8.0+ |
+| 工具库 | exceljs 4.4+ + @nestjs/swagger 7.1+ + helmet 8.1+ + bcrypt 5.1+ |
 | 部署 | Docker + Docker Compose |
 
 ### 1.2 项目路径
@@ -313,6 +314,7 @@ noidear/
 | 任务分发 | task/* | task.js | task/ | Task, TaskRecord |
 | 审批中心 | approval/* | document.js | approval/ | Approval |
 | 站内消息 | notification/List.vue | notification.js | - | Notification |
+| 工作流引擎（v1.1.0） | workflows/* | workflow.js | workflow/ | Workflow, WorkflowStep, WorkflowInstance, WorkflowStepRecord |
 
 ### 4.2 组件与功能对应
 
@@ -351,6 +353,12 @@ noidear/
 | 任务服务 | server/src/modules/task/task.service.ts |
 | 审批 | client/src/views/approval/* |
 | 消息 | client/src/views/notification/List.vue |
+| 工作流列表 | client/src/views/workflows/WorkflowList.vue |
+| 工作流详情 | client/src/views/workflows/WorkflowDetail.vue |
+| 工作流设计器 | client/src/views/workflows/WorkflowDesigner.vue |
+| 工作流API | client/src/api/workflow.js |
+| 工作流服务 | server/src/modules/workflow/workflow.service.ts |
+| 工作流配置 | server/src/config/workflows.json |
 
 ### 5.2 按类型搜索
 
@@ -674,10 +682,153 @@ client/src/stores/
 
 ---
 
-**文档版本**: 4.0
-**最后更新**: 2026-02-06
+## 十一、工作流引擎模块（v1.1.0新增）
+
+### 11.1 模块概述
+
+工作流引擎是文档管理系统的核心扩展模块，提供灵活可配置的业务流程编排能力。
+
+**核心价值**：
+- 🎯 灵活配置：支持 1-N 步骤，不同公司定制不同流程
+- 🔄 可视化管理：拖拽式工作流设计器
+- 📊 数据驱动：工作流统计分析
+
+### 11.2 后端模块文件
+
+**路径**：`server/src/modules/workflow/`
+
+| 文件 | 说明 | 行数 |
+|------|------|------|
+| workflow.module.ts | 工作流模块定义 | ~30 |
+| workflow.service.ts | 核心工作流引擎 | ~500 |
+| workflow.controller.ts | API 控制器 | ~200 |
+| dto/workflow-config.dto.ts | 工作流配置 DTO | ~100 |
+| dto/start-workflow.dto.ts | 启动工作流 DTO | ~50 |
+| dto/submit-step.dto.ts | 提交步骤 DTO | ~50 |
+| dto/approve-step.dto.ts | 审批步骤 DTO | ~50 |
+| services/parallel-approval.service.ts | 并行审批服务 | ~200 |
+| services/conditional-branch.service.ts | 条件分支服务 | ~150 |
+| services/sub-workflow.service.ts | 子工作流服务 | ~150 |
+| services/timeout-handler.service.ts | 超时处理服务 | ~100 |
+| services/delegation.service.ts | 审批人代理服务 | ~100 |
+| services/statistics.service.ts | 工作流统计服务 | ~200 |
+
+### 11.3 前端页面文件
+
+**路径**：`client/src/views/workflows/`
+
+| 文件 | 说明 | 行数 |
+|------|------|------|
+| WorkflowList.vue | 工作流列表页 | ~200 |
+| WorkflowDetail.vue | 工作流详情页 | ~300 |
+| WorkflowStart.vue | 发起工作流页 | ~150 |
+| WorkflowDesigner.vue | 工作流设计器页 | ~500 |
+| components/StepNode.vue | 步骤节点组件 | ~150 |
+| components/ApprovalRuleConfig.vue | 审批规则配置组件 | ~200 |
+| components/TemplateSelector.vue | 模板选择器组件 | ~150 |
+| components/WorkflowPreview.vue | 工作流预览组件 | ~200 |
+| statistics/EfficiencyDashboard.vue | 效率统计页面 | ~250 |
+| statistics/BottleneckAnalysis.vue | 瓶颈分析页面 | ~200 |
+| statistics/WorkflowReport.vue | 工作流报告页面 | ~250 |
+
+### 11.4 数据库表
+
+| 表名 | 说明 | 关键字段 |
+|------|------|---------|
+| workflows | 工作流定义 | id, name, category, status |
+| workflow_steps | 工作流步骤 | workflowId, stepOrder, stepName, templateId, approvalRule |
+| workflow_instances | 工作流实例 | id, workflowId, instanceName, initiatorId, currentStep, status |
+| workflow_step_records | 步骤执行记录 | instanceId, stepOrder, documentId, taskRecordId, status, submitterId, approverId |
+| workflow_versions | 工作流版本管理 | workflowId, version, config, isActive |
+| parallel_approval_groups | 并行审批组 | stepRecordId, approverIds, requiredCount, status |
+| conditional_branches | 条件分支 | stepId, condition, nextStepId, elseStepId |
+| approval_delegations | 审批人代理 | delegatorId, delegateeId, startDate, endDate |
+
+### 11.5 API 端点
+
+#### 11.5.1 工作流管理
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/workflows` | 获取所有工作流定义 |
+| POST | `/workflows` | 创建工作流定义 |
+| GET | `/workflows/:id` | 获取工作流详情 |
+| PUT | `/workflows/:id` | 更新工作流定义 |
+| DELETE | `/workflows/:id` | 删除工作流定义 |
+| POST | `/workflows/:id/config` | 保存工作流配置（UI 设计器） |
+| GET | `/workflows/:id/versions` | 获取工作流版本列表 |
+| POST | `/workflows/versions/:versionId/activate` | 激活工作流版本 |
+| POST | `/workflows/:id/rollback/:versionId` | 回滚到指定版本 |
+
+#### 11.5.2 工作流实例
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/workflows/:id/start` | 启动工作流实例 |
+| GET | `/workflows/instances` | 获取工作流实例列表 |
+| GET | `/workflows/instances/:id` | 获取工作流实例详情 |
+| POST | `/workflows/instances/:id/steps/:stepOrder/submit` | 提交步骤 |
+| POST | `/workflows/instances/:id/steps/:stepOrder/approve` | 审批步骤 |
+
+#### 11.5.3 统计分析
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/workflows/statistics/efficiency` | 获取执行效率统计 |
+| GET | `/workflows/statistics/bottlenecks` | 获取瓶颈步骤分析 |
+| GET | `/workflows/statistics/workload` | 获取审批人工作量 |
+
+### 11.6 配置文件
+
+| 文件 | 说明 |
+|------|------|
+| `server/src/config/workflows.json` | 工作流JSON配置文件 |
+| `docs/WORKFLOW_CONFIG.md` | 工作流配置指南 |
+
+### 11.7 路由配置
+
+```typescript
+// client/src/router/index.ts
+{
+  path: '/workflows',
+  name: 'WorkflowList',
+  component: () => import('@/views/workflows/WorkflowList.vue'),
+  meta: { requiresAuth: true },
+},
+{
+  path: '/workflows/:id',
+  name: 'WorkflowDetail',
+  component: () => import('@/views/workflows/WorkflowDetail.vue'),
+  meta: { requiresAuth: true },
+},
+{
+  path: '/workflows/:id/designer',
+  name: 'WorkflowDesigner',
+  component: () => import('@/views/workflows/WorkflowDesigner.vue'),
+  meta: { requiresAuth: true, requiresAdmin: true },
+},
+{
+  path: '/workflows/statistics',
+  name: 'WorkflowStatistics',
+  component: () => import('@/views/workflows/statistics/EfficiencyDashboard.vue'),
+  meta: { requiresAuth: true },
+},
+```
+
+---
+
+**文档版本**: 5.0
+**最后更新**: 2026-02-13
 **更新内容**:
 - 同步项目状态：MVP Phase 1-6 完成 98.1%
-- Phase 7-12 完整版设计已完成（PRD + LLD）
+- Phase 7-12: 部分完成（Phase 7-9, 12 已实现）
+- 技术债务: 已识别 3 个 P1 问题，待实施
+- 补充完整技术栈信息（echarts, sortablejs, exceljs等）
 - 新增 Phase 7-12 模块说明：偏离检测、数据导出、2级审批、文件预览、统计分析
-- 更新文档版本与 DESIGN.md 3.0、README.md 3.0 保持一致
+- **v1.1.0 新增**：工作流引擎模块（第十一章节）
+  - 添加工作流模块文件说明（13个文件）
+  - 添加工作流前端页面说明（11个组件）
+  - 添加工作流数据库表说明（8张表）
+  - 添加工作流API端点说明（20个端点）
+  - 添加工作流路由配置
+- 更新文档版本与 DESIGN.md 10.1、README.md 3.1、CLAUDE.md 4.0 保持一致
