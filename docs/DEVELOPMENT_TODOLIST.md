@@ -1783,3 +1783,1599 @@ Closes #P1-1
 
 **最后更新**: 2026-02-13
 **下次更新**: Task-001 完成后
+
+---
+
+## 🔴 **补充任务：完整覆盖 DESIGN.md 所有章节**
+
+> **重要说明**: 以下是对 DESIGN.md 第十四章到第二十一章的完整任务补充，确保 100% 覆盖所有需求。
+
+---
+
+### Task-011: 动态表单引擎与记录管理（第十九章）
+
+**优先级**: P0（⭐⭐⭐ 核心架构层）
+**估时**: 400 小时（约 10 周，1人全职）
+**依赖**: MVP Phase 1-6 完成
+**对应文档**: DESIGN.md 第十九章
+**Layer**: Layer 0 (核心架构)
+
+#### 功能范围
+
+动态表单引擎是整个系统的核心架构，为以下模块提供统一的记录管理能力：
+- 生产记录（工单、工序、质检）
+- 原料验收记录
+- 成品入库记录
+- 清洁记录
+- 维修保养记录
+- 培训记录
+- 内审记录
+
+**核心能力**:
+- **表单模板可视化设计器**（拖拽式布局）
+- **动态表单渲染引擎**（支持 30+ 字段类型）
+- **数据验证与公差检查**
+- **打印模板配置**（支持 PDF/Excel 导出）
+- **记录编号生成器**（按规则自动生成）
+- **记录版本控制与历史追溯**
+
+#### 任务拆分
+
+**Phase 1: 数据模型设计（40h，1周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 1.1**: 设计 RecordTemplate 表
+  ```prisma
+  model RecordTemplate {
+    id            String   @id @default(cuid())
+    code          String   @unique              // 模板编号，如 "TPL-PR-001"
+    name          String                        // 模板名称，如 "生产工单记录表"
+    category      String                        // 类别：production/incoming/cleaning/maintenance/training/audit
+    formSchema    Json                          // 表单 Schema（字段定义、布局、验证规则）
+    printTemplate Json?                         // 打印模板（PDF 布局）
+    numberRule    String   @default("{{YYYYMMDD}}-{{SEQ}}")  // 编号规则
+    version       Int      @default(1)          // 模板版本号
+    isActive      Boolean  @default(true)       // 是否启用
+    createdBy     String
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+    records       Record[]
+    @@map("record_templates")
+  }
+  ```
+
+- [ ] **Step 1.2**: 设计 Record 表
+  ```prisma
+  model Record {
+    id           String   @id @default(cuid())
+    templateId   String                         // 模板 ID
+    recordNumber String   @unique               // 记录编号（自动生成）
+    formData     Json                           // 表单数据（动态字段值）
+    status       String   @default("draft")     // 状态：draft/submitted/approved/rejected
+    submittedBy  String?
+    submittedAt  DateTime?
+    approvedBy   String?
+    approvedAt   DateTime?
+    createdBy    String
+    createdAt    DateTime @default(now())
+    updatedAt    DateTime @updatedAt
+    template     RecordTemplate @relation(fields: [templateId], references: [id])
+    @@index([templateId])
+    @@index([recordNumber])
+    @@map("records")
+  }
+  ```
+
+- [ ] **Step 1.3**: 设计 RecordHistory 表（版本历史）
+  ```prisma
+  model RecordHistory {
+    id          String   @id @default(cuid())
+    recordId    String
+    version     Int                            // 版本号
+    formData    Json                           // 该版本的表单数据
+    changedBy   String
+    changedAt   DateTime @default(now())
+    changeReason String?                       // 修改原因
+    @@index([recordId])
+    @@map("record_history")
+  }
+  ```
+
+- [ ] **Step 1.4**: 运行数据库迁移
+  ```bash
+  cd server
+  npx prisma migrate dev --name add-dynamic-form-engine
+  npx prisma generate
+  ```
+
+- [ ] **Step 1.5**: 验证迁移成功
+  ```bash
+  npx prisma studio
+  # 确认 3 个新表存在
+  ```
+
+</details>
+
+**Phase 2: 表单Schema设计器（后端API）（60h，1.5周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 2.1**: 定义表单 Schema 结构
+  ```typescript
+  // server/src/modules/forms/interfaces/form-schema.interface.ts
+  export interface FormSchema {
+    fields: FormField[];
+    layout: FormLayout;
+    validation: ValidationRule[];
+  }
+
+  export interface FormField {
+    id: string;                  // 字段唯一标识
+    type: FieldType;             // 字段类型
+    label: string;               // 字段标签
+    name: string;                // 字段名称
+    required: boolean;           // 是否必填
+    defaultValue?: any;          // 默认值
+    options?: FieldOption[];     // 选项（下拉/单选/复选）
+    validation?: {
+      min?: number;
+      max?: number;
+      pattern?: string;
+      message?: string;
+    };
+    dependencies?: {             // 字段依赖（条件显示）
+      field: string;
+      value: any;
+    }[];
+  }
+
+  export enum FieldType {
+    TEXT = 'text',
+    NUMBER = 'number',
+    DATE = 'date',
+    TIME = 'time',
+    SELECT = 'select',
+    RADIO = 'radio',
+    CHECKBOX = 'checkbox',
+    TEXTAREA = 'textarea',
+    FILE_UPLOAD = 'file_upload',
+    IMAGE_UPLOAD = 'image_upload',
+    SIGNATURE = 'signature',
+    BARCODE = 'barcode',
+    QR_CODE = 'qr_code',
+    TABLE = 'table',              // 子表格
+    FORMULA = 'formula',          // 计算字段
+  }
+  ```
+
+- [ ] **Step 2.2**: 创建模板管理服务
+  ```typescript
+  // server/src/modules/forms/record-template.service.ts
+  @Injectable()
+  export class RecordTemplateService {
+    async createTemplate(dto: CreateTemplateDto) {
+      // 验证 formSchema 结构
+      this.validateFormSchema(dto.formSchema);
+
+      return this.prisma.recordTemplate.create({
+        data: {
+          code: await this.generateTemplateCode(dto.category),
+          name: dto.name,
+          category: dto.category,
+          formSchema: dto.formSchema,
+          printTemplate: dto.printTemplate,
+          numberRule: dto.numberRule || '{{YYYYMMDD}}-{{SEQ}}',
+          createdBy: dto.createdBy,
+        },
+      });
+    }
+
+    async updateTemplate(id: string, dto: UpdateTemplateDto) {
+      // 版本升级逻辑
+      const template = await this.prisma.recordTemplate.findUnique({ where: { id } });
+      return this.prisma.recordTemplate.update({
+        where: { id },
+        data: {
+          ...dto,
+          version: template.version + 1,
+        },
+      });
+    }
+
+    private validateFormSchema(schema: FormSchema) {
+      // 验证字段唯一性
+      const fieldNames = schema.fields.map(f => f.name);
+      if (new Set(fieldNames).size !== fieldNames.length) {
+        throw new BadRequestException('字段名称重复');
+      }
+
+      // 验证字段类型
+      schema.fields.forEach(field => {
+        if (!Object.values(FieldType).includes(field.type)) {
+          throw new BadRequestException(`无效字段类型: ${field.type}`);
+        }
+      });
+    }
+  }
+  ```
+
+- [ ] **Step 2.3**: 创建模板API端点
+  ```typescript
+  @Controller('record-templates')
+  @ApiBearerAuth()
+  export class RecordTemplateController {
+    @Post()
+    @UseGuards(PermissionGuard)
+    @RequirePermission('template:edit')
+    async create(@Body() dto: CreateTemplateDto, @Req() req) {
+      return this.service.createTemplate({ ...dto, createdBy: req.user.id });
+    }
+
+    @Get()
+    async findAll(@Query('category') category?: string) {
+      return this.service.findAll(category);
+    }
+
+    @Get(':id')
+    async findOne(@Param('id') id: string) {
+      return this.service.findOne(id);
+    }
+
+    @Put(':id')
+    @UseGuards(PermissionGuard)
+    @RequirePermission('template:edit')
+    async update(@Param('id') id: string, @Body() dto: UpdateTemplateDto) {
+      return this.service.updateTemplate(id, dto);
+    }
+  }
+  ```
+
+</details>
+
+**Phase 3: 表单渲染引擎（前端）（80h，2周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 3.1**: 创建动态表单渲染组件
+  ```vue
+  <!-- client/src/components/forms/DynamicForm.vue -->
+  <template>
+    <el-form :model="formData" :rules="rules" ref="formRef">
+      <template v-for="field in schema.fields" :key="field.id">
+        <!-- 文本输入 -->
+        <el-form-item v-if="field.type === 'text'" :label="field.label" :prop="field.name">
+          <el-input v-model="formData[field.name]" :placeholder="field.label" />
+        </el-form-item>
+
+        <!-- 数字输入 -->
+        <el-form-item v-else-if="field.type === 'number'" :label="field.label" :prop="field.name">
+          <el-input-number v-model="formData[field.name]" :min="field.validation?.min" :max="field.validation?.max" />
+        </el-form-item>
+
+        <!-- 日期选择 -->
+        <el-form-item v-else-if="field.type === 'date'" :label="field.label" :prop="field.name">
+          <el-date-picker v-model="formData[field.name]" type="date" />
+        </el-form-item>
+
+        <!-- 下拉选择 -->
+        <el-form-item v-else-if="field.type === 'select'" :label="field.label" :prop="field.name">
+          <el-select v-model="formData[field.name]">
+            <el-option v-for="opt in field.options" :key="opt.value" :label="opt.label" :value="opt.value" />
+          </el-select>
+        </el-form-item>
+
+        <!-- 表格字段 -->
+        <el-form-item v-else-if="field.type === 'table'" :label="field.label" :prop="field.name">
+          <TableField v-model="formData[field.name]" :columns="field.columns" />
+        </el-form-item>
+
+        <!-- 计算字段 -->
+        <el-form-item v-else-if="field.type === 'formula'" :label="field.label">
+          <el-input :value="computedFields[field.name]" disabled />
+        </el-form-item>
+
+        <!-- 更多字段类型... -->
+      </template>
+    </el-form>
+  </template>
+
+  <script setup lang="ts">
+  import { ref, computed, watch } from 'vue'
+  import type { FormSchema } from '@/types/forms'
+
+  const props = defineProps<{
+    schema: FormSchema
+    modelValue: Record<string, any>
+  }>()
+
+  const emit = defineEmits<{
+    (e: 'update:modelValue', value: Record<string, any>): void
+  }>()
+
+  const formData = ref(props.modelValue || {})
+  const formRef = ref()
+
+  // 动态生成验证规则
+  const rules = computed(() => {
+    const result: Record<string, any> = {}
+    props.schema.fields.forEach(field => {
+      result[field.name] = [
+        { required: field.required, message: `${field.label}不能为空`, trigger: 'blur' },
+        ...(field.validation ? [field.validation] : []),
+      ]
+    })
+    return result
+  })
+
+  // 计算字段
+  const computedFields = computed(() => {
+    const result: Record<string, any> = {}
+    props.schema.fields.filter(f => f.type === 'formula').forEach(field => {
+      // 解析公式并计算
+      result[field.name] = evaluateFormula(field.formula, formData.value)
+    })
+    return result
+  })
+
+  // 监听表单数据变化
+  watch(formData, (val) => {
+    emit('update:modelValue', val)
+  }, { deep: true })
+
+  // 表单验证方法
+  const validate = () => {
+    return formRef.value?.validate()
+  }
+
+  defineExpose({ validate })
+  </script>
+  ```
+
+- [ ] **Step 3.2**: 创建表单设计器组件（拖拽式）
+  ```vue
+  <!-- client/src/components/forms/FormDesigner.vue -->
+  <template>
+    <div class="form-designer">
+      <!-- 左侧字段面板 -->
+      <div class="field-panel">
+        <div class="field-item" draggable="true" @dragstart="handleDragStart('text')">
+          <el-icon><Edit /></el-icon>
+          <span>文本输入</span>
+        </div>
+        <div class="field-item" draggable="true" @dragstart="handleDragStart('number')">
+          <el-icon><Document /></el-icon>
+          <span>数字输入</span>
+        </div>
+        <!-- 更多字段类型... -->
+      </div>
+
+      <!-- 中间设计画布 -->
+      <div class="design-canvas" @drop="handleDrop" @dragover.prevent>
+        <draggable v-model="schema.fields" item-key="id">
+          <template #item="{ element }">
+            <div class="field-wrapper" @click="selectField(element)">
+              <DynamicFormField :field="element" />
+              <el-button link type="danger" @click="removeField(element.id)">
+                <el-icon><Delete /></el-icon>
+              </el-button>
+            </div>
+          </template>
+        </draggable>
+      </div>
+
+      <!-- 右侧属性面板 -->
+      <div class="property-panel" v-if="selectedField">
+        <el-form label-width="80px">
+          <el-form-item label="字段标签">
+            <el-input v-model="selectedField.label" />
+          </el-form-item>
+          <el-form-item label="字段名称">
+            <el-input v-model="selectedField.name" />
+          </el-form-item>
+          <el-form-item label="是否必填">
+            <el-switch v-model="selectedField.required" />
+          </el-form-item>
+          <!-- 更多属性配置... -->
+        </el-form>
+      </div>
+    </div>
+  </template>
+
+  <script setup lang="ts">
+  import { ref } from 'vue'
+  import draggable from 'vuedraggable'
+  import type { FormSchema, FormField } from '@/types/forms'
+
+  const schema = ref<FormSchema>({ fields: [], layout: {}, validation: [] })
+  const selectedField = ref<FormField | null>(null)
+
+  const handleDragStart = (type: string) => {
+    // 拖拽开始
+  }
+
+  const handleDrop = (e: DragEvent) => {
+    // 放置字段到画布
+    const fieldType = e.dataTransfer?.getData('fieldType')
+    const newField: FormField = {
+      id: generateId(),
+      type: fieldType as any,
+      label: '新字段',
+      name: `field_${schema.value.fields.length + 1}`,
+      required: false,
+    }
+    schema.value.fields.push(newField)
+  }
+
+  const selectField = (field: FormField) => {
+    selectedField.value = field
+  }
+
+  const removeField = (id: string) => {
+    schema.value.fields = schema.value.fields.filter(f => f.id !== id)
+  }
+  </script>
+  ```
+
+</details>
+
+**Phase 4: 记录编号生成器（20h，0.5周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 4.1**: 创建编号生成服务
+  ```typescript
+  @Injectable()
+  export class RecordNumberService {
+    async generateNumber(templateId: string): Promise<string> {
+      const template = await this.prisma.recordTemplate.findUnique({ where: { id: templateId } });
+      const rule = template.numberRule;
+
+      // 解析规则：{{YYYYMMDD}}-{{SEQ}}
+      let number = rule;
+
+      // 替换日期占位符
+      number = number.replace('{{YYYYMMDD}}', moment().format('YYYYMMDD'));
+      number = number.replace('{{YYYY}}', moment().format('YYYY'));
+      number = number.replace('{{MM}}', moment().format('MM'));
+      number = number.replace('{{DD}}', moment().format('DD'));
+
+      // 替换序列号占位符
+      if (number.includes('{{SEQ}}')) {
+        const seq = await this.getNextSequence(templateId);
+        number = number.replace('{{SEQ}}', String(seq).padStart(4, '0'));
+      }
+
+      // 验证编号唯一性
+      const exists = await this.prisma.record.findUnique({ where: { recordNumber: number } });
+      if (exists) {
+        throw new BadRequestException('编号生成冲突，请重试');
+      }
+
+      return number;
+    }
+
+    private async getNextSequence(templateId: string): Promise<number> {
+      // 从 Redis 获取序列号（原子递增）
+      const key = `record:seq:${templateId}:${moment().format('YYYYMMDD')}`;
+      return await this.redis.incr(key);
+    }
+  }
+  ```
+
+</details>
+
+**Phase 5: 记录版本控制（30h，1周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 5.1**: 实现记录修改历史追踪
+  ```typescript
+  @Injectable()
+  export class RecordService {
+    async updateRecord(id: string, dto: UpdateRecordDto, userId: string) {
+      const record = await this.prisma.record.findUnique({ where: { id } });
+
+      // 保存当前版本到历史表
+      await this.prisma.recordHistory.create({
+        data: {
+          recordId: id,
+          version: await this.getNextVersion(id),
+          formData: record.formData,
+          changedBy: userId,
+          changeReason: dto.changeReason,
+        },
+      });
+
+      // 更新记录
+      return this.prisma.record.update({
+        where: { id },
+        data: {
+          formData: dto.formData,
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    async getRecordHistory(id: string) {
+      return this.prisma.recordHistory.findMany({
+        where: { recordId: id },
+        orderBy: { version: 'desc' },
+      });
+    }
+  }
+  ```
+
+</details>
+
+**Phase 6: 打印模板配置（40h，1周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 6.1**: 实现 PDF 打印模板
+  ```typescript
+  @Injectable()
+  export class RecordPrintService {
+    async generatePDF(recordId: string): Promise<Buffer> {
+      const record = await this.prisma.record.findUnique({
+        where: { id: recordId },
+        include: { template: true },
+      });
+
+      // 使用 Puppeteer 生成 PDF
+      const html = this.renderTemplate(record);
+      const browser = await puppeteer.launch();
+      const page = await browser.newPage();
+      await page.setContent(html);
+      const pdf = await page.pdf({ format: 'A4' });
+      await browser.close();
+
+      return pdf;
+    }
+
+    private renderTemplate(record: Record & { template: RecordTemplate }): string {
+      // 根据 printTemplate 渲染 HTML
+      const template = record.template.printTemplate;
+      // ... 模板渲染逻辑
+      return html;
+    }
+  }
+  ```
+
+</details>
+
+**Phase 7: 集成测试（40h，1周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 7.1**: E2E 测试模板创建流程
+- [ ] **Step 7.2**: E2E 测试记录填报流程
+- [ ] **Step 7.3**: E2E 测试记录修改与版本历史
+- [ ] **Step 7.4**: E2E 测试 PDF 打印
+- [ ] **Step 7.5**: 验证覆盖率 > 80%
+
+</details>
+
+#### ✅ 验收标准
+- ✅ 3 个数据表已创建（RecordTemplate, Record, RecordHistory）
+- ✅ 支持 15+ 字段类型动态渲染
+- ✅ 表单设计器可拖拽配置
+- ✅ 记录编号自动生成（按规则）
+- ✅ 记录版本历史可追溯
+- ✅ PDF 打印模板可配置
+- ✅ E2E 测试通过
+- ✅ 测试覆盖率 > 80%
+
+#### 🐛 常见问题排查
+- **问题**: 表单渲染异常 → 检查 FormSchema 结构是否正确
+- **问题**: 编号生成重复 → 检查 Redis 序列号原子操作
+- **问题**: PDF 生成失败 → 检查 Puppeteer 是否正确安装
+
+---
+
+### Task-012: 批次追溯系统（第十九章补充）
+
+**优先级**: P0（⭐⭐⭐ BRCGS 核心要求）
+**估时**: 300 小时（约 7.5 周，1人全职）
+**依赖**: Task-011 完成（依赖动态表单引擎）
+**对应文档**: DESIGN.md 第十九章补充
+**Layer**: Layer 0 (核心架构)
+
+#### 功能范围
+
+BRCGS 标准要求：**4小时追溯能力** —— 从原料到成品，或从成品到原料，必须在 4 小时内完成完整追溯。
+
+**核心能力**:
+- **批次主数据管理**（原料批次、半成品批次、成品批次）
+- **批次关联关系**（父批次-子批次树形结构）
+- **正向追溯**（原料 → 半成品 → 成品 → 客户）
+- **逆向追溯**（客户 → 成品 → 半成品 → 原料 → 供应商）
+- **批次召回管理**（召回通知、召回执行、召回验证）
+- **批次追溯报告**（4小时内生成完整追溯链）
+
+#### 任务拆分
+
+**Phase 1: 数据模型设计（30h，1周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 1.1**: 设计 Batch 表
+  ```prisma
+  model Batch {
+    id              String   @id @default(cuid())
+    batchNumber     String   @unique          // 批次号，如 "RAW-2026-001"
+    batchType       String                    // 类型：raw_material/semi_finished/finished_product
+    materialId      String                    // 关联物料 ID
+    materialName    String                    // 物料名称（冗余）
+    quantity        Decimal                   // 数量
+    unit            String                    // 单位
+    productionDate  DateTime                  // 生产日期
+    expiryDate      DateTime?                 // 过期日期
+    status          String   @default("active")  // 状态：active/consumed/recalled
+    supplierId      String?                   // 供应商 ID（原料批次）
+    supplierName    String?                   // 供应商名称（冗余）
+    warehouseId     String                    // 仓库 ID
+    warehouseLocation String?                 // 仓位
+    qcStatus        String?                   // 质检状态：pending/passed/failed
+    parentBatches   BatchRelation[] @relation("ChildBatch")
+    childBatches    BatchRelation[] @relation("ParentBatch")
+    createdBy       String
+    createdAt       DateTime @default(now())
+    updatedAt       DateTime @updatedAt
+    @@index([batchNumber])
+    @@index([batchType])
+    @@map("batches")
+  }
+  ```
+
+- [ ] **Step 1.2**: 设计 BatchRelation 表（批次关联）
+  ```prisma
+  model BatchRelation {
+    id             String   @id @default(cuid())
+    parentBatchId  String                   // 父批次 ID（原料）
+    childBatchId   String                   // 子批次 ID（成品）
+    quantityUsed   Decimal                  // 使用数量
+    unit           String                   // 单位
+    relationType   String                   // 关联类型：consume/produce/split
+    recordId       String?                  // 关联生产记录 ID
+    createdAt      DateTime @default(now())
+    parentBatch    Batch @relation("ParentBatch", fields: [parentBatchId], references: [id])
+    childBatch     Batch @relation("ChildBatch", fields: [childBatchId], references: [id])
+    @@index([parentBatchId])
+    @@index([childBatchId])
+    @@map("batch_relations")
+  }
+  ```
+
+- [ ] **Step 1.3**: 设计 BatchRecall 表（批次召回）
+  ```prisma
+  model BatchRecall {
+    id             String   @id @default(cuid())
+    recallNumber   String   @unique           // 召回编号
+    batchId        String                     // 批次 ID
+    recallReason   String                     // 召回原因
+    recallLevel    String                     // 召回级别：critical/serious/minor
+    recallStatus   String   @default("initiated")  // 状态：initiated/in_progress/completed
+    affectedQuantity Decimal                  // 受影响数量
+    recoveredQuantity Decimal @default(0)     // 已召回数量
+    initiatedBy    String
+    initiatedAt    DateTime @default(now())
+    completedAt    DateTime?
+    batch          Batch @relation(fields: [batchId], references: [id])
+    @@index([batchId])
+    @@map("batch_recalls")
+  }
+  ```
+
+- [ ] **Step 1.4**: 运行数据库迁移
+  ```bash
+  npx prisma migrate dev --name add-batch-traceability
+  ```
+
+</details>
+
+**Phase 2: 批次主数据管理（40h，1周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 2.1**: 创建批次管理服务
+  ```typescript
+  @Injectable()
+  export class BatchService {
+    // 创建批次
+    async createBatch(dto: CreateBatchDto) {
+      const batchNumber = await this.generateBatchNumber(dto.batchType);
+
+      return this.prisma.batch.create({
+        data: {
+          batchNumber,
+          batchType: dto.batchType,
+          materialId: dto.materialId,
+          materialName: dto.materialName,
+          quantity: dto.quantity,
+          unit: dto.unit,
+          productionDate: dto.productionDate,
+          expiryDate: dto.expiryDate,
+          supplierId: dto.supplierId,
+          supplierName: dto.supplierName,
+          warehouseId: dto.warehouseId,
+          warehouseLocation: dto.warehouseLocation,
+          createdBy: dto.createdBy,
+        },
+      });
+    }
+
+    // 批次分割
+    async splitBatch(batchId: string, quantities: number[]) {
+      const batch = await this.prisma.batch.findUnique({ where: { id: batchId } });
+      if (!batch) throw new NotFoundException('批次不存在');
+
+      const totalQuantity = quantities.reduce((sum, q) => sum + q, 0);
+      if (totalQuantity > batch.quantity) {
+        throw new BadRequestException('分割数量超过批次总量');
+      }
+
+      // 创建子批次
+      const childBatches = [];
+      for (const qty of quantities) {
+        const childBatch = await this.createBatch({
+          ...batch,
+          quantity: qty,
+          batchNumber: await this.generateBatchNumber(batch.batchType),
+        });
+        childBatches.push(childBatch);
+
+        // 创建关联关系
+        await this.prisma.batchRelation.create({
+          data: {
+            parentBatchId: batchId,
+            childBatchId: childBatch.id,
+            quantityUsed: qty,
+            unit: batch.unit,
+            relationType: 'split',
+          },
+        });
+      }
+
+      // 更新父批次状态
+      await this.prisma.batch.update({
+        where: { id: batchId },
+        data: { status: 'consumed' },
+      });
+
+      return childBatches;
+    }
+  }
+  ```
+
+</details>
+
+**Phase 3: 批次追溯引擎（80h，2周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 3.1**: 实现正向追溯（原料 → 成品）
+  ```typescript
+  @Injectable()
+  export class BatchTraceabilityService {
+    // 正向追溯：从原料批次查找所有衍生成品
+    async traceForward(batchId: string): Promise<TraceabilityTree> {
+      const startTime = Date.now();
+
+      const batch = await this.prisma.batch.findUnique({ where: { id: batchId } });
+      if (!batch) throw new NotFoundException('批次不存在');
+
+      // 递归查找所有子批次
+      const tree = await this.buildForwardTree(batchId);
+
+      const duration = Date.now() - startTime;
+      console.log(`正向追溯耗时: ${duration}ms`);
+
+      if (duration > 4 * 60 * 60 * 1000) {
+        throw new Error('追溯超时（超过 4 小时）');
+      }
+
+      return tree;
+    }
+
+    private async buildForwardTree(batchId: string, depth = 0): Promise<TraceabilityTree> {
+      const batch = await this.prisma.batch.findUnique({
+        where: { id: batchId },
+        include: { childBatches: { include: { childBatch: true } } },
+      });
+
+      const children = await Promise.all(
+        batch.childBatches.map(rel => this.buildForwardTree(rel.childBatchId, depth + 1))
+      );
+
+      return {
+        batch,
+        children,
+        depth,
+      };
+    }
+
+    // 逆向追溯：从成品批次查找所有原料
+    async traceBackward(batchId: string): Promise<TraceabilityTree> {
+      const startTime = Date.now();
+
+      const batch = await this.prisma.batch.findUnique({ where: { id: batchId } });
+      if (!batch) throw new NotFoundException('批次不存在');
+
+      // 递归查找所有父批次
+      const tree = await this.buildBackwardTree(batchId);
+
+      const duration = Date.now() - startTime;
+      console.log(`逆向追溯耗时: ${duration}ms`);
+
+      if (duration > 4 * 60 * 60 * 1000) {
+        throw new Error('追溯超时（超过 4 小时）');
+      }
+
+      return tree;
+    }
+
+    private async buildBackwardTree(batchId: string, depth = 0): Promise<TraceabilityTree> {
+      const batch = await this.prisma.batch.findUnique({
+        where: { id: batchId },
+        include: { parentBatches: { include: { parentBatch: true } } },
+      });
+
+      const parents = await Promise.all(
+        batch.parentBatches.map(rel => this.buildBackwardTree(rel.parentBatchId, depth + 1))
+      );
+
+      return {
+        batch,
+        parents,
+        depth,
+      };
+    }
+  }
+  ```
+
+</details>
+
+**Phase 4: 批次召回管理（50h，1.5周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 4.1**: 实现批次召回流程
+  ```typescript
+  @Injectable()
+  export class BatchRecallService {
+    // 发起召回
+    async initiateRecall(dto: InitiateRecallDto) {
+      // 查找批次
+      const batch = await this.prisma.batch.findUnique({ where: { id: dto.batchId } });
+      if (!batch) throw new NotFoundException('批次不存在');
+
+      // 正向追溯所有受影响的下游批次
+      const affectedBatches = await this.traceabilityService.traceForward(dto.batchId);
+
+      // 创建召回记录
+      const recall = await this.prisma.batchRecall.create({
+        data: {
+          recallNumber: await this.generateRecallNumber(),
+          batchId: dto.batchId,
+          recallReason: dto.recallReason,
+          recallLevel: dto.recallLevel,
+          affectedQuantity: batch.quantity,
+          initiatedBy: dto.initiatedBy,
+        },
+      });
+
+      // 发送召回通知
+      await this.notifyAffectedCustomers(affectedBatches);
+
+      return recall;
+    }
+
+    // 记录召回进展
+    async updateRecallProgress(id: string, recoveredQuantity: number) {
+      const recall = await this.prisma.batchRecall.findUnique({ where: { id } });
+
+      const updatedRecall = await this.prisma.batchRecall.update({
+        where: { id },
+        data: {
+          recoveredQuantity,
+          recallStatus: recoveredQuantity >= recall.affectedQuantity ? 'completed' : 'in_progress',
+          completedAt: recoveredQuantity >= recall.affectedQuantity ? new Date() : null,
+        },
+      });
+
+      return updatedRecall;
+    }
+  }
+  ```
+
+</details>
+
+**Phase 5: 追溯报告生成（30h，1周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 5.1**: 生成追溯报告（PDF）
+  ```typescript
+  @Injectable()
+  export class TraceabilityReportService {
+    async generateReport(batchId: string, direction: 'forward' | 'backward'): Promise<Buffer> {
+      const tree = direction === 'forward'
+        ? await this.traceabilityService.traceForward(batchId)
+        : await this.traceabilityService.traceBackward(batchId);
+
+      // 渲染 HTML 报告
+      const html = this.renderReport(tree, direction);
+
+      // 使用 Puppeteer 生成 PDF
+      const browser = await puppeteer.launch();
+      const page = await browser.newPage();
+      await page.setContent(html);
+      const pdf = await page.pdf({ format: 'A4', landscape: true });
+      await browser.close();
+
+      return pdf;
+    }
+
+    private renderReport(tree: TraceabilityTree, direction: string): string {
+      // 模板渲染逻辑
+      return `
+        <html>
+        <head><title>批次追溯报告</title></head>
+        <body>
+          <h1>${direction === 'forward' ? '正向追溯报告' : '逆向追溯报告'}</h1>
+          <h2>根批次: ${tree.batch.batchNumber}</h2>
+          ${this.renderTree(tree)}
+        </body>
+        </html>
+      `;
+    }
+  }
+  ```
+
+</details>
+
+**Phase 6: 前端追溯可视化（40h，1周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 6.1**: 创建批次追溯页面
+  ```vue
+  <!-- client/src/views/traceability/BatchTrace.vue -->
+  <template>
+    <div class="batch-trace">
+      <el-card>
+        <template #header>批次追溯</template>
+        <el-form :inline="true">
+          <el-form-item label="批次号">
+            <el-input v-model="batchNumber" placeholder="请输入批次号" />
+          </el-form-item>
+          <el-form-item label="追溯方向">
+            <el-radio-group v-model="direction">
+              <el-radio label="forward">正向追溯（原料→成品）</el-radio>
+              <el-radio label="backward">逆向追溯（成品→原料）</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleTrace" :loading="loading">
+              开始追溯
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
+
+      <!-- 追溯结果树形图 -->
+      <el-card v-if="traceTree" class="trace-result">
+        <template #header>
+          <span>追溯结果（耗时: {{ traceDuration }}ms）</span>
+          <el-button type="primary" @click="downloadReport">下载PDF报告</el-button>
+        </template>
+        <el-tree :data="treeData" :props="{ label: 'label', children: 'children' }">
+          <template #default="{ node, data }">
+            <span>
+              <el-tag>{{ data.batchNumber }}</el-tag>
+              {{ data.materialName }} ({{ data.quantity }} {{ data.unit }})
+            </span>
+          </template>
+        </el-tree>
+      </el-card>
+    </div>
+  </template>
+
+  <script setup lang="ts">
+  import { ref } from 'vue'
+  import { traceBatch, downloadTraceReport } from '@/api/traceability'
+
+  const batchNumber = ref('')
+  const direction = ref('forward')
+  const loading = ref(false)
+  const traceTree = ref(null)
+  const traceDuration = ref(0)
+
+  const handleTrace = async () => {
+    loading.value = true
+    const startTime = Date.now()
+    try {
+      const res = await traceBatch(batchNumber.value, direction.value)
+      traceTree.value = res.data
+      traceDuration.value = Date.now() - startTime
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const downloadReport = async () => {
+    const blob = await downloadTraceReport(batchNumber.value, direction.value)
+    // 触发浏览器下载
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `追溯报告_${batchNumber.value}.pdf`
+    a.click()
+  }
+  </script>
+  ```
+
+</details>
+
+**Phase 7: 性能优化（20h，0.5周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 7.1**: 优化追溯查询性能
+  - 添加数据库索引（batchNumber, parentBatchId, childBatchId）
+  - 使用 Redis 缓存热点批次追溯结果
+  - 并行查询优化（Promise.all）
+
+- [ ] **Step 7.2**: 验证 4 小时追溯目标
+  - 测试数据：1000 个批次，10 层深度
+  - 验证追溯耗时 < 10 秒
+
+</details>
+
+**Phase 8: E2E 测试（10h，0.5周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 8.1**: 测试正向追溯流程
+- [ ] **Step 8.2**: 测试逆向追溯流程
+- [ ] **Step 8.3**: 测试批次召回流程
+- [ ] **Step 8.4**: 验证覆盖率 > 80%
+
+</details>
+
+#### ✅ 验收标准
+- ✅ 3 个数据表已创建（Batch, BatchRelation, BatchRecall）
+- ✅ 正向追溯功能正常（原料 → 成品）
+- ✅ 逆向追溯功能正常（成品 → 原料）
+- ✅ 追溯耗时 < 4 小时（目标 < 10 秒）
+- ✅ 批次召回流程完整
+- ✅ 追溯报告可导出 PDF
+- ✅ E2E 测试通过
+- ✅ 测试覆盖率 > 80%
+
+#### 🐛 常见问题排查
+- **问题**: 追溯超时 → 检查数据库索引、优化递归查询
+- **问题**: 批次关联错误 → 检查 BatchRelation 数据完整性
+- **问题**: PDF 生成失败 → 检查 Puppeteer 环境
+
+---
+
+### Task-013: 移动端应用（第二十章）
+
+**优先级**: P0（⭐⭐⭐ 现场操作必备）
+**估时**: 600 小时（约 15 周，1人全职）
+**依赖**: Task-011 完成
+**对应文档**: DESIGN.md 第二十章
+**Layer**: Layer 3 (移动端应用层)
+
+#### 功能范围
+
+使用 **uniapp** 开发跨平台移动端应用（iOS + Android + 小程序），支持：
+- 生产工单扫码填报
+- 质检记录移动填报
+- 设备点检移动记录
+- 仓库出入库扫码
+- 离线数据缓存与同步
+
+**核心能力**:
+- 二维码/条码扫描
+- 离线数据缓存（SQLite）
+- 自动数据同步
+- 拍照上传
+- 电子签名
+
+#### 任务拆分
+
+**Phase 1: uniapp 项目初始化（20h，0.5周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 1.1**: 创建 uniapp 项目
+  ```bash
+  npx @dcloudio/uvm@latest
+  cd mobile-app
+  npm install
+  ```
+
+- [ ] **Step 1.2**: 配置 manifest.json
+  - App 名称、版本号、图标
+  - 权限配置（相机、存储、网络）
+
+- [ ] **Step 1.3**: 配置 pages.json
+  - 页面路由
+  - TabBar 配置
+
+</details>
+
+**Phase 2: 用户认证与权限（40h，1周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 2.1**: 实现登录页面
+- [ ] **Step 2.2**: JWT Token 存储与刷新
+- [ ] **Step 2.3**: 角色权限控制
+
+</details>
+
+**Phase 3: 扫码功能（60h，1.5周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 3.1**: 集成 uni-scan 插件
+- [ ] **Step 3.2**: 实现条码/二维码扫描
+- [ ] **Step 3.3**: 扫码后数据匹配
+
+</details>
+
+**Phase 4: 生产工单填报（120h，3周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 4.1**: 工单列表页面
+- [ ] **Step 4.2**: 工单详情页面
+- [ ] **Step 4.3**: 动态表单渲染（复用 Task-011 Schema）
+- [ ] **Step 4.4**: 表单数据提交
+
+</details>
+
+**Phase 5: 离线数据缓存（80h，2周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 5.1**: 配置 SQLite 数据库
+- [ ] **Step 5.2**: 实现离线数据存储
+- [ ] **Step 5.3**: 网络恢复后自动同步
+
+</details>
+
+**Phase 6: 拍照上传（40h，1周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 6.1**: 集成相机插件
+- [ ] **Step 6.2**: 图片压缩与上传
+- [ ] **Step 6.3**: 图片预览
+
+</details>
+
+**Phase 7: 电子签名（30h，1周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 7.1**: 集成签名画板插件
+- [ ] **Step 7.2**: 签名图片生成与上传
+
+</details>
+
+**Phase 8: 打包与发布（80h，2周）**
+
+<details>
+<parameter name="summary">点击展开详细步骤</summary>
+
+- [ ] **Step 8.1**: Android APK 打包
+- [ ] **Step 8.2**: iOS IPA 打包
+- [ ] **Step 8.3**: 微信小程序打包
+
+</details>
+
+**Phase 9: E2E 测试（60h，1.5周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 9.1**: 真机测试（Android + iOS）
+- [ ] **Step 9.2**: 离线模式测试
+- [ ] **Step 9.3**: 数据同步测试
+
+</details>
+
+#### ✅ 验收标准
+- ✅ 移动端可扫码填报工单
+- ✅ 支持离线数据缓存
+- ✅ 拍照上传功能正常
+- ✅ 电子签名功能正常
+- ✅ Android + iOS + 微信小程序三端打包成功
+- ✅ E2E 测试通过
+
+#### 🐛 常见问题排查
+- **问题**: 扫码失败 → 检查相机权限配置
+- **问题**: 离线同步失败 → 检查 SQLite 数据库
+- **问题**: 打包失败 → 检查证书配置
+
+---
+
+### Task-014: 系统运维与监控（第二十一章）
+
+**优先级**: P0（⭐⭐⭐ 生产环境必备）
+**估时**: 300 小时（约 7.5 周，1人全职）
+**依赖**: 无
+**对应文档**: DESIGN.md 第二十一章
+**Layer**: Layer 4 (运维层)
+
+#### 功能范围
+
+**核心能力**:
+- 数据库自动备份（PostgreSQL）
+- 文件自动备份（MinIO）
+- 系统监控（Prometheus + Grafana）
+- 日志管理（Loki + Grafana）
+- 审计日志（操作记录）
+
+#### 任务拆分
+
+**Phase 1: 数据库自动备份（60h，1.5周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 1.1**: 配置 PostgreSQL 自动备份脚本
+  ```bash
+  #!/bin/bash
+  # /scripts/backup-postgres.sh
+  BACKUP_DIR="/data/backups/postgres"
+  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+  BACKUP_FILE="$BACKUP_DIR/backup_$TIMESTAMP.sql"
+
+  pg_dump -U postgres -h localhost -p 5432 noidear > $BACKUP_FILE
+  gzip $BACKUP_FILE
+
+  # 保留最近 30 天备份
+  find $BACKUP_DIR -name "*.gz" -mtime +30 -delete
+  ```
+
+- [ ] **Step 1.2**: 配置 cron 定时任务
+  ```bash
+  # 每天凌晨 2 点执行备份
+  0 2 * * * /scripts/backup-postgres.sh
+  ```
+
+- [ ] **Step 1.3**: 备份恢复测试
+
+</details>
+
+**Phase 2: MinIO 文件备份（40h，1周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 2.1**: 配置 MinIO 镜像备份
+- [ ] **Step 2.2**: 定时同步到云存储（S3/OSS）
+
+</details>
+
+**Phase 3: Prometheus + Grafana 监控（100h，2.5周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 3.1**: 部署 Prometheus
+  ```yaml
+  # docker-compose.yml
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+  ```
+
+- [ ] **Step 3.2**: 配置监控指标
+  - 系统指标（CPU、内存、磁盘）
+  - 应用指标（HTTP 请求、响应时间）
+  - 数据库指标（连接数、查询耗时）
+
+- [ ] **Step 3.3**: 部署 Grafana
+  ```yaml
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+  ```
+
+- [ ] **Step 3.4**: 创建 Grafana Dashboard
+  - 系统概览 Dashboard
+  - 数据库性能 Dashboard
+  - API 性能 Dashboard
+
+</details>
+
+**Phase 4: 日志管理（60h，1.5周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 4.1**: 部署 Loki
+- [ ] **Step 4.2**: 配置日志采集
+- [ ] **Step 4.3**: 在 Grafana 中查询日志
+
+</details>
+
+**Phase 5: 审计日志（40h，1周）**
+
+<details>
+<summary>点击展开详细步骤</summary>
+
+- [ ] **Step 5.1**: 设计 AuditLog 表
+  ```prisma
+  model AuditLog {
+    id          String   @id @default(cuid())
+    userId      String
+    action      String                    // 操作类型：CREATE/UPDATE/DELETE
+    resourceType String                   // 资源类型：document/template/task
+    resourceId  String                    // 资源 ID
+    changes     Json?                     // 变更内容
+    ipAddress   String
+    userAgent   String
+    createdAt   DateTime @default(now())
+    @@index([userId])
+    @@index([resourceType, resourceId])
+    @@map("audit_logs")
+  }
+  ```
+
+- [ ] **Step 5.2**: 实现审计日志拦截器
+  ```typescript
+  @Injectable()
+  export class AuditInterceptor implements NestInterceptor {
+    intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+      const request = context.switchToHttp().getRequest();
+      const user = request.user;
+
+      return next.handle().pipe(
+        tap(() => {
+          // 记录审计日志
+          this.auditService.log({
+            userId: user.id,
+            action: request.method,
+            resourceType: request.url.split('/')[1],
+            resourceId: request.params.id,
+            ipAddress: request.ip,
+            userAgent: request.headers['user-agent'],
+          });
+        })
+      );
+    }
+  }
+  ```
+
+</details>
+
+#### ✅ 验收标准
+- ✅ PostgreSQL 每日自动备份
+- ✅ MinIO 文件自动同步到云存储
+- ✅ Prometheus + Grafana 监控正常
+- ✅ 审计日志完整记录所有操作
+
+#### 🐛 常见问题排查
+- **问题**: Prometheus 抓取失败 → 检查防火墙配置
+- **问题**: Grafana 无数据 → 检查数据源配置
+- **问题**: 备份失败 → 检查磁盘空间
+
+---
+
+### Task-015: 仓库管理系统（第十七章）
+
+**优先级**: P1（⭐⭐ Layer 1 核心生产流程）
+**估时**: 500 小时（约 12.5 周，1人全职）
+**依赖**: Task-011, Task-012 完成
+**对应文档**: DESIGN.md 第十七章
+**Layer**: Layer 1 (核心生产流程)
+
+#### 功能范围
+
+**核心能力**:
+- 仓库主数据管理（仓库、库区、库位）
+- 原料验收入库（质检 + 批次关联）
+- 成品入库（生产完工 + 批次生成）
+- 出库管理（生产领料 + 销售发货）
+- 库存盘点（盘点计划 + 差异处理）
+- 库存预警（安全库存 + 过期预警）
+
+#### 任务拆分
+
+**Phase 1: 数据模型设计（60h，1.5周）**
+**Phase 2: 仓库主数据管理（40h，1周）**
+**Phase 3: 入库管理（80h，2周）**
+**Phase 4: 出库管理（80h，2周）**
+**Phase 5: 库存盘点（80h，2周）**
+**Phase 6: 库存预警（40h，1周）**
+**Phase 7: 前端页面开发（80h，2周）**
+**Phase 8: E2E 测试（40h，1周）**
+
+详细步骤参考 DESIGN.md 第十七章。
+
+#### ✅ 验收标准
+- ✅ 入库/出库流程完整
+- ✅ 批次关联自动建立
+- ✅ 库存盘点功能正常
+- ✅ 库存预警及时
+- ✅ E2E 测试通过
+
+---
+
+### Task-016: 设备管理系统（第十八章）
+
+**优先级**: P1（⭐⭐ Layer 1 核心生产流程）
+**估时**: 300 小时（约 7.5 周，1人全职）
+**依赖**: Task-011 完成
+**对应文档**: DESIGN.md 第十八章
+**Layer**: Layer 1 (核心生产流程)
+
+#### 功能范围
+
+**核心能力**:
+- 设备台账管理
+- 维修保养计划（周期自动生成）
+- 维修保养记录（移动端填报）
+- 设备状态监控
+- 设备性能分析
+
+#### 任务拆分
+
+**Phase 1: 数据模型设计（40h，1周）**
+**Phase 2: 设备台账管理（40h，1周）**
+**Phase 3: 维修保养计划（60h，1.5周）**
+**Phase 4: 维修保养记录（60h，1.5周）**
+**Phase 5: 设备状态监控（60h，1.5周）**
+**Phase 6: E2E 测试（40h，1周）**
+
+详细步骤参考 DESIGN.md 第十八章。
+
+#### ✅ 验收标准
+- ✅ 设备台账完整
+- ✅ 维修保养计划自动生成
+- ✅ 维修记录移动端填报
+- ✅ E2E 测试通过
+
+---
+
+### Task-017: 培训管理系统（第十五章）
+
+**优先级**: P2（⭐ Layer 2 体系管理）
+**估时**: 300 小时（约 7.5 周，1人全职）
+**依赖**: Task-011 完成
+**对应文档**: DESIGN.md 第十五章
+**Layer**: Layer 2 (体系管理)
+
+#### 功能范围
+
+**核心能力**:
+- 培训计划管理（年度/季度/月度）
+- 培训记录管理（签到、考核、证书）
+- 培训效果评估
+- 资质证书管理（过期预警）
+
+#### 任务拆分
+
+**Phase 1: 数据模型设计（40h，1周）**
+**Phase 2: 培训计划管理（60h，1.5周）**
+**Phase 3: 培训记录管理（80h，2周）**
+**Phase 4: 培训效果评估（60h，1.5周）**
+**Phase 5: 资质证书管理（40h，1周）**
+**Phase 6: E2E 测试（20h，0.5周）**
+
+详细步骤参考 DESIGN.md 第十五章。
+
+#### ✅ 验收标准
+- ✅ 培训计划可管理
+- ✅ 培训记录完整
+- ✅ 资质证书预警及时
+- ✅ E2E 测试通过
+
+---
+
+### Task-018: 内审管理系统（第十六章）
+
+**优先级**: P2（⭐ Layer 2 体系管理）
+**估时**: 300 小时（约 7.5 周，1人全职）
+**依赖**: Task-011 完成
+**对应文档**: DESIGN.md 第十六章
+**Layer**: Layer 2 (体系管理)
+
+#### 功能范围
+
+**核心能力**:
+- 内审计划管理（年度审核计划）
+- 内审检查表管理
+- 内审记录管理（不符合项记录）
+- 整改跟踪（CAPA 流程）
+- 内审报告生成
+
+#### 任务拆分
+
+**Phase 1: 数据模型设计（40h，1周）**
+**Phase 2: 内审计划管理（60h，1.5周）**
+**Phase 3: 内审检查表管理（60h，1.5周）**
+**Phase 4: 内审记录管理（80h，2周）**
+**Phase 5: 整改跟踪（CAPA）（40h，1周）**
+**Phase 6: 内审报告生成（20h，0.5周）**
+
+详细步骤参考 DESIGN.md 第十六章。
+
+#### ✅ 验收标准
+- ✅ 内审计划可管理
+- ✅ 内审记录完整
+- ✅ CAPA 流程闭环
+- ✅ E2E 测试通过
+
+---
+
+## 📊 更新后的总体时间估算
+
+| 任务 | 估时 | 层级 | 优先级 |
+|------|------|------|--------|
+| Task-001 ~ Task-010 | 1826h | - | P0-P3 |
+| **Task-011: 动态表单引擎** | 400h | Layer 0 | P0 |
+| **Task-012: 批次追溯系统** | 300h | Layer 0 | P0 |
+| **Task-013: 移动端应用** | 600h | Layer 3 | P0 |
+| **Task-014: 系统运维监控** | 300h | Layer 4 | P0 |
+| **Task-015: 仓库管理系统** | 500h | Layer 1 | P1 |
+| **Task-016: 设备管理系统** | 300h | Layer 1 | P1 |
+| **Task-017: 培训管理系统** | 300h | Layer 2 | P2 |
+| **Task-018: 内审管理系统** | 300h | Layer 2 | P2 |
+| **总计** | **4826h+** | - | - |
+
+**更新后的人力估算**:
+- 1 人全职开发: 约 **24 个月**（2 年）
+- 2 人并行开发: 约 **12 个月**（1 年）
+- 5 人团队: 约 **5 个月**
+
+**分层优先级建议**:
+1. **Layer 0（核心架构）**: Task-011, Task-012 → 必须优先完成，其他模块依赖
+2. **Layer 1（核心生产）**: Task-015, Task-016 → 其次完成，保障生产流程
+3. **Layer 3（移动端）**: Task-013 → 并行开发，提升现场操作效率
+4. **Layer 4（运维）**: Task-014 → 生产环境上线前完成
+5. **Layer 2（体系管理）**: Task-017, Task-018 → 最后完成，完善管理体系
+
+---
+
+**文档维护**: 本 TodoList 已完整覆盖 DESIGN.md 所有章节（第一章到第二十二章）。
+
+**最后更新**: 2026-02-13
+**下次更新**: Task-001 完成后
