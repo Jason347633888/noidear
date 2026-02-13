@@ -1,13 +1,14 @@
 # 文档管理系统 - 完整需求设计文档
 
 > 最后更新: 2026-02-13
-> 文档版本: 10.6 ⭐ **MVP 实现状态追踪 + 增量开发指导**
-> 文档行数: ~14,000 行
+> 文档版本: 10.7 ⭐ **P1 技术债务完整方案（API + 业务规则 + 前端界面）**
+> 文档行数: ~20,000 行
 > **架构升级**: 自底向上分层设计，明确依赖关系，核心引擎完整定义
-> **业务规则**: 基于用户详细业务规则，共 104 条细化规则（BR-1.1 ~ BR-1.60, BR-281 ~ BR-324, BR-328 ~ BR-345）
+> **业务规则**: 基于用户详细业务规则，共 113 条细化规则（BR-1.1 ~ BR-1.60, BR-281 ~ BR-359）
 > **前端交互**: 完整的 UI/UX 交互规范，覆盖 7 大模块，详见 [INTERACTION_DESIGN.md](./INTERACTION_DESIGN.md)
 > **MVP 状态**: Phase 1-6 完成 98.1%（51/52 Issue）| 已有基础代码库 | 技术栈已确立
-> **状态**: Layer 0-1 完整定义 | Layer 2-4 依赖关系明确 | 8 个 P0 问题修复完成 | 所有待确认细节已明确 | 前端交互规范完成 | 技术债务已识别
+> **技术债务**: P1-1/P1-2/P1-3 完整方案已补充（数据模型 + API + 业务规则 + 前端界面）
+> **状态**: Layer 0-1 完整定义 | Layer 2-4 依赖关系明确 | 8 个 P0 问题修复完成 | 所有待确认细节已明确 | 前端交互规范完成 | 技术债务完整方案完成
 
 ---
 
@@ -13182,7 +13183,1180 @@ model WorkflowTask {
 
 ---
 
-### 22.2 API 端点规范化（P2 优先级）
+### 22.2 完整技术方案（API + 业务规则 + 前端界面）
+
+> **目的**: 补充 P1-1、P1-2、P1-3 的完整实现方案，确保开发时有清晰的技术指导
+
+---
+
+#### 22.2.1 P1-1: Document 归档/作废功能完整方案
+
+##### 📋 业务规则补充
+
+**BR-346: 文档归档规则**
+- 归档条件：文档状态必须为 `approved`（已发布），不能归档草稿或审核中的文档
+- 归档原因：必填，最少 10 个字符，说明归档原因
+- 归档权限：仅文档创建者或管理员可归档
+- 归档后状态：文档状态变更为 `archived`，不可再编辑
+- 归档后访问：归档后仍可查看和下载，但搜索时默认不显示（需勾选"包含归档文档"）
+
+**BR-347: 文档作废规则**
+- 作废条件：文档状态必须为 `approved`（已发布）
+- 作废原因：必填，最少 10 个字符，说明作废原因（如"发现重大错误"、"流程变更"）
+- 作废权限：仅质量部管理员或系统管理员可作废文档
+- 作废后状态：文档状态变更为 `obsolete`，完全不可编辑
+- 作废后访问：作废后仍可查看（只读），但搜索时默认不显示，需勾选"包含作废文档"
+- 作废通知：作废后自动通知所有曾引用该文档的用户
+
+**BR-348: 归档/作废文档恢复规则**
+- 归档恢复：归档的文档可恢复到 `approved` 状态，需提供恢复原因
+- 作废不可恢复：作废的文档不可恢复，符合 BRCGS 3.11.2 要求（作废文档应永久标记）
+- 恢复权限：仅管理员可恢复归档文档
+- 恢复通知：恢复后自动通知相关用户
+
+##### 🔌 API 设计
+
+**1. 归档文档**
+
+```
+POST /api/v1/documents/:id/archive
+```
+
+**请求体**:
+```typescript
+{
+  "reason": "该文档已过时，新版本为 DOC-2026-002"  // 必填，最少 10 个字符
+}
+```
+
+**响应**:
+```typescript
+{
+  "success": true,
+  "data": {
+    "id": "doc_123",
+    "status": "archived",
+    "archiveReason": "该文档已过时，新版本为 DOC-2026-002",
+    "archivedAt": "2026-02-13T10:30:00Z",
+    "archivedBy": "user_456"
+  }
+}
+```
+
+**错误响应**:
+```typescript
+// 400 Bad Request
+{
+  "success": false,
+  "error": "归档原因不能少于 10 个字符"
+}
+
+// 403 Forbidden
+{
+  "success": false,
+  "error": "只有文档创建者或管理员可以归档文档"
+}
+
+// 422 Unprocessable Entity
+{
+  "success": false,
+  "error": "只能归档已发布的文档，当前状态为 draft"
+}
+```
+
+**2. 作废文档**
+
+```
+POST /api/v1/documents/:id/obsolete
+```
+
+**请求体**:
+```typescript
+{
+  "reason": "发现重大错误，需废止使用"  // 必填，最少 10 个字符
+}
+```
+
+**响应** 同上（status 为 `obsolete`）
+
+**3. 恢复归档文档**
+
+```
+POST /api/v1/documents/:id/restore
+```
+
+**请求体**:
+```typescript
+{
+  "reason": "文档仍需使用，恢复为有效版本"  // 必填
+}
+```
+
+**响应**:
+```typescript
+{
+  "success": true,
+  "data": {
+    "id": "doc_123",
+    "status": "approved",
+    "restoredAt": "2026-02-13T11:00:00Z",
+    "restoredBy": "user_789"
+  }
+}
+```
+
+**4. 查询文档（支持归档/作废筛选）**
+
+```
+GET /api/v1/documents?includeArchived=true&includeObsolete=false
+```
+
+**查询参数**:
+- `includeArchived`: 是否包含归档文档（默认 `false`）
+- `includeObsolete`: 是否包含作废文档（默认 `false`）
+
+##### 🎨 前端界面设计
+
+**1. 文档详情页新增按钮**
+
+按钮位置：文档详情页右上角操作按钮组
+
+按钮顺序（从左到右）:
+1. `[编辑]` - 主按钮（仅草稿状态可见）
+2. `[归档]` - 次要按钮（仅已发布状态 + 有权限时可见）
+3. `[作废]` - 危险按钮（仅已发布状态 + 质量部管理员可见）
+4. `[下载]` - 次要按钮（始终可见）
+
+**按钮状态映射**:
+| 按钮 | 显示条件 | 启用条件 |
+|------|---------|----------|
+| 归档 | 状态=approved | 当前用户=创建者 或 管理员 |
+| 作废 | 状态=approved | 当前用户=质量部管理员 或 系统管理员 |
+| 恢复 | 状态=archived | 当前用户=管理员 |
+
+**2. 归档/作废对话框**
+
+对话框尺寸：`60% × 40%`（选择对话框）
+
+对话框内容：
+```
+┌─────────────────────────────────────────┐
+│ 归档文档                         [×]     │
+├─────────────────────────────────────────┤
+│ 文档名称: 质量手册 V2.0                  │
+│ 文档编号: DOC-2026-001                   │
+│                                         │
+│ *归档原因:                               │
+│ [___________________________________]   │
+│ [___________________________________]   │
+│ [___________________________________]   │
+│ 最少 10 个字符                           │
+│                                         │
+│ ⚠️ 归档后文档将不再显示在默认列表中       │
+│ ⚠️ 仍可通过"包含归档文档"选项查看         │
+│                                         │
+│              [取消]  [确定归档]          │
+└─────────────────────────────────────────┘
+```
+
+**3. 文档列表页筛选**
+
+搜索栏新增复选框：
+```
+[✓] 包含归档文档    [ ] 包含作废文档
+```
+
+**4. 归档/作废标签显示**
+
+状态标签：
+```vue
+<el-tag type="primary">已归档</el-tag>  <!-- 蓝色 -->
+<el-tag type="danger">已作废</el-tag>   <!-- 红色 -->
+```
+
+**5. Vue 3 代码示例**
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { archiveDocument, obsoleteDocument } from '@/api/document'
+
+const archiveDialogVisible = ref(false)
+const archiveReason = ref('')
+
+const handleArchive = async () => {
+  if (archiveReason.value.length < 10) {
+    ElMessage.warning('归档原因不能少于 10 个字符')
+    return
+  }
+
+  try {
+    await archiveDocument(documentId, { reason: archiveReason.value })
+    ElMessage.success('文档已归档')
+    archiveDialogVisible.value = false
+    // 刷新文档详情
+    fetchDocumentDetail()
+  } catch (error) {
+    ElMessage.error(error.message || '归档失败')
+  }
+}
+
+const handleObsolete = async () => {
+  const { value: reason } = await ElMessageBox.prompt(
+    '请输入作废原因（最少 10 个字符）',
+    '作废文档',
+    {
+      confirmButtonText: '确定作废',
+      cancelButtonText: '取消',
+      inputType: 'textarea',
+      inputValidator: (value) => {
+        if (!value || value.length < 10) {
+          return '作废原因不能少于 10 个字符'
+        }
+        return true
+      }
+    }
+  )
+
+  try {
+    await obsoleteDocument(documentId, { reason })
+    ElMessage.success('文档已作废')
+    fetchDocumentDetail()
+  } catch (error) {
+    ElMessage.error(error.message || '作废失败')
+  }
+}
+</script>
+
+<template>
+  <div class="document-detail">
+    <!-- 操作按钮 -->
+    <div class="actions">
+      <el-button v-if="canArchive" @click="archiveDialogVisible = true">
+        归档
+      </el-button>
+      <el-button
+        v-if="canObsolete"
+        type="danger"
+        @click="handleObsolete"
+      >
+        作废
+      </el-button>
+    </div>
+
+    <!-- 归档对话框 -->
+    <el-dialog
+      v-model="archiveDialogVisible"
+      title="归档文档"
+      width="60%"
+    >
+      <el-form label-width="100px">
+        <el-form-item label="文档名称">
+          {{ document.title }}
+        </el-form-item>
+        <el-form-item label="文档编号">
+          {{ document.number }}
+        </el-form-item>
+        <el-form-item label="归档原因" required>
+          <el-input
+            v-model="archiveReason"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入归档原因（最少 10 个字符）"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-alert
+          title="归档后文档将不再显示在默认列表中"
+          type="warning"
+          :closable="false"
+        />
+      </el-form>
+      <template #footer>
+        <el-button @click="archiveDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleArchive">确定归档</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+```
+
+##### ✅ 实施检查清单
+
+```
+□ 1. 数据模型
+   □ 1a. Document 表新增 6 个归档/作废字段
+   □ 1b. 索引创建成功（archived_at, obsoleted_at）
+   □ 1c. User 关联关系正确（archiver, obsoleter）
+
+□ 2. API 实现
+   □ 2a. POST /api/v1/documents/:id/archive 实现
+   □ 2b. POST /api/v1/documents/:id/obsolete 实现
+   □ 2c. POST /api/v1/documents/:id/restore 实现
+   □ 2d. GET /api/v1/documents 支持 includeArchived/includeObsolete 参数
+   □ 2e. DTO 验证（ArchiveDocumentDto, ObsoleteDocumentDto）
+
+□ 3. 业务逻辑
+   □ 3a. BR-346 归档规则验证通过
+   □ 3b. BR-347 作废规则验证通过
+   □ 3c. BR-348 恢复规则验证通过
+   □ 3d. 权限校验正确（创建者/管理员）
+
+□ 4. 前端界面
+   □ 4a. 文档详情页新增归档/作废按钮
+   □ 4b. 归档/作废对话框实现
+   □ 4c. 列表页筛选复选框实现
+   □ 4d. 归档/作废状态标签显示正确
+
+□ 5. 通知系统
+   □ 5a. 作废文档后通知相关用户
+   □ 5b. 恢复文档后通知相关用户
+
+□ 6. 测试
+   □ 6a. 归档场景测试通过
+   □ 6b. 作废场景测试通过
+   □ 6c. 恢复场景测试通过
+   □ 6d. 权限校验测试通过
+```
+
+---
+
+#### 22.2.2 P1-2: 细粒度权限系统完整方案
+
+##### 📋 业务规则补充
+
+**BR-349: 权限定义规则**
+- 权限编码格式：`{action}:{scope}:{resource}`，如 `view:cross_department:document`
+- 权限类别：document（文档）、record（记录）、task（任务）、approval（审批）、system（系统）
+- 权限范围：department（本部门）、cross_department（跨部门）、global（全局）
+- 权限不可删除：已使用的权限不可删除，只能停用
+
+**BR-350: 权限授予规则**
+- 授权权限：仅管理员或部门主管可授予权限
+- 授权原因：必须填写授权原因（如"质量部需要跨部门查看生产记录"）
+- 权限过期：可设置权限过期时间（如临时授予 1 个月查看权限）
+- 授权通知：权限授予后自动通知被授权用户
+
+**BR-351: 权限撤销规则**
+- 撤销权限：管理员或原授权人可撤销权限
+- 立即生效：撤销后立即生效，用户刷新页面后失去权限
+- 撤销通知：权限撤销后自动通知被撤销用户
+
+**BR-352: 资源级权限规则**
+- 资源级权限：可针对特定资源授予权限（如仅查看特定文档 DOC-001）
+- 优先级：资源级权限优先于全局权限（如禁止查看 DOC-001，即使有全局查看权限）
+- 资源删除：资源删除时，自动删除该资源的所有资源级权限
+
+**BR-353: 权限过期处理规则**
+- 定时检查：每日凌晨 1 点检查过期权限
+- 自动撤销：过期权限自动撤销
+- 过期通知：过期前 3 天通知用户和授权人
+
+##### 🔌 API 设计
+
+**1. 查询所有权限定义**
+
+```
+GET /api/v1/permissions
+```
+
+**响应**:
+```typescript
+{
+  "success": true,
+  "data": [
+    {
+      "id": "perm_001",
+      "code": "document:view",
+      "name": "查看文档",
+      "category": "document",
+      "scope": "department",
+      "description": "查看本部门文档"
+    },
+    {
+      "id": "perm_002",
+      "code": "document:view:cross_department",
+      "name": "跨部门查看文档",
+      "category": "document",
+      "scope": "cross_department",
+      "description": "查看其他部门文档"
+    }
+  ]
+}
+```
+
+**2. 授予权限**
+
+```
+POST /api/v1/user-permissions
+```
+
+**请求体**:
+```typescript
+{
+  "userId": "user_123",
+  "permissionId": "perm_002",
+  "reason": "质量部需要跨部门查看生产记录",
+  "expiresAt": "2026-03-13T23:59:59Z",  // 可选，权限过期时间
+  "resourceType": "document",            // 可选，资源类型
+  "resourceId": "doc_456"                // 可选，资源 ID
+}
+```
+
+**响应**:
+```typescript
+{
+  "success": true,
+  "data": {
+    "id": "up_789",
+    "userId": "user_123",
+    "permissionId": "perm_002",
+    "grantedBy": "user_admin",
+    "grantedByName": "管理员",
+    "grantedAt": "2026-02-13T10:00:00Z",
+    "expiresAt": "2026-03-13T23:59:59Z",
+    "reason": "质量部需要跨部门查看生产记录"
+  }
+}
+```
+
+**3. 撤销权限**
+
+```
+DELETE /api/v1/user-permissions/:id
+```
+
+**响应**:
+```typescript
+{
+  "success": true,
+  "message": "权限已撤销"
+}
+```
+
+**4. 查询用户权限列表**
+
+```
+GET /api/v1/user-permissions?userId=user_123
+```
+
+**响应**:
+```typescript
+{
+  "success": true,
+  "data": [
+    {
+      "id": "up_789",
+      "permission": {
+        "code": "document:view:cross_department",
+        "name": "跨部门查看文档"
+      },
+      "grantedBy": "管理员",
+      "grantedAt": "2026-02-13T10:00:00Z",
+      "expiresAt": "2026-03-13T23:59:59Z",
+      "status": "active"  // active | expired
+    }
+  ]
+}
+```
+
+**5. 检查用户是否有特定权限**
+
+```
+GET /api/v1/user-permissions/check?userId=user_123&permissionCode=document:view:cross_department
+```
+
+**响应**:
+```typescript
+{
+  "success": true,
+  "data": {
+    "hasPermission": true,
+    "expiresAt": "2026-03-13T23:59:59Z"
+  }
+}
+```
+
+##### 🎨 前端界面设计
+
+**1. 用户权限管理页面**
+
+页面路由：`/users/:id/permissions`
+
+页面布局：
+```
+┌────────────────────────────────────────────────────────────┐
+│ 用户权限管理 - 张三（生产部）                 [+ 授予权限]  │
+├────────────────────────────────────────────────────────────┤
+│ 权限列表                                                    │
+│ ┌────────────────────────────────────────────────────────┐ │
+│ │ 权限名称           │ 范围     │ 授予人 │ 过期时间 │操作│ │
+│ ├────────────────────────────────────────────────────────┤ │
+│ │ 查看文档            │ 本部门   │ 管理员 │ 永久     │[撤]│ │
+│ │ 跨部门查看文档      │ 跨部门   │ 管理员 │ 2026-03 │[撤]│ │
+│ └────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────┘
+```
+
+**2. 授予权限对话框**
+
+对话框尺寸：`60% × 70%`
+
+对话框内容：
+```
+┌─────────────────────────────────────────┐
+│ 授予权限                         [×]     │
+├─────────────────────────────────────────┤
+│ *权限类别: [文档权限 ▼]                  │
+│                                         │
+│ *权限名称: [跨部门查看文档 ▼]            │
+│                                         │
+│ *授权原因:                               │
+│ [___________________________________]   │
+│ [___________________________________]   │
+│                                         │
+│ 权限过期时间: [2026-03-13 ▼]  (可选)    │
+│                                         │
+│ 资源级权限 (可选):                       │
+│ 资源类型: [文档 ▼]                       │
+│ 资源ID: [DOC-2026-001]                  │
+│                                         │
+│              [取消]  [确定授予]          │
+└─────────────────────────────────────────┘
+```
+
+**3. Vue 3 代码示例**
+
+```vue
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  getUserPermissions,
+  grantPermission,
+  revokePermission
+} from '@/api/permission'
+
+const userId = ref('')
+const permissions = ref([])
+const grantDialogVisible = ref(false)
+
+const grantForm = ref({
+  permissionId: '',
+  reason: '',
+  expiresAt: null,
+  resourceType: null,
+  resourceId: null
+})
+
+const fetchPermissions = async () => {
+  const res = await getUserPermissions(userId.value)
+  permissions.value = res.data
+}
+
+const handleGrant = async () => {
+  try {
+    await grantPermission({
+      userId: userId.value,
+      ...grantForm.value
+    })
+    ElMessage.success('权限授予成功')
+    grantDialogVisible.value = false
+    fetchPermissions()
+  } catch (error) {
+    ElMessage.error(error.message || '授予失败')
+  }
+}
+
+const handleRevoke = async (permissionId: string) => {
+  await ElMessageBox.confirm('确定撤销该权限？', '撤销权限', {
+    type: 'warning'
+  })
+
+  try {
+    await revokePermission(permissionId)
+    ElMessage.success('权限已撤销')
+    fetchPermissions()
+  } catch (error) {
+    ElMessage.error(error.message || '撤销失败')
+  }
+}
+
+onMounted(() => {
+  fetchPermissions()
+})
+</script>
+
+<template>
+  <div class="user-permissions">
+    <el-button type="primary" @click="grantDialogVisible = true">
+      + 授予权限
+    </el-button>
+
+    <el-table :data="permissions">
+      <el-table-column prop="permission.name" label="权限名称" />
+      <el-table-column prop="permission.scope" label="范围" />
+      <el-table-column prop="grantedByName" label="授予人" />
+      <el-table-column label="过期时间">
+        <template #default="{ row }">
+          {{ row.expiresAt || '永久' }}
+        </template>
+      </el-table-column>
+      <el-table-column label="状态">
+        <template #default="{ row }">
+          <el-tag :type="row.status === 'active' ? 'success' : 'danger'">
+            {{ row.status === 'active' ? '有效' : '已过期' }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="80">
+        <template #default="{ row }">
+          <el-button
+            link
+            type="danger"
+            @click="handleRevoke(row.id)"
+          >
+            撤销
+          </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <!-- 授予权限对话框 -->
+    <el-dialog
+      v-model="grantDialogVisible"
+      title="授予权限"
+      width="60%"
+    >
+      <el-form :model="grantForm" label-width="120px">
+        <el-form-item label="权限名称" required>
+          <el-select v-model="grantForm.permissionId" placeholder="请选择">
+            <el-option label="跨部门查看文档" value="perm_002" />
+            <el-option label="编辑任务" value="perm_003" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="授权原因" required>
+          <el-input
+            v-model="grantForm.reason"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入授权原因"
+          />
+        </el-form-item>
+        <el-form-item label="权限过期时间">
+          <el-date-picker
+            v-model="grantForm.expiresAt"
+            type="datetime"
+            placeholder="选择日期时间"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="grantDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleGrant">确定授予</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+```
+
+##### ✅ 实施检查清单
+
+```
+□ 1. 数据模型
+   □ 1a. Permission 表创建成功
+   □ 1b. UserPermission 表创建成功
+   □ 1c. 索引创建成功（userId, permissionId, expiresAt）
+   □ 1d. 初始化 12+ 权限定义
+
+□ 2. API 实现
+   □ 2a. GET /api/v1/permissions 实现
+   □ 2b. POST /api/v1/user-permissions 实现
+   □ 2c. DELETE /api/v1/user-permissions/:id 实现
+   □ 2d. GET /api/v1/user-permissions 实现
+   □ 2e. GET /api/v1/user-permissions/check 实现
+
+□ 3. 权限守卫
+   □ 3a. PermissionGuard 实现
+   □ 3b. @RequirePermission() 装饰器实现
+   □ 3c. 权限校验逻辑正确（含过期检查）
+   □ 3d. 资源级权限校验正确
+
+□ 4. 定时任务
+   □ 4a. 每日检查过期权限定时任务
+   □ 4b. 过期权限自动撤销
+   □ 4c. 过期前 3 天通知用户
+
+□ 5. 业务规则
+   □ 5a. BR-349 权限定义规则验证通过
+   □ 5b. BR-350 权限授予规则验证通过
+   □ 5c. BR-351 权限撤销规则验证通过
+   □ 5d. BR-352 资源级权限规则验证通过
+   □ 5e. BR-353 权限过期处理规则验证通过
+
+□ 6. 前端界面
+   □ 6a. 用户权限管理页面实现
+   □ 6b. 授予权限对话框实现
+   □ 6c. 权限列表显示正确
+   □ 6d. 过期状态标签显示正确
+
+□ 7. 测试
+   □ 7a. 权限授予场景测试通过
+   □ 7b. 权限撤销场景测试通过
+   □ 7c. 权限过期场景测试通过
+   □ 7d. 资源级权限场景测试通过
+```
+
+---
+
+#### 22.2.3 P1-3: 工作流引擎完整方案
+
+##### 📋 业务规则补充
+
+**BR-354: 工作流模板规则**
+- 模板创建：仅管理员或部门主管可创建工作流模板
+- 模板编码：唯一，格式为 `{category}_{department}_{seq}`，如 `document_production_001`
+- 步骤配置：工作流步骤使用 JSON 配置，包含步骤名称、审批人角色、超时时间、并行模式
+- 模板版本：修改模板时创建新版本，旧版本仍可查看但不可使用
+- 模板停用：停用模板后，已启动的工作流实例仍可继续执行
+
+**BR-355: 工作流启动规则**
+- 启动条件：资源（文档/任务/记录）必须满足启动条件（如文档状态为 draft）
+- 模板选择：根据资源类型和部门自动匹配工作流模板
+- 发起人记录：记录工作流发起人和发起时间
+- 初始状态：工作流启动后状态为 `pending`，第一步任务为 `pending`
+
+**BR-356: 串行审批规则**
+- 顺序执行：串行审批按步骤顺序执行，前一步未完成时后一步不可执行
+- 自动分配：当前步骤完成后，自动创建下一步任务并通知审批人
+- 审批超时：超过截止时间未审批，状态变为 `timeout`，自动升级给上级
+
+**BR-357: 并行审批规则（会签）**
+- 同步开始：并行审批的所有任务同时创建，同时通知所有审批人
+- 全部通过：所有并行任务都通过后，才进入下一步
+- 一人拒绝：任一并行任务拒绝，整个工作流状态变为 `rejected`，其他并行任务自动跳过
+- 一人超时：任一并行任务超时，其他并行任务不能继续，整个工作流状态变为 `timeout`
+
+**BR-358: 审批超时升级规则**
+- 超时时间：每个步骤可配置超时时间（如 24 小时、48 小时）
+- 自动升级：超时后自动升级给上级审批人（escalatedTo）
+- 升级通知：升级后通知原审批人和上级审批人
+- 原审批人仍可审批：升级后原审批人仍可完成审批
+
+**BR-359: 工作流取消规则**
+- 取消权限：仅工作流发起人或管理员可取消
+- 取消时机：仅 `pending` 或 `in_progress` 状态可取消
+- 取消原因：必须填写取消原因
+- 取消通知：取消后通知所有相关审批人
+
+##### 🔌 API 设计
+
+**1. 创建工作流模板**
+
+```
+POST /api/v1/workflow-templates
+```
+
+**请求体**:
+```typescript
+{
+  "code": "document_production_001",
+  "name": "生产部文档审批流程",
+  "departmentId": "dept_123",
+  "category": "document",
+  "steps": [
+    {
+      "index": 0,
+      "name": "部门主管审批",
+      "assigneeRole": "manager",  // 审批人角色
+      "parallelMode": false,
+      "timeoutHours": 24
+    },
+    {
+      "index": 1,
+      "name": "质量部会签",
+      "assigneeRole": "quality_manager",
+      "parallelMode": true,       // 并行审批
+      "parallelAssignees": ["user_001", "user_002"],  // 指定审批人
+      "timeoutHours": 48
+    }
+  ]
+}
+```
+
+**响应**:
+```typescript
+{
+  "success": true,
+  "data": {
+    "id": "wft_789",
+    "code": "document_production_001",
+    "name": "生产部文档审批流程",
+    "version": 1,
+    "status": "active"
+  }
+}
+```
+
+**2. 启动工作流**
+
+```
+POST /api/v1/workflow-instances
+```
+
+**请求体**:
+```typescript
+{
+  "templateId": "wft_789",
+  "resourceType": "document",
+  "resourceId": "doc_456",
+  "resourceTitle": "质量手册 V2.0"
+}
+```
+
+**响应**:
+```typescript
+{
+  "success": true,
+  "data": {
+    "id": "wfi_101",
+    "templateCode": "document_production_001",
+    "status": "in_progress",
+    "currentStep": 0,
+    "tasks": [
+      {
+        "id": "wft_201",
+        "stepName": "部门主管审批",
+        "assigneeId": "user_manager",
+        "status": "pending",
+        "dueAt": "2026-02-14T10:00:00Z"
+      }
+    ]
+  }
+}
+```
+
+**3. 审批工作流任务**
+
+```
+POST /api/v1/workflow-tasks/:taskId/approve
+```
+
+**请求体**:
+```typescript
+{
+  "action": "approve",  // approve | reject
+  "comment": "文档内容符合要求，同意发布"
+}
+```
+
+**响应**:
+```typescript
+{
+  "success": true,
+  "data": {
+    "taskId": "wft_201",
+    "status": "approved",
+    "completedAt": "2026-02-13T14:00:00Z",
+    "nextTask": {
+      "id": "wft_202",
+      "stepName": "质量部会签",
+      "assigneeId": "user_001",
+      "status": "pending"
+    }
+  }
+}
+```
+
+**4. 取消工作流**
+
+```
+POST /api/v1/workflow-instances/:id/cancel
+```
+
+**请求体**:
+```typescript
+{
+  "reason": "文档内容需重新修订"
+}
+```
+
+**响应**:
+```typescript
+{
+  "success": true,
+  "message": "工作流已取消"
+}
+```
+
+**5. 查询我的待审批任务**
+
+```
+GET /api/v1/workflow-tasks/my-tasks?status=pending
+```
+
+**响应**:
+```typescript
+{
+  "success": true,
+  "data": [
+    {
+      "id": "wft_201",
+      "instanceId": "wfi_101",
+      "stepName": "部门主管审批",
+      "resourceType": "document",
+      "resourceTitle": "质量手册 V2.0",
+      "initiatorName": "张三",
+      "status": "pending",
+      "dueAt": "2026-02-14T10:00:00Z"
+    }
+  ]
+}
+```
+
+##### 🎨 前端界面设计
+
+**1. 工作流模板编辑器（可视化设计器）**
+
+页面路由：`/workflow-templates/editor`
+
+页面布局（简化版，详细设计见 INTERACTION_DESIGN.md）:
+```
+┌──────────────────────────────────────────────────────────┐
+│ 工作流设计器                             [保存] [预览]    │
+├──────────────────────────────────────────────────────────┤
+│ 基本信息:                                                 │
+│ 模板名称: [生产部文档审批流程__________]                   │
+│ 所属部门: [生产部 ▼]  类别: [文档 ▼]                      │
+│                                                          │
+│ 审批步骤:                                                 │
+│ ┌────────────────────────────────────────────────────┐   │
+│ │ 步骤 1: 部门主管审批                    [编辑][删除]│   │
+│ │ 审批人角色: 部门主管  超时: 24小时                  │   │
+│ │                                                    │   │
+│ │              ↓                                     │   │
+│ │                                                    │   │
+│ │ 步骤 2: 质量部会签（并行）              [编辑][删除]│   │
+│ │ 审批人: 张三, 李四   超时: 48小时                   │   │
+│ └────────────────────────────────────────────────────┘   │
+│ [+ 添加步骤]                                              │
+└──────────────────────────────────────────────────────────┘
+```
+
+**2. 我的待办任务页面**
+
+页面路由：`/my-tasks`
+
+页面布局：
+```
+┌──────────────────────────────────────────────────────────┐
+│ 我的待办                     [全部] [文档] [任务] [记录]  │
+├──────────────────────────────────────────────────────────┤
+│ ┌────────────────────────────────────────────────────┐   │
+│ │ 资源标题    │ 步骤     │ 发起人 │ 截止时间 │ 操作 │   │
+│ ├────────────────────────────────────────────────────┤   │
+│ │ 质量手册V2  │ 主管审批 │ 张三   │ 明天     │[审]│   │
+│ │ 生产记录001 │ 质量会签 │ 李四   │ 2天后    │[审]│   │
+│ └────────────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────┘
+```
+
+**3. 审批对话框**
+
+对话框尺寸：`70% × 80%`
+
+对话框内容：
+```
+┌─────────────────────────────────────────┐
+│ 审批 - 质量手册 V2.0             [×]     │
+├─────────────────────────────────────────┤
+│ 审批流程:                                │
+│ [✓] 部门主管审批 → [●] 质量部会签        │
+│                                         │
+│ 文档预览:                                │
+│ [PDF预览区域........................]   │
+│                                         │
+│ 审批意见:                                │
+│ [___________________________________]   │
+│ [___________________________________]   │
+│                                         │
+│          [拒绝]  [通过]                  │
+└─────────────────────────────────────────┘
+```
+
+**4. Vue 3 代码示例**
+
+```vue
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { getMyTasks, approveTask, rejectTask } from '@/api/workflow'
+
+const myTasks = ref([])
+const approveDialogVisible = ref(false)
+const currentTask = ref(null)
+const approveComment = ref('')
+
+const fetchMyTasks = async () => {
+  const res = await getMyTasks({ status: 'pending' })
+  myTasks.value = res.data
+}
+
+const handleApprove = async (action: 'approve' | 'reject') => {
+  try {
+    if (action === 'approve') {
+      await approveTask(currentTask.value.id, {
+        action: 'approve',
+        comment: approveComment.value
+      })
+      ElMessage.success('审批通过')
+    } else {
+      await rejectTask(currentTask.value.id, {
+        action: 'reject',
+        comment: approveComment.value
+      })
+      ElMessage.success('已拒绝')
+    }
+
+    approveDialogVisible.value = false
+    fetchMyTasks()
+  } catch (error) {
+    ElMessage.error(error.message || '操作失败')
+  }
+}
+
+onMounted(() => {
+  fetchMyTasks()
+})
+</script>
+
+<template>
+  <div class="my-tasks">
+    <h2>我的待办</h2>
+
+    <el-table :data="myTasks">
+      <el-table-column prop="resourceTitle" label="资源标题" />
+      <el-table-column prop="stepName" label="步骤" />
+      <el-table-column prop="initiatorName" label="发起人" />
+      <el-table-column label="截止时间">
+        <template #default="{ row }">
+          <span :class="{ 'text-danger': isOverdue(row.dueAt) }">
+            {{ formatDueDate(row.dueAt) }}
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="80">
+        <template #default="{ row }">
+          <el-button
+            link
+            type="primary"
+            @click="openApproveDialog(row)"
+          >
+            审批
+          </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <!-- 审批对话框 -->
+    <el-dialog
+      v-model="approveDialogVisible"
+      :title="`审批 - ${currentTask?.resourceTitle}`"
+      width="70%"
+    >
+      <div v-if="currentTask">
+        <!-- 审批流程展示 -->
+        <div class="workflow-steps">
+          <el-steps :active="currentTask.stepIndex" finish-status="success">
+            <el-step title="部门主管审批" />
+            <el-step title="质量部会签" />
+          </el-steps>
+        </div>
+
+        <!-- 审批意见 -->
+        <el-form label-width="100px">
+          <el-form-item label="审批意见">
+            <el-input
+              v-model="approveComment"
+              type="textarea"
+              :rows="4"
+              placeholder="请输入审批意见"
+            />
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <template #footer>
+        <el-button type="danger" @click="handleApprove('reject')">
+          拒绝
+        </el-button>
+        <el-button type="success" @click="handleApprove('approve')">
+          通过
+        </el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+```
+
+##### ✅ 实施检查清单
+
+```
+□ 1. 数据模型
+   □ 1a. WorkflowTemplate 表创建成功
+   □ 1b. WorkflowInstance 表创建成功
+   □ 1c. WorkflowTask 表创建成功
+   □ 1d. 索引创建成功
+
+□ 2. 工作流引擎
+   □ 2a. WorkflowService 实现
+   □ 2b. 启动工作流逻辑正确
+   □ 2c. 串行审批逻辑正确
+   □ 2d. 并行审批逻辑正确
+   □ 2e. 审批超时升级逻辑正确
+   □ 2f. 工作流取消逻辑正确
+
+□ 3. 定时任务
+   □ 3a. WorkflowScheduler 实现
+   □ 3b. 每 10 分钟检查超时任务
+   □ 3c. 超时任务自动升级
+   □ 3d. 超时通知发送正确
+
+□ 4. API 实现
+   □ 4a. POST /api/v1/workflow-templates 实现
+   □ 4b. POST /api/v1/workflow-instances 实现
+   □ 4c. POST /api/v1/workflow-tasks/:id/approve 实现
+   □ 4d. POST /api/v1/workflow-instances/:id/cancel 实现
+   □ 4e. GET /api/v1/workflow-tasks/my-tasks 实现
+
+□ 5. 业务规则
+   □ 5a. BR-354 工作流模板规则验证通过
+   □ 5b. BR-355 工作流启动规则验证通过
+   □ 5c. BR-356 串行审批规则验证通过
+   □ 5d. BR-357 并行审批规则验证通过
+   □ 5e. BR-358 审批超时升级规则验证通过
+   □ 5f. BR-359 工作流取消规则验证通过
+
+□ 6. 前端界面
+   □ 6a. 工作流模板编辑器实现（可视化设计器）
+   □ 6b. 我的待办任务页面实现
+   □ 6c. 审批对话框实现
+   □ 6d. 审批流程可视化显示正确
+
+□ 7. 测试
+   □ 7a. 串行审批场景测试通过
+   □ 7b. 并行审批场景测试通过
+   □ 7c. 审批超时升级场景测试通过
+   □ 7d. 工作流取消场景测试通过
+   □ 7e. 一人拒绝全部失效场景测试通过
+   □ 7f. 一人超时阻塞场景测试通过
+```
+
+---
+
+### 22.3 API 端点规范化（P2 优先级）
 
 #### 22.2.1 统一 API 路径前缀（P2-1）
 
@@ -13478,6 +14652,7 @@ async function bootstrap() {
 
 | 版本 | 日期 | 变更内容 |
 |------|------|---------|
+| 1.2 | 2026-02-13 | **补充 P1-1/P1-2/P1-3 完整技术方案**：数据模型 + API 设计 + 业务规则（BR-346 ~ BR-359，共 14 条）+ 前端界面设计 + Vue 3 代码示例 + 完整实施检查清单 |
 | 1.1 | 2026-02-13 | 调整实施策略，明确"技术债务优先于新需求"原则，新增实施检查清单 |
 | 1.0 | 2026-02-13 | 初始版本，记录 3 个 P1 问题和 1 个 P2 问题 |
 
