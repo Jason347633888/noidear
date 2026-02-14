@@ -51,6 +51,7 @@ import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import request from '@/api/request';
+import taskApi from '@/api/task';
 
 interface Template { id: string; number: string; title: string; }
 interface Department { id: string; name: string; }
@@ -91,14 +92,14 @@ const handleSubmit = async () => {
   await formRef.value.validate();
   submitting.value = true;
   try {
-    await request.post('/tasks', {
+    await taskApi.createTask({
       templateId: formData.templateId,
       departmentId: formData.departmentId,
       deadline: new Date(formData.deadline).toISOString(),
     });
     ElMessage.success('创建成功');
     router.push('/tasks');
-  } catch {} finally { submitting.value = false; }
+  } catch { ElMessage.error('创建任务失败'); } finally { submitting.value = false; }
 };
 
 onMounted(() => fetchOptions());

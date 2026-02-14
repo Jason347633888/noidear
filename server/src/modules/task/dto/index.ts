@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, IsDateString, Min, Max } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsInt, IsDateString, IsIn, Min, Max } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -34,8 +34,9 @@ export class TaskQueryDto {
   @IsOptional()
   limit?: number = 20;
 
-  @ApiPropertyOptional({ description: '任务状态' })
+  @ApiPropertyOptional({ description: '任务状态', enum: ['pending', 'submitted', 'approved', 'rejected', 'cancelled', 'overdue'] })
   @IsString()
+  @IsIn(['pending', 'submitted', 'approved', 'rejected', 'cancelled', 'overdue'])
   @IsOptional()
   status?: string;
 
@@ -75,6 +76,7 @@ export class ApproveTaskDto {
 
   @ApiProperty({ description: '审批状态', enum: ['approved', 'rejected'] })
   @IsString()
+  @IsIn(['approved', 'rejected'])
   status: 'approved' | 'rejected';
 
   @ApiPropertyOptional({ description: '审批意见' })

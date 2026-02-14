@@ -23,6 +23,21 @@ export class DocumentService {
 
   private async generateDocumentNumber(level: number, departmentId: string): Promise<string> {
     return this.prisma.$transaction(async (tx) => {
+      // BR-008: 优先使用待补齐编号
+      const pendingNumber = await tx.pendingNumber.findFirst({
+        where: { level, departmentId },
+        orderBy: { deletedAt: 'asc' }, // 先删除的先补齐
+      });
+
+      if (pendingNumber) {
+        // 使用待补齐编号并删除记录
+        await tx.pendingNumber.delete({
+          where: { id: pendingNumber.id },
+        });
+        return pendingNumber.number;
+      }
+
+      // 没有待补齐编号，生成新编号（原逻辑）
       // 查询部门获取部门代码
       const department = await tx.department.findUnique({
         where: { id: departmentId },
@@ -272,12 +287,31 @@ export class DocumentService {
       );
     }
 
+    // 获取创建者的部门ID（用于编号补齐）
+    const creator = await this.prisma.user.findUnique({
+      where: { id: document.creatorId },
+      select: { departmentId: true },
+    });
+
     await this.prisma.document.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
 
     await this.storage.deleteFile(document.filePath);
+
+    // BR-008: 将编号加入待补齐列表
+    if (creator?.departmentId) {
+      await this.prisma.pendingNumber.create({
+        data: {
+          id: this.snowflake.nextId(),
+          level: document.level,
+          departmentId: creator.departmentId,
+          number: document.number,
+          deletedAt: new Date(),
+        },
+      });
+    }
 
     // 记录操作日志
     await this.operationLog.log({
@@ -362,11 +396,11 @@ export class DocumentService {
     );
   }
 
-  async findPendingApprovals(userId: string, role: string) {
+  async findPendingApprovals(userId: string, role: string, page = 1, limit = 20) {
     const where: any = { status: 'pending', deletedAt: null };
+    const skip = (page - 1) * limit;
 
     // 如果是leader角色，需要过滤同部门的文档
-    let departmentUserIds: string[] = [];
     if (role === 'leader') {
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (user && user.departmentId) {
@@ -374,15 +408,19 @@ export class DocumentService {
           where: { departmentId: user.departmentId },
           select: { id: true },
         });
-        departmentUserIds = departmentUsers.map(u => u.id);
-        where.creatorId = { in: departmentUserIds };
+        where.creatorId = { in: departmentUsers.map(u => u.id) };
       }
     }
 
-    const list = (await this.prisma.document.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    })) as unknown as any[];
+    const [list, total] = await Promise.all([
+      this.prisma.document.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }) as unknown as Promise<any[]>,
+      this.prisma.document.count({ where }),
+    ]);
 
     // 批量获取创建人信息
     const creatorIds = [...new Set(list.map(d => d.creatorId).filter(Boolean))];
@@ -398,7 +436,7 @@ export class DocumentService {
       creator: doc.creatorId ? creatorMap.get(doc.creatorId) || null : null,
     }));
 
-    return convertBigIntToNumber(enrichedList);
+    return { list: convertBigIntToNumber(enrichedList), total, page, limit };
   }
 
   async approve(id: string, status: string, comment: string | undefined, approverId: string) {
@@ -446,7 +484,7 @@ export class DocumentService {
     if (!isDesignatedApprover && !isAdmin) {
       throw new BusinessException(
         ErrorCode.FORBIDDEN,
-        `您无权审批此文档，该文档的审批人应为 ${pendingApproval.approverId}`,
+        '您无权审批此文档',
       );
     }
 
@@ -526,6 +564,92 @@ export class DocumentService {
     const result = await this.prisma.document.update({
       where: { id },
       data: { status: 'inactive' },
+    });
+
+    return convertBigIntToNumber(result);
+  }
+
+  async archive(id: string, reason: string, userId: string, role: string) {
+    const document = await this.findOne(id, userId, role);
+
+    // 状态校验：只有已发布的文档可以归档
+    if (document.status !== 'approved') {
+      throw new BusinessException(
+        ErrorCode.CONFLICT,
+        `文档 [${document.number}] 当前状态为 [${document.status}]，只有已发布文档可归档`,
+      );
+    }
+
+    // 归档文档
+    const result = await this.prisma.document.update({
+      where: { id },
+      data: {
+        status: 'archived',
+        archiveReason: reason,
+        archivedAt: new Date(),
+        archivedBy: userId,
+      },
+    });
+
+    // 记录操作日志
+    await this.operationLog.log({
+      userId,
+      action: 'archive',
+      module: 'document',
+      objectId: id,
+      objectType: 'document',
+      details: { documentNumber: document.number, reason },
+    });
+
+    // 发送通知
+    await this.notification.create({
+      userId: document.creatorId,
+      type: 'document_archived',
+      title: '文档已归档',
+      content: `您的文档 [${document.number} ${document.title}] 已被归档`,
+    });
+
+    return convertBigIntToNumber(result);
+  }
+
+  async obsolete(id: string, reason: string, userId: string, role: string) {
+    const document = await this.findOne(id, userId, role);
+
+    // 状态校验：只有已发布的文档可以作废
+    if (document.status !== 'approved') {
+      throw new BusinessException(
+        ErrorCode.CONFLICT,
+        `文档 [${document.number}] 当前状态为 [${document.status}]，只有已发布文档可作废`,
+      );
+    }
+
+    // 作废文档
+    const result = await this.prisma.document.update({
+      where: { id },
+      data: {
+        status: 'obsolete',
+        obsoleteReason: reason,
+        obsoletedAt: new Date(),
+        obsoletedBy: userId,
+      },
+    });
+
+    // 记录操作日志
+    await this.operationLog.log({
+      userId,
+      action: 'obsolete',
+      module: 'document',
+      objectId: id,
+      objectType: 'document',
+      details: { documentNumber: document.number, reason },
+    });
+
+    // 发送通知
+    await this.notification.create({
+      userId: document.creatorId,
+      type: 'document_obsoleted',
+      title: '文档已作废',
+      content: `您的文档 [${document.number} ${document.title}] 已被作废`,
     });
 
     return convertBigIntToNumber(result);

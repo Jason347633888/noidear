@@ -25,3 +25,9 @@ worktrees/
 # Logs
 *.log
 npm-debug.log*
+
+# Playwright E2E
+client/playwright-report/
+client/playwright-results.json
+client/e2e/test-results/
+client/.env.e2e

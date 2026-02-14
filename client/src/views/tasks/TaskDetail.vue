@@ -1,7 +1,19 @@
 <template>
   <div class="task-detail" v-loading="loading">
     <el-page-header @back="$router.back()">
-      <template #content><span class="page-title">任务详情</span></template>
+      <template #content>
+        <span class="page-title">任务详情</span>
+        <el-tag
+          v-if="isLocked"
+          type="info"
+          effect="dark"
+          size="small"
+          style="margin-left: 12px; vertical-align: middle;"
+        >
+          <el-icon style="margin-right: 4px;"><Lock /></el-icon>
+          已锁定
+        </el-tag>
+      </template>
     </el-page-header>
 
     <el-card class="info-card" v-if="task">
@@ -28,11 +40,14 @@
       </div>
     </el-card>
 
-    <el-card class="form-card" v-if="task?.status === 'pending'">
-      <template #header><span>填写任务</span></template>
+    <el-card class="form-card" v-if="showFormCard">
+      <template #header>
+        <span v-if="isLocked">查看数据（只读）</span>
+        <span v-else>填写任务</span>
+      </template>
 
       <el-alert
-        v-if="deviationResult.hasDeviation"
+        v-if="deviationResult.hasDeviation && !isLocked"
         type="warning"
         :closable="false"
         show-icon
@@ -45,8 +60,12 @@
         :fields="task?.template?.fieldsJson || []"
         v-model="formData"
         ref="formRef"
+        :disabled="isLocked"
       />
-      <div class="actions">
+      <div class="actions" v-if="!isLocked">
+        <el-button @click="handleSaveDraft" :loading="savingDraft" v-if="canSaveDraft">
+          保存草稿
+        </el-button>
         <el-button type="primary" @click="handleSubmit" :loading="submitting">提交</el-button>
       </div>
     </el-card>
@@ -98,106 +117,112 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import request from '@/api/request';
+import { Lock } from '@element-plus/icons-vue';
+import taskApi, {
+  isTaskLocked,
+  isTaskOverdue,
+  getTaskStatusText,
+  getTaskStatusType,
+  getRecordStatusText,
+  getRecordStatusType,
+  type Task,
+  type TaskRecord,
+} from '@/api/task';
 import FormBuilder, { type TemplateField } from '@/components/FormBuilder.vue';
 import DeviationReasonDialog from '@/components/deviation/DeviationReasonDialog.vue';
 import deviationApi, { type ToleranceFieldConfig } from '@/api/deviation';
 import { detectDeviations, debounce } from '@/utils/deviationDetector';
+import { useUserStore } from '@/stores/user';
 
-interface Task {
-  id: string;
+// Extended local task type for template with fieldsJson typed as TemplateField[]
+interface TaskWithFields extends Omit<Task, 'template'> {
   template: { id: string; title: string; fieldsJson: TemplateField[] };
-  department: { id: string; name: string };
-  deadline: string;
-  status: string;
-  creatorId: string;
-  creator: { name: string } | null;
-}
-
-interface Record {
-  id: string;
-  submitter: { name: string } | null;
-  approver: { name: string } | null;
-  submittedAt: string;
-  approvedAt: string;
-  status: string;
-  comment: string;
 }
 
 const route = useRoute();
+const userStore = useUserStore();
 const loading = ref(false);
 const submitting = ref(false);
-const task = ref<Task | null>(null);
-const records = ref<Record[]>([]);
+const savingDraft = ref(false);
+const task = ref<TaskWithFields | null>(null);
+const records = ref<TaskRecord[]>([]);
 const formData = reactive<Record<string, unknown>>({});
-const currentUserId = ref('');
+const currentUserId = computed(() => userStore.user?.id ?? '');
 const toleranceConfigs = ref<ToleranceFieldConfig[]>([]);
 const deviationDialogVisible = ref(false);
-const deviationReason = ref('');
+const deviationReasons = ref<Record<string, string>>({});
 const deviationResult = reactive({
   hasDeviation: false,
-  deviations: [] as any[],
+  deviations: [] as { fieldName: string; value: unknown; min?: number; max?: number }[],
 });
 
 const formatDate = (date: string) => new Date(date).toLocaleString('zh-CN');
 
-const isOverdue = (deadline: string, status: string): boolean => {
-  if (status === 'completed' || status === 'cancelled') return false;
-  return new Date(deadline) < new Date();
-};
+const isOverdue = (deadline: string, status: string): boolean => isTaskOverdue(deadline, status);
+const getStatusType = (s: string) => getTaskStatusType(s);
+const getStatusText = (s: string) => getTaskStatusText(s);
 
-const getStatusType = (s: string) => ({ pending: 'warning', completed: 'success', cancelled: 'info' }[s] || 'info');
-const getStatusText = (s: string) => ({ pending: '进行中', completed: '已完成', cancelled: '已取消' }[s] || s);
-const getRecordStatusType = (s: string) => ({ submitted: 'info', approved: 'success', rejected: 'danger' }[s] || 'info');
-const getRecordStatusText = (s: string) => ({ submitted: '待审批', approved: '通过', rejected: '驳回' }[s] || s);
+const isLocked = computed(() => isTaskLocked(task.value?.status || ''));
+
+const showFormCard = computed(() => {
+  const status = task.value?.status;
+  return status === 'pending' || status === 'submitted'
+    || status === 'approved' || status === 'rejected';
+});
+
+const canSaveDraft = computed(() => {
+  const status = task.value?.status;
+  return status === 'pending' || status === 'submitted';
+});
 
 const canCancel = computed(() => {
   return task.value?.creatorId === currentUserId.value;
 });
 
 const canApprove = computed(() => {
-  // 任务发起人可以审批
-  return task.value?.creatorId === currentUserId.value;
+  return userStore.isAdmin || userStore.isLeader;
 });
-
-const fetchCurrentUser = async () => {
-  try {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      const user = JSON.parse(userStr);
-      currentUserId.value = user.id || '';
-    }
-  } catch {}
-};
 
 const fetchData = async () => {
   loading.value = true;
   try {
-    const res = await request.get<any>(`/tasks/${route.params.id}`);
-    task.value = res;
-    records.value = res.records || [];
+    const taskId = route.params.id as string;
+    const res = await taskApi.getTaskById(taskId);
+    const taskData = res as Task & { template: { id: string; title: string; fieldsJson: TemplateField[] } };
+    task.value = taskData as TaskWithFields;
+    records.value = taskData.records ?? [];
 
-    // 获取模板的公差配置
+    // Load draft data into form if available
+    if (res.draftData && typeof res.draftData === 'object') {
+      const draft = res.draftData as Record<string, unknown>;
+      Object.assign(formData, draft);
+    }
+
+    // Fetch tolerance config for the template
     if (task.value?.template?.id) {
       await fetchToleranceConfig(task.value.template.id);
     }
-  } catch { ElMessage.error('获取任务详情失败'); }
-  finally { loading.value = false; }
+  } catch {
+    ElMessage.error('获取任务详情失败');
+  } finally {
+    loading.value = false;
+  }
 };
 
 const fetchToleranceConfig = async (templateId: string) => {
   try {
     const res = await deviationApi.getToleranceConfig(templateId);
     toleranceConfigs.value = res.fields || [];
-  } catch (error: any) {
-    // 404 表示模板没有配置公差，这是正常情况
-    if (error?.response?.status !== 404) {
-      // 其他错误才提示
+  } catch (error: unknown) {
+    // 404 means no tolerance config for this template - that is normal
+    const httpError = error as { response?: { status?: number } };
+    if (httpError?.response?.status !== 404) {
+      // Other errors are silently ignored to not block the user
     }
   }
 };
 
-// 实时偏离检测（防抖）
+// Real-time deviation detection (debounced)
 const checkDeviations = debounce(() => {
   if (toleranceConfigs.value.length === 0) {
     return;
@@ -208,41 +233,63 @@ const checkDeviations = debounce(() => {
   deviationResult.deviations = result.deviations;
 }, 500);
 
-// 监听表单数据变化，实时检测偏离
+// Watch form data changes for real-time deviation detection
 watch(formData, () => {
   checkDeviations();
 }, { deep: true });
 
+const handleSaveDraft = async () => {
+  if (!task.value?.id) return;
+  savingDraft.value = true;
+  try {
+    await taskApi.saveDraft(task.value.id, { data: { ...formData } });
+    ElMessage.success('草稿已保存');
+  } catch {
+    ElMessage.error('保存草稿失败');
+  } finally {
+    savingDraft.value = false;
+  }
+};
+
 const handleSubmit = async () => {
-  // 如果有偏离且没有填写原因，弹出对话框
-  if (deviationResult.hasDeviation && !deviationReason.value) {
+  // If deviations exist and no reason provided, show dialog
+  if (deviationResult.hasDeviation && Object.keys(deviationReasons.value).length === 0) {
     deviationDialogVisible.value = true;
     return;
   }
 
   submitting.value = true;
   try {
-    const submitData: any = {
-      taskId: task.value?.id,
-      data: formData,
-    };
+    const taskId = task.value?.id;
+    if (!taskId) return;
 
-    // 如果有偏离，附带偏离原因
-    if (deviationResult.hasDeviation && deviationReason.value) {
-      submitData.deviationReasons = deviationReason.value;
-    }
+    const reasons = deviationResult.hasDeviation && Object.keys(deviationReasons.value).length > 0
+      ? deviationReasons.value
+      : undefined;
 
-    await request.post('/tasks/submit', submitData);
+    await taskApi.submitTaskById(taskId, { ...formData }, reasons);
     ElMessage.success('提交成功');
-    deviationReason.value = ''; // 清空偏离原因
+    deviationReasons.value = {};
     fetchData();
-  } catch {} finally { submitting.value = false; }
+  } catch {
+    ElMessage.error('提交失败');
+  } finally {
+    submitting.value = false;
+  }
 };
 
-const handleDeviationConfirm = (reason: string) => {
-  deviationReason.value = reason;
+const handleDeviationConfirm = (reason: string | Record<string, string>) => {
+  if (typeof reason === 'string') {
+    // Convert single reason string to Record keyed by deviation field names
+    const reasonMap: Record<string, string> = {};
+    for (const d of deviationResult.deviations) {
+      reasonMap[d.fieldName] = reason;
+    }
+    deviationReasons.value = reasonMap;
+  } else {
+    deviationReasons.value = reason;
+  }
   deviationDialogVisible.value = false;
-  // 填写完原因后自动提交
   handleSubmit();
 };
 
@@ -254,21 +301,26 @@ const handleDeviationCancel = () => {
 const handleCancel = async () => {
   try {
     await ElMessageBox.confirm('确定要取消该任务吗？此操作不可恢复。', '警告', { type: 'warning' });
-    await request.post(`/tasks/${task.value?.id}/cancel`);
+    if (!task.value?.id) return;
+    await taskApi.cancelTask(task.value.id);
     ElMessage.success('任务已取消');
     fetchData();
-  } catch {}
+  } catch {
+    // User cancelled the dialog - do nothing
+  }
 };
 
-const handleApprove = async (row: Record) => {
+const handleApprove = async (row: TaskRecord) => {
   try {
-    await request.post('/tasks/approve', { recordId: row.id, status: 'approved' });
+    await taskApi.approveTask({ recordId: row.id, status: 'approved' });
     ElMessage.success('审批通过');
     fetchData();
-  } catch {}
+  } catch {
+    ElMessage.error('审批操作失败');
+  }
 };
 
-const handleReject = async (row: Record) => {
+const handleReject = async (row: TaskRecord) => {
   try {
     const { value: comment } = await ElMessageBox.prompt('请输入驳回意见', '驳回任务', {
       confirmButtonText: '确定',
@@ -276,14 +328,15 @@ const handleReject = async (row: Record) => {
       inputPattern: /\S+/,
       inputErrorMessage: '请输入驳回意见',
     });
-    await request.post('/tasks/approve', { recordId: row.id, status: 'rejected', comment });
+    await taskApi.approveTask({ recordId: row.id, status: 'rejected', comment });
     ElMessage.success('已驳回');
     fetchData();
-  } catch {}
+  } catch {
+    // User cancelled the dialog - do nothing
+  }
 };
 
 onMounted(() => {
-  fetchCurrentUser();
   fetchData();
 });
 </script>
@@ -292,7 +345,7 @@ onMounted(() => {
 .task-detail { padding: 0; }
 .page-title { font-size: 18px; font-weight: bold; }
 .info-card, .form-card, .records-card { margin-top: 16px; }
-.actions { margin-top: 16px; text-align: right; }
+.actions { margin-top: 16px; text-align: right; display: flex; justify-content: flex-end; gap: 8px; }
 .task-actions { margin-top: 16px; text-align: right; }
 .overdue-text { color: #f56c6c; font-weight: bold; }
 </style>

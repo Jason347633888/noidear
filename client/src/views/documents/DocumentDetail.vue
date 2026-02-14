@@ -83,8 +83,38 @@
         >
           停用文档
         </el-button>
+        <el-button
+          type="warning"
+          v-if="document.status === 'approved'"
+          @click="showArchiveDialog"
+        >
+          归档
+        </el-button>
+        <el-button
+          type="danger"
+          v-if="document.status === 'approved'"
+          @click="showObsoleteDialog"
+        >
+          作废
+        </el-button>
       </div>
     </el-card>
+
+    <!-- 归档/作废原因提示 -->
+    <el-alert
+      v-if="document?.status === 'archived' && document.archiveReason"
+      type="warning"
+      :title="`归档原因: ${document.archiveReason}`"
+      :closable="false"
+      style="margin-top: 16px;"
+    />
+    <el-alert
+      v-if="document?.status === 'obsolete' && document.obsoleteReason"
+      type="error"
+      :title="`作废原因: ${document.obsoleteReason}`"
+      :closable="false"
+      style="margin-top: 16px;"
+    />
 
     <el-card class="version-card" v-if="versionHistory.length">
       <template #header>
@@ -111,6 +141,50 @@
       :document-id="document?.id || ''"
       :filename="document?.fileName || ''"
     />
+
+    <!-- 归档对话框 -->
+    <el-dialog v-model="archiveDialogVisible" title="归档文档" width="500px">
+      <el-form :model="archiveForm" :rules="archiveRules" ref="archiveFormRef">
+        <el-form-item label="归档原因" prop="reason">
+          <el-input
+            v-model="archiveForm.reason"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入归档原因（至少10个字符）"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="archiveDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleArchive" :loading="archiving">
+          确认归档
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 作废对话框 -->
+    <el-dialog v-model="obsoleteDialogVisible" title="作废文档" width="500px">
+      <el-form :model="obsoleteForm" :rules="obsoleteRules" ref="obsoleteFormRef">
+        <el-form-item label="作废原因" prop="reason">
+          <el-input
+            v-model="obsoleteForm.reason"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入作废原因（至少10个字符）"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="obsoleteDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleObsolete" :loading="obsoleting">
+          确认作废
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -153,6 +227,10 @@ interface Document {
   approvedAt: string | null;
   createdAt: string;
   approvals?: Approval[];
+  archiveReason?: string | null;
+  archivedAt?: string | null;
+  obsoleteReason?: string | null;
+  obsoletedAt?: string | null;
 }
 
 const route = useRoute();
@@ -161,6 +239,36 @@ const loading = ref(false);
 const document = ref<Document | null>(null);
 const versionHistory = ref<VersionItem[]>([]);
 const showPreview = ref(false);
+
+// 归档/作废相关
+const archiveDialogVisible = ref(false);
+const obsoleteDialogVisible = ref(false);
+const archiving = ref(false);
+const obsoleting = ref(false);
+const archiveFormRef = ref();
+const obsoleteFormRef = ref();
+
+const archiveForm = ref({
+  reason: '',
+});
+
+const obsoleteForm = ref({
+  reason: '',
+});
+
+const archiveRules = {
+  reason: [
+    { required: true, message: '请输入归档原因', trigger: 'blur' },
+    { min: 10, message: '归档原因至少10个字符', trigger: 'blur' },
+  ],
+};
+
+const obsoleteRules = {
+  reason: [
+    { required: true, message: '请输入作废原因', trigger: 'blur' },
+    { min: 10, message: '作废原因至少10个字符', trigger: 'blur' },
+  ],
+};
 
 // 获取最新的驳回审批记录
 const latestRejection = computed(() => {
@@ -186,6 +294,8 @@ const getStatusType = (status: string): string => {
     approved: 'success',
     rejected: 'danger',
     inactive: 'info',
+    archived: 'warning',
+    obsolete: 'danger',
   };
   return map[status] || 'info';
 };
@@ -197,6 +307,8 @@ const getStatusText = (status: string): string => {
     approved: '已发布',
     rejected: '已驳回',
     inactive: '已停用',
+    archived: '已归档',
+    obsolete: '已作废',
   };
   return map[status] || status;
 };
@@ -223,17 +335,23 @@ const fetchVersionHistory = async () => {
 };
 
 const handleDownload = () => {
-  if (document.value?.status === 'inactive') {
+  if (!document.value?.id) {
+    return;
+  }
+  if (document.value.status === 'inactive') {
     ElMessage.warning('该文档已停用，无法下载');
     return;
   }
-  window.open(`/api/v1/documents/${document.value?.id}/download`, '_blank');
+  window.open(`/api/v1/documents/${document.value.id}/download`, '_blank');
 };
 
 const handleSubmit = async () => {
+  if (!document.value?.id) {
+    return;
+  }
   try {
     await ElMessageBox.confirm('确定要提交该文档进行审批吗？', '提示');
-    await request.post(`/documents/${document.value?.id}/submit`);
+    await request.post(`/documents/${document.value.id}/submit`);
     ElMessage.success('提交成功');
     fetchData();
   } catch {
@@ -242,11 +360,14 @@ const handleSubmit = async () => {
 };
 
 const handleDelete = async () => {
+  if (!document.value?.id) {
+    return;
+  }
   try {
     await ElMessageBox.confirm('确定要删除该文档吗？此操作不可恢复。', '警告', {
       type: 'warning',
     });
-    await request.delete(`/documents/${document.value?.id}`);
+    await request.delete(`/documents/${document.value.id}`);
     ElMessage.success('删除成功');
     router.back();
   } catch {
@@ -255,13 +376,70 @@ const handleDelete = async () => {
 };
 
 const handleDeactivate = async () => {
+  if (!document.value?.id) {
+    return;
+  }
   try {
     await ElMessageBox.confirm('确定要停用该文档吗？停用后无法下载。', '提示');
-    await request.post(`/documents/${document.value?.id}/deactivate`);
+    await request.post(`/documents/${document.value.id}/deactivate`);
     ElMessage.success('停用成功');
     fetchData();
   } catch {
     // 用户取消
+  }
+};
+
+const showArchiveDialog = () => {
+  archiveForm.value.reason = '';
+  archiveDialogVisible.value = true;
+};
+
+const showObsoleteDialog = () => {
+  obsoleteForm.value.reason = '';
+  obsoleteDialogVisible.value = true;
+};
+
+const handleArchive = async () => {
+  if (!document.value?.id) {
+    return;
+  }
+  try {
+    await archiveFormRef.value.validate();
+    archiving.value = true;
+    await request.post(`/documents/${document.value.id}/archive`, {
+      reason: archiveForm.value.reason,
+    });
+    ElMessage.success('归档成功');
+    archiveDialogVisible.value = false;
+    fetchData();
+  } catch (error: any) {
+    if (error?.message) {
+      // 表单验证失败，不显示错误
+    }
+  } finally {
+    archiving.value = false;
+  }
+};
+
+const handleObsolete = async () => {
+  if (!document.value?.id) {
+    return;
+  }
+  try {
+    await obsoleteFormRef.value.validate();
+    obsoleting.value = true;
+    await request.post(`/documents/${document.value.id}/obsolete`, {
+      reason: obsoleteForm.value.reason,
+    });
+    ElMessage.success('作废成功');
+    obsoleteDialogVisible.value = false;
+    fetchData();
+  } catch (error: any) {
+    if (error?.message) {
+      // 表单验证失败，不显示错误
+    }
+  } finally {
+    obsoleting.value = false;
   }
 };
 

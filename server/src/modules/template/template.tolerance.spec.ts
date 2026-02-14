@@ -33,6 +33,7 @@ describe('TemplateService - Tolerance Configuration', () => {
     mockPrisma.template.findUnique.mockResolvedValue({
       id: 'tpl-1',
       version: 1.0,
+      creatorId: 'admin-1',
       fieldsJson: [
         { name: 'temp', type: 'number' },
       ],
@@ -51,7 +52,7 @@ describe('TemplateService - Tolerance Configuration', () => {
 
     const result = await service.updateToleranceConfig('tpl-1', {
       temp: { type: 'range', min: 175, max: 185 },
-    });
+    }, 'admin-1', 'admin');
 
     expect(result.version).toBe(1.1);
   });
@@ -59,26 +60,28 @@ describe('TemplateService - Tolerance Configuration', () => {
   it('should reject negative tolerance values', async () => {
     mockPrisma.template.findUnique.mockResolvedValue({
       id: 'tpl-1',
+      creatorId: 'admin-1',
       fieldsJson: [{ name: 'temp', type: 'number' }],
     });
 
     await expect(
       service.updateToleranceConfig('tpl-1', {
         temp: { type: 'range', min: -10, max: 10 },
-      }),
+      }, 'admin-1', 'admin'),
     ).rejects.toThrow(BusinessException);
   });
 
   it('should reject percentage > 100%', async () => {
     mockPrisma.template.findUnique.mockResolvedValue({
       id: 'tpl-1',
+      creatorId: 'admin-1',
       fieldsJson: [{ name: 'temp', type: 'number' }],
     });
 
     await expect(
       service.updateToleranceConfig('tpl-1', {
         temp: { type: 'percentage', min: 0, max: 100, percentage: 150 },
-      }),
+      }, 'admin-1', 'admin'),
     ).rejects.toThrow(BusinessException);
   });
 });

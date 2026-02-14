@@ -26,17 +26,19 @@ model User {
   deletedAt     DateTime?
 
   // 反向关系
-  documentsCreated    Document[]       @relation("DocumentCreator")
-  documentsApproved   Document[]       @relation("DocumentApprover")
-  versionsCreated     DocumentVersion[] @relation("VersionCreator")
-  templatesCreated    Template[]       @relation("TemplateCreator")
-  tasksCreated        Task[]           @relation("TaskCreator")
+  documentsCreated     Document[]       @relation("DocumentCreator")
+  documentsApproved    Document[]       @relation("DocumentApprover")
+  documentsArchived    Document[]       @relation("DocumentArchiver")
+  documentsObsoleted   Document[]       @relation("DocumentObsoleter")
+  versionsCreated      DocumentVersion[] @relation("VersionCreator")
+  templatesCreated     Template[]       @relation("TemplateCreator")
+  tasksCreated         Task[]           @relation("TaskCreator")
   taskRecordsSubmitted TaskRecord[]    @relation("RecordSubmitter")
   taskRecordsApproved  TaskRecord[]    @relation("RecordApprover")
-  approvalsGiven      Approval[]       @relation("Approver")
-  operationLogs       OperationLog[]
-  notifications       Notification[]
-  managedDepartments  Department[]     @relation("DepartmentManager")
+  approvalsGiven       Approval[]       @relation("Approver")
+  operationLogs        OperationLog[]
+  notifications        Notification[]
+  managedDepartments   Department[]     @relation("DepartmentManager")
 
   @@map("users")
 }
@@ -56,9 +58,10 @@ model Department {
   deletedAt DateTime?
 
   // 反向关系
-  users       User[]       @relation("UserDepartment")
-  numberRules NumberRule[]
-  tasks       Task[]
+  users          User[]          @relation("UserDepartment")
+  numberRules    NumberRule[]
+  pendingNumbers PendingNumber[]
+  tasks          Task[]
 
   @@map("departments")
 }
@@ -74,6 +77,18 @@ model NumberRule {
 
   @@unique([level, departmentId])
   @@map("number_rules")
+}
+
+model PendingNumber {
+  id           String     @id
+  level        Int
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  number       String
+  deletedAt    DateTime   @default(now())
+
+  @@unique([level, departmentId, number])
+  @@map("pending_numbers")
 }
 
 model Document {
@@ -95,6 +110,16 @@ model Document {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
+
+  // P1-1: 归档/作废字段
+  archiveReason  String?
+  archivedAt     DateTime?
+  archivedBy     String?
+  archiver       User?   @relation("DocumentArchiver", fields: [archivedBy], references: [id], onDelete: SetNull)
+  obsoleteReason String?
+  obsoletedAt    DateTime?
+  obsoletedBy    String?
+  obsoleter      User?   @relation("DocumentObsoleter", fields: [obsoletedBy], references: [id], onDelete: SetNull)
 
   // 反向关系
   versions    DocumentVersion[]
@@ -156,6 +181,9 @@ model Task {
   // 反向关系
   records     TaskRecord[]
 
+  @@index([departmentId])
+  @@index([status])
+  @@index([deadline])
   @@map("tasks")
 }
 

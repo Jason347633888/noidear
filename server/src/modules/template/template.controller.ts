@@ -18,23 +18,27 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiQuery } from '@nestjs/swagger';
 import { TemplateService } from './template.service';
-import { CreateTemplateDto, UpdateTemplateDto, TemplateQueryDto, ParseExcelDto } from './dto';
+import { CreateTemplateDto, UpdateTemplateDto, TemplateQueryDto, ParseExcelDto, UpdateToleranceDto } from './dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('模板管理')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('templates')
 export class TemplateController {
   constructor(private readonly templateService: TemplateService) {}
 
   @Post()
+  @Roles('admin', 'leader')
   @ApiOperation({ summary: '创建模板' })
   async create(@Body() dto: CreateTemplateDto, @Req() req: any) {
     return this.templateService.create(dto, req.user.id);
   }
 
   @Post('from-excel')
+  @Roles('admin', 'leader')
   @ApiOperation({ summary: '从 Excel 创建模板' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file'))
@@ -74,8 +78,8 @@ export class TemplateController {
 
   @Put(':id')
   @ApiOperation({ summary: '更新模板' })
-  async update(@Param('id') id: string, @Body() dto: UpdateTemplateDto) {
-    return this.templateService.update(id, dto);
+  async update(@Param('id') id: string, @Body() dto: UpdateTemplateDto, @Req() req: any) {
+    return this.templateService.update(id, dto, req.user.id, req.user.role);
   }
 
   @Post(':id/copy')
@@ -86,14 +90,14 @@ export class TemplateController {
 
   @Delete(':id')
   @ApiOperation({ summary: '删除模板' })
-  async remove(@Param('id') id: string) {
-    return this.templateService.remove(id);
+  async remove(@Param('id') id: string, @Req() req: any) {
+    return this.templateService.remove(id, req.user.id, req.user.role);
   }
 
   @Post(':id/toggle')
   @ApiOperation({ summary: '切换模板状态' })
-  async toggleStatus(@Param('id') id: string) {
-    return this.templateService.toggleStatus(id);
+  async toggleStatus(@Param('id') id: string, @Req() req: any) {
+    return this.templateService.toggleStatus(id, req.user.id, req.user.role);
   }
 
   @Post('parse-excel')
@@ -118,8 +122,9 @@ export class TemplateController {
   @ApiOperation({ summary: '更新模板公差配置' })
   async updateTolerance(
     @Param('id') id: string,
-    @Body() config: Record<string, any>,
+    @Body() dto: UpdateToleranceDto,
+    @Req() req: any,
   ) {
-    return this.templateService.updateToleranceConfig(id, config);
+    return this.templateService.updateToleranceConfig(id, dto.config, req.user.id, req.user.role);
   }
 }

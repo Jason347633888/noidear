@@ -21,7 +21,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { DocumentService } from './document.service';
 import { FilePreviewService } from './services';
-import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto } from './dto';
+import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto } from './dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ApiTags('文档管理')
@@ -64,8 +64,19 @@ export class DocumentController {
 
   @Get('pending-approvals')
   @ApiOperation({ summary: '待我审批' })
-  async findPendingApprovals(@Req() req: any) {
-    return this.documentService.findPendingApprovals(req.user.id, req.user.role);
+  async findPendingApprovals(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Req() req?: any,
+  ) {
+    const pageNum = Number(page) || 1;
+    const limitNum = Math.min(Number(limit) || 20, 100);
+    return this.documentService.findPendingApprovals(
+      req.user.id,
+      req.user.role,
+      pageNum,
+      limitNum,
+    );
   }
 
   @Get(':id')
@@ -84,6 +95,26 @@ export class DocumentController {
   @ApiOperation({ summary: '停用文档' })
   async deactivate(@Param('id') id: string, @Req() req: any) {
     return this.documentService.deactivate(id, req.user.id, req.user.role);
+  }
+
+  @Post(':id/archive')
+  @ApiOperation({ summary: '归档文档' })
+  async archive(
+    @Param('id') id: string,
+    @Body() dto: ArchiveDocumentDto,
+    @Req() req: any,
+  ) {
+    return this.documentService.archive(id, dto.reason, req.user.id, req.user.role);
+  }
+
+  @Post(':id/obsolete')
+  @ApiOperation({ summary: '作废文档' })
+  async obsolete(
+    @Param('id') id: string,
+    @Body() dto: ObsoleteDocumentDto,
+    @Req() req: any,
+  ) {
+    return this.documentService.obsolete(id, dto.reason, req.user.id, req.user.role);
   }
 
   @Put(':id')
@@ -115,10 +146,10 @@ export class DocumentController {
   @ApiOperation({ summary: '审批文档' })
   async approve(
     @Param('id') id: string,
-    @Body() body: { status: string; comment?: string },
+    @Body() dto: ApproveDocumentDto,
     @Req() req: any,
   ) {
-    return this.documentService.approve(id, body.status, body.comment, req.user.id);
+    return this.documentService.approve(id, dto.status, dto.comment, req.user.id);
   }
 
   @Get(':id/download')

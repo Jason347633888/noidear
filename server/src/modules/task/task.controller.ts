@@ -2,7 +2,7 @@ import {
   Controller,
   Get,
   Post,
-  Delete,
+  Put,
   Body,
   Param,
   Query,
@@ -10,8 +10,12 @@ import {
   Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { TaskService } from './task.service';
 import { CreateTaskDto, TaskQueryDto, SubmitTaskDto, ApproveTaskDto } from './dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
+import { DraftTaskDto } from './dto/draft-task.dto';
+import { SubmitByIdDto } from './dto/submit-by-id.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ApiTags('任务管理')
@@ -22,6 +26,7 @@ export class TaskController {
   constructor(private readonly taskService: TaskService) {}
 
   @Post()
+  @Throttle({ default: { ttl: 60000, limit: 30 } })
   @ApiOperation({ summary: '创建任务' })
   async create(@Body() dto: CreateTaskDto, @Req() req: any) {
     return this.taskService.create(dto, req.user.id);
@@ -39,31 +44,82 @@ export class TaskController {
 
   @Get('pending-approvals')
   @ApiOperation({ summary: '待我审批' })
-  async findPendingApprovals(@Req() req: any) {
-    return this.taskService.findPendingApprovals(req.user.id, req.user.role);
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  async findPendingApprovals(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Req() req?: any,
+  ) {
+    const pageNum = Number(page) || 1;
+    const limitNum = Math.min(Number(limit) || 20, 100);
+    return this.taskService.findPendingApprovals(
+      req.user.id,
+      req.user.role,
+      pageNum,
+      limitNum,
+    );
   }
 
   @Get(':id')
   @ApiOperation({ summary: '查询任务详情' })
-  async findOne(@Param('id') id: string) {
-    return this.taskService.findOne(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    return this.taskService.findOne(id, req.user.id, req.user.role);
   }
 
-  @Post(':id/cancel')
-  @ApiOperation({ summary: '取消任务' })
-  async cancel(@Param('id') id: string, @Req() req: any) {
-    return this.taskService.cancel(id, req.user.id, req.user.role);
+  @Put(':id')
+  @ApiOperation({ summary: '更新任务' })
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateTaskDto,
+    @Req() req: any,
+  ) {
+    return this.taskService.update(id, dto, req.user.id, req.user.role);
   }
 
   @Post('submit')
-  @ApiOperation({ summary: '提交任务' })
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
+  @ApiOperation({ summary: '提交任务（兼容旧接口）' })
   async submit(@Body() dto: SubmitTaskDto, @Req() req: any) {
     return this.taskService.submit(dto, req.user.id);
   }
 
   @Post('approve')
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
   @ApiOperation({ summary: '审批任务' })
   async approve(@Body() dto: ApproveTaskDto, @Req() req: any) {
     return this.taskService.approve(dto, req.user.id);
+  }
+
+  @Post(':id/cancel')
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
+  @ApiOperation({ summary: '取消任务' })
+  async cancel(@Param('id') id: string, @Req() req: any) {
+    return this.taskService.cancel(id, req.user.id, req.user.role);
+  }
+
+  @Post(':id/draft')
+  @Throttle({ default: { ttl: 60000, limit: 30 } })
+  @ApiOperation({ summary: '保存草稿' })
+  async saveDraft(
+    @Param('id') id: string,
+    @Body() dto: DraftTaskDto,
+    @Req() req: any,
+  ) {
+    return this.taskService.saveDraft(id, dto, req.user.id);
+  }
+
+  @Post(':id/submit')
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
+  @ApiOperation({ summary: '提交任务（RESTful）' })
+  async submitById(
+    @Param('id') id: string,
+    @Body() dto: SubmitByIdDto,
+    @Req() req: any,
+  ) {
+    return this.taskService.submit(
+      { taskId: id, data: dto.data, deviationReasons: dto.deviationReasons },
+      req.user.id,
+    );
   }
 }

@@ -36,25 +36,67 @@
               <div
                 v-for="(field, index) in form.fields"
                 :key="index"
-                class="field-row"
+                class="field-row-wrapper"
               >
-                <el-button type="primary" link class="drag-handle">
-                  <el-icon><Rank /></el-icon>
-                </el-button>
-                <el-input v-model="field.name" placeholder="字段名" class="field-input" />
-                <el-input v-model="field.label" placeholder="标签" class="field-input" />
-                <el-select v-model="field.type" class="field-type">
-                  <el-option value="text" label="文本" />
-                  <el-option value="textarea" label="多行文本" />
-                  <el-option value="number" label="数字" />
-                  <el-option value="date" label="日期" />
-                  <el-option value="select" label="选择" />
-                  <el-option value="boolean" label="开关" />
-                </el-select>
-                <el-checkbox v-model="field.required">必填</el-checkbox>
-                <el-button type="danger" link @click="removeField(index)">
-                  <el-icon><Delete /></el-icon>
-                </el-button>
+                <div class="field-row">
+                  <el-button type="primary" link class="drag-handle">
+                    <el-icon><Rank /></el-icon>
+                  </el-button>
+                  <el-input v-model="field.name" placeholder="字段名" class="field-input" />
+                  <el-input v-model="field.label" placeholder="标签" class="field-input" />
+                  <el-select v-model="field.type" class="field-type" @change="onFieldTypeChange(field)">
+                    <el-option-group
+                      v-for="group in FIELD_TYPE_GROUPS"
+                      :key="group.label"
+                      :label="group.label"
+                    >
+                      <el-option
+                        v-for="ft in group.types"
+                        :key="ft.value"
+                        :value="ft.value"
+                        :label="ft.label"
+                      />
+                    </el-option-group>
+                  </el-select>
+                  <el-checkbox v-model="field.required">必填</el-checkbox>
+                  <el-button type="danger" link @click="removeField(index)">
+                    <el-icon><Delete /></el-icon>
+                  </el-button>
+                </div>
+
+                <!-- Options editor for select/radio/checkbox/cascader -->
+                <div v-if="fieldTypeNeedsOptions(field.type)" class="options-editor">
+                  <div class="options-label">选项列表:</div>
+                  <div
+                    v-for="(opt, optIdx) in (field.options || [])"
+                    :key="optIdx"
+                    class="option-row"
+                  >
+                    <el-input
+                      v-model="opt.label"
+                      placeholder="选项名称"
+                      size="small"
+                      class="option-input"
+                      @input="opt.value = opt.label"
+                    />
+                    <el-button
+                      type="danger"
+                      link
+                      size="small"
+                      @click="removeOption(field, optIdx)"
+                    >
+                      <el-icon><Delete /></el-icon>
+                    </el-button>
+                  </div>
+                  <el-button
+                    type="primary"
+                    link
+                    size="small"
+                    @click="addOption(field)"
+                  >
+                    + 添加选项
+                  </el-button>
+                </div>
               </div>
             </div>
 
@@ -82,12 +124,23 @@ import { ElMessage } from 'element-plus';
 import { Delete, Plus, Rank } from '@element-plus/icons-vue';
 import Sortable from 'sortablejs';
 import request from '@/api/request';
+import {
+  FIELD_TYPE_GROUPS,
+  fieldTypeNeedsOptions,
+} from '@/constants/field-types';
+import type { FieldTypeValue } from '@/constants/field-types';
+
+interface FieldOption {
+  label: string;
+  value: string | number;
+}
 
 interface Field {
   name: string;
   label: string;
-  type: 'text' | 'textarea' | 'number' | 'date' | 'select' | 'boolean';
+  type: FieldTypeValue;
   required: boolean;
+  options?: FieldOption[];
 }
 
 const route = useRoute();
@@ -103,7 +156,7 @@ const isEdit = computed(() => !!route.params.id);
 const form = reactive({
   level: 4,
   title: '',
-  fields: [{ name: '', label: '', type: 'text' as const, required: true }] as Field[],
+  fields: [{ name: '', label: '', type: 'text', required: true }] as Field[],
 });
 
 const rules = {
@@ -112,12 +165,32 @@ const rules = {
 };
 
 const addField = () => {
-  form.fields.push({ name: '', label: '', type: 'text' as const, required: true });
+  form.fields.push({ name: '', label: '', type: 'text', required: true });
 };
 
 const removeField = (index: number) => {
   if (form.fields.length > 1) {
     form.fields.splice(index, 1);
+  }
+};
+
+const onFieldTypeChange = (field: Field) => {
+  // Initialize options array when switching to a type that needs options
+  if (fieldTypeNeedsOptions(field.type) && !field.options) {
+    field.options = [{ label: '', value: '' }];
+  }
+};
+
+const addOption = (field: Field) => {
+  if (!field.options) {
+    field.options = [];
+  }
+  field.options.push({ label: '', value: '' });
+};
+
+const removeOption = (field: Field, optIdx: number) => {
+  if (field.options && field.options.length > 1) {
+    field.options.splice(optIdx, 1);
   }
 };
 
@@ -224,7 +297,7 @@ onMounted(() => {
 .fields-header span:nth-child(1) { width: 50px; }
 .fields-header span:nth-child(2) { width: 100px; }
 .fields-header span:nth-child(3) { width: 100px; }
-.fields-header span:nth-child(4) { width: 100px; }
+.fields-header span:nth-child(4) { width: 120px; }
 .fields-header span:nth-child(5) { width: 60px; }
 .fields-header span:nth-child(6) { width: 60px; }
 
@@ -232,11 +305,14 @@ onMounted(() => {
   min-height: 10px;
 }
 
+.field-row-wrapper {
+  margin-bottom: 8px;
+}
+
 .field-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
 }
 
 .field-input {
@@ -244,7 +320,7 @@ onMounted(() => {
 }
 
 .field-type {
-  width: 100px;
+  width: 120px;
 }
 
 .drag-handle {
@@ -259,6 +335,31 @@ onMounted(() => {
 .sortable-ghost {
   opacity: 0.5;
   background: #f5f7fa;
+}
+
+.options-editor {
+  margin-left: 58px;
+  margin-top: 4px;
+  padding: 8px;
+  background: #f5f7fa;
+  border-radius: 4px;
+}
+
+.options-label {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 4px;
+}
+
+.option-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.option-input {
+  width: 180px;
 }
 
 .add-field-btn {

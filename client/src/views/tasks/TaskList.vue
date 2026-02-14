@@ -5,26 +5,6 @@
       <p class="page-subtitle">管理并进行中的任务</p>
     </div>
 
-    <el-card class="filter-card">
-      <el-form :model="filterForm" inline class="filter-form">
-        <el-form-item label="状态" class="filter-item">
-          <el-select v-model="filterForm.status" clearable placeholder="全部" class="filter-select">
-            <el-option value="pending" label="进行中" />
-            <el-option value="completed" label="已完成" />
-            <el-option value="cancelled" label="已取消" />
-          </el-select>
-        </el-form-item>
-        <el-form-item class="filter-item filter-actions">
-          <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>搜索
-          </el-button>
-          <el-button @click="handleReset">
-            <el-icon><RefreshRight /></el-icon>重置
-          </el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
     <el-card class="table-card">
       <template #header>
         <div class="card-header">
@@ -37,6 +17,14 @@
           </el-button>
         </div>
       </template>
+
+      <!-- Tab filter replacing dropdown -->
+      <el-tabs v-model="activeTab" class="task-tabs" @tab-change="handleTabChange">
+        <el-tab-pane label="全部" name="all" />
+        <el-tab-pane label="待填报" name="pending" />
+        <el-tab-pane label="已提交" name="submitted" />
+        <el-tab-pane label="已逾期" name="overdue" />
+      </el-tabs>
 
       <el-table :data="tableData" v-loading="loading" stripe class="task-table">
         <el-table-column prop="id" label="任务ID" width="220">
@@ -87,11 +75,20 @@
             <span class="time-text">{{ formatDateTime(row.createdAt) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
             <div class="action-btns">
-              <el-button link type="primary" @click="handleView(row)" class="action-btn">
+              <el-button link type="primary" @click="navigateToTask(row)" class="action-btn">
                 <el-icon><View /></el-icon>查看
+              </el-button>
+              <el-button
+                v-if="row.status === 'pending'"
+                link
+                type="success"
+                @click="navigateToTask(row)"
+                class="action-btn"
+              >
+                <el-icon><EditPen /></el-icon>立即填报
               </el-button>
               <el-button
                 v-if="row.status === 'pending' && isAdmin"
@@ -114,8 +111,8 @@
           :page-sizes="[10, 20, 50]"
           :total="pagination.total"
           layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSearch"
-          @current-change="handleSearch"
+          @size-change="fetchData"
+          @current-change="fetchData"
         />
       </div>
     </el-card>
@@ -126,60 +123,76 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import request from '@/api/request';
+import { Plus, Document, View, Close, EditPen } from '@element-plus/icons-vue';
+import taskApi, {
+  type Task,
+  type TaskListResponse,
+  isTaskOverdue,
+  getTaskStatusText,
+  getTaskStatusType,
+} from '@/api/task';
 import { useUserStore } from '@/stores/user';
-import { Search, RefreshRight, Plus, Document, View, Close } from '@element-plus/icons-vue';
-
-interface Task {
-  id: string;
-  template: { id: string; title: string };
-  department: { id: string; name: string };
-  deadline: string;
-  status: string;
-  creator: { name: string } | null;
-  createdAt: string;
-}
 
 const router = useRouter();
 const userStore = useUserStore();
 const loading = ref(false);
 const tableData = ref<Task[]>([]);
+const activeTab = ref('all');
 
 const isAdmin = computed(() => userStore.isAdmin || userStore.isLeader);
-const filterForm = reactive({ status: '' });
 const pagination = reactive({ page: 1, limit: 20, total: 0 });
 
 const formatDate = (date: string) => new Date(date).toLocaleDateString('zh-CN');
 const formatDateTime = (date: string) => new Date(date).toLocaleString('zh-CN');
-const isOverdue = (deadline: string, status: string): boolean => {
-  if (status === 'completed' || status === 'cancelled') return false;
-  return new Date(deadline) < new Date();
+const isOverdue = (deadline: string, status: string) => isTaskOverdue(deadline, status);
+const getStatusType = (status: string) => getTaskStatusType(status);
+const getStatusText = (status: string) => getTaskStatusText(status);
+
+const TAB_STATUS_MAP: Record<string, string> = {
+  all: '',
+  pending: 'pending',
+  submitted: 'submitted',
+  overdue: 'overdue',
 };
-const getStatusType = (status: string) => ({ pending: 'warning', completed: 'success', cancelled: 'info' }[status] || 'info');
-const getStatusText = (status: string) => ({ pending: '进行中', completed: '已完成', cancelled: '已取消' }[status] || status);
 
 const fetchData = async () => {
   loading.value = true;
   try {
-    const res = await request.get<{ list: Task[]; total: number }>('/tasks', {
-      params: { ...filterForm, page: pagination.page, limit: pagination.limit },
-    });
+    const statusFilter = TAB_STATUS_MAP[activeTab.value] || '';
+    const res = await taskApi.getTasks({
+      status: statusFilter || undefined,
+      page: pagination.page,
+      limit: pagination.limit,
+    }) as TaskListResponse;
     tableData.value = res.list;
     pagination.total = res.total;
-  } catch { ElMessage.error('获取任务列表失败'); }
-  finally { loading.value = false; }
+  } catch {
+    ElMessage.error('获取任务列表失败');
+  } finally {
+    loading.value = false;
+  }
 };
 
-const handleSearch = () => { pagination.page = 1; fetchData(); };
-const handleReset = () => { filterForm.status = ''; pagination.page = 1; fetchData(); };
-const handleView = (row: Task) => router.push(`/tasks/${row.id}`);
+const handleTabChange = () => {
+  pagination.page = 1;
+  fetchData();
+};
+
+const navigateToTask = (row: Task) => router.push(`/tasks/${row.id}`);
+
 const handleCancel = async (row: Task) => {
   try {
     await ElMessageBox.confirm('确定要取消该任务吗？', '确认取消');
-    await request.post(`/tasks/${row.id}/cancel`);
+  } catch {
+    return; // User cancelled the dialog
+  }
+  try {
+    await taskApi.cancelTask(row.id);
     ElMessage.success('已取消');
     fetchData();
-  } catch {}
+  } catch {
+    ElMessage.error('取消任务失败');
+  }
 };
 
 onMounted(fetchData);
@@ -215,37 +228,6 @@ onMounted(fetchData);
   font-size: 14px;
   color: var(--text-light);
   margin: 0;
-}
-
-.filter-card {
-  margin-bottom: 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: none;
-}
-
-.filter-form {
-  display: flex;
-  align-items: flex-end;
-  gap: 16px;
-}
-
-.filter-item {
-  margin-bottom: 0;
-  margin-right: 0;
-}
-
-.filter-item :deep(.el-form-item__label) {
-  font-size: 13px;
-  color: var(--text-light);
-}
-
-.filter-select {
-  width: 140px;
-}
-
-.filter-actions {
-  margin-left: auto;
 }
 
 .table-card {
@@ -289,6 +271,28 @@ onMounted(fetchData);
   box-shadow: 0 4px 12px rgba(201, 162, 39, 0.3);
 }
 
+.task-tabs {
+  margin-bottom: 16px;
+}
+
+.task-tabs :deep(.el-tabs__nav-wrap::after) {
+  height: 1px;
+  background-color: #f0f0f0;
+}
+
+.task-tabs :deep(.el-tabs__active-bar) {
+  background-color: var(--accent);
+}
+
+.task-tabs :deep(.el-tabs__item.is-active) {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.task-tabs :deep(.el-tabs__item:hover) {
+  color: var(--accent);
+}
+
 .task-table {
   --el-table-border-color: #f0f0f0;
   --el-table-row-hover-bg-color: #fafafa;
@@ -315,11 +319,6 @@ onMounted(fetchData);
 
 .template-icon {
   color: var(--accent);
-}
-
-.date-text {
-  font-size: 13px;
-  color: var(--text);
 }
 
 .date-overdue {

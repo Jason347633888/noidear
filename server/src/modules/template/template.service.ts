@@ -5,6 +5,16 @@ import { Snowflake } from '../../common/utils/snowflake';
 import { BusinessException, ErrorCode } from '../../common/exceptions/business.exception';
 import { CreateTemplateDto, UpdateTemplateDto, TemplateQueryDto } from './dto';
 
+/** 查询模板时包含的创建者关系 */
+const CREATOR_INCLUDE = {
+  creator: {
+    select: { id: true, name: true },
+  },
+} as const;
+
+/** admin 和 leader 角色可以操作任何模板 */
+const PRIVILEGED_ROLES = ['admin', 'leader'] as const;
+
 @Injectable()
 export class TemplateService {
   private readonly snowflake: Snowflake;
@@ -15,7 +25,7 @@ export class TemplateService {
     private readonly excelParser: ExcelParserService,
   ) {
     this.snowflake = new Snowflake(1, 1);
-    this.logger.log('TemplateService initialized');
+    this.logger.debug('TemplateService initialized');
   }
 
   private async generateTemplateNumber(level: number): Promise<string> {
@@ -35,13 +45,13 @@ export class TemplateService {
 
   async create(dto: CreateTemplateDto, userId: string) {
     try {
-      this.logger.log(`Creating template: ${JSON.stringify({ title: dto.title, level: dto.level, userId })}`);
+      this.logger.debug(`Creating template: ${JSON.stringify({ title: dto.title, level: dto.level, userId })}`);
       const number = await this.generateTemplateNumber(dto.level);
-      this.logger.log(`Generated number: ${number}`);
+      this.logger.debug(`Generated number: ${number}`);
 
       const result = await this.prisma.template.create({
         data: {
-          id: crypto.randomUUID(),
+          id: this.snowflake.nextId(),
           level: dto.level,
           number,
           title: dto.title,
@@ -49,7 +59,7 @@ export class TemplateService {
           creatorId: userId,
         },
       });
-      this.logger.log(`Template created: ${result.id}`);
+      this.logger.debug(`Template created: ${result.id}`);
       return result;
     } catch (error) {
       this.logger.error(`Error creating template: ${error.message}`, error.stack);
@@ -58,7 +68,7 @@ export class TemplateService {
   }
 
   async createFromExcel(file: Express.Multer.File, level: number, userId: string) {
-    const parseResult = this.excelParser.parseToTemplateFields(file.buffer);
+    const parseResult = await this.excelParser.parseToTemplateFields(file.buffer);
     const number = await this.generateTemplateNumber(level);
 
     return this.prisma.template.create({
@@ -102,6 +112,7 @@ export class TemplateService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
+        include: CREATOR_INCLUDE,
       }) as unknown as any[],
       this.prisma.template.count({ where }),
     ]);
@@ -112,6 +123,7 @@ export class TemplateService {
   async findOne(id: string) {
     const template = await this.prisma.template.findUnique({
       where: { id, deletedAt: null },
+      include: CREATOR_INCLUDE,
     }) as unknown as any;
 
     if (!template) {
@@ -121,8 +133,23 @@ export class TemplateService {
     return template;
   }
 
-  async update(id: string, dto: UpdateTemplateDto) {
-    await this.findOne(id);
+  private assertCanModify(
+    template: { creatorId: string },
+    userId: string,
+    userRole: string,
+    action: string,
+  ): void {
+    const isPrivileged = (PRIVILEGED_ROLES as readonly string[]).includes(userRole);
+    const isCreator = template.creatorId === userId;
+
+    if (!isPrivileged && !isCreator) {
+      throw new BusinessException(ErrorCode.FORBIDDEN, `您无权${action}`);
+    }
+  }
+
+  async update(id: string, dto: UpdateTemplateDto, userId: string, userRole: string) {
+    const template = await this.findOne(id);
+    this.assertCanModify(template, userId, userRole, '修改此模板');
 
     return this.prisma.template.update({
       where: { id },
@@ -145,14 +172,16 @@ export class TemplateService {
         level: template.level,
         number,
         title: `${template.title} - 副本`,
-        fieldsJson: template.fieldsJson as unknown as any,
+        fieldsJson: JSON.parse(JSON.stringify(template.fieldsJson)),
+        version: 1.0,
         creatorId: userId,
       },
     });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, userId: string, userRole: string) {
+    const template = await this.findOne(id);
+    this.assertCanModify(template, userId, userRole, '删除此模板');
 
     await this.prisma.template.update({
       where: { id },
@@ -162,8 +191,9 @@ export class TemplateService {
     return { success: true };
   }
 
-  async toggleStatus(id: string) {
+  async toggleStatus(id: string, userId: string, userRole: string) {
     const template = await this.findOne(id);
+    this.assertCanModify(template, userId, userRole, '修改此模板状态');
 
     return this.prisma.template.update({
       where: { id },
@@ -172,28 +202,37 @@ export class TemplateService {
   }
 
   async parseExcel(file: Express.Multer.File) {
-    return this.excelParser.parseToTemplateFields(file.buffer);
+    return await this.excelParser.parseToTemplateFields(file.buffer);
   }
 
   async updateToleranceConfig(
     templateId: string,
     toleranceConfig: Record<string, any>,
+    userId: string,
+    userRole: string,
   ) {
     const template = await this.findOne(templateId);
-    const fieldsJson = template.fieldsJson as any[];
+    this.assertCanModify(template, userId, userRole, '修改此模板公差配置');
+    const originalFields = template.fieldsJson as any[];
 
-    for (const [fieldName, config] of Object.entries(toleranceConfig)) {
+    // 先验证所有配置
+    for (const config of Object.values(toleranceConfig)) {
       this.validateToleranceConfig(config);
-      const field = fieldsJson.find((f) => f.name === fieldName);
-      if (field && field.type === 'number') {
-        field.tolerance = config;
-      }
     }
+
+    // 使用不可变方式更新字段（不修改原始数据）
+    const updatedFields = originalFields.map((field) => {
+      const config = toleranceConfig[field.name];
+      if (config && field.type === 'number') {
+        return { ...field, tolerance: config };
+      }
+      return { ...field };
+    });
 
     return this.prisma.template.update({
       where: { id: templateId },
       data: {
-        fieldsJson: fieldsJson as unknown as any,
+        fieldsJson: updatedFields as unknown as any,
         version: { increment: 0.1 },
       },
     });

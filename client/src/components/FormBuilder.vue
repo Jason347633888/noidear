@@ -17,7 +17,7 @@
             {{ field.label }}
           </template>
 
-          <!-- 文本输入 -->
+          <!-- Text input -->
           <el-input
             v-if="field.type === 'text'"
             v-model="formData[field.name]"
@@ -26,7 +26,7 @@
             :disabled="disabled"
           />
 
-          <!-- 多行文本 -->
+          <!-- Textarea -->
           <el-input
             v-else-if="field.type === 'textarea'"
             v-model="formData[field.name]"
@@ -37,7 +37,7 @@
             :disabled="disabled"
           />
 
-          <!-- 数字 -->
+          <!-- Number -->
           <el-input-number
             v-else-if="field.type === 'number'"
             v-model="formData[field.name]"
@@ -46,7 +46,7 @@
             :disabled="disabled"
           />
 
-          <!-- 日期 -->
+          <!-- Date -->
           <el-date-picker
             v-else-if="field.type === 'date'"
             v-model="formData[field.name]"
@@ -56,7 +56,26 @@
             :disabled="disabled"
           />
 
-          <!-- 下拉选择 -->
+          <!-- Time -->
+          <el-time-picker
+            v-else-if="field.type === 'time'"
+            v-model="formData[field.name]"
+            placeholder="选择时间"
+            value-format="HH:mm:ss"
+            :disabled="disabled"
+          />
+
+          <!-- DateTime -->
+          <el-date-picker
+            v-else-if="field.type === 'datetime'"
+            v-model="formData[field.name]"
+            type="datetime"
+            placeholder="选择日期时间"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            :disabled="disabled"
+          />
+
+          <!-- Select dropdown -->
           <el-select
             v-else-if="field.type === 'select'"
             v-model="formData[field.name]"
@@ -72,10 +91,153 @@
             />
           </el-select>
 
-          <!-- 开关 -->
-          <el-switch
-            v-else-if="field.type === 'boolean'"
+          <!-- Radio -->
+          <el-radio-group
+            v-else-if="field.type === 'radio'"
             v-model="formData[field.name]"
+            :disabled="disabled"
+          >
+            <el-radio
+              v-for="opt in field.options"
+              :key="String(opt.value)"
+              :value="opt.value"
+            >
+              {{ opt.label }}
+            </el-radio>
+          </el-radio-group>
+
+          <!-- Checkbox -->
+          <el-checkbox-group
+            v-else-if="field.type === 'checkbox'"
+            v-model="formData[field.name]"
+            :disabled="disabled"
+          >
+            <el-checkbox
+              v-for="opt in field.options"
+              :key="String(opt.value)"
+              :label="opt.value"
+            >
+              {{ opt.label }}
+            </el-checkbox>
+          </el-checkbox-group>
+
+          <!-- Boolean switch -->
+          <el-switch
+            v-else-if="field.type === 'boolean' || field.type === 'switch'"
+            v-model="formData[field.name]"
+            :disabled="disabled"
+          />
+
+          <!-- Email -->
+          <el-input
+            v-else-if="field.type === 'email'"
+            v-model="formData[field.name]"
+            type="email"
+            :placeholder="`请输入${field.label}`"
+            clearable
+            :disabled="disabled"
+          >
+            <template #prefix>
+              <el-icon><Message /></el-icon>
+            </template>
+          </el-input>
+
+          <!-- Phone -->
+          <el-input
+            v-else-if="field.type === 'phone'"
+            v-model="formData[field.name]"
+            :placeholder="`请输入${field.label}`"
+            clearable
+            :disabled="disabled"
+          >
+            <template #prefix>
+              <el-icon><Phone /></el-icon>
+            </template>
+          </el-input>
+
+          <!-- URL -->
+          <el-input
+            v-else-if="field.type === 'url'"
+            v-model="formData[field.name]"
+            :placeholder="`请输入${field.label}`"
+            clearable
+            :disabled="disabled"
+          >
+            <template #prefix>
+              <el-icon><Link /></el-icon>
+            </template>
+          </el-input>
+
+          <!-- Slider -->
+          <el-slider
+            v-else-if="field.type === 'slider'"
+            v-model="formData[field.name]"
+            :disabled="disabled"
+          />
+
+          <!-- Rate -->
+          <el-rate
+            v-else-if="field.type === 'rate'"
+            v-model="formData[field.name]"
+            :disabled="disabled"
+          />
+
+          <!-- Color picker -->
+          <el-color-picker
+            v-else-if="field.type === 'color'"
+            v-model="formData[field.name]"
+            :disabled="disabled"
+          />
+
+          <!-- Cascader -->
+          <el-cascader
+            v-else-if="field.type === 'cascader'"
+            v-model="formData[field.name]"
+            :options="field.options || []"
+            :placeholder="`请选择${field.label}`"
+            clearable
+            :disabled="disabled"
+          />
+
+          <!-- File upload (stub) -->
+          <el-upload
+            v-else-if="field.type === 'file'"
+            :disabled="disabled"
+            :auto-upload="false"
+            :limit="1"
+          >
+            <el-button type="primary" :disabled="disabled">
+              选择文件
+            </el-button>
+          </el-upload>
+
+          <!-- Image upload (stub) -->
+          <el-upload
+            v-else-if="field.type === 'image'"
+            :disabled="disabled"
+            :auto-upload="false"
+            list-type="picture-card"
+            :limit="1"
+          >
+            <el-icon><Plus /></el-icon>
+          </el-upload>
+
+          <!-- Rich text (fallback to textarea) -->
+          <el-input
+            v-else-if="field.type === 'richtext'"
+            v-model="formData[field.name]"
+            type="textarea"
+            :rows="6"
+            :placeholder="`请输入${field.label}（富文本）`"
+            :disabled="disabled"
+          />
+
+          <!-- Fallback: text input for unknown types -->
+          <el-input
+            v-else
+            v-model="formData[field.name]"
+            :placeholder="`请输入${field.label}`"
+            clearable
             :disabled="disabled"
           />
         </el-form-item>
@@ -88,13 +250,14 @@
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted, nextTick } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
-import { Rank } from '@element-plus/icons-vue';
+import { Rank, Message, Phone, Link, Plus } from '@element-plus/icons-vue';
 import Sortable from 'sortablejs';
+import type { FieldTypeValue } from '@/constants/field-types';
 
 export interface TemplateField {
   name: string;
   label: string;
-  type: 'text' | 'textarea' | 'number' | 'date' | 'select' | 'boolean';
+  type: FieldTypeValue;
   required: boolean;
   options?: { label: string; value: string | number }[];
 }
@@ -136,10 +299,17 @@ const initForm = () => {
 const getDefaultValue = (type: string): unknown => {
   switch (type) {
     case 'number':
+    case 'slider':
+    case 'rate':
       return 0;
     case 'boolean':
+    case 'switch':
       return false;
+    case 'checkbox':
+      return [];
     case 'date':
+    case 'time':
+    case 'datetime':
       return '';
     default:
       return '';
@@ -147,15 +317,35 @@ const getDefaultValue = (type: string): unknown => {
 };
 
 const getValidationRules = (field: TemplateField) => {
-  const rules: unknown[] = [];
+  const fieldRules: unknown[] = [];
+
   if (field.required) {
-    rules.push({
+    const isSelectionType = ['select', 'radio', 'cascader', 'checkbox', 'date', 'time', 'datetime', 'color'].includes(field.type);
+    fieldRules.push({
       required: true,
-      message: `请${field.type === 'select' ? '选择' : '输入'}${field.label}`,
-      trigger: field.type === 'select' ? 'change' : 'blur',
+      message: `请${isSelectionType ? '选择' : '输入'}${field.label}`,
+      trigger: isSelectionType ? 'change' : 'blur',
     });
   }
-  return rules;
+
+  // Type-specific validation
+  if (field.type === 'email') {
+    fieldRules.push({
+      type: 'email',
+      message: '请输入正确的邮箱地址',
+      trigger: 'blur',
+    });
+  }
+
+  if (field.type === 'url') {
+    fieldRules.push({
+      type: 'url',
+      message: '请输入正确的链接地址',
+      trigger: 'blur',
+    });
+  }
+
+  return fieldRules;
 };
 
 const initSortable = () => {

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TaskService } from './task.service';
 import { DeviationService } from '../deviation/deviation.service';
+import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 describe('TaskService - Deviation Integration', () => {
@@ -10,6 +11,7 @@ describe('TaskService - Deviation Integration', () => {
     task: { findUnique: jest.fn(), update: jest.fn() },
     taskRecord: { findFirst: jest.fn(), create: jest.fn() },
     template: { findUnique: jest.fn() },
+    user: { findUnique: jest.fn() },
     $transaction: jest.fn((cb: any) => cb(mockPrisma)),
   };
 
@@ -18,16 +20,28 @@ describe('TaskService - Deviation Integration', () => {
     createDeviationReports: jest.fn(),
   };
 
+  const mockNotificationService: any = {
+    create: jest.fn(),
+    createMany: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TaskService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: DeviationService, useValue: mockDeviation },
+        { provide: NotificationService, useValue: mockNotificationService },
       ],
     }).compile();
 
     service = module.get<TaskService>(TaskService);
+
+    // Default: user is in dept-1 (passes department membership check)
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      departmentId: 'dept-1',
+    });
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -36,6 +50,7 @@ describe('TaskService - Deviation Integration', () => {
     mockPrisma.task.findUnique.mockResolvedValue({
       id: 'task-1',
       templateId: 'tpl-1',
+      departmentId: 'dept-1',
       status: 'pending',
     });
     mockPrisma.taskRecord.findFirst.mockResolvedValue(null);
@@ -62,6 +77,7 @@ describe('TaskService - Deviation Integration', () => {
     mockPrisma.task.findUnique.mockResolvedValue({
       id: 'task-1',
       templateId: 'tpl-1',
+      departmentId: 'dept-1',
       status: 'pending',
     });
     mockPrisma.taskRecord.findFirst.mockResolvedValue(null);
@@ -109,6 +125,7 @@ describe('TaskService - Deviation Integration', () => {
     mockPrisma.task.findUnique.mockResolvedValue({
       id: 'task-1',
       templateId: 'tpl-1',
+      departmentId: 'dept-1',
       status: 'pending',
     });
     mockPrisma.taskRecord.findFirst.mockResolvedValue(null);

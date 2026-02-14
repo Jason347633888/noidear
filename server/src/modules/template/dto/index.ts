@@ -1,6 +1,23 @@
-import { IsInt, IsString, IsNotEmpty, IsOptional, Min, Max, IsArray, ValidateNested, IsBooleanString } from 'class-validator';
+import { IsInt, IsString, IsNotEmpty, IsOptional, Min, Max, IsArray, ValidateNested, IsBoolean, IsIn } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+
+/**
+ * 支持的字段类型常量
+ * 原始 6 种 + 扩展 15 种 = 共 21 种
+ */
+export const FIELD_TYPES = [
+  // 原始 6 种类型（向后兼容）
+  'text', 'textarea', 'number', 'date', 'select', 'boolean',
+  // 扩展输入类型
+  'email', 'phone', 'url', 'time', 'datetime',
+  // 扩展选择类型
+  'radio', 'checkbox', 'switch', 'slider', 'rate',
+  // 扩展特殊类型
+  'color', 'file', 'image', 'cascader', 'richtext',
+] as const;
+
+export type FieldType = typeof FIELD_TYPES[number];
 
 export class TemplateFieldDto {
   @ApiProperty({ description: '字段名称' })
@@ -13,13 +30,18 @@ export class TemplateFieldDto {
   @IsNotEmpty()
   label: string;
 
-  @ApiProperty({ description: '字段类型', enum: ['text', 'textarea', 'number', 'date', 'select', 'boolean'] })
+  @ApiProperty({
+    description: '字段类型',
+    enum: FIELD_TYPES,
+  })
   @IsString()
+  @IsNotEmpty()
+  @IsIn([...FIELD_TYPES], { message: `字段类型必须是以下之一: ${FIELD_TYPES.join(', ')}` })
   type: string;
 
   @ApiProperty({ description: '是否必填' })
-  @IsBooleanString()
-  required: string;
+  @IsBoolean()
+  required: boolean;
 
   @ApiPropertyOptional({ description: '选项列表', type: [Object] })
   @IsArray()
@@ -111,3 +133,5 @@ export class CopyTemplateDto {
   @IsNotEmpty()
   templateId: string;
 }
+
+export { UpdateToleranceDto, ToleranceConfigItemDto } from './update-tolerance.dto';
