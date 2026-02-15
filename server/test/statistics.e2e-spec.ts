@@ -304,10 +304,14 @@ describe('StatisticsController (e2e)', () => {
     });
 
     it('should use Redis cache on second request', async () => {
+      // Use departmentId to isolate this test's data from concurrent tests
+      const query = { departmentId: IDS.dept };
+
       // First request - cache miss
       const response1 = await request(app.getHttpServer())
         .get('/api/v1/statistics/documents')
         .set('Authorization', `Bearer ${adminToken}`)
+        .query(query)
         .expect(200);
 
       const data1 = getData(response1.body);
@@ -317,6 +321,7 @@ describe('StatisticsController (e2e)', () => {
       const response2 = await request(app.getHttpServer())
         .get('/api/v1/statistics/documents')
         .set('Authorization', `Bearer ${adminToken}`)
+        .query(query)
         .expect(200);
 
       const data2 = getData(response2.body);
@@ -589,7 +594,18 @@ describe('StatisticsController (e2e)', () => {
     });
 
     it('should handle task statistics caching', async () => {
-      const query = { status: 'pending' };
+      // Ensure consistent task state for cache test
+      await prisma.task.updateMany({
+        where: { id: IDS.task1 },
+        data: { status: 'pending' },
+      });
+      await prisma.task.updateMany({
+        where: { id: IDS.task2 },
+        data: { status: 'completed' },
+      });
+
+      // Use departmentId to isolate from concurrent test data
+      const query = { departmentId: IDS.dept };
 
       const response1 = await request(app.getHttpServer())
         .get('/api/v1/statistics/tasks')
