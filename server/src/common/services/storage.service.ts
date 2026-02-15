@@ -212,6 +212,26 @@ export class StorageService {
     }
   }
 
+  /**
+   * 获取文件元数据
+   */
+  async getFileMetadata(path: string): Promise<{ size: number; lastModified: Date; etag: string }> {
+    try {
+      const stat = await this.client.statObject(this.bucket, path);
+      return {
+        size: stat.size,
+        lastModified: stat.lastModified,
+        etag: stat.etag,
+      };
+    } catch (error) {
+      throw new BusinessException(
+        ErrorCode.NOT_FOUND,
+        '文件不存在',
+        error,
+      );
+    }
+  }
+
   private getFileExtension(filename: string): string {
     const parts = filename.split('.');
     return parts.length > 1 ? `.${parts.pop()?.toLowerCase()}` : '';

@@ -539,6 +539,11 @@ export class DocumentService {
     const versions = await this.prisma.documentVersion.findMany({
       where: { documentId: id },
       orderBy: { createdAt: 'desc' },
+      include: {
+        creator: {
+          select: { id: true, name: true },
+        },
+      },
     }) as unknown as any[];
 
     return { document, versions: convertBigIntToNumber(versions) };
@@ -653,5 +658,306 @@ export class DocumentService {
     });
 
     return convertBigIntToNumber(result);
+  }
+
+  async withdraw(id: string, userId: string) {
+    const document = await this.findOne(id, userId, 'user');
+
+    // 权限检查：只能撤回自己创建的文档
+    if (document.creatorId !== userId) {
+      throw new BusinessException(
+        ErrorCode.FORBIDDEN,
+        `只能撤回自己创建的文档，文档 [${document.number}] 不属于您`,
+      );
+    }
+
+    // 状态检查：只能撤回待审批的文档
+    if (document.status !== 'pending') {
+      throw new BusinessException(
+        ErrorCode.CONFLICT,
+        `只能撤回待审批状态的文档，当前状态：${document.status}`,
+      );
+    }
+
+    // 查找待处理的审批记录
+    const pendingApproval = await this.prisma.approval.findFirst({
+      where: {
+        documentId: id,
+        status: 'pending',
+      },
+    });
+
+    if (!pendingApproval) {
+      throw new BusinessException(
+        ErrorCode.CONFLICT,
+        '该文档没有待处理的审批记录',
+      );
+    }
+
+    // 更新审批记录为已撤回
+    await this.prisma.approval.update({
+      where: { id: pendingApproval.id },
+      data: { status: 'withdrawn' },
+    });
+
+    // 更新文档状态为草稿
+    const result = await this.prisma.document.update({
+      where: { id },
+      data: { status: 'draft' },
+    });
+
+    // 记录操作日志
+    await this.operationLog.log({
+      userId,
+      action: 'withdraw',
+      module: 'document',
+      objectId: id,
+      objectType: 'document',
+      details: { documentNumber: document.number, title: document.title },
+    });
+
+    return convertBigIntToNumber(result);
+  }
+
+  async permanentDelete(id: string, userId: string) {
+    // 权限检查：只有管理员可以物理删除
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || user.role !== 'admin') {
+      throw new BusinessException(
+        ErrorCode.FORBIDDEN,
+        '只有管理员可以物理删除文档',
+      );
+    }
+
+    // 查找文档（包括已软删除的）
+    const document = await this.prisma.document.findUnique({
+      where: { id },
+    }) as unknown as any;
+
+    if (!document) {
+      throw new BusinessException(ErrorCode.NOT_FOUND, '文档不存在');
+    }
+
+    // 验证文档已软删除
+    if (!document.deletedAt) {
+      throw new BusinessException(
+        ErrorCode.CONFLICT,
+        `只能物理删除已软删除的文档，文档 [${document.number}] 未软删除`,
+      );
+    }
+
+    // 获取所有版本历史
+    const versions = await this.prisma.documentVersion.findMany({
+      where: { documentId: id },
+    }) as unknown as any[];
+
+    // 删除文件（主文件 + 所有版本）
+    await this.storage.deleteFile(document.filePath);
+    for (const version of versions) {
+      await this.storage.deleteFile(version.filePath);
+    }
+
+    // 删除版本历史记录
+    await this.prisma.documentVersion.deleteMany({
+      where: { documentId: id },
+    });
+
+    // 删除审批记录
+    await this.prisma.approval.deleteMany({
+      where: { documentId: id },
+    });
+
+    // 物理删除文档记录
+    await this.prisma.document.delete({
+      where: { id },
+    });
+
+    // 记录操作日志
+    await this.operationLog.log({
+      userId,
+      action: 'permanent_delete',
+      module: 'document',
+      objectId: id,
+      objectType: 'document',
+      details: { documentNumber: document.number, title: document.title },
+    });
+
+    return { success: true };
+  }
+
+  /**
+   * 对比两个文档版本
+   * TASK-010: 文档版本对比API
+   */
+  async compareVersions(
+    documentId: string,
+    v1: string,
+    v2: string,
+    userId: string,
+  ) {
+    const document = await this.prisma.document.findUnique({
+      where: { id: documentId, deletedAt: null },
+    });
+
+    if (!document) {
+      throw new BusinessException(
+        ErrorCode.NOT_FOUND,
+        '文档不存在或已被删除',
+      );
+    }
+
+    const version1 = await this.prisma.documentVersion.findFirst({
+      where: {
+        documentId,
+        version: new Prisma.Decimal(v1),
+      },
+      include: {
+        creator: {
+          select: { id: true, username: true, name: true },
+        },
+      },
+    });
+
+    if (!version1) {
+      throw new BusinessException(
+        ErrorCode.NOT_FOUND,
+        `版本 ${v1} 不存在`,
+      );
+    }
+
+    const version2 = await this.prisma.documentVersion.findFirst({
+      where: {
+        documentId,
+        version: new Prisma.Decimal(v2),
+      },
+      include: {
+        creator: {
+          select: { id: true, username: true, name: true },
+        },
+      },
+    });
+
+    if (!version2) {
+      throw new BusinessException(
+        ErrorCode.NOT_FOUND,
+        `版本 ${v2} 不存在`,
+      );
+    }
+
+    const fileSizeChange = version2.fileSize - version1.fileSize;
+    const fileNameChanged = version1.fileName !== version2.fileName;
+    const creatorChanged = version1.creatorId !== version2.creatorId;
+    const timeDiff = Math.floor(
+      (version2.createdAt.getTime() - version1.createdAt.getTime()) / (1000 * 60 * 60 * 24),
+    );
+
+    return {
+      documentId,
+      documentTitle: (document as any).title,
+      version1: {
+        version: version1.version.toFixed(1),
+        fileName: version1.fileName,
+        fileSize: version1.fileSize,
+        creator: version1.creator,
+        createdAt: version1.createdAt,
+      },
+      version2: {
+        version: version2.version.toFixed(1),
+        fileName: version2.fileName,
+        fileSize: version2.fileSize,
+        creator: version2.creator,
+        createdAt: version2.createdAt,
+      },
+      differences: {
+        fileSizeChange,
+        fileNameChanged,
+        creatorChanged,
+        timeDiff,
+      },
+    };
+  }
+
+  /**
+   * 回滚文档到指定版本
+   * TASK-010: 文档版本回滚API
+   */
+  async rollbackVersion(
+    documentId: string,
+    targetVersion: string,
+    userId: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const document = await tx.document.findUnique({
+        where: { id: documentId, deletedAt: null },
+      });
+
+      if (!document) {
+        throw new BusinessException(
+          ErrorCode.NOT_FOUND,
+          '文档不存在或已被删除',
+        );
+      }
+
+      const version = await tx.documentVersion.findFirst({
+        where: {
+          documentId,
+          version: new Prisma.Decimal(targetVersion),
+        },
+      });
+
+      if (!version) {
+        throw new BusinessException(
+          ErrorCode.NOT_FOUND,
+          `版本 ${targetVersion} 不存在`,
+        );
+      }
+
+      const currentVersion = (document as any).version;
+      const newVersion = new Prisma.Decimal(currentVersion).add(0.1);
+
+      await tx.documentVersion.create({
+        data: {
+          id: this.snowflake.nextId(),
+          documentId,
+          version: newVersion,
+          filePath: version.filePath,
+          fileName: version.fileName,
+          fileSize: version.fileSize,
+          creatorId: userId,
+        },
+      });
+
+      await tx.document.update({
+        where: { id: documentId },
+        data: {
+          version: newVersion,
+          filePath: version.filePath,
+          fileName: version.fileName,
+          fileSize: version.fileSize,
+        },
+      });
+
+      await this.operationLog.log({
+        userId,
+        action: 'rollback_version',
+        module: 'document',
+        objectId: documentId,
+        objectType: 'document',
+        details: {
+          targetVersion,
+          newVersion: newVersion.toString(),
+          documentNumber: (document as any).number,
+        },
+      });
+
+      return {
+        success: true,
+        newVersion: newVersion.toString(),
+        rolledBackFrom: targetVersion,
+      };
+    });
   }
 }

@@ -84,3 +84,6 @@ export class ApproveTaskDto {
   @IsOptional()
   comment?: string;
 }
+
+export { BatchAssignTaskDto } from './batch-assign-task.dto';
+export { ExportTaskDto } from './export-task.dto';

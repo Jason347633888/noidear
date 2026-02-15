@@ -8,11 +8,14 @@ import {
   Query,
   UseGuards,
   Req,
+  Res,
+  Header,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { Response } from 'express';
 import { TaskService } from './task.service';
-import { CreateTaskDto, TaskQueryDto, SubmitTaskDto, ApproveTaskDto } from './dto';
+import { CreateTaskDto, TaskQueryDto, SubmitTaskDto, ApproveTaskDto, BatchAssignTaskDto, ExportTaskDto } from './dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { DraftTaskDto } from './dto/draft-task.dto';
 import { SubmitByIdDto } from './dto/submit-by-id.dto';
@@ -121,5 +124,29 @@ export class TaskController {
       { taskId: id, data: dto.data, deviationReasons: dto.deviationReasons },
       req.user.id,
     );
+  }
+
+  @Post('batch-assign')
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
+  @ApiOperation({ summary: '批量分配任务' })
+  async batchAssign(@Body() dto: BatchAssignTaskDto, @Req() req: any) {
+    return this.taskService.batchAssign(dto, req.user.id);
+  }
+
+  @Get('export')
+  @ApiOperation({ summary: '导出任务列表' })
+  @ApiQuery({ name: 'format', required: false, enum: ['excel'] })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'departmentId', required: false })
+  @Header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async export(
+    @Query() query: ExportTaskDto,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
+    const buffer = await this.taskService.exportToExcel(query, req.user.id, req.user.role);
+    const filename = `tasks_${new Date().toISOString().split('T')[0]}.xlsx`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
   }
 }

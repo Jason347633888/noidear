@@ -91,6 +91,27 @@ export class DocumentController {
     return this.documentService.getVersionHistory(id, req.user.id, req.user.role);
   }
 
+  @Get(':id/versions/:v1/compare/:v2')
+  @ApiOperation({ summary: '对比两个版本' })
+  async compareVersions(
+    @Param('id') id: string,
+    @Param('v1') v1: string,
+    @Param('v2') v2: string,
+    @Req() req: any,
+  ) {
+    return this.documentService.compareVersions(id, v1, v2, req.user.id);
+  }
+
+  @Post(':id/versions/:targetVersion/rollback')
+  @ApiOperation({ summary: '回滚到指定版本' })
+  async rollbackVersion(
+    @Param('id') id: string,
+    @Param('targetVersion') targetVersion: string,
+    @Req() req: any,
+  ) {
+    return this.documentService.rollbackVersion(id, targetVersion, req.user.id);
+  }
+
   @Post(':id/deactivate')
   @ApiOperation({ summary: '停用文档' })
   async deactivate(@Param('id') id: string, @Req() req: any) {
@@ -136,10 +157,22 @@ export class DocumentController {
     return this.documentService.remove(id, req.user.id);
   }
 
+  @Delete(':id/permanent')
+  @ApiOperation({ summary: '物理删除文档' })
+  async permanentDelete(@Param('id') id: string, @Req() req: any) {
+    return this.documentService.permanentDelete(id, req.user.id);
+  }
+
   @Post(':id/submit')
   @ApiOperation({ summary: '提交审批' })
   async submitForApproval(@Param('id') id: string, @Req() req: any) {
     return this.documentService.submitForApproval(id, req.user.id);
+  }
+
+  @Post(':id/withdraw')
+  @ApiOperation({ summary: '撤回审批' })
+  async withdraw(@Param('id') id: string, @Req() req: any) {
+    return this.documentService.withdraw(id, req.user.id);
   }
 
   @Post(':id/approve')

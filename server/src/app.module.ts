@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PrismaModule } from './prisma/prisma.module';
@@ -14,9 +15,17 @@ import { OperationLogModule } from './modules/operation-log/operation-log.module
 import { DeviationModule } from './modules/deviation/deviation.module';
 import { ExportModule } from './modules/export/export.module';
 import { RecycleBinModule } from './modules/recycle-bin/recycle-bin.module';
+import { RoleModule } from './modules/role/role.module';
+import { PermissionModule } from './modules/permission/permission.module';
+import { RedisModule } from './modules/redis/redis.module';
+import { StatisticsModule } from './modules/statistics/statistics.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env'
+    }),
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 1 分钟时间窗口
@@ -25,6 +34,7 @@ import { RecycleBinModule } from './modules/recycle-bin/recycle-bin.module';
     ]),
     ScheduleModule.forRoot(),
     PrismaModule,
+    RedisModule,
     AuthModule,
     UserModule,
     DepartmentModule,
@@ -36,6 +46,9 @@ import { RecycleBinModule } from './modules/recycle-bin/recycle-bin.module';
     DeviationModule,
     ExportModule,
     RecycleBinModule,
+    RoleModule,
+    PermissionModule,
+    StatisticsModule,
   ],
   providers: [
     {
