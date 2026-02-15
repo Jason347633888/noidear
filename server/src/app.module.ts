@@ -34,7 +34,7 @@ import { StatisticsModule } from './modules/statistics/statistics.module';
     ]),
     ScheduleModule.forRoot(),
     PrismaModule,
-    RedisModule,
+    RedisModule.forRoot(),
     AuthModule,
     UserModule,
     DepartmentModule,
