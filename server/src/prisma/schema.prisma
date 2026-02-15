@@ -14,7 +14,9 @@ model User {
   name          String
   departmentId  String?
   department    Department? @relation("UserDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
-  role          String    @default("user")
+  role          String    @default("user")  // 保留（向后兼容）
+  roleId        String?                     // P1-2: 新增角色外键
+  roleObj       Role?     @relation("UserRole", fields: [roleId], references: [id], onDelete: SetNull)
   superiorId    String?
   superior      User?     @relation("UserSuperior", fields: [superiorId], references: [id], onDelete: SetNull)
   subordinates  User[]    @relation("UserSuperior")
@@ -236,6 +238,16 @@ model Approval {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @default(now()) @updatedAt
 
+  // Phase 7: 会签/顺签扩展字段
+  approvalType    String   @default("single")  // single | countersign | sequential
+  sequence        Int      @default(0)          // 顺签时的审批顺序
+  groupId         String?                       // 会签/顺签分组标识
+
+  @@index([approverId, status])
+  @@index([recordId])
+  @@index([documentId])
+  @@index([approvalChainId])
+  @@index([groupId])
   @@map("approvals")
 }
 
@@ -293,4 +305,49 @@ model DeviationReport {
   deletedAt       DateTime?
 
   @@map("deviation_reports")
+}
+
+// P1-2: 角色权限系统
+model Role {
+  id          String   @id @default(cuid())
+  code        String   @unique  // admin, leader, user
+  name        String              // 管理员, 主管, 普通用户
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  users       User[]   @relation("UserRole")
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  resource    String              // document, template, task, approval
+  action      String              // create, read, update, delete, approve
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  roles       RolePermission[]
+
+  @@unique([resource, action])
+  @@index([resource])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String   @id @default(cuid())
+  roleId       String
+  role         Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
 }
