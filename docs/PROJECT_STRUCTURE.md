@@ -1,9 +1,9 @@
 # 项目结构导航
 
-> 文档版本: 5.0
-> 最后更新: 2026-02-14
+> 文档版本: 6.0
+> 最后更新: 2026-02-22
 > 用途: AI Agent 快速定位文件 + 项目结构参考
-> 项目状态: MVP Phase 1-6 完成 98.1%（51/52 Issue）| Phase 7-12 部分完成 | 技术债务: 3 个 P1 问题已有完整技术方案
+> 项目状态: 全部 22 个功能模块已开发，总体完成度 **85.6%**（154/180 任务）
 
 ---
 
@@ -12,12 +12,13 @@
 1. [项目概览](#一项目概览)
 2. [.claude AI约束配置](#二claude-ai约束配置)
 3. [目录结构](#三目录结构)
-4. [模块映射表](#四模块映射表)
-5. [文件定位索引](#五文件定位索引)
-6. [核心流程文件](#六核心流程文件)
-7. [配置相关](#七配置相关)
-8. [文档相关](#八文档相关)
-9. [AI Agent 参考](#九ai-agent-参考)
+4. [后端模块映射](#四后端模块映射)
+5. [前端页面映射](#五前端页面映射)
+6. [API 文件索引](#六api-文件索引)
+7. [核心流程文件](#七核心流程文件)
+8. [配置相关](#八配置相关)
+9. [文档相关](#九文档相关)
+10. [AI Agent 快速参考](#十ai-agent-快速参考)
 
 ---
 
@@ -33,6 +34,8 @@
 | 数据库 | PostgreSQL 15+ + Redis 7+ |
 | 文件存储 | MinIO 8.0+ |
 | 工具库 | exceljs 4.4+ + @nestjs/swagger 7.1+ + helmet 8.1+ + bcrypt 5.1+ |
+| 搜索 | ElasticSearch 8.11+（可选，降级至 PostgreSQL LIKE） |
+| 认证 | LDAP + OAuth2 SSO（ldapjs 3.0.7） |
 | 部署 | Docker + Docker Compose |
 
 ### 1.2 项目路径
@@ -47,10 +50,18 @@
 |------|------|------|
 | PostgreSQL | 5432 | 主数据库 |
 | Redis | 6379 | 缓存 |
-| MinIO | 9000 | 对象存储API |
+| MinIO | 9000 | 对象存储 API |
 | MinIO Console | 9001 | 管理界面 |
-| NestJS | 3000 | 后端API |
-| Vue Dev | 5173 | 前端开发 |
+| NestJS | 3000 | 后端 API |
+| Vue（Docker） | 80 | 生产前端（nginx） |
+| Vue（Dev） | 5173 | 前端开发服务器 |
+
+### 1.4 默认账号
+
+```
+用户名: admin
+密码: 12345678
+```
 
 ---
 
@@ -60,73 +71,34 @@
 
 ```
 .claude/
-├── RULES_INDEX.mdc              # 规则索引（入口）
-├── settings.local.json          # Claude Code设置（含Hook）
-├── rules/                       # 规则文件目录
-│   ├── constraints.mdc          # AI约束清单（26章，最高优先级）
-│   ├── tech-stack.mdc           # 技术选型规范
-│   ├── ui-standards.mdc         # UI设计标准
-│   ├── api-spec.mdc             # API设计规范
-│   ├── database.mdc             # 数据库规范
-│   └── git-flow.mdc             # Git提交规范
-└── CLAUDE.md                    # AI项目指南
+├── rules/
+│   ├── constraints.mdc     # AI 约束清单（最高优先级）
+│   ├── tech-stack.mdc      # 技术选型规范
+│   ├── ui-standards.mdc    # UI 设计标准
+│   ├── api-spec.mdc        # API 设计规范
+│   ├── database.mdc        # 数据库规范
+│   └── git-flow.mdc        # Git 提交规范
 ```
 
-### 2.2 规则文件阅读顺序
-
-```
-1. RULES_INDEX.mdc    ← 规则索引，了解整体约束体系
-2. rules/constraints.mdc  ← 核心约束，什么不能做
-3. CLAUDE.md           ← 项目启动提醒
-4. rules/tech-stack.mdc    ← 技术选型
-5. rules/ui-standards.mdc  ← UI规范
-6. rules/api-spec.mdc      ← API规范
-7. rules/database.mdc      ← 数据库规范
-8. rules/git-flow.mdc      ← Git规范
-```
-
-### 2.3 约束体系（26章）
-
-| 章节 | 主题 | 优先级 |
-|------|------|--------|
-| 1-6 | 技术选型、代码风格、功能边界、UI、数据库、API | 基础 |
-| 7 | 安全约束 | 高 |
-| 8 | 运维约束 | 中 |
-| 9 | 文档与变更约束 | 中 |
-| 10 | 测试约束 | 中 |
-| 11 | 性能与可扩展性 | 中 |
-| 12 | 可访问性 | 中 |
-| 13 | 代码质量 | 高 |
-| 14 | 数据管理 | 中 |
-| 15-22 | 通用函数、异常、文件、国际化等 | 基础 |
-| **23** | **代码简洁性（Good Taste）** | **强制** |
-| **24** | **向后兼容（Never break userspace）** | **强制** |
-| **25** | **实用主义** | **强制** |
-| **26** | **沟通风格** | **强制** |
-
-### 2.4 核心约束速查
+### 2.2 核心约束速查
 
 **禁止的行为**：
 ```
-❌ 引入未在文档中列出的库
 ❌ 更换框架（Vue 3 → React, NestJS → Express）
 ❌ 修改项目目录结构
-❌ 添加MVP范围外的功能（Phase 7-14）
 ❌ 硬编码密码/密钥
-❌ 直接修改数据库（必须用Prisma迁移）
-❌ 强制推送Git（force push）
+❌ 强制推送 Git（force push）
+❌ 本地安装运行 Docker 已有的服务
 ```
 
 **必须遵循**：
 ```
 ✅ 使用 Element Plus 组件库
-✅ 使用文档中的API端点
-✅ 按 Prisma Schema 创建数据表
+✅ 使用 Prisma ORM
 ✅ 环境变量存储敏感信息
 ✅ 中文 commit message
-✅ 所有API必须有异常处理（try-catch）
-✅ 函数<50行，缩进<3层
-✅ 向后兼容性神圣不可侵犯
+✅ 所有 API 必须有 try-catch
+✅ 函数 < 50 行，缩进 < 3 层
 ```
 
 ---
@@ -135,700 +107,458 @@
 
 ```
 noidear/
-├── docs/                          # 文档目录
-│   ├── DESIGN.md                  # 需求设计文档（主文档）
-│   ├── TEST-CASES.md              # 测试用例清单
-│   ├── PROJECT_STRUCTURE.md       # 项目结构导航（本文件）
-│   └── API.md                     # API文档（生成）
-├── packages/                      # 共享包
-│   └── types/                     # TypeScript 类型定义
-│       ├── index.ts               # 导出所有类型
-│       ├── user.ts                # 用户相关类型
-│       ├── document.ts            # 文档相关类型
-│       ├── template.ts            # 模板相关类型
-│       ├── task.ts                # 任务相关类型
-│       └── api.ts                 # API 响应类型
-├── client/                        # 前端项目
+├── client/                         # 前端项目（Vue 3 + TypeScript）
 │   ├── src/
-│   │   ├── api/                   # API请求封装
-│   │   │   ├── index.js           # axios实例和公共配置
-│   │   │   ├── auth.js            # 认证相关接口
-│   │   │   ├── user.js            # 用户相关接口
-│   │   │   ├── department.js      # 部门相关接口
-│   │   │   ├── document.js        # 文档相关接口
-│   │   │   ├── template.js        # 模板相关接口
-│   │   │   ├── task.js            # 任务相关接口
-│   │   │   └── notification.js    # 消息相关接口
-│   │   ├── stores/                # Pinia状态管理
-│   │   │   ├── index.js           # store实例
-│   │   │   ├── user.js            # 用户状态
-│   │   │   └── notification.js    # 消息状态
-│   │   ├── views/                 # 页面组件
-│   │   │   ├── Login.vue          # 登录页
-│   │   │   ├── Layout.vue         # 布局组件
-│   │   │   ├── Dashboard.vue      # 首页
-│   │   │   ├── document/          # 文档管理页面
-│   │   │   │   ├── Level1.vue     # 一级文件
-│   │   │   │   ├── Level2.vue     # 二级文件
-│   │   │   │   ├── Level3.vue     # 三级文件
-│   │   │   │   ├── Upload.vue     # 上传文件
-│   │   │   │   └── Detail.vue     # 文件详情
-│   │   │   ├── template/          # 模板管理页面
-│   │   │   │   ├── List.vue       # 模板列表
-│   │   │   │   └── Create.vue     # 创建模板
-│   │   │   ├── task/              # 任务管理页面
-│   │   │   │   ├── List.vue       # 任务列表
-│   │   │   │   ├── Distribute.vue # 分发任务
-│   │   │   │   └── Fill.vue       # 填写任务
-│   │   │   ├── approval/          # 审批页面
-│   │   │   │   ├── Pending.vue    # 待审批
-│   │   │   │   └── History.vue    # 审批历史
-│   │   │   ├── user/              # 用户管理页面（Admin）
-│   │   │   │   └── List.vue       # 用户列表
-│   │   │   ├── department/        # 部门管理页面（Admin）
-│   │   │   │   └── List.vue       # 部门列表
-│   │   │   └── notification/      # 消息页面
-│   │   │       └── List.vue       # 消息列表
-│   │   ├── components/            # 公共组件
-│   │   │   ├── FileUpload.vue     # 文件上传组件
-│   │   │   ├── FormBuilder.vue    # 表单构建器
-│   │   │   ├── FormRenderer.vue   # 表单渲染器
-│   │   │   ├── TablePagination.vue# 分页组件
-│   │   │   └── StatusTag.vue      # 状态标签
-│   │   ├── router/                # 路由配置
-│   │   │   └── index.js           # 路由定义
-│   │   ├── utils/                 # 工具函数
-│   │   │   ├── request.js         # 请求封装
-│   │   │   ├── format.js          # 格式化函数
-│   │   │   └── validate.js        # 验证函数
-│   │   ├── styles/                # 样式文件
-│   │   │   └── index.css          # 全局样式
-│   │   ├── App.vue                # 根组件
-│   │   └── main.js                # 入口文件
-│   ├── public/
-│   │   └── index.html             # HTML模板
-│   ├── package.json
-│   ├── vite.config.js
-│   └── README.md
-├── server/                        # 后端项目
+│   │   ├── api/                    # API 请求封装（33 个 .ts 文件）
+│   │   ├── components/             # 公共组件
+│   │   │   ├── fields/             # 动态表单字段组件（20+）
+│   │   │   ├── training/           # 培训相关组件
+│   │   │   ├── todo/               # 待办组件
+│   │   │   └── audit/              # 审计日志组件
+│   │   ├── constants/              # 常量定义
+│   │   ├── i18n/                   # 国际化
+│   │   ├── router/                 # 路由配置（94 条路由）
+│   │   ├── stores/                 # Pinia 状态管理
+│   │   ├── styles/                 # 全局样式
+│   │   ├── types/                  # TypeScript 类型定义
+│   │   ├── utils/                  # 工具函数
+│   │   └── views/                  # 页面组件（97 个 .vue 文件）
+│   ├── e2e/                        # Playwright E2E 测试（30 个 spec 文件）
+│   ├── Dockerfile                  # 前端 Docker 镜像
+│   ├── nginx.conf                  # Nginx 配置
+│   └── package.json
+├── server/                         # 后端项目（NestJS + TypeScript）
 │   ├── src/
-│   │   ├── main.ts                # 入口文件
-│   │   ├── app.module.ts          # 根模块
-│   │   ├── modules/               # 功能模块
-│   │   │   ├── auth/              # 认证模块
-│   │   │   │   ├── auth.module.ts
-│   │   │   │   ├── auth.controller.ts
-│   │   │   │   ├── auth.service.ts
-│   │   │   │   ├── auth.guard.ts
-│   │   │   │   ├── dto/
-│   │   │   │   │   ├── login.dto.ts
-│   │   │   │   │   └── password.dto.ts
-│   │   │   │   └── strategies/
-│   │   │   │       └── jwt.strategy.ts
-│   │   │   ├── user/              # 用户模块
-│   │   │   │   ├── user.module.ts
-│   │   │   │   ├── user.controller.ts
-│   │   │   │   ├── user.service.ts
-│   │   │   │   ├── user.entity.ts
-│   │   │   │   └── dto/
-│   │   │   │       ├── create-user.dto.ts
-│   │   │   │       └── update-user.dto.ts
-│   │   │   ├── department/        # 部门模块
-│   │   │   │   ├── department.module.ts
-│   │   │   │   ├── department.controller.ts
-│   │   │   │   ├── department.service.ts
-│   │   │   │   ├── department.entity.ts
-│   │   │   │   └── dto/
-│   │   │   ├── document/          # 文档模块
-│   │   │   │   ├── document.module.ts
-│   │   │   │   ├── document.controller.ts
-│   │   │   │   ├── document.service.ts
-│   │   │   │   ├── document.entity.ts
-│   │   │   │   ├── document.version.service.ts
-│   │   │   │   └── dto/
-│   │   │   ├── template/          # 模板模块
-│   │   │   │   ├── template.module.ts
-│   │   │   │   ├── template.controller.ts
-│   │   │   │   ├── template.service.ts
-│   │   │   │   ├── template.entity.ts
-│   │   │   │   ├── excel.parser.ts
-│   │   │   │   └── dto/
-│   │   │   ├── task/              # 任务模块
-│   │   │   │   ├── task.module.ts
-│   │   │   │   ├── task.controller.ts
-│   │   │   │   ├── task.service.ts
-│   │   │   │   ├── task.entity.ts
-│   │   │   │   └── dto/
-│   │   │   └── approval/          # 审批模块
-│   │   │       ├── approval.module.ts
-│   │   │       ├── approval.controller.ts
-│   │   │       ├── approval.service.ts
-│   │   │       ├── approval.entity.ts
-│   │   │       └── dto/
-│   │   ├── common/                # 公共模块
-│   │   │   ├── decorators/        # 自定义装饰器
-│   │   │   │   ├── current-user.decorator.ts
-│   │   │   │   └── roles.decorator.ts
-│   │   │   ├── filters/           # 异常过滤器
-│   │   │   │   └── all-exception.filter.ts
-│   │   │   ├── interceptors/      # 拦截器
-│   │   │   │   └── logging.interceptor.ts
-│   │   │   ├── pipes/             # 管道
-│   │   │   │   └── validation.pipe.ts
-│   │   │   ├── utils/             # 工具函数
-│   │   │   │   ├── snowflake.ts   # 雪花ID生成器
-│   │   │   │   └── file.util.ts   # 文件处理工具
-│   │   │   └── constants/         # 常量
-│   │   │       └── status.ts      # 状态常量
-│   │   └── prisma/                # 数据库模型
-│   │       ├── schema.prisma      # 数据库schema
-│   │       └── migrations/        # 迁移文件
-│   ├── test/                      # 测试文件
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── README.md
-├── data/                          # 数据持久化目录
-│   ├── postgres/                  # PostgreSQL数据
-│   └── minio/                     # MinIO数据
-├── docker-compose.yml             # 开发环境Docker配置
-├── docker-compose.prod.yml        # 生产环境Docker配置
-├── .env                           # 环境变量
-└── README.md                      # 项目说明
+│   │   ├── main.ts                 # 入口文件
+│   │   ├── app.module.ts           # 根模块
+│   │   ├── modules/                # 功能模块（40 个模块目录）
+│   │   ├── common/                 # 公共工具（装饰器/过滤器/拦截器/管道）
+│   │   └── prisma/                 # 数据库 Schema（73 个模型，1918 行）
+│   ├── test/                       # 后端测试（30+ 个 spec 文件）
+│   ├── Dockerfile                  # 后端 Docker 镜像
+│   └── package.json
+├── docs/                           # 文档目录
+│   ├── DESIGN.md                   # 需求设计文档（v10.7，113 条业务规则）
+│   ├── PROJECT_STRUCTURE.md        # 本文件（v6.0）
+│   ├── complete-audit-report.md    # 功能审计报告（2026-02-22，第三次更新）
+│   ├── INTERACTION_DESIGN.md       # 前端交互设计规范（v1.1）
+│   ├── task_modules/               # 各功能模块任务详情
+│   └── design_modules/             # 各功能模块设计文档
+├── docker-compose.yml              # Docker Compose 配置
+├── CLAUDE.md                       # AI 开发指南（v5.1）
+└── README.md                       # 项目说明
 ```
 
 ---
 
-## 四、模块映射表
+## 四、后端模块映射
 
-### 4.1 功能模块与文件对应关系
+**路径**: `server/src/modules/`
 
-| 功能模块 | 前端页面 | 前端API | 后端模块 | 后端实体 |
-|----------|----------|---------|----------|----------|
-| 用户登录 | Login.vue | auth.js | auth/ | - |
-| 用户管理 | user/List.vue | user.js | user/ | User |
-| 部门管理 | department/List.vue | department.js | department/ | Department |
-| 一级文件 | document/Level1.vue | document.js | document/ | Document |
-| 二级文件 | document/Level2.vue | document.js | document/ | Document |
-| 三级文件 | document/Level3.vue | document.js | document/ | Document |
-| 模板管理 | template/* | template.js | template/ | Template |
-| 任务分发 | task/* | task.js | task/ | Task, TaskRecord |
-| 审批中心 | approval/* | document.js | approval/ | Approval |
-| 站内消息 | notification/List.vue | notification.js | - | Notification |
-| 工作流引擎（v1.1.0） | workflows/* | workflow.js | workflow/ | Workflow, WorkflowStep, WorkflowInstance, WorkflowStepRecord |
+### 4.1 MVP 核心模块（10个）
 
-### 4.2 组件与功能对应
+| 模块目录 | 功能 | 关键文件 |
+|---------|------|---------|
+| `auth/` | JWT 认证、LDAP SSO、密码管理 | `auth.service.ts`, `auth.guard.ts`, `sso.service.ts` |
+| `user/` | 用户 CRUD、状态管理 | `user.service.ts`, `user.controller.ts` |
+| `department/` | 组织架构、部门树 | `department.service.ts` |
+| `document/` | 三级文档管理、版本控制、归档作废 | `document.service.ts`, `document.controller.ts` |
+| `template/` | 四级模板、Excel 解析、动态表单 | `template.service.ts`, `excel.parser.ts` |
+| `task/` | 任务派发、填报、逾期检查 | `task.service.ts`, `task.cron.ts` |
+| `record/` | 记录管理、锁定、变更追踪 | `record.service.ts`, `record.controller.ts` |
+| `approval/` | 单级/二级审批、审批链 | `approval.service.ts` |
+| `notification/` | 站内消息、实时通知 | `notification.service.ts` |
+| `role/` | 角色 CRUD、权限分配 | `role.service.ts` |
 
-| 组件 | 功能 | 关联模块 |
-|------|------|----------|
-| FileUpload.vue | 文件上传 | document |
-| FormBuilder.vue | 表单构建 | template |
-| FormRenderer.vue | 表单渲染 | template, task |
-| TablePagination.vue | 分页组件 | 通用 |
-| StatusTag.vue | 状态标签 | 通用 |
+### 4.2 权限与审计（5个）
 
----
+| 模块目录 | 功能 | 关键文件 |
+|---------|------|---------|
+| `permission/` | 权限定义、权限校验 | `permission.controller.ts` |
+| `fine-grained-permission/` | 细粒度权限矩阵、有效期、审计 | `fine-grained-permission.service.ts`, `permission-audit-log.controller.ts` |
+| `user-permission/` | 用户权限绑定、权限继承 | `user-permission.service.ts` |
+| `department-permission/` | 部门级权限隔离配置 | `department-permission.controller.ts`, `department-permission.service.ts` |
+| `audit/` | 登录/权限/敏感操作审计日志 | `audit.service.ts`, `audit.module.ts` |
 
-## 五、文件定位索引
+### 4.3 业务扩展模块（12个）
 
-### 5.1 按功能搜索
+| 模块目录 | 功能 | 关键文件 |
+|---------|------|---------|
+| `deviation/` | 配方偏离检测、报告生成、统计 | `deviation.service.ts` |
+| `statistics/` | 综合统计、文档/任务/工作流统计 | `statistics.service.ts` |
+| `export/` | 批量导出（Excel）、动态列配置 | `export.service.ts` |
+| `import/` | 批量导入（Excel/CSV）、数据校验 | `import.service.ts` |
+| `recycle-bin/` | 软删除管理、恢复、彻底删除、30天自动清理 | `recycle-bin.service.ts`, `recycle-bin.cron.ts` |
+| `workflow/` | 工作流模板、实例、任务、条件分支 | `workflow-template.controller.ts`, `workflow-task.service.ts` |
+| `batch-trace/` | 批次管理、追溯链可视化 | `batch-trace.controller.ts` |
+| `warehouse/` | 仓库、物料、领料、物料平衡 | `warehouse.controller.ts` |
+| `equipment/` | 设备台账、维保计划、故障报修 | `equipment.controller.ts` |
+| `training/` | 培训计划、考试题库、学习记录 | `training.controller.ts` |
+| `internal-audit/` | 内审计划、执行、整改、报告 | `audit-plan/`, `audit-execution/`, `report/` |
+| `search/` | 全文搜索（ES + PostgreSQL 降级） | `search.service.ts` |
 
-| 关键词 | 文件路径 |
-|--------|----------|
-| 登录 | client/src/views/Login.vue |
-| 用户列表 | client/src/views/user/List.vue |
-| 用户API | client/src/api/user.js |
-| 用户服务 | server/src/modules/user/user.service.ts |
-| 部门列表 | client/src/views/department/List.vue |
-| 部门API | client/src/api/department.js |
-| 部门服务 | server/src/modules/department/department.service.ts |
-| 文件上传 | client/src/components/FileUpload.vue |
-| 文档API | client/src/api/document.js |
-| 文档服务 | server/src/modules/document/document.service.ts |
-| 模板列表 | client/src/views/template/List.vue |
-| 模板API | client/src/api/template.js |
-| 模板服务 | server/src/modules/template/template.service.ts |
-| 任务列表 | client/src/views/task/List.vue |
-| 任务分发 | client/src/views/task/Distribute.vue |
-| 任务API | client/src/api/task.js |
-| 任务服务 | server/src/modules/task/task.service.ts |
-| 审批 | client/src/views/approval/* |
-| 消息 | client/src/views/notification/List.vue |
-| 工作流列表 | client/src/views/workflows/WorkflowList.vue |
-| 工作流详情 | client/src/views/workflows/WorkflowDetail.vue |
-| 工作流设计器 | client/src/views/workflows/WorkflowDesigner.vue |
-| 工作流API | client/src/api/workflow.js |
-| 工作流服务 | server/src/modules/workflow/workflow.service.ts |
-| 工作流配置 | server/src/config/workflows.json |
+### 4.4 基础设施模块（13个）
 
-### 5.2 按类型搜索
-
-| 文件类型 | 目录 |
-|----------|------|
-| 共享类型 | packages/types/ |
-| Vue页面 | client/src/views/ |
-| Vue组件 | client/src/components/ |
-| API封装 | client/src/api/ |
-| 状态管理 | client/src/stores/ |
-| 路由配置 | client/src/router/ |
-| NestJS控制器 | server/src/modules/*/ |
-| NestJS服务 | server/src/modules/*/ |
-| DTO定义 | server/src/modules/*/dto/ |
-| 数据库模型 | server/src/prisma/ |
-| Docker配置 | docker-compose.yml |
-
-### 5.3 关键文件速查
-
-| 功能 | 文件路径 |
-|------|----------|
-| 路由守卫/权限控制 | server/src/modules/auth/auth.guard.ts |
-| JWT策略 | server/src/modules/auth/strategies/jwt.strategy.ts |
-| 雪花ID生成 | server/src/common/utils/snowflake.ts |
-| 文件存储 | server/src/common/utils/file.util.ts |
-| 状态常量 | server/src/common/constants/status.ts |
-| 异常处理 | server/src/common/filters/all-exception.filter.ts |
-| 请求日志 | server/src/common/interceptors/logging.interceptor.ts |
-| axios封装 | client/src/utils/request.js |
-| 全局样式 | client/src/styles/index.css |
-| 数据库Schema | server/src/prisma/schema.prisma |
+| 模块目录 | 功能 |
+|---------|------|
+| `operation-log/` | 操作日志记录、权限审计日志 |
+| `alert/` | 告警规则配置、告警历史 |
+| `monitoring/` | 系统监控指标、Prometheus 集成 |
+| `health/` | 健康检查、依赖服务检查 |
+| `backup/` | 数据备份、恢复 |
+| `i18n/` | 国际化管理、语言切换 |
+| `system-config/` | 系统配置管理 |
+| `redis/` | Redis 缓存服务 |
+| `mobile/` | 移动端 API、离线缓存、数据同步 |
+| `recommendation/` | 文档推荐（协同过滤） |
+| `record-template/` | 记录模板管理、动态字段配置 |
+| `todo/` | 待办事项管理 |
+| `wechat/` | 微信集成、消息推送 |
 
 ---
 
-## 六、核心流程文件
+## 五、前端页面映射
 
-### 6.1 用户认证流程
+**路径**: `client/src/views/`（共 97 个 .vue 文件）
+
+### 5.1 基础页面
+
+| 文件 | 路由 | 说明 |
+|------|------|------|
+| `Login.vue` | `/login` | 登录页 |
+| `login/SsoLogin.vue` | `/login/sso` | SSO 单点登录 |
+| `Layout.vue` | `/` | 全局布局（侧边栏+顶栏） |
+| `Dashboard.vue` | `/dashboard` | 首页仪表板 |
+| `UserList.vue` | `/users` | 用户管理 |
+| `NotificationList.vue` | `/notifications` | 消息通知列表 |
+| `Password.vue` | `/password` | 修改密码 |
+| `RecycleBin.vue` | `/recycle-bin` | 回收站 |
+
+### 5.2 MVP 核心模块
+
+| 目录/文件 | 路由前缀 | 说明 |
+|---------|---------|------|
+| `documents/Level1List.vue` | `/documents/level/1,2,3` | 三级文档列表（通过路由参数复用） |
+| `documents/DocumentDetail.vue` | `/documents/:id` | 文档详情 |
+| `documents/DocumentUpload.vue` | `/documents/upload` | 文档上传 |
+| `templates/TemplateList.vue` | `/templates` | 模板列表 |
+| `templates/TemplateEdit.vue` | `/templates/:id/edit` | 模板编辑 |
+| `templates/TemplateDesigner.vue` | `/templates/:id/designer` | 拖拽表单设计器 |
+| `templates/ToleranceConfig.vue` | `/templates/:id/tolerance` | 公差配置 |
+| `tasks/TaskList.vue` | `/tasks` | 任务列表 |
+| `tasks/TaskCreate.vue` | `/tasks/create` | 新建/派发任务 |
+| `tasks/TaskDetail.vue` | `/tasks/:id` | 任务详情与填报 |
+| `approvals/ApprovalPending.vue` | `/approvals/pending` | 待审批列表 |
+| `approvals/ApprovalList.vue` | `/approvals` | 审批历史 |
+| `approvals/ApprovalDetail.vue` | `/approvals/:id` | 审批详情 |
+| `approvals/ApprovalHistory.vue` | `/approvals/history` | 审批链追踪 |
+| `record/RecordList.vue` | `/records` | 记录列表 |
+| `record/RecordDetail.vue` | `/records/:id` | 记录详情 |
+
+### 5.3 权限管理
+
+| 文件 | 路由 | 说明 |
+|------|------|------|
+| `role/RoleList.vue` | `/roles` | 角色管理 |
+| `permission/PermissionList.vue` | `/permissions` | 权限定义列表 |
+| `permission/UserPermissions.vue` | `/permissions/users` | 用户权限分配 |
+| `permission/FineGrainedPermission.vue` | `/permissions/fine-grained` | 细粒度权限矩阵（344行） |
+| `permission/DepartmentPermission.vue` | `/permissions/department` | 部门权限隔离（358行） |
+| `permission/PermissionAuditLog.vue` | `/permissions/audit-log` | 权限审计日志（267行） |
+
+### 5.4 业务扩展模块
+
+| 目录 | 路由前缀 | 文件数 | 说明 |
+|-----|---------|--------|------|
+| `deviation/` | `/deviation` | 2 | 偏离报告、偏离分析仪表板 |
+| `workflow/` | `/workflow` | 7 | 工作流模板/实例/设计器/待办/统计 |
+| `batch-trace/` | `/batch-trace` | 3 | 批次列表/详情/追溯可视化 |
+| `warehouse/` | `/warehouse` | 7 | 物料/供应商/领料/暂存/物料平衡/追溯 |
+| `equipment/` | `/equipment` | 10 | 设备/维护计划/维保记录/报修/统计 |
+| `training/` | `/training` | 10 | 培训计划/项目/档案/考试/题库/统计 |
+| `internal-audit/` | `/internal-audit` | 6 | 审计计划/执行/整改/验证/报告 |
+| `statistics/` | `/statistics` | 4 | 综合统计大屏/文档统计/任务统计/概览 |
+
+### 5.5 系统运维模块
+
+| 目录/文件 | 路由前缀 | 说明 |
+|---------|---------|------|
+| `monitoring/` | `/monitoring` | 监控大屏/指标/告警规则/告警历史（4个） |
+| `audit/` | `/audit` | 登录日志/权限日志/敏感操作/综合搜索（4个） |
+| `backup/BackupManage.vue` | `/backup` | 备份管理 |
+| `health/HealthPage.vue` | `/health` | 健康检查 |
+| `search/AdvancedSearch.vue` | `/search` | 全文高级搜索 |
+| `admin/ExportPage.vue` | `/admin/export` | 批量数据导出 |
+| `admin/ImportPage.vue` | `/admin/import` | 批量数据导入 |
+| `todo/TodoList.vue` | `/todos` | 待办事项 |
+
+---
+
+## 六、API 文件索引
+
+**路径**: `client/src/api/`（共 33 个 .ts 文件）
+
+| 文件 | 对应后端模块 | 主要功能 |
+|------|------------|---------|
+| `request.ts` | — | axios 实例 + Token 拦截 + 401 跳转 |
+| `approval.ts` | approval | 审批列表、审批操作、审批链 |
+| `audit.ts` | audit | 登录/权限/敏感操作日志查询 |
+| `backup.ts` | backup | 备份管理 |
+| `batch.ts` | batch-trace | 批次 CRUD、追溯链查询 |
+| `department.ts` | department | 部门 CRUD、部门树 |
+| `deviation.ts` | deviation | 偏离报告查询 |
+| `deviation-analytics.ts` | deviation | 偏离统计分析 |
+| `equipment.ts` | equipment | 设备/维保计划/维保记录/故障报修 |
+| `exam.ts` | training | 考试题目、考试提交 |
+| `export.ts` | export | 批量导出 Excel |
+| `file-preview.ts` | document | 文件预签名 URL |
+| `health.ts` | health | 健康检查 |
+| `i18n.ts` | i18n | 国际化文本 |
+| `import.ts` | import | 批量导入 |
+| `internal-audit/index.ts` | internal-audit | 内审管理（聚合导出） |
+| `internal-audit/plan.ts` | internal-audit | 审计计划 |
+| `internal-audit/finding.ts` | internal-audit | 审计发现/整改 |
+| `internal-audit/report.ts` | internal-audit | 审计报告 |
+| `monitoring.ts` | monitoring | 监控指标、告警规则 |
+| `permission.ts` | permission, fine-grained-permission, user-permission | 权限管理全集 |
+| `record.ts` | record | 动态表单记录管理 |
+| `recycle-bin.ts` | recycle-bin | 回收站查询/恢复/删除 |
+| `recommendation.ts` | recommendation | 文档推荐 |
+| `role.ts` | role | 角色 CRUD |
+| `search.ts` | search | 全文搜索（ES + 降级） |
+| `sso.ts` | auth | LDAP + OAuth2 SSO 登录 |
+| `statistics.ts` | statistics | 综合统计分析 |
+| `task.ts` | task | 任务 CRUD + 派发 + 填报 |
+| `todo.ts` | todo | 待办事项 |
+| `training.ts` | training | 培训计划/项目/档案/统计 |
+| `warehouse.ts` | warehouse | 仓库/物料/领料/物料平衡 |
+| `workflow.ts` | workflow | 工作流实例 + 任务审批 |
+
+---
+
+## 七、核心流程文件
+
+### 7.1 用户认证流程
 
 ```
-登录页面: client/src/views/Login.vue
+client/src/views/Login.vue
+    ↓ (用户名/密码或 SSO)
+client/src/api/request.ts (axios + JWT 拦截)
     ↓
-API调用: client/src/api/auth.js (login)
+server/src/modules/auth/auth.controller.ts
     ↓
-后端认证: server/src/modules/auth/auth.controller.ts
+server/src/modules/auth/auth.service.ts (bcrypt 验证 + JWT 签发)
     ↓
-JWT策略: server/src/modules/auth/strategies/jwt.strategy.ts
-    ↓
-Token生成: server/src/modules/auth/auth.service.ts
+server/src/modules/auth/strategies/jwt.strategy.ts
 ```
 
-### 6.2 文件上传流程
+### 7.2 LDAP/SSO 认证流程
 
 ```
-上传组件: client/src/components/FileUpload.vue
+client/src/views/login/SsoLogin.vue
     ↓
-API调用: client/src/api/document.js (upload)
+client/src/api/sso.ts
     ↓
-MinIO存储: server/src/common/utils/file.util.ts
+server/src/modules/auth/sso.service.ts (三步 LDAP + escapeLdapFilter 防注入)
     ↓
-数据库记录: server/src/modules/document/document.service.ts (create)
+server/src/modules/auth/auth.service.ts (JWT 签发)
 ```
 
-### 6.3 审批流程
+### 7.3 文档上传审批流程
 
 ```
-提交审批: client/src/views/document/Detail.vue
+client/src/views/documents/DocumentUpload.vue
     ↓
-API调用: client/src/api/document.js (submitApproval)
+client/src/api/request.ts (multipart/form-data)
     ↓
-待审批列表: client/src/views/approval/Pending.vue
+server/src/modules/document/document.controller.ts (POST /documents)
     ↓
-审批操作: server/src/modules/approval/approval.service.ts
+MinIO 文件存储 → PostgreSQL 记录写入
     ↓
-状态更新: server/src/modules/document/document.service.ts (approve/reject)
+server/src/modules/approval/approval.service.ts (创建审批记录)
+    ↓
+server/src/modules/notification/notification.service.ts (站内消息通知)
 ```
 
-### 6.4 任务分发流程
+### 7.4 任务派发填报流程
 
 ```
-分发任务: client/src/views/task/Distribute.vue
+client/src/views/tasks/TaskCreate.vue
     ↓
-API调用: client/src/api/task.js (create)
+server/src/modules/task/task.service.ts (create)
     ↓
-任务创建: server/src/modules/task/task.service.ts (create)
+server/src/modules/notification/notification.service.ts (通知执行人)
     ↓
-消息通知: server/src/modules/notification/notification.service.ts
+client/src/views/tasks/TaskDetail.vue (执行人填报)
+    ↓
+server/src/modules/record/record.service.ts (提交记录)
+    ↓
+server/src/modules/deviation/deviation.service.ts (偏离检测)
+    ↓
+server/src/modules/approval/approval.service.ts (触发审批)
 ```
 
-### 6.5 任务填写流程
+### 7.5 工作流引擎流程
 
 ```
-任务列表: client/src/views/task/List.vue
+管理员: client/src/views/workflow/WorkflowDesigner.vue (拖拽配置)
     ↓
-填写表单: client/src/components/FormRenderer.vue
+server/src/modules/workflow/workflow-template.controller.ts (保存配置)
     ↓
-API调用: client/src/api/task.js (submit)
+用户: client/src/views/workflow/InstanceList.vue (发起实例)
     ↓
-记录锁定: server/src/modules/task/task.service.ts (submit)
+server/src/modules/workflow/workflow-instance.controller.ts (启动)
     ↓
-审批: server/src/modules/approval/approval.service.ts
+server/src/modules/workflow/workflow-task.service.ts (分配步骤任务)
+    ↓ (超时时仅通知，不转交)
+审批人: client/src/views/workflow/MyTasks.vue (审批)
+    ↓
+下一步骤自动推进 → 完成
 ```
 
 ---
 
-## 七、配置相关
+## 八、配置相关
 
-### 7.1 环境配置
+### 8.1 环境变量（server/.env）
+
+| 变量 | 说明 |
+|------|------|
+| `DATABASE_URL` | PostgreSQL 连接字符串 |
+| `REDIS_HOST`, `REDIS_PORT` | Redis 连接配置 |
+| `JWT_SECRET` | JWT 签名密钥（512位） |
+| `MINIO_*` | MinIO 连接配置 |
+| `ELASTICSEARCH_NODE` | ES 节点地址（可选） |
+| `LDAP_URL`, `LDAP_BASE_DN` | LDAP 服务器配置 |
+
+### 8.2 关键配置文件
 
 | 文件 | 用途 |
 |------|------|
-| .env | 环境变量（数据库密码、Token密钥等） |
-| docker-compose.yml | 开发环境服务配置 |
-| docker-compose.prod.yml | 生产环境服务配置 |
-| client/vite.config.js | Vite构建配置 |
-| server/tsconfig.json | TypeScript配置 |
-
-### 7.2 服务端口
-
-| 服务 | 端口 | 配置文件 |
-|------|------|----------|
-| PostgreSQL | 5432 | docker-compose.yml |
-| Redis | 6379 | docker-compose.yml |
-| MinIO | 9000 | docker-compose.yml |
-| MinIO Console | 9001 | docker-compose.yml |
-| NestJS | 3000 | .env |
-| Vue Dev | 5173 | vite.config.js |
+| `docker-compose.yml` | 服务编排（postgres/redis/minio/server/client） |
+| `server/src/prisma/schema.prisma` | 数据库 Schema（73个模型，1918行） |
+| `client/src/router/index.ts` | 前端路由（94条路由 + 守卫） |
+| `client/nginx.conf` | 生产 Nginx 配置（API 反向代理） |
+| `server/tsconfig.json` | TypeScript 配置 |
+| `client/vite.config.ts` | Vite 构建配置（含代码分割优化） |
 
 ---
 
-## 八、文档相关
+## 九、文档相关
 
-### 8.1 设计文档
+### 9.1 文档索引
 
-| 文档 | 路径 | 说明 |
-|------|------|------|
-| 需求设计 | docs/DESIGN.md | 完整的需求和设计文档 |
-| 测试用例 | docs/TEST-CASES.md | 测试用例清单 |
-| 项目结构 | docs/PROJECT_STRUCTURE.md | 本文件 |
-
-### 8.2 后续文档
-
-| 文档 | 路径 | 说明 |
-|------|------|------|
-| API文档 | docs/API.md | Swagger生成的API文档 |
-| 手动测试指南 | docs/TEST-MANUAL.md | 手动测试操作步骤 |
-| 部署指南 | docs/DEPLOY.md | 生产环境部署说明 |
-
----
-
-## 九、AI Agent 快速参考
-
-### 9.1 添加新功能步骤
-
-1. **设计阶段**: 在 `docs/DESIGN.md` 中添加需求
-2. **后端开发**:
-   - 在 `server/src/modules/` 下创建模块目录
-   - 创建 controller, service, entity, dto
-   - 在 `server/src/prisma/schema.prisma` 中添加模型
-3. **前端开发**:
-   - 在 `client/src/views/` 下创建页面
-   - 在 `client/src/api/` 下添加API
-   - 在 `client/src/router/` 中添加路由
-4. **测试**:
-   - 在 `docs/TEST-CASES.md` 中添加测试用例
-
-### 9.2 常见任务定位
-
-| 任务 | 搜索关键词 | 目标文件 |
-|------|------------|----------|
-| 修改登录逻辑 | auth | auth.service.ts, auth.controller.ts |
-| 修改用户权限 | user, role | user.service.ts, roles.decorator.ts |
-| 添加新API | controller | 对应模块的 controller.ts |
-| 修改数据库模型 | prisma, schema | schema.prisma |
-| 修改前端样式 | css, style | styles/index.css |
-| 添加路由 | router | router/index.js |
-| 修改环境配置 | env, docker | .env, docker-compose.yml |
-
-### 9.3 代码规范参考
-
-| 规范 | 说明 | 文件 |
-|------|------|------|
-| 后端命名 | controller.ts, service.ts, entity.ts | 模块目录 |
-| 前端命名 | PascalCase for components, camelCase for utils | - |
-| API路径 | /api/v1/{module}/{action} | controller.ts |
-| 数据库字段 | snake_case | schema.prisma |
-| 代码变量 | camelCase | TypeScript, JavaScript |
-
----
-
-## 十、前端开发计划
-
-### 10.1 开发顺序（按依赖关系）
-
-| 顺序 | 模块 | 依赖 | 说明 |
+| 文档 | 路径 | 版本 | 说明 |
 |------|------|------|------|
-| 1 | 基础框架 | 无 | 路由、状态管理、API封装 |
-| 2 | 登录模块 | 基础框架 | 登录、登出、Token管理 |
-| 3 | 布局组件 | 登录模块 | 侧边栏、顶栏、权限菜单 |
-| 4 | 用户管理 | 布局组件 | 列表、增删改查 |
-| 5 | 部门管理 | 用户管理 | 列表、增删改查 |
-| 6 | 一级文件 | 部门管理 | 上传、列表、审批 |
-| 7 | 二级文件 | 一级文件 | 复用一级逻辑 |
-| 8 | 三级文件 | 一级文件 | 复用+表单功能 |
-| 9 | 四级模板 | 三级文件 | Excel解析、表单构建 |
-| 10 | 任务管理 | 四级模板 | 分发、填写、列表 |
-| 11 | 站内消息 | 任务管理 | 通知列表、已读状态 |
+| 需求设计 | `docs/DESIGN.md` | v10.7 | 113 条业务规则 + P1 技术债务方案 |
+| 功能审计 | `docs/complete-audit-report.md` | 第三次更新 | 22模块任务级精确核查，85.6% 完成 |
+| 交互设计 | `docs/INTERACTION_DESIGN.md` | v1.1 | 7 大模块完整交互规范 |
+| 项目结构 | `docs/PROJECT_STRUCTURE.md` | v6.0（本文件） | 文件导航 + 模块映射 |
+| AI 指南 | `CLAUDE.md` | v5.1 | AI Agent 开发约束 + 编码预防清单 |
+| README | `README.md` | v4.1 | 快速开始、功能概览 |
 
-### 10.2 页面UI设计概览
+### 9.2 各模块任务文档
 
-```
-登录页 (Login.vue)
-├── 居中卡片布局
-├── 用户名/密码输入
-├── 登录按钮
-└── 记住密码(可选)
-
-主布局 (Layout.vue)
-├── 左侧边栏(二级菜单)
-│   ├── 一级文件管理
-│   ├── 二级文件管理
-│   ├── 三级文件管理
-│   ├── 四级模板
-│   ├── 任务管理
-│   ├── 审批中心
-│   ├── 用户管理(Admin)
-│   └── 部门管理(Admin)
-├── 顶部栏
-│   ├── 面包屑
-│   ├── 消息图标(红点)
-│   └── 用户下拉菜单
-└── 主内容区
-
-列表页通用结构
-├── 搜索栏(名称/编号)
-├── 操作按钮(新增/导入/导出)
-├── 表格(编号/名称/状态/创建人/时间/操作)
-├── 分页器
-└── 详情/编辑弹窗
-
-表单页通用结构
-├── 标题
-├── 表单(响应式布局)
-├── 按钮组(取消/提交)
-└── 帮助提示
-```
-
-### 10.3 公共组件
-
-| 组件名 | 用途 | 依赖 |
-|--------|------|------|
-| `FileUpload.vue` | 文件上传(拖拽/进度条) | Element Plus Upload |
-| `FormBuilder.vue` | 表单构建器(拖拽字段) | SortableJS |
-| `FormRenderer.vue` | 表单渲染器(根据JSON生成) | Element Plus Form |
-| `TablePagination.vue` | 列表+分页封装 | Element Plus Table |
-| `StatusTag.vue` | 状态标签(待审批/已通过等) | Element Plus Tag |
-| `ConfirmDialog.vue` | 确认弹窗 | Element Plus Dialog |
-| `PageHeader.vue` | 页面标题+操作栏 | - |
-
-### 10.4 API封装
-
-```
-client/src/api/
-├── index.js         # axios实例: Token拦截、401跳转、错误处理
-├── auth.js          # login, logout, me, password
-├── user.js          # CRUD用户
-├── department.js    # CRUD部门
-├── document.js      # CRUD文档, upload, download, versions
-├── template.js      # CRUD模板, parse-excel, copy
-├── task.js          # CRUD任务, submit
-└── notification.js  # list, read, read-all
-```
-
-### 10.5 状态管理(Pinia)
-
-```
-client/src/stores/
-├── user.js              # 用户信息, Token, 权限
-└── notification.js      # 未读消息数
-```
-
-### 10.6 路由规划
-
-```javascript
-// 公开路由
-/login
-
-// 需要登录的路由
-/
-├── dashboard
-├── document/level/1     # 一级文件
-├── document/level/2     # 二级文件
-├── document/level/3     # 三级文件
-├── template
-├── task
-│   ├── list            # 我的任务
-│   └── distribute      # 分发任务(Leader)
-├── approval
-│   ├── pending         # 待审批
-│   └── history         # 审批历史
-├── user                # (Admin)
-└── department          # (Admin)
-
-// 路由守卫
-- 检查Token，无Token跳转登录
-- 检查权限，无权限跳转403
-```
-
-### 10.7 UI标准（开箱即用）
-
-| 项目 | 标准 |
-|------|------|
-| 组件库 | Element Plus 官方组件为主 |
-| 图标 | Element Plus Icons |
-| 布局 | 响应式布局，适配 1920x1080 为主 |
-| 配色 | 简洁专业，主色 #409EFF |
-| 加载状态 | 每个操作要有 loading 提示 |
-| 空状态 | 列表为空时显示友好提示 |
-| 确认操作 | 删除等危险操作要有确认弹窗 |
-| 表单验证 | 红色文字在字段下方 |
-| 消息提示 | 右上角 Toast，成功绿色，失败红色 |
-
----
-
-## 十一、工作流引擎模块（v1.1.0新增）
-
-### 11.1 模块概述
-
-工作流引擎是文档管理系统的核心扩展模块，提供灵活可配置的业务流程编排能力。
-
-**核心价值**：
-- 🎯 灵活配置：支持 1-N 步骤，不同公司定制不同流程
-- 🔄 可视化管理：拖拽式工作流设计器
-- 📊 数据驱动：工作流统计分析
-
-### 11.2 后端模块文件
-
-**路径**：`server/src/modules/workflow/`
-
-| 文件 | 说明 | 行数 |
-|------|------|------|
-| workflow.module.ts | 工作流模块定义 | ~30 |
-| workflow.service.ts | 核心工作流引擎 | ~500 |
-| workflow.controller.ts | API 控制器 | ~200 |
-| dto/workflow-config.dto.ts | 工作流配置 DTO | ~100 |
-| dto/start-workflow.dto.ts | 启动工作流 DTO | ~50 |
-| dto/submit-step.dto.ts | 提交步骤 DTO | ~50 |
-| dto/approve-step.dto.ts | 审批步骤 DTO | ~50 |
-| services/parallel-approval.service.ts | 并行审批服务 | ~200 |
-| services/conditional-branch.service.ts | 条件分支服务 | ~150 |
-| services/sub-workflow.service.ts | 子工作流服务 | ~150 |
-| services/timeout-handler.service.ts | 超时处理服务 | ~100 |
-| services/delegation.service.ts | 审批人代理服务 | ~100 |
-| services/statistics.service.ts | 工作流统计服务 | ~200 |
-
-### 11.3 前端页面文件
-
-**路径**：`client/src/views/workflows/`
-
-| 文件 | 说明 | 行数 |
-|------|------|------|
-| WorkflowList.vue | 工作流列表页 | ~200 |
-| WorkflowDetail.vue | 工作流详情页 | ~300 |
-| WorkflowStart.vue | 发起工作流页 | ~150 |
-| WorkflowDesigner.vue | 工作流设计器页 | ~500 |
-| components/StepNode.vue | 步骤节点组件 | ~150 |
-| components/ApprovalRuleConfig.vue | 审批规则配置组件 | ~200 |
-| components/TemplateSelector.vue | 模板选择器组件 | ~150 |
-| components/WorkflowPreview.vue | 工作流预览组件 | ~200 |
-| statistics/EfficiencyDashboard.vue | 效率统计页面 | ~250 |
-| statistics/BottleneckAnalysis.vue | 瓶颈分析页面 | ~200 |
-| statistics/WorkflowReport.vue | 工作流报告页面 | ~250 |
-
-### 11.4 数据库表
-
-| 表名 | 说明 | 关键字段 |
-|------|------|---------|
-| workflows | 工作流定义 | id, name, category, status |
-| workflow_steps | 工作流步骤 | workflowId, stepOrder, stepName, templateId, approvalRule |
-| workflow_instances | 工作流实例 | id, workflowId, instanceName, initiatorId, currentStep, status |
-| workflow_step_records | 步骤执行记录 | instanceId, stepOrder, documentId, taskRecordId, status, submitterId, approverId |
-| workflow_versions | 工作流版本管理 | workflowId, version, config, isActive |
-| parallel_approval_groups | 并行审批组 | stepRecordId, approverIds, requiredCount, status |
-| conditional_branches | 条件分支 | stepId, condition, nextStepId, elseStepId |
-| approval_delegations | 审批人代理 | delegatorId, delegateeId, startDate, endDate |
-
-### 11.5 API 端点
-
-#### 11.5.1 工作流管理
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/workflows` | 获取所有工作流定义 |
-| POST | `/workflows` | 创建工作流定义 |
-| GET | `/workflows/:id` | 获取工作流详情 |
-| PUT | `/workflows/:id` | 更新工作流定义 |
-| DELETE | `/workflows/:id` | 删除工作流定义 |
-| POST | `/workflows/:id/config` | 保存工作流配置（UI 设计器） |
-| GET | `/workflows/:id/versions` | 获取工作流版本列表 |
-| POST | `/workflows/versions/:versionId/activate` | 激活工作流版本 |
-| POST | `/workflows/:id/rollback/:versionId` | 回滚到指定版本 |
-
-#### 11.5.2 工作流实例
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/workflows/:id/start` | 启动工作流实例 |
-| GET | `/workflows/instances` | 获取工作流实例列表 |
-| GET | `/workflows/instances/:id` | 获取工作流实例详情 |
-| POST | `/workflows/instances/:id/steps/:stepOrder/submit` | 提交步骤 |
-| POST | `/workflows/instances/:id/steps/:stepOrder/approve` | 审批步骤 |
-
-#### 11.5.3 统计分析
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/workflows/statistics/efficiency` | 获取执行效率统计 |
-| GET | `/workflows/statistics/bottlenecks` | 获取瓶颈步骤分析 |
-| GET | `/workflows/statistics/workload` | 获取审批人工作量 |
-
-### 11.6 配置文件
+**路径**: `docs/task_modules/`
 
 | 文件 | 说明 |
 |------|------|
-| `server/src/config/workflows.json` | 工作流JSON配置文件 |
-| `docs/WORKFLOW_CONFIG.md` | 工作流配置指南 |
-
-### 11.7 路由配置
-
-```typescript
-// client/src/router/index.ts
-{
-  path: '/workflows',
-  name: 'WorkflowList',
-  component: () => import('@/views/workflows/WorkflowList.vue'),
-  meta: { requiresAuth: true },
-},
-{
-  path: '/workflows/:id',
-  name: 'WorkflowDetail',
-  component: () => import('@/views/workflows/WorkflowDetail.vue'),
-  meta: { requiresAuth: true },
-},
-{
-  path: '/workflows/:id/designer',
-  name: 'WorkflowDesigner',
-  component: () => import('@/views/workflows/WorkflowDesigner.vue'),
-  meta: { requiresAuth: true, requiresAdmin: true },
-},
-{
-  path: '/workflows/statistics',
-  name: 'WorkflowStatistics',
-  component: () => import('@/views/workflows/statistics/EfficiencyDashboard.vue'),
-  meta: { requiresAuth: true },
-},
-```
+| `06_回收站_TASKS.md` | 回收站模块任务详情 |
+| `11_P1-1_文档归档作废_TASKS.md` | P1-1 任务详情 |
+| `14_动态表单引擎_TASKS.md` | 动态表单任务详情 |
+| `15_批次追溯系统_TASKS.md` | 批次追溯任务详情 |
+| `17_设备管理系统_TASKS.md` | 设备管理任务详情 |
 
 ---
 
-**文档版本**: 5.0
-**最后更新**: 2026-02-13
-**更新内容**:
-- 同步项目状态：MVP Phase 1-6 完成 98.1%
-- Phase 7-12: 部分完成（Phase 7-9, 12 已实现）
-- 技术债务: 已识别 3 个 P1 问题，待实施
-- 补充完整技术栈信息（echarts, sortablejs, exceljs等）
-- 新增 Phase 7-12 模块说明：偏离检测、数据导出、2级审批、文件预览、统计分析
-- **v1.1.0 新增**：工作流引擎模块（第十一章节）
-  - 添加工作流模块文件说明（13个文件）
-  - 添加工作流前端页面说明（11个组件）
-  - 添加工作流数据库表说明（8张表）
-  - 添加工作流API端点说明（20个端点）
-  - 添加工作流路由配置
-- 更新文档版本与 DESIGN.md 10.1、README.md 3.1、CLAUDE.md 4.0 保持一致
+## 十、AI Agent 快速参考
+
+### 10.1 文件定位速查
+
+| 关键词/需求 | 文件路径 |
+|------------|---------|
+| 登录逻辑 | `server/src/modules/auth/auth.service.ts` |
+| JWT 策略 | `server/src/modules/auth/strategies/jwt.strategy.ts` |
+| LDAP/SSO | `server/src/modules/auth/sso.service.ts` |
+| 用户管理 | `server/src/modules/user/user.service.ts` |
+| 数据库 Schema | `server/src/prisma/schema.prisma` |
+| 文档 CRUD | `server/src/modules/document/document.service.ts` |
+| 模板 Excel 解析 | `server/src/modules/template/excel.parser.ts` |
+| 偏离检测逻辑 | `server/src/modules/deviation/deviation.service.ts` |
+| 工作流引擎 | `server/src/modules/workflow/workflow-task.service.ts` |
+| 细粒度权限 | `server/src/modules/fine-grained-permission/fine-grained-permission.service.ts` |
+| 权限守卫 | `server/src/modules/permission/permission.guard.ts` |
+| 回收站定时清理 | `server/src/modules/recycle-bin/recycle-bin.cron.ts` |
+| 前端路由配置 | `client/src/router/index.ts` |
+| 前端状态管理 | `client/src/stores/user.ts` |
+| axios 封装 | `client/src/api/request.ts` |
+| 全局样式 | `client/src/styles/` |
+| 雪花 ID 生成 | `server/src/common/utils/snowflake.ts` |
+| 异常过滤器 | `server/src/common/filters/all-exception.filter.ts` |
+| 操作日志拦截器 | `server/src/common/interceptors/logging.interceptor.ts` |
+
+### 10.2 常见开发任务定位
+
+| 任务 | 需要修改的关键文件 |
+|------|----------------|
+| 添加新 API 端点 | `server/src/modules/{模块}/{模块}.controller.ts` |
+| 修改数据库模型 | `server/src/prisma/schema.prisma` → 运行 `npx prisma db push` |
+| 添加前端页面 | `client/src/views/{目录}/NewPage.vue` + `client/src/router/index.ts` |
+| 添加前端 API 调用 | `client/src/api/{模块}.ts` |
+| 修改权限逻辑 | `server/src/modules/permission/permission.guard.ts` |
+| 修改审批流程 | `server/src/modules/approval/approval.service.ts` |
+| 修改工作流超时 | `server/src/modules/workflow/workflow-task.service.ts` |
+| 修改回收站规则 | `server/src/modules/recycle-bin/recycle-bin.cron.ts` |
+
+### 10.3 测试文件位置
+
+| 测试类型 | 位置 | 数量 |
+|---------|------|------|
+| 后端 E2E 测试 | `server/test/*.e2e-spec.ts` | 17个 |
+| 后端单元测试 | `server/src/modules/**/*.spec.ts` | 20+个 |
+| 前端 E2E 测试（Playwright） | `client/e2e/*.spec.ts` | 30个 |
+| 前端页面单元测试 | `client/src/views/**/__tests__/*.spec.ts` | 20+个 |
+| 前端组件单元测试 | `client/src/components/**/__tests__/*.spec.ts` | 12个 |
+| 前端 API 集成测试 | `client/src/__tests__/*.spec.ts` | 4个 |
+
+### 10.4 架构约束与注意事项
+
+1. **Prisma 模型变更后必须执行**:
+   ```bash
+   npx prisma generate --schema=src/prisma/schema.prisma
+   npx prisma db push --schema=src/prisma/schema.prisma
+   ```
+
+2. **前端新增页面必须同步路由**:
+   ```typescript
+   // client/src/router/index.ts
+   { path: '/new-path', component: () => import('@/views/module/NewPage.vue') }
+   ```
+
+3. **API 文件使用 TypeScript**（非 JavaScript）:
+   ```typescript
+   // client/src/api/{module}.ts（不是 .js）
+   import request from './request'
+   export const getList = (params: Params) => request.get('/endpoint', { params })
+   ```
+
+4. **残留架构缺陷（勿误以为是 bug）**:
+   - `RoleFineGrainedPermission` 中间表缺失：角色权限通过批量写用户权限变通实现
+   - `DepartmentPermission` 存储在 `SystemConfig` 表（key = `dept_permission_{deptId}`）
+   - `RecordTemplate` 缺少 `workflowConfig`/`approvalRequired` 字段（P1 待补）
+   - `Record` 缺少 `workflowId` 字段（P1 待补）
+
+---
+
+**文档版本**: 6.0
+**最后更新**: 2026-02-22
+**变更内容**:
+- 完整重写（原 v5.0 描述的是计划结构而非实际结构）
+- 更新目录结构以反映实际已实现的 40 个后端模块、97 个前端 Vue 组件、33 个 API 文件
+- 新增后端模块完整映射表（4.1~4.4）
+- 新增前端页面完整映射表（5.1~5.5）
+- 新增 API 文件完整索引（第六章）
+- 更新核心流程文件（第七章），新增工作流引擎和 SSO 流程
+- 新增测试文件位置索引（10.3）
+- 新增架构约束与注意事项（10.4）
+- 删除已废弃的"前端开发计划"章节（功能已全部实现）
