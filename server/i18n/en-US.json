@@ -1,0 +1,51 @@
+{
+  "common": {
+    "success": "Operation successful",
+    "failed": "Operation failed",
+    "notFound": "Resource not found",
+    "forbidden": "Access denied",
+    "unauthorized": "Unauthorized, please login first",
+    "badRequest": "Invalid request parameters",
+    "serverError": "Internal server error"
+  },
+  "auth": {
+    "loginSuccess": "Login successful",
+    "loginFailed": "Invalid username or password",
+    "accountDisabled": "Account has been disabled",
+    "accountLocked": "Account has been locked",
+    "passwordChanged": "Password changed successfully"
+  },
+  "document": {
+    "created": "Document created successfully",
+    "updated": "Document updated successfully",
+    "deleted": "Document deleted successfully",
+    "notFound": "Document not found",
+    "archived": "Document archived",
+    "obsoleted": "Document marked as obsolete"
+  },
+  "workflow": {
+    "approved": "Approval granted",
+    "rejected": "Rejected",
+    "delegated": "Task delegated",
+    "transferred": "Task transferred",
+    "rolledBack": "Task rolled back",
+    "taskNotFound": "Workflow task not found",
+    "notAssignee": "Only the current assignee can perform this action"
+  },
+  "search": {
+    "keywordEmpty": "Search keyword cannot be empty",
+    "indexed": "Document indexed",
+    "indexDeleted": "Index deleted"
+  },
+  "recommendation": {
+    "tracked": "View recorded",
+    "generated": "Recommendations generated"
+  },
+  "statistics": {
+    "title": "Data Statistics",
+    "documents": "Document Statistics",
+    "users": "User Statistics",
+    "workflow": "Workflow Statistics",
+    "equipment": "Equipment Statistics"
+  }
+}

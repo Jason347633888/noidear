@@ -149,6 +149,12 @@ model User {
   assignedAuditFindings AuditFinding[] @relation("AssignedAuditFindings")
   verifiedAuditFindings AuditFinding[] @relation("VerifiedAuditFindings")
 
+  // TASK-379/381: 高级功能关系
+  documentViewLogs        DocumentViewLog[]        @relation("DocumentViewLogs")
+  documentRecommendations DocumentRecommendation[] @relation("DocumentRecommendations")
+  delegationsFrom         DelegationLog[]          @relation("DelegationFrom")
+  delegationsTo           DelegationLog[]          @relation("DelegationTo")
+
   @@map("users")
 }
 
@@ -238,6 +244,11 @@ model Document {
   // Internal Audit Management System relations (TASK-325)
   auditFindings AuditFinding[] @relation("AuditFindings")
   auditReports  AuditReport[]  @relation("AuditReports")
+
+  // TASK-379/380: 高级功能关系
+  viewLogs        DocumentViewLog[]        @relation("DocumentViewLogs")
+  recommendations DocumentRecommendation[] @relation("DocumentRecommendations")
+  fulltextIndex   FulltextIndex?           @relation("FulltextIndex")
 
   @@map("documents")
 }
@@ -577,8 +588,13 @@ model WorkflowTask {
   completedAt   DateTime?
   escalatedTo   String?
   escalatedUser User?            @relation("WorkflowTaskEscalated", fields: [escalatedTo], references: [id], onDelete: SetNull)
+  // TASK-381: 审批委托字段
+  delegatedTo   String?          // 委托人 ID
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
+
+  // TASK-381: 委托日志关系
+  delegationLogs DelegationLog[] @relation("DelegationLogs")
 
   @@index([instanceId])
   @@index([assigneeId])
@@ -1834,4 +1850,69 @@ model AuditReport {
 
   @@index([documentId])
   @@map("audit_reports")
+}
+
+// TASK-379: 用户文档访问日志表（智能推荐基础数据）
+model DocumentViewLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation("DocumentViewLogs", fields: [userId], references: [id], onDelete: Cascade)
+  documentId String
+  document   Document @relation("DocumentViewLogs", fields: [documentId], references: [id], onDelete: Cascade)
+  viewedAt   DateTime @default(now())
+  duration   Int      @default(0) // 阅读时长（秒）
+  createdAt  DateTime @default(now())
+
+  @@index([userId, viewedAt])
+  @@index([documentId])
+  @@map("document_view_logs")
+}
+
+// TASK-379: 智能文档推荐表（协同过滤算法结果）
+model DocumentRecommendation {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation("DocumentRecommendations", fields: [userId], references: [id], onDelete: Cascade)
+  documentId String
+  document   Document @relation("DocumentRecommendations", fields: [documentId], references: [id], onDelete: Cascade)
+  score      Float    @default(0) // 推荐分数 0-100
+  reason     String?  // 推荐理由
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, documentId])
+  @@index([userId, score(sort: Desc)])
+  @@map("document_recommendations")
+}
+
+// TASK-380: 全文搜索索引表（ElasticSearch 同步用）
+model FulltextIndex {
+  id         String   @id @default(cuid())
+  documentId String   @unique
+  document   Document @relation("FulltextIndex", fields: [documentId], references: [id], onDelete: Cascade)
+  content    String   // 文档全文内容
+  metadata   Json     // 文档元数据（类型、部门、标签等）
+  indexedAt  DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([documentId])
+  @@map("fulltext_indexes")
+}
+
+// TASK-381: 审批委托日志表
+model DelegationLog {
+  id          String       @id @default(cuid())
+  taskId      String
+  task        WorkflowTask @relation("DelegationLogs", fields: [taskId], references: [id], onDelete: Cascade)
+  fromUserId  String
+  fromUser    User         @relation("DelegationFrom", fields: [fromUserId], references: [id], onDelete: Restrict)
+  toUserId    String
+  toUser      User         @relation("DelegationTo", fields: [toUserId], references: [id], onDelete: Restrict)
+  reason      String?
+  delegatedAt DateTime     @default(now())
+  createdAt   DateTime     @default(now())
+
+  @@index([taskId])
+  @@index([delegatedAt])
+  @@map("delegation_logs")
 }

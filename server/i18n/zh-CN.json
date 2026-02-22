@@ -1,0 +1,51 @@
+{
+  "common": {
+    "success": "操作成功",
+    "failed": "操作失败",
+    "notFound": "资源不存在",
+    "forbidden": "没有权限",
+    "unauthorized": "未授权，请先登录",
+    "badRequest": "请求参数无效",
+    "serverError": "服务器内部错误"
+  },
+  "auth": {
+    "loginSuccess": "登录成功",
+    "loginFailed": "用户名或密码错误",
+    "accountDisabled": "账号已被禁用",
+    "accountLocked": "账号已被锁定",
+    "passwordChanged": "密码修改成功"
+  },
+  "document": {
+    "created": "文档创建成功",
+    "updated": "文档更新成功",
+    "deleted": "文档删除成功",
+    "notFound": "文档不存在",
+    "archived": "文档已归档",
+    "obsoleted": "文档已作废"
+  },
+  "workflow": {
+    "approved": "审批通过",
+    "rejected": "已驳回",
+    "delegated": "审批已委托",
+    "transferred": "审批已转办",
+    "rolledBack": "审批已回退",
+    "taskNotFound": "审批任务不存在",
+    "notAssignee": "仅当前审批人可进行此操作"
+  },
+  "search": {
+    "keywordEmpty": "搜索关键词不能为空",
+    "indexed": "文档已索引",
+    "indexDeleted": "索引已删除"
+  },
+  "recommendation": {
+    "tracked": "访问记录已保存",
+    "generated": "推荐生成完成"
+  },
+  "statistics": {
+    "title": "数据统计",
+    "documents": "文档统计",
+    "users": "用户统计",
+    "workflow": "审批统计",
+    "equipment": "设备统计"
+  }
+}

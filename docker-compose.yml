@@ -65,6 +65,7 @@ services:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -89,6 +90,22 @@ services:
       - grafana_data:/var/lib/grafana
     depends_on:
       - prometheus
+    networks:
+      - noidear-network
+
+  # Alertmanager 告警通知
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: noidear-alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
     networks:
       - noidear-network
 
@@ -119,6 +136,28 @@ services:
     networks:
       - noidear-network
 
+  # TASK-401: ElasticSearch 全文搜索引擎（可选，降级为 PostgreSQL 全文搜索）
+  elasticsearch:
+    image: elasticsearch:8.11.0
+    container_name: noidear-elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    profiles:
+      - elasticsearch
+
 volumes:
   postgres_data:
     driver: local
@@ -131,6 +170,10 @@ volumes:
   grafana_data:
     driver: local
   loki_data:
+    driver: local
+  alertmanager_data:
+    driver: local
+  elasticsearch_data:
     driver: local
 
 networks:
