@@ -130,6 +130,9 @@
       style="margin-top: 16px;"
     />
 
+    <!-- 推荐文档 -->
+    <RecommendedDocuments :max-count="5" style="margin-top: 16px" />
+
     <el-card class="version-card" v-if="versionHistory.length">
       <template #header>
         <span>版本历史</span>
@@ -231,6 +234,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download, View } from '@element-plus/icons-vue';
 import request from '@/api/request';
 import FilePreviewDialog from '@/components/FilePreviewDialog.vue';
+import RecommendedDocuments from '@/components/RecommendedDocuments.vue';
 import { useUserStore } from '@/stores/user';
 
 interface VersionItem {

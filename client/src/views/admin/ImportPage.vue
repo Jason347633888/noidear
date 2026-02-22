@@ -113,6 +113,7 @@ import { Download, UploadFilled } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import type { UploadFile } from 'element-plus';
 import * as XLSX from 'xlsx';
+import { importApi } from '@/api/import';
 
 type ImportType = 'documents' | 'users';
 
@@ -193,18 +194,21 @@ function readExcel(file: File): Promise<Record<string, string>[]> {
 }
 
 async function handleImport() {
+  if (!uploadFile.value) return;
   importing.value = true;
   importProgress.value = 20;
   try {
     importProgress.value = 60;
-    // Simulate import - in real scenario call API
-    await new Promise((r) => setTimeout(r, 800));
+    const apiFn = importType.value === 'users'
+      ? importApi.importUsers
+      : importApi.importDocuments;
+    const result = await apiFn(uploadFile.value);
     importProgress.value = 100;
-    importResult.successCount = previewData.value.length;
-    importResult.failedCount = 0;
-    importResult.errors = [];
+    importResult.successCount = result.success;
+    importResult.failedCount = result.failed;
+    importResult.errors = result.errors ?? [];
     currentStep.value = 3;
-    ElMessage.success('导入成功');
+    ElMessage.success(`导入完成：成功 ${result.success} 条`);
   } catch {
     ElMessage.error('导入失败，请重试');
   } finally {

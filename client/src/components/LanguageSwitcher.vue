@@ -39,13 +39,11 @@ const currentLabel = computed(() => {
   return found?.label ?? currentLocale.value;
 });
 
-function handleLocaleChange(locale: Locale) {
+async function handleLocaleChange(locale: Locale) {
   if (locale === currentLocale.value) return;
-  setLocale(locale);
+  await setLocale(locale);
   currentLocale.value = locale;
   ElMessage.success(locale === 'zh-CN' ? '已切换为简体中文' : 'Switched to English');
-  // Reload to apply translations globally
-  window.location.reload();
 }
 </script>
 

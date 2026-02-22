@@ -59,4 +59,10 @@ export default {
       responseType: 'blob',
     });
   },
+
+  exportUsers(filters?: { department?: string }): Promise<Blob> {
+    return request.post('/export/users', filters ?? {}, {
+      responseType: 'blob',
+    });
+  },
 };

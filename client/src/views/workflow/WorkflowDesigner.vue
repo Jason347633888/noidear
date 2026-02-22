@@ -74,7 +74,20 @@
               <el-input v-model="selectedNode.approver" placeholder="输入审批人用户名" />
             </el-form-item>
             <el-form-item label="抄送人">
-              <el-input v-model="selectedNode.ccUsers" placeholder="多个用逗号分隔" />
+              <el-select
+                v-model="selectedNode.ccUsers"
+                multiple
+                filterable
+                placeholder="选择抄送人"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="u in userOptions"
+                  :key="u.username"
+                  :label="u.name"
+                  :value="u.username"
+                />
+              </el-select>
             </el-form-item>
           </template>
 
@@ -133,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { View, Close } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import request from '@/api/request';
@@ -145,8 +158,14 @@ interface WorkflowNode {
   x: number;
   y: number;
   approver?: string;
-  ccUsers?: string;
+  ccUsers?: string[];
   condition?: string;
+}
+
+interface UserOption {
+  id: string;
+  username: string;
+  name: string;
 }
 
 const nodeTypes = [
@@ -159,12 +178,24 @@ const nodeTypes = [
 const nodes = ref<WorkflowNode[]>([]);
 const selectedNode = ref<WorkflowNode | null>(null);
 const saving = ref(false);
+const userOptions = ref<UserOption[]>([]);
 const saveDialogVisible = ref(false);
 const previewVisible = ref(false);
 const templateName = ref('');
 const templateDesc = ref('');
 const canvas = ref<HTMLElement | null>(null);
 let dragNodeType = '';
+
+async function fetchUsers() {
+  try {
+    const res = await request.get<{ list: UserOption[] }>('/users', { params: { limit: 200 } });
+    userOptions.value = res.list || [];
+  } catch {
+    // 获取用户列表失败，使用空列表
+  }
+}
+
+onMounted(fetchUsers);
 
 function getNodeColor(type: string): string {
   const found = nodeTypes.find((n) => n.type === type);
@@ -232,7 +263,7 @@ async function confirmSave() {
         order: index + 1,
         condition: node.condition,
         approver: node.approver,
-        ccUsers: node.ccUsers?.split(',').map((s) => s.trim()).filter(Boolean),
+        ccUsers: node.ccUsers ?? [],
       })),
     });
     ElMessage.success('工作流模板保存成功');

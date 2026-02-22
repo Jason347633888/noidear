@@ -77,6 +77,7 @@ function formatDate(date: string) {
 }
 
 function handleClick(id: string) {
+  recommendationApi.trackView(id, 0).catch(() => { /* non-blocking */ });
   router.push(`/documents/${id}`);
 }
 </script>

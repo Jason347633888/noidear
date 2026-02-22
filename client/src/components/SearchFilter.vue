@@ -25,6 +25,26 @@
       </el-row>
       <el-row :gutter="16">
         <el-col :span="16">
+          <el-form-item label="标签">
+            <el-select
+              v-model="filterForm.tags"
+              multiple
+              filterable
+              placeholder="选择标签"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="tag in commonTags"
+                :key="tag"
+                :label="tag"
+                :value="tag"
+              />
+            </el-select>
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-row :gutter="16">
+        <el-col :span="16">
           <el-form-item label="时间范围">
             <el-date-picker
               v-model="dateRange"
@@ -59,6 +79,7 @@ interface FilterForm {
   sortBy: 'relevance' | 'date';
   startDate: string;
   endDate: string;
+  tags: string[];
 }
 
 const emit = defineEmits<{
@@ -73,6 +94,8 @@ const docTypes = [
   { label: '记录文件', value: 'record' },
 ];
 
+const commonTags = ['质量管理', '安全规程', '设备维护', '人员培训', '审批流程'];
+
 const dateRange = ref<[string, string] | null>(null);
 
 const filterForm = reactive<FilterForm>({
@@ -81,6 +104,7 @@ const filterForm = reactive<FilterForm>({
   sortBy: 'relevance',
   startDate: '',
   endDate: '',
+  tags: [],
 });
 
 function onDateChange(val: [string, string] | null) {
@@ -103,6 +127,7 @@ function handleReset() {
   filterForm.sortBy = 'relevance';
   filterForm.startDate = '';
   filterForm.endDate = '';
+  filterForm.tags = [];
   dateRange.value = null;
   emit('reset');
 }

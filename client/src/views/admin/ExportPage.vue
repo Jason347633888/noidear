@@ -123,7 +123,7 @@ async function handleExport() {
     if (form.exportType === 'documents') {
       blob = await exportApi.exportDocuments(filters);
     } else {
-      blob = await exportApi.exportDocuments({ ...filters });
+      blob = await exportApi.exportUsers({ department: filters.keyword || undefined });
     }
 
     progress.value = 90;

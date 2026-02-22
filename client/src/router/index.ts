@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
+import { useUserStore } from '@/stores/user';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -492,11 +493,13 @@ const routes: RouteRecordRaw[] = [
         path: 'admin/export',
         name: 'ExportPage',
         component: () => import('@/views/admin/ExportPage.vue'),
+        meta: { requiresAdmin: true },
       },
       {
         path: 'admin/import',
         name: 'ImportPage',
         component: () => import('@/views/admin/ImportPage.vue'),
+        meta: { requiresAdmin: true },
       },
       {
         path: 'workflow/designer',
@@ -507,6 +510,7 @@ const routes: RouteRecordRaw[] = [
         path: 'statistics/dashboard',
         name: 'StatisticsDashboard',
         component: () => import('@/views/statistics/StatisticsDashboard.vue'),
+        meta: { requiresAdmin: true },
       },
     ],
   },
@@ -525,9 +529,18 @@ router.beforeEach((to, from, next) => {
 
   if (!publicPaths.includes(to.path) && !token) {
     next('/login');
-  } else {
-    next();
+    return;
   }
+
+  if (to.meta?.requiresAdmin) {
+    const userStore = useUserStore();
+    if (!userStore.isAdmin) {
+      next('/dashboard');
+      return;
+    }
+  }
+
+  next();
 });
 
 export default router;

@@ -71,6 +71,10 @@
       </el-card>
     </div>
 
+    <!-- Recommended Documents -->
+    <div class="section-title">推荐文档</div>
+    <RecommendedDocuments :max-count="10" style="margin-bottom: 20px" />
+
     <!-- Pending Approvals -->
     <el-card class="pending-approvals" v-if="pendingApprovals.length">
       <template #header>
@@ -109,6 +113,7 @@ import {
   Document, Folder, Task, CheckCircle,
   Upload, Files, CircleCheck, Bell
 } from '@element-plus/icons-vue';
+import RecommendedDocuments from '@/components/RecommendedDocuments.vue';
 
 const userStore = useUserStore();
 const currentDate = new Date().toLocaleDateString('zh-CN', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -463,6 +468,14 @@ onMounted(fetchData);
 @media (max-width: 1200px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .dashboard-content { grid-template-columns: 1fr; }
+}
+
+.section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 12px;
 }
 
 @media (max-width: 768px) {
