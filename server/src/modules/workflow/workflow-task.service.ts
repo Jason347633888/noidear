@@ -5,6 +5,7 @@ import { NotificationService } from '../notification/notification.service';
 import { ApproveTaskDto } from './dto/approve-task.dto';
 import { RejectTaskDto } from './dto/reject-task.dto';
 import { QueryMyTasksDto } from './dto/query-my-tasks.dto';
+import { ConditionParser } from './condition-parser';
 
 @Injectable()
 export class WorkflowTaskService {
@@ -219,9 +220,10 @@ export class WorkflowTaskService {
 
   /**
    * P0-1: 支持串行 + 并行（会签）审批
+   * TASK-381: 集成 ConditionParser 支持条件分支，支持 ccUsers 抄送
    * step.type: 'serial' | 'parallel'
-   * - serial: 串行，逐步审批
-   * - parallel: 并行（会签），所有审批人同时收到任务，全部通过才进入下一步
+   * step.condition: 条件表达式（如 "amount > 10000"），满足才执行此步骤
+   * step.ccUsers: 抄送用户 ID 列表
    */
   private async processNextStep(prisma: any, task: any) {
     const template = task.instance.template;
@@ -242,17 +244,24 @@ export class WorkflowTaskService {
       );
 
       if (!allApproved) {
-        // 还有未完成的并行任务，等待
         return;
       }
     }
 
-    const nextStepIndex = task.stepIndex + 1;
+    // TASK-381: 发送抄送通知
+    await this.sendCcNotifications(currentStep, task);
 
-    if (nextStepIndex >= steps.length) {
+    // TASK-381: 条件分支 - 找到下一个满足条件的步骤
+    const nextStepIndex = await this.resolveNextStepIndex(
+      steps,
+      task.stepIndex,
+      task.instanceId,
+    );
+
+    if (nextStepIndex === null || nextStepIndex >= steps.length) {
       await prisma.workflowInstance.update({
         where: { id: task.instanceId },
-        data: { status: 'completed', currentStep: nextStepIndex },
+        data: { status: 'completed', currentStep: steps.length },
       });
       return;
     }
@@ -311,6 +320,65 @@ export class WorkflowTaskService {
       where: { id: task.instanceId },
       data: { currentStep: nextStepIndex },
     });
+  }
+
+  /**
+   * TASK-381: 通过 ConditionParser 确定下一个应执行的步骤索引
+   * 若步骤无条件则直接返回 stepIndex+1；否则跳过条件不满足的步骤
+   */
+  private async resolveNextStepIndex(
+    steps: any[],
+    currentStepIndex: number,
+    instanceId: string,
+  ): Promise<number | null> {
+    const instance = await this.prisma.workflowInstance.findUnique({
+      where: { id: instanceId },
+      select: { resourceId: true, resourceType: true },
+    });
+
+    const context: Record<string, unknown> = {
+      resourceId: instance?.resourceId,
+      resourceType: instance?.resourceType,
+    };
+
+    for (let i = currentStepIndex + 1; i < steps.length; i++) {
+      const step = steps[i];
+      if (!step.condition) {
+        return i;
+      }
+      try {
+        const matches = ConditionParser.evaluate(step.condition, context);
+        if (matches) return i;
+      } catch (error) {
+        this.logger.error(
+          `条件解析失败 (step ${i}): "${step.condition}" - ${error.message}`,
+        );
+        return i;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * TASK-381: 向当前步骤的抄送用户发送通知
+   */
+  private async sendCcNotifications(step: any, task: any) {
+    const ccUsers: string[] = step?.ccUsers ?? [];
+    if (ccUsers.length === 0) return;
+
+    for (const ccUserId of ccUsers) {
+      try {
+        await this.notificationService.create({
+          userId: ccUserId,
+          type: 'workflow_cc',
+          title: '工作流审批抄送通知',
+          content: `工作流 [${task.instance.resourceTitle}] 的步骤 [${task.stepName}] 已审批通过，特此抄送`,
+        });
+      } catch {
+        this.logger.warn(`抄送通知发送失败: ccUserId=${ccUserId}`);
+      }
+    }
   }
 
   private async findAssigneeByRole(roleName: string, initiatorId: string) {

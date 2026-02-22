@@ -14,6 +14,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { ImportService } from './import.service';
 
 @ApiTags('批量导入')
@@ -26,6 +28,8 @@ export class ImportController {
   @Post('users')
   @ApiOperation({ summary: '批量导入用户（管理员）' })
   @ApiConsumes('multipart/form-data')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
   @UseInterceptors(FileInterceptor('file'))
   async importUsers(@UploadedFile() file: Express.Multer.File) {
     this.validateFile(file);
@@ -35,6 +39,8 @@ export class ImportController {
   @Post('documents')
   @ApiOperation({ summary: '批量导入文档元数据（管理员）' })
   @ApiConsumes('multipart/form-data')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
   @UseInterceptors(FileInterceptor('file'))
   async importDocuments(@UploadedFile() file: Express.Multer.File, @Request() req: { user: { sub: string } }) {
     this.validateFile(file);

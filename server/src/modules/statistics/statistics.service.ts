@@ -704,10 +704,146 @@ export class StatisticsService {
     });
   }
 
+  async getUserStats(query: { startDate?: string; endDate?: string }) {
+    const cacheKey = this.getCacheKey('users', query);
+    return this.getCached(cacheKey, async () => {
+      const activeWhere = { status: 'active', deletedAt: null };
+
+      const [byDepartmentRaw, byRole, total] = await Promise.all([
+        this.prisma.user.groupBy({
+          by: ['departmentId'],
+          _count: { id: true },
+          where: activeWhere,
+        }),
+        this.prisma.user.groupBy({
+          by: ['role'],
+          _count: { id: true },
+          where: activeWhere,
+        }),
+        this.prisma.user.count({ where: activeWhere }),
+      ]);
+
+      const departmentIds = byDepartmentRaw
+        .map((item) => item.departmentId)
+        .filter((id): id is string => id !== null);
+
+      const departments =
+        departmentIds.length > 0
+          ? await this.prisma.department.findMany({
+              where: { id: { in: departmentIds } },
+              select: { id: true, name: true },
+            })
+          : [];
+
+      const deptMap = new Map(departments.map((d) => [d.id, d.name]));
+
+      const byDepartment = byDepartmentRaw.map((item) => ({
+        departmentId: item.departmentId || 'unassigned',
+        name: item.departmentId ? (deptMap.get(item.departmentId) || '未知部门') : '未分配',
+        count: item._count.id,
+      }));
+
+      return {
+        total,
+        byDepartment,
+        byRole: byRole.map((item) => ({
+          role: item.role,
+          count: item._count.id,
+        })),
+      };
+    });
+  }
+
+  async getWorkflowStats(query: { startDate?: string; endDate?: string }) {
+    const cacheKey = this.getCacheKey('workflow', query);
+    return this.getCached(cacheKey, async () => {
+      const dateWhere = this.buildDateWhere(query.startDate, query.endDate);
+      const where = { deletedAt: null, ...dateWhere };
+
+      const [total, completed, cancelled, instances] = await Promise.all([
+        this.prisma.workflowInstance.count({ where }),
+        this.prisma.workflowInstance.count({ where: { ...where, status: 'completed' } }),
+        this.prisma.workflowInstance.count({ where: { ...where, status: 'cancelled' } }),
+        this.prisma.workflowInstance.findMany({
+          where: { ...where, status: 'completed' },
+          select: { createdAt: true, updatedAt: true },
+          take: 1000,
+        }),
+      ]);
+
+      const passRate = total > 0
+        ? Math.round((completed / total) * 10000) / 100
+        : 0;
+
+      const cancelRate = total > 0
+        ? Math.round((cancelled / total) * 10000) / 100
+        : 0;
+
+      let avgDurationHours = 0;
+      if (instances.length > 0) {
+        const totalMs = instances.reduce(
+          (sum, inst) => sum + (inst.updatedAt.getTime() - inst.createdAt.getTime()),
+          0,
+        );
+        avgDurationHours =
+          Math.round((totalMs / instances.length / (1000 * 60 * 60)) * 100) / 100;
+      }
+
+      return {
+        total,
+        completed,
+        cancelled,
+        passRate,
+        cancelRate,
+        avgDurationHours,
+      };
+    });
+  }
+
+  async getEquipmentStats(query: { startDate?: string; endDate?: string }) {
+    const cacheKey = this.getCacheKey('equipment', query);
+    return this.getCached(cacheKey, async () => {
+      const dateWhere = this.buildDateWhere(query.startDate, query.endDate);
+      const where = { deletedAt: null, ...dateWhere };
+
+      const [total, active, inactive, scrapped] = await Promise.all([
+        this.prisma.equipment.count({ where }),
+        this.prisma.equipment.count({ where: { ...where, status: 'active' } }),
+        this.prisma.equipment.count({ where: { ...where, status: 'inactive' } }),
+        this.prisma.equipment.count({ where: { ...where, status: 'scrapped' } }),
+      ]);
+
+      const intactRate = total > 0
+        ? Math.round((active / total) * 10000) / 100
+        : 0;
+
+      const maintenanceRate = total > 0
+        ? Math.round((inactive / total) * 10000) / 100
+        : 0;
+
+      const scrapRate = total > 0
+        ? Math.round((scrapped / total) * 10000) / 100
+        : 0;
+
+      return {
+        total,
+        active,
+        inactive,
+        scrapped,
+        intactRate,
+        maintenanceRate,
+        scrapRate,
+      };
+    });
+  }
+
   async clearCaches() {
     await this.redis.del('statistics:documents:*');
     await this.redis.del('statistics:tasks:*');
     await this.redis.del('statistics:approvals:*');
     await this.redis.del('statistics:overview:*');
+    await this.redis.del('statistics:users:*');
+    await this.redis.del('statistics:workflow:*');
+    await this.redis.del('statistics:equipment:*');
   }
 }

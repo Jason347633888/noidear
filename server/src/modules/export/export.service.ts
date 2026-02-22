@@ -7,6 +7,7 @@ import {
   ExportTaskRecordsDto,
   ExportDeviationReportsDto,
   ExportApprovalsDto,
+  ExportUsersDto,
 } from './dto';
 
 interface FieldConfig {
@@ -201,6 +202,82 @@ export class ExportService {
 
     await this.fillApprovals(worksheet, where, total, fields);
     return Buffer.from(await workbook.xlsx.writeBuffer());
+  }
+
+  async exportUsers(dto: ExportUsersDto): Promise<Buffer> {
+    const where = this.buildUserWhere(dto);
+    const userFields: FieldConfig[] = [
+      { key: 'username', label: '用户名', width: 20 },
+      { key: 'name', label: '姓名', width: 20 },
+      { key: 'role', label: '角色', width: 15 },
+      { key: 'departmentName', label: '部门', width: 20 },
+      { key: 'status', label: '状态', width: 15 },
+      { key: 'createdAt', label: '创建时间', width: 20 },
+    ];
+    const fields = this.getFilteredFields(userFields, dto.fields);
+    const total = await this.prisma.user.count({ where });
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('用户列表');
+    this.setupWorksheet(worksheet, fields);
+
+    await this.fillUsers(worksheet, where, total, fields);
+    return Buffer.from(await workbook.xlsx.writeBuffer());
+  }
+
+  private buildUserWhere(dto: ExportUsersDto): any {
+    const where: any = { deletedAt: null };
+
+    if (dto.role) where.role = dto.role;
+    if (dto.status) where.status = dto.status;
+    if (dto.departmentId) where.departmentId = dto.departmentId;
+
+    this.addDateRange(where, 'createdAt', dto.startDate, dto.endDate);
+    return where;
+  }
+
+  private async fillUsers(
+    worksheet: ExcelJS.Worksheet,
+    where: any,
+    total: number,
+    fields: FieldConfig[],
+  ) {
+    const pageSize = 1000;
+    let page = 0;
+
+    while (page * pageSize < total) {
+      const users = await this.prisma.user.findMany({
+        where,
+        skip: page * pageSize,
+        take: pageSize,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          department: { select: { name: true } },
+        },
+      });
+
+      users.forEach((user: any) => {
+        const row = {
+          username: user.username,
+          name: user.name,
+          role: this.formatUserRole(user.role),
+          departmentName: user.department?.name || '未分配',
+          status: this.formatStatus(user.status),
+          createdAt: this.formatDate(user.createdAt),
+        };
+        worksheet.addRow(this.filterRow(row, fields));
+      });
+      page++;
+    }
+  }
+
+  private formatUserRole(role: string): string {
+    const map: Record<string, string> = {
+      admin: '管理员',
+      leader: '部门主管',
+      user: '普通用户',
+    };
+    return map[role] || role;
   }
 
   private setupWorksheet(worksheet: ExcelJS.Worksheet, fields: FieldConfig[]) {

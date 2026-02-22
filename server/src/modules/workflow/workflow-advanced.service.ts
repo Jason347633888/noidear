@@ -54,6 +54,9 @@ export class WorkflowAdvancedService {
 
     await this.sendNotification(dto.toUserId, 'workflow_delegated', '审批任务已委托给您', `工作流 [${task.instance.resourceTitle}] 的步骤 [${task.stepName}] 已委托给您处理`);
 
+    // TASK-381: 委托后向当前步骤的抄送用户发送通知
+    await this.sendStepCcNotifications(task);
+
     return { success: true, message: `审批任务已委托给 ${toUser.name}` };
   }
 
@@ -231,6 +234,26 @@ export class WorkflowAdvancedService {
       await this.notificationService.create({ userId, type, title, content });
     } catch {
       this.logger.warn(`通知发送失败: userId=${userId}, type=${type}`);
+    }
+  }
+
+  /**
+   * TASK-381: 向当前步骤的抄送用户发送通知
+   */
+  private async sendStepCcNotifications(task: any) {
+    const steps = task.instance.template?.steps as any[] | undefined;
+    if (!Array.isArray(steps)) return;
+
+    const currentStep = steps[task.stepIndex];
+    const ccUsers: string[] = currentStep?.ccUsers ?? [];
+
+    for (const ccUserId of ccUsers) {
+      await this.sendNotification(
+        ccUserId,
+        'workflow_cc',
+        '工作流审批委托抄送',
+        `工作流 [${task.instance.resourceTitle}] 的步骤 [${task.stepName}] 已委托处理，特此抄送`,
+      );
     }
   }
 }

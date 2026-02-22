@@ -2,6 +2,8 @@ import { Controller, Post, Body, Res, UseGuards, HttpStatus, HttpException, BadR
 import { Response } from 'express';
 import { ExportService } from './export.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { BusinessException, getHttpStatus } from '../../common/exceptions/business.exception';
 import {
   ExportDocumentsDto,
@@ -9,6 +11,7 @@ import {
   ExportTaskRecordsDto,
   ExportDeviationReportsDto,
   ExportApprovalsDto,
+  ExportUsersDto,
 } from './dto';
 
 @Controller('export')
@@ -61,6 +64,18 @@ export class ExportController {
     try {
       const buffer = await this.exportService.exportApprovals(dto);
       this.sendExcelFile(res, buffer, 'approvals');
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  @Post('users')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  async exportUsers(@Body() dto: ExportUsersDto, @Res() res: Response) {
+    try {
+      const buffer = await this.exportService.exportUsers(dto);
+      this.sendExcelFile(res, buffer, 'users');
     } catch (error) {
       this.handleError(res, error);
     }

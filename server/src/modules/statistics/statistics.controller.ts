@@ -9,6 +9,7 @@ import {
   Res,
   Request,
 } from '@nestjs/common';
+import { ApiOperation } from '@nestjs/swagger';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { StatisticsService } from './statistics.service';
@@ -84,6 +85,48 @@ export class StatisticsController {
       );
       throw new HttpException(
         'Failed to retrieve overview statistics',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('users')
+  @ApiOperation({ summary: '用户统计（按部门/角色分组）' })
+  async getUserStats(@Query() query: OverviewQueryDto) {
+    try {
+      return await this.statisticsService.getUserStats(query);
+    } catch (error) {
+      this.logger.error('Failed to get user statistics', error.stack);
+      throw new HttpException(
+        'Failed to retrieve user statistics',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('workflow')
+  @ApiOperation({ summary: '工作流统计（平均耗时、通过率、取消率）' })
+  async getWorkflowStats(@Query() query: OverviewQueryDto) {
+    try {
+      return await this.statisticsService.getWorkflowStats(query);
+    } catch (error) {
+      this.logger.error('Failed to get workflow statistics', error.stack);
+      throw new HttpException(
+        'Failed to retrieve workflow statistics',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('equipment')
+  @ApiOperation({ summary: '设备统计（完好率、维修率、故障率）' })
+  async getEquipmentStats(@Query() query: OverviewQueryDto) {
+    try {
+      return await this.statisticsService.getEquipmentStats(query);
+    } catch (error) {
+      this.logger.error('Failed to get equipment statistics', error.stack);
+      throw new HttpException(
+        'Failed to retrieve equipment statistics',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

@@ -1,6 +1,8 @@
 import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { I18nService } from './i18n.service';
 
 @ApiTags('多语言支持')
@@ -22,7 +24,8 @@ export class I18nController {
 
   @Post('translations')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   @ApiOperation({ summary: '更新翻译文件（管理员）' })
   async updateTranslations(@Body() body: { locale: string; translations: Record<string, unknown> }) {
     return this.service.updateTranslations(body.locale, body.translations);
