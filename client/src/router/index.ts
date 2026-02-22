@@ -7,6 +7,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/Login.vue'),
   },
   {
+    path: '/login/sso',
+    name: 'SsoLogin',
+    component: () => import('@/views/login/SsoLogin.vue'),
+  },
+  {
     path: '/',
     component: () => import('@/views/Layout.vue'),
     children: [
@@ -463,6 +468,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/audit/SensitiveLogList.vue'),
       },
       {
+        path: 'audit/search',
+        name: 'AuditSearch',
+        component: () => import('@/views/audit/AuditSearchPage.vue'),
+      },
+      {
         path: 'backup/manage',
         name: 'BackupManage',
         component: () => import('@/views/backup/BackupManage.vue'),
@@ -471,6 +481,32 @@ const routes: RouteRecordRaw[] = [
         path: 'health',
         name: 'HealthPage',
         component: () => import('@/views/health/HealthPage.vue'),
+      },
+      // 高级功能模块
+      {
+        path: 'search',
+        name: 'AdvancedSearch',
+        component: () => import('@/views/search/AdvancedSearch.vue'),
+      },
+      {
+        path: 'admin/export',
+        name: 'ExportPage',
+        component: () => import('@/views/admin/ExportPage.vue'),
+      },
+      {
+        path: 'admin/import',
+        name: 'ImportPage',
+        component: () => import('@/views/admin/ImportPage.vue'),
+      },
+      {
+        path: 'workflow/designer',
+        name: 'WorkflowDesigner',
+        component: () => import('@/views/workflow/WorkflowDesigner.vue'),
+      },
+      {
+        path: 'statistics/dashboard',
+        name: 'StatisticsDashboard',
+        component: () => import('@/views/statistics/StatisticsDashboard.vue'),
       },
     ],
   },

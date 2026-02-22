@@ -45,6 +45,8 @@
         </div>
 
         <div class="header-right">
+          <LanguageSwitcher />
+
           <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="notification-badge">
             <div class="icon-btn" @click="router.push('/notifications')">
               <el-icon :size="18"><Bell /></el-icon>
@@ -96,10 +98,12 @@ import {
   User, Lock, SwitchButton, HomeFilled, Files,
   Grid, List, CircleCheck, Message, UserFilled,
   DataAnalysis, Setting, Connection, Box, Goods, Key,
-  SetUp, WarnTriangleFilled,
+  SetUp, WarnTriangleFilled, Monitor, Histogram, AlarmClock,
+  Cloudy, Search, Odometer,
 } from '@element-plus/icons-vue';
 
 import request from '@/api/request';
+import LanguageSwitcher from '@/components/LanguageSwitcher.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -141,6 +145,25 @@ const menuItems = [
   { path: '/users', title: '用户管理', icon: UserFilled },
   { path: '/roles', title: '角色管理', icon: Key },
   { path: '/permissions', title: '权限管理', icon: Setting },
+  // 系统运维监控
+  { path: '/monitoring/dashboard', title: '监控大屏', icon: Monitor },
+  { path: '/monitoring/metrics', title: '性能指标', icon: Histogram },
+  { path: '/monitoring/alerts/rules', title: '告警规则', icon: AlarmClock },
+  { path: '/monitoring/alerts/history', title: '告警历史', icon: AlarmClock },
+  // 审计日志
+  { path: '/audit/login-logs', title: '登录日志', icon: Odometer },
+  { path: '/audit/permission-logs', title: '权限变更日志', icon: Key },
+  { path: '/audit/sensitive-logs', title: '敏感操作日志', icon: WarnTriangleFilled },
+  { path: '/audit/search', title: '综合日志搜索', icon: Search },
+  // 备份与健康
+  { path: '/backup/manage', title: '备份管理', icon: Cloudy },
+  { path: '/health', title: '健康检查', icon: Monitor },
+  // 高级功能
+  { path: '/search', title: '高级搜索', icon: Search },
+  { path: '/admin/export', title: '批量导出', icon: DataAnalysis },
+  { path: '/admin/import', title: '批量导入', icon: DataAnalysis },
+  { path: '/workflow/designer', title: '流程设计器', icon: Connection },
+  { path: '/statistics/dashboard', title: '数据大屏', icon: Monitor },
 ];
 
 const handleCommand = (command: string) => {
