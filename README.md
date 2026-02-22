@@ -19,8 +19,10 @@
 - ✅ 真实 ElasticSearch 集成（TASK-401）+ 真实 LDAP 认证（TASK-402）
 - ✅ 安全加固：LDAP 注入防护、XSS 防护、ES 竞态修复
 - ✅ 业务规则：113 条（BR-1.1 ~ BR-1.60, BR-281 ~ BR-359）
-- ⚠️ **待补全**: P1-2 细粒度权限系统（TASK-239~252）
-- ⚠️ **待补全**: 前端 E2E 测试（Playwright，覆盖率约 10%）
+- ✅ **全部 5 个业务规则违规（BRV-01~05）已修复**（密码锁定、工作流超时、回收站定时清理等）
+- ✅ P1-2 细粒度权限前端组件全部落地（12/18 完成），后端控制器已完善
+- ⚠️ 残留：`RoleFineGrainedPermission` 中间表、`RecordTemplate.workflowConfig` 等 Schema 字段待补全
+- ⚠️ 前端 E2E 测试（Playwright）：30 个 spec 文件，覆盖率约 45%
 
 ---
 
@@ -211,10 +213,10 @@ npm run test:cov
 ```
 
 **测试状态**:
-- ✅ 后端 E2E：15 个测试套件（alert/audit/backup/deviation/document/export/health/monitoring/permission/recycle-bin/role/statistics/task/training + load spec）
+- ✅ 后端 E2E：17 个测试套件（alert/audit/backup/deviation/document/export/health/monitoring/permission/recycle-bin/role/statistics/task/training/workflow/fine-grained-permission + load spec）
 - ✅ 后端覆盖率：核心业务逻辑 ~95%，API 端点 ~85%
-- ⚠️ 前端单元测试：~50% 覆盖
-- ❌ 前端 E2E（Playwright）：~10% 覆盖（待补全）
+- ⚠️ 前端单元测试：~55% 覆盖（~32 个 spec 文件）
+- ⚠️ 前端 E2E（Playwright）：30 个 spec 文件，~45% 覆盖
 
 ---
 
@@ -239,11 +241,10 @@ npm run test:cov
 | 文档 | 说明 |
 |------|------|
 | [DESIGN.md](docs/DESIGN.md) | 技术设计文档（v10.7，113条业务规则 + P1技术债务完整方案） |
-| [complete-audit-report.md](docs/complete-audit-report.md) | **完整功能审计报告（2026-02-22，22模块任务级核查）** |
+| [complete-audit-report.md](docs/complete-audit-report.md) | **完整功能审计报告（2026-02-22，第三次更新，85.6% 完成）** |
 | [INTERACTION_DESIGN.md](docs/INTERACTION_DESIGN.md) | 前端交互设计规范（v1.1） |
-| [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | 项目结构详解 |
-| [CHANGELOG.md](docs/CHANGELOG.md) | 版本变更日志 |
-| [CLAUDE.md](CLAUDE.md) | AI 开发指南 |
+| [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | 项目结构详解（v6.0，完整重写） |
+| [CLAUDE.md](CLAUDE.md) | AI 开发指南（v5.2） |
 | [SECURITY.md](SECURITY.md) | 安全说明 |
 
 ---
@@ -286,6 +287,27 @@ npm run build                # 构建
 ---
 
 ## 📝 更新日志
+
+### v1.0.4 (2026-02-22) - 代码修复 + 文档同步版本
+
+**重大更新**:
+- ✅ **BRV-01~05 全部业务规则违规修复**
+  - BRV-01：`RecordTemplate.retentionYears` 默认值 3 → 5（BR-1.9）
+  - BRV-02：密码错误锁定时长 30 分钟 → 1 分钟（BR-321）
+  - BRV-03：工作流超时改为仅通知，不自动转交上级（BR-1.21）
+  - BRV-04：新增 `recycle-bin.cron.ts`，每天凌晨 2 点自动清理 30 天以上数据（BR-316）
+  - BRV-05：`record.service.ts` 审批通过记录添加状态锁定检查（BR-1.8）
+- ✅ **P1-2 细粒度权限前端全部落地**（TASK-239~252）
+  - 新增 `FineGrainedPermission.vue`（344行）、`DepartmentPermission.vue`（358行）、`PermissionAuditLog.vue`（267行）
+  - 新增 `permission-audit-log.controller.ts`、`department-permission.controller.ts`
+  - 新增对应前端单元测试（3个 spec 文件）
+- ✅ **测试覆盖提升**：新增 5 个 E2E spec + 7 个前端单元测试 spec
+- ✅ **文档同步**：complete-audit-report.md 第三次更新，PROJECT_STRUCTURE.md v6.0 完整重写
+
+**更新动机**:
+- 第二次深度审计（complete-audit-report.md）发现 5 个业务规则违规，本版本全部修复落地
+- P1-2 细粒度权限模块从骨架状态（2/18）提升至 12/18 完成度
+- 项目结构文档严重过时，完整重写以反映实际代码状态
 
 ### v1.0.3 (2026-02-13) - 文档完善版本
 
@@ -363,6 +385,6 @@ MIT License
 
 ---
 
-**项目状态**: 🟢 设计完成，准备开发（MVP 98.1% + 交互设计 100% + 增量开发指导完成）
-**文档版本**: 4.1
-**最后更新**: 2026-02-13
+**项目状态**: 🟢 开发完成 85.6%（BRV-01~05 已修复，P1-2 前端落地，Schema 字段补全待完成）
+**文档版本**: 4.2
+**最后更新**: 2026-02-22
