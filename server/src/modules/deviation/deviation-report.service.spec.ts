@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DeviationService } from './deviation.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ApprovalService } from '../approval/approval.service';
 import { BusinessException } from '../../common/exceptions/business.exception';
 
 describe('DeviationService - createDeviationReports', () => {
@@ -19,9 +20,20 @@ describe('DeviationService - createDeviationReports', () => {
     taskRecord: { findUnique: jest.fn(), update: jest.fn() },
   };
 
+  const mockApprovalService = {
+    createApprovalChain: jest.fn().mockResolvedValue({ id: 'chain-1' }),
+    approve: jest.fn().mockResolvedValue({ success: true }),
+    reject: jest.fn().mockResolvedValue({ success: true }),
+    findOne: jest.fn().mockResolvedValue({}),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DeviationService, { provide: PrismaService, useValue: mockPrismaService }],
+      providers: [
+        DeviationService,
+        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: ApprovalService, useValue: mockApprovalService },
+      ],
     }).compile();
 
     service = module.get<DeviationService>(DeviationService);

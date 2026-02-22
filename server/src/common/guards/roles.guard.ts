@@ -19,6 +19,11 @@ export class RolesGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
+    // Admin 角色拥有所有权限（与 PermissionGuard 逻辑统一）
+    if (user?.role === 'admin') {
+      return true;
+    }
+
     return requiredRoles.includes(user?.role);
   }
 }

@@ -1,0 +1,243 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { ExamService } from './exam.service';
+import { PrismaService } from '../../prisma/prisma.service';
+
+describe('ExamService', () => {
+  let service: ExamService;
+  let prisma: any;
+
+  const mockProject = {
+    id: 'project-1',
+    title: 'GMP培训',
+    passScore: 80,
+    maxAttempts: 3,
+  };
+
+  const mockQuestion1 = {
+    id: 'q1',
+    projectId: 'project-1',
+    type: 'single',
+    content: '问题1',
+    options: { A: '选项A', B: '选项B', C: '选项C' },
+    correctAnswer: 'A',
+    points: 10,
+    order: 1,
+  };
+
+  const mockQuestion2 = {
+    id: 'q2',
+    projectId: 'project-1',
+    type: 'multiple',
+    content: '问题2',
+    options: { A: '选项A', B: '选项B', C: '选项C' },
+    correctAnswer: 'AB',
+    points: 15,
+    order: 2,
+  };
+
+  beforeEach(async () => {
+    const mockPrisma = {
+      trainingProject: {
+        findUnique: jest.fn(),
+      },
+      examQuestion: {
+        findMany: jest.fn(),
+      },
+      examRecord: {
+        findMany: jest.fn(),
+        create: jest.fn(),
+      },
+      todoTask: {
+        updateMany: jest.fn(),
+      },
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ExamService,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
+    }).compile();
+
+    service = module.get<ExamService>(ExamService);
+    prisma = module.get(PrismaService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('startExam', () => {
+    it('BR-102: 应该成功开始考试', async () => {
+      prisma.trainingProject.findUnique.mockResolvedValue(mockProject);
+      prisma.examQuestion.findMany.mockResolvedValue([mockQuestion1, mockQuestion2]);
+      prisma.examRecord.findMany.mockResolvedValue([]);
+
+      const result = await service.startExam({ projectId: 'project-1' }, 'user-1');
+
+      expect(result.questions).toHaveLength(2);
+      expect(result.questions[0].correctAnswer).toBeUndefined(); // 不返回正确答案
+      expect(result.questions[0].content).toBe('问题1');
+    });
+
+    it('BR-103: 培训项目不存在时应该抛出异常', async () => {
+      prisma.trainingProject.findUnique.mockResolvedValue(null);
+
+      await expect(service.startExam({ projectId: 'non-existent' }, 'user-1'))
+        .rejects.toThrow(NotFoundException);
+    });
+
+    it('BR-104: 无题目时应该抛出异常', async () => {
+      prisma.trainingProject.findUnique.mockResolvedValue(mockProject);
+      prisma.examQuestion.findMany.mockResolvedValue([]);
+
+      await expect(service.startExam({ projectId: 'project-1' }, 'user-1'))
+        .rejects.toThrow(BadRequestException);
+    });
+
+    it('BR-105: 超过最大考试次数时应该抛出异常', async () => {
+      prisma.trainingProject.findUnique.mockResolvedValue(mockProject);
+      prisma.examQuestion.findMany.mockResolvedValue([mockQuestion1]);
+      prisma.examRecord.findMany.mockResolvedValue([
+        { attemptNumber: 1 },
+        { attemptNumber: 2 },
+        { attemptNumber: 3 },
+      ]);
+
+      await expect(service.startExam({ projectId: 'project-1' }, 'user-1'))
+        .rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('submitExam', () => {
+    it('BR-106: 应该成功提交答卷并自动评分', async () => {
+      prisma.trainingProject.findUnique.mockResolvedValue(mockProject);
+      prisma.examQuestion.findMany.mockResolvedValue([mockQuestion1, mockQuestion2]);
+      prisma.examRecord.findMany.mockResolvedValue([]);
+      prisma.examRecord.create.mockResolvedValue({
+        id: 'record-1',
+        projectId: 'project-1',
+        userId: 'user-1',
+        answers: { q1: 'A', q2: 'AB' },
+        score: 25,
+        totalPoints: 25,
+        passed: true,
+        attemptNumber: 1,
+        startedAt: new Date(),
+        submittedAt: new Date(),
+      });
+      prisma.todoTask.updateMany.mockResolvedValue({ count: 1 });
+
+      const result = await service.submitExam({
+        projectId: 'project-1',
+        answers: { q1: 'A', q2: 'AB' },
+      }, 'user-1');
+
+      expect(result.score).toBe(25);
+      expect(result.totalPoints).toBe(25);
+      expect(result.passed).toBe(true);
+      expect(prisma.examRecord.create).toHaveBeenCalled();
+      expect(prisma.todoTask.updateMany).toHaveBeenCalled();
+    });
+
+    it('应该正确计算部分正确答案的分数', async () => {
+      prisma.trainingProject.findUnique.mockResolvedValue(mockProject);
+      prisma.examQuestion.findMany.mockResolvedValue([mockQuestion1, mockQuestion2]);
+      prisma.examRecord.findMany.mockResolvedValue([]);
+      prisma.examRecord.create.mockResolvedValue({
+        id: 'record-1',
+        projectId: 'project-1',
+        userId: 'user-1',
+        answers: { q1: 'A', q2: 'AC' }, // q2 答错
+        score: 10,
+        totalPoints: 25,
+        passed: false,
+        attemptNumber: 1,
+        startedAt: new Date(),
+        submittedAt: new Date(),
+      });
+
+      const result = await service.submitExam({
+        projectId: 'project-1',
+        answers: { q1: 'A', q2: 'AC' },
+      }, 'user-1');
+
+      expect(result.score).toBe(10);
+      expect(result.passed).toBe(false);
+    });
+
+    it('应该正确处理未答题的情况', async () => {
+      prisma.trainingProject.findUnique.mockResolvedValue(mockProject);
+      prisma.examQuestion.findMany.mockResolvedValue([mockQuestion1, mockQuestion2]);
+      prisma.examRecord.findMany.mockResolvedValue([]);
+      prisma.examRecord.create.mockResolvedValue({
+        id: 'record-1',
+        projectId: 'project-1',
+        userId: 'user-1',
+        answers: { q1: 'A' }, // q2 未答
+        score: 10,
+        totalPoints: 25,
+        passed: false,
+        attemptNumber: 1,
+        startedAt: new Date(),
+        submittedAt: new Date(),
+      });
+
+      const result = await service.submitExam({
+        projectId: 'project-1',
+        answers: { q1: 'A' },
+      }, 'user-1');
+
+      expect(result.score).toBe(10);
+      expect(result.totalPoints).toBe(25);
+    });
+
+    it('超过最大考试次数时应该抛出异常', async () => {
+      prisma.trainingProject.findUnique.mockResolvedValue(mockProject);
+      prisma.examQuestion.findMany.mockResolvedValue([mockQuestion1]);
+      prisma.examRecord.findMany.mockResolvedValue([
+        { attemptNumber: 1 },
+        { attemptNumber: 2 },
+        { attemptNumber: 3 },
+      ]);
+
+      await expect(service.submitExam({
+        projectId: 'project-1',
+        answers: { q1: 'A' },
+      }, 'user-1')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('getExamResult', () => {
+    it('应该返回指定考试记录', async () => {
+      const mockRecord = {
+        id: 'record-1',
+        projectId: 'project-1',
+        userId: 'user-1',
+        answers: { q1: 'A', q2: 'AB' },
+        score: 25,
+        totalPoints: 25,
+        passed: true,
+        attemptNumber: 1,
+        startedAt: new Date(),
+        submittedAt: new Date(),
+        project: { title: 'GMP培训' },
+      };
+      prisma.examRecord.findMany.mockResolvedValue([mockRecord]);
+
+      const result = await service.getExamResult('project-1', 'user-1');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].score).toBe(25);
+    });
+
+    it('无考试记录时应该返回空数组', async () => {
+      prisma.examRecord.findMany.mockResolvedValue([]);
+
+      const result = await service.getExamResult('project-1', 'user-1');
+
+      expect(result).toEqual([]);
+    });
+  });
+});

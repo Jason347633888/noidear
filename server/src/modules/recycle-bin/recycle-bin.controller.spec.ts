@@ -38,7 +38,7 @@ describe('RecycleBinController', () => {
 
       jest.spyOn(service, 'findAll').mockResolvedValue(mockResult);
 
-      const req = { user: { userId: 'user123', role: 'admin' } };
+      const req = { user: { id: 'user123', role: 'admin' } };
       const result = await controller.findAll('document', { page: 1, limit: 10 }, req);
 
       expect(result).toEqual(mockResult);
@@ -53,7 +53,7 @@ describe('RecycleBinController', () => {
         limit: 10,
       });
 
-      const req = { user: { userId: 'user123', role: 'admin' } };
+      const req = { user: { id: 'user123', role: 'admin' } };
       await controller.findAll('document', { page: 1, limit: 10, keyword: 'test' }, req);
 
       expect(service.findAll).toHaveBeenCalledWith('document', 1, 10, 'test', 'user123', 'admin');
@@ -62,7 +62,7 @@ describe('RecycleBinController', () => {
 
   describe('restore', () => {
     it('应恢复项目', async () => {
-      const req = { user: { userId: 'user123', role: 'admin' } };
+      const req = { user: { id: 'user123', role: 'admin' } };
       jest.spyOn(service, 'restore').mockResolvedValue(undefined);
 
       await controller.restore('document', '1', req);
@@ -73,7 +73,7 @@ describe('RecycleBinController', () => {
 
   describe('permanentDelete', () => {
     it('应永久删除项目', async () => {
-      const req = { user: { userId: 'user123', role: 'admin' } };
+      const req = { user: { id: 'user123', role: 'admin' } };
       jest.spyOn(service, 'permanentDelete').mockResolvedValue(undefined);
 
       await controller.permanentDelete('document', '1', req);
@@ -84,7 +84,7 @@ describe('RecycleBinController', () => {
 
   describe('batchRestore', () => {
     it('应批量恢复项目', async () => {
-      const req = { user: { userId: 'user123', role: 'admin' } };
+      const req = { user: { id: 'user123', role: 'admin' } };
       const dto = { ids: ['1', '2', '3'] };
       jest.spyOn(service, 'batchRestore').mockResolvedValue(undefined);
 
@@ -96,7 +96,7 @@ describe('RecycleBinController', () => {
 
   describe('batchPermanentDelete', () => {
     it('应批量永久删除项目', async () => {
-      const req = { user: { userId: 'user123', role: 'admin' } };
+      const req = { user: { id: 'user123', role: 'admin' } };
       const dto = { ids: ['1', '2', '3'] };
       jest.spyOn(service, 'batchPermanentDelete').mockResolvedValue(undefined);
 

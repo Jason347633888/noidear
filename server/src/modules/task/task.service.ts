@@ -3,9 +3,10 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { DeviationService } from '../deviation/deviation.service';
 import { NotificationService } from '../notification/notification.service';
 import { BusinessException, ErrorCode } from '../../common/exceptions/business.exception';
-import { CreateTaskDto, TaskQueryDto, SubmitTaskDto, ApproveTaskDto } from './dto';
+import { CreateTaskDto, TaskQueryDto, SubmitTaskDto, ApproveTaskDto, BatchAssignTaskDto, ExportTaskDto } from './dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { DraftTaskDto } from './dto/draft-task.dto';
+import * as ExcelJS from 'exceljs';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const safe = require('safe-regex') as (re: string | RegExp, opts?: { limit?: number }) => boolean;
 
@@ -73,6 +74,76 @@ export class TaskService {
     );
 
     return task;
+  }
+
+  /**
+   * 批量分配任务
+   * TASK-047: 批量创建任务到多个部门
+   * BR-005: 停用模板不允许创建任务
+   */
+  async batchAssign(dto: BatchAssignTaskDto, userId: string) {
+    const template = await this.prisma.template.findUnique({
+      where: { id: dto.templateId, deletedAt: null },
+    });
+
+    if (!template) {
+      throw new BusinessException(
+        ErrorCode.NOT_FOUND,
+        '模板不存在或已被删除',
+      );
+    }
+
+    if (template.status !== 'active') {
+      throw new BusinessException(
+        ErrorCode.VALIDATION_ERROR,
+        `模板 [${template.title}] 已停用，不允许创建任务`,
+      );
+    }
+
+    const departments = await this.prisma.department.findMany({
+      where: {
+        id: { in: dto.departmentIds },
+        deletedAt: null,
+      },
+    });
+
+    if (departments.length !== dto.departmentIds.length) {
+      const foundIds = departments.map((d) => d.id);
+      const missingIds = dto.departmentIds.filter((id) => !foundIds.includes(id));
+      throw new BusinessException(
+        ErrorCode.NOT_FOUND,
+        `以下部门不存在: ${missingIds.join(', ')}`,
+      );
+    }
+
+    const tasks = [];
+    const deadline = new Date(dto.deadline);
+
+    for (const departmentId of dto.departmentIds) {
+      const task = await this.prisma.task.create({
+        data: {
+          id: crypto.randomUUID(),
+          templateId: dto.templateId,
+          departmentId,
+          deadline,
+          creatorId: userId,
+        },
+      });
+
+      tasks.push(task);
+
+      await this.notifyDepartmentMembers(
+        departmentId,
+        '新任务分配',
+        `您有一个新任务待完成，模板：${template.title}`,
+      );
+    }
+
+    return {
+      success: true,
+      total: tasks.length,
+      tasks,
+    };
   }
 
   /**
@@ -445,6 +516,77 @@ export class TaskService {
     };
 
     return this.queryPendingApprovals(userWhere, skip, limit, page);
+  }
+
+  /**
+   * 导出任务到 Excel
+   * TASK-048: 导出任务列表为Excel文件
+   */
+  async exportToExcel(query: ExportTaskDto, userId: string, role: string): Promise<Buffer> {
+    const where: any = { deletedAt: null };
+
+    if (role === 'user') {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (user && user.departmentId) {
+        where.departmentId = user.departmentId;
+      }
+    } else if (query.departmentId) {
+      where.departmentId = query.departmentId;
+    }
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    const tasks = await this.prisma.task.findMany({
+      where,
+      include: RELATION_INCLUDES,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('任务列表');
+
+    worksheet.columns = [
+      { header: '任务ID', key: 'id', width: 36 },
+      { header: '模板名称', key: 'templateTitle', width: 30 },
+      { header: '执行部门', key: 'departmentName', width: 20 },
+      { header: '截止时间', key: 'deadline', width: 20 },
+      { header: '状态', key: 'status', width: 15 },
+      { header: '创建人', key: 'creatorName', width: 15 },
+      { header: '创建时间', key: 'createdAt', width: 20 },
+    ];
+
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' },
+    };
+
+    const statusMap: Record<string, string> = {
+      pending: '待处理',
+      submitted: '已提交',
+      approved: '已通过',
+      rejected: '已拒绝',
+      cancelled: '已取消',
+      overdue: '已逾期',
+    };
+
+    for (const task of tasks) {
+      worksheet.addRow({
+        id: task.id,
+        templateTitle: task.template?.title || '-',
+        departmentName: task.department?.name || '-',
+        deadline: task.deadline ? new Date(task.deadline).toLocaleString('zh-CN') : '-',
+        status: statusMap[task.status] || task.status,
+        creatorName: task.creator?.name || task.creator?.username || '-',
+        createdAt: task.createdAt ? new Date(task.createdAt).toLocaleString('zh-CN') : '-',
+      });
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   }
 
   // =========================================================================

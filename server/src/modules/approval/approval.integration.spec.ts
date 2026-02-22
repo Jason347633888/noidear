@@ -4,6 +4,7 @@ import { ApprovalModule } from './approval.module';
 import { ApprovalService } from './approval.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationService } from '../notification/notification.service';
+import { REDIS_CLIENT } from '../redis/redis.constants';
 
 describe('Approval Integration Tests', () => {
   let app: INestApplication;
@@ -22,6 +23,8 @@ describe('Approval Integration Tests', () => {
       findFirst: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
+      count: jest.fn(),
     },
   };
 
@@ -29,15 +32,37 @@ describe('Approval Integration Tests', () => {
     create: jest.fn().mockResolvedValue({ id: 'notif-1' }),
   };
 
+  const mockRedisClient = {
+    get: jest.fn().mockResolvedValue(null),
+    setex: jest.fn().mockResolvedValue('OK'),
+    del: jest.fn().mockResolvedValue(1),
+    exists: jest.fn().mockResolvedValue(0),
+    expire: jest.fn().mockResolvedValue(1),
+    ttl: jest.fn().mockResolvedValue(-1),
+    flushall: jest.fn().mockResolvedValue('OK'),
+    keys: jest.fn().mockResolvedValue([]),
+    quit: jest.fn().mockResolvedValue('OK'),
+    status: 'ready',
+  };
+
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
-      imports: [ApprovalModule],
-    })
-      .overrideProvider(PrismaService)
-      .useValue(mockPrisma)
-      .overrideProvider(NotificationService)
-      .useValue(mockNotificationService)
-      .compile();
+      providers: [
+        ApprovalService,
+        {
+          provide: PrismaService,
+          useValue: mockPrisma,
+        },
+        {
+          provide: NotificationService,
+          useValue: mockNotificationService,
+        },
+        {
+          provide: REDIS_CLIENT,
+          useValue: mockRedisClient,
+        },
+      ],
+    }).compile();
 
     app = moduleRef.createNestApplication();
     await app.init();
@@ -48,7 +73,9 @@ describe('Approval Integration Tests', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   beforeEach(() => {
@@ -496,6 +523,211 @@ describe('Approval Integration Tests', () => {
 
       // 验证事务回滚：没有创建任何审批记录
       expect(mockPrisma.approval.create).not.toHaveBeenCalled();
+    });
+  });
+
+  // ========== New Integration Tests ==========
+
+  describe('待审批列表查询', () => {
+    it('应该返回当前用户的所有待审批记录', async () => {
+      const approverId = 'supervisor-int-001';
+
+      mockPrisma.approval.findMany.mockResolvedValue([
+        {
+          id: 'ap-int-1',
+          recordId: 'rec-int-1',
+          approverId,
+          status: 'pending',
+          level: 1,
+          approvalType: 'single',
+          record: {
+            id: 'rec-int-1',
+            submitter: { id: 'user-int-1', name: '测试用户' },
+            task: { id: 'task-int-1' },
+          },
+          document: null,
+          approver: { id: approverId, name: '主管A' },
+        },
+      ]);
+
+      const result = await approvalService.getPendingApprovals(approverId);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toHaveProperty('status', 'pending');
+    });
+  });
+
+  describe('审批详情查询', () => {
+    it('应该返回完整的审批详情', async () => {
+      const approvalId = 'ap-detail-int-1';
+
+      mockPrisma.approval.findUnique.mockResolvedValue({
+        id: approvalId,
+        recordId: 'rec-detail-1',
+        approverId: 'supervisor-int-002',
+        status: 'pending',
+        level: 1,
+        approvalType: 'single',
+        approver: { id: 'supervisor-int-002', name: '主管B' },
+        record: {
+          id: 'rec-detail-1',
+          dataJson: { temperature: '25' },
+          status: 'pending_level1',
+          submitter: { id: 'user-int-2', name: '操作员' },
+          task: {
+            id: 'task-int-2',
+            template: { id: 'tpl-int-1', title: '温度记录模板' },
+          },
+        },
+        document: null,
+      });
+
+      const result = await approvalService.getApprovalDetail(approvalId);
+
+      expect(result).toHaveProperty('id', approvalId);
+      expect(result.approver).toHaveProperty('name', '主管B');
+      expect(result.record?.submitter).toHaveProperty('name', '操作员');
+    });
+
+    it('应该在审批记录不存在时抛出异常', async () => {
+      mockPrisma.approval.findUnique.mockResolvedValue(null);
+
+      await expect(
+        approvalService.getApprovalDetail('non-exist'),
+      ).rejects.toThrow('审批记录不存在');
+    });
+  });
+
+  describe('审批历史查询', () => {
+    it('应该返回分页的审批历史', async () => {
+      const approverId = 'supervisor-int-003';
+
+      mockPrisma.approval.findMany.mockResolvedValue([
+        {
+          id: 'ap-hist-1',
+          approverId,
+          status: 'approved',
+          approvedAt: new Date(),
+          record: { submitter: { name: '提交人A' } },
+          document: null,
+          approver: { id: approverId, name: '主管C' },
+        },
+      ]);
+      mockPrisma.approval.count.mockResolvedValue(1);
+
+      const result = await approvalService.getApprovalHistory(approverId, 1, 20);
+
+      expect(result).toHaveProperty('list');
+      expect(result).toHaveProperty('total', 1);
+      expect(result).toHaveProperty('page', 1);
+      expect(result).toHaveProperty('limit', 20);
+      expect(result.list).toHaveLength(1);
+    });
+  });
+
+  describe('统一审批接口', () => {
+    it('应该通过统一接口处理一级审批通过', async () => {
+      const approvalId = 'ap-unified-int-1';
+      const approverId = 'supervisor-int-004';
+      const recordId = 'rec-unified-int-1';
+
+      mockPrisma.approval.findUnique.mockResolvedValue({
+        id: approvalId,
+        recordId,
+        approverId,
+        level: 1,
+        status: 'pending',
+        nextLevel: null,
+        approvalType: 'single',
+      });
+
+      mockPrisma.approval.update.mockResolvedValue({
+        id: approvalId,
+        status: 'approved',
+      });
+
+      mockPrisma.taskRecord.findUnique.mockResolvedValue({
+        id: recordId,
+        submitterId: 'user-unified-1',
+        status: 'pending_level1',
+      });
+
+      mockPrisma.taskRecord.update.mockResolvedValue({
+        id: recordId,
+        status: 'archived',
+      });
+
+      const result = await approvalService.approveUnified(
+        approvalId,
+        approverId,
+        'approved',
+        '同意',
+      );
+
+      expect(result).toHaveProperty('status', 'approved');
+    });
+  });
+
+  describe('会签集成流程', () => {
+    it('应该创建会签审批并处理审批', async () => {
+      const recordId = 'rec-cs-int-1';
+      const approverIds = ['approver-cs-1', 'approver-cs-2'];
+
+      mockPrisma.approval.create
+        .mockResolvedValueOnce({
+          id: 'cs-int-1',
+          recordId,
+          approverId: 'approver-cs-1',
+          status: 'pending',
+          approvalType: 'countersign',
+          groupId: 'group-cs-int-1',
+        })
+        .mockResolvedValueOnce({
+          id: 'cs-int-2',
+          recordId,
+          approverId: 'approver-cs-2',
+          status: 'pending',
+          approvalType: 'countersign',
+          groupId: 'group-cs-int-1',
+        });
+
+      const result = await approvalService.createCountersignApproval(recordId, approverIds);
+
+      expect(result).toHaveLength(2);
+      expect(mockPrisma.approval.create).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('顺签集成流程', () => {
+    it('应该创建顺签审批并按顺序处理', async () => {
+      const recordId = 'rec-seq-int-1';
+      const approverIds = ['approver-seq-1', 'approver-seq-2'];
+
+      mockPrisma.approval.create
+        .mockResolvedValueOnce({
+          id: 'seq-int-1',
+          recordId,
+          approverId: 'approver-seq-1',
+          status: 'pending',
+          approvalType: 'sequential',
+          groupId: 'group-seq-int-1',
+          sequence: 1,
+        })
+        .mockResolvedValueOnce({
+          id: 'seq-int-2',
+          recordId,
+          approverId: 'approver-seq-2',
+          status: 'waiting',
+          approvalType: 'sequential',
+          groupId: 'group-seq-int-1',
+          sequence: 2,
+        });
+
+      const result = await approvalService.createSequentialApproval(recordId, approverIds);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toHaveProperty('status', 'pending');
+      expect(result[1]).toHaveProperty('status', 'waiting');
     });
   });
 });

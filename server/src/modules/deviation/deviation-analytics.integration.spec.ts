@@ -1,18 +1,57 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
-import { DeviationModule } from './deviation.module';
-import { PrismaModule } from '../../prisma/prisma.module';
+import { DeviationAnalyticsService } from './deviation-analytics.service';
+import { DeviationAnalyticsController } from './deviation-analytics.controller';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { REDIS_CLIENT } from '../redis/redis.constants';
 
 describe('DeviationAnalyticsController (Integration)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
 
   beforeAll(async () => {
+    const mockRedisClient = {
+      get: jest.fn().mockResolvedValue(null),
+      setex: jest.fn().mockResolvedValue('OK'),
+      del: jest.fn().mockResolvedValue(1),
+      exists: jest.fn().mockResolvedValue(0),
+      expire: jest.fn().mockResolvedValue(1),
+      ttl: jest.fn().mockResolvedValue(-1),
+      flushall: jest.fn().mockResolvedValue('OK'),
+      keys: jest.fn().mockResolvedValue([]),
+      quit: jest.fn().mockResolvedValue('OK'),
+      status: 'ready',
+    };
+
+    const mockPrismaService = {
+      deviationReport: {
+        findMany: jest.fn().mockResolvedValue([]),
+        groupBy: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      taskRecord: {
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      $queryRaw: jest.fn().mockResolvedValue([]),
+      $queryRawUnsafe: jest.fn().mockResolvedValue([]),
+    };
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [DeviationModule, PrismaModule],
+      controllers: [DeviationAnalyticsController],
+      providers: [
+        DeviationAnalyticsService,
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+        {
+          provide: REDIS_CLIENT,
+          useValue: mockRedisClient,
+        },
+      ],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue({ canActivate: () => true })
@@ -26,7 +65,9 @@ describe('DeviationAnalyticsController (Integration)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   describe('GET /deviation-analytics/trend', () => {

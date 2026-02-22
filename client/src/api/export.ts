@@ -9,6 +9,10 @@ export interface ExportFilters {
   departmentId?: string;
   deviationType?: string;
   approverId?: string;
+  taskRecordIds?: string[];
+  taskId?: string;
+  templateId?: string;
+  submitterId?: string;
   fields?: string[];
 }
 
@@ -25,14 +29,33 @@ export default {
     });
   },
 
-  exportDeviationReports(filters: ExportFilters): Promise<Blob> {
-    return request.post('/export/deviation-reports', filters, {
+  exportApprovals(filters: ExportFilters): Promise<Blob> {
+    return request.post('/export/approvals', filters, {
       responseType: 'blob',
     });
   },
 
-  exportApprovals(filters: ExportFilters): Promise<Blob> {
-    return request.post('/export/approvals', filters, {
+  exportTaskRecordsByTaskId(taskId: string): Promise<Blob> {
+    return request.post(`/export/task-records`, { taskId }, {
+      responseType: 'blob',
+    });
+  },
+
+  exportTaskRecords(filters: ExportFilters): Promise<Blob> {
+    return request.post('/export/task-records', filters, {
+      responseType: 'blob',
+    });
+  },
+
+  exportStatistics(type: 'documents' | 'tasks' | 'approvals'): Promise<Blob> {
+    return request.get('/statistics/export', {
+      params: { type },
+      responseType: 'blob',
+    });
+  },
+
+  exportDeviationReports(filters: ExportFilters): Promise<Blob> {
+    return request.post('/export/deviation-reports', filters, {
       responseType: 'blob',
     });
   },

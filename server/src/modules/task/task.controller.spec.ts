@@ -5,6 +5,9 @@ import { SubmitByIdDto } from './dto/submit-by-id.dto';
 import { ApproveTaskDto, TaskQueryDto } from './dto';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
+import { ExportService } from '../export/export.service';
+import { StatisticsService } from '../statistics/statistics.service';
+import { StatisticsCacheInterceptor } from '../../common/interceptors/statistics-cache.interceptor';
 
 describe('TaskController', () => {
   let controller: TaskController;
@@ -21,10 +24,23 @@ describe('TaskController', () => {
     findPendingApprovals: jest.fn(),
   };
 
+  const mockExportService: any = {
+    exportTaskRecords: jest.fn(),
+  };
+
+  const mockStatisticsService: any = {
+    clearCaches: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TaskController],
-      providers: [{ provide: TaskService, useValue: mockTaskService }],
+      providers: [
+        { provide: TaskService, useValue: mockTaskService },
+        { provide: ExportService, useValue: mockExportService },
+        { provide: StatisticsService, useValue: mockStatisticsService },
+        { provide: StatisticsCacheInterceptor, useValue: { intercept: jest.fn((ctx, next) => next.handle()) } },
+      ],
     }).compile();
 
     controller = module.get<TaskController>(TaskController);

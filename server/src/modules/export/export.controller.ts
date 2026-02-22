@@ -1,10 +1,12 @@
-import { Controller, Post, Body, Res, UseGuards, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, Res, UseGuards, HttpStatus, HttpException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { Response } from 'express';
 import { ExportService } from './export.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { BusinessException, getHttpStatus } from '../../common/exceptions/business.exception';
 import {
   ExportDocumentsDto,
   ExportTasksDto,
+  ExportTaskRecordsDto,
   ExportDeviationReportsDto,
   ExportApprovalsDto,
 } from './dto';
@@ -29,6 +31,16 @@ export class ExportController {
     try {
       const buffer = await this.exportService.exportTasks(dto);
       this.sendExcelFile(res, buffer, 'tasks');
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  @Post('task-records')
+  async exportTaskRecords(@Body() dto: ExportTaskRecordsDto, @Res() res: Response) {
+    try {
+      const buffer = await this.exportService.exportTaskRecords(dto);
+      this.sendExcelFile(res, buffer, 'task_records');
     } catch (error) {
       this.handleError(res, error);
     }
@@ -62,9 +74,26 @@ export class ExportController {
   }
 
   private handleError(res: Response, error: any) {
-    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+    let status = HttpStatus.INTERNAL_SERVER_ERROR;
+    let message = '导出失败';
+
+    if (error instanceof BusinessException) {
+      status = getHttpStatus(error.code);
+      message = error.message;
+    } else if (error instanceof BadRequestException) {
+      status = HttpStatus.BAD_REQUEST;
+      message = error.message || '请求参数无效';
+    } else if (error instanceof NotFoundException) {
+      status = HttpStatus.NOT_FOUND;
+      message = error.message || '资源不存在';
+    } else if (error instanceof HttpException) {
+      status = error.getStatus();
+      message = error.message;
+    }
+
+    res.status(status).json({
       success: false,
-      message: '导出失败',
+      message,
       error: error.message,
     });
   }

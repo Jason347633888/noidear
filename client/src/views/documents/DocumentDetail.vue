@@ -63,6 +63,13 @@
           重新提交
         </el-button>
         <el-button
+          type="warning"
+          v-if="document.status === 'pending'"
+          @click="handleWithdraw"
+        >
+          撤回
+        </el-button>
+        <el-button
           type="primary"
           v-if="document.status === 'draft' || document.status === 'rejected'"
           @click="$router.push(`/documents/${document.id}/edit`)"
@@ -85,17 +92,24 @@
         </el-button>
         <el-button
           type="warning"
-          v-if="document.status === 'approved'"
+          v-if="document.status === 'approved' && (isCreator || isAdmin)"
           @click="showArchiveDialog"
         >
           归档
         </el-button>
         <el-button
           type="danger"
-          v-if="document.status === 'approved'"
+          v-if="document.status === 'approved' && isAdmin"
           @click="showObsoleteDialog"
         >
           作废
+        </el-button>
+        <el-button
+          type="success"
+          v-if="document.status === 'archived' && isAdmin"
+          @click="showRestoreDialog"
+        >
+          恢复
         </el-button>
       </div>
     </el-card>
@@ -185,6 +199,28 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 恢复对话框 -->
+    <el-dialog v-model="restoreDialogVisible" title="恢复归档文档" width="500px">
+      <el-form :model="restoreForm" :rules="restoreRules" ref="restoreFormRef">
+        <el-form-item label="恢复原因" prop="reason">
+          <el-input
+            v-model="restoreForm.reason"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入恢复原因（至少10个字符）"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="restoreDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleRestore" :loading="restoring">
+          确认恢复
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -195,6 +231,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download, View } from '@element-plus/icons-vue';
 import request from '@/api/request';
 import FilePreviewDialog from '@/components/FilePreviewDialog.vue';
+import { useUserStore } from '@/stores/user';
 
 interface VersionItem {
   id: string;
@@ -222,6 +259,7 @@ interface Document {
   filePath: string;
   status: string;
   version: number;
+  creatorId: string;
   creator: { name: string } | null;
   approver: { name: string } | null;
   approvedAt: string | null;
@@ -235,24 +273,36 @@ interface Document {
 
 const route = useRoute();
 const router = useRouter();
+const userStore = useUserStore();
 const loading = ref(false);
 const document = ref<Document | null>(null);
 const versionHistory = ref<VersionItem[]>([]);
 const showPreview = ref(false);
 
-// 归档/作废相关
+// 权限判断
+const isCreator = computed(() => document.value?.creatorId === userStore.user?.id);
+const isAdmin = computed(() => userStore.user?.role === 'admin');
+
+// 归档/作废/恢复相关
 const archiveDialogVisible = ref(false);
 const obsoleteDialogVisible = ref(false);
+const restoreDialogVisible = ref(false);
 const archiving = ref(false);
 const obsoleting = ref(false);
+const restoring = ref(false);
 const archiveFormRef = ref();
 const obsoleteFormRef = ref();
+const restoreFormRef = ref();
 
 const archiveForm = ref({
   reason: '',
 });
 
 const obsoleteForm = ref({
+  reason: '',
+});
+
+const restoreForm = ref({
   reason: '',
 });
 
@@ -267,6 +317,13 @@ const obsoleteRules = {
   reason: [
     { required: true, message: '请输入作废原因', trigger: 'blur' },
     { min: 10, message: '作废原因至少10个字符', trigger: 'blur' },
+  ],
+};
+
+const restoreRules = {
+  reason: [
+    { required: true, message: '请输入恢复原因', trigger: 'blur' },
+    { min: 10, message: '恢复原因至少10个字符', trigger: 'blur' },
   ],
 };
 
@@ -359,6 +416,22 @@ const handleSubmit = async () => {
   }
 };
 
+const handleWithdraw = async () => {
+  if (!document.value?.id) {
+    return;
+  }
+  try {
+    await ElMessageBox.confirm('确定要撤回该文档吗？撤回后可重新编辑和提交。', '提示', {
+      type: 'warning',
+    });
+    await request.post(`/documents/${document.value.id}/withdraw`);
+    ElMessage.success('撤回成功');
+    fetchData();
+  } catch {
+    // 用户取消
+  }
+};
+
 const handleDelete = async () => {
   if (!document.value?.id) {
     return;
@@ -397,6 +470,11 @@ const showArchiveDialog = () => {
 const showObsoleteDialog = () => {
   obsoleteForm.value.reason = '';
   obsoleteDialogVisible.value = true;
+};
+
+const showRestoreDialog = () => {
+  restoreForm.value.reason = '';
+  restoreDialogVisible.value = true;
 };
 
 const handleArchive = async () => {
@@ -440,6 +518,28 @@ const handleObsolete = async () => {
     }
   } finally {
     obsoleting.value = false;
+  }
+};
+
+const handleRestore = async () => {
+  if (!document.value?.id) {
+    return;
+  }
+  try {
+    await restoreFormRef.value.validate();
+    restoring.value = true;
+    await request.post(`/documents/${document.value.id}/restore`, {
+      reason: restoreForm.value.reason,
+    });
+    ElMessage.success('恢复成功');
+    restoreDialogVisible.value = false;
+    fetchData();
+  } catch (error: any) {
+    if (error?.message) {
+      // 表单验证失败，不显示错误
+    }
+  } finally {
+    restoring.value = false;
   }
 };
 

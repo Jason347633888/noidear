@@ -45,9 +45,10 @@ import exportApi, { type ExportFilters } from '@/api/export';
 
 const props = defineProps<{
   modelValue: boolean;
-  type: 'documents' | 'tasks' | 'deviation-reports' | 'approvals';
+  type: 'documents' | 'tasks' | 'task-records' | 'deviation-reports' | 'approvals';
   filters: ExportFilters;
   defaultFields?: string[];
+  total?: number;
 }>();
 
 const emit = defineEmits<{
@@ -80,6 +81,13 @@ const fieldConfigs = {
     { key: 'creatorName', label: '创建人' },
     { key: 'createdAt', label: '创建时间' },
   ],
+  'task-records': [
+    { key: 'id', label: '记录ID' },
+    { key: 'templateTitle', label: '模板名称' },
+    { key: 'status', label: '状态' },
+    { key: 'submitterName', label: '提交人' },
+    { key: 'submittedAt', label: '提交时间' },
+  ],
   'deviation-reports': [
     { key: 'fieldName', label: '字段名称' },
     { key: 'expectedValue', label: '期望值' },
@@ -104,9 +112,10 @@ const fieldConfigs = {
 
 const availableFields = computed(() => fieldConfigs[props.type] || []);
 
-const exportMethods = {
+const exportMethods: Record<string, (filters: ExportFilters) => Promise<Blob>> = {
   documents: exportApi.exportDocuments,
   tasks: exportApi.exportTasks,
+  'task-records': exportApi.exportTaskRecords,
   'deviation-reports': exportApi.exportDeviationReports,
   approvals: exportApi.exportApprovals,
 };
@@ -136,6 +145,13 @@ async function handleExport() {
     return;
   }
 
+  // 数据量限制检查
+  const MAX_EXPORT_LIMIT = 10000;
+  if (props.total && props.total > MAX_EXPORT_LIMIT) {
+    ElMessage.warning(`导出数据量不能超过 ${MAX_EXPORT_LIMIT} 条，当前有 ${props.total} 条数据，请使用筛选条件缩小范围`);
+    return;
+  }
+
   exporting.value = true;
 
   try {
@@ -157,11 +173,21 @@ async function handleExport() {
   }
 }
 
+const typeNameMap: Record<string, string> = {
+  documents: '文档列表',
+  tasks: '任务列表',
+  'task-records': '任务记录',
+  'deviation-reports': '偏差报告',
+  approvals: '审批记录',
+};
+
 function downloadFile(blob: Blob, type: string) {
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${type}_${new Date().getTime()}.xlsx`;
+  const friendlyName = typeNameMap[type] || type;
+  const dateStr = new Date().toISOString().split('T')[0];
+  a.download = `${friendlyName}_${dateStr}.xlsx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

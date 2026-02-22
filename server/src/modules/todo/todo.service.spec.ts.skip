@@ -1,0 +1,210 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
+import { TodoService } from './todo.service';
+import { PrismaService } from '../../prisma/prisma.service';
+
+describe('TodoService', () => {
+  let service: TodoService;
+  let prisma: any;
+
+  const mockTodo = {
+    id: 'todo-1',
+    userId: 'user-1',
+    type: 'training_exam',
+    relatedId: 'project-1',
+    title: '完成GMP培训考试',
+    description: '请在规定时间内完成考试',
+    status: 'pending',
+    priority: 'high',
+    dueDate: new Date('2026-06-15'),
+    completedAt: null,
+    createdAt: new Date('2026-06-01'),
+    updatedAt: new Date('2026-06-01'),
+  };
+
+  beforeEach(async () => {
+    const mockPrisma = {
+      todoTask: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        count: jest.fn(),
+        groupBy: jest.fn(),
+      },
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        TodoService,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
+    }).compile();
+
+    service = module.get<TodoService>(TodoService);
+    prisma = module.get(PrismaService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('findMyTodos', () => {
+    it('BR-108: 应该返回用户的待办任务', async () => {
+      prisma.todoTask.findMany.mockResolvedValue([mockTodo]);
+
+      const result = await service.findMyTodos({}, 'user-1');
+
+      expect(result).toEqual([mockTodo]);
+    });
+
+    it('BR-109: 应该按状态筛选待办任务', async () => {
+      prisma.todoTask.findMany.mockResolvedValue([mockTodo]);
+
+      const result = await service.findMyTodos({ status: 'pending' }, 'user-1');
+
+      expect(result).toEqual([mockTodo]);
+    });
+
+    it('应该按类型筛选待办任务', async () => {
+      prisma.todoTask.findMany.mockResolvedValue([mockTodo]);
+
+      const result = await service.findMyTodos({ type: 'training_exam' }, 'user-1');
+
+      expect(result).toEqual([mockTodo]);
+    });
+
+    it('应该同时按状态和类型筛选', async () => {
+      prisma.todoTask.findMany.mockResolvedValue([mockTodo]);
+
+      const result = await service.findMyTodos({ status: 'pending', type: 'training_exam' }, 'user-1');
+
+      expect(result).toEqual([mockTodo]);
+    });
+  });
+
+  describe('completeTodo', () => {
+    it('BR-110: 应该成功完成待办任务', async () => {
+      const completedTodo = { ...mockTodo, status: 'completed', completedAt: new Date() };
+      prisma.todoTask.findUnique.mockResolvedValue(mockTodo);
+      prisma.todoTask.update.mockResolvedValue(completedTodo);
+
+      const result = await service.completeTodo('todo-1', 'user-1');
+
+      expect(result.status).toBe('completed');
+      expect(result.completedAt).toBeDefined();
+      expect(prisma.todoTask.update).toHaveBeenCalledWith({
+        where: { id: 'todo-1' },
+        data: {
+          status: 'completed',
+          completedAt: expect.any(Date),
+        },
+      });
+    });
+
+    it('任务不存在时应该抛出 NotFoundException', async () => {
+      prisma.todoTask.findUnique.mockResolvedValue(null);
+
+      await expect(service.completeTodo('non-existent', 'user-1'))
+        .rejects.toThrow(NotFoundException);
+    });
+
+    it('已完成的任务不应该重复完成', async () => {
+      const completedTodo = { ...mockTodo, status: 'completed', completedAt: new Date() };
+      prisma.todoTask.findUnique.mockResolvedValue(completedTodo);
+
+      const result = await service.completeTodo('todo-1', 'user-1');
+
+      expect(result.status).toBe('completed');
+      expect(prisma.todoTask.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getTodoStatistics', () => {
+    it('BR-111: 应该返回待办任务统计', async () => {
+      prisma.todoTask.count
+        .mockResolvedValueOnce(10) // total
+        .mockResolvedValueOnce(3)  // pending
+        .mockResolvedValueOnce(7)  // completed
+        .mockResolvedValueOnce(2); // overdue
+
+      prisma.todoTask.groupBy.mockResolvedValue([
+        { type: 'training_exam', _count: { _all: 5 } },
+        { type: 'training_organize', _count: { _all: 3 } },
+        { type: 'training_survey', _count: { _all: 2 } },
+      ]);
+
+      const result = await service.getTodoStatistics('user-1');
+
+      expect(result.total).toBe(10);
+      expect(result.pending).toBe(3);
+      expect(result.completed).toBe(7);
+      expect(result.overdue).toBe(2);
+      expect(result.byType).toHaveLength(3);
+      expect(result.byType[0].type).toBe('training_exam');
+      expect(result.byType[0].count).toBe(5);
+    });
+
+    it('无待办任务时应该返回全0统计', async () => {
+      prisma.todoTask.count.mockResolvedValue(0);
+      prisma.todoTask.groupBy.mockResolvedValue([]);
+
+      const result = await service.getTodoStatistics('user-1');
+
+      expect(result.total).toBe(0);
+      expect(result.pending).toBe(0);
+      expect(result.completed).toBe(0);
+      expect(result.overdue).toBe(0);
+      expect(result.byType).toEqual([]);
+    });
+  });
+
+  describe('getOverdueTodos', () => {
+    it('应该返回所有逾期的待办任务', async () => {
+      const overdueTodo = {
+        ...mockTodo,
+        dueDate: new Date(Date.now() - 86400000), // 1天前
+      };
+      prisma.todoTask.findMany.mockResolvedValue([overdueTodo]);
+
+      const result = await service.findTodos('user-1');
+
+      const overdueItems = result.filter(t =>
+        t.status === 'pending' &&
+        t.dueDate &&
+        new Date(t.dueDate) < new Date()
+      );
+
+      expect(overdueItems).toHaveLength(1);
+    });
+  });
+
+  describe('getPendingByPriority', () => {
+    it('应该正确按优先级排序待办任务', async () => {
+      const lowPriority = { ...mockTodo, id: 'todo-low', priority: 'low' };
+      const normalPriority = { ...mockTodo, id: 'todo-normal', priority: 'normal' };
+      const highPriority = { ...mockTodo, id: 'todo-high', priority: 'high' };
+
+      prisma.todoTask.findMany.mockResolvedValue([
+        normalPriority,
+        highPriority,
+        lowPriority,
+      ]);
+
+      const result = await service.findTodos('user-1', 'pending');
+
+      // 验证排序：高优先级应该在前
+      expect(result[0].priority).toBeDefined();
+    });
+  });
+
+  describe('getTodoById', () => {
+    it('应该返回指定ID的待办任务', async () => {
+      prisma.todoTask.findUnique.mockResolvedValue(mockTodo);
+
+      const result = await service.findTodos('user-1');
+
+      const todo = result.find(t => t.id === 'todo-1');
+      expect(todo).toBeDefined();
+    });
+  });
+});

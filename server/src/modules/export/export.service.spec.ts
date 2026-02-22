@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ExportService } from './export.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ExportDocumentsDto, ExportTasksDto, ExportDeviationReportsDto, ExportApprovalsDto } from './dto';
+import { ExportDocumentsDto, ExportTasksDto, ExportTaskRecordsDto, ExportDeviationReportsDto, ExportApprovalsDto } from './dto';
 
 describe('ExportService', () => {
   let service: ExportService;
@@ -53,6 +53,34 @@ describe('ExportService', () => {
     },
   ];
 
+  const mockTaskRecords = [
+    {
+      id: 'rec-1',
+      taskId: 'task-1',
+      templateId: 'tpl-1',
+      status: 'completed',
+      submitterId: 'user-1',
+      submittedAt: new Date('2026-02-15'),
+      dataJson: {
+        product_name: '面包',
+        quantity: 1000,
+        production_date: '2026-02-15',
+        approved: true,
+      },
+      submitter: { name: '张三' },
+      template: {
+        id: 'tpl-1',
+        title: '生产记录表',
+        fieldsJson: [
+          { name: 'product_name', label: '产品名称', type: 'text', required: true },
+          { name: 'quantity', label: '生产数量', type: 'number', required: true },
+          { name: 'production_date', label: '生产日期', type: 'date', required: true },
+          { name: 'approved', label: '是否合格', type: 'boolean', required: true },
+        ],
+      },
+    },
+  ];
+
   const mockDeviationReports = [
     {
       id: 'dev-1',
@@ -91,6 +119,10 @@ describe('ExportService', () => {
         count: jest.fn(),
       },
       task: {
+        findMany: jest.fn(),
+        count: jest.fn(),
+      },
+      taskRecord: {
         findMany: jest.fn(),
         count: jest.fn(),
       },
@@ -392,6 +424,115 @@ describe('ExportService', () => {
       const dto: ExportDocumentsDto = {};
 
       const buffer = await service.exportDocuments(dto);
+
+      expect(buffer).toBeInstanceOf(Buffer);
+    });
+  });
+
+  describe('exportTaskRecords', () => {
+    it('应该导出任务记录（包含动态字段）', async () => {
+      prisma.taskRecord.count.mockResolvedValue(1);
+      prisma.taskRecord.findMany.mockResolvedValue(mockTaskRecords);
+
+      const dto: ExportTaskRecordsDto = {};
+
+      const buffer = await service.exportTaskRecords(dto);
+
+      expect(buffer).toBeInstanceOf(Buffer);
+      expect(buffer.length).toBeGreaterThan(0);
+    });
+
+    it('应该按 taskRecordIds 筛选', async () => {
+      prisma.taskRecord.count.mockResolvedValue(1);
+      prisma.taskRecord.findMany.mockResolvedValue([mockTaskRecords[0]]);
+
+      const dto: ExportTaskRecordsDto = {
+        taskRecordIds: ['rec-1'],
+      };
+
+      const buffer = await service.exportTaskRecords(dto);
+
+      expect(prisma.taskRecord.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: { in: ['rec-1'] },
+          }),
+        }),
+      );
+      expect(buffer).toBeInstanceOf(Buffer);
+    });
+
+    it('应该按 taskId 筛选', async () => {
+      prisma.taskRecord.count.mockResolvedValue(1);
+      prisma.taskRecord.findMany.mockResolvedValue([mockTaskRecords[0]]);
+
+      const dto: ExportTaskRecordsDto = {
+        taskId: 'task-1',
+      };
+
+      const buffer = await service.exportTaskRecords(dto);
+
+      expect(prisma.taskRecord.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            taskId: 'task-1',
+          }),
+        }),
+      );
+      expect(buffer).toBeInstanceOf(Buffer);
+    });
+
+    it('应该按 status 筛选', async () => {
+      prisma.taskRecord.count.mockResolvedValue(1);
+      prisma.taskRecord.findMany.mockResolvedValue([mockTaskRecords[0]]);
+
+      const dto: ExportTaskRecordsDto = {
+        status: 'completed',
+      };
+
+      const buffer = await service.exportTaskRecords(dto);
+
+      expect(prisma.taskRecord.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: 'completed',
+          }),
+        }),
+      );
+      expect(buffer).toBeInstanceOf(Buffer);
+    });
+
+    it('应该按日期范围筛选', async () => {
+      prisma.taskRecord.count.mockResolvedValue(1);
+      prisma.taskRecord.findMany.mockResolvedValue([mockTaskRecords[0]]);
+
+      const dto: ExportTaskRecordsDto = {
+        startDate: '2026-02-01',
+        endDate: '2026-02-28',
+      };
+
+      const buffer = await service.exportTaskRecords(dto);
+
+      expect(prisma.taskRecord.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            submittedAt: expect.objectContaining({
+              gte: expect.any(Date),
+              lte: expect.any(Date),
+            }),
+          }),
+        }),
+      );
+      expect(buffer).toBeInstanceOf(Buffer);
+    });
+
+    it('应该处理空记录列表', async () => {
+      prisma.taskRecord.count.mockResolvedValue(0);
+      prisma.taskRecord.findMany.mockResolvedValue([]);
+
+      const dto: ExportTaskRecordsDto = {};
+
+      const buffer = await service.exportTaskRecords(dto);
 
       expect(buffer).toBeInstanceOf(Buffer);
     });

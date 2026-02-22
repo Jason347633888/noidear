@@ -212,7 +212,7 @@ describe('DocumentService', () => {
   });
 
   describe('archive', () => {
-    it('应该成功归档已发布文档', async () => {
+    it('应该成功归档已发布文档（管理员）', async () => {
       const mockDocument = {
         id: 'doc1',
         number: '1-HR-001',
@@ -244,11 +244,35 @@ describe('DocumentService', () => {
       expect(mockNotificationService.create).toHaveBeenCalled();
     });
 
+    it('应该成功归档已发布文档（创建者）', async () => {
+      const mockDocument = {
+        id: 'doc1',
+        number: '1-HR-001',
+        title: '测试文档',
+        status: 'approved',
+        creatorId: 'user1',
+      };
+
+      jest.spyOn(service, 'findOne').mockResolvedValue(mockDocument as any);
+      mockPrismaService.document.update.mockResolvedValue({
+        ...mockDocument,
+        status: 'archived',
+        archiveReason: '版本过旧',
+      });
+      mockOperationLogService.log.mockResolvedValue(undefined);
+      mockNotificationService.create.mockResolvedValue(undefined);
+
+      await service.archive('doc1', '版本过旧', 'user1', 'user');
+
+      expect(mockPrismaService.document.update).toHaveBeenCalled();
+    });
+
     it('应该拒绝归档非已发布文档', async () => {
       const mockDocument = {
         id: 'doc1',
         number: '1-HR-001',
         status: 'draft',
+        creatorId: 'user1',
       };
 
       jest.spyOn(service, 'findOne').mockResolvedValue(mockDocument as any);
@@ -256,6 +280,25 @@ describe('DocumentService', () => {
       await expect(
         service.archive('doc1', '测试', 'admin', 'admin')
       ).rejects.toThrow('只有已发布文档可归档');
+    });
+
+    it('应该拒绝非创建者非管理员归档', async () => {
+      const mockDocument = {
+        id: 'doc1',
+        number: '1-HR-001',
+        status: 'approved',
+        creatorId: 'user1',
+      };
+
+      jest.spyOn(service, 'findOne').mockResolvedValue(mockDocument as any);
+
+      // 测试权限校验应该失败，不执行数据库更新
+      await expect(
+        service.archive('doc1', '测试原因很长很长很长', 'user2', 'user')
+      ).rejects.toThrow(BusinessException);
+
+      // 验证没有调用数据库更新（因为权限校验失败）
+      expect(mockPrismaService.document.update).not.toHaveBeenCalled();
     });
   });
 
@@ -337,7 +380,7 @@ describe('DocumentService', () => {
   });
 
   describe('obsolete', () => {
-    it('应该成功作废已发布文档', async () => {
+    it('应该成功作废已发布文档（管理员）', async () => {
       const mockDocument = {
         id: 'doc1',
         number: '1-HR-001',
@@ -374,6 +417,7 @@ describe('DocumentService', () => {
         id: 'doc1',
         number: '1-HR-001',
         status: 'pending',
+        creatorId: 'user1',
       };
 
       jest.spyOn(service, 'findOne').mockResolvedValue(mockDocument as any);
@@ -381,6 +425,103 @@ describe('DocumentService', () => {
       await expect(
         service.obsolete('doc1', '测试', 'admin', 'admin')
       ).rejects.toThrow('只有已发布文档可作废');
+    });
+
+    it('应该拒绝非管理员作废', async () => {
+      const mockDocument = {
+        id: 'doc1',
+        number: '1-HR-001',
+        status: 'approved',
+        creatorId: 'user1',
+      };
+
+      jest.spyOn(service, 'findOne').mockResolvedValue(mockDocument as any);
+
+      await expect(
+        service.obsolete('doc1', '测试原因很长很长很长', 'user1', 'user')
+      ).rejects.toThrow(BusinessException);
+    });
+  });
+
+  describe('restore', () => {
+    it('应该成功恢复归档文档（管理员）', async () => {
+      const mockDocument = {
+        id: 'doc1',
+        number: '1-HR-001',
+        title: '测试文档',
+        status: 'archived',
+        creatorId: 'user1',
+      };
+
+      jest.spyOn(service, 'findOne').mockResolvedValue(mockDocument as any);
+      mockPrismaService.document.update.mockResolvedValue({
+        ...mockDocument,
+        status: 'approved',
+      });
+      mockOperationLogService.log.mockResolvedValue(undefined);
+      mockNotificationService.create.mockResolvedValue(undefined);
+
+      await service.restore('doc1', '归档误操作，需恢复使用', 'admin', 'admin');
+
+      expect(mockPrismaService.document.update).toHaveBeenCalledWith({
+        where: { id: 'doc1' },
+        data: {
+          status: 'approved',
+          archiveReason: null,
+          archivedAt: null,
+          archivedBy: null,
+          obsoleteReason: null,
+          obsoletedAt: null,
+          obsoletedBy: null,
+        },
+      });
+      expect(mockOperationLogService.log).toHaveBeenCalled();
+      expect(mockNotificationService.create).toHaveBeenCalled();
+    });
+
+    it('应该拒绝恢复非归档文档', async () => {
+      const mockDocument = {
+        id: 'doc1',
+        number: '1-HR-001',
+        status: 'approved',
+        creatorId: 'user1',
+      };
+
+      jest.spyOn(service, 'findOne').mockResolvedValue(mockDocument as any);
+
+      await expect(
+        service.restore('doc1', '测试原因很长很长很长', 'admin', 'admin')
+      ).rejects.toThrow('仅归档文档可恢复');
+    });
+
+    it('应该拒绝恢复作废文档', async () => {
+      const mockDocument = {
+        id: 'doc1',
+        number: '1-HR-001',
+        status: 'obsolete',
+        creatorId: 'user1',
+      };
+
+      jest.spyOn(service, 'findOne').mockResolvedValue(mockDocument as any);
+
+      await expect(
+        service.restore('doc1', '测试原因很长很长很长', 'admin', 'admin')
+      ).rejects.toThrow('仅归档文档可恢复');
+    });
+
+    it('应该拒绝非管理员恢复', async () => {
+      const mockDocument = {
+        id: 'doc1',
+        number: '1-HR-001',
+        status: 'archived',
+        creatorId: 'user1',
+      };
+
+      jest.spyOn(service, 'findOne').mockResolvedValue(mockDocument as any);
+
+      await expect(
+        service.restore('doc1', '测试原因很长很长很长', 'user1', 'user')
+      ).rejects.toThrow(BusinessException);
     });
   });
 });

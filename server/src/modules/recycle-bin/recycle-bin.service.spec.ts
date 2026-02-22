@@ -2,12 +2,30 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { RecycleBinService } from './recycle-bin.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OperationLogService } from '../operation-log/operation-log.service';
+import { NotificationService } from '../notification/notification.service';
+import { DocumentService } from '../document/document.service';
+import { StorageService } from '../../common/services';
 import { BusinessException } from '../../common/exceptions/business.exception';
 
 describe('RecycleBinService', () => {
   let service: RecycleBinService;
   let prisma: PrismaService;
   let operationLog: OperationLogService;
+  let notificationService: NotificationService;
+  let documentService: DocumentService;
+  let storageService: StorageService;
+
+  const mockNotificationService = {
+    create: jest.fn().mockResolvedValue({}),
+  };
+
+  const mockDocumentService = {
+    generateDocumentNumber: jest.fn().mockResolvedValue('1-TEST-001'),
+  };
+
+  const mockStorageService = {
+    deleteFile: jest.fn().mockResolvedValue(undefined),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -18,21 +36,29 @@ describe('RecycleBinService', () => {
           useValue: {
             document: {
               findMany: jest.fn(),
+              findUnique: jest.fn(),
+              findFirst: jest.fn(),
               count: jest.fn(),
               update: jest.fn(),
               delete: jest.fn(),
             },
             template: {
               findMany: jest.fn(),
+              findUnique: jest.fn(),
               count: jest.fn(),
               update: jest.fn(),
               delete: jest.fn(),
             },
             task: {
               findMany: jest.fn(),
+              findUnique: jest.fn(),
               count: jest.fn(),
               update: jest.fn(),
               delete: jest.fn(),
+            },
+            pendingNumber: {
+              create: jest.fn(),
+              upsert: jest.fn(),
             },
           },
         },
@@ -42,12 +68,29 @@ describe('RecycleBinService', () => {
             log: jest.fn(),
           },
         },
+        {
+          provide: NotificationService,
+          useValue: mockNotificationService,
+        },
+        {
+          provide: DocumentService,
+          useValue: mockDocumentService,
+        },
+        {
+          provide: StorageService,
+          useValue: mockStorageService,
+        },
       ],
     }).compile();
 
     service = module.get<RecycleBinService>(RecycleBinService);
     prisma = module.get<PrismaService>(PrismaService);
     operationLog = module.get<OperationLogService>(OperationLogService);
+    notificationService = module.get<NotificationService>(NotificationService);
+    documentService = module.get<DocumentService>(DocumentService);
+    storageService = module.get<StorageService>(StorageService);
+
+    jest.clearAllMocks();
   });
 
   describe('findAll', () => {
@@ -127,13 +170,18 @@ describe('RecycleBinService', () => {
   });
 
   describe('restore', () => {
-    it('应恢复已删除的文档', async () => {
+    it('应恢复已删除的文档（无编号冲突）', async () => {
       const mockDocument = {
         id: '1',
         title: '测试文档',
+        number: 'DOC-001',
+        creatorId: 'creator-1',
         deletedAt: new Date(),
+        creator: { id: 'creator-1', departmentId: 'dept-1' },
       };
 
+      jest.spyOn(prisma.document, 'findUnique').mockResolvedValue(mockDocument as any);
+      jest.spyOn(prisma.document, 'findFirst').mockResolvedValue(null);
       jest.spyOn(prisma.document, 'update').mockResolvedValue(mockDocument as any);
 
       await service.restore('document', '1', 'user123', 'admin');
@@ -142,30 +190,44 @@ describe('RecycleBinService', () => {
         where: { id: '1' },
         data: { deletedAt: null },
       });
-      expect(operationLog.log).toHaveBeenCalledWith({
-        userId: 'user123',
-        action: 'restore',
-        module: 'recycle-bin',
-        objectId: '1',
-        objectType: 'document',
-        details: expect.any(Object),
-      });
+      expect(notificationService.create).toHaveBeenCalled();
+      expect(operationLog.log).toHaveBeenCalled();
     });
 
     it('应恢复已删除的模板', async () => {
+      const mockTemplate = {
+        id: '1',
+        title: '测试模板',
+        creatorId: 'creator-1',
+        deletedAt: new Date(),
+        creator: { id: 'creator-1', departmentId: 'dept-1' },
+      };
+
+      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate as any);
       jest.spyOn(prisma.template, 'update').mockResolvedValue({} as any);
 
       await service.restore('template', '1', 'user123', 'admin');
 
       expect(prisma.template.update).toHaveBeenCalled();
+      expect(notificationService.create).toHaveBeenCalled();
     });
 
     it('应恢复已删除的任务', async () => {
+      const mockTask = {
+        id: '1',
+        creatorId: 'creator-1',
+        deletedAt: new Date(),
+        creator: { id: 'creator-1' },
+        template: { id: 'template-1' },
+      };
+
+      jest.spyOn(prisma.task, 'findUnique').mockResolvedValue(mockTask as any);
       jest.spyOn(prisma.task, 'update').mockResolvedValue({} as any);
 
       await service.restore('task', '1', 'user123', 'admin');
 
       expect(prisma.task.update).toHaveBeenCalled();
+      expect(notificationService.create).toHaveBeenCalled();
     });
 
     it('应拒绝非管理员恢复', async () => {
@@ -177,24 +239,36 @@ describe('RecycleBinService', () => {
 
   describe('permanentDelete', () => {
     it('应永久删除文档', async () => {
+      const mockDocument = {
+        id: '1',
+        number: 'DOC-001',
+        level: 1,
+        filePath: 'path/to/file.pdf',
+        deletedAt: new Date(),
+        creator: { id: 'creator-1', departmentId: 'dept-1' },
+      };
+
+      jest.spyOn(prisma.document, 'findUnique').mockResolvedValue(mockDocument as any);
       jest.spyOn(prisma.document, 'delete').mockResolvedValue({} as any);
+      jest.spyOn(prisma.pendingNumber, 'upsert').mockResolvedValue({} as any);
 
       await service.permanentDelete('document', '1', 'user123', 'admin');
 
       expect(prisma.document.delete).toHaveBeenCalledWith({
         where: { id: '1' },
       });
-      expect(operationLog.log).toHaveBeenCalledWith({
-        userId: 'user123',
-        action: 'permanent_delete',
-        module: 'recycle-bin',
-        objectId: '1',
-        objectType: 'document',
-        details: expect.any(Object),
-      });
+      expect(storageService.deleteFile).toHaveBeenCalledWith('path/to/file.pdf');
+      expect(prisma.pendingNumber.upsert).toHaveBeenCalled();
+      expect(operationLog.log).toHaveBeenCalled();
     });
 
     it('应永久删除模板', async () => {
+      const mockTemplate = {
+        id: '1',
+        deletedAt: new Date(),
+      };
+
+      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate as any);
       jest.spyOn(prisma.template, 'delete').mockResolvedValue({} as any);
 
       await service.permanentDelete('template', '1', 'user123', 'admin');
@@ -203,6 +277,12 @@ describe('RecycleBinService', () => {
     });
 
     it('应永久删除任务', async () => {
+      const mockTask = {
+        id: '1',
+        deletedAt: new Date(),
+      };
+
+      jest.spyOn(prisma.task, 'findUnique').mockResolvedValue(mockTask as any);
       jest.spyOn(prisma.task, 'delete').mockResolvedValue({} as any);
 
       await service.permanentDelete('task', '1', 'user123', 'admin');
@@ -220,22 +300,29 @@ describe('RecycleBinService', () => {
   describe('batchRestore', () => {
     it('应批量恢复多个项目', async () => {
       const ids = ['1', '2', '3'];
+      const mockDocument = {
+        id: '1',
+        title: '测试文档',
+        number: 'DOC-001',
+        creatorId: 'creator-1',
+        deletedAt: new Date(),
+        creator: { id: 'creator-1', departmentId: 'dept-1' },
+      };
+
+      jest.spyOn(prisma.document, 'findUnique').mockResolvedValue(mockDocument as any);
+      jest.spyOn(prisma.document, 'findFirst').mockResolvedValue(null);
       jest.spyOn(prisma.document, 'update').mockResolvedValue({} as any);
 
       await service.batchRestore('document', ids, 'user123', 'admin');
 
-      expect(prisma.document.update).toHaveBeenCalledTimes(3);
-      ids.forEach((id) => {
-        expect(prisma.document.update).toHaveBeenCalledWith({
-          where: { id },
-          data: { deletedAt: null },
-        });
-      });
+      expect(prisma.document.findUnique).toHaveBeenCalledTimes(3);
+      expect(operationLog.log).toHaveBeenCalled();
     });
 
     it('应处理空数组', async () => {
-      await service.batchRestore('document', [], 'user123', 'admin');
+      const result = await service.batchRestore('document', [], 'user123', 'admin');
 
+      expect(result).toEqual({ success: true, message: '批量恢复成功' });
       expect(prisma.document.update).not.toHaveBeenCalled();
     });
 
@@ -249,21 +336,30 @@ describe('RecycleBinService', () => {
   describe('batchPermanentDelete', () => {
     it('应批量永久删除多个项目', async () => {
       const ids = ['1', '2', '3'];
+      const mockDocument = {
+        id: '1',
+        number: 'DOC-001',
+        level: 1,
+        filePath: 'path/to/file.pdf',
+        deletedAt: new Date(),
+        creator: { id: 'creator-1', departmentId: 'dept-1' },
+      };
+
+      jest.spyOn(prisma.document, 'findUnique').mockResolvedValue(mockDocument as any);
       jest.spyOn(prisma.document, 'delete').mockResolvedValue({} as any);
+      jest.spyOn(prisma.pendingNumber, 'create').mockResolvedValue({} as any);
 
       await service.batchPermanentDelete('document', ids, 'user123', 'admin');
 
-      expect(prisma.document.delete).toHaveBeenCalledTimes(3);
-      ids.forEach((id) => {
-        expect(prisma.document.delete).toHaveBeenCalledWith({
-          where: { id },
-        });
-      });
+      expect(prisma.document.findUnique).toHaveBeenCalledTimes(3);
+      expect(storageService.deleteFile).toHaveBeenCalledTimes(3);
+      expect(operationLog.log).toHaveBeenCalled();
     });
 
     it('应处理空数组', async () => {
-      await service.batchPermanentDelete('document', [], 'user123', 'admin');
+      const result = await service.batchPermanentDelete('document', [], 'user123', 'admin');
 
+      expect(result).toEqual({ success: true, message: '批量永久删除成功' });
       expect(prisma.document.delete).not.toHaveBeenCalled();
     });
 

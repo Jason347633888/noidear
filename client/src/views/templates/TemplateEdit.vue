@@ -22,6 +22,20 @@
         </el-form-item>
 
         <el-form-item label="字段定义">
+          <div class="field-import-actions">
+            <el-button type="primary" link @click="showExcelUpload = !showExcelUpload">
+              <el-icon><Upload /></el-icon>
+              {{ showExcelUpload ? '隐藏' : '从Excel导入' }}
+            </el-button>
+          </div>
+
+          <!-- Excel上传组件 -->
+          <ExcelUpload
+            v-if="showExcelUpload"
+            @import="handleExcelImport"
+            class="excel-upload-section"
+          />
+
           <div class="fields-editor">
             <div class="fields-header">
               <span>拖拽</span>
@@ -121,9 +135,10 @@
 import { ref, reactive, computed, onMounted, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { Delete, Plus, Rank } from '@element-plus/icons-vue';
+import { Delete, Plus, Rank, Upload } from '@element-plus/icons-vue';
 import Sortable from 'sortablejs';
 import request from '@/api/request';
+import ExcelUpload from '@/components/template/ExcelUpload.vue';
 import {
   FIELD_TYPE_GROUPS,
   fieldTypeNeedsOptions,
@@ -147,6 +162,7 @@ const route = useRoute();
 const router = useRouter();
 const loading = ref(false);
 const submitting = ref(false);
+const showExcelUpload = ref(false);
 const formRef = ref();
 const fieldsContainer = ref<HTMLElement>();
 let sortableInstance: Sortable | null = null;
@@ -230,6 +246,19 @@ const fetchTemplate = async () => {
   }
 };
 
+const handleExcelImport = (fields: Field[]) => {
+  form.fields = fields;
+  showExcelUpload.value = false;
+  ElMessage.success(`已导入 ${fields.length} 个字段`);
+  // 重新初始化拖拽功能
+  nextTick(() => {
+    if (sortableInstance) {
+      sortableInstance.destroy();
+    }
+    initSortable();
+  });
+};
+
 const handleSubmit = async () => {
   if (!formRef.value) return;
   await formRef.value.validate();
@@ -275,6 +304,17 @@ onMounted(() => {
 
 .form-card {
   margin-top: 16px;
+}
+
+.field-import-actions {
+  margin-bottom: 16px;
+}
+
+.excel-upload-section {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 4px;
 }
 
 .fields-editor {

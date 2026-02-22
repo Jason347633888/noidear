@@ -1,0 +1,2 @@
+-- AlreadyExecuted
+-- This migration was already applied using `prisma db push`

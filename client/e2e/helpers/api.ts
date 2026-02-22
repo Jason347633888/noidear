@@ -214,6 +214,80 @@ export async function fetchDepartments(
 }
 
 /**
+ * Fetch pending approvals for the authenticated user.
+ */
+export async function fetchPendingApprovals(
+  request: APIRequestContext,
+  token: string,
+) {
+  const response = await request.get(`${API_BASE}/approvals/pending`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok()) {
+    throw new Error(`Fetch pending approvals failed: ${response.status()}`);
+  }
+
+  const body = (await response.json()) as ApiResponse<Array<Record<string, unknown>>>;
+  return body.data;
+}
+
+/**
+ * Approve an approval record via the unified API.
+ */
+export async function approveApprovalViaApi(
+  request: APIRequestContext,
+  token: string,
+  approvalId: string,
+  action: 'approved' | 'rejected' = 'approved',
+  commentOrReason?: string,
+) {
+  const data: Record<string, string> = { approvalId, action };
+  if (action === 'approved' && commentOrReason) {
+    data.comment = commentOrReason;
+  }
+  if (action === 'rejected' && commentOrReason) {
+    data.rejectionReason = commentOrReason;
+  }
+
+  const response = await request.post(`${API_BASE}/approvals/${approvalId}/approve`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data,
+  });
+
+  if (!response.ok()) {
+    const errorBody = await response.text();
+    throw new Error(`Approve approval failed: ${response.status()} ${errorBody}`);
+  }
+
+  const body = (await response.json()) as ApiResponse<Record<string, unknown>>;
+  return body.data;
+}
+
+/**
+ * Reject an approval record via the reject endpoint.
+ */
+export async function rejectApprovalViaApi(
+  request: APIRequestContext,
+  token: string,
+  approvalId: string,
+  reason: string,
+) {
+  const response = await request.post(`${API_BASE}/approvals/${approvalId}/reject`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { approvalId, action: 'rejected', rejectionReason: reason },
+  });
+
+  if (!response.ok()) {
+    const errorBody = await response.text();
+    throw new Error(`Reject approval failed: ${response.status()} ${errorBody}`);
+  }
+
+  const body = (await response.json()) as ApiResponse<Record<string, unknown>>;
+  return body.data;
+}
+
+/**
  * Save draft data for a task.
  */
 export async function saveDraftViaApi(

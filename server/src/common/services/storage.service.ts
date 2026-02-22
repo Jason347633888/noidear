@@ -114,6 +114,28 @@ export class StorageService {
   }
 
   /**
+   * 上传 Buffer (用于日志归档等场景)
+   */
+  async uploadBuffer(
+    buffer: Buffer,
+    path: string,
+  ): Promise<void> {
+    try {
+      await this.ensureBucket();
+
+      await this.client.putObject(this.bucket, path, buffer, buffer.length, {
+        'Content-Type': 'application/json',
+      });
+    } catch (error) {
+      throw new BusinessException(
+        ErrorCode.DATABASE_ERROR,
+        'Buffer上传失败',
+        error,
+      );
+    }
+  }
+
+  /**
    * 获取文件URL
    */
   getFileUrl(path: string): string {
@@ -207,6 +229,26 @@ export class StorageService {
       throw new BusinessException(
         ErrorCode.DATABASE_ERROR,
         '文件复制失败',
+        error,
+      );
+    }
+  }
+
+  /**
+   * 获取文件元数据
+   */
+  async getFileMetadata(path: string): Promise<{ size: number; lastModified: Date; etag: string }> {
+    try {
+      const stat = await this.client.statObject(this.bucket, path);
+      return {
+        size: stat.size,
+        lastModified: stat.lastModified,
+        etag: stat.etag,
+      };
+    } catch (error) {
+      throw new BusinessException(
+        ErrorCode.NOT_FOUND,
+        '文件不存在',
         error,
       );
     }

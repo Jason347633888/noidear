@@ -26,3 +26,16 @@ export class ObsoleteDocumentDto {
   @MaxLength(500, { message: '作废原因最多 500 个字符' })
   reason: string;
 }
+
+export class RestoreDocumentDto {
+  @ApiProperty({
+    description: '恢复原因',
+    example: '归档误操作，文档仍需使用',
+    minLength: 10,
+    maxLength: 500,
+  })
+  @IsString()
+  @MinLength(10, { message: '恢复原因至少 10 个字符' })
+  @MaxLength(500, { message: '恢复原因最多 500 个字符' })
+  reason: string;
+}
