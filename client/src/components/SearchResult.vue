@@ -15,7 +15,7 @@
           :body-style="{ padding: '16px' }"
           @click="handleClick(item.id)"
         >
-          <div class="item-title" v-html="highlightText(item.title)" />
+          <div class="item-title" v-html="item.title" />
           <div class="item-meta">
             <el-tag size="small" type="info">{{ item.type }}</el-tag>
             <span class="item-department">{{ item.department }}</span>
@@ -133,6 +133,7 @@ function handlePageChange(page: number, size: number) {
   border-radius: 2px;
 }
 
+.item-title :deep(em),
 .item-summary :deep(em),
 .item-summary :deep(mark) {
   background-color: #fff3cd;

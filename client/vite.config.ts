@@ -16,11 +16,14 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vue-vendor': ['vue', 'vue-router', 'pinia'],
-          'element-plus': ['element-plus', '@element-plus/icons-vue'],
-          'echarts': ['echarts'],
-          'utils': ['axios', 'dayjs', 'lodash-es'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('echarts') || id.includes('zrender')) return 'echarts';
+            if (id.includes('element-plus') || id.includes('@element-plus')) return 'element-plus';
+            if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) return 'vue-vendor';
+            if (id.includes('lodash')) return 'lodash';
+            return 'vendor';
+          }
         },
       },
     },
