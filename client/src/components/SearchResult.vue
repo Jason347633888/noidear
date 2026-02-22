@@ -21,7 +21,7 @@
             <span class="item-department">{{ item.department }}</span>
             <span class="item-date">{{ formatDate(item.updatedAt) }}</span>
           </div>
-          <div class="item-summary" v-html="highlightText(item.highlight || item.summary)" />
+          <div class="item-summary" v-html="item.highlight ? item.highlight : highlightText(item.summary)" />
         </el-card>
       </div>
       <div class="pagination-wrap">
@@ -129,6 +129,16 @@ function handlePageChange(page: number, size: number) {
 
 :deep(mark) {
   background: #ffe58f;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.item-summary :deep(em),
+.item-summary :deep(mark) {
+  background-color: #fff3cd;
+  color: #856404;
+  font-style: normal;
+  font-weight: 600;
   padding: 0 2px;
   border-radius: 2px;
 }
