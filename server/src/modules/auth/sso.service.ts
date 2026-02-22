@@ -1,9 +1,10 @@
 import { Injectable, Logger, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import * as ldap from 'ldapjs';
 import { PrismaService } from '../../prisma/prisma.service';
-import { LDAP_ENV_VARS } from './ldap.config';
+import { LDAP_ENV_VARS, validateLdapConfig } from './ldap.config';
 
 interface LdapUser {
   username: string;
@@ -37,8 +38,9 @@ export class SsoService {
    * LDAP 登录（真实 ldapjs 集成）
    */
   async ldapLogin(username: string, password: string) {
-    if (!process.env[LDAP_ENV_VARS.URL]) {
-      throw new BadRequestException('LDAP 未配置，请联系管理员');
+    const { valid, missing } = validateLdapConfig();
+    if (!valid) {
+      throw new BadRequestException(`LDAP 未配置，缺少环境变量: ${missing.join(', ')}`);
     }
 
     const ldapUser = await this.authenticateWithLdap(username, password);
@@ -168,9 +170,8 @@ export class SsoService {
     if (existing) return existing;
 
     // 首次登录自动创建账号（BR-SSO-1）
-    const crypto = require('crypto');
-    const id = crypto.randomBytes(16).toString('hex');
-    const defaultPassword = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 10);
+    const id = randomBytes(16).toString('hex');
+    const defaultPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
 
     this.logger.log(`SSO 首次登录，创建用户: ${username} (provider: ${provider})`);
 
