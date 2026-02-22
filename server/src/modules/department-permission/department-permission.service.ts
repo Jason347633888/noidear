@@ -1,5 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+
+export interface ResourcePermConfig {
+  resource: string;
+  actions: string[];
+}
+
+export interface DeptPermissionConfig {
+  isolationLevel: 'none' | 'department' | 'subdepartment';
+  allowedDeptIds: string[];
+  resources: ResourcePermConfig[];
+}
 
 /**
  * 部门权限检查服务
@@ -114,6 +125,62 @@ export class DepartmentPermissionService {
     );
 
     return validPermissions.length > 0;
+  }
+
+  /**
+   * 获取部门权限配置
+   * 使用 SystemConfig 存储，key 格式: dept_permission_{deptId}
+   */
+  async getDeptPermissionConfig(deptId: string): Promise<DeptPermissionConfig> {
+    try {
+      const dept = await this.prisma.department.findUnique({ where: { id: deptId } });
+      if (!dept) {
+        throw new NotFoundException(`部门 ID ${deptId} 不存在`);
+      }
+
+      const configKey = `dept_permission_${deptId}`;
+      const config = await this.prisma.systemConfig.findUnique({
+        where: { key: configKey },
+      });
+
+      if (!config) {
+        return { isolationLevel: 'none', allowedDeptIds: [], resources: [] };
+      }
+
+      return JSON.parse(config.value) as DeptPermissionConfig;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      return { isolationLevel: 'none', allowedDeptIds: [], resources: [] };
+    }
+  }
+
+  /**
+   * 保存部门权限配置（upsert）
+   */
+  async saveDeptPermissionConfig(
+    deptId: string,
+    config: DeptPermissionConfig,
+  ): Promise<{ success: boolean }> {
+    const dept = await this.prisma.department.findUnique({ where: { id: deptId } });
+    if (!dept) {
+      throw new NotFoundException(`部门 ID ${deptId} 不存在`);
+    }
+
+    const configKey = `dept_permission_${deptId}`;
+    await this.prisma.systemConfig.upsert({
+      where: { key: configKey },
+      create: {
+        id: `dept_perm_${deptId}_${Date.now()}`,
+        key: configKey,
+        value: JSON.stringify(config),
+        valueType: 'json',
+        category: 'permission',
+        description: `部门 ${dept.name} 的权限配置`,
+      },
+      update: { value: JSON.stringify(config) },
+    });
+
+    return { success: true };
   }
 
   /**

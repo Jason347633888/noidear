@@ -137,6 +137,22 @@ const routes: RouteRecordRaw[] = [
         name: 'Permissions',
         component: () => import('@/views/permission/PermissionList.vue'),
       },
+      // P1-2 细粒度权限配置
+      {
+        path: 'permissions/fine-grained',
+        name: 'FineGrainedPermission',
+        component: () => import('@/views/permission/FineGrainedPermission.vue'),
+      },
+      {
+        path: 'permissions/department',
+        name: 'DepartmentPermission',
+        component: () => import('@/views/permission/DepartmentPermission.vue'),
+      },
+      {
+        path: 'permissions/audit-log',
+        name: 'PermissionAuditLog',
+        component: () => import('@/views/permission/PermissionAuditLog.vue'),
+      },
       {
         path: 'password',
         name: 'Password',

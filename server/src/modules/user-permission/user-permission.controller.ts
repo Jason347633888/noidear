@@ -15,7 +15,6 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { UserPermissionService } from './user-permission.service';
 import {
   GrantPermissionDto,
-  RevokePermissionDto,
   BatchGrantPermissionDto,
   QueryUserPermissionDto,
   BatchGrantMultipleUsersDto,
@@ -55,7 +54,6 @@ export class UserPermissionController {
   @ApiResponse({ status: 403, description: '仅原授权人或管理员可撤销' })
   revokePermission(
     @Param('id') id: string,
-    @Body() revokeDto: RevokePermissionDto,
     @Request() req: any,
   ) {
     return this.userPermissionService.revokePermission(id, req.user.id);

@@ -17,6 +17,7 @@ import {
   CreateFineGrainedPermissionDto,
   UpdateFineGrainedPermissionDto,
   QueryFineGrainedPermissionDto,
+  SaveRolePermissionsDto,
 } from './dto/fine-grained-permission.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -40,6 +41,27 @@ export class FineGrainedPermissionController {
     return this.fineGrainedPermissionService.findAll(query);
   }
 
+  // Critical 1: 静态路由必须在动态路由 :id 之前定义，否则 NestJS 会将 'matrix' 当作 id
+  @Get('matrix/resource-action')
+  @Roles('admin')
+  @ApiOperation({ summary: '获取资源-操作权限矩阵' })
+  @ApiResponse({ status: 200, description: '权限矩阵' })
+  @ApiResponse({ status: 403, description: '无权限操作' })
+  getMatrix() {
+    return this.fineGrainedPermissionService.getPermissionMatrix();
+  }
+
+  // Critical 2: 获取角色的所有细粒度权限配置
+  @Get('role/:roleId')
+  @Roles('admin')
+  @ApiOperation({ summary: '获取角色的细粒度权限列表' })
+  @ApiResponse({ status: 200, description: '查询成功' })
+  @ApiResponse({ status: 404, description: '角色不存在' })
+  @ApiResponse({ status: 403, description: '无权限操作' })
+  getRolePermissions(@Param('roleId') roleId: string) {
+    return this.fineGrainedPermissionService.getRolePermissions(roleId);
+  }
+
   @Get(':id')
   @Roles('admin')
   @ApiOperation({ summary: '查询细粒度权限详情' })
@@ -59,6 +81,21 @@ export class FineGrainedPermissionController {
   @ApiResponse({ status: 403, description: '无权限操作' })
   create(@Body() createDto: CreateFineGrainedPermissionDto) {
     return this.fineGrainedPermissionService.create(createDto);
+  }
+
+  // Critical 2: 批量保存角色权限配置（传入权限 ID 数组）
+  @Put('role/:roleId')
+  @Roles('admin')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '批量保存角色的细粒度权限配置' })
+  @ApiResponse({ status: 200, description: '保存成功' })
+  @ApiResponse({ status: 404, description: '角色不存在' })
+  @ApiResponse({ status: 403, description: '无权限操作' })
+  saveRolePermissions(
+    @Param('roleId') roleId: string,
+    @Body() dto: SaveRolePermissionsDto,
+  ) {
+    return this.fineGrainedPermissionService.saveRolePermissions(roleId, dto.permissionIds);
   }
 
   @Put(':id')
@@ -107,14 +144,5 @@ export class FineGrainedPermissionController {
   @ApiResponse({ status: 403, description: '无权限操作' })
   remove(@Param('id') id: string) {
     return this.fineGrainedPermissionService.remove(id);
-  }
-
-  @Get('matrix/resource-action')
-  @Roles('admin')
-  @ApiOperation({ summary: '获取资源-操作权限矩阵' })
-  @ApiResponse({ status: 200, description: '权限矩阵' })
-  @ApiResponse({ status: 403, description: '无权限操作' })
-  getMatrix() {
-    return this.fineGrainedPermissionService.getPermissionMatrix();
   }
 }

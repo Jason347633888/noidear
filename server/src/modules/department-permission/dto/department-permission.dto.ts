@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsIn } from 'class-validator';
 
 /**
  * 检查部门资源访问权限 DTO
@@ -24,18 +24,18 @@ export class CheckDepartmentAccessDto {
   @ApiProperty({
     description: '操作类型',
     example: 'view',
-    enum: ['view', 'edit', 'delete', 'create'],
+    enum: ['view', 'edit', 'delete', 'create', 'approve'],
   })
-  @IsString()
+  @IsIn(['view', 'edit', 'delete', 'create', 'approve'])
   @IsNotEmpty()
   action: string;
 
   @ApiProperty({
     description: '资源类型',
     example: 'document',
-    enum: ['document', 'record', 'task'],
+    enum: ['document', 'record', 'task', 'template', 'approval', 'user', 'role', 'permission'],
   })
-  @IsString()
+  @IsIn(['document', 'record', 'task', 'template', 'approval', 'user', 'role', 'permission'])
   @IsNotEmpty()
   resourceType: string;
 }
@@ -55,9 +55,9 @@ export class QueryAccessibleDepartmentsDto {
   @ApiPropertyOptional({
     description: '资源类型（默认为 document）',
     example: 'document',
-    enum: ['document', 'record', 'task'],
+    enum: ['document', 'record', 'task', 'template', 'approval', 'user', 'role', 'permission'],
   })
-  @IsString()
+  @IsIn(['document', 'record', 'task', 'template', 'approval', 'user', 'role', 'permission'])
   @IsOptional()
   resourceType?: string;
 }

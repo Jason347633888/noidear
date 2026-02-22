@@ -2,7 +2,9 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Body,
+  Param,
   Query,
   UseGuards,
   HttpCode,
@@ -34,6 +36,33 @@ export class DepartmentPermissionController {
   constructor(
     private readonly departmentPermissionService: DepartmentPermissionService,
   ) {}
+
+  /**
+   * 获取部门权限配置
+   */
+  @Get(':deptId')
+  @Roles('admin')
+  @ApiOperation({ summary: '获取部门权限配置' })
+  @ApiResponse({ status: 200, description: '部门权限配置' })
+  @ApiResponse({ status: 404, description: '部门不存在' })
+  getDeptPermissionConfig(@Param('deptId') deptId: string) {
+    return this.departmentPermissionService.getDeptPermissionConfig(deptId);
+  }
+
+  /**
+   * 保存部门权限配置
+   */
+  @Put(':deptId')
+  @Roles('admin')
+  @ApiOperation({ summary: '保存部门权限配置' })
+  @ApiResponse({ status: 200, description: '保存成功' })
+  @ApiResponse({ status: 404, description: '部门不存在' })
+  saveDeptPermissionConfig(
+    @Param('deptId') deptId: string,
+    @Body() config: { isolationLevel: string; allowedDeptIds: string[]; resources: { resource: string; actions: string[] }[] },
+  ) {
+    return this.departmentPermissionService.saveDeptPermissionConfig(deptId, config as any);
+  }
 
   /**
    * 检查用户是否有权访问指定部门的资源
