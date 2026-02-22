@@ -86,7 +86,7 @@ export class SsoService {
   }
 
   private async fetchOAuthUserInfo(provider: string, code: string): Promise<OAuthUser> {
-    this.logger.log(`获取 OAuth2 用户信息: provider=${provider}`);
+    this.logger.warn(`fetchOAuthUserInfo 当前为占位实现，尚未对接真实 OAuth2 端点 (provider=${provider})`);
     return {
       provider,
       providerId: `${provider}_${code.slice(0, 8)}`,
@@ -140,10 +140,16 @@ export class SsoService {
     });
   }
 
+  /** 转义 LDAP 过滤器中的特殊字符，防止注入攻击 */
+  private escapeLdapFilter(input: string): string {
+    return input.replace(/[\\*()\x00]/g, (ch) => '\\' + ch.charCodeAt(0).toString(16).padStart(2, '0'));
+  }
+
   /** 在 baseDn 下搜索用户 DN */
   private ldapSearch(client: ldap.Client, baseDn: string, username: string): Promise<string | null> {
     return new Promise((resolve, reject) => {
-      const filter = `(|(sAMAccountName=${username})(uid=${username})(cn=${username}))`;
+      const safeUsername = this.escapeLdapFilter(username);
+      const filter = `(|(sAMAccountName=${safeUsername})(uid=${safeUsername})(cn=${safeUsername}))`;
       const opts: ldap.SearchOptions = {
         filter,
         scope: 'sub',

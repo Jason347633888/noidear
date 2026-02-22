@@ -197,48 +197,40 @@ let refreshTimer: number | null = null;
 let countdownTimer: number | null = null;
 
 const fetchHealthData = async () => {
-  try {
-    const data = await getHealth();
-    healthData.value = data;
-  } catch (error) {
-    console.error('Failed to fetch health data:', error);
-  }
+  const data = await getHealth();
+  healthData.value = data;
 };
 
 const fetchAuditStats = async () => {
-  try {
-    const data = await getDashboardStats();
-    auditStats.value = {
-      ...auditStats.value,
-      ...data,
-    };
-  } catch (error) {
-    console.error('Failed to fetch audit stats:', error);
-  }
+  const data = await getDashboardStats();
+  auditStats.value = {
+    ...auditStats.value,
+    ...data,
+  };
 };
 
 const fetchAlertHistory = async () => {
-  try {
-    const { items } = await queryAlertHistory({
-      page: 1,
-      limit: 5,
-      status: 'triggered',
-    });
-    recentAlerts.value = items;
-    auditStats.value.pendingAlerts = items.length;
-  } catch (error) {
-    console.error('Failed to fetch alert history:', error);
-  }
+  const { items } = await queryAlertHistory({
+    page: 1,
+    limit: 5,
+    status: 'triggered',
+  });
+  recentAlerts.value = items;
+  auditStats.value.pendingAlerts = items.length;
 };
 
 const fetchAllData = async () => {
   loading.value = true;
   try {
-    await Promise.all([
+    const results = await Promise.allSettled([
       fetchHealthData(),
       fetchAuditStats(),
       fetchAlertHistory(),
     ]);
+    const failed = results.filter((r) => r.status === 'rejected');
+    if (failed.length > 0) {
+      ElMessage.warning('部分数据加载失败，已显示可用数据');
+    }
     lastUpdateTime.value = new Date().toISOString();
     resetCountdown();
   } catch (error) {

@@ -22,7 +22,7 @@ export class SearchService {
     const esUrl = process.env.ELASTICSEARCH_URL;
     if (esUrl) {
       this.esClient = new Client({ node: esUrl });
-      this.esEnabled = true;
+      // esEnabled 仅在索引初始化成功后设为 true，避免启动时竞态
       this.initEsIndex();
     }
   }
@@ -30,6 +30,7 @@ export class SearchService {
   private async initEsIndex(): Promise<void> {
     try {
       await createIndexIfNotExists(this.esClient!);
+      this.esEnabled = true;
       this.logger.log('ElasticSearch 索引初始化完成');
     } catch (err) {
       this.logger.warn(`ElasticSearch 索引初始化失败，降级为 PostgreSQL: ${err}`);
@@ -247,10 +248,20 @@ export class SearchService {
     return text.replace(SearchService.REGEX_SPECIAL, (ch) => '\\' + ch);
   }
 
+  private escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;');
+  }
+
   private applyHighlight(text: string, keyword: string): string {
+    const safeText = this.escapeHtml(text);
     const escaped = this.escapeForRegex(keyword);
     const regex = new RegExp('(' + escaped + ')', 'gi');
-    return text.replace(regex, '<em>$1</em>');
+    return safeText.replace(regex, '<em>$1</em>');
   }
 
   private buildSnippet(text: string, keyword: string): string {

@@ -524,7 +524,7 @@ const router = createRouter({
 
 // 导航守卫
 router.beforeEach((to, from, next) => {
-  const publicPaths = ['/login'];
+  const publicPaths = ['/login', '/login/sso'];
   const token = localStorage.getItem('token');
 
   if (!publicPaths.includes(to.path) && !token) {
