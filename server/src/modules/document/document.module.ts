@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DocumentController } from './document.controller';
 import { DocumentService } from './document.service';
+import { DocumentsListener } from './documents.listener';
 import { FilePreviewService } from './services';
 import { StorageService } from '../../common/services';
 import { NotificationModule } from '../notification/notification.module';
@@ -12,11 +13,12 @@ import { StatisticsModule } from '../statistics/statistics.module';
 import { StatisticsCacheInterceptor } from '../../common/interceptors/statistics-cache.interceptor';
 import { UserPermissionModule } from '../user-permission/user-permission.module';
 import { PermissionGuard } from '../../common/guards/permission.guard';
+import { SearchModule } from '../search/search.module';
 
 @Module({
-  imports: [ConfigModule, NotificationModule, OperationLogModule, ExportModule, DepartmentPermissionModule, StatisticsModule, UserPermissionModule],
+  imports: [ConfigModule, NotificationModule, OperationLogModule, ExportModule, DepartmentPermissionModule, StatisticsModule, UserPermissionModule, SearchModule],
   controllers: [DocumentController],
-  providers: [DocumentService, FilePreviewService, StorageService, StatisticsCacheInterceptor, PermissionGuard],
+  providers: [DocumentService, FilePreviewService, StorageService, StatisticsCacheInterceptor, PermissionGuard, DocumentsListener],
   exports: [DocumentService],
 })
 export class DocumentModule {}
