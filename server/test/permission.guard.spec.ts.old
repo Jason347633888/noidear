@@ -1,0 +1,299 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { PermissionGuard } from '../src/common/guards/permission.guard';
+import { PrismaService } from '../src/prisma/prisma.service';
+import { REDIS_CLIENT } from '../src/modules/redis/redis.module';
+import { PERMISSIONS_KEY } from '../src/common/decorators/require-permissions.decorator';
+
+describe('PermissionGuard', () => {
+  let guard: PermissionGuard;
+  let reflector: Reflector;
+  let prismaService: PrismaService;
+  let redisClient: any;
+
+  const mockRedisClient = {
+    get: jest.fn(),
+    setex: jest.fn(),
+  };
+
+  const mockPrismaService = {
+    user: {
+      findUnique: jest.fn(),
+    },
+  };
+
+  const mockReflector = {
+    getAllAndOverride: jest.fn(),
+  };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        PermissionGuard,
+        {
+          provide: Reflector,
+          useValue: mockReflector,
+        },
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+        {
+          provide: REDIS_CLIENT,
+          useValue: mockRedisClient,
+        },
+      ],
+    }).compile();
+
+    guard = module.get<PermissionGuard>(PermissionGuard);
+    reflector = module.get<Reflector>(Reflector);
+    prismaService = module.get<PrismaService>(PrismaService);
+    redisClient = module.get(REDIS_CLIENT);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const createMockExecutionContext = (user?: any): ExecutionContext => {
+    return {
+      switchToHttp: () => ({
+        getRequest: () => ({ user }),
+      }),
+      getHandler: jest.fn(),
+      getClass: jest.fn(),
+    } as any;
+  };
+
+  describe('canActivate', () => {
+    it('应该在没有权限要求时返回 true', async () => {
+      mockReflector.getAllAndOverride.mockReturnValue(null);
+      const context = createMockExecutionContext({ id: 'user-1', role: 'user' });
+
+      const result = await guard.canActivate(context);
+
+      expect(result).toBe(true);
+    });
+
+    it('应该在权限要求为空数组时返回 true', async () => {
+      mockReflector.getAllAndOverride.mockReturnValue([]);
+      const context = createMockExecutionContext({ id: 'user-1', role: 'user' });
+
+      const result = await guard.canActivate(context);
+
+      expect(result).toBe(true);
+    });
+
+    it('应该在用户未登录时抛出 ForbiddenException', async () => {
+      mockReflector.getAllAndOverride.mockReturnValue([
+        { resource: 'document', action: 'create' },
+      ]);
+      const context = createMockExecutionContext(null);
+
+      await expect(guard.canActivate(context)).rejects.toThrow(
+        new ForbiddenException('用户未登录'),
+      );
+    });
+
+    it('应该允许 admin 角色访问所有资源', async () => {
+      mockReflector.getAllAndOverride.mockReturnValue([
+        { resource: 'document', action: 'create' },
+        { resource: 'template', action: 'delete' },
+      ]);
+      const context = createMockExecutionContext({ id: 'admin-1', role: 'admin' });
+
+      const result = await guard.canActivate(context);
+
+      expect(result).toBe(true);
+      expect(mockRedisClient.get).not.toHaveBeenCalled();
+      expect(mockPrismaService.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('应该在用户拥有所需权限时允许访问（从缓存）', async () => {
+      const requiredPermissions = [{ resource: 'document', action: 'create' }];
+      const userPermissions = [
+        { resource: 'document', action: 'create' },
+        { resource: 'document', action: 'read' },
+      ];
+
+      mockReflector.getAllAndOverride.mockReturnValue(requiredPermissions);
+      mockRedisClient.get.mockResolvedValue(JSON.stringify(userPermissions));
+
+      const context = createMockExecutionContext({ id: 'user-1', role: 'leader' });
+
+      const result = await guard.canActivate(context);
+
+      expect(result).toBe(true);
+      expect(mockRedisClient.get).toHaveBeenCalledWith('permissions:user:user-1');
+      expect(mockPrismaService.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('应该在用户拥有所需权限时允许访问（从数据库）', async () => {
+      const requiredPermissions = [
+        { resource: 'document', action: 'create' },
+        { resource: 'template', action: 'read' },
+      ];
+
+      mockReflector.getAllAndOverride.mockReturnValue(requiredPermissions);
+      mockRedisClient.get.mockResolvedValue(null);
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        roleObj: {
+          permissions: [
+            { permission: { resource: 'document', action: 'create' } },
+            { permission: { resource: 'document', action: 'read' } },
+            { permission: { resource: 'template', action: 'read' } },
+          ],
+        },
+      });
+
+      const context = createMockExecutionContext({ id: 'user-1', role: 'leader' });
+
+      const result = await guard.canActivate(context);
+
+      expect(result).toBe(true);
+      expect(mockRedisClient.get).toHaveBeenCalledWith('permissions:user:user-1');
+      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        include: {
+          roleObj: {
+            include: {
+              permissions: {
+                include: {
+                  permission: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      expect(mockRedisClient.setex).toHaveBeenCalledWith(
+        'permissions:user:user-1',
+        900,
+        expect.any(String),
+      );
+    });
+
+    it('应该在用户缺少权限时抛出 ForbiddenException', async () => {
+      const requiredPermissions = [
+        { resource: 'document', action: 'delete' },
+      ];
+
+      mockReflector.getAllAndOverride.mockReturnValue(requiredPermissions);
+      mockRedisClient.get.mockResolvedValue(null);
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        roleObj: {
+          permissions: [
+            { permission: { resource: 'document', action: 'create' } },
+            { permission: { resource: 'document', action: 'read' } },
+          ],
+        },
+      });
+
+      const context = createMockExecutionContext({ id: 'user-1', role: 'user' });
+
+      await expect(guard.canActivate(context)).rejects.toThrow(
+        new ForbiddenException('权限不足'),
+      );
+    });
+
+    it('应该在用户没有角色时拒绝访问', async () => {
+      const requiredPermissions = [{ resource: 'document', action: 'create' }];
+
+      mockReflector.getAllAndOverride.mockReturnValue(requiredPermissions);
+      mockRedisClient.get.mockResolvedValue(null);
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        roleObj: null,
+      });
+
+      const context = createMockExecutionContext({ id: 'user-1', role: 'user' });
+
+      await expect(guard.canActivate(context)).rejects.toThrow(
+        new ForbiddenException('权限不足'),
+      );
+    });
+
+    it('应该在用户不存在时拒绝访问', async () => {
+      const requiredPermissions = [{ resource: 'document', action: 'create' }];
+
+      mockReflector.getAllAndOverride.mockReturnValue(requiredPermissions);
+      mockRedisClient.get.mockResolvedValue(null);
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+      const context = createMockExecutionContext({ id: 'non-existent', role: 'user' });
+
+      await expect(guard.canActivate(context)).rejects.toThrow(
+        new ForbiddenException('权限不足'),
+      );
+    });
+
+    it('应该在 Redis 出错时回退到数据库查询', async () => {
+      const requiredPermissions = [{ resource: 'document', action: 'create' }];
+
+      mockReflector.getAllAndOverride.mockReturnValue(requiredPermissions);
+      mockRedisClient.get.mockRejectedValue(new Error('Redis connection failed'));
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        roleObj: {
+          permissions: [
+            { permission: { resource: 'document', action: 'create' } },
+          ],
+        },
+      });
+
+      const context = createMockExecutionContext({ id: 'user-1', role: 'user' });
+
+      const result = await guard.canActivate(context);
+
+      expect(result).toBe(true);
+      expect(mockPrismaService.user.findUnique).toHaveBeenCalled();
+    });
+
+    it('应该在需要多个权限时验证所有权限', async () => {
+      const requiredPermissions = [
+        { resource: 'document', action: 'create' },
+        { resource: 'document', action: 'update' },
+        { resource: 'template', action: 'read' },
+      ];
+
+      mockReflector.getAllAndOverride.mockReturnValue(requiredPermissions);
+      mockRedisClient.get.mockResolvedValue(
+        JSON.stringify([
+          { resource: 'document', action: 'create' },
+          { resource: 'document', action: 'update' },
+          { resource: 'template', action: 'read' },
+        ]),
+      );
+
+      const context = createMockExecutionContext({ id: 'user-1', role: 'leader' });
+
+      const result = await guard.canActivate(context);
+
+      expect(result).toBe(true);
+    });
+
+    it('应该在缺少任一权限时拒绝访问', async () => {
+      const requiredPermissions = [
+        { resource: 'document', action: 'create' },
+        { resource: 'document', action: 'delete' },
+      ];
+
+      mockReflector.getAllAndOverride.mockReturnValue(requiredPermissions);
+      mockRedisClient.get.mockResolvedValue(
+        JSON.stringify([
+          { resource: 'document', action: 'create' },
+          { resource: 'document', action: 'read' },
+        ]),
+      );
+
+      const context = createMockExecutionContext({ id: 'user-1', role: 'user' });
+
+      await expect(guard.canActivate(context)).rejects.toThrow(
+        new ForbiddenException('权限不足'),
+      );
+    });
+  });
+});

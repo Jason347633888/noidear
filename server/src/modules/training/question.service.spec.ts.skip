@@ -1,0 +1,280 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { QuestionService } from './question.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { QuestionType } from './dto/create-question.dto';
+
+describe('QuestionService', () => {
+  let service: QuestionService;
+  let prisma: PrismaService;
+
+  const mockQuestion = {
+    id: 'q1',
+    projectId: 'project-1',
+    type: QuestionType.CHOICE,
+    content: '什么是GMP？',
+    options: { A: 'Good Manufacturing Practice', B: '其他', C: '其他2' },
+    correctAnswer: 'A',
+    points: 10,
+    order: 1,
+  };
+
+  beforeEach(async () => {
+    const mockPrisma = {
+      examQuestion: {
+        create: jest.fn(),
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+        count: jest.fn(),
+      },
+      $transaction: jest.fn((callback: (prisma: any) => any) => callback(mockPrisma)),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        QuestionService,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
+    }).compile();
+
+    service = module.get<QuestionService>(QuestionService);
+    prisma = module.get(PrismaService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('createQuestion', () => {
+    it('应该成功创建单选题', async () => {
+      prisma.examQuestion.count.mockResolvedValue(0);
+      prisma.examQuestion.create.mockResolvedValue(mockQuestion);
+
+      const result = await service.createQuestion({
+        projectId: 'project-1',
+        type: QuestionType.CHOICE,
+        content: '什么是GMP？',
+        options: { A: 'Good Manufacturing Practice', B: '其他', C: '其他2' },
+        correctAnswer: 'A',
+        points: 10,
+      });
+
+      expect(result).toEqual(mockQuestion);
+      expect(prisma.examQuestion.create).toHaveBeenCalled();
+    });
+
+    it('应该成功创建多选题', async () => {
+      const multipleQuestion = { ...mockQuestion, type: 'multiple', correctAnswer: 'AB' };
+      prisma.examQuestion.count.mockResolvedValue(0);
+      prisma.examQuestion.create.mockResolvedValue(multipleQuestion);
+
+      const result = await service.createQuestion({
+        projectId: 'project-1',
+        type: QuestionType.JUDGE,
+        content: '选择所有正确选项',
+        options: { A: '选项A', B: '选项B', C: '选项C' },
+        correctAnswer: 'AB',
+        points: 15,
+      });
+
+      expect(result.type).toBe('multiple');
+      expect(result.correctAnswer).toBe('AB');
+    });
+
+    it('选项格式错误时应该抛出异常', async () => {
+      prisma.examQuestion.count.mockResolvedValue(0);
+
+      await expect(service.createQuestion({
+        projectId: 'project-1',
+        type: QuestionType.CHOICE,
+        content: '问题',
+        options: { A: '选项A' }, // 少于2个选项
+        correctAnswer: 'A',
+        points: 10,
+      })).rejects.toThrow(BadRequestException);
+    });
+
+    it('正确答案不在选项中时应该抛出异常', async () => {
+      prisma.examQuestion.count.mockResolvedValue(0);
+
+      await expect(service.createQuestion({
+        projectId: 'project-1',
+        type: QuestionType.CHOICE,
+        content: '问题',
+        options: { A: '选项A', B: '选项B' },
+        correctAnswer: 'D', // 不存在的选项
+        points: 10,
+      })).rejects.toThrow(BadRequestException);
+    });
+
+    it('分数必须大于0', async () => {
+      prisma.examQuestion.count.mockResolvedValue(0);
+
+      await expect(service.createQuestion({
+        projectId: 'project-1',
+        type: QuestionType.CHOICE,
+        content: '问题',
+        options: { A: '选项A', B: '选项B' },
+        correctAnswer: 'A',
+        points: 0, // 分数为0
+      })).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('findQuestions', () => {
+    it('应该返回指定项目的所有题目', async () => {
+      prisma.examQuestion.findMany.mockResolvedValue([mockQuestion]);
+
+      const result = await service.findQuestions('project-1');
+
+      expect(result).toEqual([mockQuestion]);
+      expect(prisma.examQuestion.findMany).toHaveBeenCalledWith({
+        where: { projectId: 'project-1' },
+        orderBy: { order: 'asc' },
+      });
+    });
+
+    it('应该按类型筛选题目', async () => {
+      prisma.examQuestion.findMany.mockResolvedValue([mockQuestion]);
+
+      const result = await service.findQuestions('project-1');
+
+      expect(result).toEqual([mockQuestion]);
+      expect(prisma.examQuestion.findMany).toHaveBeenCalledWith({
+        where: { projectId: 'project-1', type: 'single' },
+        orderBy: { order: 'asc' },
+      });
+    });
+  });
+
+  describe('updateQuestion', () => {
+    it('应该成功更新题目', async () => {
+      const updatedQuestion = { ...mockQuestion, content: '更新后的问题' };
+      prisma.examQuestion.findUnique.mockResolvedValue(mockQuestion);
+      prisma.examQuestion.update.mockResolvedValue(updatedQuestion);
+
+      const result = await service.updateQuestion('q1', {
+        content: '更新后的问题',
+      });
+
+      expect(result.content).toBe('更新后的问题');
+      expect(prisma.examQuestion.update).toHaveBeenCalled();
+    });
+
+    it('题目不存在时应该抛出 NotFoundException', async () => {
+      prisma.examQuestion.findUnique.mockResolvedValue(null);
+
+      await expect(service.updateQuestion('non-existent', {
+        content: '更新',
+      })).rejects.toThrow(NotFoundException);
+    });
+
+    it('更新正确答案时应该验证其有效性', async () => {
+      prisma.examQuestion.findUnique.mockResolvedValue(mockQuestion);
+
+      await expect(service.updateQuestion('q1', {
+        correctAnswer: 'D', // 不存在的选项
+      })).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('deleteQuestion', () => {
+    it('应该成功删除题目', async () => {
+      prisma.examQuestion.findUnique.mockResolvedValue(mockQuestion);
+      prisma.examQuestion.delete.mockResolvedValue(mockQuestion);
+
+      const result = await service.deleteQuestion('q1');
+
+      expect(result.message).toBe('题目删除成功');
+      expect(prisma.examQuestion.delete).toHaveBeenCalledWith({
+        where: { id: 'q1' },
+      });
+    });
+
+    it('题目不存在时应该抛出 NotFoundException', async () => {
+      prisma.examQuestion.findUnique.mockResolvedValue(null);
+
+      await expect(service.deleteQuestion('non-existent'))
+        .rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('batchImport', () => {
+    it('应该成功批量导入题目', async () => {
+      const questions = [
+        {
+          type: QuestionType.CHOICE,
+          content: '问题1',
+          options: { A: '选项A', B: '选项B' },
+          correctAnswer: 'A',
+          points: 10,
+        },
+        {
+          type: QuestionType.JUDGE,
+          content: '问题2',
+          options: { A: '选项A', B: '选项B', C: '选项C' },
+          correctAnswer: 'AB',
+          points: 15,
+        },
+      ];
+
+      prisma.examQuestion.count.mockResolvedValue(0);
+      prisma.examQuestion.create
+        .mockResolvedValueOnce({ ...questions[0], id: 'q1', order: 1 })
+        .mockResolvedValueOnce({ ...questions[1], id: 'q2', order: 2 });
+
+      const result = await service.batchImportQuestions('project-1', questions as any);
+
+      expect(result.created).toBe(2);
+      expect(result.failed).toBe(0);
+      expect(prisma.examQuestion.create).toHaveBeenCalledTimes(2);
+    });
+
+    it('应该正确处理部分失败的情况', async () => {
+      const questions = [
+        {
+          type: QuestionType.CHOICE,
+          content: '问题1',
+          options: { A: '选项A', B: '选项B' },
+          correctAnswer: 'A',
+          points: 10,
+        },
+        {
+          type: QuestionType.CHOICE,
+          content: '问题2',
+          options: { A: '选项A' }, // 无效 - 少于2个选项
+          correctAnswer: 'A',
+          points: 10,
+        },
+      ];
+
+      prisma.examQuestion.count.mockResolvedValue(0);
+      prisma.examQuestion.create.mockResolvedValueOnce({ ...questions[0], id: 'q1', order: 1 });
+
+      const result = await service.batchImportQuestions('project-1', questions as any);
+
+      expect(result.created).toBe(1);
+      expect(result.failed).toBe(1);
+      expect(result.errors).toHaveLength(1);
+    });
+  });
+
+  describe('updateQuestionsOrder', () => {
+    it('应该成功调整题目顺序', async () => {
+      const questionOrders = [
+        { id: 'q3', order: 1 },
+        { id: 'q1', order: 2 },
+        { id: 'q2', order: 3 }
+      ];
+
+      prisma.trainingProject.findUnique.mockResolvedValue({ id: 'project-1', status: 'draft' });
+      prisma.trainingQuestion.update.mockResolvedValue({});
+
+      const result = await service.updateQuestionsOrder('project-1', questionOrders);
+
+      expect(result.message).toBe('题目顺序更新成功');
+    });
+  });
+});

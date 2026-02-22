@@ -37,7 +37,20 @@
       <el-table-column type="selection" width="55" />
       <el-table-column label="标题" prop="title" />
       <el-table-column label="编号" prop="number" />
-      <el-table-column label="删除时间" prop="deletedAt" width="180" />
+      <el-table-column label="删除人" width="120">
+        <template #default="{ row }">
+          <div v-if="row.deletedBy" class="user-info">
+            <div class="user-avatar">{{ getUserInitial(row.deletedBy) }}</div>
+            <span>{{ getUserName(row.deletedBy) }}</span>
+          </div>
+          <span v-else class="empty-text">-</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="删除时间" prop="deletedAt" width="180">
+        <template #default="{ row }">
+          {{ formatDate(row.deletedAt) }}
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="200">
         <template #default="{ row }">
           <el-button size="small" @click="handleRestore(row.id)">
@@ -173,6 +186,21 @@ const handleSearch = () => {
     fetchData();
   }, 500);
 };
+
+const formatDate = (date: string): string => {
+  if (!date) return '-';
+  return new Date(date).toLocaleString('zh-CN');
+};
+
+const getUserName = (user: any): string => {
+  if (typeof user === 'string') return user;
+  return user?.name || user?.username || '-';
+};
+
+const getUserInitial = (user: any): string => {
+  const name = getUserName(user);
+  return name.charAt(0) || 'U';
+};
 </script>
 
 <style scoped>
@@ -184,5 +212,28 @@ const handleSearch = () => {
   margin: 20px 0;
   display: flex;
   gap: 10px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #1a1a2e;
+  color: #c9a227;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.empty-text {
+  color: #ccc;
 }
 </style>

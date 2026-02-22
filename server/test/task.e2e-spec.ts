@@ -6,6 +6,7 @@ import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
+import { REDIS_CLIENT } from '../src/modules/redis/redis.constants';
 import {
   TEST_PREFIX, IDS, FUTURE_DL, taskIds, recordIds,
   getData, seedDepts, seedUsers, seedTemplates,
@@ -23,9 +24,26 @@ describe('TaskController (e2e)', () => {
   let otherToken: string;
 
   beforeAll(async () => {
+    // Mock Redis client for E2E tests
+    const mockRedisClient = {
+      get: jest.fn().mockResolvedValue(null),
+      setex: jest.fn().mockResolvedValue('OK'),
+      del: jest.fn().mockResolvedValue(1),
+      exists: jest.fn().mockResolvedValue(0),
+      expire: jest.fn().mockResolvedValue(1),
+      ttl: jest.fn().mockResolvedValue(-1),
+      flushall: jest.fn().mockResolvedValue('OK'),
+      keys: jest.fn().mockResolvedValue([]),
+      quit: jest.fn().mockResolvedValue('OK'),
+      status: 'ready',
+    };
+
     const mod: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(REDIS_CLIENT)
+      .useValue(mockRedisClient)
+      .compile();
     app = mod.createNestApplication();
     app.setGlobalPrefix('api/v1');
     app.useGlobalInterceptors(new ResponseInterceptor());

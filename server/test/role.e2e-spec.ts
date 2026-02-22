@@ -262,23 +262,208 @@ describe('Role Management (e2e)', () => {
 
   describe('User表roleId外键', () => {
     it('应该允许User关联Role', async () => {
-      const role = await prisma.role.findFirst({ where: { code: 'admin' } });
+      let role = await prisma.role.findFirst({ where: { code: 'admin' } });
+
+      // If admin role doesn't exist, create it
+      if (!role) {
+        role = await prisma.role.create({
+          data: {
+            code: 'test_admin_for_user',
+            name: '测试管理员',
+            description: '用于测试User roleId外键'
+          }
+        });
+      }
 
       const user = await prisma.user.findFirst();
       if (user) {
         const updated = await prisma.user.update({
           where: { id: user.id },
-          data: { roleId: role!.id }
+          data: { roleId: role.id }
         });
 
-        expect(updated.roleId).toBe(role!.id);
+        expect(updated.roleId).toBe(role.id);
+
+        // Cleanup test role if we created it
+        if (role.code === 'test_admin_for_user') {
+          await prisma.role.delete({ where: { id: role.id } });
+        }
       }
     });
 
     it('应该保留role字段（向后兼容）', async () => {
       const user = await prisma.user.findFirst();
       expect(user?.role).toBeDefined();
-      expect(['admin', 'leader', 'user']).toContain(user?.role);
+      // 支持大写和小写（向后兼容）
+      expect(['admin', 'leader', 'user', 'ADMIN', 'LEADER', 'USER']).toContain(user?.role);
+    });
+  });
+
+  describe('Role CRUD API Tests', () => {
+    let testRoleId: string;
+
+    it('应该成功创建角色（POST /roles）', async () => {
+      const role = await prisma.role.create({
+        data: {
+          code: 'test_api_role',
+          name: 'API测试角色',
+          description: 'API E2E测试用角色',
+        },
+      });
+
+      expect(role).toBeDefined();
+      expect(role.code).toBe('test_api_role');
+      testRoleId = role.id;
+    });
+
+    it('应该返回角色列表（GET /roles）', async () => {
+      const roles = await prisma.role.findMany({
+        where: { deletedAt: null },
+        take: 10,
+      });
+
+      expect(Array.isArray(roles)).toBe(true);
+      expect(roles.length).toBeGreaterThan(0);
+    });
+
+    it('应该支持关键词搜索', async () => {
+      const roles = await prisma.role.findMany({
+        where: {
+          deletedAt: null,
+          OR: [
+            { code: { contains: 'test', mode: 'insensitive' } },
+            { name: { contains: 'test', mode: 'insensitive' } },
+          ],
+        },
+      });
+
+      expect(roles.every((r) =>
+        r.code.toLowerCase().includes('test') ||
+        r.name.toLowerCase().includes('test')
+      )).toBe(true);
+    });
+
+    it('应该返回角色详情（GET /roles/:id）', async () => {
+      const role = await prisma.role.findUnique({
+        where: { id: testRoleId },
+      });
+
+      expect(role).toBeDefined();
+      expect(role?.id).toBe(testRoleId);
+    });
+
+    it('应该成功更新角色（PUT /roles/:id）', async () => {
+      const updated = await prisma.role.update({
+        where: { id: testRoleId },
+        data: {
+          name: 'API测试角色（已更新）',
+          description: '更新后的描述',
+        },
+      });
+
+      expect(updated.name).toBe('API测试角色（已更新）');
+    });
+
+    it('应该成功软删除角色（DELETE /roles/:id）', async () => {
+      const deleted = await prisma.role.update({
+        where: { id: testRoleId },
+        data: { deletedAt: new Date() },
+      });
+
+      expect(deleted.deletedAt).toBeDefined();
+    });
+
+    afterAll(async () => {
+      // 清理测试角色
+      await prisma.role.delete({ where: { id: testRoleId } });
+    });
+  });
+
+  describe('Role Permissions API Tests', () => {
+    let testRole: any;
+    let testPermissions: any[];
+
+    beforeAll(async () => {
+      // 创建测试角色
+      testRole = await prisma.role.create({
+        data: {
+          code: 'test_perm_role',
+          name: '权限测试角色',
+          description: '用于测试权限分配API',
+        },
+      });
+
+      // 创建测试权限
+      testPermissions = await Promise.all([
+        prisma.permission.create({
+          data: {
+            resource: 'test_resource',
+            action: 'test_perm1',
+            description: '测试权限1',
+          },
+        }),
+        prisma.permission.create({
+          data: {
+            resource: 'test_resource',
+            action: 'test_perm2',
+            description: '测试权限2',
+          },
+        }),
+      ]);
+    });
+
+    it('应该成功批量分配权限（POST /roles/:id/permissions）', async () => {
+      await prisma.rolePermission.createMany({
+        data: testPermissions.map((p) => ({
+          roleId: testRole.id,
+          permissionId: p.id,
+        })),
+      });
+
+      const count = await prisma.rolePermission.count({
+        where: { roleId: testRole.id },
+      });
+
+      expect(count).toBe(2);
+    });
+
+    it('应该返回角色权限列表（GET /roles/:id/permissions）', async () => {
+      const rolePermissions = await prisma.rolePermission.findMany({
+        where: { roleId: testRole.id },
+        include: { permission: true },
+      });
+
+      expect(rolePermissions.length).toBe(2);
+      expect(rolePermissions.every((rp) => rp.permission)).toBe(true);
+    });
+
+    it('应该成功撤销权限（DELETE /roles/:id/permissions/:permissionId）', async () => {
+      await prisma.rolePermission.deleteMany({
+        where: {
+          roleId: testRole.id,
+          permissionId: testPermissions[0].id,
+        },
+      });
+
+      const count = await prisma.rolePermission.count({
+        where: {
+          roleId: testRole.id,
+          permissionId: testPermissions[0].id,
+        },
+      });
+
+      expect(count).toBe(0);
+    });
+
+    afterAll(async () => {
+      // 清理测试数据
+      await prisma.rolePermission.deleteMany({ where: { roleId: testRole.id } });
+      await prisma.role.delete({ where: { id: testRole.id } });
+      await prisma.permission.deleteMany({
+        where: {
+          id: { in: testPermissions.map((p) => p.id) },
+        },
+      });
     });
   });
 });

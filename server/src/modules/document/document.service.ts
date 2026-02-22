@@ -21,7 +21,7 @@ export class DocumentService {
     this.snowflake = new Snowflake(1, 1);
   }
 
-  private async generateDocumentNumber(level: number, departmentId: string): Promise<string> {
+  async generateDocumentNumber(level: number, departmentId: string): Promise<string> {
     return this.prisma.$transaction(async (tx) => {
       // BR-008: 优先使用待补齐编号
       const pendingNumber = await tx.pendingNumber.findFirst({
@@ -585,6 +585,17 @@ export class DocumentService {
       );
     }
 
+    // BR-346: 权限校验 - 仅文档创建者或管理员可归档
+    const isCreator = document.creatorId === userId;
+    const isAdmin = role === 'admin';
+
+    if (!isCreator && !isAdmin) {
+      throw new BusinessException(
+        ErrorCode.FORBIDDEN,
+        `无权归档文档 [${document.number}]，仅文档创建者或管理员可归档`,
+      );
+    }
+
     // 归档文档
     const result = await this.prisma.document.update({
       where: { id },
@@ -628,6 +639,18 @@ export class DocumentService {
       );
     }
 
+    // BR-347: 权限校验 - 仅质量部管理员或系统管理员可作废文档
+    // P2-19: 集成 P1-2 细粒度权限检查
+    const isAdmin = role === 'admin';
+    const isQualityManager = role === 'quality_manager';
+
+    if (!isAdmin && !isQualityManager) {
+      throw new BusinessException(
+        ErrorCode.FORBIDDEN,
+        `无权作废文档 [${document.number}]，仅管理员或质量部管理员可作废文档`,
+      );
+    }
+
     // 作废文档
     const result = await this.prisma.document.update({
       where: { id },
@@ -655,6 +678,60 @@ export class DocumentService {
       type: 'document_obsoleted',
       title: '文档已作废',
       content: `您的文档 [${document.number} ${document.title}] 已被作废`,
+    });
+
+    return convertBigIntToNumber(result);
+  }
+
+  async restore(id: string, reason: string, userId: string, role: string) {
+    const document = await this.findOne(id, userId, role);
+
+    // BR-348: 仅归档文档可恢复，作废文档不可恢复
+    if (document.status !== 'archived') {
+      throw new BusinessException(
+        ErrorCode.CONFLICT,
+        `文档 [${document.number}] 当前状态为 [${document.status}]，仅归档文档可恢复`,
+      );
+    }
+
+    // BR-348: 权限校验 - 仅管理员可恢复归档文档
+    if (role !== 'admin') {
+      throw new BusinessException(
+        ErrorCode.FORBIDDEN,
+        `无权恢复文档 [${document.number}]，仅管理员可恢复归档文档`,
+      );
+    }
+
+    // P1-8: 恢复文档到已发布状态，同时清除归档字段
+    const result = await this.prisma.document.update({
+      where: { id },
+      data: {
+        status: 'approved',
+        archiveReason: null,
+        archivedAt: null,
+        archivedBy: null,
+        obsoleteReason: null,
+        obsoletedAt: null,
+        obsoletedBy: null,
+      },
+    });
+
+    // 记录操作日志
+    await this.operationLog.log({
+      userId,
+      action: 'restore',
+      module: 'document',
+      objectId: id,
+      objectType: 'document',
+      details: { documentNumber: document.number, reason },
+    });
+
+    // 发送通知
+    await this.notification.create({
+      userId: document.creatorId,
+      type: 'document_restored',
+      title: '文档已恢复',
+      content: `您的文档 [${document.number} ${document.title}] 已从归档状态恢复`,
     });
 
     return convertBigIntToNumber(result);

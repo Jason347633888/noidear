@@ -9,8 +9,37 @@
     <div v-loading="loading" class="preview-container">
       <!-- PDF 预览 -->
       <div v-if="previewData?.type === 'pdf'" class="pdf-preview">
+        <!-- 移动端：显示下载提示 -->
+        <div v-if="isMobile" class="mobile-hint">
+          <el-alert
+            title="移动端暂不支持在线预览，请下载后查看"
+            type="info"
+            :closable="false"
+            show-icon
+          />
+          <el-button
+            type="primary"
+            size="large"
+            style="margin-top: 20px"
+            @click="handleDownload"
+          >
+            <el-icon><Download /></el-icon>
+            下载文件
+          </el-button>
+        </div>
+
+        <!-- Safari: 使用 iframe -->
+        <iframe
+          v-else-if="isSafari && previewData.url"
+          :src="previewData.url"
+          width="100%"
+          height="700px"
+          frameborder="0"
+        />
+
+        <!-- 其他浏览器: 使用 embed -->
         <embed
-          v-if="previewData.url"
+          v-else-if="previewData.url"
           :src="previewData.url"
           type="application/pdf"
           width="100%"
@@ -63,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Download, FullScreen } from '@element-plus/icons-vue';
 import filePreviewApi, { PreviewResult } from '@/api/file-preview';
@@ -80,6 +109,10 @@ const visible = ref(props.modelValue);
 const fullscreen = ref(false);
 const loading = ref(false);
 const previewData = ref<PreviewResult | null>(null);
+
+// 浏览器检测
+const isMobile = computed(() => /Mobi|Android/i.test(navigator.userAgent));
+const isSafari = computed(() => /^((?!chrome|android).)*safari/i.test(navigator.userAgent));
 
 watch(
   () => props.modelValue,
@@ -130,7 +163,8 @@ const handleDownload = () => {
 }
 
 .download-hint,
-.unknown-type {
+.unknown-type,
+.mobile-hint {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -138,7 +172,8 @@ const handleDownload = () => {
   padding: 40px;
 }
 
-.download-hint :deep(.el-alert) {
+.download-hint :deep(.el-alert),
+.mobile-hint :deep(.el-alert) {
   max-width: 600px;
 }
 </style>

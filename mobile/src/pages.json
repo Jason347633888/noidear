@@ -1,0 +1,102 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "首页",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/todo/list",
+      "style": {
+        "navigationBarTitleText": "待办列表",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/records/list",
+      "style": {
+        "navigationBarTitleText": "记录查询",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/records/detail",
+      "style": {
+        "navigationBarTitleText": "记录详情"
+      }
+    },
+    {
+      "path": "pages/calendar/index",
+      "style": {
+        "navigationBarTitleText": "日历视图"
+      }
+    },
+    {
+      "path": "pages/equipment/list",
+      "style": {
+        "navigationBarTitleText": "设备管理",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/equipment/detail",
+      "style": {
+        "navigationBarTitleText": "设备详情"
+      }
+    },
+    {
+      "path": "pages/user/index",
+      "style": {
+        "navigationBarTitleText": "用户中心"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "文档管理系统",
+    "navigationBarBackgroundColor": "#409EFF",
+    "backgroundColor": "#F5F5F5",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#409EFF",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "static/tabs/home.png",
+        "selectedIconPath": "static/tabs/home-active.png"
+      },
+      {
+        "pagePath": "pages/todo/list",
+        "text": "待办",
+        "iconPath": "static/tabs/todo.png",
+        "selectedIconPath": "static/tabs/todo-active.png"
+      },
+      {
+        "pagePath": "pages/records/list",
+        "text": "记录",
+        "iconPath": "static/tabs/record.png",
+        "selectedIconPath": "static/tabs/record-active.png"
+      },
+      {
+        "pagePath": "pages/user/index",
+        "text": "我的",
+        "iconPath": "static/tabs/user.png",
+        "selectedIconPath": "static/tabs/user-active.png"
+      }
+    ]
+  }
+}

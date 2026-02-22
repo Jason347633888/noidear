@@ -114,6 +114,28 @@ export class StorageService {
   }
 
   /**
+   * 上传 Buffer (用于日志归档等场景)
+   */
+  async uploadBuffer(
+    buffer: Buffer,
+    path: string,
+  ): Promise<void> {
+    try {
+      await this.ensureBucket();
+
+      await this.client.putObject(this.bucket, path, buffer, buffer.length, {
+        'Content-Type': 'application/json',
+      });
+    } catch (error) {
+      throw new BusinessException(
+        ErrorCode.DATABASE_ERROR,
+        'Buffer上传失败',
+        error,
+      );
+    }
+  }
+
+  /**
    * 获取文件URL
    */
   getFileUrl(path: string): string {

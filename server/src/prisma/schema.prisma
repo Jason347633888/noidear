@@ -7,75 +7,183 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ========================================
+// Enums for Warehouse & Batch Traceability
+// ========================================
+
+enum BatchStatus {
+  normal
+  expired
+  locked
+}
+
+enum StockRecordType {
+  in
+  out
+  return
+  scrap
+}
+
+enum RequisitionStatus {
+  draft
+  pending
+  approved
+  rejected
+  completed
+}
+
+enum RequisitionType {
+  production
+  maintenance
+  other
+}
+
+enum StagingRecordType {
+  opening
+  closing
+}
+
+enum BalanceStatus {
+  normal
+  alert
+}
+
+enum ProductionStatus {
+  pending
+  in_progress
+  completed
+  cancelled
+}
+
+enum FinishedGoodsStatus {
+  in_stock
+  shipped
+  recalled
+}
+
+enum InboundStatus {
+  draft
+  pending
+  approved
+  completed
+}
+
+enum MaterialReturnStatus {
+  draft
+  approved
+  completed
+}
+
+enum MaterialScrapStatus {
+  draft
+  approved
+  completed
+}
+
 model User {
-  id            String    @id
-  username      String    @unique
+  id            String      @id
+  username      String      @unique
   password      String
   name          String
   departmentId  String?
   department    Department? @relation("UserDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
-  role          String    @default("user")  // 保留（向后兼容）
-  roleId        String?                     // P1-2: 新增角色外键
-  roleObj       Role?     @relation("UserRole", fields: [roleId], references: [id], onDelete: SetNull)
+  role          String      @default("user") // 保留（向后兼容）
+  roleId        String? // P1-2: 新增角色外键
+  roleObj       Role?       @relation("UserRole", fields: [roleId], references: [id], onDelete: SetNull)
   superiorId    String?
-  superior      User?     @relation("UserSuperior", fields: [superiorId], references: [id], onDelete: SetNull)
-  subordinates  User[]    @relation("UserSuperior")
-  status        String    @default("active")
-  loginAttempts Int       @default(0)
+  superior      User?       @relation("UserSuperior", fields: [superiorId], references: [id], onDelete: SetNull)
+  subordinates  User[]      @relation("UserSuperior")
+  status        String      @default("active")
+  loginAttempts Int         @default(0)
   lockedUntil   DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
   deletedAt     DateTime?
 
   // 反向关系
-  documentsCreated     Document[]       @relation("DocumentCreator")
-  documentsApproved    Document[]       @relation("DocumentApprover")
-  documentsArchived    Document[]       @relation("DocumentArchiver")
-  documentsObsoleted   Document[]       @relation("DocumentObsoleter")
+  documentsCreated     Document[]        @relation("DocumentCreator")
+  documentsApproved    Document[]        @relation("DocumentApprover")
+  documentsArchived    Document[]        @relation("DocumentArchiver")
+  documentsObsoleted   Document[]        @relation("DocumentObsoleter")
   versionsCreated      DocumentVersion[] @relation("VersionCreator")
-  templatesCreated     Template[]       @relation("TemplateCreator")
-  tasksCreated         Task[]           @relation("TaskCreator")
-  taskRecordsSubmitted TaskRecord[]    @relation("RecordSubmitter")
-  taskRecordsApproved  TaskRecord[]    @relation("RecordApprover")
-  approvalsGiven       Approval[]       @relation("Approver")
+  templatesCreated     Template[]        @relation("TemplateCreator")
+  tasksCreated         Task[]            @relation("TaskCreator")
+  taskRecordsSubmitted TaskRecord[]      @relation("RecordSubmitter")
+  taskRecordsApproved  TaskRecord[]      @relation("RecordApprover")
+  approvalsGiven       Approval[]        @relation("Approver")
   operationLogs        OperationLog[]
   notifications        Notification[]
-  managedDepartments   Department[]     @relation("DepartmentManager")
+  managedDepartments   Department[]      @relation("DepartmentManager")
+
+  // P1-2: Fine-grained permission relations
+  userPermissions    UserPermission[] @relation("UserPermissions")
+  permissionsGranted UserPermission[] @relation("PermissionGrantor")
+
+  // P1-3: Workflow relations
+  workflowsInitiated     WorkflowInstance[] @relation("WorkflowInitiator")
+  workflowTasksAssigned  WorkflowTask[]     @relation("WorkflowTaskAssignee")
+  workflowTasksEscalated WorkflowTask[]     @relation("WorkflowTaskEscalated")
+
+  // Dynamic Form Engine relations
+  recordsCreated Record[]          @relation("RecordCreator")
+  recordChanges  RecordChangeLog[] @relation("RecordChanger")
+
+  // Warehouse & Batch Traceability relations
+  stockRecords     StockRecord[]       @relation("StockRecordOperator")
+  stagingRecords   StagingAreaRecord[] @relation("StagingRecordOperator")
+  inboundsApproved MaterialInbound[]   @relation("InboundApprover")
+  inboundsOperated MaterialInbound[]   @relation("InboundOperator")
+
+  // TASK-359: Audit logging relations
+  loginLogs                LoginLog[]      @relation("UserLoginLogs")
+  permissionLogsAsOperator PermissionLog[] @relation("PermissionLogOperator")
+  permissionLogsAsTarget   PermissionLog[] @relation("PermissionLogTarget")
+  sensitiveLogs            SensitiveLog[]  @relation("UserSensitiveLogs")
+
+  // Training Management System relations
+  todoTasks TodoTask[] @relation("UserTodoTasks")
+
+  // Internal Audit Management System relations (TASK-325)
+  createdAuditPlans     AuditPlan[]    @relation("CreatedAuditPlans")
+  auditedPlans          AuditPlan[]    @relation("AuditedPlans")
+  assignedAuditFindings AuditFinding[] @relation("AssignedAuditFindings")
+  verifiedAuditFindings AuditFinding[] @relation("VerifiedAuditFindings")
 
   @@map("users")
 }
 
 model Department {
-  id        String    @id
-  code      String    @unique
+  id        String       @id
+  code      String       @unique
   name      String
   parentId  String?
-  parent    Department? @relation("DepartmentParent", fields: [parentId], references: [id], onDelete: SetNull)
+  parent    Department?  @relation("DepartmentParent", fields: [parentId], references: [id], onDelete: SetNull)
   children  Department[] @relation("DepartmentParent")
   managerId String?
-  manager   User?     @relation("DepartmentManager", fields: [managerId], references: [id], onDelete: SetNull)
-  status    String    @default("active")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  manager   User?        @relation("DepartmentManager", fields: [managerId], references: [id], onDelete: SetNull)
+  status    String       @default("active")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
   deletedAt DateTime?
 
   // 反向关系
-  users          User[]          @relation("UserDepartment")
-  numberRules    NumberRule[]
-  pendingNumbers PendingNumber[]
-  tasks          Task[]
+  users             User[]             @relation("UserDepartment")
+  numberRules       NumberRule[]
+  pendingNumbers    PendingNumber[]
+  tasks             Task[]
+  workflowTemplates WorkflowTemplate[] @relation("WorkflowTemplateDepartment")
 
   @@map("departments")
 }
 
 model NumberRule {
-  id           String   @id
+  id           String     @id
   level        Int
   departmentId String
   department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  sequence     Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  sequence     Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   @@unique([level, departmentId])
   @@map("number_rules")
@@ -94,70 +202,74 @@ model PendingNumber {
 }
 
 model Document {
-  id          String    @id
-  level       Int
-  number      String    @unique
-  title       String
-  filePath    String
-  fileName    String
-  fileSize    Int
-  fileType    String
-  version     Decimal   @default(1.0) @db.Decimal(3, 1)
-  status      String
-  creatorId   String
-  creator     User      @relation("DocumentCreator", fields: [creatorId], references: [id], onDelete: Restrict)
-  approverId  String?
-  approver    User?     @relation("DocumentApprover", fields: [approverId], references: [id], onDelete: SetNull)
-  approvedAt  DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  id         String    @id
+  level      Int
+  number     String    @unique
+  title      String
+  filePath   String
+  fileName   String
+  fileSize   Int
+  fileType   String
+  version    Decimal   @default(1.0) @db.Decimal(3, 1)
+  status     String
+  creatorId  String
+  creator    User      @relation("DocumentCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+  approverId String?
+  approver   User?     @relation("DocumentApprover", fields: [approverId], references: [id], onDelete: SetNull)
+  approvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
 
   // P1-1: 归档/作废字段
   archiveReason  String?
   archivedAt     DateTime?
   archivedBy     String?
-  archiver       User?   @relation("DocumentArchiver", fields: [archivedBy], references: [id], onDelete: SetNull)
+  archiver       User?     @relation("DocumentArchiver", fields: [archivedBy], references: [id], onDelete: SetNull)
   obsoleteReason String?
   obsoletedAt    DateTime?
   obsoletedBy    String?
-  obsoleter      User?   @relation("DocumentObsoleter", fields: [obsoletedBy], references: [id], onDelete: SetNull)
+  obsoleter      User?     @relation("DocumentObsoleter", fields: [obsoletedBy], references: [id], onDelete: SetNull)
 
   // 反向关系
-  versions    DocumentVersion[]
-  approvals   Approval[]
+  versions  DocumentVersion[]
+  approvals Approval[]
+
+  // Internal Audit Management System relations (TASK-325)
+  auditFindings AuditFinding[] @relation("AuditFindings")
+  auditReports  AuditReport[]  @relation("AuditReports")
 
   @@map("documents")
 }
 
 model DocumentVersion {
-  id          String   @id
-  documentId  String
-  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  version     Decimal  @db.Decimal(3, 1)
-  filePath    String
-  fileName    String
-  fileSize    Int
-  creatorId   String
-  creator     User     @relation("VersionCreator", fields: [creatorId], references: [id], onDelete: Restrict)
-  createdAt   DateTime @default(now())
+  id         String   @id
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version    Decimal  @db.Decimal(3, 1)
+  filePath   String
+  fileName   String
+  fileSize   Int
+  creatorId  String
+  creator    User     @relation("VersionCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+  createdAt  DateTime @default(now())
 
   @@map("document_versions")
 }
 
 model Template {
-  id        String   @id
-  level     Int      @default(4)
-  number    String   @unique
-  title     String
+  id         String    @id
+  level      Int       @default(4)
+  number     String    @unique
+  title      String
   fieldsJson Json
-  version   Decimal  @default(1.0) @db.Decimal(3, 1)
-  status    String   @default("active")
-  creatorId String
-  creator   User     @relation("TemplateCreator", fields: [creatorId], references: [id], onDelete: Restrict)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
+  version    Decimal   @default(1.0) @db.Decimal(3, 1)
+  status     String    @default("active")
+  creatorId  String
+  creator    User      @relation("TemplateCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
 
   // 反向关系
   tasks       Task[]
@@ -167,21 +279,21 @@ model Template {
 }
 
 model Task {
-  id           String    @id
+  id           String     @id
   templateId   String
-  template     Template  @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  template     Template   @relation(fields: [templateId], references: [id], onDelete: Restrict)
   departmentId String
   department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
   deadline     DateTime
-  status       String    @default("pending")
+  status       String     @default("pending")
   creatorId    String
-  creator      User      @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Restrict)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  creator      User       @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
   deletedAt    DateTime?
 
   // 反向关系
-  records     TaskRecord[]
+  records TaskRecord[]
 
   @@index([departmentId])
   @@index([status])
@@ -208,9 +320,9 @@ model TaskRecord {
   deletedAt   DateTime?
 
   // Phase 7-8: 配方偏离检测
-  relatedTemplateVersion Decimal?  @db.Decimal(3, 1)
-  hasDeviation          Boolean   @default(false)
-  deviationCount        Int       @default(0)
+  relatedTemplateVersion Decimal? @db.Decimal(3, 1)
+  hasDeviation           Boolean  @default(false)
+  deviationCount         Int      @default(0)
 
   // 反向关系
   approvals        Approval[]
@@ -220,28 +332,28 @@ model TaskRecord {
 }
 
 model Approval {
-  id              String   @id
+  id              String      @id
   documentId      String?
-  document        Document? @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  document        Document?   @relation(fields: [documentId], references: [id], onDelete: Cascade)
   recordId        String?
   record          TaskRecord? @relation(fields: [recordId], references: [id], onDelete: Cascade)
   approverId      String
-  approver        User     @relation("Approver", fields: [approverId], references: [id], onDelete: Restrict)
+  approver        User        @relation("Approver", fields: [approverId], references: [id], onDelete: Restrict)
   status          String
   comment         String?
-  level           Int      @default(1)
+  level           Int         @default(1)
   approvalChainId String?
   previousLevel   String?
   nextLevel       String?
   rejectionReason String?
   approvedAt      DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @default(now()) @updatedAt
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @default(now()) @updatedAt
 
   // Phase 7: 会签/顺签扩展字段
-  approvalType    String   @default("single")  // single | countersign | sequential
-  sequence        Int      @default(0)          // 顺签时的审批顺序
-  groupId         String?                       // 会签/顺签分组标识
+  approvalType String  @default("single") // single | countersign | sequential
+  sequence     Int     @default(0) // 顺签时的审批顺序
+  groupId      String? // 会签/顺签分组标识
 
   @@index([approverId, status])
   @@index([recordId])
@@ -309,15 +421,15 @@ model DeviationReport {
 
 // P1-2: 角色权限系统
 model Role {
-  id          String   @id @default(cuid())
-  code        String   @unique  // admin, leader, user
-  name        String              // 管理员, 主管, 普通用户
+  id          String    @id @default(cuid())
+  code        String    @unique // admin, leader, user
+  name        String // 管理员, 主管, 普通用户
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  users       User[]   @relation("UserRole")
+  users       User[]           @relation("UserRole")
   permissions RolePermission[]
 
   @@map("roles")
@@ -325,13 +437,13 @@ model Role {
 
 model Permission {
   id          String   @id @default(cuid())
-  resource    String              // document, template, task, approval
-  action      String              // create, read, update, delete, approve
+  resource    String // document, template, task, approval
+  action      String // create, read, update, delete, approve
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  roles       RolePermission[]
+  roles RolePermission[]
 
   @@unique([resource, action])
   @@index([resource])
@@ -339,15 +451,1387 @@ model Permission {
 }
 
 model RolePermission {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   roleId       String
-  role         Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   permissionId String
   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  createdAt    DateTime @default(now())
+  createdAt    DateTime   @default(now())
 
   @@unique([roleId, permissionId])
   @@index([roleId])
   @@index([permissionId])
   @@map("role_permissions")
+}
+
+// P1-2: 细粒度权限定义表（ABAC）
+model FineGrainedPermission {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  category    String
+  scope       String
+  status      String   @default("active")
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userPermissions UserPermission[]
+
+  @@index([code])
+  @@index([category])
+  @@index([scope])
+  @@index([status])
+  @@map("fine_grained_permissions")
+}
+
+// P1-2: 用户权限授予记录表
+model UserPermission {
+  id                      String                @id @default(cuid())
+  userId                  String
+  user                    User                  @relation("UserPermissions", fields: [userId], references: [id], onDelete: Cascade)
+  fineGrainedPermissionId String
+  fineGrainedPermission   FineGrainedPermission @relation(fields: [fineGrainedPermissionId], references: [id], onDelete: Cascade)
+  grantedBy               String
+  grantor                 User?                 @relation("PermissionGrantor", fields: [grantedBy], references: [id], onDelete: SetNull)
+  grantedAt               DateTime              @default(now())
+  expiresAt               DateTime?
+  reason                  String
+  resourceType            String?
+  resourceId              String?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+
+  @@index([userId])
+  @@index([fineGrainedPermissionId])
+  @@index([expiresAt])
+  @@index([resourceType, resourceId])
+  @@map("user_permissions")
+}
+
+// P1-3: 工作流模板表
+model WorkflowTemplate {
+  id           String      @id @default(cuid())
+  code         String      @unique
+  name         String
+  departmentId String?
+  department   Department? @relation("WorkflowTemplateDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
+  category     String
+  steps        Json
+  version      Int         @default(1)
+  status       String      @default("active")
+  description  String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  deletedAt    DateTime?
+
+  instances WorkflowInstance[]
+
+  @@index([code])
+  @@index([category])
+  @@index([departmentId])
+  @@index([status])
+  @@map("workflow_templates")
+}
+
+// P1-3: 工作流实例表（含外键修复）
+model WorkflowInstance {
+  id            String           @id @default(cuid())
+  templateId    String
+  template      WorkflowTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  resourceType  String
+  resourceId    String
+  resourceTitle String
+  initiatorId   String
+  initiator     User?            @relation("WorkflowInitiator", fields: [initiatorId], references: [id], onDelete: SetNull)
+  status        String           @default("pending")
+  currentStep   Int              @default(0)
+  cancelReason  String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  deletedAt     DateTime?
+
+  tasks WorkflowTask[]
+
+  @@index([templateId])
+  @@index([resourceType])
+  @@index([resourceId])
+  @@index([resourceType, resourceId])
+  @@index([status])
+  @@index([initiatorId])
+  @@map("workflow_instances")
+}
+
+// P1-3: 工作流任务表（含外键修复）
+model WorkflowTask {
+  id            String           @id @default(cuid())
+  instanceId    String
+  instance      WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  stepIndex     Int
+  stepName      String
+  assigneeId    String
+  assignee      User?            @relation("WorkflowTaskAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  status        String           @default("pending")
+  comment       String?
+  dueAt         DateTime
+  completedAt   DateTime?
+  escalatedTo   String?
+  escalatedUser User?            @relation("WorkflowTaskEscalated", fields: [escalatedTo], references: [id], onDelete: SetNull)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([instanceId])
+  @@index([assigneeId])
+  @@index([status])
+  @@index([dueAt])
+  @@map("workflow_tasks")
+}
+
+// 动态表单引擎: 记录模板表
+model RecordTemplate {
+  id             String    @id @default(cuid())
+  code           String    @unique
+  name           String
+  fieldsJson     Json
+  version        Int       @default(1)
+  retentionYears Int       @default(3)
+  status         String    @default("active")
+  description    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  // TASK-169: 批次关联配置
+  batchLinkEnabled Boolean @default(false) // 是否启用批次关联
+  batchLinkType    String? // "production" | "finished_goods"
+  batchLinkField   String? // 哪个字段存储批次号
+
+  records Record[]
+
+  @@index([code])
+  @@index([status])
+  @@map("record_templates")
+}
+
+// 动态表单引擎: 记录实例表（含外键修复）
+model Record {
+  id             String         @id @default(cuid())
+  templateId     String
+  template       RecordTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  number         String         @unique
+  dataJson       Json
+  status         String         @default("draft")
+  retentionUntil DateTime?
+  createdBy      String
+  creator        User?          @relation("RecordCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  submittedAt    DateTime?
+  approvedAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
+
+  // TASK-169: 批次关联
+  relatedBatchType     String? // "production" | "finished_goods"
+  relatedBatchId       String? // 批次 ID
+  relatedBatchNumber   String? // 批次号（冗余，加速查询）
+  productionBatchId    String?
+  productionBatch      ProductionBatch?    @relation("RecordProductionBatch", fields: [productionBatchId], references: [id], onDelete: SetNull)
+  finishedGoodsBatchId String?
+  finishedGoodsBatch   FinishedGoodsBatch? @relation("RecordFinishedGoodsBatch", fields: [finishedGoodsBatchId], references: [id], onDelete: SetNull)
+
+  changeLogs RecordChangeLog[]
+
+  @@index([templateId])
+  @@index([number])
+  @@index([status])
+  @@index([retentionUntil])
+  @@index([relatedBatchNumber])
+  @@index([productionBatchId])
+  @@index([finishedGoodsBatchId])
+  @@map("records")
+}
+
+// 动态表单引擎: 记录变更历史表（含外键修复）
+model RecordChangeLog {
+  id        String   @id @default(cuid())
+  recordId  String
+  record    Record   @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  oldData   Json
+  newData   Json
+  changedBy String
+  changer   User?    @relation("RecordChanger", fields: [changedBy], references: [id], onDelete: SetNull)
+  changedAt DateTime @default(now())
+  reason    String
+  createdAt DateTime @default(now())
+
+  @@index([recordId])
+  @@index([changedAt])
+  @@map("record_change_logs")
+}
+
+// ========================================
+// 仓库管理系统 + 批次追溯系统
+// ========================================
+
+// TASK-181: 物料分类表
+model MaterialCategory {
+  id          String             @id @default(cuid())
+  code        String             @unique
+  name        String
+  parentId    String?
+  parent      MaterialCategory?  @relation("MaterialCategoryParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children    MaterialCategory[] @relation("MaterialCategoryParent")
+  description String?
+  status      String             @default("active")
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  deletedAt   DateTime?
+
+  materials Material[]
+
+  @@index([code])
+  @@index([status])
+  @@map("material_categories")
+}
+
+// TASK-181: 物料基础表
+model Material {
+  id            String           @id @default(cuid())
+  materialCode  String           @unique
+  name          String
+  specification String?
+  unit          String           @default("kg")
+  categoryId    String
+  category      MaterialCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  shelfLife     Int? // 保质期（天）
+  safetyStock   Float            @default(0)
+  customFields  Json? // 自定义扩展字段
+  status        String           @default("active")
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  deletedAt     DateTime?
+
+  batches MaterialBatch[]
+
+  @@index([materialCode])
+  @@index([categoryId])
+  @@index([status])
+  @@map("materials")
+}
+
+// TASK-182: 物料批次表（统一定义，支持批次追溯系统复用）
+model MaterialBatch {
+  id                String      @id @default(cuid())
+  batchNumber       String      @unique // 批次号（BR-241: 唯一性）
+  materialId        String
+  material          Material    @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  supplierBatchNo   String? // 供应商批次号
+  supplierId        String?
+  supplier          Supplier?   @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  productionDate    DateTime // 生产日期
+  expiryDate        DateTime // 到期日期
+  quantity          Float       @default(0) // 当前库存数量
+  status            BatchStatus @default(normal) // normal, expired, locked
+  barcode           String? // 条形码
+  warehouseLocation String? // 仓库位置
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  deletedAt         DateTime?
+
+  // 库存流水
+  stockRecords        StockRecord[]
+  // 领料明细
+  requisitionItems    MaterialRequisitionItem[]
+  // 暂存间库存
+  stagingStocks       StagingAreaStock[]
+  // 批次追溯系统关联（TASK-159）
+  batchMaterialUsages BatchMaterialUsage[]
+  // 入库明细关联
+  inboundItems        MaterialInboundItem[]     @relation("InboundCreatedBatch")
+  // 退料明细关联（TASK-195）
+  returnItems         MaterialReturnItem[]      @relation("ReturnBatches")
+  // 报废明细关联（TASK-196）
+  scrapItems          MaterialScrapItem[]       @relation("ScrapBatches")
+
+  @@index([batchNumber])
+  @@index([expiryDate])
+  @@index([status])
+  @@index([materialId])
+  @@map("material_batches")
+}
+
+// TASK-183: 库存流水表
+model StockRecord {
+  id          String          @id @default(cuid())
+  batchId     String
+  batch       MaterialBatch   @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  recordType  StockRecordType // in(入库), out(出库), return(退料), scrap(报废)
+  quantity    Float
+  relatedId   String? // 关联单据ID（入库单/领料单/退料单/报废单）
+  relatedType String? // 关联单据类型
+  operatorId  String
+  operator    User            @relation("StockRecordOperator", fields: [operatorId], references: [id], onDelete: Restrict)
+  remark      String?
+  createdAt   DateTime        @default(now())
+
+  @@index([batchId])
+  @@index([recordType])
+  @@index([createdAt])
+  @@index([relatedId])
+  @@index([operatorId])
+  @@map("stock_records")
+}
+
+// TASK-184: 领料单表
+model MaterialRequisition {
+  id              String            @id @default(cuid())
+  requisitionNo   String            @unique
+  requisitionType RequisitionType // production(生产领料), maintenance(维修领料), other(其他)
+  status          RequisitionStatus @default(draft) // draft, pending, approved, rejected, completed
+  applicantId     String
+  departmentId    String?
+  remark          String?
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  approvedBy      String?
+  completedAt     DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
+
+  items MaterialRequisitionItem[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([requisitionType])
+  @@map("material_requisitions")
+}
+
+// TASK-184: 领料明细表
+model MaterialRequisitionItem {
+  id            String              @id @default(cuid())
+  requisitionId String
+  requisition   MaterialRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  batchId       String
+  batch         MaterialBatch       @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  quantity      Float
+  createdAt     DateTime            @default(now())
+
+  @@index([requisitionId])
+  @@index([batchId])
+  @@map("material_requisition_items")
+}
+
+// TASK-185: 供应商表
+model Supplier {
+  id           String    @id @default(cuid())
+  supplierCode String    @unique
+  name         String
+  contact      String?
+  phone        String?
+  address      String?
+  status       String    @default("active") // active, disabled
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  qualifications SupplierQualification[]
+  batches        MaterialBatch[]
+  inbounds       MaterialInbound[]
+
+  @@index([supplierCode])
+  @@index([status])
+  @@map("suppliers")
+}
+
+// TASK-185: 供应商资质表
+model SupplierQualification {
+  id                String   @id @default(cuid())
+  supplierId        String
+  supplier          Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  qualificationType String // license(营业执照), certificate(资质证书), etc
+  certificateNo     String
+  validFrom         DateTime
+  validUntil        DateTime
+  attachmentPath    String?
+  status            String   @default("valid") // valid, expired, revoked
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([supplierId])
+  @@index([validUntil])
+  @@index([status])
+  @@map("supplier_qualifications")
+}
+
+// TASK-186: 暂存间库存表
+model StagingAreaStock {
+  id        String        @id @default(cuid())
+  batchId   String
+  batch     MaterialBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  quantity  Float         @default(0)
+  location  String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([batchId])
+  @@map("staging_area_stocks")
+}
+
+// TASK-186: 暂存间盘点记录表
+model StagingAreaRecord {
+  id         String            @id @default(cuid())
+  batchId    String
+  recordType StagingRecordType // opening(期初盘点), closing(期末盘点)
+  quantity   Float
+  operatorId String
+  operator   User              @relation("StagingRecordOperator", fields: [operatorId], references: [id], onDelete: Restrict)
+  shiftDate  DateTime // 班次日期
+  createdAt  DateTime          @default(now())
+
+  @@index([batchId])
+  @@index([recordType])
+  @@index([createdAt])
+  @@index([operatorId])
+  @@map("staging_area_records")
+}
+
+// TASK-187: 物料平衡表
+model MaterialBalance {
+  id                     String          @id @default(cuid())
+  productionBatchId      String // 生产批次ID（来自批次追溯系统）
+  productionBatch        ProductionBatch @relation("MaterialBalanceProductionBatch", fields: [productionBatchId], references: [id], onDelete: Restrict)
+  materialId             String
+  openingQuantity        Float // 期初数量
+  requisitionQuantity    Float // 领料数量
+  closingQuantity        Float // 期末数量
+  actualConsumption      Float // 实际消耗
+  theoreticalConsumption Float // 理论消耗
+  deviationRate          Float // 偏差率（%）
+  status                 BalanceStatus   @default(normal) // normal, alert (偏差>5%)
+  recordDate             DateTime
+  createdAt              DateTime        @default(now())
+
+  @@index([productionBatchId])
+  @@index([materialId])
+  @@index([deviationRate])
+  @@index([recordDate])
+  @@map("material_balances")
+}
+
+// TASK-197: 物料入库单表
+model MaterialInbound {
+  id          String        @id @default(cuid())
+  inboundNo   String        @unique
+  supplierId  String
+  supplier    Supplier      @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  status      InboundStatus @default(draft) // draft, pending, approved, completed
+  submittedAt DateTime?
+  approvedAt  DateTime?
+  approvedBy  String?
+  approver    User?         @relation("InboundApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  completedAt DateTime?
+  operatorId  String?
+  operator    User?         @relation("InboundOperator", fields: [operatorId], references: [id], onDelete: SetNull)
+  remark      String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+
+  items MaterialInboundItem[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([supplierId])
+  @@map("material_inbounds")
+}
+
+// TASK-197: 物料入库明细表
+model MaterialInboundItem {
+  id              String          @id @default(cuid())
+  inboundId       String
+  inbound         MaterialInbound @relation(fields: [inboundId], references: [id], onDelete: Cascade)
+  materialId      String
+  quantity        Float
+  supplierBatchNo String? // 供应商批次号
+  productionDate  DateTime
+  expiryDate      DateTime
+  createdBatchId  String? // 入库完成后创建的批次ID
+  createdBatch    MaterialBatch?  @relation("InboundCreatedBatch", fields: [createdBatchId], references: [id], onDelete: SetNull)
+  createdAt       DateTime        @default(now())
+
+  @@index([inboundId])
+  @@index([materialId])
+  @@map("material_inbound_items")
+}
+
+// TASK-195: 退料单表
+model MaterialReturn {
+  id          String               @id @default(cuid())
+  returnNo    String               @unique
+  status      MaterialReturnStatus @default(draft) // draft, approved, completed
+  reason      String?
+  requesterId String
+  approvedBy  String?
+  approvedAt  DateTime?
+  completedAt DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  deletedAt   DateTime?
+
+  items MaterialReturnItem[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([returnNo])
+  @@map("material_returns")
+}
+
+// TASK-195: 退料明细表
+model MaterialReturnItem {
+  id              String         @id @default(cuid())
+  returnId        String
+  return          MaterialReturn @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  materialBatchId String
+  materialBatch   MaterialBatch  @relation("ReturnBatches", fields: [materialBatchId], references: [id], onDelete: Restrict)
+  quantity        Float
+  createdAt       DateTime       @default(now())
+
+  @@unique([returnId, materialBatchId])
+  @@index([returnId])
+  @@index([materialBatchId])
+  @@map("material_return_items")
+}
+
+// TASK-196: 报废单表
+model MaterialScrap {
+  id          String              @id @default(cuid())
+  scrapNo     String              @unique
+  status      MaterialScrapStatus @default(draft) // draft, approved, completed
+  reason      String // 报废原因（必填）
+  requesterId String
+  approvedBy  String?
+  approvedAt  DateTime?
+  completedAt DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  deletedAt   DateTime? // 软删除（报废记录不可物理删除）
+
+  items MaterialScrapItem[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([scrapNo])
+  @@map("material_scraps")
+}
+
+// TASK-196: 报废明细表
+model MaterialScrapItem {
+  id              String        @id @default(cuid())
+  scrapId         String
+  scrap           MaterialScrap @relation(fields: [scrapId], references: [id], onDelete: Cascade)
+  materialBatchId String
+  materialBatch   MaterialBatch @relation("ScrapBatches", fields: [materialBatchId], references: [id], onDelete: Restrict)
+  quantity        Float
+  createdAt       DateTime      @default(now())
+
+  @@unique([scrapId, materialBatchId])
+  @@index([scrapId])
+  @@index([materialBatchId])
+  @@map("material_scrap_items")
+}
+
+// ========================================
+// 批次追溯系统
+// ========================================
+
+// TASK-158: 生产批次表（核心追溯表）
+model ProductionBatch {
+  id              String           @id @default(cuid())
+  batchNumber     String           @unique // 生产批次号（BR-241: 唯一性，BR-242: 不可修改）
+  productId       String? // 产品ID
+  productName     String
+  recipeId        String? // 配方ID
+  recipeName      String?
+  plannedQuantity Float
+  actualQuantity  Float?
+  productionDate  DateTime
+  status          ProductionStatus @default(pending) // pending, in_progress, completed, cancelled
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  deletedAt       DateTime?
+
+  // 批次物料使用关联（追溯链）
+  materialUsages   BatchMaterialUsage[]
+  // 成品批次关联
+  finishedGoods    FinishedGoodsBatch[]
+  // 物料平衡记录
+  materialBalances MaterialBalance[]    @relation("MaterialBalanceProductionBatch")
+  // TASK-169: 动态表单记录关联
+  relatedRecords   Record[]             @relation("RecordProductionBatch")
+
+  @@index([batchNumber])
+  @@index([productionDate])
+  @@index([status])
+  @@map("production_batches")
+}
+
+// TASK-159: 批次物料使用表（追溯链核心，BR-243/BR-245）
+model BatchMaterialUsage {
+  id                String          @id @default(cuid())
+  productionBatchId String
+  productionBatch   ProductionBatch @relation(fields: [productionBatchId], references: [id], onDelete: Restrict) // BR-243: 保证追溯链完整性
+  materialBatchId   String
+  materialBatch     MaterialBatch   @relation(fields: [materialBatchId], references: [id], onDelete: Restrict) // BR-245: 保证追溯链完整性
+  quantity          Float
+  usedAt            DateTime        @default(now())
+  createdAt         DateTime        @default(now())
+
+  @@unique([productionBatchId, materialBatchId]) // 复合唯一索引
+  @@index([productionBatchId])
+  @@index([materialBatchId])
+  @@map("batch_material_usages")
+}
+
+// TASK-160: 成品批次表
+model FinishedGoodsBatch {
+  id                String              @id @default(cuid())
+  batchNumber       String              @unique // 成品批次号（BR-241: 唯一性）
+  productionBatchId String
+  productionBatch   ProductionBatch     @relation(fields: [productionBatchId], references: [id], onDelete: Restrict)
+  quantity          Float
+  packageDate       DateTime?
+  expiryDate        DateTime?
+  status            FinishedGoodsStatus @default(in_stock) // in_stock, shipped, recalled
+  shippedTo         String? // 客户信息（正向追溯）
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  deletedAt         DateTime?
+
+  // TASK-169: 动态表单记录关联
+  relatedRecords Record[] @relation("RecordFinishedGoodsBatch")
+
+  @@index([batchNumber])
+  @@index([productionBatchId])
+  @@index([status])
+  @@map("finished_goods_batches")
+}
+
+// TASK-161: 系统配置表（批次号格式配置等）
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  valueType   String   @default("text") // text, number, json, boolean
+  category    String // system, batch, notification
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([key])
+  @@index([category])
+  @@map("system_configs")
+}
+
+// ========================================
+// 设备管理系统 (Equipment Management)
+// ========================================
+
+enum EquipmentStatus {
+  active
+  inactive
+  scrapped
+}
+
+enum MaintenanceLevel {
+  daily
+  weekly
+  monthly
+  quarterly
+  annual
+}
+
+enum MaintenancePlanStatus {
+  pending
+  in_progress
+  completed
+  cancelled
+}
+
+enum MaintenanceRecordStatus {
+  draft
+  submitted
+  approved
+  rejected
+}
+
+enum FaultUrgencyLevel {
+  urgent
+  normal
+  low
+}
+
+enum FaultStatus {
+  pending
+  in_progress
+  completed
+  cancelled
+}
+
+// TASK-209: 设备台账表
+model Equipment {
+  id                String          @id @default(cuid())
+  code              String          @unique // 设备编号 EQ-{YYYYMMDD}-{序号}
+  name              String // 设备名称
+  model             String? // 设备型号
+  category          String // 设备分类
+  location          String? // 设备位置
+  manufacturer      String? // 制造商
+  purchaseDate      DateTime? // 购买日期
+  activationDate    DateTime? // 启用日期
+  warrantyExpiry    DateTime? // 保修到期日期
+  responsiblePerson String? // 责任人ID
+  maintenanceConfig Json? // 分级保养配置 JSON
+  status            EquipmentStatus @default(active)
+  description       String? // 设备描述
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  deletedAt         DateTime?
+
+  // 反向关系
+  maintenancePlans   MaintenancePlan[]
+  maintenanceRecords MaintenanceRecord[]
+  equipmentFaults    EquipmentFault[]
+
+  @@index([code])
+  @@index([category])
+  @@index([status])
+  @@index([responsiblePerson])
+  @@index([location])
+  @@map("equipment")
+}
+
+// TASK-210: 维护计划表
+model MaintenancePlan {
+  id                String                @id @default(cuid())
+  planNumber        String                @unique // 计划编号 MP-{YYYYMMDD}-{序号}
+  equipmentId       String
+  equipment         Equipment             @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  maintenanceLevel  MaintenanceLevel // 保养级别
+  plannedDate       DateTime // 计划日期
+  dueDate           DateTime? // 截止日期
+  status            MaintenancePlanStatus @default(pending)
+  responsiblePerson String? // 责任人ID
+  todoTaskId        String? // 关联待办任务ID
+  reminderDays      Int                   @default(0) // 提前提醒天数
+  description       String? // 计划描述
+  completedAt       DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  deletedAt         DateTime?
+
+  // 反向关系
+  maintenanceRecords MaintenanceRecord[]
+
+  @@index([equipmentId])
+  @@index([maintenanceLevel])
+  @@index([plannedDate])
+  @@index([status])
+  @@index([responsiblePerson])
+  @@map("maintenance_plans")
+}
+
+// TASK-211: 维保记录表
+model MaintenanceRecord {
+  id                 String                  @id @default(cuid())
+  recordNumber       String                  @unique // 记录编号 MAINT-{YYYYMMDD}-{序号}
+  equipmentId        String
+  equipment          Equipment               @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  planId             String? // 关联维护计划ID
+  plan               MaintenancePlan?        @relation(fields: [planId], references: [id], onDelete: SetNull)
+  maintenanceLevel   MaintenanceLevel // 保养级别
+  maintenanceDate    DateTime // 维保日期
+  content            String? // 维保内容
+  beforeStatus       String? // 维保前状态
+  afterStatus        String? // 维保后状态
+  photos             Json? // 现场照片 URL 数组
+  performerSignature String? // 维保人员签名URL
+  reviewerSignature  String? // 审核人员签名URL
+  performerId        String? // 维保人员ID
+  reviewerId         String? // 审核人员ID
+  workflowId         String? // 工作流实例ID
+  status             MaintenanceRecordStatus @default(draft)
+  submittedAt        DateTime?
+  approvedAt         DateTime?
+  rejectedAt         DateTime?
+  rejectReason       String?
+  cost               Float? // 维保成本
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  deletedAt          DateTime?
+
+  @@index([equipmentId])
+  @@index([maintenanceLevel])
+  @@index([maintenanceDate])
+  @@index([status])
+  @@index([planId])
+  @@index([performerId])
+  @@map("maintenance_records")
+}
+
+// TASK-212: 设备报修表
+model EquipmentFault {
+  id                String            @id @default(cuid())
+  faultNumber       String            @unique // 报修单号 FR-{YYYYMMDD}-{序号}
+  equipmentId       String
+  equipment         Equipment         @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  reporterId        String // 报修人ID
+  urgencyLevel      FaultUrgencyLevel @default(normal) // 紧急程度
+  faultDescription  String // 故障描述
+  faultPhotos       Json? // 故障照片 URL 数组
+  status            FaultStatus       @default(pending)
+  todoTaskId        String? // 关联待办任务ID
+  assigneeId        String? // 接单人ID（工程部）
+  acceptedAt        DateTime? // 接单时间
+  repairDescription String? // 维修记录
+  repairPhotos      Json? // 维修照片 URL 数组
+  repairSignature   String? // 维修人员签名URL
+  faultCause        String? // 故障原因
+  solution          String? // 处理措施
+  completedAt       DateTime? // 完成维修时间
+  reportTime        DateTime          @default(now()) // 报修时间
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  deletedAt         DateTime?
+
+  @@index([equipmentId])
+  @@index([reporterId])
+  @@index([status])
+  @@index([urgencyLevel])
+  @@index([reportTime])
+  @@index([assigneeId])
+  @@map("equipment_faults")
+}
+
+// ========================================
+// 移动端应用 (Mobile Application)
+// ========================================
+
+// TASK-354: 移动端文件上传记录表
+model MobileUpload {
+  id           String   @id @default(cuid())
+  userId       String
+  originalUrl  String // 原图 URL
+  thumbnailUrl String? // 缩略图 URL
+  fileName     String // 原始文件名
+  fileSize     Int // 文件大小（字节）
+  mimeType     String // MIME 类型
+  storagePath  String // MinIO 存储路径
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("mobile_uploads")
+}
+
+// TASK-355: 离线同步记录表
+model SyncSubmission {
+  id        String   @id @default(cuid())
+  uuid      String   @unique // 客户端生成的 UUID（去重）
+  userId    String
+  formId    String // 表单模板 ID
+  data      Json // 表单数据
+  status    String   @default("synced") // synced, failed
+  error     String? // 失败原因
+  syncedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([uuid])
+  @@index([status])
+  @@index([syncedAt])
+  @@map("sync_submissions")
+}
+
+// TASK-356: 微信订阅消息表
+model WechatMessage {
+  id         String    @id @default(cuid())
+  type       String // todo_remind, expiry_warning, approval_notice
+  templateId String // 微信消息模板 ID
+  touser     String // 用户 openid
+  data       Json // 消息数据
+  status     String    @default("pending") // pending, sent, failed
+  retries    Int       @default(0)
+  sentAt     DateTime?
+  error      String? // 失败原因
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([touser])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@map("wechat_messages")
+}
+
+// ========================================
+// TASK-359: Audit Logging Tables
+// ========================================
+
+// 登录日志表 (Login Log)
+model LoginLog {
+  id         String    @id @default(cuid())
+  userId     String? // 登录失败时为 null (BR-270)
+  username   String
+  action     String // 'login', 'logout', 'login_failed'
+  ipAddress  String
+  userAgent  String
+  location   String?
+  loginTime  DateTime  @default(now())
+  logoutTime DateTime?
+  status     String // 'success', 'failed'
+  failReason String?
+  createdAt  DateTime  @default(now())
+
+  user User? @relation("UserLoginLogs", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([loginTime])
+  @@index([ipAddress])
+  @@index([status])
+  @@index([action])
+  @@map("login_logs")
+}
+
+// 权限变更日志表 (Permission Change Log)
+model PermissionLog {
+  id             String   @id @default(cuid())
+  operatorId     String
+  operatorName   String
+  targetUserId   String
+  targetUsername String
+  action         String // 'assign_role', 'revoke_role', 'change_department'
+  beforeValue    Json? // 变更前值 (Prisma Json 类型, 可选)
+  afterValue     Json? // 变更后值 (Prisma Json 类型, 可选)
+  reason         String?
+  approvedBy     String?
+  approvedByName String?
+  ipAddress      String
+  createdAt      DateTime @default(now())
+
+  operator   User @relation("PermissionLogOperator", fields: [operatorId], references: [id], onDelete: Cascade)
+  targetUser User @relation("PermissionLogTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@index([operatorId])
+  @@index([targetUserId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("permission_logs")
+}
+
+// 敏感操作日志表 (Sensitive Operation Log)
+model SensitiveLog {
+  id           String   @id @default(cuid())
+  userId       String
+  username     String
+  action       String // 'delete_document', 'export_data', 'approve', 'reject'
+  resourceType String // 'document', 'task', 'approval', 'deviation'
+  resourceId   String
+  resourceName String
+  details      Json? // 详细信息 (Prisma Json 类型, 可选, BR-270)
+  ipAddress    String
+  userAgent    String
+  createdAt    DateTime @default(now())
+
+  user User @relation("UserSensitiveLogs", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([resourceType])
+  @@index([createdAt])
+  @@map("sensitive_logs")
+}
+
+// ========================================
+// TASK-360: System Monitoring Tables
+// ========================================
+
+// 系统性能指标记录表 (System Metrics)
+model SystemMetric {
+  id          BigInt   @id @default(autoincrement())
+  metricName  String
+  metricValue Float
+  metricType  String // 'system', 'application', 'business'
+  tags        String? // JSON string for key-value tags
+  timestamp   DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([metricName])
+  @@index([timestamp])
+  @@index([metricType])
+  @@map("system_metrics")
+}
+
+// 告警规则配置表 (Alert Rules)
+model AlertRule {
+  id             BigInt   @id @default(autoincrement())
+  name           String
+  metricName     String
+  condition      String // '>', '<', '>=', '<=', '=='
+  threshold      Float
+  severity       String // 'info', 'warning', 'critical'
+  enabled        Boolean  @default(true)
+  notifyChannels String? // JSON array: ['email', 'wechat', 'dingtalk']
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  alertHistory AlertHistory[]
+
+  @@index([enabled])
+  @@index([metricName])
+  @@map("alert_rules")
+}
+
+// 告警历史记录表 (Alert History)
+model AlertHistory {
+  id            BigInt    @id @default(autoincrement())
+  ruleId        BigInt
+  metricValue   Float
+  triggeredAt   DateTime  @default(now())
+  resolvedAt    DateTime?
+  status        String // 'triggered', 'resolved', 'acknowledged'
+  message       String?
+  notifiedUsers String? // JSON array of user IDs
+  createdAt     DateTime  @default(now())
+
+  rule AlertRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+  @@index([triggeredAt])
+  @@index([status])
+  @@map("alert_history")
+}
+
+// 备份历史记录表 (Backup History)
+model BackupHistory {
+  id           BigInt    @id @default(autoincrement())
+  backupType   String // 'postgres', 'minio'
+  fileName     String
+  fileSize     BigInt?
+  status       String // 'success', 'failed'
+  errorMessage String?
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([backupType])
+  @@index([status])
+  @@index([startedAt])
+  @@map("backup_history")
+}
+
+// ========================================
+// Training Management System (培训管理系统)
+// ========================================
+
+// Todo task enums
+enum TodoType {
+  training_organize // 培训组织任务
+  training_attend // 培训参加任务
+  approval // 审批任务
+  audit_rectification // 内审整改任务（TASK-326）
+  equipment_maintain // 设备维护任务
+  inventory // 盘点任务
+  change_request // 变更请求任务
+}
+
+enum TodoStatus {
+  pending
+  completed
+}
+
+enum TodoPriority {
+  low
+  normal
+  high
+  urgent
+}
+
+// Training plan enums
+enum TrainingPlanStatus {
+  draft
+  pending_approval
+  approved
+  rejected
+}
+
+// Training project enums
+enum TrainingProjectStatus {
+  planned
+  ongoing
+  completed
+  cancelled
+}
+
+// Question type enum
+enum QuestionType {
+  choice // 选择题
+  judge // 判断题
+}
+
+// TASK-301: 统一待办任务表
+model TodoTask {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation("UserTodoTasks", fields: [userId], references: [id], onDelete: Cascade)
+  type        TodoType
+  relatedId   String // 关联业务实体ID
+  title       String
+  description String?
+  status      TodoStatus   @default(pending)
+  priority    TodoPriority @default(normal)
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([userId, status])
+  @@index([type, relatedId])
+  @@index([status, dueDate])
+  @@map("todo_tasks")
+}
+
+// TASK-302: 年度培训计划表
+model TrainingPlan {
+  id        String             @id @default(cuid())
+  year      Int                @unique // BR-091: 年度唯一性
+  title     String
+  status    TrainingPlanStatus @default(draft)
+  createdBy String
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  // 反向关系
+  projects TrainingProject[]
+
+  @@index([year])
+  @@index([status])
+  @@map("training_plans")
+}
+
+// TASK-302: 培训项目表
+model TrainingProject {
+  id            String                @id @default(cuid())
+  planId        String
+  plan          TrainingPlan          @relation(fields: [planId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  department    String
+  quarter       Int // 1-4 季度
+  trainerId     String // 培训讲师ID
+  trainees      String[] // 学员ID数组
+  scheduledDate DateTime? // 计划培训日期
+  documentIds   String[] // 培训资料文档ID数组
+  passingScore  Int                   @default(60) // 及格分数
+  maxAttempts   Int                   @default(3) // 最大考试次数
+  status        TrainingProjectStatus @default(planned)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  completedAt   DateTime?
+
+  // 反向关系
+  questions       TrainingQuestion[]
+  learningRecords LearningRecord[]
+  archive         TrainingArchive?
+
+  @@index([planId])
+  @@index([department])
+  @@index([status])
+  @@index([quarter])
+  @@map("training_projects")
+}
+
+// TASK-302: 考试题目表
+model TrainingQuestion {
+  id            String          @id @default(cuid())
+  projectId     String
+  project       TrainingProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type          QuestionType // choice | judge
+  content       String // 题目内容
+  options       Json? // 选择题选项 {A: "...", B: "...", C: "...", D: "..."}
+  correctAnswer String // 正确答案（choice: A/B/C/D, judge: true/false）
+  points        Int             @default(10) // 分值
+  order         Int             @default(0) // 题目顺序
+  createdAt     DateTime        @default(now())
+
+  @@index([projectId])
+  @@index([order])
+  @@map("training_questions")
+}
+
+// TASK-302: 学习记录表
+model LearningRecord {
+  id          String          @id @default(cuid())
+  projectId   String
+  project     TrainingProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  examScore   Int? // 考试分数
+  attempts    Int             @default(0) // 考试次数
+  passed      Boolean         @default(false) // 是否通过
+  completedAt DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  // 反向关系
+  examRecords ExamRecord[]
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@index([passed])
+  @@map("learning_records")
+}
+
+// TASK-302: 考试记录表（支持多次考试，BR-106）
+model ExamRecord {
+  id               String         @id @default(cuid())
+  learningRecordId String
+  learningRecord   LearningRecord @relation(fields: [learningRecordId], references: [id], onDelete: Cascade)
+  answers          Json // 答案 {questionId: answer}
+  score            Int // 分数
+  submittedAt      DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+
+  @@index([learningRecordId])
+  @@index([submittedAt])
+  @@map("exam_records")
+}
+
+// TASK-302: 培训档案表
+model TrainingArchive {
+  id          String          @id @default(cuid())
+  projectId   String          @unique // BR-114: 培训档案唯一性
+  project     TrainingProject @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  documentId  String? // 归档到文档系统的文档ID
+  pdfPath     String // PDF文件在MinIO中的路径
+  generatedAt DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+
+  @@index([projectId])
+  @@map("training_archives")
+}
+
+// ========================================
+// Internal Audit Management System (内审管理系统)
+// TASK-325: 内审管理核心表
+// ========================================
+
+// 1. 内审计划表
+model AuditPlan {
+  id    String @id @default(cuid())
+  title String // "2024-Q1 内审"
+  type  String // "quarterly" | "semiannual" | "annual"
+
+  startDate DateTime // 审核起始日期
+  endDate   DateTime // 审核结束日期
+
+  documentIds String[] // 计划审核的文档 ID 列表(批量勾选)
+
+  status String @default("draft")
+  // draft: 草稿(可启动)
+  // ongoing: 审核中
+  // pending_rectification: 等待整改
+  // completed: 已完成
+
+  auditorId String // 内审员
+  createdBy String // 创建人
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  startedAt   DateTime? // 启动时间
+  completedAt DateTime? // 完成时间
+
+  auditor User @relation("AuditedPlans", fields: [auditorId], references: [id])
+  creator User @relation("CreatedAuditPlans", fields: [createdBy], references: [id])
+
+  findings AuditFinding[]
+  report   AuditReport?
+
+  @@index([status, startDate])
+  @@index([auditorId])
+  @@index([createdBy])
+  @@map("audit_plans")
+}
+
+// 2. 审核发现(内审记录)表
+model AuditFinding {
+  id     String @id @default(cuid())
+  planId String // 所属内审计划
+
+  documentId  String // 关联的文档
+  auditResult String // "符合" | "不符合"
+
+  // 以下字段仅在 auditResult = "不符合" 时填写
+  issueType   String? // "需要修改" | "缺失记录" | "文档缺失"
+  description String? // 问题描述(必填)
+
+  department String? // 责任部门
+  assigneeId String? // 责任人
+  dueDate    DateTime? // 整改期限(审核日期 + 30 天)
+
+  status String @default("pending")
+  // pending: 待整改(仅"不符合"项有此状态)
+  // rectifying: 整改中
+  // pending_verification: 待复审
+  // verified: 已验证通过
+  // rejected: 复审驳回
+
+  // 整改证据(系统自动记录)
+  rectificationDocumentId String? // 整改后的文档 ID
+  rectificationVersion    String? // 整改后的文档版本号
+
+  verifiedBy      String? // 验证人(内审员)
+  verifiedAt      DateTime?
+  rejectionReason String? // 驳回原因
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  plan     AuditPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  document Document  @relation("AuditFindings", fields: [documentId], references: [id])
+  assignee User?     @relation("AssignedAuditFindings", fields: [assigneeId], references: [id])
+  verifier User?     @relation("VerifiedAuditFindings", fields: [verifiedBy], references: [id])
+
+  @@unique([planId, documentId])
+  @@index([planId, auditResult])
+  @@index([assigneeId, status])
+  @@index([status, dueDate])
+  @@map("audit_findings")
+}
+
+// 3. 内审报告(归档)表
+model AuditReport {
+  id     String @id @default(cuid())
+  planId String @unique
+
+  summary Json // 汇总信息
+  // {
+  //   totalDocuments: 50,
+  //   conformCount: 45,
+  //   nonConformCount: 5,
+  //   byLevel: { "1": 1, "2": 10, "3": 20, "4": 19 },
+  //   byDepartment: { "生产部": 3, "质量部": 2 },
+  //   byIssueType: { "需要修改": 3, "缺失记录": 2 }
+  // }
+
+  pdfUrl     String // PDF 报告路径(MinIO)
+  documentId String // 归档到文档系统的文档 ID
+
+  createdAt DateTime @default(now())
+
+  plan     AuditPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  document Document  @relation("AuditReports", fields: [documentId], references: [id])
+
+  @@index([documentId])
+  @@map("audit_reports")
 }

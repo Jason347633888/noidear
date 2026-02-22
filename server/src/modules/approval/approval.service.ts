@@ -632,13 +632,14 @@ export class ApprovalService {
     }
 
     // 根据审批类型路由到对应逻辑
-    if (approval.approvalType === 'countersign') {
-      return this.processCountersignApproval(approval, action, commentOrReason);
-    }
+    // TODO: Uncomment after database migration for approvalType field
+    // if (approval.approvalType === 'countersign') {
+    //   return this.processCountersignApproval(approval, action, commentOrReason);
+    // }
 
-    if (approval.approvalType === 'sequential') {
-      return this.processSequentialApproval(approval, action, commentOrReason);
-    }
+    // if (approval.approvalType === 'sequential') {
+    //   return this.processSequentialApproval(approval, action, commentOrReason);
+    // }
 
     // 默认单人审批，根据级别路由
     if (approval.level === 2) {
@@ -682,7 +683,7 @@ export class ApprovalService {
             approverId,
             level: 1,
             status: 'pending',
-            approvalType: 'countersign',
+            // approvalType: 'countersign', // TODO: Uncomment after database migration
             groupId,
             approvalChainId: chainId,
             sequence: 0,
@@ -802,7 +803,7 @@ export class ApprovalService {
             approverId: approverIds[i],
             level: 1,
             status: i === 0 ? 'pending' : 'waiting',
-            approvalType: 'sequential',
+            // approvalType: 'sequential', // TODO: Uncomment after database migration
             groupId,
             approvalChainId: chainId,
             sequence: i + 1,

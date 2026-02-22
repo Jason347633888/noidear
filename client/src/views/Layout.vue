@@ -95,6 +95,8 @@ import {
   Document, Fold, Expand, Bell, ArrowDown,
   User, Lock, SwitchButton, HomeFilled, Files,
   Grid, List, CircleCheck, Message, UserFilled,
+  DataAnalysis, Setting, Connection, Box, Goods, Key,
+  SetUp, WarnTriangleFilled,
 } from '@element-plus/icons-vue';
 
 import request from '@/api/request';
@@ -115,9 +117,30 @@ const menuItems = [
   { path: '/documents/level3', title: '三级文件', icon: Files },
   { path: '/templates', title: '模板管理', icon: Grid },
   { path: '/tasks', title: '任务列表', icon: List },
-  { path: '/approvals', title: '待我审批', icon: CircleCheck },
+  { path: '/records', title: '记录管理', icon: Document },
+  { path: '/approvals/pending', title: '待我审批', icon: CircleCheck },
+  { path: '/approvals/history', title: '审批历史', icon: CircleCheck },
+  { path: '/workflow/templates', title: '工作流模板', icon: Connection },
+  { path: '/workflow/my-tasks', title: '工作流待办', icon: Connection },
+  { path: '/workflow/instances', title: '工作流实例', icon: Connection },
+  { path: '/batch-trace', title: '批次追溯', icon: Box },
+  { path: '/warehouse/materials', title: '物料管理', icon: Goods },
+  { path: '/warehouse/requisitions', title: '领料管理', icon: Goods },
+  { path: '/warehouse/suppliers', title: '供应商', icon: Goods },
+  { path: '/warehouse/staging-area', title: '暂存间', icon: Goods },
+  { path: '/warehouse/material-balance', title: '物料平衡', icon: Goods },
+  { path: '/equipment', title: '设备台账', icon: SetUp },
+  { path: '/equipment/plans', title: '维护计划', icon: SetUp },
+  { path: '/equipment/records', title: '维保记录', icon: SetUp },
+  { path: '/equipment/faults', title: '设备报修', icon: WarnTriangleFilled },
+  { path: '/equipment/stats', title: '设备统计', icon: DataAnalysis },
+  { path: '/statistics/overview', title: '统计概览', icon: DataAnalysis },
+  { path: '/statistics/documents', title: '文档统计', icon: DataAnalysis },
+  { path: '/statistics/tasks', title: '任务统计', icon: DataAnalysis },
   { path: '/notifications', title: '消息中心', icon: Message },
   { path: '/users', title: '用户管理', icon: UserFilled },
+  { path: '/roles', title: '角色管理', icon: Key },
+  { path: '/permissions', title: '权限管理', icon: Setting },
 ];
 
 const handleCommand = (command: string) => {

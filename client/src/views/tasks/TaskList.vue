@@ -301,6 +301,12 @@ const handleBatchAssign = async () => {
 };
 
 const handleExport = async () => {
+  // CRITICAL-2: Add 10,000 record limit check
+  if (pagination.total > 10000) {
+    ElMessage.warning('数据量过大,请缩小筛选范围或分批导出');
+    return;
+  }
+
   try {
     const statusFilter = TAB_STATUS_MAP[activeTab.value] || '';
     const params = new URLSearchParams();

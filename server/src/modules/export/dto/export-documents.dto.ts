@@ -16,6 +16,10 @@ export class ExportDocumentsDto {
   keyword?: string;
 
   @IsOptional()
+  @IsString()
+  departmentId?: string;
+
+  @IsOptional()
   @IsDateString()
   startDate?: string;
 
@@ -26,5 +30,6 @@ export class ExportDocumentsDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  @Type(() => String)
   fields?: string[];
 }

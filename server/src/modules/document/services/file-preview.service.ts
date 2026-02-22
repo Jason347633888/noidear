@@ -84,8 +84,8 @@ export class FilePreviewService {
     const fileType = this.getFileType(document.fileType);
 
     if (fileType === 'pdf') {
-      // PDF 返回签名 URL，浏览器原生支持预览
-      const url = await this.storage.getSignedUrl(document.filePath, 3600);
+      // PDF 返回签名 URL，浏览器原生支持预览（有效期 15 分钟）
+      const url = await this.storage.getSignedUrl(document.filePath, 900);
       return {
         type: 'pdf',
         url,

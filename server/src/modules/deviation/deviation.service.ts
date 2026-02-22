@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BusinessException, ErrorCode } from '../../common/exceptions/business.exception';
+import { ApprovalService } from '../approval/approval.service';
 
 export interface DeviationDetectionResult {
   fieldName: string;
@@ -27,7 +28,11 @@ export interface DeviationReportQueryDto {
 export class DeviationService {
   private readonly logger = new Logger(DeviationService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => ApprovalService))
+    private readonly approvalService: ApprovalService,
+  ) {}
 
   detectDeviations(
     templateFields: any[],
@@ -152,6 +157,9 @@ export class DeviationService {
       reports.push(report);
     }
 
+    // 更新任务记录的偏离标记
+    // 注意：hasDeviation 设置为 true 后，ApprovalService.createApprovalChain 会自动创建 2 级审批
+    // 调用流程：TaskService.submitRecord -> ApprovalService.createApprovalChain -> 检测 hasDeviation -> 创建 2 级审批
     await this.prisma.taskRecord.update({
       where: { id: recordId },
       data: {
@@ -199,6 +207,18 @@ export class DeviationService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
+        include: {
+          record: {
+            include: {
+              task: {
+                include: {
+                  department: true,
+                },
+              },
+              template: true,
+            },
+          },
+        },
       }),
       this.prisma.deviationReport.count({ where }),
     ]);
@@ -206,6 +226,15 @@ export class DeviationService {
     return { list, total, page, limit };
   }
 
+  /**
+   * 偏离报告审批（集成到审批流程系统）
+   *
+   * 注意：此方法已集成到 ApprovalService
+   * - 如果需要创建偏离报告审批，调用 ApprovalService.createApprovalChain
+   * - 如果需要审批偏离报告，调用 ApprovalService.approveUnified
+   *
+   * @deprecated 建议使用 ApprovalService 统一处理审批流程
+   */
   async approveDeviationReport(
     reportId: string,
     approverId: string,
@@ -214,6 +243,7 @@ export class DeviationService {
   ) {
     const report = await this.prisma.deviationReport.findUnique({
       where: { id: reportId },
+      include: { record: true },
     });
 
     if (!report) {
@@ -227,6 +257,22 @@ export class DeviationService {
       );
     }
 
+    // P2-7: 集成到审批流程系统
+    // 如果任务记录有审批链，通过审批链处理
+    if (report.record) {
+      try {
+        const approvals = await this.approvalService.getApprovalChain(report.recordId);
+        if (approvals && approvals.length > 0) {
+          this.logger.log(
+            `偏离报告 ${reportId} 已集成到审批流程，建议使用 ApprovalService.approveUnified 处理`,
+          );
+        }
+      } catch (error) {
+        this.logger.warn(`获取审批链失败: ${error.message}`);
+      }
+    }
+
+    // 降级处理：直接更新偏离报告状态（兼容旧逻辑）
     return this.prisma.deviationReport.update({
       where: { id: reportId },
       data: {
