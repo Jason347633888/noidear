@@ -18,7 +18,7 @@ import {
   QueryRecordDto,
 } from './dto/record.dto';
 
-@Controller('api/v1/maintenance-records')
+@Controller('maintenance-records')
 export class RecordController {
   constructor(private readonly recordService: RecordService) {}
 

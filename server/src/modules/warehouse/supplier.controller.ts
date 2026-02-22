@@ -17,7 +17,7 @@ import {
   CreateQualificationDto,
 } from './dto/supplier.dto';
 
-@Controller('api/v1/suppliers')
+@Controller('suppliers')
 export class SupplierController {
   constructor(private readonly supplierService: SupplierService) {}
 

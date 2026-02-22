@@ -16,7 +16,7 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 
 @ApiTags('批次物料关联管理')
-@Controller('api/v1/material-usage')
+@Controller('material-usage')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class MaterialUsageController {

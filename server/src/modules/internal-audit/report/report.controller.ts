@@ -32,7 +32,7 @@ interface AuthenticatedRequest extends ExpressRequest {
 
 @ApiTags('Audit Report')
 @ApiBearerAuth()
-@Controller('api/v1/audit')
+@Controller('audit')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class ReportController {
   constructor(

@@ -24,7 +24,7 @@ import { AuthenticatedRequest } from './audit-execution.types';
 
 @ApiTags('Audit Execution')
 @ApiBearerAuth()
-@Controller('api/v1/audit')
+@Controller('audit')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class AuditExecutionController {
   constructor(

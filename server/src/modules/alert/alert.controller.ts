@@ -21,7 +21,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ApiTags('告警管理')
-@Controller('api/v1/alerts')
+@Controller('alerts')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class AlertController {

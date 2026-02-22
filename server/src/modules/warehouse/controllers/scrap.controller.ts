@@ -19,7 +19,7 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 
 @ApiTags('报废管理')
-@Controller('api/v1/scraps')
+@Controller('scraps')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class ScrapController {

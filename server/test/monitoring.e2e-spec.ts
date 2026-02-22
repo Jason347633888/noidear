@@ -15,7 +15,7 @@ const IDS = {
   dept: `${TEST_PREFIX}-dept`,
 };
 
-describe.skip('Monitoring API (e2e) - Unimplemented Feature', () => {
+describe('Monitoring API (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let authToken: string;

@@ -1,0 +1,170 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "noidear-business-metrics",
+    "title": "Noidear Business Metrics",
+    "tags": ["noidear", "business"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 0,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Document Upload Rate",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "rate(doc_system_document_uploads_total[5m])",
+            "legendFormat": "{{department}} - {{user}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "ops", "label": "Uploads/sec" },
+          { "format": "short", "show": false }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Total Document Uploads (Today)",
+        "type": "stat",
+        "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "expr": "increase(doc_system_document_uploads_total[24h])",
+            "legendFormat": "Uploads (24h)",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "orientation": "auto"
+        }
+      },
+      {
+        "id": 3,
+        "title": "Active Users (Current)",
+        "type": "stat",
+        "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "expr": "doc_system_active_users",
+            "legendFormat": "Active Users",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "orientation": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "green" },
+                { "value": 50, "color": "yellow" },
+                { "value": 100, "color": "red" }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Active Users Trend",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "doc_system_active_users",
+            "legendFormat": "Active Users",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "short", "label": "Users" },
+          { "format": "short", "show": false }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Approval Duration (P50 / P95 / P99)",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(doc_system_approval_duration_seconds_bucket[5m]))",
+            "legendFormat": "P50 {{approval_type}}",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(doc_system_approval_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95 {{approval_type}}",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(doc_system_approval_duration_seconds_bucket[5m]))",
+            "legendFormat": "P99 {{approval_type}}",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          { "format": "s", "label": "Duration" },
+          { "format": "short", "show": false }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Login Failures Total (Last 24h)",
+        "type": "stat",
+        "gridPos": { "x": 12, "y": 12, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "expr": "increase(doc_system_login_failures_total[24h])",
+            "legendFormat": "Login Failures",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "orientation": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "green" },
+                { "value": 10, "color": "yellow" },
+                { "value": 50, "color": "red" }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Login Failure Rate Trend",
+        "type": "graph",
+        "gridPos": { "x": 18, "y": 12, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "expr": "rate(doc_system_login_failures_total[5m])",
+            "legendFormat": "Failures/sec",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "ops", "label": "Failures/sec" },
+          { "format": "short", "show": false }
+        ]
+      }
+    ]
+  }
+}

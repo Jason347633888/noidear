@@ -6,6 +6,7 @@ import {
   HttpStatus,
   HttpCode,
   Get,
+  Param,
   Query,
   Res,
 } from '@nestjs/common';
@@ -26,7 +27,7 @@ import { PermissionGuard } from '../../common/guards/permission.guard';
 import { CheckPermission } from '../../common/decorators/permission.decorator';
 
 @ApiTags('审计日志')
-@Controller('api/v1/audit')
+@Controller('audit')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 @ApiBearerAuth()
 export class AuditController {
@@ -90,7 +91,7 @@ export class AuditController {
   }
 
   @Get('login-logs/export')
-  @Throttle({ default: { limit: 5, ttl: 60000 } }) // HIGH-4: 限制导出频率
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: '导出登录日志为 Excel' })
   @ApiResponse({ status: 200, description: '导出成功' })
   async exportLoginLogs(@Query() dto: QueryLoginLogDto, @Res() res: Response) {
@@ -101,7 +102,7 @@ export class AuditController {
   }
 
   @Get('permission-logs/export')
-  @Throttle({ default: { limit: 5, ttl: 60000 } }) // HIGH-4: 限制导出频率
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: '导出权限变更日志为 Excel' })
   @ApiResponse({ status: 200, description: '导出成功' })
   async exportPermissionLogs(@Query() dto: QueryPermissionLogDto, @Res() res: Response) {
@@ -112,7 +113,7 @@ export class AuditController {
   }
 
   @Get('sensitive-logs/export')
-  @Throttle({ default: { limit: 5, ttl: 60000 } }) // HIGH-4: 限制导出频率
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: '导出敏感操作日志为 Excel' })
   @ApiResponse({ status: 200, description: '导出成功' })
   async exportSensitiveLogs(@Query() dto: QuerySensitiveLogDto, @Res() res: Response) {
@@ -142,8 +143,26 @@ export class AuditController {
     return this.auditService.getSensitiveStats(new Date(startDate), new Date(endDate));
   }
 
+  @Post('search')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '跨日志类型全局搜索' })
+  @ApiResponse({ status: 200, description: '搜索成功' })
+  async searchLogs(
+    @Body('keyword') keyword: string,
+    @Body('logTypes') logTypes?: string[],
+    @Body('startDate') startDate?: string,
+    @Body('endDate') endDate?: string,
+  ) {
+    return this.auditService.searchLogs(
+      keyword,
+      logTypes,
+      startDate ? new Date(startDate) : undefined,
+      endDate ? new Date(endDate) : undefined,
+    );
+  }
+
   @Get('dashboard')
-  @Throttle({ default: { limit: 10, ttl: 60000 } }) // HIGH-4: 限制仪表板刷新频率
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: '获取审计仪表板' })
   @ApiResponse({ status: 200, description: '查询成功' })
   async getDashboard() {
@@ -153,12 +172,23 @@ export class AuditController {
   @Get('timeline/:userId')
   @ApiOperation({ summary: '获取用户操作时间线' })
   @ApiResponse({ status: 200, description: '查询成功' })
-  async getUserTimeline(@Query('userId') userId: string) {
+  async getUserTimeline(@Param('userId') userId: string) {
     return this.auditService.getUserTimeline(userId);
   }
 
+  @Get('permission-logs/:userId')
+  @ApiOperation({ summary: '查询某用户权限变更历史' })
+  @ApiResponse({ status: 200, description: '查询成功' })
+  async getUserPermissionLogs(
+    @Param('userId') userId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.auditService.getUserPermissionLogs(userId, page || 1, limit || 20);
+  }
+
   @Get('brcgs-report')
-  @Throttle({ default: { limit: 5, ttl: 60000 } }) // HIGH-4: 限制报告生成频率
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: '生成 BRCGS 合规报告' })
   @ApiResponse({ status: 200, description: '生成成功' })
   async generateBRCGSReport(

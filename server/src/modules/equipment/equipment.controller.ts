@@ -18,7 +18,7 @@ import {
   QueryEquipmentDto,
 } from './dto/equipment.dto';
 
-@Controller('api/v1/equipment')
+@Controller('equipment')
 export class EquipmentController {
   constructor(private readonly equipmentService: EquipmentService) {}
 

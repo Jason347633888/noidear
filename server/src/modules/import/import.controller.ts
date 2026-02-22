@@ -21,7 +21,7 @@ import { ImportService } from './import.service';
 @ApiTags('批量导入')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('api/v1/import')
+@Controller('import')
 export class ImportController {
   constructor(private readonly service: ImportService) {}
 

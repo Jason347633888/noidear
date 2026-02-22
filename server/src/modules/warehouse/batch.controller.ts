@@ -12,7 +12,7 @@ import {
 import { BatchService } from './batch.service';
 import { CreateBatchDto, UpdateBatchDto, QueryBatchDto } from './dto/batch.dto';
 
-@Controller('api/v1/batches')
+@Controller('batches')
 export class BatchController {
   constructor(private readonly batchService: BatchService) {}
 

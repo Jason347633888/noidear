@@ -8,7 +8,7 @@ import {
 import { PlanService } from './plan.service';
 import { QueryPlanDto, CalendarQueryDto } from './dto/plan.dto';
 
-@Controller('api/v1/maintenance-plans')
+@Controller('maintenance-plans')
 export class PlanController {
   constructor(private readonly planService: PlanService) {}
 

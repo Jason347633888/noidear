@@ -16,7 +16,7 @@ import {
   QueryFaultDto,
 } from './dto/fault.dto';
 
-@Controller('api/v1/equipment/faults')
+@Controller('equipment/faults')
 export class FaultController {
   constructor(private readonly faultService: FaultService) {}
 

@@ -1,0 +1,31 @@
+global:
+  resolve_timeout: 5m
+  smtp_require_tls: false
+
+route:
+  group_by: ['alertname', 'severity']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'log-receiver'
+  routes:
+    - match:
+        severity: critical
+      receiver: 'log-receiver'
+      continue: true
+    - match:
+        severity: warning
+      receiver: 'log-receiver'
+
+receivers:
+  - name: 'log-receiver'
+    webhook_configs:
+      - url: 'http://backend:3000/api/v1/monitoring/alerts/webhook'
+        send_resolved: true
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname']

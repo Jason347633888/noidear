@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { TraceabilityService } from '../batch-trace/services/traceability.service';
 
-@Controller('api/v1/warehouse/traceability')
+@Controller('warehouse/traceability')
 export class WarehouseTraceabilityController {
   constructor(private readonly traceabilityService: TraceabilityService) {}
 

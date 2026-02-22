@@ -4,7 +4,7 @@ import { HealthService } from './health.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ApiTags('健康检查')
-@Controller('api/v1/health')
+@Controller('health')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class HealthController {
@@ -39,10 +39,17 @@ export class HealthController {
   }
 
   @Get('disk')
-  @ApiOperation({ summary: '检查磁盘健康状态' })
+  @ApiOperation({ summary: '检查磁盘/内存健康状态' })
   @ApiResponse({ status: 200, description: '检查成功' })
   async checkDisk() {
     return this.healthService.checkDisk();
+  }
+
+  @Get('dependencies')
+  @ApiOperation({ summary: '获取所有依赖服务健康状态详情' })
+  @ApiResponse({ status: 200, description: '检查成功' })
+  async getDependenciesHealth() {
+    return this.healthService.getDependenciesHealth();
   }
 
   @Get('system-info')

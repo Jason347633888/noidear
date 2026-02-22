@@ -1,0 +1,162 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "noidear-application-metrics",
+    "title": "Noidear Application Metrics",
+    "tags": ["noidear", "application"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 0,
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "HTTP Request Rate",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "rate(doc_system_api_request_duration_seconds_count[5m])",
+            "legendFormat": "{{method}} {{route}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "reqps", "label": "Requests/sec" },
+          { "format": "short", "show": false }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "HTTP Request Duration (P50 / P95 / P99)",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(doc_system_api_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P50 {{method}} {{route}}",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(doc_system_api_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95 {{method}} {{route}}",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(doc_system_api_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P99 {{method}} {{route}}",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          { "format": "s", "label": "Duration" },
+          { "format": "short", "show": false }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "HTTP Error Rate (4xx + 5xx)",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "rate(doc_system_api_request_duration_seconds_count{status_code=~\"4..\"}[5m])",
+            "legendFormat": "4xx {{method}} {{route}}",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(doc_system_api_request_duration_seconds_count{status_code=~\"5..\"}[5m])",
+            "legendFormat": "5xx {{method}} {{route}}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          { "format": "reqps", "label": "Errors/sec" },
+          { "format": "short", "show": false }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "green" },
+                { "value": 0.05, "color": "yellow" },
+                { "value": 0.5, "color": "red" }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Database Query Duration (P50 / P95)",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(doc_system_database_query_duration_seconds_bucket[5m]))",
+            "legendFormat": "P50 {{operation}}",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(doc_system_database_query_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95 {{operation}}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          { "format": "s", "label": "Duration" },
+          { "format": "short", "show": false }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Login Failure Rate",
+        "type": "stat",
+        "gridPos": { "x": 0, "y": 16, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "expr": "rate(doc_system_login_failures_total[5m])",
+            "legendFormat": "Login Failures/sec",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "orientation": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "green" },
+                { "value": 0.1, "color": "yellow" },
+                { "value": 1, "color": "red" }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Total HTTP Requests",
+        "type": "stat",
+        "gridPos": { "x": 6, "y": 16, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "expr": "increase(doc_system_api_request_duration_seconds_count[1h])",
+            "legendFormat": "Requests (last 1h)",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "orientation": "auto"
+        }
+      }
+    ]
+  }
+}

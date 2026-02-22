@@ -14,7 +14,7 @@ class LdapLoginDto {
 }
 
 @ApiTags('SSO 单点登录')
-@Controller('api/v1/auth/sso')
+@Controller('auth/sso')
 export class SsoController {
   constructor(private readonly ssoService: SsoService) {}
 

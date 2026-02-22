@@ -24,7 +24,7 @@ import { AuditService } from '../../audit/audit.service';
 
 @ApiTags('Audit Plans')
 @ApiBearerAuth()
-@Controller('api/v1/audit/plans')
+@Controller('audit/plans')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class AuditPlanController {
   constructor(

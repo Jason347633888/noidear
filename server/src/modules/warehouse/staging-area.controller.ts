@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { StagingAreaService } from './staging-area.service';
 
-@Controller('api/v1/staging-area')
+@Controller('staging-area')
 export class StagingAreaController {
   constructor(private readonly stagingAreaService: StagingAreaService) {}
 

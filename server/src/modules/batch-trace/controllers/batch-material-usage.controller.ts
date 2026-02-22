@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { BatchMaterialUsageService } from '../services/batch-material-usage.service';
 
-@Controller('api/v1/batch-material-usage')
+@Controller('batch-material-usage')
 export class BatchMaterialUsageController {
   constructor(private readonly batchMaterialUsageService: BatchMaterialUsageService) {}
 

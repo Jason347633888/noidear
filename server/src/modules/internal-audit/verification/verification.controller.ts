@@ -31,7 +31,7 @@ interface AuthenticatedRequest extends ExpressRequest {
 
 @ApiTags('Audit Verification')
 @ApiBearerAuth()
-@Controller('api/v1/audit/findings')
+@Controller('audit/findings')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class VerificationController {
   constructor(

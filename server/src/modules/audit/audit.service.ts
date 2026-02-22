@@ -803,4 +803,132 @@ export class AuditService {
       throw error;
     }
   }
+
+  /**
+   * 跨日志类型全局搜索
+   * TASK-362: Cross-type log search
+   */
+  async searchLogs(
+    keyword: string,
+    logTypes?: string[],
+    startDate?: Date,
+    endDate?: Date,
+  ) {
+    try {
+      const types = logTypes && logTypes.length > 0
+        ? logTypes
+        : ['login', 'permission', 'sensitive'];
+
+      const results: Array<{ type: string; timestamp: Date; data: any }> = [];
+
+      if (types.includes('login')) {
+        const loginWhere: any = {
+          OR: [
+            { username: { contains: keyword, mode: 'insensitive' } },
+            { ipAddress: { contains: keyword } },
+            { action: { contains: keyword, mode: 'insensitive' } },
+          ],
+        };
+        if (startDate || endDate) {
+          loginWhere.loginTime = {};
+          if (startDate) loginWhere.loginTime.gte = startDate;
+          if (endDate) loginWhere.loginTime.lte = endDate;
+        }
+        const loginLogs = await this.prisma.loginLog.findMany({
+          where: loginWhere,
+          take: 50,
+          orderBy: { loginTime: 'desc' },
+        });
+        loginLogs.forEach((log) => results.push({ type: 'login', timestamp: log.loginTime, data: log }));
+      }
+
+      if (types.includes('permission')) {
+        const permWhere: any = {
+          OR: [
+            { operatorName: { contains: keyword, mode: 'insensitive' } },
+            { targetUsername: { contains: keyword, mode: 'insensitive' } },
+            { action: { contains: keyword, mode: 'insensitive' } },
+            { reason: { contains: keyword, mode: 'insensitive' } },
+          ],
+        };
+        if (startDate || endDate) {
+          permWhere.createdAt = {};
+          if (startDate) permWhere.createdAt.gte = startDate;
+          if (endDate) permWhere.createdAt.lte = endDate;
+        }
+        const permLogs = await this.prisma.permissionLog.findMany({
+          where: permWhere,
+          take: 50,
+          orderBy: { createdAt: 'desc' },
+        });
+        permLogs.forEach((log) => results.push({ type: 'permission', timestamp: log.createdAt, data: log }));
+      }
+
+      if (types.includes('sensitive')) {
+        const sensWhere: any = {
+          OR: [
+            { username: { contains: keyword, mode: 'insensitive' } },
+            { action: { contains: keyword, mode: 'insensitive' } },
+            { resourceType: { contains: keyword, mode: 'insensitive' } },
+            { resourceName: { contains: keyword, mode: 'insensitive' } },
+          ],
+        };
+        if (startDate || endDate) {
+          sensWhere.createdAt = {};
+          if (startDate) sensWhere.createdAt.gte = startDate;
+          if (endDate) sensWhere.createdAt.lte = endDate;
+        }
+        const sensLogs = await this.prisma.sensitiveLog.findMany({
+          where: sensWhere,
+          take: 50,
+          orderBy: { createdAt: 'desc' },
+        });
+        sensLogs.forEach((log) => results.push({ type: 'sensitive', timestamp: log.createdAt, data: log }));
+      }
+
+      return results.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 100);
+    } catch (error) {
+      this.logger.error(`Failed to search logs: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * 查询某用户的权限变更历史
+   * TASK-362: Get permission change history for a specific user
+   */
+  async getUserPermissionLogs(userId: string, page: number = 1, limit: number = 20) {
+    try {
+      const where = {
+        OR: [{ operatorId: userId }, { targetUserId: userId }],
+      };
+
+      const [total, data] = await Promise.all([
+        this.prisma.permissionLog.count({ where }),
+        this.prisma.permissionLog.findMany({
+          where,
+          include: {
+            operator: { select: { id: true, username: true, name: true } },
+            targetUser: { select: { id: true, username: true, name: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+      ]);
+
+      return {
+        data,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get user permission logs: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
 }

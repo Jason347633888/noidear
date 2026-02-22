@@ -5,7 +5,7 @@ import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { loginForTest } from './test-helpers';
 
-describe.skip('Audit API (e2e) - Unimplemented Feature', () => {
+describe('Audit API (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let authToken: string;

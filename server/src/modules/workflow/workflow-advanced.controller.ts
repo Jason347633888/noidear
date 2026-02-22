@@ -18,7 +18,7 @@ import { TransferTaskDto } from './dto/transfer-task.dto';
 @ApiTags('高级工作流引擎')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('api/v1/workflow')
+@Controller('workflow')
 export class WorkflowAdvancedController {
   constructor(private readonly service: WorkflowAdvancedService) {}
 

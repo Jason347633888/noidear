@@ -17,7 +17,7 @@ import {
   QueryMaterialDto,
 } from './dto/material.dto';
 
-@Controller('api/v1/materials')
+@Controller('materials')
 export class MaterialController {
   constructor(private readonly materialService: MaterialService) {}
 

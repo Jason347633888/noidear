@@ -24,7 +24,7 @@ const ALLOWED_IMAGE_TYPES = [
   'image/webp',
 ];
 
-@Controller('api/v1/upload')
+@Controller('upload')
 export class UploadController {
   constructor(private readonly storageService: StorageService) {}
 

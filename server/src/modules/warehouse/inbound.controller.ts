@@ -12,7 +12,7 @@ import {
 import { InboundService } from './inbound.service';
 import { CreateInboundDto, QueryInboundDto } from './dto/inbound.dto';
 
-@Controller('api/v1/inbound')
+@Controller('inbound')
 export class InboundController {
   constructor(private readonly inboundService: InboundService) {}
 

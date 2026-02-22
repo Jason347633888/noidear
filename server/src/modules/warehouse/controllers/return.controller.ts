@@ -19,7 +19,7 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 
 @ApiTags('退料管理')
-@Controller('api/v1/returns')
+@Controller('returns')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class ReturnController {

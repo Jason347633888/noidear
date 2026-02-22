@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 
 @ApiTags('批次追溯')
-@Controller('api/v1/trace')
+@Controller('trace')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class TraceController {

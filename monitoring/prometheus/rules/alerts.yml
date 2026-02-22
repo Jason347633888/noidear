@@ -1,0 +1,38 @@
+groups:
+  - name: noidear.rules
+    rules:
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "高错误率 ({{ $value | humanizePercentage }})"
+          description: "HTTP 5xx 错误率超过 10%，当前值: {{ $value }}"
+
+      - alert: SlowResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "响应时间过慢 (P95 = {{ $value }}s)"
+          description: "P95 响应时间超过 2 秒"
+
+      - alert: HighLoginFailureRate
+        expr: increase(login_failures_total[10m]) > 20
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "异常登录失败 ({{ $value }} 次/10分钟)"
+          description: "10 分钟内登录失败次数过多，可能存在暴力破解"
+
+      - alert: BackendDown
+        expr: up{job="noidear-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "后端服务不可用"
+          description: "noidear 后端服务已宕机超过 1 分钟"

@@ -15,7 +15,7 @@ import { SearchQueryDto } from './dto/search-query.dto';
 @ApiTags('全文搜索')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('api/v1/search')
+@Controller('search')
 export class SearchController {
   constructor(private readonly service: SearchService) {}
 

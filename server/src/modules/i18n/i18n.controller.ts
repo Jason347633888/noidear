@@ -6,7 +6,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { I18nService } from './i18n.service';
 
 @ApiTags('多语言支持')
-@Controller('api/v1/i18n')
+@Controller('i18n')
 export class I18nController {
   constructor(private readonly service: I18nService) {}
 

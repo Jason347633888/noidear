@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { StorageService } from '../../common/services';
@@ -17,6 +18,7 @@ export class DocumentService {
     private readonly storage: StorageService,
     private readonly notification: NotificationService,
     private readonly operationLog: OperationLogService,
+    private readonly eventEmitter: EventEmitter2,
   ) {
     this.snowflake = new Snowflake(1, 1);
   }
@@ -124,6 +126,8 @@ export class DocumentService {
         creatorId: userId,
       },
     });
+
+    this.eventEmitter.emit('document.created', { documentId: result.id.toString() });
 
     // 记录操作日志
     await this.operationLog.log({
@@ -260,6 +264,7 @@ export class DocumentService {
           version: { increment: new Prisma.Decimal(0.1) },
         },
       });
+      this.eventEmitter.emit('document.updated', { documentId: id });
       return convertBigIntToNumber(result);
     }
 
@@ -267,6 +272,7 @@ export class DocumentService {
       where: { id },
       data: { title: dto.title ?? document.title },
     });
+    this.eventEmitter.emit('document.updated', { documentId: id });
     return convertBigIntToNumber(result);
   }
 

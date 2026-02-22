@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -61,7 +61,6 @@ export class BackupService {
     const startedAt = new Date();
 
     try {
-      // Simplified MinIO backup
       const cmd = `docker exec noidear-minio-1 sh -c 'tar -czf /tmp/${filename}.tar.gz /data'`;
       await execAsync(cmd);
 
@@ -96,10 +95,14 @@ export class BackupService {
     }
   }
 
-  async queryBackupHistory(page: number = 1, limit: number = 20) {
+  async queryBackupHistory(page: number = 1, limit: number = 20, backupType?: string) {
+    const where: any = {};
+    if (backupType) where.backupType = backupType;
+
     const [total, data] = await Promise.all([
-      this.prisma.backupHistory.count(),
+      this.prisma.backupHistory.count({ where }),
       this.prisma.backupHistory.findMany({
+        where,
         orderBy: { startedAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -131,5 +134,54 @@ export class BackupService {
       failedBackups,
       lastBackup,
     };
+  }
+
+  /**
+   * 删除备份记录
+   * TASK-365: Delete backup record
+   */
+  async deleteBackup(id: string) {
+    try {
+      const existing = await this.prisma.backupHistory.findUnique({
+        where: { id: BigInt(id) },
+      });
+
+      if (!existing) {
+        throw new NotFoundException(`Backup record with ID ${id} not found`);
+      }
+
+      await this.prisma.backupHistory.delete({ where: { id: BigInt(id) } });
+      this.logger.log(`Backup record ${id} deleted`);
+      return { success: true, message: `Backup record ${id} deleted` };
+    } catch (error) {
+      this.logger.error(`Failed to delete backup record ${id}: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * 列出可用于恢复的备份（最近成功的备份）
+   * TASK-365: List available backups for restore
+   */
+  async listAvailableForRestore(backupType?: string, limit: number = 10) {
+    try {
+      const where: any = { status: 'success' };
+      if (backupType) where.backupType = backupType;
+
+      const backups = await this.prisma.backupHistory.findMany({
+        where,
+        orderBy: { startedAt: 'desc' },
+        take: limit,
+      });
+
+      return {
+        data: backups,
+        message: 'These are available backups for restore. Use the fileName to restore manually.',
+        meta: { total: backups.length, limit },
+      };
+    } catch (error) {
+      this.logger.error(`Failed to list available backups: ${error.message}`, error.stack);
+      throw error;
+    }
   }
 }

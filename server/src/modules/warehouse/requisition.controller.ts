@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { RequisitionService } from './requisition.service';
 
-@Controller('api/v1/requisitions')
+@Controller('requisitions')
 export class RequisitionController {
   constructor(private readonly requisitionService: RequisitionService) {}
 

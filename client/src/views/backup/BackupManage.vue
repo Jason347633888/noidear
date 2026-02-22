@@ -26,7 +26,16 @@
         <el-table-column prop="backupType" label="备份类型" width="120" :formatter="formatTypeColumn" />
         <el-table-column prop="filePath" label="文件路径" min-width="200" show-overflow-tooltip />
         <el-table-column prop="fileSize" label="文件大小" width="120" :formatter="formatSizeColumn" />
-        <el-table-column prop="status" label="状态" width="100" :formatter="formatStatusColumn" />
+        <el-table-column prop="status" label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag
+              :type="row.status === 'success' ? 'success' : row.status === 'running' ? 'warning' : 'danger'"
+              size="small"
+            >
+              {{ statusLabel(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="createdAt" label="创建时间" width="160" :formatter="formatTimeColumn" />
         <el-table-column prop="completedAt" label="完成时间" width="160" :formatter="formatCompletedColumn" />
         <el-table-column prop="errorMessage" label="错误信息" min-width="150" show-overflow-tooltip />
@@ -135,9 +144,9 @@ const formatSizeColumn = (row: BackupRecord) => {
   return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`;
 };
 
-const formatStatusColumn = (row: BackupRecord) => {
-  const map = { running: '运行中', success: '成功', failed: '失败' };
-  return map[row.status] || row.status;
+const statusLabel = (status: string) => {
+  const map: Record<string, string> = { running: '运行中', success: '成功', failed: '失败' };
+  return map[status] || status;
 };
 
 const formatTimeColumn = (row: BackupRecord) => dayjs(row.createdAt).format('YYYY-MM-DD HH:mm:ss');

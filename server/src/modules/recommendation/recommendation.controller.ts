@@ -20,7 +20,7 @@ import { TrackViewDto } from './dto/track-view.dto';
 @ApiTags('智能文档推荐')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('api/v1/recommendations')
+@Controller('recommendations')
 export class RecommendationController {
   constructor(private readonly service: RecommendationService) {}
 
