@@ -580,4 +580,41 @@ describe('UserPermissionService', () => {
       expect(result.data.failed).toBe(1);
     });
   });
+
+  describe('getEffectivePermissionsForApi', () => {
+    it('应该返回用户有效权限列表', async () => {
+      const mockUser = { id: 'user_001', username: 'test_user' };
+      const mockPerms = [
+        { code: 'view:department:document', name: '查看文档', category: 'document', scope: 'department' },
+      ];
+
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+      // getEffectivePermissions 内部需要 findUnique with include
+      mockPrismaService.user.findUnique
+        .mockResolvedValueOnce(mockUser) // 第一次：检查用户是否存在
+        .mockResolvedValueOnce({         // 第二次：getEffectivePermissions 内部调用
+          id: 'user_001',
+          userPermissions: [
+            {
+              id: 'up_001',
+              fineGrainedPermission: mockPerms[0],
+              expiresAt: null,
+            },
+          ],
+        });
+
+      const result = await service.getEffectivePermissionsForApi('user_001');
+
+      expect(result.success).toBe(true);
+      expect(result.meta.total).toBeGreaterThanOrEqual(0);
+      expect(Array.isArray(result.data)).toBe(true);
+    });
+
+    it('应该在用户不存在时抛出 NotFoundException', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+      const { NotFoundException } = await import('@nestjs/common');
+      await expect(service.getEffectivePermissionsForApi('nonexistent')).rejects.toThrow(NotFoundException);
+    });
+  });
 });

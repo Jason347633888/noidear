@@ -375,6 +375,29 @@ export class UserPermissionService {
   }
 
   /**
+   * 获取用户有效权限（包装给 API 使用）
+   */
+  async getEffectivePermissionsForApi(userId: string) {
+    try {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        throw new NotFoundException(`用户 ID ${userId} 不存在`);
+      }
+      const permissions = await this.getEffectivePermissions(userId);
+      return {
+        success: true,
+        data: permissions,
+        meta: { total: permissions.length },
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException(`获取有效权限失败: ${error.message}`);
+    }
+  }
+
+  /**
    * 权限去重辅助方法
    * BR-359: 权限合并规则 - 相同权限只保留一个
    */

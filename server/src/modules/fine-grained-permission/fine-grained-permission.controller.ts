@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   Post,
   Put,
@@ -83,5 +84,37 @@ export class FineGrainedPermissionController {
   @ApiResponse({ status: 403, description: '无权限操作' })
   disable(@Param('id') id: string) {
     return this.fineGrainedPermissionService.disable(id);
+  }
+
+  @Put(':id/enable')
+  @Roles('admin')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '启用细粒度权限' })
+  @ApiResponse({ status: 200, description: '启用成功' })
+  @ApiResponse({ status: 404, description: '权限不存在' })
+  @ApiResponse({ status: 403, description: '无权限操作' })
+  enable(@Param('id') id: string) {
+    return this.fineGrainedPermissionService.enable(id);
+  }
+
+  @Delete(':id')
+  @Roles('admin')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '删除细粒度权限定义' })
+  @ApiResponse({ status: 200, description: '删除成功' })
+  @ApiResponse({ status: 404, description: '权限不存在' })
+  @ApiResponse({ status: 409, description: '权限已被分配，无法删除' })
+  @ApiResponse({ status: 403, description: '无权限操作' })
+  remove(@Param('id') id: string) {
+    return this.fineGrainedPermissionService.remove(id);
+  }
+
+  @Get('matrix/resource-action')
+  @Roles('admin')
+  @ApiOperation({ summary: '获取资源-操作权限矩阵' })
+  @ApiResponse({ status: 200, description: '权限矩阵' })
+  @ApiResponse({ status: 403, description: '无权限操作' })
+  getMatrix() {
+    return this.fineGrainedPermissionService.getPermissionMatrix();
   }
 }

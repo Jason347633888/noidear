@@ -119,4 +119,36 @@ export class UserPermissionController {
   batchRevokePermissions(@Body() batchDto: BatchRevokePermissionsDto) {
     return this.userPermissionService.batchRevokePermissions(batchDto);
   }
+
+  /**
+   * 获取用户的有效权限（直接授予，含过期检查）
+   * BR-358: 权限继承规则
+   */
+  @Get(':userId/effective')
+  @Roles('admin', 'leader')
+  @ApiOperation({ summary: '获取用户有效权限列表（含继承）' })
+  @ApiResponse({ status: 200, description: '查询成功' })
+  @ApiResponse({ status: 404, description: '用户不存在' })
+  getEffectivePermissions(@Param('userId') userId: string) {
+    return this.userPermissionService.getEffectivePermissionsForApi(userId);
+  }
+
+  /**
+   * 检查用户是否拥有指定权限
+   * BR-354: 权限检查规则
+   */
+  @Get(':userId/has-permission')
+  @Roles('admin', 'leader')
+  @ApiOperation({ summary: '检查用户是否拥有指定权限' })
+  @ApiResponse({ status: 200, description: '检查结果' })
+  async hasPermission(
+    @Param('userId') userId: string,
+    @Query('permissionCode') permissionCode: string,
+  ) {
+    if (!permissionCode) {
+      return { success: false, error: 'permissionCode 为必填参数' };
+    }
+    const result = await this.userPermissionService.hasPermission(userId, permissionCode);
+    return { success: true, data: { userId, permissionCode, hasPermission: result } };
+  }
 }

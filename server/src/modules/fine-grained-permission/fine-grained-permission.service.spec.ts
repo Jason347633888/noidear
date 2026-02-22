@@ -20,7 +20,7 @@ describe('FineGrainedPermissionService', () => {
       delete: jest.fn(),
       count: jest.fn(),
     },
-  };
+  } as any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -388,6 +388,170 @@ describe('FineGrainedPermissionService', () => {
       );
 
       await expect(service.findOne('perm_001')).rejects.toThrow('查询权限详情失败');
+    });
+  });
+
+  describe('enable', () => {
+    it('should enable a disabled permission', async () => {
+      mockPrismaService.fineGrainedPermission.findUnique.mockResolvedValue({
+        id: 'perm_001',
+        code: 'view:department:document',
+        name: '查看本部门文档',
+        category: PermissionCategory.DOCUMENT,
+        scope: PermissionScope.DEPARTMENT,
+        status: PermissionStatus.INACTIVE,
+        description: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const enabledPerm = {
+        id: 'perm_001',
+        code: 'view:department:document',
+        name: '查看本部门文档',
+        category: PermissionCategory.DOCUMENT,
+        scope: PermissionScope.DEPARTMENT,
+        status: PermissionStatus.ACTIVE,
+        description: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      mockPrismaService.fineGrainedPermission.update.mockResolvedValue(enabledPerm);
+
+      const result = await service.enable('perm_001');
+
+      expect(result).toMatchObject({ success: true, message: '权限已启用' });
+      expect(result.data.status).toBe(PermissionStatus.ACTIVE);
+      expect(mockPrismaService.fineGrainedPermission.update).toHaveBeenCalledWith({
+        where: { id: 'perm_001' },
+        data: { status: PermissionStatus.ACTIVE },
+      });
+    });
+
+    it('should throw NotFoundException when permission not found', async () => {
+      mockPrismaService.fineGrainedPermission.findUnique.mockResolvedValue(null);
+
+      await expect(service.enable('nonexistent')).rejects.toThrow('权限 ID nonexistent 不存在');
+    });
+  });
+
+  describe('remove', () => {
+    it('should delete permission when no user permissions exist', async () => {
+      mockPrismaService.fineGrainedPermission.findUnique.mockResolvedValue({
+        id: 'perm_001',
+        code: 'view:department:document',
+        name: '查看本部门文档',
+        category: PermissionCategory.DOCUMENT,
+        scope: PermissionScope.DEPARTMENT,
+        status: PermissionStatus.ACTIVE,
+        description: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        _count: { userPermissions: 0 },
+      });
+      mockPrismaService.fineGrainedPermission.delete = jest.fn().mockResolvedValue({});
+
+      const result = await service.remove('perm_001');
+
+      expect(result).toMatchObject({ success: true, message: '权限定义已删除' });
+      expect(mockPrismaService.fineGrainedPermission.delete).toHaveBeenCalledWith({
+        where: { id: 'perm_001' },
+      });
+    });
+
+    it('should throw ForbiddenException when permission is assigned to users', async () => {
+      mockPrismaService.fineGrainedPermission.findUnique.mockResolvedValue({
+        id: 'perm_001',
+        code: 'view:department:document',
+        name: '查看本部门文档',
+        category: PermissionCategory.DOCUMENT,
+        scope: PermissionScope.DEPARTMENT,
+        status: PermissionStatus.ACTIVE,
+        description: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        _count: { userPermissions: 3 },
+      });
+
+      await expect(service.remove('perm_001')).rejects.toThrow('该权限已分配给 3 个用户');
+    });
+
+    it('should throw NotFoundException when permission not found', async () => {
+      mockPrismaService.fineGrainedPermission.findUnique.mockResolvedValue(null);
+
+      await expect(service.remove('nonexistent')).rejects.toThrow('权限 ID nonexistent 不存在');
+    });
+  });
+
+  describe('getPermissionMatrix', () => {
+    it('should return permission matrix grouped by category', async () => {
+      const mockPerms = [
+        {
+          id: 'p1',
+          code: 'view:department:document',
+          name: '查看部门文档',
+          category: 'document',
+          scope: 'department',
+          status: 'active',
+          description: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: 'p2',
+          code: 'edit:global:document',
+          name: '全局编辑文档',
+          category: 'document',
+          scope: 'global',
+          status: 'active',
+          description: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: 'p3',
+          code: 'manage:global:system',
+          name: '系统管理',
+          category: 'system',
+          scope: 'global',
+          status: 'active',
+          description: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+
+      mockPrismaService.fineGrainedPermission.findMany.mockResolvedValue(mockPerms);
+
+      const result = await service.getPermissionMatrix();
+
+      expect(result.success).toBe(true);
+      expect(result.data.totalPermissions).toBe(3);
+      expect(result.data.matrix).toHaveProperty('document');
+      expect(result.data.matrix).toHaveProperty('system');
+      expect(result.data.matrix['document']).toHaveProperty('department');
+      expect(result.data.matrix['document']).toHaveProperty('global');
+      expect(result.data.matrix['system']).toHaveProperty('global');
+      expect(result.data.categories).toContain('document');
+      expect(result.data.categories).toContain('system');
+    });
+
+    it('should return empty matrix when no active permissions', async () => {
+      mockPrismaService.fineGrainedPermission.findMany.mockResolvedValue([]);
+
+      const result = await service.getPermissionMatrix();
+
+      expect(result.success).toBe(true);
+      expect(result.data.totalPermissions).toBe(0);
+      expect(result.data.categories).toHaveLength(0);
+    });
+
+    it('should handle database errors gracefully', async () => {
+      mockPrismaService.fineGrainedPermission.findMany.mockRejectedValue(
+        new Error('DB error'),
+      );
+
+      await expect(service.getPermissionMatrix()).rejects.toThrow('获取权限矩阵失败');
     });
   });
 });

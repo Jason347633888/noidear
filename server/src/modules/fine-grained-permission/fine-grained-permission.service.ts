@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreateFineGrainedPermissionDto,
@@ -175,6 +175,119 @@ export class FineGrainedPermissionService {
         throw error;
       }
       throw new BadRequestException(`停用权限失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 启用权限
+   * PUT /api/v1/fine-grained-permissions/:id/enable
+   */
+  async enable(id: string) {
+    try {
+      const existing = await this.prisma.fineGrainedPermission.findUnique({
+        where: { id },
+      });
+
+      if (!existing) {
+        throw new NotFoundException(`权限 ID ${id} 不存在`);
+      }
+
+      const permission = await this.prisma.fineGrainedPermission.update({
+        where: { id },
+        data: { status: PermissionStatus.ACTIVE },
+      });
+
+      return {
+        success: true,
+        data: permission,
+        message: '权限已启用',
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException(`启用权限失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 删除权限定义（若已分配用户则拒绝）
+   * DELETE /api/v1/fine-grained-permissions/:id
+   */
+  async remove(id: string) {
+    try {
+      const existing = await this.prisma.fineGrainedPermission.findUnique({
+        where: { id },
+        include: {
+          _count: { select: { userPermissions: true } },
+        },
+      });
+
+      if (!existing) {
+        throw new NotFoundException(`权限 ID ${id} 不存在`);
+      }
+
+      if (existing._count.userPermissions > 0) {
+        throw new ForbiddenException(
+          `该权限已分配给 ${existing._count.userPermissions} 个用户，无法删除。请先撤销所有用户的该权限。`,
+        );
+      }
+
+      await this.prisma.fineGrainedPermission.delete({ where: { id } });
+
+      return {
+        success: true,
+        message: '权限定义已删除',
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new BadRequestException(`删除权限定义失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 获取资源-操作权限矩阵
+   * GET /api/v1/fine-grained-permissions/matrix/resource-action
+   *
+   * 返回按 category（资源类型）和 scope 分组的权限矩阵
+   */
+  async getPermissionMatrix() {
+    try {
+      const permissions = await this.prisma.fineGrainedPermission.findMany({
+        where: { status: PermissionStatus.ACTIVE },
+        orderBy: [{ category: 'asc' }, { scope: 'asc' }, { code: 'asc' }],
+      });
+
+      // 按 category 分组构建矩阵
+      const matrix: Record<string, Record<string, any[]>> = {};
+
+      for (const perm of permissions) {
+        if (!matrix[perm.category]) {
+          matrix[perm.category] = {};
+        }
+        if (!matrix[perm.category][perm.scope]) {
+          matrix[perm.category][perm.scope] = [];
+        }
+        matrix[perm.category][perm.scope].push({
+          id: perm.id,
+          code: perm.code,
+          name: perm.name,
+          description: perm.description,
+        });
+      }
+
+      return {
+        success: true,
+        data: {
+          matrix,
+          totalPermissions: permissions.length,
+          categories: Object.keys(matrix),
+        },
+      };
+    } catch (error) {
+      throw new BadRequestException(`获取权限矩阵失败: ${error.message}`);
     }
   }
 }
