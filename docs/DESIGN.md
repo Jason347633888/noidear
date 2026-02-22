@@ -2422,6 +2422,7 @@ departments (
   code        VARCHAR(20)   UNIQUE NOT NULL,    -- 部门代码
   name        VARCHAR(100)  NOT NULL,           -- 部门名称
   parent_id   SnowflakeID   REFERENCES departments(id),  -- 上级部门
+  manager_id  VARCHAR(32)   REFERENCES users(id),        -- 部门负责人（可为空）
   status      VARCHAR(10)   NOT NULL DEFAULT 'active',   -- active/inactive
   created_at  TIMESTAMP   DEFAULT NOW(),
   updated_at  TIMESTAMP   DEFAULT NOW(),
@@ -2534,6 +2535,29 @@ approvals (
   status      VARCHAR(20)   NOT NULL,            -- approved/rejected
   comment     TEXT,
   created_at  TIMESTAMP   DEFAULT NOW()
+);
+
+-- 审批链扩展字段（v2.0 后添加，实现多级审批与会签）
+-- level            INT              -- 当前审批层级（多级审批时使用）
+-- approval_chain_id VARCHAR(32)     -- 所属审批链ID
+-- previous_level   INT              -- 上一层级
+-- next_level       INT              -- 下一层级
+-- rejection_reason TEXT             -- 拒绝原因
+-- approved_at      TIMESTAMPTZ      -- 审批时间
+-- approval_type    VARCHAR(20)      -- 审批类型：sequential（依次）/ countersign（会签）
+-- sequence         INT              -- 会签序号
+-- group_id         VARCHAR(32)      -- 会签组ID
+
+-- 审批委托日志表
+CREATE TABLE delegation_logs (
+  id              VARCHAR(32)   PRIMARY KEY,
+  delegator_id    VARCHAR(32)   NOT NULL REFERENCES users(id),
+  delegate_id     VARCHAR(32)   NOT NULL REFERENCES users(id),
+  start_date      DATE          NOT NULL,
+  end_date        DATE          NOT NULL,
+  reason          TEXT,
+  status          VARCHAR(20)   NOT NULL DEFAULT 'active',
+  created_at      TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 
 -- 操作日志表
@@ -9311,6 +9335,11 @@ model RecordTemplate {
 
   // P0-5 修复：记录保留期限管理
   retentionYears  Int      @default(5) // 保留年限（用户业务规则：默认 5 年，BRCGS 投诉记录 5 年）
+
+  // 批次关联配置（与批次追溯系统集成，代码中已实现）
+  batchLinkEnabled Boolean  @default(false) // 是否关联批次
+  batchLinkType    String?                  // 批次类型（material/production/finished）
+  batchLinkField   String?                  // 批次关联字段名
 
   createdBy       String              // 创建人 ID
   createdByName   String              // 创建人姓名

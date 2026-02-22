@@ -5,7 +5,7 @@
       <div class="header-content">
         <div class="greeting">
           <span class="greeting-text">工作台</span>
-          <span class="greeting-sub">Document Management System</span>
+          <span class="greeting-sub">Quality Management System</span>
         </div>
         <div class="header-meta">
           <span class="date">{{ currentDate }}</span>
@@ -52,7 +52,7 @@
         <template #header>
           <div class="card-header">
             <span class="card-title">最近文档</span>
-            <el-button text type="primary" @click="$router.push('/documents/level1')">查看全部</el-button>
+            <el-button text type="primary" @click="$router.push('/documents')">查看全部</el-button>
           </div>
         </template>
         <div class="doc-list" v-if="recentDocs.length">

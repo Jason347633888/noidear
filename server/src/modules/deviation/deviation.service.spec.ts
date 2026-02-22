@@ -220,7 +220,7 @@ describe('DeviationService - createDeviationReports', () => {
       templateId: 'template-1',
       ...deviations[0],
       reason: reasons.temperature,
-      reportedBy: 'user-1',
+      reporterId: 'user-1',
       reportedAt: new Date(),
     });
 
@@ -240,7 +240,7 @@ describe('DeviationService - createDeviationReports', () => {
         data: expect.objectContaining({
           fieldName: 'temperature',
           reason: reasons.temperature,
-          reportedBy: 'user-1',
+          reporterId: 'user-1',
         }),
       }),
     );

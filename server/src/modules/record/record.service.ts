@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { WorkflowInstanceService } from '../workflow/workflow-instance.service';
 import { CreateRecordDto } from './dto/create-record.dto';
 import { UpdateRecordDto } from './dto/update-record.dto';
 import { QueryRecordDto } from './dto/query-record.dto';
@@ -8,12 +9,18 @@ import { QueryChangeLogDto } from './dto/query-change-log.dto';
 
 @Injectable()
 export class RecordService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(RecordService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly workflowInstanceService: WorkflowInstanceService,
+  ) {}
 
   /**
    * 创建记录实例
    * BR-221: 自动生成记录编号
    * TASK-169: 自动关联批次
+   * HIGH-5: 若模板配置 approvalRequired + workflowConfig，自动启动工作流实例
    */
   async create(createDto: CreateRecordDto, userId: string) {
     const template = await this.prisma.recordTemplate.findUnique({
@@ -42,16 +49,46 @@ export class RecordService {
       }
     }
 
-    return await this.prisma.record.create({
+    const record = await this.prisma.record.create({
       data: {
         templateId: createDto.templateId,
         number,
         dataJson: createDto.dataJson,
         createdBy: userId,
         retentionUntil,
+        offlineFilled: createDto.offlineFilled ?? false,
         ...batchAssociation,
       },
     });
+
+    // HIGH-5: 若模板需要审批且配置了工作流，自动启动工作流实例
+    const templateAny = template as any;
+    if (templateAny.approvalRequired && templateAny.workflowConfig?.templateId) {
+      try {
+        const instance = await this.workflowInstanceService.create(
+          {
+            templateId: templateAny.workflowConfig.templateId,
+            resourceType: 'record',
+            resourceId: record.id,
+            resourceTitle: `记录 ${record.number}`,
+          },
+          userId,
+        );
+
+        const workflowId: string | null = instance?.data?.id ?? null;
+        await this.prisma.record.update({
+          where: { id: record.id },
+          data: { workflowId },
+        });
+
+        return { ...record, workflowId };
+      } catch (error) {
+        this.logger.error(`自动启动工作流失败，记录 ${record.id}: ${error.message}`);
+        // 工作流启动失败不影响记录创建，返回已创建的记录
+      }
+    }
+
+    return record;
   }
 
   /**
@@ -113,6 +150,17 @@ export class RecordService {
    * 更新记录
    */
   async update(id: string, updateDto: UpdateRecordDto, userId: string) {
+    const existing = await this.prisma.record.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+    if (!existing) {
+      throw new NotFoundException('记录不存在');
+    }
+    if (existing.status === 'approved') {
+      throw new ForbiddenException('已审批通过的记录不允许修改');
+    }
+
     const record = await this.findOne(id);
 
     if (updateDto.dataJson) {
@@ -127,9 +175,16 @@ export class RecordService {
       this.validateDataJson(updateDto.dataJson, template.fieldsJson);
     }
 
+    const updateData: any = {};
+    if (updateDto.dataJson !== undefined) updateData.dataJson = updateDto.dataJson;
+    if (updateDto.offlineFilled !== undefined) updateData.offlineFilled = updateDto.offlineFilled;
+    if (updateDto.signatureTimestamp !== undefined) {
+      updateData.signatureTimestamp = new Date(updateDto.signatureTimestamp);
+    }
+
     return await this.prisma.record.update({
       where: { id },
-      data: updateDto,
+      data: updateData,
     });
   }
 
@@ -214,16 +269,19 @@ export class RecordService {
     if (!isPasswordValid) {
       throw new BadRequestException('电子签名密码验证失败');
     }
+
+    const now = new Date();
     return await this.prisma.record.update({
       where: { id },
       data: {
         status: 'signed',
-        approvedAt: new Date(),
+        approvedAt: now,
+        signatureTimestamp: now,
         dataJson: {
           ...(record.dataJson as object),
           _signature: {
             signedBy: userId,
-            signedAt: new Date().toISOString(),
+            signedAt: now.toISOString(),
             comment: signatureData.comment || '',
           },
         },

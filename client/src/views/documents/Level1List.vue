@@ -3,7 +3,7 @@
     <el-card class="filter-card">
       <el-form :model="filterForm" inline>
         <el-form-item label="文档级别">
-          <el-select v-model="filterForm.level" disabled>
+          <el-select v-model="filterForm.level" clearable placeholder="全部">
             <el-option :value="1" label="一级文件" />
             <el-option :value="2" label="二级文件" />
             <el-option :value="3" label="三级文件" />
@@ -30,8 +30,8 @@
     <el-card class="table-card">
       <template #header>
         <div class="card-header">
-          <span>{{ levelText }}文件列表</span>
-          <el-button type="primary" @click="$router.push(`/documents/upload/${level}`)">
+          <span>文档管理</span>
+          <el-button type="primary" @click="$router.push(`/documents/upload/${filterForm.level || 1}`)">
             上传文档
           </el-button>
         </div>
@@ -118,8 +118,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, watch } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+import { ref, reactive, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import request from '@/api/request';
 
@@ -135,26 +135,17 @@ interface Document {
 }
 
 const router = useRouter();
-const route = useRoute();
 const loading = ref(false);
 const tableData = ref<Document[]>([]);
 
-const level = computed(() => {
-  const path = route.path;
-  if (path.includes('/level2')) return 2;
-  if (path.includes('/level3')) return 3;
-  return 1;
-});
-
-const levelText = computed(() => {
-  if (level.value === 2) return '二级';
-  if (level.value === 3) return '三级';
-  return '一';
-});
-
-const filterForm = reactive({
+const filterForm = reactive<{
+  keyword: string;
+  status: string;
+  level: number | null;
+}>({
   keyword: '',
   status: '',
+  level: null,
 });
 
 const pagination = reactive({
@@ -200,7 +191,7 @@ const fetchData = async () => {
       params: {
         page: pagination.page,
         limit: pagination.limit,
-        level: level.value,  // 使用实时计算的 level，而不是 filterForm.level
+        level: filterForm.level ?? undefined,
         keyword: filterForm.keyword || undefined,
         status: filterForm.status || undefined,
       },
@@ -222,6 +213,7 @@ const handleSearch = () => {
 const handleReset = () => {
   filterForm.keyword = '';
   filterForm.status = '';
+  filterForm.level = null;
   handleSearch();
 };
 
@@ -258,12 +250,6 @@ const handleDelete = async (row: Document) => {
 };
 
 onMounted(() => {
-  fetchData();
-});
-
-// 监听路由变化，重新获取数据
-watch(level, () => {
-  pagination.page = 1;
   fetchData();
 });
 </script>

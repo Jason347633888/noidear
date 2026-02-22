@@ -5,9 +5,10 @@ import { ChangeLogInterceptor } from './interceptors/change-log.interceptor';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { DynamicFormBatchController } from './controllers/dynamic-form-batch.controller';
 import { DynamicFormBatchService } from './services/dynamic-form-batch.service';
+import { WorkflowModule } from '../workflow/workflow.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, WorkflowModule],
   controllers: [RecordController, DynamicFormBatchController],
   providers: [RecordService, ChangeLogInterceptor, DynamicFormBatchService],
   exports: [RecordService, DynamicFormBatchService],

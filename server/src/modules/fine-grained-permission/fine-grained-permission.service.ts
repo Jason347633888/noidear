@@ -302,8 +302,7 @@ export class FineGrainedPermissionService {
    * 获取角色已绑定的细粒度权限列表
    * Critical 2: GET /api/v1/fine-grained-permissions/role/:roleId
    *
-   * 注：当前 Schema 无 RoleFineGrainedPermission 关联表，
-   * 通过角色下所有用户的共同权限集合推导（取并集）。
+   * 直接查询 RoleFineGrainedPermission 中间表获取该角色已绑定的权限。
    * 返回所有权限定义，并标注该角色是否已绑定。
    */
   async getRolePermissions(roleId: string) {
@@ -313,26 +312,14 @@ export class FineGrainedPermissionService {
         throw new NotFoundException(`角色 ID ${roleId} 不存在`);
       }
 
-      // 查询该角色下所有用户已绑定的细粒度权限（取并集）
-      const usersInRole = await this.prisma.user.findMany({
-        where: { roleId },
-        select: { id: true },
+      // 直接查询 RoleFineGrainedPermission 中间表
+      const rolePerms = await this.prisma.roleFineGrainedPermission.findMany({
+        where: { roleId, allowed: true },
+        select: { resource: true, action: true },
       });
 
-      const userIds = usersInRole.map((u) => u.id);
-      const assignedPermIds = new Set<string>();
-
-      if (userIds.length > 0) {
-        const userPerms = await this.prisma.userPermission.findMany({
-          where: {
-            userId: { in: userIds },
-            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-          },
-          select: { fineGrainedPermissionId: true },
-          distinct: ['fineGrainedPermissionId'],
-        });
-        userPerms.forEach((up) => assignedPermIds.add(up.fineGrainedPermissionId));
-      }
+      // 构建已绑定的权限 code 集合（格式: resource:action）
+      const assignedCodes = new Set(rolePerms.map((rp) => `${rp.resource}:${rp.action}`));
 
       // 返回所有权限定义，并标注是否已绑定到该角色
       const allPermissions = await this.prisma.fineGrainedPermission.findMany({
@@ -347,9 +334,9 @@ export class FineGrainedPermissionService {
           roleName: role.name,
           permissions: allPermissions.map((p) => ({
             ...p,
-            assigned: assignedPermIds.has(p.id),
+            assigned: assignedCodes.has(p.code),
           })),
-          assignedCount: assignedPermIds.size,
+          assignedCount: assignedCodes.size,
         },
       };
     } catch (error) {
@@ -364,21 +351,24 @@ export class FineGrainedPermissionService {
    * 批量保存角色的细粒度权限配置
    * Critical 2: PUT /api/v1/fine-grained-permissions/role/:roleId
    *
-   * 传入权限 ID 数组，先删除该角色下所有用户的旧权限关联，
-   * 再为所有用户批量插入新关联（使用 Prisma transaction）。
-   * 注：因无 RoleFineGrainedPermission 表，以角色内用户的共同权限集实现。
+   * 传入权限 ID 数组，先清空该角色在 RoleFineGrainedPermission 的旧记录，
+   * 再批量写入新记录（使用 Prisma transaction）。
+   *
+   * @param roleId 角色 ID
+   * @param permissionIds 权限 ID 数组
+   * @param operatorId 操作人 ID（从请求上下文获取）
    */
-  async saveRolePermissions(roleId: string, permissionIds: string[]) {
+  async saveRolePermissions(roleId: string, permissionIds: string[], operatorId: string) {
     try {
       const role = await this.prisma.role.findUnique({ where: { id: roleId } });
       if (!role) {
         throw new NotFoundException(`角色 ID ${roleId} 不存在`);
       }
 
-      // 验证所有权限 ID 存在
+      // 验证所有权限 ID 存在且处于激活状态
       const validPerms = await this.prisma.fineGrainedPermission.findMany({
         where: { id: { in: permissionIds }, status: PermissionStatus.ACTIVE },
-        select: { id: true },
+        select: { id: true, code: true },
       });
 
       if (validPerms.length !== permissionIds.length) {
@@ -387,33 +377,30 @@ export class FineGrainedPermissionService {
         throw new BadRequestException(`以下权限 ID 不存在或已停用: ${missing.join(', ')}`);
       }
 
-      // 查询该角色下所有用户
-      const usersInRole = await this.prisma.user.findMany({
-        where: { roleId },
-        select: { id: true },
-      });
-      const userIds = usersInRole.map((u) => u.id);
-
       await this.prisma.$transaction(async (tx) => {
-        // 删除角色内所有用户的现有细粒度权限
-        if (userIds.length > 0) {
-          await tx.userPermission.deleteMany({
-            where: { userId: { in: userIds } },
+        // 清空该角色在 RoleFineGrainedPermission 中的旧记录
+        await tx.roleFineGrainedPermission.deleteMany({
+          where: { roleId },
+        });
+
+        // 批量写入新记录（解析 code 为 resource 和 action）
+        if (validPerms.length > 0) {
+          const createData = validPerms.map((perm) => {
+            const [resource, ...actionParts] = perm.code.split(':');
+            const action = actionParts.join(':') || perm.code;
+            return {
+              roleId,
+              resource,
+              action,
+              allowed: true,
+              grantedBy: operatorId,
+            };
           });
-        }
 
-        // 为所有用户批量插入新权限（跳过重复项）
-        const createData = userIds.flatMap((userId) =>
-          permissionIds.map((permId) => ({
-            userId,
-            fineGrainedPermissionId: permId,
-            grantedBy: userId, // 系统操作，授权人设为用户本身
-            reason: `角色 ${role.name} 权限同步`,
-          })),
-        );
-
-        if (createData.length > 0) {
-          await tx.userPermission.createMany({ data: createData, skipDuplicates: true });
+          await tx.roleFineGrainedPermission.createMany({
+            data: createData,
+            skipDuplicates: true,
+          });
         }
       });
 
@@ -423,9 +410,8 @@ export class FineGrainedPermissionService {
           roleId,
           roleName: role.name,
           permissionIds,
-          affectedUsers: userIds.length,
         },
-        message: `角色权限配置已更新，影响 ${userIds.length} 个用户`,
+        message: `角色权限配置已更新，共 ${permissionIds.length} 条权限`,
       };
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof BadRequestException) {

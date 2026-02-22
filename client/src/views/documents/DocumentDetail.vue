@@ -40,7 +40,7 @@
       />
 
       <div class="actions-wrap">
-        <el-button type="primary" @click="showPreview = true" :disabled="document.status === 'inactive'">
+        <el-button type="primary" @click="handlePreview" :disabled="document.status === 'inactive'">
           <el-icon><View /></el-icon>
           预览文件
         </el-button>
@@ -152,12 +152,29 @@
       </el-table>
     </el-card>
 
-    <!-- 文件预览对话框 -->
-    <FilePreviewDialog
+    <!-- 文件预览对话框（使用 OfficePreview 支持多格式） -->
+    <el-dialog
       v-model="showPreview"
-      :document-id="document?.id || ''"
-      :filename="document?.fileName || ''"
-    />
+      :title="`预览: ${document?.fileName || ''}`"
+      width="90%"
+      destroy-on-close
+    >
+      <div v-loading="previewLoading" class="preview-dialog-body">
+        <OfficePreview
+          v-if="!previewLoading"
+          :filename="document?.fileName || ''"
+          :preview-url="previewUrl"
+          @download="handleDownload"
+        />
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="handleDownload">
+          <el-icon><Download /></el-icon>
+          下载原文件
+        </el-button>
+        <el-button @click="showPreview = false">关闭</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 归档对话框 -->
     <el-dialog v-model="archiveDialogVisible" title="归档文档" width="500px">
@@ -233,9 +250,10 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download, View } from '@element-plus/icons-vue';
 import request from '@/api/request';
-import FilePreviewDialog from '@/components/FilePreviewDialog.vue';
+import OfficePreview from '@/components/OfficePreview.vue';
 import RecommendedDocuments from '@/components/RecommendedDocuments.vue';
 import { useUserStore } from '@/stores/user';
+import filePreviewApi from '@/api/file-preview';
 
 interface VersionItem {
   id: string;
@@ -282,6 +300,8 @@ const loading = ref(false);
 const document = ref<Document | null>(null);
 const versionHistory = ref<VersionItem[]>([]);
 const showPreview = ref(false);
+const previewLoading = ref(false);
+const previewUrl = ref('');
 
 // 权限判断
 const isCreator = computed(() => document.value?.creatorId === userStore.user?.id);
@@ -392,6 +412,28 @@ const fetchVersionHistory = async () => {
     versionHistory.value = res.versions || [];
   } catch (error) {
     // 版本历史获取失败不影响主流程
+  }
+};
+
+const handlePreview = async () => {
+  if (!document.value?.id) return;
+  if (document.value.status === 'inactive') {
+    ElMessage.warning('该文档已停用，无法预览');
+    return;
+  }
+
+  showPreview.value = true;
+  previewLoading.value = true;
+  previewUrl.value = '';
+
+  try {
+    const result = await filePreviewApi.getPreviewInfo(document.value.id);
+    previewUrl.value = result.url || '';
+  } catch (error) {
+    ElMessage.error('获取预览链接失败');
+    showPreview.value = false;
+  } finally {
+    previewLoading.value = false;
   }
 };
 
@@ -575,5 +617,9 @@ onMounted(() => {
 
 .version-card {
   margin-top: 16px;
+}
+
+.preview-dialog-body {
+  min-height: 400px;
 }
 </style>

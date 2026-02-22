@@ -6,7 +6,7 @@
           <el-icon :size="24"><Document /></el-icon>
         </div>
         <transition name="fade">
-          <span v-if="!isCollapsed" class="logo-text">文档管理</span>
+          <span v-if="!isCollapsed" class="logo-text">质量管理</span>
         </transition>
       </div>
 
@@ -15,12 +15,29 @@
         :collapse="isCollapsed"
         router
         class="aside-menu"
+        background-color="transparent"
+        text-color="#4a5568"
+        active-text-color="#c9a227"
       >
-        <template v-for="item in menuItems" :key="item.path">
-          <el-menu-item :index="item.path">
+        <template v-for="item in menuItems" :key="item.title">
+          <el-menu-item v-if="!item.children" :index="item.path">
             <el-icon><component :is="item.icon" /></el-icon>
             <template #title>{{ item.title }}</template>
           </el-menu-item>
+          <el-sub-menu v-else :index="item.title">
+            <template #title>
+              <el-icon><component :is="item.icon" /></el-icon>
+              <span>{{ item.title }}</span>
+            </template>
+            <el-menu-item
+              v-for="child in item.children"
+              :key="child.path"
+              :index="child.path"
+            >
+              <el-icon><component :is="child.icon" /></el-icon>
+              <template #title>{{ child.title }}</template>
+            </el-menu-item>
+          </el-sub-menu>
         </template>
       </el-menu>
 
@@ -98,8 +115,7 @@ import {
   User, Lock, SwitchButton, HomeFilled, Files,
   Grid, List, CircleCheck, Message, UserFilled,
   DataAnalysis, Setting, Connection, Box, Goods, Key,
-  SetUp, WarnTriangleFilled, Monitor, Histogram, AlarmClock,
-  Cloudy, Search, Odometer,
+  SetUp, WarnTriangleFilled, Monitor, Cloudy, Search, Odometer, Delete,
 } from '@element-plus/icons-vue';
 
 import request from '@/api/request';
@@ -116,54 +132,90 @@ const currentTitle = computed(() => route.meta.title as string || '');
 
 const menuItems = [
   { path: '/dashboard', title: '工作台', icon: HomeFilled },
-  { path: '/documents/level1', title: '一级文件', icon: Files },
-  { path: '/documents/level2', title: '二级文件', icon: Files },
-  { path: '/documents/level3', title: '三级文件', icon: Files },
-  { path: '/templates', title: '模板管理', icon: Grid },
-  { path: '/tasks', title: '任务列表', icon: List },
-  { path: '/records', title: '记录管理', icon: Document },
-  { path: '/approvals/pending', title: '待我审批', icon: CircleCheck },
-  { path: '/approvals/history', title: '审批历史', icon: CircleCheck },
-  { path: '/workflow/templates', title: '工作流模板', icon: Connection },
-  { path: '/workflow/my-tasks', title: '工作流待办', icon: Connection },
-  { path: '/workflow/instances', title: '工作流实例', icon: Connection },
-  { path: '/batch-trace', title: '批次追溯', icon: Box },
-  { path: '/warehouse/materials', title: '物料管理', icon: Goods },
-  { path: '/warehouse/requisitions', title: '领料管理', icon: Goods },
-  { path: '/warehouse/suppliers', title: '供应商', icon: Goods },
-  { path: '/warehouse/staging-area', title: '暂存间', icon: Goods },
-  { path: '/warehouse/material-balance', title: '物料平衡', icon: Goods },
-  { path: '/equipment', title: '设备台账', icon: SetUp },
-  { path: '/equipment/plans', title: '维护计划', icon: SetUp },
-  { path: '/equipment/records', title: '维保记录', icon: SetUp },
-  { path: '/equipment/faults', title: '设备报修', icon: WarnTriangleFilled },
-  { path: '/equipment/stats', title: '设备统计', icon: DataAnalysis },
-  { path: '/statistics/overview', title: '统计概览', icon: DataAnalysis },
-  { path: '/statistics/documents', title: '文档统计', icon: DataAnalysis },
-  { path: '/statistics/tasks', title: '任务统计', icon: DataAnalysis },
-  { path: '/notifications', title: '消息中心', icon: Message },
-  { path: '/users', title: '用户管理', icon: UserFilled },
-  { path: '/roles', title: '角色管理', icon: Key },
-  { path: '/permissions', title: '权限管理', icon: Setting },
-  // 系统运维监控
-  { path: '/monitoring/dashboard', title: '监控大屏', icon: Monitor },
-  { path: '/monitoring/metrics', title: '性能指标', icon: Histogram },
-  { path: '/monitoring/alerts/rules', title: '告警规则', icon: AlarmClock },
-  { path: '/monitoring/alerts/history', title: '告警历史', icon: AlarmClock },
-  // 审计日志
-  { path: '/audit/login-logs', title: '登录日志', icon: Odometer },
-  { path: '/audit/permission-logs', title: '权限变更日志', icon: Key },
-  { path: '/audit/sensitive-logs', title: '敏感操作日志', icon: WarnTriangleFilled },
-  { path: '/audit/search', title: '综合日志搜索', icon: Search },
-  // 备份与健康
-  { path: '/backup/manage', title: '备份管理', icon: Cloudy },
-  { path: '/health', title: '健康检查', icon: Monitor },
-  // 高级功能
-  { path: '/search', title: '高级搜索', icon: Search },
-  { path: '/admin/export', title: '批量导出', icon: DataAnalysis },
-  { path: '/admin/import', title: '批量导入', icon: DataAnalysis },
-  { path: '/workflow/designer', title: '流程设计器', icon: Connection },
-  { path: '/statistics/dashboard', title: '数据大屏', icon: Monitor },
+  {
+    title: '文档管理',
+    icon: Files,
+    children: [
+      { path: '/documents', title: '文档列表', icon: Document },
+      { path: '/templates', title: '模板管理', icon: Grid },
+    ],
+  },
+  {
+    title: '审批与工作流',
+    icon: CircleCheck,
+    children: [
+      { path: '/approvals/pending', title: '待我审批', icon: CircleCheck },
+      { path: '/approvals/history', title: '审批历史', icon: CircleCheck },
+      { path: '/workflow/my-tasks', title: '工作流待办', icon: Connection },
+      { path: '/workflow/instances', title: '工作流实例', icon: Connection },
+      { path: '/workflow/templates', title: '工作流模板', icon: Connection },
+      { path: '/workflow/designer', title: '流程设计器', icon: Connection },
+    ],
+  },
+  {
+    title: '生产管理',
+    icon: List,
+    children: [
+      { path: '/tasks', title: '任务列表', icon: List },
+      { path: '/records', title: '记录管理', icon: Document },
+      { path: '/batch-trace', title: '批次追溯', icon: Box },
+      { path: '/deviation-reports', title: '偏差报告', icon: WarnTriangleFilled },
+      { path: '/deviation-analytics', title: '偏差分析', icon: DataAnalysis },
+    ],
+  },
+  {
+    title: '设备与仓库',
+    icon: SetUp,
+    children: [
+      { path: '/equipment', title: '设备台账', icon: SetUp },
+      { path: '/equipment/plans', title: '维护计划', icon: SetUp },
+      { path: '/equipment/records', title: '维保记录', icon: SetUp },
+      { path: '/equipment/faults', title: '设备报修', icon: WarnTriangleFilled },
+      { path: '/equipment/stats', title: '设备统计', icon: DataAnalysis },
+      { path: '/warehouse/materials', title: '物料管理', icon: Goods },
+      { path: '/warehouse/requisitions', title: '领料管理', icon: Goods },
+      { path: '/warehouse/suppliers', title: '供应商', icon: Goods },
+      { path: '/warehouse/staging-area', title: '暂存间', icon: Goods },
+      { path: '/warehouse/material-balance', title: '物料平衡', icon: Goods },
+    ],
+  },
+  {
+    title: '培训与内审',
+    icon: UserFilled,
+    children: [
+      { path: '/training/projects', title: '培训项目', icon: UserFilled },
+      { path: '/internal-audit/plans', title: '内审计划', icon: Document },
+      { path: '/internal-audit/rectifications', title: '整改管理', icon: CircleCheck },
+      { path: '/internal-audit/reports', title: '审计报告', icon: Document },
+    ],
+  },
+  {
+    title: '数据分析',
+    icon: DataAnalysis,
+    children: [
+      { path: '/statistics/overview', title: '统计概览', icon: DataAnalysis },
+      { path: '/statistics/documents', title: '文档统计', icon: DataAnalysis },
+      { path: '/statistics/tasks', title: '任务统计', icon: DataAnalysis },
+      { path: '/statistics/dashboard', title: '数据大屏', icon: Monitor },
+    ],
+  },
+  {
+    title: '系统管理',
+    icon: Setting,
+    children: [
+      { path: '/users', title: '用户管理', icon: UserFilled },
+      { path: '/roles', title: '角色管理', icon: Key },
+      { path: '/permissions', title: '权限管理', icon: Setting },
+      { path: '/notifications', title: '消息中心', icon: Message },
+      { path: '/search', title: '高级搜索', icon: Search },
+      { path: '/recycle-bin', title: '回收站', icon: Delete },
+      { path: '/backup/manage', title: '备份管理', icon: Cloudy },
+      { path: '/admin/import', title: '批量导入', icon: DataAnalysis },
+      { path: '/admin/export', title: '批量导出', icon: DataAnalysis },
+      { path: '/monitoring/dashboard', title: '监控大屏', icon: Monitor },
+      { path: '/audit/search', title: '审计日志', icon: Odometer },
+    ],
+  },
 ];
 
 const handleCommand = (command: string) => {
@@ -207,15 +259,20 @@ router.afterEach(() => {
   --text-light: #7f8c8d;
   --bg: #f5f6fa;
   --white: #ffffff;
-  --aside-bg: var(--primary);
-  --menu-hover: rgba(201, 162, 39, 0.1);
-  --menu-active: rgba(201, 162, 39, 0.15);
+  --aside-bg: #ffffff;
+  --aside-border: #e8eaed;
+  --menu-text: #4a5568;
+  --menu-text-hover: #1a1a2e;
+  --menu-hover: rgba(201, 162, 39, 0.07);
+  --menu-active: rgba(201, 162, 39, 0.12);
+  --menu-active-bar: #c9a227;
 }
 
 .layout-container { height: 100vh; font-family: -apple-system, sans-serif; }
 
 .aside {
   background: var(--aside-bg);
+  border-right: 1px solid var(--aside-border);
   transition: width 0.3s ease;
   display: flex;
   flex-direction: column;
@@ -228,7 +285,7 @@ router.afterEach(() => {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--aside-border);
   padding: 0 16px;
 }
 
@@ -248,7 +305,7 @@ router.afterEach(() => {
   font-family: 'Cormorant Garamond', serif;
   font-size: 20px;
   font-weight: 600;
-  color: var(--white);
+  color: #1a1a2e;
   letter-spacing: 1px;
   white-space: nowrap;
 }
@@ -263,17 +320,18 @@ router.afterEach(() => {
 .aside-menu:not(.el-menu--collapse) { width: 100%; }
 
 .aside-menu :deep(.el-menu-item) {
-  height: 44px;
-  line-height: 44px;
-  margin-bottom: 4px;
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.7);
+  height: 40px;
+  line-height: 40px;
+  margin-bottom: 2px;
+  border-radius: 6px;
+  color: var(--menu-text);
   transition: all 0.2s ease;
+  position: relative;
 }
 
 .aside-menu :deep(.el-menu-item:hover) {
   background: var(--menu-hover);
-  color: var(--white);
+  color: var(--menu-text-hover);
 }
 
 .aside-menu :deep(.el-menu-item.is-active) {
@@ -281,19 +339,51 @@ router.afterEach(() => {
   color: var(--accent);
 }
 
+.aside-menu :deep(.el-menu-item.is-active)::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--menu-active-bar);
+}
+
 .aside-menu :deep(.el-menu-item .el-icon) {
   margin-right: 8px;
-  font-size: 18px;
+  font-size: 16px;
+}
+
+.aside-menu :deep(.el-sub-menu__title) {
+  height: 40px;
+  line-height: 40px;
+  color: var(--menu-text);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.aside-menu :deep(.el-sub-menu__title:hover) {
+  background: var(--menu-hover);
+  color: var(--menu-text-hover);
+}
+
+.aside-menu :deep(.el-sub-menu__title .el-icon) {
+  font-size: 16px;
+}
+
+.aside-menu :deep(.el-sub-menu .el-menu) {
+  background: transparent;
 }
 
 .aside-footer {
   padding: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--aside-border);
 }
 
 .version {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.3);
+  color: #9ca3af;
   text-align: center;
 }
 

@@ -64,6 +64,9 @@
 
           <el-form-item label="紧急程度" prop="urgencyLevel">
             <el-radio-group v-model="form.urgencyLevel">
+              <el-radio-button value="">
+                <span style="color: #909399; font-weight: 500">不填</span>
+              </el-radio-button>
               <el-radio-button value="urgent">
                 <span style="color: #f56c6c; font-weight: 500">紧急</span>
               </el-radio-button>
@@ -96,9 +99,10 @@
             <el-descriptions-item label="设备编号">{{ selectedEquipment?.code || '-' }}</el-descriptions-item>
             <el-descriptions-item label="设备位置">{{ form.location }}</el-descriptions-item>
             <el-descriptions-item label="紧急程度">
-              <el-tag :type="getUrgencyType(form.urgencyLevel)" effect="light">
-                {{ getUrgencyText(form.urgencyLevel) }}
+              <el-tag v-if="form.urgencyLevel" :type="getUrgencyType(form.urgencyLevel as FaultUrgency)" effect="light">
+                {{ getUrgencyText(form.urgencyLevel as FaultUrgency) }}
               </el-tag>
+              <span v-else class="empty-text">未填写</span>
             </el-descriptions-item>
             <el-descriptions-item label="故障描述" :span="2">{{ form.description }}</el-descriptions-item>
             <el-descriptions-item label="照片数量" :span="2">{{ form.photos.length }} 张</el-descriptions-item>
@@ -142,7 +146,7 @@ const form = reactive({
   location: '',
   equipmentId: '',
   description: '',
-  urgencyLevel: 'normal' as FaultUrgency,
+  urgencyLevel: '' as FaultUrgency | '',
   photos: [] as string[],
 });
 
@@ -150,7 +154,7 @@ const rules: FormRules = {
   location: [{ required: true, message: '请选择设备所在区域', trigger: 'change' }],
   equipmentId: [{ required: true, message: '请选择设备', trigger: 'change' }],
   description: [{ required: true, message: '请描述故障情况', trigger: 'blur' }],
-  urgencyLevel: [{ required: true, message: '请选择紧急程度', trigger: 'change' }],
+  urgencyLevel: [],
 };
 
 const locationOptions = computed(() => {
@@ -195,7 +199,7 @@ const handleSubmit = async () => {
     await equipmentApi.createFault({
       equipmentId: form.equipmentId,
       description: form.description,
-      urgencyLevel: form.urgencyLevel,
+      ...(form.urgencyLevel ? { urgencyLevel: form.urgencyLevel as FaultUrgency } : {}),
       photos: form.photos.length > 0 ? form.photos : undefined,
     });
     ElMessage.success('报修单已提交');

@@ -93,7 +93,7 @@ describe('ExportService', () => {
       deviationType: 'out_of_range',
       reason: '设备故障',
       status: 'pending',
-      reportedBy: 'user-1',
+      reporterId: 'user-1',
       reportedAt: new Date('2026-01-20'),
     },
   ];

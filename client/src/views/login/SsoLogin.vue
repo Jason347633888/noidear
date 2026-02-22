@@ -4,7 +4,7 @@
       <div class="login-logo">
         <el-icon :size="40"><Document /></el-icon>
         <h2 class="login-title">SSO 单点登录</h2>
-        <p class="login-subtitle">文档管理系统</p>
+        <p class="login-subtitle">质量管理系统</p>
       </div>
 
       <el-tabs v-model="activeTab">

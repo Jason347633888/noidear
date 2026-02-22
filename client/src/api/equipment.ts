@@ -207,7 +207,7 @@ export interface FaultListResponse {
 export interface CreateFaultPayload {
   equipmentId: string;
   description: string;
-  urgencyLevel: FaultUrgency;
+  urgencyLevel?: FaultUrgency;
   photos?: string[];
 }
 

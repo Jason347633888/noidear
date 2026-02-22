@@ -159,12 +159,12 @@
 - 支持设备编号自动生成
 
 **验收标准**:
-- [ ] POST /api/equipment - 创建设备（自动生成编号）
-- [ ] GET /api/equipment - 分页查询设备
-- [ ] GET /api/equipment/:id - 查询设备详情
-- [ ] PUT /api/equipment/:id - 更新设备
-- [ ] DELETE /api/equipment/:id - 删除设备（软删除）
-- [ ] PUT /api/equipment/:id/status - 更新设备状态
+- [ ] POST /api/v1/equipment - 创建设备（自动生成编号）
+- [ ] GET /api/v1/equipment - 分页查询设备
+- [ ] GET /api/v1/equipment/:id - 查询设备详情
+- [ ] PUT /api/v1/equipment/:id - 更新设备
+- [ ] DELETE /api/v1/equipment/:id - 删除设备（软删除）
+- [ ] PUT /api/v1/equipment/:id/status - 更新设备状态
 - [ ] 所有 API 有异常处理
 
 **依赖**: TASK-209
@@ -215,12 +215,12 @@
 - 支持看板视图数据获取
 
 **验收标准**:
-- [ ] GET /api/maintenance-plans - 分页查询维护计划
-- [ ] GET /api/maintenance-plans/:id - 查询维护计划详情
-- [ ] GET /api/maintenance-plans/calendar - 日历视图数据（按月）
-- [ ] POST /api/maintenance-plans/:id/start - 开始维保
-- [ ] POST /api/maintenance-plans/:id/complete - 完成维保
-- [ ] POST /api/maintenance-plans/:id/cancel - 取消维保
+- [ ] GET /api/v1/maintenance-plans - 分页查询维护计划
+- [ ] GET /api/v1/maintenance-plans/:id - 查询维护计划详情
+- [ ] GET /api/v1/maintenance-plans/calendar - 日历视图数据（按月）
+- [ ] POST /api/v1/maintenance-plans/:id/start - 开始维保
+- [ ] POST /api/v1/maintenance-plans/:id/complete - 完成维保
+- [ ] POST /api/v1/maintenance-plans/:id/cancel - 取消维保
 - [ ] 日历视图数据格式正确
 
 **依赖**: TASK-214
@@ -244,13 +244,13 @@
 - 支持电子签名上传
 
 **验收标准**:
-- [ ] POST /api/maintenance-records - 创建维保记录（草稿）
-- [ ] GET /api/maintenance-records - 分页查询维保记录
-- [ ] GET /api/maintenance-records/:id - 查询维保记录详情
-- [ ] PUT /api/maintenance-records/:id - 更新维保记录（仅草稿）
-- [ ] POST /api/maintenance-records/:id/submit - 提交审批
-- [ ] POST /api/maintenance-records/:id/approve - 审批通过
-- [ ] POST /api/maintenance-records/:id/reject - 审批驳回
+- [ ] POST /api/v1/maintenance-records - 创建维保记录（草稿）
+- [ ] GET /api/v1/maintenance-records - 分页查询维保记录
+- [ ] GET /api/v1/maintenance-records/:id - 查询维保记录详情
+- [ ] PUT /api/v1/maintenance-records/:id - 更新维保记录（仅草稿）
+- [ ] POST /api/v1/maintenance-records/:id/submit - 提交审批
+- [ ] POST /api/v1/maintenance-records/:id/approve - 审批通过
+- [ ] POST /api/v1/maintenance-records/:id/reject - 审批驳回
 - [ ] 照片上传到 MinIO
 
 **依赖**: TASK-211
@@ -274,14 +274,14 @@
 - 支持报修统计
 
 **验收标准**:
-- [ ] POST /api/equipment/faults - 发起报修（所有员工）
-- [ ] GET /api/equipment/faults - 查询报修单列表（工程部）
-- [ ] GET /api/equipment/faults/my - 查询我的报修单（普通员工）
-- [ ] GET /api/equipment/faults/:id - 查询报修单详情
-- [ ] POST /api/equipment/faults/:id/accept - 接单（工程部）
-- [ ] POST /api/equipment/faults/:id/complete - 完成维修
-- [ ] POST /api/equipment/faults/:id/cancel - 取消报修
-- [ ] GET /api/equipment/faults/stats - 报修统计
+- [ ] POST /api/v1/equipment/faults - 发起报修（所有员工）
+- [ ] GET /api/v1/equipment/faults - 查询报修单列表（工程部）
+- [ ] GET /api/v1/equipment/faults/my - 查询我的报修单（普通员工）
+- [ ] GET /api/v1/equipment/faults/:id - 查询报修单详情
+- [ ] POST /api/v1/equipment/faults/:id/accept - 接单（工程部）
+- [ ] POST /api/v1/equipment/faults/:id/complete - 完成维修
+- [ ] POST /api/v1/equipment/faults/:id/cancel - 取消报修
+- [ ] GET /api/v1/equipment/faults/stats - 报修统计
 - [ ] 发起报修时自动生成待办任务给工程部
 
 **依赖**: TASK-212
@@ -306,8 +306,8 @@
 - 支持移动端图片压缩
 
 **验收标准**:
-- [ ] POST /api/upload/photo - 上传照片（维保记录/报修单）
-- [ ] POST /api/upload/signature - 上传电子签名
+- [ ] POST /api/v1/upload/photo - 上传照片（维保记录/报修单）
+- [ ] POST /api/v1/upload/signature - 上传电子签名
 - [ ] 照片上传到 MinIO，返回 URL
 - [ ] 支持图片压缩（移动端上传前压缩）
 - [ ] 文件大小限制（照片 5MB、签名 1MB）
@@ -356,11 +356,11 @@
 - 统计报修次数、平均响应时间、完成率
 
 **验收标准**:
-- [ ] GET /api/equipment/stats/overview - 设备概览统计
-- [ ] GET /api/equipment/stats/maintenance - 维保统计（按级别）
-- [ ] GET /api/equipment/stats/fault-rate - 故障率统计（按设备）
-- [ ] GET /api/equipment/stats/cost - 维保成本统计（按月）
-- [ ] GET /api/equipment/stats/repair - 报修统计（按月）
+- [ ] GET /api/v1/equipment/stats/overview - 设备概览统计
+- [ ] GET /api/v1/equipment/stats/maintenance - 维保统计（按级别）
+- [ ] GET /api/v1/equipment/stats/fault-rate - 故障率统计（按设备）
+- [ ] GET /api/v1/equipment/stats/cost - 维保成本统计（按月）
+- [ ] GET /api/v1/equipment/stats/repair - 报修统计（按月）
 - [ ] 统计数据缓存（Redis）
 
 **依赖**: TASK-211, TASK-212

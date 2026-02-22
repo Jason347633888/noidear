@@ -127,8 +127,8 @@ export class WorkflowTaskService {
   }
 
   /**
-   * P0-2: 审批超时升级定时任务
-   * 每 10 分钟检查超时任务并升级给上级
+   * P0-2: 审批超时通知定时任务
+   * 每 10 分钟检查超时任务，发送通知给当前审批人和发起人，不自动转交
    */
   @Cron(CronExpression.EVERY_10_MINUTES)
   async handleTimeoutEscalation() {
@@ -146,37 +146,58 @@ export class WorkflowTaskService {
             select: { id: true, superiorId: true, name: true },
           },
           instance: {
-            select: { id: true, resourceTitle: true },
+            select: { id: true, resourceTitle: true, initiatorId: true },
           },
         },
       });
 
       for (const task of overdueTasks) {
-        const superiorId = task.assignee?.superiorId;
-        if (!superiorId) {
-          this.logger.warn(`任务 ${task.id} 超时但审批人无上级，无法升级`);
-          continue;
-        }
-
+        // 标记为已超时，保持原审批人不变
         await this.prisma.workflowTask.update({
           where: { id: task.id },
           data: {
-            escalatedTo: superiorId,
-            assigneeId: superiorId,
-            dueAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+            escalatedTo: task.assigneeId, // 标记已处理超时，但不转交
           },
         });
 
+        // 通知当前审批人
+        if (task.assigneeId) {
+          try {
+            await this.notificationService.create({
+              userId: task.assigneeId,
+              type: 'workflow_overdue',
+              title: '审批任务已超时',
+              content: `工作流 [${task.instance?.resourceTitle}] 的审批任务已超时，请尽快处理`,
+            });
+          } catch {
+            this.logger.warn(`超时通知发送失败: assigneeId=${task.assigneeId}`);
+          }
+        }
+
+        // 通知发起人
+        if (task.instance?.initiatorId && task.instance.initiatorId !== task.assigneeId) {
+          try {
+            await this.notificationService.create({
+              userId: task.instance.initiatorId,
+              type: 'workflow_overdue',
+              title: '审批任务超时提醒',
+              content: `您发起的工作流 [${task.instance.resourceTitle}] 中，审批人 [${task.assignee?.name}] 的任务已超时，请跟进`,
+            });
+          } catch {
+            this.logger.warn(`超时通知发送失败: initiatorId=${task.instance.initiatorId}`);
+          }
+        }
+
         this.logger.log(
-          `任务 ${task.id} (${task.instance?.resourceTitle}) 已超时升级: ${task.assignee?.name} -> 上级 ${superiorId}`,
+          `任务 ${task.id} (${task.instance?.resourceTitle}) 已超时，已通知审批人 ${task.assignee?.name}`,
         );
       }
 
       if (overdueTasks.length > 0) {
-        this.logger.log(`超时升级检查完成，处理 ${overdueTasks.length} 个超时任务`);
+        this.logger.log(`超时检查完成，处理 ${overdueTasks.length} 个超时任务`);
       }
     } catch (error) {
-      this.logger.error(`超时升级检查失败: ${error.message}`, error.stack);
+      this.logger.error(`超时检查失败: ${error.message}`, error.stack);
     }
   }
 

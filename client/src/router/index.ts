@@ -23,20 +23,14 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/Dashboard.vue'),
       },
       {
-        path: 'documents/level1',
-        name: 'Level1Documents',
+        path: 'documents',
+        name: 'Documents',
         component: () => import('@/views/documents/Level1List.vue'),
+        meta: { title: '文档管理' },
       },
-      {
-        path: 'documents/level2',
-        name: 'Level2Documents',
-        component: () => import('@/views/documents/Level1List.vue'),
-      },
-      {
-        path: 'documents/level3',
-        name: 'Level3Documents',
-        component: () => import('@/views/documents/Level1List.vue'),
-      },
+      { path: 'documents/level1', redirect: '/documents' },
+      { path: 'documents/level2', redirect: '/documents' },
+      { path: 'documents/level3', redirect: '/documents' },
       {
         path: 'documents/upload/:level',
         name: 'DocumentUpload',

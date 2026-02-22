@@ -149,7 +149,7 @@ export class DeviationService {
           deviationRate: deviation.deviationRate,
           deviationType: deviation.deviationType,
           reason,
-          reportedBy: userId,
+          reporterId: userId,
           reportedAt: new Date(),
         },
       });

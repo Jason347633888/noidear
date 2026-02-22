@@ -21,8 +21,13 @@ export class RecordTemplateService {
         code: createDto.code,
         name: createDto.name,
         fieldsJson: createDto.fieldsJson,
-        retentionYears: createDto.retentionYears || 3,
+        retentionYears: createDto.retentionYears || 5,
         description: createDto.description,
+        batchLinkEnabled: createDto.batchLinkEnabled,
+        batchLinkType: createDto.batchLinkType,
+        batchLinkField: createDto.batchLinkField,
+        approvalRequired: createDto.approvalRequired ?? false,
+        workflowConfig: createDto.workflowConfig,
       },
     });
   }
@@ -93,7 +98,17 @@ export class RecordTemplateService {
 
     return await this.prisma.recordTemplate.update({
       where: { id },
-      data: updateDto,
+      data: {
+        name: updateDto.name,
+        fieldsJson: updateDto.fieldsJson,
+        retentionYears: updateDto.retentionYears,
+        description: updateDto.description,
+        batchLinkEnabled: updateDto.batchLinkEnabled,
+        batchLinkType: updateDto.batchLinkType,
+        batchLinkField: updateDto.batchLinkField,
+        approvalRequired: updateDto.approvalRequired,
+        workflowConfig: updateDto.workflowConfig,
+      },
     });
   }
 
@@ -127,7 +142,7 @@ export class RecordTemplateService {
       data: { status: 'archived' },
     });
 
-    // 创建新版本
+    // 创建新版本，继承 approvalRequired / workflowConfig
     const newVersion = existing.version + 1;
     return await this.prisma.recordTemplate.create({
       data: {
@@ -136,6 +151,8 @@ export class RecordTemplateService {
         fieldsJson: updateDto.fieldsJson || existing.fieldsJson,
         retentionYears: updateDto.retentionYears || existing.retentionYears,
         description: updateDto.description || existing.description,
+        approvalRequired: updateDto.approvalRequired ?? (existing as any).approvalRequired ?? false,
+        workflowConfig: updateDto.workflowConfig ?? (existing as any).workflowConfig,
         version: newVersion,
         status: 'active',
       },

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { RecycleBinController } from './recycle-bin.controller';
 import { RecycleBinService } from './recycle-bin.service';
+import { RecycleBinCron } from './recycle-bin.cron';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { OperationLogModule } from '../operation-log/operation-log.module';
 import { NotificationModule } from '../notification/notification.module';
@@ -17,7 +18,7 @@ import { StorageService } from '../../common/services';
     DocumentModule,
   ],
   controllers: [RecycleBinController],
-  providers: [RecycleBinService, StorageService],
+  providers: [RecycleBinService, RecycleBinCron, StorageService],
   exports: [RecycleBinService],
 })
 export class RecycleBinModule {}

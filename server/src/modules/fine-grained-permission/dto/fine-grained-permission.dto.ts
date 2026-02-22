@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEnum, IsOptional, Matches } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, IsOptional, Matches, IsArray } from 'class-validator';
 
 /**
  * 权限类别枚举
@@ -105,6 +105,21 @@ export class UpdateFineGrainedPermissionDto {
   @IsEnum(PermissionStatus)
   @IsOptional()
   status?: PermissionStatus;
+}
+
+/**
+ * 批量保存角色权限配置 DTO
+ * Critical 2: PUT /fine-grained-permissions/role/:roleId
+ */
+export class SaveRolePermissionsDto {
+  @ApiProperty({
+    description: '权限 ID 数组',
+    type: [String],
+    example: ['perm_id_1', 'perm_id_2'],
+  })
+  @IsArray()
+  @IsString({ each: true })
+  permissionIds: string[];
 }
 
 /**

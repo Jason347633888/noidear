@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { nextTick } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
 
 const mockGet = vi.fn();
 const mockPost = vi.fn();
@@ -26,6 +26,23 @@ vi.mock('element-plus', () => ({
   ElMessageBox: { confirm: vi.fn() },
 }));
 
+// Mock the user store
+vi.mock('@/stores/user', () => ({
+  useUserStore: () => ({
+    isAdmin: true,
+    user: { id: 'admin-1', name: 'Admin', role: 'admin' },
+  }),
+}));
+
+// Mock api/request to prevent import errors
+vi.mock('@/api/request', () => ({
+  default: {
+    get: vi.fn(),
+    post: vi.fn(),
+    delete: vi.fn(),
+  },
+}));
+
 const stubs: Record<string, any> = {
   'el-tabs': { template: '<div><slot /></div>', props: ['modelValue'] },
   'el-tab-pane': { template: '<div><slot /></div>', props: ['label', 'name'] },
@@ -45,18 +62,12 @@ const mockDocument = {
   deletedAt: '2026-01-15T10:00:00Z',
 };
 
-const mockTemplate = {
-  id: 'tpl-1',
-  title: 'Test Template',
-  number: 'TPL-001',
-  deletedAt: '2026-01-15T10:00:00Z',
-};
-
 const w = () => mount(RecycleBin, { global: { stubs } });
 
 describe('RecycleBin', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setActivePinia(createPinia());
     mockGet.mockResolvedValue({ list: [], total: 0 });
   });
 

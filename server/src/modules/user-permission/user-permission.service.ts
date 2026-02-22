@@ -317,8 +317,6 @@ export class UserPermissionService {
    * BR-358: 权限继承规则
    * BR-359: 权限合并规则
    *
-   * TODO: 当前 Prisma Schema 中 RolePermission 链接到旧的 Permission 模型
-   * 需要创建 RoleFineGrainedPermission 模型来支持细粒度权限继承
    * 当前仅返回直接授予的权限
    */
   async getEffectivePermissions(userId: string) {
@@ -347,9 +345,10 @@ export class UserPermissionService {
     // 提取直接权限
     const directPermissions = user.userPermissions.map((up: any) => up.fineGrainedPermission);
 
-    // TODO: 角色继承需要 RoleFineGrainedPermission 映射表
-    // 当前仅返回直接授予的权限
-    return this.deduplicatePermissions(directPermissions);
+    // 角色继承权限（BR-358: 权限继承规则）
+    const inheritedPermissions = await this.getInheritedPermissions(userId);
+
+    return this.deduplicatePermissions([...directPermissions, ...inheritedPermissions]);
   }
 
   /**
@@ -365,13 +364,36 @@ export class UserPermissionService {
    * 获取用户通过角色继承的权限
    * BR-358: 权限继承规则
    *
-   * TODO: 需要在 Prisma Schema 中添加 RoleFineGrainedPermission 模型
    */
   async getInheritedPermissions(userId: string) {
-    // TODO: 需要 RoleFineGrainedPermission 映射表
-    // 当前角色系统使用旧的 Permission 模型（resource/action）
-    // 返回空数组直到 schema 更新
-    return [];
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { roleId: true },
+      });
+
+      if (!user?.roleId) {
+        return [];
+      }
+
+      const rolePermissions = await this.prisma.roleFineGrainedPermission.findMany({
+        where: { roleId: user.roleId, allowed: true },
+        select: { resource: true, action: true },
+      });
+
+      if (rolePermissions.length === 0) {
+        return [];
+      }
+
+      const permCodes = rolePermissions.map((rp) => rp.resource + ':' + rp.action);
+
+      return this.prisma.fineGrainedPermission.findMany({
+        where: { code: { in: permCodes }, status: 'active' },
+      });
+    } catch (error) {
+      this.logger.error('获取继承权限失败 userId=' + userId + ': ' + error.message, error.stack);
+      return [];
+    }
   }
 
   /**
@@ -586,5 +608,65 @@ export class UserPermissionService {
     } catch (error) {
       throw new BadRequestException(`批量撤销权限失败: ${error.message}`);
     }
+  }
+  /**
+   * BR-353: 权限过期前 3 天预通知
+   * 查找即将在 3 天内过期的权限，通知对应用户
+   */
+  async checkExpiringPermissions(): Promise<void> {
+    try {
+      const now = new Date();
+      const threeDaysLater = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+      const expiringPermissions = await this.prisma.userPermission.findMany({
+        where: {
+          expiresAt: {
+            gt: now,
+            lte: threeDaysLater,
+          },
+        },
+        include: {
+          user: { select: { id: true, name: true } },
+          fineGrainedPermission: { select: { code: true, name: true } },
+        },
+      });
+
+      if (expiringPermissions.length === 0) {
+        return;
+      }
+
+      const byUser = new Map<string, typeof expiringPermissions>();
+      for (const perm of expiringPermissions) {
+        const existing = byUser.get(perm.userId) ?? [];
+        existing.push(perm);
+        byUser.set(perm.userId, existing);
+      }
+
+      for (const [userId, perms] of byUser) {
+        const permNames = perms
+          .map((p) => `${p.fineGrainedPermission.name}（${p.expiresAt!.toLocaleDateString('zh-CN')}到期）`)
+          .join('、');
+
+        await this.notificationService.create({
+          userId,
+          type: 'system',
+          title: '权限即将到期提醒',
+          content: `您有 ${perms.length} 个权限即将在 3 天内到期：${permNames}，请联系管理员续期。`,
+        });
+      }
+
+      this.logger.log(`权限过期预通知：共通知 ${byUser.size} 名用户，涉及 ${expiringPermissions.length} 个即将到期权限`);
+    } catch (error) {
+      this.logger.error(`权限过期预通知失败: ${error.message}`, error.stack);
+    }
+  }
+
+  /**
+   * BR-353: 权限过期前 3 天预通知定时任务
+   * 每天凌晨 2 点检查即将到期的权限
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  async handleExpiringPermissionsNotification(): Promise<void> {
+    await this.checkExpiringPermissions();
   }
 }

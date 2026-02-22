@@ -1,5 +1,5 @@
-import { IsString, IsNotEmpty, IsObject } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsObject, IsOptional, IsBoolean, IsDateString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateRecordDto {
   @ApiProperty({ description: '模板ID', example: 'clxxxxxxxxxxxxx' })
@@ -11,4 +11,9 @@ export class CreateRecordDto {
   @IsObject()
   @IsNotEmpty()
   dataJson: object;
+
+  @ApiPropertyOptional({ description: '是否为离线填报', example: false, default: false })
+  @IsOptional()
+  @IsBoolean()
+  offlineFilled?: boolean;
 }

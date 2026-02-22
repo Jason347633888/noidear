@@ -1,6 +1,10 @@
 <template>
   <div class="recycle-bin">
     <h2>回收站</h2>
+    <p class="page-desc">
+      <span v-if="userStore.isAdmin">可查看所有用户删除的项目，并进行恢复或永久删除。</span>
+      <span v-else>您可以查看并恢复自己删除的项目。</span>
+    </p>
 
     <el-tabs v-model="activeType" @tab-change="fetchData">
       <el-tab-pane label="文档" name="document"></el-tab-pane>
@@ -16,12 +20,14 @@
         @input="handleSearch"
       />
       <el-button
+        v-if="userStore.isAdmin"
         :disabled="!selectedIds.length"
         @click="handleBatchRestore"
       >
         批量恢复
       </el-button>
       <el-button
+        v-if="userStore.isAdmin"
         type="danger"
         :disabled="!selectedIds.length"
         @click="handleBatchDelete"
@@ -34,6 +40,9 @@
       :data="tableData"
       @selection-change="handleSelectionChange"
     >
+      <template #empty>
+        <span>{{ userStore.isAdmin ? '回收站为空' : '您没有已删除的项目' }}</span>
+      </template>
       <el-table-column type="selection" width="55" />
       <el-table-column label="标题" prop="title" />
       <el-table-column label="编号" prop="number" />
@@ -53,10 +62,15 @@
       </el-table-column>
       <el-table-column label="操作" width="200">
         <template #default="{ row }">
-          <el-button size="small" @click="handleRestore(row.id)">
+          <el-button
+            v-if="userStore.isAdmin"
+            size="small"
+            @click="handleRestore(row.id)"
+          >
             恢复
           </el-button>
           <el-button
+            v-if="userStore.isAdmin"
             size="small"
             type="danger"
             @click="handlePermanentDelete(row.id)"
@@ -80,6 +94,9 @@
 import { ref, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import recycleBinApi from '@/api/recycle-bin';
+import { useUserStore } from '@/stores/user';
+
+const userStore = useUserStore();
 
 const activeType = ref('document');
 const searchKeyword = ref('');
@@ -206,6 +223,12 @@ const getUserInitial = (user: any): string => {
 <style scoped>
 .recycle-bin {
   padding: 20px;
+}
+
+.page-desc {
+  margin: 4px 0 16px;
+  color: #7f8c8d;
+  font-size: 13px;
 }
 
 .toolbar {

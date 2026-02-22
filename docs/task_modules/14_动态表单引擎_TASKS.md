@@ -33,7 +33,7 @@
 - [ ] fields_json 使用 Json 类型（存储 formSchema）
 - [ ] 唯一索引配置（code 字段）
 - [ ] 版本号字段（version）
-- [ ] 保留期限字段（retentionYears）
+- [ ] 保留期限字段（retentionYears，默认值 **5 年**，符合 BRCGS 合规要求）
 - [ ] 数据库迁移文件生成
 
 **相关文件**:
@@ -92,11 +92,11 @@
 **描述**: 实现记录模板的增删改查 API。
 
 **API 端点**:
-- GET /api/record-templates
-- POST /api/record-templates
-- GET /api/record-templates/:id
-- PUT /api/record-templates/:id
-- DELETE /api/record-templates/:id
+- GET /api/v1/record-templates
+- POST /api/v1/record-templates
+- GET /api/v1/record-templates/:id
+- PUT /api/v1/record-templates/:id
+- DELETE /api/v1/record-templates/:id
 
 **验收标准**:
 - [ ] 模板编号唯一性校验（BR-211）
@@ -140,7 +140,7 @@
 **描述**: 实现模板归档功能（BR-212）。
 
 **API 端点**:
-- POST /api/record-templates/:id/archive
+- POST /api/v1/record-templates/:id/archive
 
 **验收标准**:
 - [ ] 归档后不可新建记录
@@ -162,11 +162,11 @@
 **描述**: 实现记录实例的增删改查 API。
 
 **API 端点**:
-- GET /api/records
-- POST /api/records
-- GET /api/records/:id
-- PUT /api/records/:id
-- DELETE /api/records/:id
+- GET /api/v1/records
+- POST /api/v1/records
+- GET /api/v1/records/:id
+- PUT /api/v1/records/:id
+- DELETE /api/v1/records/:id
 
 **验收标准**:
 - [ ] 记录编号自动生成（BR-221）
@@ -190,7 +190,7 @@
 **描述**: 实现记录提交审批功能（BR-222）。
 
 **API 端点**:
-- POST /api/records/:id/submit
+- POST /api/v1/records/:id/submit
 
 **验收标准**:
 - [ ] 状态从 draft → submitted
@@ -234,7 +234,7 @@
 **描述**: 防篡改机制 - 变更历史记录（BR-251）。
 
 **API 端点**:
-- GET /api/records/:id/change-logs
+- GET /api/v1/records/:id/change-logs
 
 **验收标准**:
 - [ ] approved 后任何修改自动记录到 RecordChangeLog
@@ -258,7 +258,7 @@
 **描述**: 电子签名时间戳锁定（BR-256）。
 
 **API 端点**:
-- POST /api/records/:id/signature
+- POST /api/v1/records/:id/signature
 
 **验收标准**:
 - [ ] 签名时锁定服务器时间戳
@@ -280,7 +280,7 @@
 **描述**: 已审批记录修改（需特殊权限）。
 
 **API 端点**:
-- PUT /api/records/:id/approved-modify
+- PUT /api/v1/records/:id/approved-modify
 
 **验收标准**:
 - [ ] 只有管理员可修改已审批记录
@@ -324,7 +324,7 @@
 **描述**: 记录导出为 PDF（使用 pdfmake）。
 
 **API 端点**:
-- GET /api/records/:id/export-pdf
+- GET /api/v1/records/:id/export-pdf
 
 **验收标准**:
 - [ ] 使用 pdfmake 生成 PDF
@@ -348,7 +348,7 @@
 **描述**: 记录批量导出为 Excel。
 
 **API 端点**:
-- GET /api/records/export-excel
+- GET /api/v1/records/export-excel
 
 **验收标准**:
 - [ ] 使用 xlsx 库生成 Excel

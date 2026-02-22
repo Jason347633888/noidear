@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OperationLogService } from '../operation-log/operation-log.service';
 import { NotificationService } from '../notification/notification.service';
@@ -13,6 +13,7 @@ type RecycleBinType = 'document' | 'template' | 'task';
 @Injectable()
 export class RecycleBinService {
   private readonly snowflake = new Snowflake(1, 1);
+  private readonly logger = new Logger(RecycleBinService.name);
 
   constructor(
     private readonly prisma: PrismaService,
@@ -30,10 +31,11 @@ export class RecycleBinService {
     userId?: string,
     role?: string,
   ) {
-    this.validateAdminRole(role || '', '访问回收站');
     this.validateRecycleBinType(type);
 
-    const where = this.buildQueryWhere(keyword);
+    // 管理员查看全部已删除项；非管理员只查看自己的已删除项
+    const isAdmin = role === 'admin';
+    const where = this.buildQueryWhere(keyword, isAdmin ? undefined : userId);
     const skip = (page - 1) * limit;
     const [list, total] = await this.fetchRecycleBinData(type, where, skip, limit);
 
@@ -52,8 +54,12 @@ export class RecycleBinService {
     }
   }
 
-  private buildQueryWhere(keyword?: string) {
+  private buildQueryWhere(keyword?: string, creatorId?: string) {
     const where: any = { deletedAt: { not: null } };
+
+    if (creatorId) {
+      where.creatorId = creatorId;
+    }
 
     if (keyword) {
       where.OR = [
@@ -346,7 +352,7 @@ export class RecycleBinService {
     try {
       await this.storageService.deleteFile(filePath);
     } catch (error) {
-      console.warn(`MinIO 文件删除失败 (${filePath}):`, error);
+      this.logger.warn(`MinIO 文件删除失败 (${filePath}): ${error}`);
     }
   }
 

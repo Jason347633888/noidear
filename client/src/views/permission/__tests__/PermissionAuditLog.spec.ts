@@ -201,23 +201,18 @@ describe('PermissionAuditLog', () => {
 
   it('exports logs and shows success message', async () => {
     const { ElMessage } = await import('element-plus');
-    // Mock URL.createObjectURL and document.createElement
-    const mockUrl = 'blob:test';
-    global.URL.createObjectURL = vi.fn(() => mockUrl);
+    // Mock URL.createObjectURL and revokeObjectURL
+    global.URL.createObjectURL = vi.fn(() => 'blob:test-url');
     global.URL.revokeObjectURL = vi.fn();
+
+    // Create a proper anchor element mock
+    const linkEl = document.createElement('a');
     const clickMock = vi.fn();
-    const appendChildMock = vi.fn();
-    const removeChildMock = vi.fn();
-    vi.spyOn(document, 'createElement').mockReturnValue({
-      href: '',
-      download: '',
-      click: clickMock,
-    } as unknown as HTMLAnchorElement);
-    vi.spyOn(document.body, 'appendChild').mockImplementation(appendChildMock);
-    vi.spyOn(document.body, 'removeChild').mockImplementation(removeChildMock);
+    linkEl.click = clickMock;
+    vi.spyOn(document, 'createElement').mockReturnValueOnce(linkEl);
 
     mockGet.mockImplementation((url: string) => {
-      if (url === '/permission-audit-logs/export') return Promise.resolve(new Blob());
+      if (url === '/permission-audit-logs/export') return Promise.resolve(new Blob(['data']));
       return Promise.resolve({ list: [], total: 0 });
     });
 

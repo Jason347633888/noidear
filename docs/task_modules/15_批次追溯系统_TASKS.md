@@ -150,10 +150,10 @@
 **描述**: 实现原料批次管理 API。
 
 **API 端点**:
-- GET /api/material-batches
-- POST /api/material-batches
-- GET /api/material-batches/:id
-- PUT /api/material-batches/:id
+- GET /api/v1/material-batches
+- POST /api/v1/material-batches
+- GET /api/v1/material-batches/:id
+- PUT /api/v1/material-batches/:id
 
 **验收标准**:
 - [ ] 入库自动创建 MaterialBatch
@@ -177,10 +177,10 @@
 **描述**: 实现生产批次管理 API。
 
 **API 端点**:
-- GET /api/production-batches
-- POST /api/production-batches
-- GET /api/production-batches/:id
-- PUT /api/production-batches/:id
+- GET /api/v1/production-batches
+- POST /api/v1/production-batches
+- GET /api/v1/production-batches/:id
+- PUT /api/v1/production-batches/:id
 
 **验收标准**:
 - [ ] 生产计划自动创建 ProductionBatch
@@ -204,8 +204,8 @@
 **描述**: 实现批次物料使用关联 API。
 
 **API 端点**:
-- POST /api/batch-material-usage
-- GET /api/production-batches/:id/materials
+- POST /api/v1/batch-material-usage
+- GET /api/v1/production-batches/:id/materials
 
 **验收标准**:
 - [ ] 领料完成自动关联 BatchMaterialUsage
@@ -228,7 +228,7 @@
 **描述**: 实现反向追溯 API（成品 → 原料）。
 
 **API 端点**:
-- POST /api/trace/backward
+- POST /api/v1/trace/backward
 
 **验收标准**:
 - [ ] 成品批次 → 生产批次 → 原料批次完整追溯
@@ -254,7 +254,7 @@
 **描述**: 实现正向追溯 API（原料 → 成品 → 客户）。
 
 **API 端点**:
-- POST /api/trace/forward
+- POST /api/v1/trace/forward
 
 **验收标准**:
 - [ ] 原料批次 → 生产批次 → 成品批次 → 客户完整追溯
@@ -278,7 +278,7 @@
 **描述**: 实现追溯报告 PDF 导出（BR-248）。
 
 **API 端点**:
-- GET /api/trace/:batchNumber/export-pdf
+- GET /api/v1/trace/:batchNumber/export-pdf
 
 **验收标准**:
 - [ ] 使用 pdfmake 生成 PDF

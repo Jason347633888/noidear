@@ -1,0 +1,12 @@
+node_modules
+src
+.env
+.env.*
+e2e
+playwright-report
+playwright-results.json
+coverage
+*.sh
+*.ts
+*.json
+!nginx.conf

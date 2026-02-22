@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { FineGrainedPermissionService } from './fine-grained-permission.service';
@@ -84,6 +85,7 @@ export class FineGrainedPermissionController {
   }
 
   // Critical 2: 批量保存角色权限配置（传入权限 ID 数组）
+  // Critical 3: 从请求上下文获取操作人 ID，避免自授权问题
   @Put('role/:roleId')
   @Roles('admin')
   @HttpCode(HttpStatus.OK)
@@ -94,8 +96,10 @@ export class FineGrainedPermissionController {
   saveRolePermissions(
     @Param('roleId') roleId: string,
     @Body() dto: SaveRolePermissionsDto,
+    @Request() req: any,
   ) {
-    return this.fineGrainedPermissionService.saveRolePermissions(roleId, dto.permissionIds);
+    const operatorId: string = req.user.id;
+    return this.fineGrainedPermissionService.saveRolePermissions(roleId, dto.permissionIds, operatorId);
   }
 
   @Put(':id')

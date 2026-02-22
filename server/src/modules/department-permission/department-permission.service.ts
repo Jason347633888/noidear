@@ -129,7 +129,9 @@ export class DepartmentPermissionService {
 
   /**
    * 获取部门权限配置
-   * 使用 SystemConfig 存储，key 格式: dept_permission_{deptId}
+   *
+   * 优先从 DepartmentPermission 表读取，若无数据则降级查询
+   * SystemConfig（key = dept_permission_{deptId}）保持向后兼容。
    */
   async getDeptPermissionConfig(deptId: string): Promise<DeptPermissionConfig> {
     try {
@@ -138,6 +140,28 @@ export class DepartmentPermissionService {
         throw new NotFoundException(`部门 ID ${deptId} 不存在`);
       }
 
+      // 优先读取新表
+      const newPerms = await this.prisma.departmentPermission.findMany({
+        where: { departmentId: deptId, allowed: true },
+      });
+
+      if (newPerms.length > 0) {
+        // 将行记录聚合为 ResourcePermConfig 结构
+        const resourceMap = new Map<string, string[]>();
+        for (const perm of newPerms) {
+          const existing = resourceMap.get(perm.resource) ?? [];
+          existing.push(perm.action);
+          resourceMap.set(perm.resource, existing);
+        }
+
+        const resources: ResourcePermConfig[] = Array.from(resourceMap.entries()).map(
+          ([resource, actions]) => ({ resource, actions }),
+        );
+
+        return { isolationLevel: 'none', allowedDeptIds: [], resources };
+      }
+
+      // 降级：查询旧 SystemConfig 表保持向后兼容
       const configKey = `dept_permission_${deptId}`;
       const config = await this.prisma.systemConfig.findUnique({
         where: { key: configKey },
@@ -155,7 +179,9 @@ export class DepartmentPermissionService {
   }
 
   /**
-   * 保存部门权限配置（upsert）
+   * 保存部门权限配置
+   *
+   * 写入 DepartmentPermission 新表（先 deleteMany，再 createMany）。
    */
   async saveDeptPermissionConfig(
     deptId: string,
@@ -166,18 +192,28 @@ export class DepartmentPermissionService {
       throw new NotFoundException(`部门 ID ${deptId} 不存在`);
     }
 
-    const configKey = `dept_permission_${deptId}`;
-    await this.prisma.systemConfig.upsert({
-      where: { key: configKey },
-      create: {
-        id: `dept_perm_${deptId}_${Date.now()}`,
-        key: configKey,
-        value: JSON.stringify(config),
-        valueType: 'json',
-        category: 'permission',
-        description: `部门 ${dept.name} 的权限配置`,
-      },
-      update: { value: JSON.stringify(config) },
+    await this.prisma.$transaction(async (tx) => {
+      // 清空该部门旧权限记录
+      await tx.departmentPermission.deleteMany({
+        where: { departmentId: deptId },
+      });
+
+      // 展开 resources 为逐行记录并批量写入
+      const createData = config.resources.flatMap((res) =>
+        res.actions.map((action) => ({
+          departmentId: deptId,
+          resource: res.resource,
+          action,
+          allowed: true,
+        })),
+      );
+
+      if (createData.length > 0) {
+        await tx.departmentPermission.createMany({
+          data: createData,
+          skipDuplicates: true,
+        });
+      }
     });
 
     return { success: true };

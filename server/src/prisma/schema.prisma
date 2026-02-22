@@ -87,6 +87,7 @@ model User {
   name          String
   departmentId  String?
   department    Department? @relation("UserDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
+  /// @deprecated 请使用 roleId 外键代替此字段。此字段将在后续版本删除。
   role          String      @default("user") // 保留（向后兼容）
   roleId        String? // P1-2: 新增角色外键
   roleObj       Role?       @relation("UserRole", fields: [roleId], references: [id], onDelete: SetNull)
@@ -123,6 +124,9 @@ model User {
   workflowsInitiated     WorkflowInstance[] @relation("WorkflowInitiator")
   workflowTasksAssigned  WorkflowTask[]     @relation("WorkflowTaskAssignee")
   workflowTasksEscalated WorkflowTask[]     @relation("WorkflowTaskEscalated")
+
+  // Deviation relations
+  reportedDeviations DeviationReport[] @relation("DeviationReporter")
 
   // Dynamic Form Engine relations
   recordsCreated Record[]          @relation("RecordCreator")
@@ -177,7 +181,9 @@ model Department {
   numberRules       NumberRule[]
   pendingNumbers    PendingNumber[]
   tasks             Task[]
-  workflowTemplates WorkflowTemplate[] @relation("WorkflowTemplateDepartment")
+  workflowTemplates    WorkflowTemplate[]    @relation("WorkflowTemplateDepartment")
+  departmentPermissions DepartmentPermission[]
+  documents            Document[]            @relation("DocumentDepartment")
 
   @@map("departments")
 }
@@ -226,6 +232,11 @@ model Document {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
+
+  // 文档内容和部门
+  content      Json?
+  departmentId String?
+  department   Department? @relation("DocumentDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
 
   // P1-1: 归档/作废字段
   archiveReason  String?
@@ -418,7 +429,8 @@ model DeviationReport {
   deviationType   String
   reason          String
   status          String     @default("pending")
-  reportedBy      String
+  reporterId      String
+  reporter        User       @relation("DeviationReporter", fields: [reporterId], references: [id], onDelete: Restrict)
   reportedAt      DateTime   @default(now())
   approvedBy      String?
   approvedAt      DateTime?
@@ -442,6 +454,7 @@ model Role {
 
   users       User[]           @relation("UserRole")
   permissions RolePermission[]
+  fineGrainedPermissions RoleFineGrainedPermission[]
 
   @@map("roles")
 }
@@ -562,7 +575,8 @@ model WorkflowInstance {
   updatedAt     DateTime         @updatedAt
   deletedAt     DateTime?
 
-  tasks WorkflowTask[]
+  tasks   WorkflowTask[]
+  records Record[]        @relation("RecordWorkflow")
 
   @@index([templateId])
   @@index([resourceType])
@@ -610,7 +624,7 @@ model RecordTemplate {
   name           String
   fieldsJson     Json
   version        Int       @default(1)
-  retentionYears Int       @default(3)
+  retentionYears Int       @default(5)
   status         String    @default("active")
   description    String?
   createdAt      DateTime  @default(now())
@@ -621,6 +635,10 @@ model RecordTemplate {
   batchLinkEnabled Boolean @default(false) // 是否启用批次关联
   batchLinkType    String? // "production" | "finished_goods"
   batchLinkField   String? // 哪个字段存储批次号
+
+  // 工作流集成字段
+  approvalRequired Boolean @default(false)
+  workflowConfig   Json?
 
   records Record[]
 
@@ -655,6 +673,15 @@ model Record {
   finishedGoodsBatchId String?
   finishedGoodsBatch   FinishedGoodsBatch? @relation("RecordFinishedGoodsBatch", fields: [finishedGoodsBatchId], references: [id], onDelete: SetNull)
 
+  // 工作流集成字段
+  workflowId String?
+  workflow   WorkflowInstance? @relation("RecordWorkflow", fields: [workflowId], references: [id], onDelete: SetNull)
+
+  // 签字和离线字段
+  signatureTimestamp DateTime?
+  offlineFilled      Boolean   @default(false)
+  autoArchiveStatus  String    @default("active")
+
   changeLogs RecordChangeLog[]
 
   @@index([templateId])
@@ -664,6 +691,7 @@ model Record {
   @@index([relatedBatchNumber])
   @@index([productionBatchId])
   @@index([finishedGoodsBatchId])
+  @@index([workflowId])
   @@map("records")
 }
 
@@ -1915,4 +1943,37 @@ model DelegationLog {
   @@index([taskId])
   @@index([delegatedAt])
   @@map("delegation_logs")
+}
+
+// P1-2: 角色细粒度权限中间表
+model RoleFineGrainedPermission {
+  id          String   @id @default(cuid())
+  roleId      String
+  resource    String
+  action      String
+  allowed     Boolean  @default(true)
+  grantedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  role        Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, resource, action])
+  @@index([roleId])
+  @@map("role_fine_grained_permissions")
+}
+
+// P1-2: 部门权限表
+model DepartmentPermission {
+  id           String     @id @default(cuid())
+  departmentId String
+  resource     String
+  action       String
+  allowed      Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([departmentId, resource, action])
+  @@index([departmentId])
+  @@map("department_permissions")
 }

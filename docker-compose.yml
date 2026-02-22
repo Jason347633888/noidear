@@ -136,6 +136,50 @@ services:
     networks:
       - noidear-network
 
+  # 后端 NestJS 服务
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: noidear-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://noidear:noidear123@postgres:5432/document_system
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_EXPIRES_IN=7d
+      - REDIS_URL=redis://redis:6379
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_USE_SSL=false
+      - MINIO_ACCESS_KEY=admin
+      - MINIO_SECRET_KEY=noidear123
+      - NODE_ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+  # 前端 Vue 3 服务（nginx 静态托管 + API 反向代理）
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: noidear-client
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+
   # TASK-401: ElasticSearch 全文搜索引擎（可选，降级为 PostgreSQL 全文搜索）
   elasticsearch:
     image: elasticsearch:8.11.0

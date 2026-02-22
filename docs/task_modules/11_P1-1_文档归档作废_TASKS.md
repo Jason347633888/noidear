@@ -33,7 +33,7 @@
 - POST /api/v1/documents/:id/obsolete - 作废文档
 
 **验收标准**:
-- [ ] 归档逻辑正确（状态 approved → archived，需填写原因）
+- [ ] 归档逻辑正确（状态 approved → current → archived，需填写原因）
 - [ ] 作废逻辑正确（状态 approved → obsolete，需填写原因）
 - [ ] 权限校验（归档：创建者或管理员；作废：质量部或系统管理员）
 - [ ] 归档/作废后发送通知
@@ -59,7 +59,7 @@
 - POST /api/v1/documents/:id/restore - 恢复归档文档
 
 **验收标准**:
-- [ ] 恢复逻辑正确（状态 archived → approved，需填写原因）
+- [ ] 恢复逻辑正确（状态 archived → current，需填写原因）
 - [ ] 作废文档不可恢复（返回错误）
 - [ ] 权限校验（仅管理员可恢复）
 - [ ] 恢复后发送通知

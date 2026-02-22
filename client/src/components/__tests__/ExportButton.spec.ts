@@ -14,7 +14,9 @@ const stubs: Record<string, any> = {
 const makeBlob = () => new Blob(['data'], { type: 'application/vnd.ms-excel' });
 
 const mockUrlMethods = () => {
-  vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:url'), revokeObjectURL: vi.fn() });
+  // Mock only the static methods on URL, preserving the constructor so happy-dom internals keep working
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:url');
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
 };
 
 const w = (props: Record<string, unknown> = {}) => mount(ExportButton, { props, global: { stubs } });

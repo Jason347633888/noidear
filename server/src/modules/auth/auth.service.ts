@@ -66,7 +66,7 @@ export class AuthService {
     const attempts = (user?.loginAttempts || 0) + 1;
     const update: { loginAttempts: number; lockedUntil?: Date } = { loginAttempts: attempts };
     if (attempts >= 5) {
-      update.lockedUntil = new Date(Date.now() + 30 * 60 * 1000);
+      update.lockedUntil = new Date(Date.now() + 1 * 60 * 1000); // 锁定 1 分钟
     }
     await this.prisma.user.update({ where: { id: userId }, data: update });
   }
