@@ -1,0 +1,42 @@
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .aside,
+  .header,
+  .el-aside,
+  .el-header,
+  nav,
+  .el-page-header,
+  .action-bar,
+  .step-nav,
+  .el-button {
+    display: none !important;
+  }
+
+  .print-page {
+    page-break-after: always;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .print-page:last-child {
+    page-break-after: avoid;
+  }
+
+  .print-page-header {
+    border-bottom: 2px solid #000 !important;
+  }
+
+  body {
+    font-size: 12pt;
+    color: #000;
+  }
+
+  .el-card {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
+}

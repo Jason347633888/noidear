@@ -77,21 +77,6 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/deviation/DeviationAnalytics.vue'),
       },
       {
-        path: 'tasks',
-        name: 'Tasks',
-        component: () => import('@/views/tasks/TaskList.vue'),
-      },
-      {
-        path: 'tasks/create',
-        name: 'CreateTask',
-        component: () => import('@/views/tasks/TaskCreate.vue'),
-      },
-      {
-        path: 'tasks/:id',
-        name: 'TaskDetail',
-        component: () => import('@/views/tasks/TaskDetail.vue'),
-      },
-      {
         path: 'approvals',
         name: 'Approvals',
         component: () => import('@/views/approvals/ApprovalList.vue'),
@@ -178,11 +163,32 @@ const routes: RouteRecordRaw[] = [
         name: 'UserPermissions',
         component: () => import('@/views/permission/UserPermissions.vue'),
       },
-      // 表单设计器
+      // 用户权限管理总览（P1-2 细粒度权限）
+      {
+        path: 'admin/user-permissions',
+        name: 'UserPermissionsManager',
+        component: () => import('@/views/permission/UserPermissionsManager.vue'),
+        meta: { title: '用户权限管理', requiresAdmin: true },
+      },
+      // 权限定义列表（P1-2 细粒度权限）
+      {
+        path: 'admin/permissions',
+        name: 'PermissionDefinitions',
+        component: () => import('@/views/permission/PermissionDefinitions.vue'),
+        meta: { title: '权限定义', requiresAdmin: true },
+      },
+      // 表单设计器（旧路径兼容）
       {
         path: 'templates/designer',
         name: 'TemplateDesigner',
         component: () => import('@/views/templates/TemplateDesigner.vue'),
+      },
+      // RecordTemplate 拖拽式设计器（REQUIREMENTS P2）
+      {
+        path: 'record-templates/:id/designer',
+        name: 'RecordTemplateDesigner',
+        component: () => import('@/views/templates/TemplateDesigner.vue'),
+        meta: { title: '表单设计器' },
       },
       // 工作流模块
       {
@@ -231,6 +237,30 @@ const routes: RouteRecordRaw[] = [
         name: 'RecordDetail',
         component: () => import('@/views/record/RecordDetail.vue'),
       },
+      {
+        path: 'records/fill/:templateId',
+        name: 'RecordFill',
+        component: () => import('@/views/records/RecordFill.vue'),
+        meta: { title: '填写记录' },
+      },
+      {
+        path: 'records/task/:instanceId',
+        name: 'RecordTaskFill',
+        component: () => import('@/views/records/RecordFill.vue'),
+        meta: { title: '填写任务' },
+      },
+      {
+        path: 'record-tasks/my',
+        name: 'RecordTaskInstanceList',
+        component: () => import('@/views/record-tasks/RecordTaskInstanceList.vue'),
+        meta: { title: '待填任务' },
+      },
+      {
+        path: 'record-tasks/manage',
+        name: 'RecordTaskAssignmentList',
+        component: () => import('@/views/record-tasks/RecordTaskAssignmentList.vue'),
+        meta: { title: '任务配置' },
+      },
       // 批次追溯模块
       {
         path: 'batch-trace',
@@ -238,14 +268,27 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/batch-trace/BatchList.vue'),
       },
       {
+        path: 'batch-trace/query',
+        name: 'TraceQuery',
+        component: () => import('@/views/batch-trace/TraceQuery.vue'),
+        meta: { title: '批次追溯查询' },
+      },
+      {
+        path: 'batch-trace/report',
+        name: 'TraceReport',
+        component: () => import('@/views/batch-trace/TraceReport.vue'),
+        meta: { title: '追溯报告' },
+      },
+      {
         path: 'batch-trace/:id',
         name: 'BatchDetail',
         component: () => import('@/views/batch-trace/BatchDetail.vue'),
       },
+      // TraceVisualization removed: duplicate of TraceQuery, use /batch-trace/query instead
       {
-        path: 'batch-trace/:id/trace',
-        name: 'TraceVisualization',
-        component: () => import('@/views/batch-trace/TraceVisualization.vue'),
+        path: 'production/workshop-staging',
+        name: 'WorkshopStaging',
+        component: () => import('@/views/production/WorkshopStaging.vue'),
       },
       // 仓库管理模块
       {
@@ -271,7 +314,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'warehouse/staging-area',
         name: 'StagingArea',
-        component: () => import('@/views/warehouse/StagingArea.vue'),
+        redirect: '/production/workshop-staging',
       },
       {
         path: 'warehouse/material-balance',
@@ -513,6 +556,11 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'workflow/designer',
+        name: 'WorkflowDesignerLegacy',
+        redirect: '/workflow-templates/designer',
+      },
+      {
+        path: 'workflow-templates/designer',
         name: 'WorkflowDesigner',
         component: () => import('@/views/workflow/WorkflowDesigner.vue'),
       },
@@ -522,7 +570,27 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/statistics/StatisticsDashboard.vue'),
         meta: { requiresAdmin: true },
       },
+      // 产品研发流程模块
+      {
+        path: 'process',
+        name: 'ProcessList',
+        component: () => import('@/views/process/ProcessList.vue'),
+        meta: { title: '产品研发流程' },
+      },
+      {
+        path: 'process/instances/:id',
+        name: 'ProcessDetail',
+        component: () => import('@/views/process/ProcessDetail.vue'),
+        meta: { title: '研发流程详情' },
+      },
     ],
+  },
+  // 打印页（无 Layout）
+  {
+    path: '/process/instances/:id/print',
+    name: 'ProcessPrint',
+    component: () => import('@/views/process/ProcessPrint.vue'),
+    meta: { title: '研发流程打印', hideLayout: true },
   },
   { path: '/:pathMatch(.*)*', redirect: '/dashboard' },
 ];
