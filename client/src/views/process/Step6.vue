@@ -103,7 +103,19 @@ const form = reactive({
 });
 
 onMounted(() => {
-  if (props.modelValue) Object.assign(form, props.modelValue);
+  if (props.modelValue) {
+    const mv = props.modelValue as typeof form;
+    if (mv.cert3in1 !== undefined) form.cert3in1 = mv.cert3in1;
+    if (mv.thirdPartyTest !== undefined) form.thirdPartyTest = mv.thirdPartyTest;
+    if (mv.batchReport !== undefined) form.batchReport = mv.batchReport;
+    if (mv.hazardAnalysis !== undefined) form.hazardAnalysis = mv.hazardAnalysis;
+    if (mv.materialCompliant !== undefined) form.materialCompliant = mv.materialCompliant;
+    if (mv.materialConclusion !== undefined) form.materialConclusion = mv.materialConclusion;
+    if (mv.physicoChemical !== undefined) form.physicoChemical = mv.physicoChemical;
+    if (mv.shelfLifeTest !== undefined) form.shelfLifeTest = mv.shelfLifeTest;
+    if (mv.finalInspection !== undefined) form.finalInspection = mv.finalInspection;
+    if (mv.inspectionMethod !== undefined) form.inspectionMethod = mv.inspectionMethod;
+  }
 });
 </script>
 

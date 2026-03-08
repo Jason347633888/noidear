@@ -31,7 +31,7 @@
             </el-table-column>
             <el-table-column v-if="!disabled" label="操作" width="80">
               <template #default="{ $index }">
-                <el-button link type="danger" @click="form.ingredients.splice($index, 1)">删除</el-button>
+                <el-button link type="danger" @click="form.ingredients = form.ingredients.filter((_, i) => i !== $index)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -93,7 +93,14 @@ const processType = computed(() => {
 });
 
 onMounted(() => {
-  if (props.modelValue) Object.assign(form, props.modelValue);
+  if (props.modelValue) {
+    const mv = props.modelValue as typeof form;
+    if (mv.trialDate !== undefined) form.trialDate = mv.trialDate;
+    if (mv.batchNumber !== undefined) form.batchNumber = mv.batchNumber;
+    if (mv.ingredients !== undefined) form.ingredients = mv.ingredients;
+    if (mv.processParams !== undefined) form.processParams = mv.processParams;
+    if (mv.trialConclusion !== undefined) form.trialConclusion = mv.trialConclusion;
+  }
 });
 
 const addIngredient = () => form.ingredients.push({ name: '', weight: '' });

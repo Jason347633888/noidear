@@ -102,7 +102,15 @@ const processType = computed(() => {
 });
 
 onMounted(() => {
-  if (props.modelValue) Object.assign(form, props.modelValue);
+  if (props.modelValue) {
+    const mv = props.modelValue as typeof form;
+    if (mv.date !== undefined) form.date = mv.date;
+    if (mv.productionLine !== undefined) form.productionLine = mv.productionLine;
+    if (mv.output !== undefined) form.output = mv.output;
+    if (mv.trialRecord !== undefined) form.trialRecord = mv.trialRecord;
+    if (mv.processParams !== undefined) form.processParams = mv.processParams;
+    if (mv.verificationConclusion !== undefined) form.verificationConclusion = mv.verificationConclusion;
+  }
 });
 
 const getFormData = () => ({ ...form });

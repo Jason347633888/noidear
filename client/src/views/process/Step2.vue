@@ -97,7 +97,14 @@ const processTypeDisplay = computed(() => {
 });
 
 onMounted(() => {
-  if (props.modelValue) Object.assign(form, props.modelValue);
+  if (props.modelValue) {
+    const mv = props.modelValue as typeof form;
+    if (mv.rawMaterials !== undefined) form.rawMaterials = mv.rawMaterials;
+    if (mv.packagingForm !== undefined) form.packagingForm = mv.packagingForm;
+    if (mv.storageCondition !== undefined) form.storageCondition = mv.storageCondition;
+    if (mv.standard !== undefined) form.standard = mv.standard;
+    if (mv.standardOther !== undefined) form.standardOther = mv.standardOther;
+  }
 });
 
 const searchMaterials = async (query: string, cb: (results: Material[]) => void) => {
@@ -118,7 +125,7 @@ const onMaterialSelect = (item: Material) => {
 };
 
 const removeRow = (index: number) => {
-  form.rawMaterials.splice(index, 1);
+  form.rawMaterials = form.rawMaterials.filter((_, i) => i !== index);
 };
 
 const getFormData = () => ({ ...form, rawMaterials: [...form.rawMaterials] });

@@ -98,7 +98,12 @@ const rawMaterials = computed(() => {
 });
 
 onMounted(() => {
-  if (props.modelValue) Object.assign(form, props.modelValue);
+  if (props.modelValue) {
+    const mv = props.modelValue as typeof form;
+    if (mv.allergenData !== undefined) form.allergenData = mv.allergenData;
+    if (mv.gb2760Compliant !== undefined) form.gb2760Compliant = mv.gb2760Compliant;
+    if (mv.additiveOther !== undefined) form.additiveOther = mv.additiveOther;
+  }
 });
 
 const getFormData = () => ({ ...form, allergenData: [...(form.allergenData as unknown[])] });

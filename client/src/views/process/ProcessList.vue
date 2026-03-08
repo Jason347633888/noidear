@@ -114,7 +114,7 @@ const handleDelete = async (row: ProcessInstance) => {
   try {
     await processApi.deleteInstance(row.id);
     ElMessage.success('已删除');
-    loadInstances();
+    await loadInstances();
   } catch {
     ElMessage.error('删除失败');
   }

@@ -87,10 +87,10 @@
       <!-- 审核 -->
       <el-card shadow="never" class="section-card">
         <template #header><span class="section-title">审核（HACCP 小组）</span></template>
-        <ApprovalPanel
+        <ApprovalStepField
           :step-status="stepStatus"
           :approval-comment="form.approvalComment"
-          :disabled="disabled"
+          :field="haccpApprovalField"
           @approve="handleApprove"
           @reject="handleReject"
         />
@@ -106,7 +106,7 @@
 
 <script setup lang="ts">
 import { reactive, computed, onMounted } from 'vue';
-import ApprovalPanel from './ApprovalPanel.vue';
+import ApprovalStepField from '@/components/fields/ApprovalStepField.vue';
 import dayjs from 'dayjs';
 
 const props = defineProps<{
@@ -134,13 +134,30 @@ const form = reactive({
   approvalComment: '',
 });
 
+const haccpApprovalField = { name: 'approval', label: '审核', type: 'approval-step', approverRoles: ['admin', 'HACCP', 'manager'] };
+
 const productionLineDisplay = computed(() => {
   const step5 = props.allStepsData?.[5] as Record<string, unknown> | undefined;
   return (step5?.productionLine as string) ?? '-';
 });
 
 onMounted(() => {
-  if (props.modelValue) Object.assign(form, props.modelValue);
+  if (props.modelValue) {
+    const mv = props.modelValue as typeof form;
+    if (mv.verificationDate !== undefined) form.verificationDate = mv.verificationDate;
+    if (mv.onSiteProcess !== undefined) form.onSiteProcess = mv.onSiteProcess;
+    if (mv.potentialHazard !== undefined) form.potentialHazard = mv.potentialHazard;
+    if (mv.bioHazard !== undefined) form.bioHazard = mv.bioHazard;
+    if (mv.chemHazard !== undefined) form.chemHazard = mv.chemHazard;
+    if (mv.physHazard !== undefined) form.physHazard = mv.physHazard;
+    if (mv.allergenHazard !== undefined) form.allergenHazard = mv.allergenHazard;
+    if (mv.controlMeasure !== undefined) form.controlMeasure = mv.controlMeasure;
+    if (mv.ccpLimitOk !== undefined) form.ccpLimitOk = mv.ccpLimitOk;
+    if (mv.ccpMonitorOk !== undefined) form.ccpMonitorOk = mv.ccpMonitorOk;
+    if (mv.ccpDeviceOk !== undefined) form.ccpDeviceOk = mv.ccpDeviceOk;
+    if (mv.ccpPersonnelOk !== undefined) form.ccpPersonnelOk = mv.ccpPersonnelOk;
+    if (mv.approvalComment !== undefined) form.approvalComment = mv.approvalComment;
+  }
 });
 
 const handleApprove = (comment: string) => emit('approve', comment);

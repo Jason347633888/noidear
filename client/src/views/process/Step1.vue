@@ -124,7 +124,20 @@ const form = reactive({
 onMounted(() => {
   form.applicant = userStore.user?.name ?? '';
   if (props.modelValue) {
-    Object.assign(form, props.modelValue);
+    const mv = props.modelValue as typeof form;
+    if (mv.applicant !== undefined) form.applicant = mv.applicant;
+    if (mv.flavorRequirement !== undefined) form.flavorRequirement = mv.flavorRequirement;
+    if (mv.pesticideRequirement !== undefined) form.pesticideRequirement = mv.pesticideRequirement;
+    if (mv.heavyMetalRequirement !== undefined) form.heavyMetalRequirement = mv.heavyMetalRequirement;
+    if (mv.microbiologicalRequirement !== undefined) form.microbiologicalRequirement = mv.microbiologicalRequirement;
+    if (mv.standardRequirement !== undefined) form.standardRequirement = mv.standardRequirement;
+    if (mv.labelRequirement !== undefined) form.labelRequirement = mv.labelRequirement;
+    if (mv.nutritionRequirement !== undefined) form.nutritionRequirement = mv.nutritionRequirement;
+    if (mv.submitDate !== undefined) form.submitDate = mv.submitDate;
+    if (mv.productName !== undefined) form.productName = mv.productName;
+    if (mv.productSpec !== undefined) form.productSpec = mv.productSpec;
+    if (mv.processType !== undefined) form.processType = mv.processType;
+    if (mv.shelfLife !== undefined) form.shelfLife = mv.shelfLife;
   }
 });
 

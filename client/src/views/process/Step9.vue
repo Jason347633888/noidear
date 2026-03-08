@@ -79,7 +79,7 @@
         </el-table-column>
         <el-table-column v-if="!disabled" label="操作" width="80">
           <template #default="{ $index }">
-            <el-button link type="danger" @click="form.labelIngredients.splice($index, 1)">删除</el-button>
+            <el-button link type="danger" @click="form.labelIngredients = form.labelIngredients.filter((_, i) => i !== $index)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -187,7 +187,7 @@ const addAreaRow = (key: AreaKey, item: MaterialRow) => {
 };
 
 const removeAreaRow = (key: AreaKey, index: number) => {
-  (form[key] as MaterialRow[]).splice(index, 1);
+  (form[key] as MaterialRow[]) = (form[key] as MaterialRow[]).filter((_, i) => i !== index);
 };
 
 const addLabelIngredient = () => form.labelIngredients.push({ ingredientName: '', relatedMaterial: '' });

@@ -50,10 +50,10 @@
       <!-- 审核 -->
       <el-card shadow="never" class="section-card">
         <template #header><span class="section-title">审核（HACCP 小组）</span></template>
-        <ApprovalPanel
+        <ApprovalStepField
           :step-status="stepStatus"
           :approval-comment="form.approvalComment"
-          :disabled="disabled"
+          :field="haccpApprovalField"
           @approve="$emit('approve', $event)"
           @reject="$emit('reject', $event)"
         />
@@ -69,7 +69,7 @@
 
 <script setup lang="ts">
 import { reactive, onMounted } from 'vue';
-import ApprovalPanel from './ApprovalPanel.vue';
+import ApprovalStepField from '@/components/fields/ApprovalStepField.vue';
 
 const props = defineProps<{
   instanceId: string;
@@ -85,6 +85,8 @@ const emit = defineEmits<{
   (e: 'approve', comment: string): void;
   (e: 'reject', comment: string): void;
 }>();
+
+const haccpApprovalField = { name: 'approval', label: '审核', type: 'approval-step', approverRoles: ['admin', 'HACCP', 'manager'] };
 
 const confirmItems = [
   { key: 'formulaConfirm', label: '配方确认', options: ['已确认', '未确认'] },
@@ -108,7 +110,31 @@ const form = reactive({
 });
 
 onMounted(() => {
-  if (props.modelValue) Object.assign(form, props.modelValue);
+  if (props.modelValue) {
+    const mv = props.modelValue as typeof form;
+    if (mv.c1 !== undefined) form.c1 = mv.c1;
+    if (mv.c2 !== undefined) form.c2 = mv.c2;
+    if (mv.c3 !== undefined) form.c3 = mv.c3;
+    if (mv.c4 !== undefined) form.c4 = mv.c4;
+    if (mv.c5 !== undefined) form.c5 = mv.c5;
+    if (mv.c6 !== undefined) form.c6 = mv.c6;
+    if (mv.c7 !== undefined) form.c7 = mv.c7;
+    if (mv.c8 !== undefined) form.c8 = mv.c8;
+    if (mv.c9 !== undefined) form.c9 = mv.c9;
+    if (mv.c10 !== undefined) form.c10 = mv.c10;
+    if (mv.c11 !== undefined) form.c11 = mv.c11;
+    if (mv.c12 !== undefined) form.c12 = mv.c12;
+    if (mv.formulaConfirm !== undefined) form.formulaConfirm = mv.formulaConfirm;
+    if (mv.processConfirm !== undefined) form.processConfirm = mv.processConfirm;
+    if (mv.standardConfirm !== undefined) form.standardConfirm = mv.standardConfirm;
+    if (mv.shelfLifeVerify !== undefined) form.shelfLifeVerify = mv.shelfLifeVerify;
+    if (mv.inspectionReport !== undefined) form.inspectionReport = mv.inspectionReport;
+    if (mv.hazardAssessment !== undefined) form.hazardAssessment = mv.hazardAssessment;
+    if (mv.labelConfirm !== undefined) form.labelConfirm = mv.labelConfirm;
+    if (mv.packagingConfirm !== undefined) form.packagingConfirm = mv.packagingConfirm;
+    if (mv.conclusion !== undefined) form.conclusion = mv.conclusion;
+    if (mv.approvalComment !== undefined) form.approvalComment = mv.approvalComment;
+  }
 });
 </script>
 

@@ -64,7 +64,7 @@ const window = globalThis.window;
 
 const completedSteps = computed(() =>
   stepDataList.value
-    .filter(sd => ['SUBMITTED', 'APPROVED', 'COMPLETED'].includes(sd.status))
+    .filter(sd => ['SUBMITTED', 'APPROVED'].includes(sd.status))
     .sort((a, b) => a.stepNumber - b.stepNumber)
 );
 

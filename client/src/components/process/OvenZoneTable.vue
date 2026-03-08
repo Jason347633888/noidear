@@ -62,10 +62,17 @@ watch(() => props.modelValue, (val) => { if (val) data.value = val; }, { immedia
 const getValue = (rowKey: RowKey, zone: string) => data.value[zone]?.[rowKey] ?? 0;
 
 const setValue = (rowKey: RowKey, zone: string, val: number) => {
-  if (!data.value[zone]) data.value[zone] = {} as Record<RowKey, number>;
-  data.value[zone][rowKey] = val;
-  emit('update:modelValue', { ...data.value });
+  data.value = {
+    ...data.value,
+    [zone]: {
+      ...(data.value[zone] ?? {}),
+      [rowKey]: val,
+    },
+  };
+  emitUpdate();
 };
+
+const emitUpdate = () => emit('update:modelValue', { ...data.value });
 
 const addZone = () => {
   zones.value = [...zones.value, `${zones.value.length + 1}区`];
