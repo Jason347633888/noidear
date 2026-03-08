@@ -47,6 +47,17 @@ import PasswordField from './PasswordField.vue';
 import DateRangeField from './DateRangeField.vue';
 import TimeRangeField from './TimeRangeField.vue';
 import RichTextField from './RichTextField.vue';
+import AutoUsernameField from './AutoUsernameField.vue';
+import AutoDateField from './AutoDateField.vue';
+import SectionHeaderField from './SectionHeaderField.vue';
+import StaticContentField from './StaticContentField.vue';
+import TableInputField from './TableInputField.vue';
+import RangeSelectField from './RangeSelectField.vue';
+import ConstrainedNumberField from './ConstrainedNumberField.vue';
+import CheckboxTextField from './CheckboxTextField.vue';
+import AutoDisplayField from './AutoDisplayField.vue';
+import TemplateContentField from './TemplateContentField.vue';
+import ApprovalStepField from './ApprovalStepField.vue';
 
 export interface FieldConfig {
   name: string;
@@ -96,6 +107,17 @@ const componentMap: Record<string, Component> = {
   daterange: DateRangeField,
   timerange: TimeRangeField,
   richtext: RichTextField,
+  'auto-username': AutoUsernameField,
+  'auto-date': AutoDateField,
+  'section-header': SectionHeaderField,
+  'static-content': StaticContentField,
+  'table-input': TableInputField,
+  'range-select': RangeSelectField,
+  'constrained-number': ConstrainedNumberField,
+  'checkbox-text': CheckboxTextField,
+  'auto-display': AutoDisplayField,
+  'template-content': TemplateContentField,
+  'approval-step': ApprovalStepField,
 };
 
 // 字段验证

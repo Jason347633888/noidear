@@ -1,3 +1,9 @@
+<!--
+  DynamicForm.vue
+  用途：通用动态表单填写组件（RecordFill.vue、其他填写页面调用）
+  功能：根据 RecordTemplate.fieldsJson.fields 渲染可填写表单
+  注意：此组件不含拖拽排序，设计器请使用 FormBuilder.vue
+-->
 <template>
   <el-form
     ref="formRef"
@@ -10,9 +16,11 @@
       <el-form-item
         v-for="field in template.fieldsJson.fields"
         :key="field.name"
-        :label="field.label"
-        :prop="field.name"
-        :required="field.required"
+        :label="isLayoutField(field.type) ? '' : field.label"
+        :prop="isLayoutField(field.type) ? undefined : field.name"
+        :required="isLayoutField(field.type) ? false : field.required"
+        :class="{ 'full-width-field': isLayoutField(field.type) }"
+        :label-width="isLayoutField(field.type) ? '0px' : undefined"
       >
         <DynamicField
           v-model="formData[field.name]"
@@ -207,4 +215,13 @@ defineExpose({
   clearValidate: () => formRef.value?.clearValidate(),
   formRef,
 });
+
+const LAYOUT_FIELD_TYPES = new Set(['section-header', 'static-content']);
+const isLayoutField = (type: string) => LAYOUT_FIELD_TYPES.has(type);
 </script>
+
+<style scoped>
+.full-width-field :deep(.el-form-item__content) {
+  margin-left: 0 !important;
+}
+</style>
