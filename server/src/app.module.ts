@@ -9,8 +9,9 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { DepartmentModule } from './modules/department/department.module';
 import { DocumentModule } from './modules/document/document.module';
-import { TemplateModule } from './modules/template/template.module';
-import { TaskModule } from './modules/task/task.module';
+// P2: 已删除旧版 TemplateModule 和 TaskModule（统一动态表单期三）
+// import { TemplateModule } from './modules/template/template.module';
+// import { TaskModule } from './modules/task/task.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { OperationLogModule } from './modules/operation-log/operation-log.module';
 import { DeviationModule } from './modules/deviation/deviation.module';
@@ -43,6 +44,8 @@ import { SearchModule } from './modules/search/search.module';
 import { RecommendationModule } from './modules/recommendation/recommendation.module';
 import { ImportModule } from './modules/import/import.module';
 import { I18nAppModule } from './modules/i18n/i18n.module';
+import { RecordTaskModule } from './modules/record-task/record-task.module';
+import { ProcessModule } from './modules/process/process.module';
 
 @Module({
   imports: [
@@ -64,8 +67,8 @@ import { I18nAppModule } from './modules/i18n/i18n.module';
     UserModule,
     DepartmentModule,
     DocumentModule,
-    TemplateModule,
-    TaskModule,
+    // TemplateModule,  // P2: 已删除旧版模块（统一动态表单期三）
+    // TaskModule,      // P2: 已删除旧版模块（统一动态表单期三）
     NotificationModule,
     OperationLogModule,
     DeviationModule,
@@ -97,6 +100,8 @@ import { I18nAppModule } from './modules/i18n/i18n.module';
     RecommendationModule,
     ImportModule,
     I18nAppModule,
+    RecordTaskModule,
+    ProcessModule,
   ],
   providers: [
     {
