@@ -163,4 +163,44 @@ describe('ProcessService', () => {
       expect(result).toEqual(mockCreated);
     });
   });
+
+  describe('submitStep', () => {
+    it('提交错误步骤时应抛出 ForbiddenException', async () => {
+      mockPrisma.processInstance.findUnique.mockResolvedValue({
+        id: 'inst-1',
+        createdById: 'user-1',
+        status: ProcessStatus.IN_PROGRESS,
+        currentStep: 1,
+        template: {},
+        createdBy: {},
+      });
+
+      await expect(
+        service.submitStep('inst-1', 'user-1', { stepNumber: 3, data: {}, saveAsDraft: false }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('approveStep', () => {
+    it('步骤未提交时审批应抛出 ForbiddenException', async () => {
+      mockPrisma.processStepData.findUnique.mockResolvedValue({
+        id: 'step-1',
+        instanceId: 'inst-1',
+        stepNumber: 7,
+        status: 'PENDING',
+      });
+
+      await expect(
+        service.approveStep('inst-1', 'user-1', { stepNumber: 7, action: 'approve' }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('步骤数据不存在时审批应抛出 ForbiddenException', async () => {
+      mockPrisma.processStepData.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.approveStep('inst-1', 'user-1', { stepNumber: 7, action: 'approve' }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
 });
