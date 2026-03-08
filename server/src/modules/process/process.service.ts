@@ -31,12 +31,19 @@ export class ProcessService {
       include: {
         template: true,
         createdBy: { select: { id: true, name: true } },
+        stepData: {
+          include: {
+            submittedBy: { select: { id: true, name: true } },
+            approvedBy: { select: { id: true, name: true } },
+          },
+          orderBy: { stepNumber: 'asc' },
+        },
       },
     });
     if (!instance) {
       throw new NotFoundException(`流程实例 ${instanceId} 不存在`);
     }
-    return instance;
+    return { ...instance, stepDataList: instance.stepData };
   }
 
   async createInstance(userId: string, dto: CreateProcessInstanceDto) {
@@ -165,10 +172,6 @@ export class ProcessService {
         approvalComment: dto.comment ?? null,
         updatedAt: new Date(),
       },
-    });
-    await this.prisma.processStepData.update({
-      where: { id: stepData.id },
-      data: { status: ProcessStepStatus.PENDING, updatedAt: new Date() },
     });
     return this.prisma.processInstance.update({
       where: { id: instanceId },

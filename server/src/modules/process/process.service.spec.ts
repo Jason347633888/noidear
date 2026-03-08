@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProcessService } from './process.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
-import { ProcessStatus } from '@prisma/client';
+import { ProcessStatus, ProcessStepStatus } from '@prisma/client';
 
 const mockPrisma = {
   processTemplate: {
@@ -53,6 +53,7 @@ describe('ProcessService', () => {
         currentStep: 1,
         template: {},
         createdBy: {},
+        stepData: [],
       });
       mockPrisma.processStepData.findUnique.mockResolvedValue(null);
 
@@ -70,6 +71,7 @@ describe('ProcessService', () => {
         currentStep: 1,
         template: {},
         createdBy: {},
+        stepData: [],
       });
 
       await expect(service.deleteInstance('inst-1', 'other-user')).rejects.toThrow(ForbiddenException);
@@ -83,6 +85,7 @@ describe('ProcessService', () => {
         currentStep: 9,
         template: {},
         createdBy: {},
+        stepData: [],
       });
 
       await expect(service.deleteInstance('inst-1', 'user-1')).rejects.toThrow(ForbiddenException);
@@ -131,6 +134,7 @@ describe('ProcessService', () => {
         currentStep: 1,
         template: {},
         createdBy: {},
+        stepData: [],
       });
       const mockUpdated = { id: 'inst-1', productName: '新产品名称' };
       mockPrisma.processInstance.update.mockResolvedValue(mockUpdated);
@@ -173,11 +177,39 @@ describe('ProcessService', () => {
         currentStep: 1,
         template: {},
         createdBy: {},
+        stepData: [],
       });
 
       await expect(
         service.submitStep('inst-1', 'user-1', { stepNumber: 3, data: {}, saveAsDraft: false }),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('提交 Step 9 后 processInstance.status 应变为 COMPLETED', async () => {
+      mockPrisma.processInstance.findUnique.mockResolvedValue({
+        id: 'inst-1',
+        createdById: 'user-1',
+        status: ProcessStatus.IN_PROGRESS,
+        currentStep: 9,
+        template: {},
+        createdBy: {},
+        stepData: [],
+      });
+      const mockStepData = { id: 'step-9', instanceId: 'inst-1', stepNumber: 9, status: ProcessStepStatus.SUBMITTED };
+      mockPrisma.processStepData.upsert.mockResolvedValue(mockStepData);
+      mockPrisma.processInstance.update.mockResolvedValue({
+        id: 'inst-1',
+        status: ProcessStatus.COMPLETED,
+      });
+
+      await service.submitStep('inst-1', 'user-1', { stepNumber: 9, data: {}, saveAsDraft: false });
+
+      expect(mockPrisma.processInstance.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'inst-1' },
+          data: expect.objectContaining({ status: ProcessStatus.COMPLETED }),
+        }),
+      );
     });
   });
 
@@ -201,6 +233,40 @@ describe('ProcessService', () => {
       await expect(
         service.approveStep('inst-1', 'user-1', { stepNumber: 7, action: 'approve' }),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('reject 后 processStepData.status 最终应为 REJECTED 而非 PENDING', async () => {
+      mockPrisma.processStepData.findUnique.mockResolvedValue({
+        id: 'step-7',
+        instanceId: 'inst-1',
+        stepNumber: 7,
+        status: ProcessStepStatus.SUBMITTED,
+      });
+      mockPrisma.processStepData.update.mockResolvedValue({
+        id: 'step-7',
+        status: ProcessStepStatus.REJECTED,
+      });
+      mockPrisma.processInstance.update.mockResolvedValue({
+        id: 'inst-1',
+        currentStep: 6,
+      });
+
+      await service.approveStep('inst-1', 'approver-1', { stepNumber: 7, action: 'reject', comment: '需修改' });
+
+      // processStepData.update should only be called ONCE, with REJECTED status
+      expect(mockPrisma.processStepData.update).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.processStepData.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'step-7' },
+          data: expect.objectContaining({ status: ProcessStepStatus.REJECTED }),
+        }),
+      );
+      // The second call that set PENDING must NOT exist
+      expect(mockPrisma.processStepData.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: ProcessStepStatus.PENDING }),
+        }),
+      );
     });
   });
 });
