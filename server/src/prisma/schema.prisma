@@ -95,8 +95,9 @@ model User {
   superior      User?       @relation("UserSuperior", fields: [superiorId], references: [id], onDelete: SetNull)
   subordinates  User[]      @relation("UserSuperior")
   status        String      @default("active")
-  loginAttempts Int         @default(0)
-  lockedUntil   DateTime?
+  loginAttempts   Int         @default(0)
+  firstFailedAt   DateTime?
+  lockedUntil     DateTime?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   deletedAt     DateTime?
@@ -107,10 +108,6 @@ model User {
   documentsArchived    Document[]        @relation("DocumentArchiver")
   documentsObsoleted   Document[]        @relation("DocumentObsoleter")
   versionsCreated      DocumentVersion[] @relation("VersionCreator")
-  templatesCreated     Template[]        @relation("TemplateCreator")
-  tasksCreated         Task[]            @relation("TaskCreator")
-  taskRecordsSubmitted TaskRecord[]      @relation("RecordSubmitter")
-  taskRecordsApproved  TaskRecord[]      @relation("RecordApprover")
   approvalsGiven       Approval[]        @relation("Approver")
   operationLogs        OperationLog[]
   notifications        Notification[]
@@ -132,9 +129,13 @@ model User {
   recordsCreated Record[]          @relation("RecordCreator")
   recordChanges  RecordChangeLog[] @relation("RecordChanger")
 
+  // Record Task relations
+  recordTaskAssignments RecordTaskAssignment[] @relation("RecordTaskCreator")
+
   // Warehouse & Batch Traceability relations
-  stockRecords     StockRecord[]       @relation("StockRecordOperator")
-  stagingRecords   StagingAreaRecord[] @relation("StagingRecordOperator")
+  stockRecords        StockRecord[]          @relation("StockRecordOperator")
+  stagingRecords      StagingAreaRecord[]    @relation("StagingRecordOperator")
+  stagingTransfers    StagingAreaTransfer[]  @relation("StagingTransferOperator")
   inboundsApproved MaterialInbound[]   @relation("InboundApprover")
   inboundsOperated MaterialInbound[]   @relation("InboundOperator")
 
@@ -143,6 +144,11 @@ model User {
   permissionLogsAsOperator PermissionLog[] @relation("PermissionLogOperator")
   permissionLogsAsTarget   PermissionLog[] @relation("PermissionLogTarget")
   sensitiveLogs            SensitiveLog[]  @relation("UserSensitiveLogs")
+
+  // RD-001: Process management relations
+  processInstances         ProcessInstance[]  @relation("ProcessCreator")
+  processStepSubmissions   ProcessStepData[]  @relation("StepSubmitter")
+  processStepApprovals     ProcessStepData[]  @relation("StepApprover")
 
   // Training Management System relations
   todoTasks TodoTask[] @relation("UserTodoTasks")
@@ -180,10 +186,10 @@ model Department {
   users             User[]             @relation("UserDepartment")
   numberRules       NumberRule[]
   pendingNumbers    PendingNumber[]
-  tasks             Task[]
   workflowTemplates    WorkflowTemplate[]    @relation("WorkflowTemplateDepartment")
   departmentPermissions DepartmentPermission[]
   documents            Document[]            @relation("DocumentDepartment")
+  recordTaskAssignments RecordTaskAssignment[] @relation("RecordTaskDepartment")
 
   @@map("departments")
 }
@@ -261,6 +267,10 @@ model Document {
   recommendations DocumentRecommendation[] @relation("DocumentRecommendations")
   fulltextIndex   FulltextIndex?           @relation("FulltextIndex")
 
+  // P2: 跨文档引用（BR-305/306）
+  sourceReferences DocumentReference[] @relation("SourceRefs")
+  targetReferences DocumentReference[] @relation("TargetRefs")
+
   @@map("documents")
 }
 
@@ -279,88 +289,12 @@ model DocumentVersion {
   @@map("document_versions")
 }
 
-model Template {
-  id         String    @id
-  level      Int       @default(4)
-  number     String    @unique
-  title      String
-  fieldsJson Json
-  version    Decimal   @default(1.0) @db.Decimal(3, 1)
-  status     String    @default("active")
-  creatorId  String
-  creator    User      @relation("TemplateCreator", fields: [creatorId], references: [id], onDelete: Restrict)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  deletedAt  DateTime?
-
-  // 反向关系
-  tasks       Task[]
-  taskRecords TaskRecord[]
-
-  @@map("templates")
-}
-
-model Task {
-  id           String     @id
-  templateId   String
-  template     Template   @relation(fields: [templateId], references: [id], onDelete: Restrict)
-  departmentId String
-  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  deadline     DateTime
-  status       String     @default("pending")
-  creatorId    String
-  creator      User       @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Restrict)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  deletedAt    DateTime?
-
-  // 反向关系
-  records TaskRecord[]
-
-  @@index([departmentId])
-  @@index([status])
-  @@index([deadline])
-  @@map("tasks")
-}
-
-model TaskRecord {
-  id          String    @id
-  taskId      String
-  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  templateId  String
-  template    Template  @relation(fields: [templateId], references: [id], onDelete: Restrict)
-  dataJson    Json
-  status      String    @default("pending")
-  submitterId String?
-  submitter   User?     @relation("RecordSubmitter", fields: [submitterId], references: [id], onDelete: SetNull)
-  submittedAt DateTime?
-  approverId  String?
-  approver    User?     @relation("RecordApprover", fields: [approverId], references: [id], onDelete: SetNull)
-  approvedAt  DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
-
-  // Phase 7-8: 配方偏离检测
-  relatedTemplateVersion Decimal? @db.Decimal(3, 1)
-  hasDeviation           Boolean  @default(false)
-  deviationCount         Int      @default(0)
-
-  // 反向关系
-  approvals        Approval[]
-  deviationReports DeviationReport[]
-
-  @@map("task_records")
-}
-
 model Approval {
-  id              String      @id
+  id              String    @id
   documentId      String?
-  document        Document?   @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  recordId        String?
-  record          TaskRecord? @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  document        Document? @relation(fields: [documentId], references: [id], onDelete: Cascade)
   approverId      String
-  approver        User        @relation("Approver", fields: [approverId], references: [id], onDelete: Restrict)
+  approver        User      @relation("Approver", fields: [approverId], references: [id], onDelete: Restrict)
   status          String
   comment         String?
   level           Int         @default(1)
@@ -378,7 +312,6 @@ model Approval {
   groupId      String? // 会签/顺签分组标识
 
   @@index([approverId, status])
-  @@index([recordId])
   @@index([documentId])
   @@index([approvalChainId])
   @@index([groupId])
@@ -415,9 +348,9 @@ model Notification {
 }
 
 model DeviationReport {
-  id              String     @id
+  id              String @id
   recordId        String
-  record          TaskRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  record          Record @relation(fields: [recordId], references: [id], onDelete: Cascade)
   templateId      String
   fieldName       String
   expectedValue   String
@@ -631,6 +564,9 @@ model RecordTemplate {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
+  // 偏差检测配置
+  deviationEnabled Boolean @default(false)
+
   // TASK-169: 批次关联配置
   batchLinkEnabled Boolean @default(false) // 是否启用批次关联
   batchLinkType    String? // "production" | "finished_goods"
@@ -640,7 +576,8 @@ model RecordTemplate {
   approvalRequired Boolean @default(false)
   workflowConfig   Json?
 
-  records Record[]
+  records              Record[]
+  taskAssignments      RecordTaskAssignment[]
 
   @@index([code])
   @@index([status])
@@ -677,12 +614,17 @@ model Record {
   workflowId String?
   workflow   WorkflowInstance? @relation("RecordWorkflow", fields: [workflowId], references: [id], onDelete: SetNull)
 
+  // 任务实例关联
+  taskInstanceId String?
+  taskInstance   RecordTaskInstance? @relation(fields: [taskInstanceId], references: [id], onDelete: SetNull)
+
   // 签字和离线字段
   signatureTimestamp DateTime?
   offlineFilled      Boolean   @default(false)
   autoArchiveStatus  String    @default("active")
 
-  changeLogs RecordChangeLog[]
+  changeLogs      RecordChangeLog[]
+  deviationReports DeviationReport[]
 
   @@index([templateId])
   @@index([number])
@@ -692,6 +634,7 @@ model Record {
   @@index([productionBatchId])
   @@index([finishedGoodsBatchId])
   @@index([workflowId])
+  @@index([taskInstanceId])
   @@map("records")
 }
 
@@ -754,6 +697,8 @@ model Material {
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
   deletedAt     DateTime?
+
+  ingredientInfo String? @db.Text // RD-001: 配料信息（产品研发流程使用）
 
   batches MaterialBatch[]
 
@@ -835,6 +780,7 @@ model MaterialRequisition {
   applicantId     String
   departmentId    String?
   remark          String?
+  targetZone      String?   // 目标车间区域：筛粉间 | 称油间 | 小料房
   submittedAt     DateTime?
   approvedAt      DateTime?
   approvedBy      String?
@@ -918,6 +864,7 @@ model StagingAreaStock {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
+  @@unique([batchId, location])
   @@index([batchId])
   @@map("staging_area_stocks")
 }
@@ -938,6 +885,26 @@ model StagingAreaRecord {
   @@index([createdAt])
   @@index([operatorId])
   @@map("staging_area_records")
+}
+
+// 车间暂存区迁移记录表
+model StagingAreaTransfer {
+  id         String   @id @default(cuid())
+  stockId    String
+  batchId    String
+  fromZone   String   // 筛粉间 | 称油间 | 小料房
+  toZone     String   // 筛粉间 | 称油间 | 小料房
+  quantity   Float
+  operatorId String
+  operator   User     @relation("StagingTransferOperator", fields: [operatorId], references: [id], onDelete: Restrict)
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@index([batchId])
+  @@index([fromZone])
+  @@index([toZone])
+  @@index([createdAt])
+  @@map("staging_area_transfers")
 }
 
 // TASK-187: 物料平衡表
@@ -1976,4 +1943,137 @@ model DepartmentPermission {
   @@unique([departmentId, resource, action])
   @@index([departmentId])
   @@map("department_permissions")
+}
+
+// ========================================
+// 任务派发系统 (Record Task System)
+// ========================================
+
+model RecordTaskAssignment {
+  id           String         @id @default(cuid())
+  templateId   String
+  template     RecordTemplate @relation(fields: [templateId], references: [id])
+  title        String
+  departmentId String
+  department   Department     @relation("RecordTaskDepartment", fields: [departmentId], references: [id])
+  isPeriodic   Boolean        @default(false)
+  periodType   String?
+  periodConfig Json?
+  status       String         @default("active")
+  creatorId    String
+  creator      User           @relation("RecordTaskCreator", fields: [creatorId], references: [id])
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  instances    RecordTaskInstance[]
+
+  @@index([departmentId])
+  @@index([status])
+  @@map("record_task_assignments")
+}
+
+model RecordTaskInstance {
+  id           String               @id @default(cuid())
+  assignmentId String
+  assignment   RecordTaskAssignment @relation(fields: [assignmentId], references: [id])
+  deadline     DateTime
+  status       String               @default("pending")
+  createdAt    DateTime             @default(now())
+  records      Record[]
+
+  @@index([assignmentId])
+  @@index([status])
+  @@index([deadline])
+  @@map("record_task_instances")
+}
+
+// ========================================
+// RD-001: 产品研发流程模块
+// ========================================
+
+enum ProcessStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+enum ProcessStepStatus {
+  PENDING
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+model ProcessTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  steps     Json     // 9步流程配置
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  instances ProcessInstance[]
+
+  @@map("process_templates")
+}
+
+model ProcessInstance {
+  id          String        @id @default(cuid())
+  templateId  String
+  template    ProcessTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  productName String        @default("")
+  currentStep Int           @default(1)
+  status      ProcessStatus @default(DRAFT)
+  createdById String
+  createdBy   User          @relation("ProcessCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  stepData ProcessStepData[]
+
+  @@index([createdById])
+  @@index([status])
+  @@map("process_instances")
+}
+
+model ProcessStepData {
+  id              String            @id @default(cuid())
+  instanceId      String
+  instance        ProcessInstance   @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  stepNumber      Int
+  data            Json              @default("{}")
+  status          ProcessStepStatus @default(PENDING)
+  submittedById   String?
+  submittedBy     User?             @relation("StepSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
+  submittedAt     DateTime?
+  approvedById    String?
+  approvedBy      User?             @relation("StepApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt      DateTime?
+  approvalComment String?           @db.Text
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([instanceId, stepNumber])
+  @@index([instanceId])
+  @@map("process_step_data")
+}
+
+// P2: 跨文档引用表（BR-305/306）
+model DocumentReference {
+  id          String    @id @default(cuid())
+  sourceDocId String
+  sourceDoc   Document  @relation("SourceRefs", fields: [sourceDocId], references: [id], onDelete: Cascade)
+  targetDocId String
+  targetDoc   Document  @relation("TargetRefs", fields: [targetDocId], references: [id], onDelete: Cascade)
+  sectionId   String?   // 引用的章节 ID
+  snapshot    Json?     // 引用块快照（源文档审批后异步同步）
+  syncedAt    DateTime? // 最后同步时间
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([sourceDocId, targetDocId, sectionId])
+  @@index([sourceDocId])
+  @@index([targetDocId])
+  @@map("document_references")
 }
