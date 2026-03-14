@@ -2077,3 +2077,22 @@ model DocumentReference {
   @@index([targetDocId])
   @@map("document_references")
 }
+
+// Agent 操作审计日志（MCP 自动记录）
+model AgentAction {
+  id         String   @id @default(cuid())
+  timestamp  DateTime @default(now())
+  tool       String
+  path       String?
+  method     String?
+  params     Json?
+  result     String   // 'success' | 'error'
+  errorCode  String?
+  executedAs String
+  durationMs Int
+  sessionId  String?
+
+  @@index([timestamp])
+  @@index([tool])
+  @@map("agent_actions")
+}
