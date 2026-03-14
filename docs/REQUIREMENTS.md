@@ -3,7 +3,7 @@
 > 用于持续记录待实现功能、正在开发中的需求以及已完成的变更。
 > 每次新增或完成需求时请同步更新本文档。
 >
-> **最后审计**：2026-02-25（Agent Team 全量落地，P0~P3 全部完成；剩余 2 项需手动执行）
+> **最后审计**：2026-03-14（RD-001 全量完成；新增 Agent-Native MCP 架构需求 AGT-001）
 
 ---
 
@@ -11,11 +11,70 @@
 
 ---
 
-### RD-001 产品研发流程模块（新功能）
+### AGT-001 Agent-Native MCP 架构（新功能）
 
-> **触发入口**：用户点击"新建产品研发"
-> **状态**：需求确认阶段，尚未开始开发
-> **优先级**：P0（BRCGS 合规要求）
+> **目标**：让 Claude Code 成为系统全权代理——自主操作业务、发现问题、修复验证，无需人工中转
+> **状态**：设计完成，待开发
+> **优先级**：P1
+> **设计文档**：[docs/plans/2026-03-14-agent-native-mcp-design.md](plans/2026-03-14-agent-native-mcp-design.md)
+> **最后讨论**：2026-03-14
+
+---
+
+#### 核心架构决策
+
+MCP 定位为「API 代理 + 发现层」，而非 1:1 映射每个端点。
+
+- **扩展性原则**：新功能上线只需完善 Swagger 描述，MCP 工具集长期稳定（~10个工具覆蓋全部现在和未来功能）
+- **双模式认证**：Admin 模式（日常维护）+ 角色模式（模拟业务场景）
+- **工具分四类**：发现层 / 执行层 / 运维层 / 测试层
+
+---
+
+#### Phase 1：基础层（让 Claude 能操作）
+
+**AGT-001-P1-1 Knowledge Layer**
+
+| 文件 | 内容 |
+|------|------|
+| `/llms.txt` | Agent 入口：系统能力索引、API 入口、MCP 配置 |
+| `docs/BUSINESS_RULES.md` | 业务规则外置：流程/仓库/权限/不可逆操作 |
+| `docs/AGENT_GUIDE.md` | 操作手册：常用操作最短路径、测试账号说明 |
+
+**AGT-001-P1-2 noidear-mcp Server**（`tools/noidear-mcp/`）
+
+| 工具 | 类型 | 说明 |
+|------|------|------|
+| `discover(module?)` | 发现层 | 读 Swagger，返回可用操作；新功能自动感知 |
+| `call_api(path, method, body?)` | 执行层 | admin 身份调用任意 API |
+| `call_api_as(role, path, method, body?)` | 执行层 | 指定角色调用（模拟 HACCP/manager） |
+| `health_check()` | 运维层 | 所有服务状态 |
+| `get_logs(service, lines?, level?)` | 运维层 | 过滤 ERROR/WARN 日志 |
+| `query_db(sql)` | 运维层 | 只读诊断查询 |
+| `restart_service(service)` | 运维层 | 重启 Docker 容器 |
+| `run_migration()` | 运维层 | Prisma migrate deploy |
+| `run_tests(flow?)` | 测试层 | 触发 Playwright E2E，返回结构化报告 |
+| `get_test_report()` | 测试层 | 最近一次测试结果 |
+
+#### Phase 2：测试层（让 Claude 能发现问题）
+
+Playwright E2E 覆盖核心流程：auth / process-full / process-draft / process-approval / warehouse / document
+
+#### Phase 3：语义化（让 Claude 更精准）
+
+- 所有 API `@ApiOperation` 补充业务语义/前置条件/副作用描述
+- 统一机器可读错误码：`{ code, message, context, fix }`
+
+#### Phase 4：可观测（让操作可审计）
+
+新增 `AgentAction` 表，记录 Claude 每次 MCP 工具调用。
+
+---
+
+### ~~RD-001 产品研发流程模块~~（已完成，见下方）
+
+> **原状态**：需求确认阶段，尚未开始开发
+> **当前状态**：✅ 已全量完成（2026-03-08）
 > **最后讨论**：2026-03-07
 
 ---
@@ -571,3 +630,44 @@ _当前无进行中任务。_
 ---
 
 ## 已完成
+
+---
+
+### RD-001 产品研发流程模块 ✅
+
+> **完成时间**：2026-03-08
+> **提交范围**：T01-T22（含 T10a/T10b/T10c），共 24 个任务
+> **测试状态**：14 tests passed，后端 0 errors，前端 0 errors
+
+#### 实现摘要
+
+| 层次 | 任务 | 内容 |
+|------|------|------|
+| 后端 | T01 | Prisma Schema：ProcessTemplate/ProcessInstance/ProcessStepData |
+| 后端 | T02-T04 | NestJS process 模块：CRUD API + submitStep + approveStep（14 tests）|
+| 前端组件 | T05-T07 | 11 个新字段类型（auto-username/auto-date/table-input 等）|
+| 前端组件 | T08-T10c | DigitRoller / AllergenTable / OvenZoneTable / FanDeviceTable / ProcessParams |
+| 前端集成 | T11 | processApi + ProcessList + 路由 + Layout 菜单 |
+| 前端集成 | T12-T20 | Step1-Step9 视图（9个步骤视图）|
+| 前端集成 | T21-T22 | ProcessDetail（懒加载）+ ProcessPrint（window.print）|
+
+#### 上线后修复
+
+| 问题 | 根因 | 修复 |
+|------|------|------|
+| 创建失败（内部服务器错误）| `req.user.userId` → 应为 `req.user.id` | Controller 字段修正 |
+| 未找到激活的流程模板 | ProcessTemplate 表无种子数据 | 数据库插入默认模板 |
+| Step1 提交跳到 Step3 | `handleSubmit` 中 `viewStep++` 与 `loadInstance` 双重 +1 | 删除多余 `++` |
+| 草稿列表找不到 | API 返回数组，前端读 `res.list`（undefined）| 修正为直接用数组 |
+| 原料搜索无结果 | 返回字段 `data` vs `list`，以及 `materialCode` vs `code` 不匹配 | 修正字段名 |
+
+#### 需求变更记录
+
+| 原始需求 | 实际实现 | 变更原因 |
+|---------|---------|---------|
+| 工艺形式：checkbox 多选 | radio 单选 | 只能选一种工艺 |
+| 含产品规格字段 | 已移除 | 用户确认不需要 |
+| 炉温/风机：DigitRoller 滚轮 | el-input-number 直接输入 | 用户反馈滚轮不便 |
+| 原料清单：autocomplete 搜索 | 弹窗选料（分类展示全部）| 用户需要看到全部物料 |
+| 协作部门职责：简单列表 | 6部门详细职责编号列表 | 用户提供完整内容 |
+
