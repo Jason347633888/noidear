@@ -6,7 +6,10 @@ const cache = new Map<string, TokenCache>();
 
 async function login(username: string, password: string): Promise<string> {
   const res = await axios.post(`${CONFIG.baseUrl}/auth/login`, { username, password });
-  return res.data.access_token as string;
+  // Server wraps response as { code, message, data: { token, user } }
+  const token = res.data?.data?.token ?? res.data?.access_token;
+  if (!token) throw new Error(`Login succeeded but no token found in response: ${JSON.stringify(res.data)}`);
+  return token as string;
 }
 
 export const tokenManager = {

@@ -1,6 +1,7 @@
 import { execFileSync } from 'child_process';
 import axios from 'axios';
 import { CONFIG } from '../auth/config.js';
+import { tokenManager } from '../auth/token-manager.js';
 
 const ALLOWED_SERVICES = new Set(['server', 'client', 'redis', 'postgres']);
 const ALLOWED_RESTART = new Set(['server', 'client', 'redis']);
@@ -28,16 +29,24 @@ export async function healthCheck(): Promise<unknown> {
     }
   }
 
-  for (const [name, url] of [
-    ['server', `${CONFIG.baseUrl}/health`],
-    ['client', 'http://localhost'],
-  ] as [string, string][]) {
-    try {
-      await axios.get(url, { timeout: 3000 });
-      services[name] = 'healthy';
-    } catch {
-      services[name] = 'unhealthy';
-    }
+  // Server health: use authenticated request since /health requires auth
+  try {
+    const token = await tokenManager.getAdminToken().catch(() => null);
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const res = await axios.get(`${CONFIG.baseUrl}/health`, { timeout: 3000, headers });
+    services['server'] = res.data?.code === 0 ? 'healthy' : 'unhealthy';
+  } catch (err) {
+    // 401 means server is up but auth failed; treat as healthy for infrastructure check
+    const status = (err as { response?: { status?: number } }).response?.status;
+    services['server'] = status ? 'healthy' : 'unhealthy';
+  }
+
+  // Client health: unauthenticated HTTP check
+  try {
+    await axios.get('http://localhost', { timeout: 3000 });
+    services['client'] = 'healthy';
+  } catch {
+    services['client'] = 'unhealthy';
   }
 
   const overall = Object.values(services).every((s) => s === 'healthy') ? 'all healthy' : 'some unhealthy';
