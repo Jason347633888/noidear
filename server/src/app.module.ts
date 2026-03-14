@@ -46,6 +46,7 @@ import { ImportModule } from './modules/import/import.module';
 import { I18nAppModule } from './modules/i18n/i18n.module';
 import { RecordTaskModule } from './modules/record-task/record-task.module';
 import { ProcessModule } from './modules/process/process.module';
+import { AgentModule } from './modules/agent/agent.module';
 
 @Module({
   imports: [
@@ -102,6 +103,7 @@ import { ProcessModule } from './modules/process/process.module';
     I18nAppModule,
     RecordTaskModule,
     ProcessModule,
+    AgentModule,
   ],
   providers: [
     {
