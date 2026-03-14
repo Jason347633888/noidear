@@ -24,5 +24,5 @@ Server ID: noidear-mcp
 ## 关键约束（详见 /docs/BUSINESS_RULES.md）
 - 研发流程步骤必须顺序提交（stepNumber === currentStep）
 - Step7/8 需 HACCP/admin/manager 角色审批才能推进
-- 物料出库遵循 FIFO，系统自动选批次，不可手动指定
+- 物料出库遵循 FIFO，通过出库申请流程（requisitions）触发，系统自动按批次扣减
 - 不可逆操作调用前需确认（见 BUSINESS_RULES.md）

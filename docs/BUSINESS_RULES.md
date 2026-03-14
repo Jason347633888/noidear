@@ -25,7 +25,10 @@
 - Step7/8 审批驳回（action=reject）：`currentStep - 1`，数据保留，申请人可重新填写
 
 ### 角色要求
-- 审批 Step7/8：需要 `HACCP`、`admin` 或 `manager` 角色之一
+- 审批 Step7/8：代码层面当前未强制限制角色，
+  调用 POST /:id/approve 的任意认证用户均可执行。
+  （注：ApprovalStepField 组件层面限制了角色为 admin/HACCP/manager，
+  但后端无对应 Guard，仅作前端展示控制。）
 
 ---
 
@@ -63,15 +66,14 @@
 | 删除研发流程 | `DELETE /process/instances/:id` | 删除后数据不可恢复 |
 | 文档归档 | `POST /documents/:id/archive` | 归档后变为只读 |
 | 文档作废 | `POST /documents/:id/obsolete` | 作废后不可恢复为草稿 |
-| 出库操作 | `POST /warehouse/outbound` | 库存减少后不自动恢复 |
-| 删除物料批次 | `DELETE /warehouse/batches/:id` | 批次数据不可恢复 |
+| 出库操作 | `POST /warehouse/requisitions/:id/complete` | 完成后触发 FIFO 扣库，不可撤销 |
 
 ---
 
 ## 五、数据模型关键说明
 
 ### ProcessInstance.status 枚举
-- `DRAFT`：刚创建，未开始填写
+- `DRAFT`：刚创建，未开始填写（创建时默认为 DRAFT，由 Prisma schema default 设定）
 - `IN_PROGRESS`：填写中（Step1 提交后进入此状态）
 - `COMPLETED`：Step9 提交后
 - `REJECTED`：被驳回（当前未使用，保留用于扩展）
