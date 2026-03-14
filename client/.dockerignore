@@ -1,5 +1,8 @@
+# 多階段構建模式：源碼需要進入 builder stage
+# 只排除不需要的文件，減少 Docker build context 體積
+
 node_modules
-src
+dist
 .env
 .env.*
 e2e
@@ -7,6 +10,3 @@ playwright-report
 playwright-results.json
 coverage
 *.sh
-*.ts
-*.json
-!nginx.conf
