@@ -63,8 +63,8 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger (LOW-002: only enable in non-production environments)
-  if (process.env.NODE_ENV !== 'production') {
+  // Swagger (LOW-002: only enable in non-production, or when SWAGGER_ENABLED=true for MCP tools)
+  if (process.env.NODE_ENV !== 'production' || process.env.SWAGGER_ENABLED === 'true') {
     const config = new DocumentBuilder()
       .setTitle('文档管理系统 API')
       .setDescription('Document Management System API')
