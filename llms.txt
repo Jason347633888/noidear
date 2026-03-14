@@ -1,0 +1,28 @@
+# noidear 质量管理系统 - Agent 入口
+
+## 系统能力
+- 产品研发9步流程（含 HACCP 审批）：POST /process/instances 创建，逐步推进
+- 仓库管理（物料/入库/出库/批次追溯/FIFO）
+- 文档三级管理（创建/审批/归档/作废）
+- 审批工作流（多步骤、角色分配）
+- 权限管理（角色 + 细粒度字段权限）
+- 批次追溯、偏差检测、统计分析、数据导出
+
+## API 入口
+REST API:    http://localhost:3000/api/v1
+完整文档:    http://localhost:3000/api/docs（Swagger UI）
+JSON 规范:   http://localhost:3000/api/docs-json
+认证方式:    POST /api/v1/auth/login { username, password } → { access_token }
+Token 用法:  Header: Authorization: Bearer <token>
+Token 有效期: 7天
+
+## MCP 工具（Claude Code 专用）
+Server ID: noidear-mcp
+配置位置:   ~/.claude/settings.json
+工具列表:   见 /docs/AGENT_GUIDE.md
+
+## 关键约束（详见 /docs/BUSINESS_RULES.md）
+- 研发流程步骤必须顺序提交（stepNumber === currentStep）
+- Step7/8 需 HACCP/admin/manager 角色审批才能推进
+- 物料出库遵循 FIFO，系统自动选批次，不可手动指定
+- 不可逆操作调用前需确认（见 BUSINESS_RULES.md）
