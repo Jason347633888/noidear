@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProcessInstanceDto, SubmitStepDto, ApproveStepDto, UpdateProductNameDto } from './dto';
 import { ProcessStatus, ProcessStepStatus } from '@prisma/client';
+import { BusinessError } from '../../common/errors/business-errors';
 
 @Injectable()
 export class ProcessService {
@@ -72,10 +73,10 @@ export class ProcessService {
   async deleteInstance(instanceId: string, userId: string) {
     const instance = await this.getInstance(instanceId);
     if (instance.createdById !== userId) {
-      throw new ForbiddenException('只有创建者才能删除流程实例');
+      throw new ForbiddenException(BusinessError.notOwner('delete'));
     }
     if (instance.status === ProcessStatus.COMPLETED) {
-      throw new ForbiddenException('已完成的流程实例不能删除');
+      throw new ForbiddenException(BusinessError.processCompleted(instanceId));
     }
     return this.prisma.processInstance.delete({ where: { id: instanceId } });
   }
@@ -91,7 +92,7 @@ export class ProcessService {
   async submitStep(instanceId: string, userId: string, dto: SubmitStepDto) {
     const instance = await this.getInstance(instanceId);
     if (dto.stepNumber !== instance.currentStep) {
-      throw new ForbiddenException(`当前步骤为 ${instance.currentStep}，不能提交步骤 ${dto.stepNumber}`);
+      throw new ForbiddenException(BusinessError.wrongStep(instance.currentStep, dto.stepNumber));
     }
 
     const isDraft = dto.saveAsDraft === true;
@@ -143,7 +144,7 @@ export class ProcessService {
     });
 
     if (!stepData || stepData.status !== ProcessStepStatus.SUBMITTED) {
-      throw new ForbiddenException('步骤数据未提交或状态不正确，无法审批');
+      throw new ForbiddenException(BusinessError.stepNotSubmitted(dto.stepNumber));
     }
 
     if (dto.action === 'approve') {
