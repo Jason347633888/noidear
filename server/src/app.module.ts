@@ -67,6 +67,10 @@ import { FragileItemInspectionModule } from './modules/fragile-item-inspection/f
 import { ChangeComplianceRecordModule } from './modules/change-compliance-record/change-compliance-record.module';
 import { ChangeVerificationRecordModule } from './modules/change-verification-record/change-verification-record.module';
 import { ChangeApprovalModule } from './modules/change-approval/change-approval.module';
+import { AssetLoanRecordModule } from './modules/asset-loan-record/asset-loan-record.module';
+import { DocumentIssuanceModule } from './modules/document-issuance/document-issuance.module';
+import { LineChangeCheckRecordModule } from './modules/line-change-check-record/line-change-check-record.module';
+import { FoodSafetyCultureRecordModule } from './modules/food-safety-culture-record/food-safety-culture-record.module';
 
 @Module({
   imports: [
@@ -144,6 +148,10 @@ import { ChangeApprovalModule } from './modules/change-approval/change-approval.
     ChangeComplianceRecordModule,
     ChangeVerificationRecordModule,
     ChangeApprovalModule,
+    AssetLoanRecordModule,
+    DocumentIssuanceModule,
+    LineChangeCheckRecordModule,
+    FoodSafetyCultureRecordModule,
   ],
   providers: [
     {

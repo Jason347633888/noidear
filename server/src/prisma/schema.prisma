@@ -2764,16 +2764,38 @@ model SupplierEvaluation {
 }
 
 model DocumentIssuance {
-  id         String    @id @default(cuid())
-  company_id String
-  doc_code   String
-  doc_name   String
-  qty        Int       @default(1)
-  purpose    String?
-  issued_to  String?
-  issued_by  String?
-  issued_at  DateTime  @db.Date
-  created_at DateTime  @default(now())
+  id              String    @id @default(cuid())
+  company_id      String
+  document_name   String
+  document_code   String?
+  template_id     String?
+  issued_to       String?
+  issued_by       String?
+  quantity        Int       @default(1)
+  purpose         String?
+  issued_at       DateTime  @default(now())
+  notes           String?
+  created_at      DateTime  @default(now())
+  deleted_at      DateTime?
+}
+
+model AssetLoanRecord {
+  id              String    @id @default(cuid())
+  company_id      String
+  asset_type      String
+  asset_name      String
+  asset_code      String?
+  borrower_id     String?
+  borrower_name   String?
+  borrow_at       DateTime  @default(now())
+  expected_return DateTime?
+  actual_return   DateTime?
+  purpose         String?
+  approver_id     String?
+  status          String    @default("borrowed")
+  notes           String?
+  created_at      DateTime  @default(now())
+  deleted_at      DateTime?
 }
 
 model FragileItemInspection {
@@ -2814,4 +2836,40 @@ model ChangeApproval {
   comments        String?
   approved_at     DateTime?
   created_at      DateTime  @default(now())
+}
+
+model LineChangeCheckRecord {
+  id                    String    @id @default(cuid())
+  company_id            String
+  check_date            DateTime  @default(now())
+  production_line       String?
+  product_from          String?
+  product_to            String?
+  allergen_cleared      Boolean   @default(false)
+  equipment_cleaned     Boolean   @default(false)
+  utensils_replaced     Boolean   @default(false)
+  labels_updated        Boolean   @default(false)
+  packaging_cleared     Boolean   @default(false)
+  raw_materials_cleared Boolean   @default(false)
+  inspector_id          String?
+  supervisor_ok         Boolean   @default(false)
+  notes                 String?
+  created_at            DateTime  @default(now())
+  deleted_at            DateTime?
+}
+
+model FoodSafetyCultureRecord {
+  id              String    @id @default(cuid())
+  company_id      String
+  activity_type   String    // training, inspection, meeting, campaign
+  title           String
+  description     String?
+  action_measures Json?
+  participants    Int?
+  conducted_at    DateTime  @default(now())
+  organizer_id    String?
+  result_summary  String?
+  notes           String?
+  created_at      DateTime  @default(now())
+  deleted_at      DateTime?
 }

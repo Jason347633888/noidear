@@ -250,6 +250,10 @@ const menuItems = [
       { path: '/visitor-records', title: '访客登记', icon: User },
       { path: '/emergency-drills', title: '应急演练', icon: HomeFilled },
       { path: '/waste', title: '废弃物管理', icon: Delete },
+      { path: '/asset-loan-records', title: '资产借用记录', icon: SetUp },
+      { path: '/document-issuances', title: '表单领用记录', icon: Document },
+      { path: '/line-change-check-records', title: '换产前检查', icon: RefreshLeft },
+      { path: '/food-safety-culture-records', title: '食品安全文化', icon: UserFilled },
     ],
   },
   {

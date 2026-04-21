@@ -732,6 +732,34 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/fragile-item-inspection/FragileItemInspectionList.vue'),
         meta: { title: '玻璃及硬塑完整性检查' },
       },
+      // 资产借用记录模块
+      {
+        path: 'asset-loan-records',
+        name: 'AssetLoanRecordList',
+        component: () => import('@/views/asset-loan-record/AssetLoanRecordList.vue'),
+        meta: { title: '资产借用记录' },
+      },
+      // 表单领用记录模块
+      {
+        path: 'document-issuances',
+        name: 'DocumentIssuanceList',
+        component: () => import('@/views/document-issuance/DocumentIssuanceList.vue'),
+        meta: { title: '表单领用记录' },
+      },
+      // 换产前检查模块
+      {
+        path: 'line-change-check-records',
+        name: 'LineChangeCheckRecordList',
+        component: () => import('@/views/line-change-check-record/LineChangeCheckRecordList.vue'),
+        meta: { title: '换产前检查' },
+      },
+      // 食品安全文化建设模块
+      {
+        path: 'food-safety-culture-records',
+        name: 'FoodSafetyCultureRecordList',
+        component: () => import('@/views/food-safety-culture-record/FoodSafetyCultureRecordList.vue'),
+        meta: { title: '食品安全文化建设' },
+      },
     ],
   },
   // 打印页（无 Layout）
