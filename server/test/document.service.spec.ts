@@ -5,6 +5,7 @@ import { StorageService } from '../src/common/services/storage.service';
 import { NotificationService } from '../src/modules/notification/notification.service';
 import { OperationLogService } from '../src/modules/operation-log/operation-log.service';
 import { BusinessException } from '../src/common/exceptions/business.exception';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 describe('DocumentService', () => {
   let service: DocumentService;
@@ -70,6 +71,7 @@ describe('DocumentService', () => {
         { provide: NotificationService, useValue: mockNotificationService },
         { provide: OperationLogService, useValue: mockOperationLogService },
         { provide: 'SnowflakeService', useValue: mockSnowflake },
+        { provide: EventEmitter2, useValue: { emit: jest.fn(), emitAsync: jest.fn(), on: jest.fn() } },
       ],
     }).compile();
 
