@@ -111,7 +111,6 @@ declare module 'vue' {
     GrantPermissionDialog: typeof import('./src/components/permission/GrantPermissionDialog.vue')['default']
     HealthStatusCard: typeof import('./src/components/monitoring/HealthStatusCard.vue')['default']
     ImageUploadField: typeof import('./src/components/fields/ImageUploadField.vue')['default']
-    LanguageSwitcher: typeof import('./src/components/LanguageSwitcher.vue')['default']
     LearningRecordTable: typeof import('./src/components/training/LearningRecordTable.vue')['default']
     LogDetailDialog: typeof import('./src/components/audit/LogDetailDialog.vue')['default']
     MetricCard: typeof import('./src/components/monitoring/MetricCard.vue')['default']
@@ -150,7 +149,6 @@ declare module 'vue' {
     TextField: typeof import('./src/components/fields/TextField.vue')['default']
     TimeField: typeof import('./src/components/fields/TimeField.vue')['default']
     TimeRangeField: typeof import('./src/components/fields/TimeRangeField.vue')['default']
-    TodoCard: typeof import('./src/components/todo/TodoCard.vue')['default']
     WordViewer: typeof import('./src/components/WordViewer.vue')['default']
   }
   export interface ComponentCustomProperties {

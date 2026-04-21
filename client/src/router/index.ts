@@ -443,11 +443,6 @@ const routes: RouteRecordRaw[] = [
         name: 'TrainingArchiveDetail',
         component: () => import('@/views/training/archives/ArchiveDetail.vue'),
       },
-      {
-        path: 'todos',
-        name: 'TodoList',
-        component: () => import('@/views/todo/TodoList.vue'),
-      },
       // 内审管理模块
       {
         path: 'internal-audit/plans',

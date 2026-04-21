@@ -62,8 +62,6 @@
         </div>
 
         <div class="header-right">
-          <LanguageSwitcher />
-
           <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="notification-badge">
             <div class="icon-btn" @click="router.push('/notifications')">
               <el-icon :size="18"><Bell /></el-icon>
@@ -119,7 +117,6 @@ import {
 } from '@element-plus/icons-vue';
 
 import request from '@/api/request';
-import LanguageSwitcher from '@/components/LanguageSwitcher.vue';
 
 const route = useRoute();
 const router = useRouter();

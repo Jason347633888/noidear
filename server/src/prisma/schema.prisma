@@ -95,6 +95,7 @@ model User {
   superior      User?       @relation("UserSuperior", fields: [superiorId], references: [id], onDelete: SetNull)
   subordinates  User[]      @relation("UserSuperior")
   status        String      @default("active")
+  wechat_openid  String?     @unique
   loginAttempts   Int         @default(0)
   firstFailedAt   DateTime?
   lockedUntil     DateTime?
