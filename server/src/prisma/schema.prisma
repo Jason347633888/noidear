@@ -2649,28 +2649,37 @@ model MedicationRecord {
 }
 
 model VisitorRecord {
-  id             String    @id @default(cuid())
-  company_id     String
-  visitor_name   String
-  visitor_org    String?
-  visit_purpose  String?
-  accompanied_by String?
-  health_decl    Boolean   @default(false)
-  entry_at       DateTime
-  exit_at        DateTime?
-  created_at     DateTime  @default(now())
+  id            String    @id @default(cuid())
+  company_id    String
+  visitor_name  String
+  organization  String?
+  purpose       String
+  visit_date    DateTime
+  escort        String?
+  health_status String?
+  notes         String?
+  created_by    String?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+  @@map("visitor_records")
 }
 
 model EmergencyDrillRecord {
   id           String    @id @default(cuid())
   company_id   String
-  drill_type   String    // 'fire'|'food_safety_incident'|'chemical_spill'|'traceability'|'other'
-  drill_date   DateTime  @db.Date
-  participants String?
-  drill_result String
-  improvements String?
-  organizer_id String?
+  drill_type   String    // 'fire'|'food_safety'|'chemical'|'earthquake'|'other'
+  drill_date   DateTime
+  participants Int
+  duration_min Int?
+  result       String    // 'pass'|'fail'|'partial'
+  issues       String?
+  improvement  String?
+  organizer    String?
   created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  deleted_at   DateTime?
+  @@map("emergency_drill_records")
 }
 
 // ─── 变更 / 废弃物 / 评估 ──────────────────────────

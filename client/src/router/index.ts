@@ -683,6 +683,20 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/process/ProcessDetail.vue'),
         meta: { title: '研发流程详情' },
       },
+      // 访客登记模块
+      {
+        path: 'visitor-records',
+        name: 'VisitorRecordList',
+        component: () => import('@/views/visitor-record/VisitorRecordList.vue'),
+        meta: { title: '访客登记' },
+      },
+      // 应急演练模块
+      {
+        path: 'emergency-drills',
+        name: 'EmergencyDrillList',
+        component: () => import('@/views/emergency-drill/EmergencyDrillList.vue'),
+        meta: { title: '应急演练记录' },
+      },
     ],
   },
   // 打印页（无 Layout）
