@@ -41,7 +41,6 @@ import { TrainingModule } from './modules/training/training.module';
 import { TodoModule } from './modules/todo/todo.module';
 import { InternalAuditModule } from './modules/internal-audit/internal-audit.module';
 import { SearchModule } from './modules/search/search.module';
-import { RecommendationModule } from './modules/recommendation/recommendation.module';
 import { ImportModule } from './modules/import/import.module';
 import { I18nAppModule } from './modules/i18n/i18n.module';
 import { RecordTaskModule } from './modules/record-task/record-task.module';
@@ -97,7 +96,6 @@ import { ProcessModule } from './modules/process/process.module';
     TodoModule,
     InternalAuditModule,
     SearchModule,
-    RecommendationModule,
     ImportModule,
     I18nAppModule,
     RecordTaskModule,
