@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RecordService } from './record.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { WorkflowInstanceService } from '../workflow/workflow-instance.service';
+import { DeviationService } from '../deviation/deviation.service';
 import { NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 
 describe('RecordService', () => {
@@ -57,11 +59,22 @@ describe('RecordService', () => {
     deletedAt: null,
   };
 
+  const mockWorkflowInstanceService = {
+    create: jest.fn(),
+  };
+
+  const mockDeviationService = {
+    detectDeviations: jest.fn().mockReturnValue([]),
+    createDeviationReports: jest.fn().mockResolvedValue([]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RecordService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: WorkflowInstanceService, useValue: mockWorkflowInstanceService },
+        { provide: DeviationService, useValue: mockDeviationService },
       ],
     }).compile();
 
