@@ -1133,6 +1133,10 @@ model ProductionBatch {
   // Task 15a: 质量合规
   rework_records ReworkRecord[]
 
+  // Task 15b: 过程监控
+  process_monitor_records ProcessMonitorRecord[]
+  metal_detection_logs    MetalDetectionLog[]
+
   @@index([batchNumber])
   @@index([productionDate])
   @@index([status])
@@ -2537,4 +2541,74 @@ model CalibrationRecord {
   notes                  String?
   created_by             String?
   created_at             DateTime           @default(now())
+}
+
+// ─── 过程监控 ─────────────────────────────────────
+
+model EnvironmentRecord {
+  id                  String    @id @default(cuid())
+  company_id          String
+  production_batch_id String?
+  location            String
+  record_type         String    // 'temperature_humidity'|'pressure_differential'|'other'
+  temperature         Decimal?  @db.Decimal(8,2)
+  humidity            Decimal?  @db.Decimal(8,2)
+  pressure_diff       Decimal?  @db.Decimal(8,2)
+  is_within_spec      Boolean
+  abnormal_action     String?
+  measured_at         DateTime
+  operator_id         String?
+  created_at          DateTime  @default(now())
+}
+
+model ProcessMonitorRecord {
+  id                  String          @id @default(cuid())
+  company_id          String
+  production_batch_id String
+  production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id])
+  param_name          String
+  param_value         Decimal?        @db.Decimal(14,4)
+  param_text          String?
+  unit                String?
+  spec_min            Decimal?        @db.Decimal(14,4)
+  spec_max            Decimal?        @db.Decimal(14,4)
+  is_within_spec      Boolean
+  abnormal_action     String?
+  measured_at         DateTime
+  operator_id         String?
+  created_at          DateTime        @default(now())
+}
+
+model MetalDetectionLog {
+  id                  String          @id @default(cuid())
+  company_id          String
+  production_batch_id String
+  production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id])
+  fe_ball_spec        String?
+  sus_ball_spec       String?
+  al_ball_spec        String?
+  fe_test_pass        Boolean
+  sus_test_pass       Boolean
+  al_test_pass        Boolean
+  overall_pass        Boolean
+  rejection_action    String?
+  tested_at           DateTime
+  operator_id         String?
+  created_at          DateTime        @default(now())
+}
+
+model CleaningRecord {
+  id              String    @id @default(cuid())
+  company_id      String
+  target_type     String    // 'area'|'equipment'|'utensil'|'facility'
+  target_name     String
+  cleaning_method String?
+  disinfectant    String?
+  concentration   String?
+  cleaning_date   DateTime  @db.Date
+  operator_id     String?
+  verifier_id     String?
+  is_pass         Boolean
+  notes           String?
+  created_at      DateTime  @default(now())
 }
