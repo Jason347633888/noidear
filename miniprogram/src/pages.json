@@ -13,6 +13,24 @@
 			"style": {
 				"navigationBarTitleText": "uni-app"
 			}
+		},
+		{
+			"path": "pages/forms/index",
+			"style": {
+				"navigationBarTitleText": "待填表单"
+			}
+		},
+		{
+			"path": "pages/approvals/index",
+			"style": {
+				"navigationBarTitleText": "待审批"
+			}
+		},
+		{
+			"path": "pages/dashboard/index",
+			"style": {
+				"navigationBarTitleText": "数据看板"
+			}
 		}
 	],
 	"globalStyle": {
