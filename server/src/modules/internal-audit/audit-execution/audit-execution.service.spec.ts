@@ -21,6 +21,9 @@ describe('AuditExecutionService', () => {
       findMany: jest.fn(),
       count: jest.fn(),
     },
+    todoTask: {
+      create: jest.fn().mockResolvedValue({}),
+    },
     document: {
       findUnique: jest.fn(),
     },
