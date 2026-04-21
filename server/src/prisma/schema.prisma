@@ -763,6 +763,10 @@ model MaterialBatch {
   storage_confirmed Boolean  @default(false)
   lot_status        String   @default("in_stock") // 'in_stock'|'consumed'|'nonconforming'|'quarantined'|'disposed'
 
+  // 追溯链支撑
+  incoming_inspections IncomingInspection[]
+  stock_counts         StockCount[]
+
   @@index([batchNumber])
   @@index([expiryDate])
   @@index([status])
@@ -853,6 +857,9 @@ model Supplier {
   // 食品安全扩展字段
   supplier_status   String    @default("approved") // 'approved'|'suspended'|'eliminated'|'pending'
   last_evaluated_at DateTime?
+
+  // 追溯链支撑
+  supplier_documents SupplierDocument[]
 
   @@index([supplierCode])
   @@index([status])
@@ -1115,6 +1122,10 @@ model ProductionBatch {
   production_line String?
   released_by     Int?
   released_at     DateTime?
+
+  // 追溯链支撑
+  delivery_notes DeliveryNote[]
+  samples        Sample[]
 
   @@index([batchNumber])
   @@index([productionDate])
@@ -2130,4 +2141,136 @@ model AgentAction {
   @@index([timestamp])
   @@index([tool])
   @@map("agent_actions")
+}
+
+// ─── 追溯链支撑 ───────────────────────────────────
+
+model SupplierDocument {
+  id          Int       @id @default(autoincrement())
+  company_id  Int
+  supplier_id String
+  supplier    Supplier  @relation(fields: [supplier_id], references: [id])
+  doc_type    String    // 'business_license'|'food_production_permit'|'inspection_report'|'certificate'|'other'
+  doc_name    String
+  doc_no      String?
+  issued_by   String?
+  issued_at   DateTime?
+  expires_at  DateTime?
+  file_url    String?
+  status      String    @default("valid") // 'valid'|'expiring_soon'|'expired'
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  @@map("supplier_documents")
+}
+
+model IncomingInspection {
+  id                String                    @id @default(cuid())
+  company_id        Int
+  material_batch_id String
+  material_batch    MaterialBatch             @relation(fields: [material_batch_id], references: [id])
+  inspected_at      DateTime
+  inspector_id      String?
+  sample_qty        Decimal?                  @db.Decimal(14,4)
+  sample_unit       String?
+  overall_result    String                    // 'pass'|'fail'|'conditional_pass'
+  disposition       String?
+  disposition_by    String?
+  notes             String?
+  results           IncomingInspectionResult[]
+  created_at        DateTime                  @default(now())
+  updated_at        DateTime                  @updatedAt
+
+  @@map("incoming_inspections")
+}
+
+model IncomingInspectionResult {
+  id            Int                @id @default(autoincrement())
+  inspection_id String
+  inspection    IncomingInspection @relation(fields: [inspection_id], references: [id])
+  item_name     String
+  actual_value  String?
+  is_pass       Boolean
+
+  @@map("incoming_inspection_results")
+}
+
+model InventoryMovement {
+  id            Int      @id @default(autoincrement())
+  company_id    Int
+  movement_type String   // 'receive'|'issue_to_production'|'transfer'|'finished_goods_in'|'finished_goods_out'|'adjustment'
+  object_type   String   // 'material_batch'|'production_batch'
+  object_id     String
+  from_location String?
+  to_location   String?
+  qty           Decimal  @db.Decimal(14,4)
+  unit          String
+  ref_type      String?
+  ref_id        String?
+  operator_id   String?
+  moved_at      DateTime
+  notes         String?
+  created_at    DateTime @default(now())
+
+  @@map("inventory_movements")
+}
+
+model StockCount {
+  id                String        @id @default(cuid())
+  company_id        Int
+  count_date        DateTime      @db.Date
+  location          String?
+  material_batch_id String
+  material_batch    MaterialBatch @relation(fields: [material_batch_id], references: [id])
+  book_qty          Decimal       @db.Decimal(14,4)
+  actual_qty        Decimal       @db.Decimal(14,4)
+  variance_reason   String?
+  counter_id        String?
+  verifier_id       String?
+  created_at        DateTime      @default(now())
+  updated_at        DateTime      @updatedAt
+
+  @@map("stock_counts")
+}
+
+model DeliveryNote {
+  id                  Int             @id @default(autoincrement())
+  company_id          Int
+  dn_no               String          @unique
+  production_batch_id String
+  production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id])
+  customer_name       String
+  transporter_name    String?
+  shipped_qty         Decimal         @db.Decimal(14,4)
+  unit                String
+  ship_date           DateTime        @db.Date
+  vehicle_plate       String?
+  driver_name         String?
+  receipt_status      String          @default("pending") // 'pending'|'signed'|'rejected'
+  signed_at           DateTime?
+  notes               String?
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+
+  @@map("delivery_notes")
+}
+
+model Sample {
+  id                  Int             @id @default(autoincrement())
+  company_id          Int
+  production_batch_id String
+  production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id])
+  sample_qty          Decimal         @db.Decimal(14,4)
+  unit                String
+  sampling_date       DateTime        @db.Date
+  sampled_by          String?
+  location            String?
+  retention_until     DateTime        @db.Date
+  status              String          @default("retained") // 'retained'|'under_test'|'disposed'
+  disposed_at         DateTime?
+  notes               String?
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+
+  @@map("samples")
 }
