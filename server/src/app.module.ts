@@ -56,6 +56,10 @@ import { MeasuringEquipmentModule } from './modules/measuring-equipment/measurin
 import { ViolationRecordModule } from './modules/violation-record/violation-record.module';
 import { MedicationRecordModule } from './modules/medication-record/medication-record.module';
 import { SupplierEvaluationModule } from './modules/supplier-evaluation/supplier-evaluation.module';
+import { ChangeEventModule } from './modules/change-event/change-event.module';
+import { WasteModule } from './modules/waste/waste.module';
+import { VisitorRecordModule } from './modules/visitor-record/visitor-record.module';
+import { EmergencyDrillModule } from './modules/emergency-drill/emergency-drill.module';
 
 @Module({
   imports: [
@@ -122,6 +126,10 @@ import { SupplierEvaluationModule } from './modules/supplier-evaluation/supplier
     ViolationRecordModule,
     MedicationRecordModule,
     SupplierEvaluationModule,
+    ChangeEventModule,
+    WasteModule,
+    VisitorRecordModule,
+    EmergencyDrillModule,
   ],
   providers: [
     {

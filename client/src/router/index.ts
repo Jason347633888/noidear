@@ -656,6 +656,20 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/supplier-evaluation/EvaluationList.vue'),
         meta: { title: '供应商评估' },
       },
+      // 变更管理模块
+      {
+        path: 'change-events',
+        name: 'ChangeEventList',
+        component: () => import('@/views/change-event/ChangeEventList.vue'),
+        meta: { title: '变更管理' },
+      },
+      // 废弃物管理模块
+      {
+        path: 'waste',
+        name: 'WasteManagement',
+        component: () => import('@/views/waste/WasteManagement.vue'),
+        meta: { title: '废弃物管理' },
+      },
       // 产品研发流程模块
       {
         path: 'process',
