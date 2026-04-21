@@ -326,6 +326,13 @@ const routes: RouteRecordRaw[] = [
         name: 'Traceability',
         component: () => import('@/views/warehouse/Traceability.vue'),
       },
+      // 追溯查询模块（Task 19）
+      {
+        path: 'traceability',
+        name: 'TraceabilityQuery',
+        component: () => import('@/views/traceability/TraceabilityQuery.vue'),
+        meta: { title: '追溯查询', requiresAuth: true },
+      },
       // 设备管理模块
       {
         path: 'equipment',
