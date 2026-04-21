@@ -61,6 +61,7 @@ import { WasteModule } from './modules/waste/waste.module';
 import { VisitorRecordModule } from './modules/visitor-record/visitor-record.module';
 import { EmergencyDrillModule } from './modules/emergency-drill/emergency-drill.module';
 import { ProductModule } from './modules/product/product.module';
+import { RecipeModule } from './modules/recipe/recipe.module';
 
 @Module({
   imports: [
@@ -132,6 +133,7 @@ import { ProductModule } from './modules/product/product.module';
     VisitorRecordModule,
     EmergencyDrillModule,
     ProductModule,
+    RecipeModule,
   ],
   providers: [
     {
