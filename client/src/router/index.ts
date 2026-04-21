@@ -586,6 +586,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/corrective-action/CorrectiveActionList.vue'),
         meta: { title: '纠正措施' },
       },
+      // 顾客投诉模块
+      {
+        path: 'customer-complaints',
+        name: 'CustomerComplaintList',
+        component: () => import('@/views/customer-complaint/CustomerComplaintList.vue'),
+        meta: { title: '顾客投诉管理' },
+      },
       // 产品研发流程模块
       {
         path: 'process',

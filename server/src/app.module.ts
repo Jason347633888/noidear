@@ -46,6 +46,8 @@ import { IncomingInspectionModule } from './modules/incoming-inspection/incoming
 import { TraceabilityModule } from './modules/traceability/traceability.module';
 import { NonConformanceModule } from './modules/non-conformance/non-conformance.module';
 import { CorrectiveActionModule } from './modules/corrective-action/corrective-action.module';
+import { CustomerComplaintModule } from './modules/customer-complaint/customer-complaint.module';
+import { CcpModule } from './modules/ccp/ccp.module';
 
 @Module({
   imports: [
@@ -102,6 +104,8 @@ import { CorrectiveActionModule } from './modules/corrective-action/corrective-a
     TraceabilityModule,
     NonConformanceModule,
     CorrectiveActionModule,
+    CustomerComplaintModule,
+    CcpModule,
   ],
   providers: [
     {
