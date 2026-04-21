@@ -8,8 +8,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-const title = ref('Hello')
+import { ref } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
+
+const title = ref('Hello');
+
+onShow(() => {
+  const token = uni.getStorageSync('token');
+  if (!token) {
+    uni.redirectTo({ url: '/pages/login/index' });
+  }
+});
 </script>
 
 <style>
