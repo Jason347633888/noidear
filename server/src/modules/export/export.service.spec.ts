@@ -439,7 +439,7 @@ describe('ExportService', () => {
       expect(buffer.length).toBeGreaterThan(0);
     });
 
-    it('应该按 taskRecordIds 筛选', async () => {
+    it('taskRecordIds 过滤暂未实现，应忽略该字段并以 deletedAt 过滤', async () => {
       prisma.record.count.mockResolvedValue(1);
       prisma.record.findMany.mockResolvedValue([mockTaskRecords[0]]);
 
@@ -460,7 +460,7 @@ describe('ExportService', () => {
       expect(buffer).toBeInstanceOf(Buffer);
     });
 
-    it('应该按 taskId 筛选', async () => {
+    it('taskId 过滤暂未实现，应忽略该字段并以 deletedAt 过滤', async () => {
       prisma.record.count.mockResolvedValue(1);
       prisma.record.findMany.mockResolvedValue([mockTaskRecords[0]]);
 

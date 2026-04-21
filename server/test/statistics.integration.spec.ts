@@ -280,7 +280,7 @@ describe('Statistics Integration Tests', () => {
       expect(response.body.total).toBe(8);
     });
 
-    it('应该验证 avgCompletionTime 计算（使用 TaskRecord.approvedAt）', async () => {
+    it('avgCompletionTime 应返回数字类型（当前固定为 0，计算逻辑待实现）', async () => {
       mockPrisma.recordTaskInstance.count.mockResolvedValue(1);
       mockPrisma.recordTaskInstance.groupBy.mockResolvedValue([]);
       mockPrisma.recordTaskAssignment.findMany.mockResolvedValue([]);

@@ -262,7 +262,7 @@ describe('StatisticsService', () => {
       expect(result.overdueRate).toBe(15); // (15/100) * 100
     });
 
-    it('should calculate average completion time', async () => {
+    it('avgCompletionTime 应返回 0（计算逻辑待实现）', async () => {
       mockRedisService.get.mockResolvedValue(null);
       mockPrismaService.recordTaskInstance.count
         .mockResolvedValueOnce(10)
