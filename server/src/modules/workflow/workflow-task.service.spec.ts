@@ -17,7 +17,10 @@ describe('WorkflowTaskService', () => {
       create: jest.fn(),
     },
     workflowInstance: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
       update: jest.fn(),
+      create: jest.fn(),
     },
     user: {
       findUnique: jest.fn(),
