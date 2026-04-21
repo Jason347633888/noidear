@@ -600,6 +600,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/customer-complaint/CustomerComplaintList.vue'),
         meta: { title: '顾客投诉管理' },
       },
+      // 环境温湿度记录模块
+      {
+        path: 'environment-records',
+        name: 'EnvironmentRecordList',
+        component: () => import('@/views/environment-record/EnvironmentRecordList.vue'),
+        meta: { title: '环境温湿度记录' },
+      },
       // 产品研发流程模块
       {
         path: 'process',

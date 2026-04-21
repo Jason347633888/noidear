@@ -48,6 +48,10 @@ import { NonConformanceModule } from './modules/non-conformance/non-conformance.
 import { CorrectiveActionModule } from './modules/corrective-action/corrective-action.module';
 import { CustomerComplaintModule } from './modules/customer-complaint/customer-complaint.module';
 import { CcpModule } from './modules/ccp/ccp.module';
+import { EnvironmentRecordModule } from './modules/environment-record/environment-record.module';
+import { ProcessRecordModule } from './modules/process-record/process-record.module';
+import { MetalDetectionModule } from './modules/metal-detection/metal-detection.module';
+import { CleaningRecordModule } from './modules/cleaning-record/cleaning-record.module';
 
 @Module({
   imports: [
@@ -106,6 +110,10 @@ import { CcpModule } from './modules/ccp/ccp.module';
     CorrectiveActionModule,
     CustomerComplaintModule,
     CcpModule,
+    EnvironmentRecordModule,
+    ProcessRecordModule,
+    MetalDetectionModule,
+    CleaningRecordModule,
   ],
   providers: [
     {
