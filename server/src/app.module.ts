@@ -44,6 +44,7 @@ import { ImportModule } from './modules/import/import.module';
 import { RecordTaskModule } from './modules/record-task/record-task.module';
 import { IncomingInspectionModule } from './modules/incoming-inspection/incoming-inspection.module';
 import { TraceabilityModule } from './modules/traceability/traceability.module';
+import { NonConformanceModule } from './modules/non-conformance/non-conformance.module';
 
 @Module({
   imports: [
@@ -98,6 +99,7 @@ import { TraceabilityModule } from './modules/traceability/traceability.module';
     RecordTaskModule,
     IncomingInspectionModule,
     TraceabilityModule,
+    NonConformanceModule,
   ],
   providers: [
     {

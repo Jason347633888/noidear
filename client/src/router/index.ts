@@ -572,6 +572,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/statistics/StatisticsDashboard.vue'),
         meta: { requiresAdmin: true },
       },
+      // 不合格品管理模块
+      {
+        path: 'non-conformances',
+        name: 'NonConformanceList',
+        component: () => import('@/views/non-conformance/NonConformanceList.vue'),
+        meta: { title: '不合格品管理' },
+      },
       // 产品研发流程模块
       {
         path: 'process',
