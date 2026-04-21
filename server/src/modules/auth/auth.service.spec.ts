@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -35,11 +37,17 @@ describe('AuthService', () => {
       sign: jest.fn().mockReturnValue('mock-token'),
     };
 
+    const mockHttpService = { get: jest.fn() };
+    const mockConfigService = { get: jest.fn().mockReturnValue('mock-value') };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: JwtService, useValue: mockJwtService },
+        { provide: HttpService, useValue: mockHttpService },
+        { provide: ConfigService, useValue: mockConfigService },
+        { provide: 'AXIOS_INSTANCE_TOKEN', useValue: {} },
       ],
     }).compile();
 
@@ -65,6 +73,7 @@ describe('AuthService', () => {
         sub: 'user-1',
         username: 'admin',
         role: 'admin',
+        name: '管理员',
       });
     });
 
@@ -113,12 +122,16 @@ describe('AuthService', () => {
 
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { loginAttempts: 1 },
+        data: expect.objectContaining({ loginAttempts: 1 }),
       });
     });
 
     it('登录失败 5 次后应该锁定账号', async () => {
-      const userWith4Attempts = { ...mockUser, loginAttempts: 4 };
+      const userWith4Attempts = {
+        ...mockUser,
+        loginAttempts: 4,
+        firstFailedAt: new Date(Date.now() - 60000), // 1 分钟前，在窗口内
+      };
       prisma.user.findUnique.mockResolvedValue(userWith4Attempts as any);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
