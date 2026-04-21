@@ -38,7 +38,6 @@ import { AlertModule } from './modules/alert/alert.module';
 import { BackupModule } from './modules/backup/backup.module';
 import { HealthModule } from './modules/health/health.module';
 import { TrainingModule } from './modules/training/training.module';
-import { TodoModule } from './modules/todo/todo.module';
 import { InternalAuditModule } from './modules/internal-audit/internal-audit.module';
 import { SearchModule } from './modules/search/search.module';
 import { ImportModule } from './modules/import/import.module';
@@ -92,7 +91,6 @@ import { ProcessModule } from './modules/process/process.module';
     BackupModule,
     HealthModule,
     TrainingModule,
-    TodoModule,
     InternalAuditModule,
     SearchModule,
     ImportModule,
