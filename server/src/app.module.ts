@@ -62,6 +62,8 @@ import { VisitorRecordModule } from './modules/visitor-record/visitor-record.mod
 import { EmergencyDrillModule } from './modules/emergency-drill/emergency-drill.module';
 import { ProductModule } from './modules/product/product.module';
 import { RecipeModule } from './modules/recipe/recipe.module';
+import { ReworkRecordModule } from './modules/rework-record/rework-record.module';
+import { FragileItemInspectionModule } from './modules/fragile-item-inspection/fragile-item-inspection.module';
 
 @Module({
   imports: [
@@ -134,6 +136,8 @@ import { RecipeModule } from './modules/recipe/recipe.module';
     EmergencyDrillModule,
     ProductModule,
     RecipeModule,
+    ReworkRecordModule,
+    FragileItemInspectionModule,
   ],
   providers: [
     {

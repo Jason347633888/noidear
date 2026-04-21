@@ -718,6 +718,20 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/recipe/RecipeList.vue'),
         meta: { title: '配方管理' },
       },
+      // 回料/返工记录模块
+      {
+        path: 'rework-records',
+        name: 'ReworkRecordList',
+        component: () => import('@/views/rework-record/ReworkRecordList.vue'),
+        meta: { title: '回料/返工记录' },
+      },
+      // 玻璃及硬塑完整性检查模块
+      {
+        path: 'fragile-item-inspections',
+        name: 'FragileItemInspectionList',
+        component: () => import('@/views/fragile-item-inspection/FragileItemInspectionList.vue'),
+        meta: { title: '玻璃及硬塑完整性检查' },
+      },
     ],
   },
   // 打印页（无 Layout）

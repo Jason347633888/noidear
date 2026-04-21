@@ -113,7 +113,7 @@ import {
   User, Lock, SwitchButton, HomeFilled, Files,
   Grid, List, CircleCheck, Message, UserFilled,
   DataAnalysis, Setting, Connection, Box, Goods, Key,
-  SetUp, WarnTriangleFilled, Monitor, Cloudy, Search, Odometer, Delete,
+  SetUp, WarnTriangleFilled, Monitor, Cloudy, Search, Odometer, Delete, RefreshLeft,
 } from '@element-plus/icons-vue';
 
 import request from '@/api/request';
@@ -243,6 +243,8 @@ const menuItems = [
       { path: '/metal-detections', title: '金属探测', icon: SetUp },
       { path: '/cleaning-records', title: '清洁消毒', icon: Grid },
       { path: '/measuring-equipment', title: '测量设备', icon: SetUp },
+      { path: '/rework-records', title: '回料/返工记录', icon: RefreshLeft },
+      { path: '/fragile-item-inspections', title: '玻璃硬塑检查', icon: Grid },
       { path: '/violation-records', title: '员工违规', icon: WarnTriangleFilled },
       { path: '/medication-records', title: '员工用药', icon: UserFilled },
       { path: '/visitor-records', title: '访客登记', icon: User },
