@@ -861,6 +861,9 @@ model Supplier {
   // 追溯链支撑
   supplier_documents SupplierDocument[]
 
+  // 供应商评估
+  evaluations SupplierEvaluation[]
+
   @@index([supplierCode])
   @@index([status])
   @@map("suppliers")
@@ -2611,4 +2614,170 @@ model CleaningRecord {
   is_pass         Boolean
   notes           String?
   created_at      DateTime  @default(now())
+}
+
+// ─── 人员合规 ─────────────────────────────────────
+
+model ViolationRecord {
+  id                     String    @id @default(cuid())
+  company_id             String
+  employee_id            String
+  violation_type         String
+  description            String
+  penalty                String?
+  corrective_requirement String?
+  occurred_at            DateTime
+  recorded_by            String?
+  verification_result    String?
+  verified_at            DateTime?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+}
+
+model MedicationRecord {
+  id            String    @id @default(cuid())
+  company_id    String
+  employee_id   String
+  drug_name     String
+  dosage        String?
+  reason        String?
+  health_impact String?
+  fit_for_duty  Boolean
+  assessed_by   String?
+  record_date   DateTime  @db.Date
+  created_at    DateTime  @default(now())
+}
+
+model VisitorRecord {
+  id             String    @id @default(cuid())
+  company_id     String
+  visitor_name   String
+  visitor_org    String?
+  visit_purpose  String?
+  accompanied_by String?
+  health_decl    Boolean   @default(false)
+  entry_at       DateTime
+  exit_at        DateTime?
+  created_at     DateTime  @default(now())
+}
+
+model EmergencyDrillRecord {
+  id           String    @id @default(cuid())
+  company_id   String
+  drill_type   String    // 'fire'|'food_safety_incident'|'chemical_spill'|'traceability'|'other'
+  drill_date   DateTime  @db.Date
+  participants String?
+  drill_result String
+  improvements String?
+  organizer_id String?
+  created_at   DateTime  @default(now())
+}
+
+// ─── 变更 / 废弃物 / 评估 ──────────────────────────
+
+model ChangeEvent {
+  id            String                     @id @default(cuid())
+  company_id    String
+  change_no     String
+  change_type   String                     // 'recipe'|'process'|'equipment'|'supplier'|'other'
+  description   String
+  reason        String
+  applied_by    String?
+  applied_at    DateTime                   @db.Date
+  status        String                     @default("pending")
+  approved_by   String?
+  verifications ChangeVerificationRecord[]
+  created_at    DateTime                   @default(now())
+  updated_at    DateTime                   @updatedAt
+
+  @@unique([company_id, change_no])
+}
+
+model ChangeVerificationRecord {
+  id                  String      @id @default(cuid())
+  company_id          String
+  change_event_id     String
+  change_event        ChangeEvent @relation(fields: [change_event_id], references: [id])
+  verification_plan   String
+  verification_result String
+  verdict             String      // 'pass'|'fail'|'conditional'
+  verified_by         String?
+  approved_by         String?
+  verified_at         DateTime    @db.Date
+  created_at          DateTime    @default(now())
+}
+
+model WasteDisposalRecord {
+  id              String    @id @default(cuid())
+  company_id      String
+  material_name   String
+  lot_no          String?
+  disposal_reason String    // 'expired'|'non_conforming'|'damaged'|'other'
+  qty             Decimal   @db.Decimal(14, 4)
+  unit            String
+  disposal_method String
+  disposal_date   DateTime  @db.Date
+  operator_id     String?
+  witness_id      String?
+  notes           String?
+  created_at      DateTime  @default(now())
+}
+
+model WasteRecord {
+  id                   String    @id @default(cuid())
+  company_id           String
+  production_batch_id  String?
+  waste_type           String
+  qty                  Decimal   @db.Decimal(14, 4)
+  unit                 String
+  shift                String?
+  disposal_destination String?
+  recorded_at          DateTime
+  operator_id          String?
+  created_at           DateTime  @default(now())
+}
+
+model SupplierEvaluation {
+  id             String    @id @default(cuid())
+  company_id     String
+  supplier_id    String
+  supplier       Supplier  @relation(fields: [supplier_id], references: [id])
+  eval_period    String
+  eval_date      DateTime  @db.Date
+  quality_score  Decimal?  @db.Decimal(5, 2)
+  delivery_score Decimal?  @db.Decimal(5, 2)
+  service_score  Decimal?  @db.Decimal(5, 2)
+  total_score    Decimal?  @db.Decimal(5, 2)
+  verdict        String    // 'approved'|'conditional'|'eliminated'
+  evaluator_id   String?
+  notes          String?
+  created_at     DateTime  @default(now())
+}
+
+model DocumentIssuance {
+  id         String    @id @default(cuid())
+  company_id String
+  doc_code   String
+  doc_name   String
+  qty        Int       @default(1)
+  purpose    String?
+  issued_to  String?
+  issued_by  String?
+  issued_at  DateTime  @db.Date
+  created_at DateTime  @default(now())
+}
+
+model FragileItemInspection {
+  id                  String    @id @default(cuid())
+  company_id          String
+  production_batch_id String?
+  location            String?
+  item_name           String
+  total_qty           Int
+  intact_qty          Int
+  is_pass             Boolean
+  damage_action       String?
+  inspected_at        DateTime
+  inspector_id        String?
+  created_at          DateTime  @default(now())
 }
