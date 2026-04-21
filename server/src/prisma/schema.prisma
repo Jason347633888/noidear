@@ -1127,6 +1127,9 @@ model ProductionBatch {
   delivery_notes DeliveryNote[]
   samples        Sample[]
 
+  // Task 14: CCP 监控记录
+  ccp_records    CCPRecord[]
+
   @@index([batchNumber])
   @@index([productionDate])
   @@index([status])
@@ -2273,4 +2276,150 @@ model Sample {
   updated_at          DateTime        @updatedAt
 
   @@map("samples")
+}
+
+// ─── 产品/配方/CCP ────────────────────────────────
+
+model Product {
+  id           String    @id @default(cuid())
+  company_id   String
+  code         String
+  name         String
+  spec         String?
+  net_weight   Decimal?  @db.Decimal(12,4)
+  weight_unit  String?
+  label_claims String?
+  status       String    @default("active") // 'active'|'inactive'|'discontinued'
+  recipes      Recipe[]
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  deleted_at   DateTime?
+
+  @@unique([company_id, code])
+  @@map("products")
+}
+
+model Recipe {
+  id           String       @id @default(cuid())
+  company_id   String
+  product_id   String
+  product      Product      @relation(fields: [product_id], references: [id])
+  version      Int          @default(1)
+  version_note String?
+  status       String       @default("draft") // 'draft'|'active'|'archived'
+  approved_by  String?
+  approved_at  DateTime?
+  lines        RecipeLine[]
+  steps        ProcessStep[]
+  created_at   DateTime     @default(now())
+  updated_at   DateTime     @updatedAt
+
+  @@unique([company_id, product_id, version])
+  @@map("recipes")
+}
+
+model RecipeLine {
+  id            String  @id @default(cuid())
+  recipe_id     String
+  recipe        Recipe  @relation(fields: [recipe_id], references: [id])
+  material_id   String
+  qty_per_batch Decimal @db.Decimal(14,4)
+  unit          String
+  is_critical   Boolean @default(false)
+  notes         String?
+
+  @@map("recipe_lines")
+}
+
+model ProcessStep {
+  id          String     @id @default(cuid())
+  company_id  String
+  recipe_id   String
+  recipe      Recipe     @relation(fields: [recipe_id], references: [id])
+  seq         Int
+  name        String
+  description String?
+  is_ccp      Boolean    @default(false)
+  ccp_points  CCPPoint[]
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+
+  @@unique([recipe_id, seq])
+  @@map("process_steps")
+}
+
+model CCPPoint {
+  id                   String      @id @default(cuid())
+  company_id           String
+  process_step_id      String
+  process_step         ProcessStep @relation(fields: [process_step_id], references: [id])
+  ccp_no               String
+  hazard_type          String      // 'biological'|'chemical'|'physical'
+  control_measure      String
+  critical_limit       String
+  cl_min               Decimal?    @db.Decimal(14,4)
+  cl_max               Decimal?    @db.Decimal(14,4)
+  cl_unit              String?
+  monitoring_method    String?
+  monitoring_frequency String?
+  corrective_action    String?
+  records              CCPRecord[]
+  created_at           DateTime    @default(now())
+  updated_at           DateTime    @updatedAt
+
+  @@unique([company_id, ccp_no])
+  @@map("ccp_points")
+}
+
+model CCPRecord {
+  id                  String          @id @default(cuid())
+  company_id          String
+  production_batch_id String
+  production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id])
+  ccp_point_id        String
+  ccp_point           CCPPoint        @relation(fields: [ccp_point_id], references: [id])
+  measured_value      Decimal?        @db.Decimal(14,4)
+  measured_text       String?
+  unit                String?
+  is_within_cl        Boolean
+  deviation_action    String?
+  operator_id         String
+  verifier_id         String?
+  approved_by         String?
+  monitored_at        DateTime
+  created_at          DateTime        @default(now())
+
+  @@map("ccp_records")
+}
+
+model InspectionStandard {
+  id            String           @id @default(cuid())
+  company_id    String
+  code          String
+  name          String
+  applies_to    String           // 'material'|'product'
+  reference_doc String?
+  version       String?
+  status        String           @default("active")
+  items         InspectionItem[]
+  created_at    DateTime         @default(now())
+  updated_at    DateTime         @updatedAt
+
+  @@unique([company_id, code])
+  @@map("inspection_standards")
+}
+
+model InspectionItem {
+  id          String             @id @default(cuid())
+  standard_id String
+  standard    InspectionStandard @relation(fields: [standard_id], references: [id])
+  item_name   String
+  test_method String?
+  unit        String?
+  spec_min    Decimal?           @db.Decimal(14,4)
+  spec_max    Decimal?           @db.Decimal(14,4)
+  spec_text   String?
+  is_critical Boolean            @default(false)
+
+  @@map("inspection_items")
 }
