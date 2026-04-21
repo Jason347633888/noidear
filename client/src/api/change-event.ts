@@ -4,60 +4,50 @@ import request from './request';
 // Types
 // =========================================================================
 
-export interface ChangeVerificationRecord {
-  id: string;
-  company_id: string;
-  change_event_id: string;
-  verification_date: string;
-  result: string; // 'pass'|'fail'|'partial'
-  description: string | null;
-  verified_by: string | null;
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
-}
-
 export interface ChangeEvent {
   id: string;
   company_id: string;
   change_no: string;
   title: string;
-  change_type: string; // 'personnel'|'process'|'equipment'|'formula'|'facility'
+  change_type: string; // 'recipe'|'process'|'equipment'|'supplier'|'other'
   description: string;
-  risk_level: string; // 'low'|'medium'|'high'
-  status: string; // 'draft'|'approved'|'verified'|'closed'
-  initiated_by: string | null;
-  approved_by: string | null;
-  approved_at: string | null;
+  status: string; // 'draft'|'compliance_review'|'verification'|'approval'|'approved'|'rejected'
+  initiator_id: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
-  verifications: ChangeVerificationRecord[];
 }
 
 export interface CreateChangeEventPayload {
-  title: string;
   change_type: string;
+  title: string;
   description: string;
-  risk_level?: string;
-}
-
-export interface CreateVerificationPayload {
-  verification_date: string;
-  result: string;
-  description?: string;
-  verified_by?: string;
+  initiator_id?: string;
 }
 
 // =========================================================================
-// Status / risk display helpers
+// Display helpers
 // =========================================================================
+
+const CHANGE_TYPE_MAP: Record<string, string> = {
+  recipe: '配方变更',
+  process: '工艺变更',
+  supplier: '供应商变更',
+  equipment: '设备变更',
+  other: '其他',
+};
+
+export function getChangeTypeText(type: string): string {
+  return CHANGE_TYPE_MAP[type] ?? type;
+}
 
 const STATUS_MAP: Record<string, { text: string; type: string }> = {
   draft: { text: '草稿', type: 'info' },
-  approved: { text: '已审批', type: 'success' },
-  verified: { text: '已验证', type: 'primary' },
-  closed: { text: '已关闭', type: '' },
+  compliance_review: { text: '合规评估中', type: 'warning' },
+  verification: { text: '验证中', type: 'warning' },
+  approval: { text: '待审批', type: 'warning' },
+  approved: { text: '已批准', type: 'success' },
+  rejected: { text: '已拒绝', type: 'danger' },
 };
 
 export function getStatusText(status: string): string {
@@ -66,20 +56,6 @@ export function getStatusText(status: string): string {
 
 export function getStatusType(status: string): string {
   return STATUS_MAP[status]?.type ?? 'info';
-}
-
-const RISK_MAP: Record<string, { text: string; type: string }> = {
-  low: { text: '低', type: 'success' },
-  medium: { text: '中', type: 'warning' },
-  high: { text: '高', type: 'danger' },
-};
-
-export function getRiskText(risk: string): string {
-  return RISK_MAP[risk]?.text ?? risk;
-}
-
-export function getRiskType(risk: string): string {
-  return RISK_MAP[risk]?.type ?? 'info';
 }
 
 // =========================================================================
@@ -91,25 +67,20 @@ const changeEventApi = {
     return request.get<ChangeEvent[]>('/change-events');
   },
 
+  getOne(id: string) {
+    return request.get<ChangeEvent>(`/change-events/${id}`);
+  },
+
   create(payload: CreateChangeEventPayload) {
     return request.post<ChangeEvent>('/change-events', payload);
   },
 
-  approve(id: string) {
-    return request.post<ChangeEvent>(`/change-events/${id}/approve`);
+  updateStatus(id: string, status: string) {
+    return request.patch<ChangeEvent>(`/change-events/${id}/status`, { status });
   },
 
-  createVerification(id: string, payload: CreateVerificationPayload) {
-    return request.post<ChangeVerificationRecord>(
-      `/change-events/${id}/verifications`,
-      payload,
-    );
-  },
-
-  getVerifications(id: string) {
-    return request.get<ChangeVerificationRecord[]>(
-      `/change-events/${id}/verifications`,
-    );
+  remove(id: string) {
+    return request.delete<void>(`/change-events/${id}`);
   },
 };
 
