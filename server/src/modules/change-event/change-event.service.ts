@@ -1,11 +1,15 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateChangeEventDto } from './dto/create-change-event.dto';
 import { CreateVerificationDto } from './dto/create-verification.dto';
 
 @Injectable()
 export class ChangeEventService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   async create(dto: CreateChangeEventDto, userId: string) {
     const count = await this.prisma.changeEvent.count();
@@ -40,13 +44,21 @@ export class ChangeEventService {
   }
 
   async updateStatus(id: string, status: string, userId: string) {
-    return this.prisma.changeEvent.update({
+    const updated = await this.prisma.changeEvent.update({
       where: { id },
       data: {
         status,
         ...(status === 'approved' ? { approved_by: userId } : {}),
       },
     });
+
+    this.eventEmitter.emit('change-event.status-changed', {
+      id,
+      status,
+      company_id: updated.company_id,
+    });
+
+    return updated;
   }
 
   async approve(id: string, userId: string) {

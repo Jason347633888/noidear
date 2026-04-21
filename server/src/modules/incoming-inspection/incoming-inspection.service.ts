@@ -1,13 +1,17 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateInspectionDto } from './dto/create-inspection.dto';
 
 @Injectable()
 export class IncomingInspectionService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   async create(dto: CreateInspectionDto, companyId: number, inspectorId: string) {
-    return this.prisma.incomingInspection.create({
+    const result = await this.prisma.incomingInspection.create({
       data: {
         company_id: companyId,
         material_batch_id: dto.material_batch_id,
@@ -24,6 +28,15 @@ export class IncomingInspectionService {
       },
       include: { results: true },
     });
+
+    this.eventEmitter.emit('incoming-inspection.created', {
+      id: result.id,
+      overall_result: result.overall_result,
+      material_batch_id: result.material_batch_id,
+      company_id: String(result.company_id),
+    });
+
+    return result;
   }
 
   async findByBatch(materialBatchId: string, companyId: number) {

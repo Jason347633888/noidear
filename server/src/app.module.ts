@@ -74,6 +74,7 @@ import { FoodSafetyCultureRecordModule } from './modules/food-safety-culture-rec
 import { ProcessStepModule } from './modules/process-step/process-step.module';
 import { ExternalPartyModule } from './modules/external-party/external-party.module';
 import { PackagingMaterialUsageModule } from './modules/packaging-material-usage/packaging-material-usage.module';
+import { WorkflowTriggersModule } from './modules/workflow-triggers/workflow-triggers.module';
 
 @Module({
   imports: [
@@ -158,6 +159,7 @@ import { PackagingMaterialUsageModule } from './modules/packaging-material-usage
     ProcessStepModule,
     ExternalPartyModule,
     PackagingMaterialUsageModule,
+    WorkflowTriggersModule,
   ],
   providers: [
     {
