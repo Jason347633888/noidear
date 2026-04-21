@@ -42,6 +42,7 @@ import { InternalAuditModule } from './modules/internal-audit/internal-audit.mod
 import { SearchModule } from './modules/search/search.module';
 import { ImportModule } from './modules/import/import.module';
 import { RecordTaskModule } from './modules/record-task/record-task.module';
+import { IncomingInspectionModule } from './modules/incoming-inspection/incoming-inspection.module';
 
 @Module({
   imports: [
@@ -94,6 +95,7 @@ import { RecordTaskModule } from './modules/record-task/record-task.module';
     SearchModule,
     ImportModule,
     RecordTaskModule,
+    IncomingInspectionModule,
   ],
   providers: [
     {
