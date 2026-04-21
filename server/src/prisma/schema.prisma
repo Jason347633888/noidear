@@ -1130,6 +1130,9 @@ model ProductionBatch {
   // Task 14: CCP 监控记录
   ccp_records    CCPRecord[]
 
+  // Task 15a: 质量合规
+  rework_records ReworkRecord[]
+
   @@index([batchNumber])
   @@index([productionDate])
   @@index([status])
@@ -2422,4 +2425,116 @@ model InspectionItem {
   is_critical Boolean            @default(false)
 
   @@map("inspection_items")
+}
+
+// ─── 质量合规 ─────────────────────────────────────
+
+model NonConformance {
+  id              String    @id @default(cuid())
+  company_id      String
+  nc_no           String
+  source_type     String    // 'material_batch'|'production_batch'|'product'
+  source_id       String
+  nc_type         String?
+  description     String
+  qty             Decimal?  @db.Decimal(14,4)
+  unit            String?
+  discovered_at   DateTime
+  discovered_by   String?
+  disposition     String?   // 'rework'|'destroy'|'concession'|'return'
+  disposition_by  String?
+  disposition_at  DateTime?
+  status          String    @default("open") // 'open'|'dispositioned'|'closed'
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  @@unique([company_id, nc_no])
+}
+
+model CorrectiveAction {
+  id                String    @id @default(cuid())
+  company_id        String
+  capa_no           String
+  trigger_type      String    // 'non_conformance'|'customer_complaint'|'internal_audit'|'other'
+  trigger_id        String?
+  description       String
+  root_cause        String?
+  corrective_action String?
+  preventive_action String?
+  due_date          DateTime? @db.Date
+  responsible_id    String?
+  status            String    @default("open") // 'open'|'implementing'|'verifying'|'closed'
+  verified_by       String?
+  verified_at       DateTime?
+  closed_at         DateTime?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  @@unique([company_id, capa_no])
+}
+
+model CustomerComplaint {
+  id                  String    @id @default(cuid())
+  company_id          String
+  complaint_no        String
+  customer_name       String
+  production_batch_id String?
+  received_at         DateTime
+  complaint_type      String?
+  description         String
+  status              String    @default("open")
+  resolution          String?
+  closed_at           DateTime?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  @@unique([company_id, complaint_no])
+}
+
+model ReworkRecord {
+  id                  String          @id @default(cuid())
+  company_id          String
+  production_batch_id String
+  production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id])
+  nc_id               String?
+  rework_reason       String
+  rework_qty          Decimal         @db.Decimal(14,4)
+  unit                String
+  rework_process      String?
+  rework_date         DateTime        @db.Date
+  operator_id         String?
+  quality_verdict     String          // 'pass'|'fail'
+  verdict_by          String?
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+}
+
+model MeasuringEquipment {
+  id                     String              @id @default(cuid())
+  company_id             String
+  code                   String
+  name                   String
+  model                  String?
+  serial_no              String?
+  location               String?
+  calibration_cycle_days Int?
+  last_calibrated_at     DateTime?           @db.Date
+  next_calibration_at    DateTime?           @db.Date
+  status                 String              @default("normal") // 'normal'|'overdue'|'scrapped'
+  calibration_records    CalibrationRecord[]
+  created_at             DateTime            @default(now())
+  updated_at             DateTime            @updatedAt
+  @@unique([company_id, code])
+}
+
+model CalibrationRecord {
+  id                     String             @id @default(cuid())
+  company_id             String
+  measuring_equipment_id String
+  measuring_equipment    MeasuringEquipment @relation(fields: [measuring_equipment_id], references: [id])
+  calibrated_at          DateTime           @db.Date
+  valid_until            DateTime           @db.Date
+  calibration_body       String?
+  certificate_no         String?
+  result                 String             // 'pass'|'fail'|'conditional'
+  notes                  String?
+  created_by             String?
+  created_at             DateTime           @default(now())
 }
