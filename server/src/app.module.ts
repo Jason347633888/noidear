@@ -45,6 +45,7 @@ import { RecordTaskModule } from './modules/record-task/record-task.module';
 import { IncomingInspectionModule } from './modules/incoming-inspection/incoming-inspection.module';
 import { TraceabilityModule } from './modules/traceability/traceability.module';
 import { NonConformanceModule } from './modules/non-conformance/non-conformance.module';
+import { CorrectiveActionModule } from './modules/corrective-action/corrective-action.module';
 
 @Module({
   imports: [
@@ -100,6 +101,7 @@ import { NonConformanceModule } from './modules/non-conformance/non-conformance.
     IncomingInspectionModule,
     TraceabilityModule,
     NonConformanceModule,
+    CorrectiveActionModule,
   ],
   providers: [
     {

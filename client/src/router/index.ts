@@ -579,6 +579,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/non-conformance/NonConformanceList.vue'),
         meta: { title: '不合格品管理' },
       },
+      // 纠正措施模块
+      {
+        path: 'corrective-actions',
+        name: 'CorrectiveActionList',
+        component: () => import('@/views/corrective-action/CorrectiveActionList.vue'),
+        meta: { title: '纠正措施' },
+      },
       // 产品研发流程模块
       {
         path: 'process',
