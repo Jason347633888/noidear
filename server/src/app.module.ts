@@ -43,6 +43,7 @@ import { SearchModule } from './modules/search/search.module';
 import { ImportModule } from './modules/import/import.module';
 import { RecordTaskModule } from './modules/record-task/record-task.module';
 import { IncomingInspectionModule } from './modules/incoming-inspection/incoming-inspection.module';
+import { TraceabilityModule } from './modules/traceability/traceability.module';
 
 @Module({
   imports: [
@@ -96,6 +97,7 @@ import { IncomingInspectionModule } from './modules/incoming-inspection/incoming
     ImportModule,
     RecordTaskModule,
     IncomingInspectionModule,
+    TraceabilityModule,
   ],
   providers: [
     {
