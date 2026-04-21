@@ -718,6 +718,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/recipe/RecipeList.vue'),
         meta: { title: '配方管理' },
       },
+      // 工序步骤/CCP管理模块
+      {
+        path: 'process-steps',
+        name: 'ProcessStepList',
+        component: () => import('@/views/process-step/ProcessStepList.vue'),
+        meta: { title: '工序步骤管理' },
+      },
       // 回料/返工记录模块
       {
         path: 'rework-records',

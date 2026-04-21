@@ -2342,19 +2342,28 @@ model RecipeLine {
 }
 
 model ProcessStep {
-  id          String     @id @default(cuid())
-  company_id  String
-  recipe_id   String
-  recipe      Recipe     @relation(fields: [recipe_id], references: [id])
-  seq         Int
-  name        String
-  description String?
-  is_ccp      Boolean    @default(false)
-  ccp_points  CCPPoint[]
-  created_at  DateTime   @default(now())
-  updated_at  DateTime   @updatedAt
+  id                   String     @id @default(cuid())
+  company_id           String
+  product_id           String?
+  recipe_id            String?
+  recipe               Recipe?    @relation(fields: [recipe_id], references: [id])
+  seq                  Int        @default(0)
+  step_no              Int        @default(1)
+  step_name            String     @default("")
+  name                 String     @default("")
+  description          String?
+  is_ccp               Boolean    @default(false)
+  control_measures     String?
+  critical_limit       String?
+  monitoring_method    String?
+  monitoring_frequency String?
+  corrective_action    String?
+  responsible_person   String?
+  ccp_points           CCPPoint[]
+  created_at           DateTime   @default(now())
+  updated_at           DateTime   @updatedAt
+  deleted_at           DateTime?
 
-  @@unique([recipe_id, seq])
   @@map("process_steps")
 }
 
@@ -2872,4 +2881,38 @@ model FoodSafetyCultureRecord {
   notes           String?
   created_at      DateTime  @default(now())
   deleted_at      DateTime?
+}
+
+model ExternalParty {
+  id              String    @id @default(cuid())
+  company_id      String
+  party_type      String    // customer, carrier, waste_collector
+  name            String
+  code            String?
+  contact_name    String?
+  contact_phone   String?
+  address         String?
+  license_no      String?
+  approved_items  String?
+  status          String    @default("active") // active, inactive
+  notes           String?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  deleted_at      DateTime?
+}
+
+model PackagingMaterialUsage {
+  id                  String    @id @default(cuid())
+  company_id          String
+  production_batch_id String?
+  material_name       String
+  material_code       String?
+  used_weight         Decimal?
+  waste_weight        Decimal?
+  unit                String?
+  usage_date          DateTime  @default(now())
+  operator_id         String?
+  notes               String?
+  created_at          DateTime  @default(now())
+  deleted_at          DateTime?
 }

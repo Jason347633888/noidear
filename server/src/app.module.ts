@@ -71,6 +71,9 @@ import { AssetLoanRecordModule } from './modules/asset-loan-record/asset-loan-re
 import { DocumentIssuanceModule } from './modules/document-issuance/document-issuance.module';
 import { LineChangeCheckRecordModule } from './modules/line-change-check-record/line-change-check-record.module';
 import { FoodSafetyCultureRecordModule } from './modules/food-safety-culture-record/food-safety-culture-record.module';
+import { ProcessStepModule } from './modules/process-step/process-step.module';
+import { ExternalPartyModule } from './modules/external-party/external-party.module';
+import { PackagingMaterialUsageModule } from './modules/packaging-material-usage/packaging-material-usage.module';
 
 @Module({
   imports: [
@@ -152,6 +155,9 @@ import { FoodSafetyCultureRecordModule } from './modules/food-safety-culture-rec
     DocumentIssuanceModule,
     LineChangeCheckRecordModule,
     FoodSafetyCultureRecordModule,
+    ProcessStepModule,
+    ExternalPartyModule,
+    PackagingMaterialUsageModule,
   ],
   providers: [
     {

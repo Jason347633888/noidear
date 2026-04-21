@@ -155,6 +155,7 @@ const menuItems = [
     children: [
       { path: '/products', title: '产品目录', icon: Goods },
       { path: '/recipes', title: '配方管理', icon: List },
+      { path: '/process-steps', title: '工序步骤管理', icon: List },
       { path: '/process', title: '研发流程列表', icon: List },
     ],
   },
