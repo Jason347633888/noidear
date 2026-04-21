@@ -767,6 +767,20 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/food-safety-culture-record/FoodSafetyCultureRecordList.vue'),
         meta: { title: '食品安全文化建设' },
       },
+      // 外部方档案模块
+      {
+        path: 'external-parties',
+        name: 'ExternalPartyList',
+        component: () => import('@/views/external-party/ExternalPartyList.vue'),
+        meta: { title: '外部方档案' },
+      },
+      // 包装材料用量记录模块
+      {
+        path: 'packaging-material-usages',
+        name: 'PackagingMaterialUsageList',
+        component: () => import('@/views/packaging-material-usage/PackagingMaterialUsageList.vue'),
+        meta: { title: '包装材料用量记录' },
+      },
     ],
   },
   // 打印页（无 Layout）

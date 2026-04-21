@@ -255,6 +255,8 @@ const menuItems = [
       { path: '/document-issuances', title: '表单领用记录', icon: Document },
       { path: '/line-change-check-records', title: '换产前检查', icon: RefreshLeft },
       { path: '/food-safety-culture-records', title: '食品安全文化', icon: UserFilled },
+      { path: '/external-parties', title: '外部方档案', icon: User },
+      { path: '/packaging-material-usages', title: '包装材料用量', icon: Grid },
     ],
   },
   {
