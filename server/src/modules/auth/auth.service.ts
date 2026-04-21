@@ -1,5 +1,8 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
+import { firstValueFrom } from 'rxjs';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDTO } from './dto/login.dto';
@@ -10,6 +13,8 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private httpService: HttpService,
+    private configService: ConfigService,
   ) {}
 
   async login(dto: LoginDTO) {
@@ -65,6 +70,31 @@ export class AuthService {
     });
 
     return { message: '密码修改成功' };
+  }
+
+  async wechatMiniProgramLogin(code: string) {
+    const appId = this.configService.get('WECHAT_APP_ID');
+    const appSecret = this.configService.get('WECHAT_APP_SECRET');
+    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${code}&grant_type=authorization_code`;
+
+    const { data } = await firstValueFrom(this.httpService.get(url));
+    if (data.errcode) {
+      throw new UnauthorizedException('微信登录失败：' + data.errmsg);
+    }
+
+    const { openid } = data;
+    const user = await this.prisma.user.findFirst({
+      where: { wechat_openid: openid },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('该微信未绑定账号，请联系管理员');
+    }
+
+    return {
+      access_token: this.jwtService.sign({ sub: user.id, username: user.username }),
+      user: { id: user.id, name: user.name, role: user.role },
+    };
   }
 
   private async handleFailedLogin(userId: string) {

@@ -4,6 +4,7 @@ import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDTO } from './dto/login.dto';
 import { ChangePasswordDTO } from './dto/change-password.dto';
+import { WechatLoginDto } from './dto/wechat-login.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 @ApiTags('认证')
@@ -19,6 +20,15 @@ export class AuthController {
   @ApiResponse({ status: 401, description: '用户名或密码错误' })
   async login(@Body() dto: LoginDTO) {
     return this.authService.login(dto);
+  }
+
+  @Post('wechat/miniprogram')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '微信小程序登录' })
+  @ApiResponse({ status: 200, description: '登录成功，返回 JWT' })
+  @ApiResponse({ status: 401, description: '微信登录失败或未绑定账号' })
+  async wechatLogin(@Body() dto: WechatLoginDto) {
+    return this.authService.wechatMiniProgramLogin(dto.code);
   }
 
   @Get('profile')
