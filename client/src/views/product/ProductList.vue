@@ -154,7 +154,7 @@ async function loadList() {
   loading.value = true;
   try {
     const res = await productApi.getList();
-    list.value = res.data as unknown as Product[];
+    list.value = res as unknown as Product[];
   } catch {
     ElMessage.error('加载产品列表失败');
   } finally {
@@ -191,7 +191,8 @@ function openEditDialog(row: Product) {
 }
 
 async function handleSubmit() {
-  await formRef.value?.validate();
+  const valid = await formRef.value?.validate().catch(() => false);
+  if (!valid) return;
   submitting.value = true;
   try {
     const payload = {

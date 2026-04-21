@@ -211,7 +211,7 @@ async function loadList() {
   loading.value = true;
   try {
     const res = await recipeApi.getList();
-    list.value = res.data as unknown as Recipe[];
+    list.value = res as unknown as Recipe[];
   } catch {
     ElMessage.error('加载配方列表失败');
   } finally {
@@ -222,7 +222,7 @@ async function loadList() {
 async function loadProducts() {
   try {
     const res = await productApi.getList();
-    productOptions.value = res.data as unknown as Product[];
+    productOptions.value = res as unknown as Product[];
   } catch {
     ElMessage.error('加载产品列表失败');
   }
@@ -231,16 +231,14 @@ async function loadProducts() {
 // ── Line management ───────────────────────────────────────────────────────────
 
 function addLine() {
-  form.lines.push({
-    material_id: '',
-    qty_per_batch: undefined,
-    unit: '',
-    is_critical: false,
-  });
+  form.lines = [
+    ...form.lines,
+    { material_id: '', qty_per_batch: undefined as unknown as number, unit: '', is_critical: false },
+  ];
 }
 
 function removeLine(index: number) {
-  form.lines.splice(index, 1);
+  form.lines = form.lines.filter((_, i) => i !== index);
 }
 
 // ── Create ────────────────────────────────────────────────────────────────────
@@ -253,7 +251,8 @@ function openCreateDialog() {
 }
 
 async function handleCreate() {
-  await formRef.value?.validate();
+  const valid = await formRef.value?.validate().catch(() => false);
+  if (!valid) return;
   submitting.value = true;
   try {
     await recipeApi.create({
