@@ -1,0 +1,72 @@
+import request from './request';
+
+// =========================================================================
+// Types
+// =========================================================================
+
+export interface Product {
+  id: string;
+  code: string;
+  name: string;
+  spec?: string;
+  net_weight?: number;
+  weight_unit?: string;
+  status: string;
+}
+
+export interface CreateProductPayload {
+  code: string;
+  name: string;
+  spec?: string;
+  net_weight?: number;
+  weight_unit?: string;
+  status?: string;
+}
+
+// =========================================================================
+// Display helpers
+// =========================================================================
+
+const STATUS_MAP: Record<string, string> = {
+  active: '在产',
+  inactive: '停产',
+  discontinued: '淘汰',
+};
+
+export function getProductStatusText(status: string): string {
+  return STATUS_MAP[status] ?? status;
+}
+
+export type ProductStatusType = 'success' | 'info' | 'danger';
+
+export function getProductStatusType(status: string): ProductStatusType {
+  if (status === 'active') return 'success';
+  if (status === 'discontinued') return 'danger';
+  return 'info';
+}
+
+// =========================================================================
+// API functions
+// =========================================================================
+
+export const productApi = {
+  getList() {
+    return request.get<Product[]>('/products');
+  },
+
+  getOne(id: string) {
+    return request.get<Product>(`/products/${id}`);
+  },
+
+  create(data: CreateProductPayload) {
+    return request.post<Product>('/products', data);
+  },
+
+  update(id: string, data: Partial<CreateProductPayload>) {
+    return request.patch<Product>(`/products/${id}`, data);
+  },
+
+  remove(id: string) {
+    return request.delete(`/products/${id}`);
+  },
+};

@@ -704,6 +704,20 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/incoming-inspection/IncomingInspectionList.vue'),
         meta: { title: '来料检验' },
       },
+      // 产品目录模块
+      {
+        path: 'products',
+        name: 'ProductList',
+        component: () => import('@/views/product/ProductList.vue'),
+        meta: { title: '产品目录' },
+      },
+      // 配方管理模块
+      {
+        path: 'recipes',
+        name: 'RecipeList',
+        component: () => import('@/views/recipe/RecipeList.vue'),
+        meta: { title: '配方管理' },
+      },
     ],
   },
   // 打印页（无 Layout）
