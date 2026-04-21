@@ -60,6 +60,7 @@ import { ChangeEventModule } from './modules/change-event/change-event.module';
 import { WasteModule } from './modules/waste/waste.module';
 import { VisitorRecordModule } from './modules/visitor-record/visitor-record.module';
 import { EmergencyDrillModule } from './modules/emergency-drill/emergency-drill.module';
+import { ProductModule } from './modules/product/product.module';
 
 @Module({
   imports: [
@@ -130,6 +131,7 @@ import { EmergencyDrillModule } from './modules/emergency-drill/emergency-drill.
     WasteModule,
     VisitorRecordModule,
     EmergencyDrillModule,
+    ProductModule,
   ],
   providers: [
     {
