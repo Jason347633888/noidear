@@ -1,7 +1,7 @@
 /**
  * Sync utility for offline data synchronization
  */
-import { post } from './request'
+import { post, get } from './request'
 
 export interface SyncPayload {
   clientId: string
@@ -39,13 +39,14 @@ export async function batchSync(
 
 /**
  * Check sync status
+ * Maps to GET /mobile/sync/status
  */
 export async function checkSyncStatus(): Promise<{
   pendingCount: number
   lastSyncTime: string | null
 }> {
   try {
-    return await post<{ pendingCount: number; lastSyncTime: string | null }>(
+    return await get<{ pendingCount: number; lastSyncTime: string | null }>(
       '/mobile/sync/status',
     )
   } catch {

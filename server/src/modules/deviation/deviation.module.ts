@@ -3,10 +3,10 @@ import { DeviationService } from './deviation.service';
 import { DeviationController } from './deviation.controller';
 import { DeviationAnalyticsService } from './deviation-analytics.service';
 import { DeviationAnalyticsController } from './deviation-analytics.controller';
+import { DeviationCronService } from './deviation-cron.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { ExportModule } from '../export/export.module';
 import { ApprovalModule } from '../approval/approval.module';
-
 @Module({
   imports: [
     PrismaModule,
@@ -14,7 +14,7 @@ import { ApprovalModule } from '../approval/approval.module';
     forwardRef(() => ApprovalModule),
   ],
   controllers: [DeviationController, DeviationAnalyticsController],
-  providers: [DeviationService, DeviationAnalyticsService],
+  providers: [DeviationService, DeviationAnalyticsService, DeviationCronService],
   exports: [DeviationService, DeviationAnalyticsService],
 })
 export class DeviationModule {}

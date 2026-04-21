@@ -116,5 +116,44 @@
     "avgDuration": "Avg Duration",
     "timeoutRate": "Timeout Rate",
     "passRate": "Pass Rate"
+  },
+  "recycleBin": {
+    "title": "Recycle Bin",
+    "typeFilter": "Type Filter",
+    "keyword": "Name Search",
+    "deletedBy": "Deleted By",
+    "deletedAt": "Deleted At",
+    "restore": "Restore",
+    "permanentDelete": "Permanently Delete",
+    "batchRestore": "Batch Restore",
+    "batchDelete": "Batch Permanent Delete",
+    "confirmRestore": "Restore this item? It will reappear in the original list.",
+    "confirmPermanentDelete": "This action cannot be undone. Data will be permanently removed. Continue?",
+    "restoreSuccess": "Restored successfully",
+    "deleteSuccess": "Permanently deleted",
+    "fetchFailed": "Failed to fetch recycle bin data"
+  },
+  "batchTrace": {
+    "title": "Batch Trace",
+    "query": "Batch Query",
+    "report": "Trace Report",
+    "batchNumber": "Batch Number",
+    "search": "Search",
+    "productName": "Product Name",
+    "status": "Status",
+    "createdAt": "Created At",
+    "noResults": "No matching batches found"
+  },
+  "permissions": {
+    "title": "Permission Management",
+    "userPermissions": "User Permission Grant",
+    "permissionDefinitions": "Permission Definitions",
+    "fineGrained": "Fine-Grained Permissions",
+    "department": "Department Permissions",
+    "auditLog": "Permission Audit Log",
+    "grant": "Grant",
+    "revoke": "Revoke",
+    "grantSuccess": "Permission granted successfully",
+    "revokeSuccess": "Permission revoked successfully"
   }
 }

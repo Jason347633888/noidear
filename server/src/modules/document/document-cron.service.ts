@@ -1,16 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron } from '@nestjs/schedule'
 import { PrismaService } from '../../prisma/prisma.service'
+import { StorageService } from '../../common/services'
 
 /**
- * BR-312: 编号规则年度重置定时任务
- * 每年 1 月 1 日凌晨自动将所有编号规则的序号重置为 0
+ * 文档模块定时任务服务
+ * - BR-312: 编号规则年度重置
+ * - BR-050: 文件预览缓存清理（7 天）
  */
 @Injectable()
 export class DocumentCronService {
   private readonly logger = new Logger(DocumentCronService.name)
+  private readonly PREVIEW_CACHE_PREFIX = 'previews/'
+  private readonly PREVIEW_CACHE_MAX_DAYS = 7
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storageService: StorageService,
+  ) {}
 
   /**
    * BR-312: 年度重置编号序号
@@ -41,5 +48,34 @@ export class DocumentCronService {
 
     this.logger.log(`手动重置编号规则序号：共重置 ${result.count} 条`)
     return { count: result.count }
+  }
+
+  /**
+   * BR-050: 文件预览缓存清理
+   * 每日 03:00 清理 MinIO 中超过 7 天的预览缓存文件
+   */
+  @Cron('0 3 * * *')
+  async cleanupPreviewCache(): Promise<void> {
+    try {
+      const objects = await this.storageService.listObjects(this.PREVIEW_CACHE_PREFIX)
+      const cutoff = new Date()
+      cutoff.setDate(cutoff.getDate() - this.PREVIEW_CACHE_MAX_DAYS)
+
+      const staleObjects = objects.filter((obj) => obj.lastModified < cutoff)
+
+      let deletedCount = 0
+      for (const obj of staleObjects) {
+        try {
+          await this.storageService.deleteFile(obj.name)
+          deletedCount++
+        } catch (err) {
+          this.logger.warn(`删除预览缓存文件失败 ${obj.name}: ${err.message}`)
+        }
+      }
+
+      this.logger.log(`文件预览缓存清理完成: 删除 ${deletedCount}/${staleObjects.length} 个超期文件`)
+    } catch (error) {
+      this.logger.error(`文件预览缓存清理失败: ${error.message}`, error.stack)
+    }
   }
 }

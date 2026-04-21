@@ -536,6 +536,14 @@ export class DocumentService {
       },
     });
 
+    // 异步触发引用快照同步（BR-306）：审批通过后通知所有引用此文档的文档更新快照
+    if (status === 'approved') {
+      this.eventEmitter.emit('document.approved', {
+        documentId: id,
+        snapshot: { title: document.title, number: document.number, approvedAt: new Date().toISOString() },
+      });
+    }
+
     return convertBigIntToNumber(result);
   }
 

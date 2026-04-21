@@ -1,9 +1,17 @@
 import request from './request';
 
 export default {
-  findAll(type: string, page: number, limit: number, keyword?: string) {
+  findAll(
+    type: string,
+    page: number,
+    limit: number,
+    keyword?: string,
+    deletedBy?: string,
+    startDate?: string,
+    endDate?: string,
+  ) {
     return request.get(`/recycle-bin/${type}`, {
-      params: { page, limit, keyword },
+      params: { page, limit, keyword, deletedBy, startDate, endDate },
     });
   },
 

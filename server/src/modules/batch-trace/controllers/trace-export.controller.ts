@@ -4,7 +4,7 @@ import { Response } from 'express';
 import { TraceExportService } from '../services/trace-export.service';
 
 @ApiTags('批次追溯')
-@Controller('trace')
+@Controller('batch-trace/trace')
 export class TraceExportController {
   constructor(private readonly traceExportService: TraceExportService) {}
 

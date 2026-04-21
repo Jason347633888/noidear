@@ -43,8 +43,8 @@ export const processApi = {
   getDefaultTemplate: () =>
     request.get<{ id: string; name: string; steps: unknown[] }>('/process/templates/default'),
 
-  listInstances: (params?: { page?: number; limit?: number; status?: string }) =>
-    request.get<{ list: ProcessInstance[]; total: number }>('/process/instances', { params }),
+  listInstances: () =>
+    request.get<ProcessInstance[]>('/process/instances'),
 
   getInstance: (id: string) =>
     request.get<ProcessInstance & { stepDataList: ProcessStepData[] }>(`/process/instances/${id}`),

@@ -87,7 +87,7 @@ export class DeviationAnalyticsService {
       `;
     }
 
-    const totalTasks = await this.prisma.taskRecord.count({
+    const totalTasks = await this.prisma.record.count({
       where: {
         createdAt: {
           gte: startDate,

@@ -143,7 +143,6 @@ const handleSubmit = async (data: Record<string, unknown>) => {
     await processApi.submitStep(instanceId, { stepNumber: viewStep.value, data, saveAsDraft: false });
     await loadInstance();
     ElMessage.success('提交成功');
-    if (viewStep.value < 9) viewStep.value++;
   } catch {
     ElMessage.error('提交失败');
   }

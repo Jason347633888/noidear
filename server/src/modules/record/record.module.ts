@@ -6,9 +6,10 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { DynamicFormBatchController } from './controllers/dynamic-form-batch.controller';
 import { DynamicFormBatchService } from './services/dynamic-form-batch.service';
 import { WorkflowModule } from '../workflow/workflow.module';
+import { DeviationModule } from '../deviation/deviation.module';
 
 @Module({
-  imports: [PrismaModule, WorkflowModule],
+  imports: [PrismaModule, WorkflowModule, DeviationModule],
   controllers: [RecordController, DynamicFormBatchController],
   providers: [RecordService, ChangeLogInterceptor, DynamicFormBatchService],
   exports: [RecordService, DynamicFormBatchService],

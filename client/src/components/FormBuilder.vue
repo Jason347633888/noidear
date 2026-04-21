@@ -1,3 +1,9 @@
+<!--
+  FormBuilder.vue
+  用途：模板设计器专用组件（TemplateDesigner.vue 调用）
+  功能：支持拖拽排序（SortableJS），用于可视化设计表单字段结构
+  注意：此组件不用于数据填写场景，填写请使用 DynamicForm.vue
+-->
 <template>
   <div class="form-builder">
     <el-form :model="formData" :rules="rules" ref="formRef" v-bind="$attrs">

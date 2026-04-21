@@ -10,7 +10,7 @@ export class RecycleBinController {
 
   @Get(':type')
   async findAll(
-    @Param('type') type: 'document' | 'template' | 'task',
+    @Param('type') type: 'document' | 'record-template' | 'record',
     @Query() query: RecycleBinQueryDto,
     @Req() req: any,
   ) {
@@ -26,7 +26,7 @@ export class RecycleBinController {
 
   @Post(':type/batch-restore')
   async batchRestore(
-    @Param('type') type: 'document' | 'template' | 'task',
+    @Param('type') type: 'document' | 'record-template' | 'record',
     @Body() dto: BatchOperationDto,
     @Req() req: any,
   ) {
@@ -36,7 +36,7 @@ export class RecycleBinController {
 
   @Delete(':type/batch-delete')
   async batchPermanentDelete(
-    @Param('type') type: 'document' | 'template' | 'task',
+    @Param('type') type: 'document' | 'record-template' | 'record',
     @Body() dto: BatchOperationDto,
     @Req() req: any,
   ) {
@@ -46,7 +46,7 @@ export class RecycleBinController {
 
   @Post(':type/:id/restore')
   async restore(
-    @Param('type') type: 'document' | 'template' | 'task',
+    @Param('type') type: 'document' | 'record-template' | 'record',
     @Param('id') id: string,
     @Req() req: any,
   ) {
@@ -56,7 +56,7 @@ export class RecycleBinController {
 
   @Delete(':type/:id')
   async permanentDelete(
-    @Param('type') type: 'document' | 'template' | 'task',
+    @Param('type') type: 'document' | 'record-template' | 'record',
     @Param('id') id: string,
     @Req() req: any,
   ) {

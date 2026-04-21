@@ -157,17 +157,6 @@ export class DeviationService {
       reports.push(report);
     }
 
-    // 更新任务记录的偏离标记
-    // 注意：hasDeviation 设置为 true 后，ApprovalService.createApprovalChain 会自动创建 2 级审批
-    // 调用流程：TaskService.submitRecord -> ApprovalService.createApprovalChain -> 检测 hasDeviation -> 创建 2 级审批
-    await this.prisma.taskRecord.update({
-      where: { id: recordId },
-      data: {
-        hasDeviation: true,
-        deviationCount: deviations.length,
-      },
-    });
-
     return reports;
   }
 
@@ -210,11 +199,6 @@ export class DeviationService {
         include: {
           record: {
             include: {
-              task: {
-                include: {
-                  department: true,
-                },
-              },
               template: true,
             },
           },

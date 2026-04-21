@@ -79,8 +79,9 @@ export class UserPermissionController {
   @Roles('admin')
   @ApiOperation({ summary: '查询用户权限列表' })
   @ApiResponse({ status: 200, description: '查询成功' })
-  findUserPermissions(@Query() query: QueryUserPermissionDto) {
-    return this.userPermissionService.findUserPermissions(query);
+  async findUserPermissions(@Query() query: QueryUserPermissionDto) {
+    const result = await this.userPermissionService.findUserPermissions(query);
+    return { list: result.data, total: result.meta.total };
   }
 
   @Post('check-expiration')
@@ -127,8 +128,9 @@ export class UserPermissionController {
   @ApiOperation({ summary: '获取用户有效权限列表（含继承）' })
   @ApiResponse({ status: 200, description: '查询成功' })
   @ApiResponse({ status: 404, description: '用户不存在' })
-  getEffectivePermissions(@Param('userId') userId: string) {
-    return this.userPermissionService.getEffectivePermissionsForApi(userId);
+  async getEffectivePermissions(@Param('userId') userId: string) {
+    const result = await this.userPermissionService.getEffectivePermissionsForApi(userId);
+    return { list: result.data, total: result.meta.total };
   }
 
   /**

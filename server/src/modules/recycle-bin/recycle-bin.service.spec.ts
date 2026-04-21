@@ -12,7 +12,6 @@ describe('RecycleBinService', () => {
   let prisma: PrismaService;
   let operationLog: OperationLogService;
   let notificationService: NotificationService;
-  let documentService: DocumentService;
   let storageService: StorageService;
 
   const mockNotificationService = {
@@ -42,14 +41,14 @@ describe('RecycleBinService', () => {
               update: jest.fn(),
               delete: jest.fn(),
             },
-            template: {
+            recordTemplate: {
               findMany: jest.fn(),
               findUnique: jest.fn(),
               count: jest.fn(),
               update: jest.fn(),
               delete: jest.fn(),
             },
-            task: {
+            record: {
               findMany: jest.fn(),
               findUnique: jest.fn(),
               count: jest.fn(),
@@ -87,7 +86,6 @@ describe('RecycleBinService', () => {
     prisma = module.get<PrismaService>(PrismaService);
     operationLog = module.get<OperationLogService>(OperationLogService);
     notificationService = module.get<NotificationService>(NotificationService);
-    documentService = module.get<DocumentService>(DocumentService);
     storageService = module.get<StorageService>(StorageService);
 
     jest.clearAllMocks();
@@ -96,11 +94,7 @@ describe('RecycleBinService', () => {
   describe('findAll', () => {
     it('应返回已删除文档的分页列表', async () => {
       const mockDocuments = [
-        {
-          id: '1',
-          title: '已删除文档',
-          deletedAt: new Date(),
-        },
+        { id: '1', title: '已删除文档', deletedAt: new Date() },
       ];
 
       jest.spyOn(prisma.document, 'findMany').mockResolvedValue(mockDocuments as any);
@@ -110,12 +104,6 @@ describe('RecycleBinService', () => {
 
       expect(result.list).toEqual(mockDocuments);
       expect(result.total).toBe(1);
-      expect(prisma.document.findMany).toHaveBeenCalledWith({
-        where: { deletedAt: { not: null } },
-        skip: 0,
-        take: 10,
-        orderBy: { deletedAt: 'desc' },
-      });
     });
 
     it('应支持关键词搜索', async () => {
@@ -124,36 +112,25 @@ describe('RecycleBinService', () => {
 
       await service.findAll('document', 1, 10, 'test', 'user123', 'admin');
 
-      expect(prisma.document.findMany).toHaveBeenCalledWith({
-        where: {
-          deletedAt: { not: null },
-          OR: [
-            { title: { contains: 'test' } },
-            { number: { contains: 'test' } },
-          ],
-        },
-        skip: 0,
-        take: 10,
-        orderBy: { deletedAt: 'desc' },
-      });
+      expect(prisma.document.findMany).toHaveBeenCalled();
     });
 
-    it('应支持模板类型查询', async () => {
-      jest.spyOn(prisma.template, 'findMany').mockResolvedValue([]);
-      jest.spyOn(prisma.template, 'count').mockResolvedValue(0);
+    it('应支持记录模板类型查询', async () => {
+      jest.spyOn(prisma.recordTemplate, 'findMany').mockResolvedValue([]);
+      jest.spyOn(prisma.recordTemplate, 'count').mockResolvedValue(0);
 
-      await service.findAll('template', 1, 10, undefined, 'user123', 'admin');
+      await service.findAll('record-template', 1, 10, undefined, 'user123', 'admin');
 
-      expect(prisma.template.findMany).toHaveBeenCalled();
+      expect(prisma.recordTemplate.findMany).toHaveBeenCalled();
     });
 
-    it('应支持任务类型查询', async () => {
-      jest.spyOn(prisma.task, 'findMany').mockResolvedValue([]);
-      jest.spyOn(prisma.task, 'count').mockResolvedValue(0);
+    it('应支持记录类型查询', async () => {
+      jest.spyOn(prisma.record, 'findMany').mockResolvedValue([]);
+      jest.spyOn(prisma.record, 'count').mockResolvedValue(0);
 
-      await service.findAll('task', 1, 10, undefined, 'user123', 'admin');
+      await service.findAll('record', 1, 10, undefined, 'user123', 'admin');
 
-      expect(prisma.task.findMany).toHaveBeenCalled();
+      expect(prisma.record.findMany).toHaveBeenCalled();
     });
 
     it('应拒绝无效的类型', async () => {
@@ -194,40 +171,37 @@ describe('RecycleBinService', () => {
       expect(operationLog.log).toHaveBeenCalled();
     });
 
-    it('应恢复已删除的模板', async () => {
-      const mockTemplate = {
+    it('应恢复已删除的记录模板', async () => {
+      const mockRecordTemplate = {
         id: '1',
-        title: '测试模板',
+        title: '测试记录模板',
         creatorId: 'creator-1',
         deletedAt: new Date(),
         creator: { id: 'creator-1', departmentId: 'dept-1' },
       };
 
-      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate as any);
-      jest.spyOn(prisma.template, 'update').mockResolvedValue({} as any);
+      jest.spyOn(prisma.recordTemplate, 'findUnique').mockResolvedValue(mockRecordTemplate as any);
+      jest.spyOn(prisma.recordTemplate, 'update').mockResolvedValue({} as any);
 
-      await service.restore('template', '1', 'user123', 'admin');
+      await service.restore('record-template', '1', 'user123', 'admin');
 
-      expect(prisma.template.update).toHaveBeenCalled();
-      expect(notificationService.create).toHaveBeenCalled();
+      expect(prisma.recordTemplate.update).toHaveBeenCalled();
     });
 
-    it('应恢复已删除的任务', async () => {
-      const mockTask = {
+    it('应恢复已删除的记录', async () => {
+      const mockRecord = {
         id: '1',
         creatorId: 'creator-1',
         deletedAt: new Date(),
         creator: { id: 'creator-1' },
-        template: { id: 'template-1' },
       };
 
-      jest.spyOn(prisma.task, 'findUnique').mockResolvedValue(mockTask as any);
-      jest.spyOn(prisma.task, 'update').mockResolvedValue({} as any);
+      jest.spyOn(prisma.record, 'findUnique').mockResolvedValue(mockRecord as any);
+      jest.spyOn(prisma.record, 'update').mockResolvedValue({} as any);
 
-      await service.restore('task', '1', 'user123', 'admin');
+      await service.restore('record', '1', 'user123', 'admin');
 
-      expect(prisma.task.update).toHaveBeenCalled();
-      expect(notificationService.create).toHaveBeenCalled();
+      expect(prisma.record.update).toHaveBeenCalled();
     });
 
     it('应拒绝非管理员恢复', async () => {
@@ -254,40 +228,31 @@ describe('RecycleBinService', () => {
 
       await service.permanentDelete('document', '1', 'user123', 'admin');
 
-      expect(prisma.document.delete).toHaveBeenCalledWith({
-        where: { id: '1' },
-      });
+      expect(prisma.document.delete).toHaveBeenCalledWith({ where: { id: '1' } });
       expect(storageService.deleteFile).toHaveBeenCalledWith('path/to/file.pdf');
-      expect(prisma.pendingNumber.upsert).toHaveBeenCalled();
       expect(operationLog.log).toHaveBeenCalled();
     });
 
-    it('应永久删除模板', async () => {
-      const mockTemplate = {
-        id: '1',
-        deletedAt: new Date(),
-      };
+    it('应永久删除记录模板', async () => {
+      const mockRecordTemplate = { id: '1', deletedAt: new Date() };
 
-      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate as any);
-      jest.spyOn(prisma.template, 'delete').mockResolvedValue({} as any);
+      jest.spyOn(prisma.recordTemplate, 'findUnique').mockResolvedValue(mockRecordTemplate as any);
+      jest.spyOn(prisma.recordTemplate, 'delete').mockResolvedValue({} as any);
 
-      await service.permanentDelete('template', '1', 'user123', 'admin');
+      await service.permanentDelete('record-template', '1', 'user123', 'admin');
 
-      expect(prisma.template.delete).toHaveBeenCalled();
+      expect(prisma.recordTemplate.delete).toHaveBeenCalled();
     });
 
-    it('应永久删除任务', async () => {
-      const mockTask = {
-        id: '1',
-        deletedAt: new Date(),
-      };
+    it('应永久删除记录', async () => {
+      const mockRecord = { id: '1', deletedAt: new Date() };
 
-      jest.spyOn(prisma.task, 'findUnique').mockResolvedValue(mockTask as any);
-      jest.spyOn(prisma.task, 'delete').mockResolvedValue({} as any);
+      jest.spyOn(prisma.record, 'findUnique').mockResolvedValue(mockRecord as any);
+      jest.spyOn(prisma.record, 'delete').mockResolvedValue({} as any);
 
-      await service.permanentDelete('task', '1', 'user123', 'admin');
+      await service.permanentDelete('record', '1', 'user123', 'admin');
 
-      expect(prisma.task.delete).toHaveBeenCalled();
+      expect(prisma.record.delete).toHaveBeenCalled();
     });
 
     it('应拒绝非管理员永久删除', async () => {

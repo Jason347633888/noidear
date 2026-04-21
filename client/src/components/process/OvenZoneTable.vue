@@ -19,10 +19,12 @@
           <tr v-for="row in ROWS" :key="row.key">
             <td>{{ row.label }}</td>
             <td v-for="z in zones" :key="z">
-              <DigitRoller
+              <el-input-number
                 :model-value="getValue(row.key, z)"
-                :max="300"
-                @update:model-value="setValue(row.key, z, $event)"
+                :min="0" :max="300" :controls="false" size="small"
+                style="width:80px"
+                :disabled="disabled"
+                @change="setValue(row.key, z, $event ?? 0)"
               />
             </td>
           </tr>
@@ -34,7 +36,6 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import DigitRoller from '@/components/DigitRoller.vue';
 
 const ROWS = [
   { key: 'topTemp', label: '上火温度(℃)' },

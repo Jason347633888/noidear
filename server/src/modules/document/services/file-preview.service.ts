@@ -1,5 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Response } from 'express';
+import * as crypto from 'crypto';
+import * as childProcess from 'child_process';
+import * as path from 'path';
+import * as os from 'os';
+import * as fs from 'fs/promises';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { StorageService } from '../../../common/services';
 import { BusinessException, ErrorCode } from '../../../common/exceptions/business.exception';
@@ -13,10 +18,109 @@ export interface PreviewResult {
 
 @Injectable()
 export class FilePreviewService {
+  private readonly logger = new Logger(FilePreviewService.name);
+  private readonly PREVIEW_CACHE_PREFIX = 'previews/';
+  private readonly PREVIEW_CACHE_TTL_DAYS = 7;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
   ) {}
+
+  /**
+   * 文件格式转换接口（BR-050）
+   * POST /file-preview/convert
+   * 接收 MinIO 路径，调用 LibreOffice 转换为 HTML，返回缓存后的 HTML URL
+   * 若 LibreOffice 未安装，提供优雅降级（返回 mock HTML）
+   */
+  async convertToHtml(minioPath: string): Promise<{ htmlUrl: string; cached: boolean }> {
+    try {
+      // 检查缓存（按源文件路径 MD5 命名）
+      const cacheKey = this.buildCacheKey(minioPath);
+      const cacheExists = await this.storage.fileExists(cacheKey);
+
+      if (cacheExists) {
+        const meta = await this.storage.getFileMetadata(cacheKey);
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - this.PREVIEW_CACHE_TTL_DAYS);
+        if (meta.lastModified > cutoff) {
+          const htmlUrl = await this.storage.getSignedUrl(cacheKey, 3600);
+          return { htmlUrl, cached: true };
+        }
+      }
+
+      // 下载源文件
+      const fileBuffer = await this.storage.getFile(minioPath);
+      const ext = path.extname(minioPath).toLowerCase();
+
+      // 尝试使用 LibreOffice 转换
+      const htmlContent = await this.convertWithLibreOffice(fileBuffer, ext);
+
+      // 上传 HTML 到缓存
+      const htmlBuffer = Buffer.from(htmlContent, 'utf-8');
+      await this.uploadHtmlCache(cacheKey, htmlBuffer);
+
+      const htmlUrl = await this.storage.getSignedUrl(cacheKey, 3600);
+      return { htmlUrl, cached: false };
+    } catch (error) {
+      this.logger.error(`文件转换失败 ${minioPath}: ${error.message}`, error.stack);
+      throw new BusinessException(ErrorCode.DATABASE_ERROR, `文件转换失败: ${error.message}`);
+    }
+  }
+
+  private buildCacheKey(minioPath: string): string {
+    const md5 = crypto.createHash('md5').update(minioPath).digest('hex');
+    return `${this.PREVIEW_CACHE_PREFIX}${md5}.html`;
+  }
+
+  private async convertWithLibreOffice(fileBuffer: Buffer, ext: string): Promise<string> {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'preview-'));
+    const inputFile = path.join(tempDir, `input${ext}`);
+    const outputDir = tempDir;
+
+    try {
+      await fs.writeFile(inputFile, fileBuffer);
+
+      return await new Promise<string>((resolve) => {
+        const proc = childProcess.spawn('libreoffice', [
+          '--headless', '--convert-to', 'html', '--outdir', outputDir, inputFile,
+        ], { timeout: 30000 });
+
+        proc.on('close', async (code) => {
+          if (code !== 0) {
+            // LibreOffice 不可用，返回降级 HTML
+            resolve(this.buildFallbackHtml(ext));
+            return;
+          }
+          try {
+            const files = await fs.readdir(outputDir);
+            const htmlFile = files.find((f) => f.endsWith('.html') && f !== path.basename(inputFile));
+            if (htmlFile) {
+              const content = await fs.readFile(path.join(outputDir, htmlFile), 'utf-8');
+              resolve(content);
+            } else {
+              resolve(this.buildFallbackHtml(ext));
+            }
+          } catch {
+            resolve(this.buildFallbackHtml(ext));
+          }
+        });
+
+        proc.on('error', () => resolve(this.buildFallbackHtml(ext)));
+      });
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+
+  private buildFallbackHtml(ext: string): string {
+    return `<!DOCTYPE html><html><body><p>文件预览不可用（需要安装 LibreOffice 以支持 ${ext} 格式预览）</p></body></html>`;
+  }
+
+  private async uploadHtmlCache(cacheKey: string, htmlBuffer: Buffer): Promise<void> {
+    await this.storage.uploadBuffer(htmlBuffer, cacheKey);
+  }
+
 
   /**
    * 下载文件

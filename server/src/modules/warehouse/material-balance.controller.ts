@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { MaterialBalanceService } from './material-balance.service';
 
-@Controller('material-balance')
+@Controller('warehouse/material-balance')
 export class MaterialBalanceController {
   constructor(private readonly materialBalanceService: MaterialBalanceService) {}
 

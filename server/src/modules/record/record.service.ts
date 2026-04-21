@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException,
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkflowInstanceService } from '../workflow/workflow-instance.service';
+import { DeviationService } from '../deviation/deviation.service';
 import { CreateRecordDto } from './dto/create-record.dto';
 import { UpdateRecordDto } from './dto/update-record.dto';
 import { QueryRecordDto } from './dto/query-record.dto';
@@ -14,6 +15,7 @@ export class RecordService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly workflowInstanceService: WorkflowInstanceService,
+    private readonly deviationService: DeviationService,
   ) {}
 
   /**
@@ -230,21 +232,84 @@ export class RecordService {
   /**
    * P0-3: 提交记录审批
    * BR-221: 记录提交规则
+   * 偏差检测两阶段流程：
+   *   第一次（body 为空）→ 检测偏差，有偏差时返回 400 + deviations
+   *   第二次（body 含 deviationReasons）→ 创建偏差报告后提交
    */
-  async submit(id: string, userId: string) {
+  async submit(id: string, userId: string, deviationReasons?: Record<string, string>) {
     const record = await this.findOne(id);
 
     if (record.status !== 'draft') {
       throw new BadRequestException(`记录状态为 ${record.status}，仅草稿状态可提交`);
     }
 
-    return await this.prisma.record.update({
-      where: { id },
-      data: {
-        status: 'submitted',
-        submittedAt: new Date(),
-      },
+    const template = await this.prisma.recordTemplate.findUnique({
+      where: { id: record.templateId },
     });
+
+    if (!template) {
+      throw new NotFoundException('模板不存在');
+    }
+
+    const templateAny = template as any;
+    if (templateAny.deviationEnabled) {
+      const fieldsJson = templateAny.fieldsJson as any;
+      const fields = fieldsJson?.fields ?? [];
+      const dataJson = record.dataJson as Record<string, any>;
+      const deviations = this.deviationService.detectDeviations(fields, dataJson);
+
+      if (deviations.length > 0 && !deviationReasons) {
+        throw new BadRequestException({
+          message: '存在偏差，请填写原因后重新提交',
+          details: { deviations },
+        });
+      }
+
+      if (deviations.length > 0 && deviationReasons) {
+        await this.deviationService.createDeviationReports(
+          id,
+          template.id,
+          deviations,
+          deviationReasons,
+          userId,
+        );
+
+        const submitted = await this.prisma.record.update({
+          where: { id },
+          data: { status: 'submitted', submittedAt: new Date() },
+        });
+
+        await this.handleTaskInstanceSubmit(record);
+
+        return { ...submitted, deviationCount: deviations.length };
+      }
+    }
+
+    const submitted = await this.prisma.record.update({
+      where: { id },
+      data: { status: 'submitted', submittedAt: new Date() },
+    });
+
+    await this.handleTaskInstanceSubmit(record);
+
+    return submitted;
+  }
+
+  /**
+   * 提交成功后，若关联了任务实例则联动标记为已提交
+   */
+  private async handleTaskInstanceSubmit(record: any) {
+    if (!record.taskInstanceId) {
+      return;
+    }
+    try {
+      await this.prisma.recordTaskInstance.update({
+        where: { id: record.taskInstanceId },
+        data: { status: 'submitted' },
+      });
+    } catch (error) {
+      this.logger.warn(`更新任务实例状态失败 ${record.taskInstanceId}: ${error.message}`);
+    }
   }
 
   /**

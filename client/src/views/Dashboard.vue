@@ -143,9 +143,9 @@ const fetchData = async () => {
   try {
     const docsRes = await request.get<any[]>('/documents', { params: { limit: 5 } });
     recentDocs.value = docsRes.list || [];
-    const approvalsRes = await request.get<any[]>('/documents/pending-approvals');
-    pendingApprovals.value = approvalsRes || [];
-    stats.value[1].value = String(pendingApprovals.value.length);
+    const approvalsRes = await request.get<any>('/documents/pending-approvals');
+    pendingApprovals.value = approvalsRes.list || [];
+    stats.value[1].value = String(approvalsRes.total ?? 0);
   } catch { /* silent fail */ }
 };
 

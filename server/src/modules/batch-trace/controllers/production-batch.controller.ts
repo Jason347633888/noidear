@@ -16,7 +16,7 @@ import {
   QueryProductionBatchDto,
 } from '../dto/production-batch.dto';
 
-@Controller('production-batches')
+@Controller('batch-trace/production-batches')
 export class ProductionBatchController {
   constructor(private readonly productionBatchService: ProductionBatchService) {}
 

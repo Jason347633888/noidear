@@ -13,20 +13,23 @@ export class RequisitionService {
       const requisition = await tx.materialRequisition.create({
         data: {
           requisitionNo,
-          requisitionType: createDto.requisitionType,
-          applicantId: createDto.applicantId,
+          requisitionType: createDto.requisitionType ?? 'production',
+          applicantId: createDto.applicantId ?? 'system',
           departmentId: createDto.departmentId,
           remark: createDto.remark,
+          targetZone: createDto.targetZone,
           status: 'draft',
         },
       });
 
-      await tx.materialRequisitionItem.createMany({
-        data: createDto.items.map((item: any) => ({
-          requisitionId: requisition.id,
-          ...item,
-        })),
-      });
+      if (createDto.items?.length) {
+        await tx.materialRequisitionItem.createMany({
+          data: createDto.items.map((item: any) => ({
+            requisitionId: requisition.id,
+            ...item,
+          })),
+        });
+      }
 
       return requisition;
     });
@@ -39,7 +42,9 @@ export class RequisitionService {
   }
 
   async findAll(query: any) {
-    const { page = 1, limit = 10, status } = query;
+    const page = parseInt(query.page ?? '1', 10);
+    const limit = parseInt(query.limit ?? '10', 10);
+    const { status } = query;
     const skip = (page - 1) * limit;
     const where: any = { deletedAt: null };
 
@@ -74,13 +79,23 @@ export class RequisitionService {
     return requisition;
   }
 
-  async approve(id: string, approverId: string) {
-    await this.findOne(id);
+  async submit(id: string) {
+    const req = await this.findOne(id);
+    if (req.status !== 'draft') throw new BadRequestException('只有草稿状态可提交');
+    return this.prisma.materialRequisition.update({
+      where: { id },
+      data: { status: 'pending', submittedAt: new Date() },
+    });
+  }
+
+  async approve(id: string, approverId: string, action: 'approved' | 'rejected' = 'approved') {
+    const req = await this.findOne(id);
+    if (req.status !== 'pending') throw new BadRequestException('只有待审批状态可审批');
 
     return this.prisma.materialRequisition.update({
       where: { id },
       data: {
-        status: 'approved',
+        status: action,
         approvedAt: new Date(),
         approvedBy: approverId,
       },
@@ -102,14 +117,18 @@ export class RequisitionService {
         });
 
         await tx.stagingAreaStock.upsert({
-          where: { id: item.batchId },
+          where: {
+            batchId_location: {
+              batchId: item.batchId,
+              location: requisition.targetZone ?? '未指定',
+            },
+          },
           create: {
             batchId: item.batchId,
             quantity: item.quantity,
+            location: requisition.targetZone ?? '未指定',
           },
-          update: {
-            quantity: { increment: item.quantity },
-          },
+          update: { quantity: { increment: item.quantity } },
         });
 
         await tx.stockRecord.create({

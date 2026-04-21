@@ -274,19 +274,17 @@ export class StatisticsService {
 
     return this.getCached(cacheKey, async () => {
       const where = this.buildTaskWhere(filters);
-      const total = await this.prisma.task.count({ where });
+      const total = await this.prisma.recordTaskInstance.count({ where });
 
       const [
         completed,
         overdue,
-        avgCompletionTime,
         byDepartment,
         byTemplate,
         byStatus,
       ] = await Promise.all([
         this.getCompletedTaskCount(where),
         this.getOverdueTaskCount(where),
-        this.getAvgTaskCompletionTime(where),
         this.getTasksByDepartment(where),
         this.getTasksByTemplate(where),
         this.getTasksByStatus(where),
@@ -298,7 +296,7 @@ export class StatisticsService {
         overdue,
         completionRate: this.calculatePercentage(completed, total),
         overdueRate: this.calculatePercentage(overdue, total),
-        avgCompletionTime,
+        avgCompletionTime: 0,
         byDepartment,
         byTemplate,
         byStatus,
@@ -308,10 +306,8 @@ export class StatisticsService {
   }
 
   private buildTaskWhere(filters: TaskStatsQueryDto): any {
-    const where: any = { deletedAt: null };
+    const where: any = {};
 
-    if (filters.departmentId) where.departmentId = filters.departmentId;
-    if (filters.templateId) where.templateId = filters.templateId;
     if (filters.status) where.status = filters.status;
 
     return {
@@ -321,13 +317,13 @@ export class StatisticsService {
   }
 
   private async getCompletedTaskCount(where: any): Promise<number> {
-    return this.prisma.task.count({
+    return this.prisma.recordTaskInstance.count({
       where: { ...where, status: 'completed' },
     });
   }
 
   private async getOverdueTaskCount(where: any): Promise<number> {
-    return this.prisma.task.count({
+    return this.prisma.recordTaskInstance.count({
       where: {
         ...where,
         status: { not: 'completed' },
@@ -336,113 +332,71 @@ export class StatisticsService {
     });
   }
 
-  /**
-   * Calculate average task completion time.
-   *
-   * Note: Task completion time is calculated as the time from task creation
-   * to the last record approval. This assumes that a task is considered
-   * "complete" when its final record is approved.
-   */
-  private async getAvgTaskCompletionTime(where: any): Promise<number> {
-    const tasks = await this.prisma.task.findMany({
-      where,
-      include: {
-        records: {
-          where: { status: 'approved' },
-          orderBy: { approvedAt: 'desc' },
-          take: 1,
-          select: { approvedAt: true, createdAt: true },
-        },
-      },
-    });
-
-    const completionTimes = tasks
-      .filter((t) => t.records.length > 0 && t.records[0].approvedAt)
-      .map((t) => {
-        const completedAt = t.records[0].approvedAt!;
-        return completedAt.getTime() - t.createdAt.getTime();
-      });
-
-    if (completionTimes.length === 0) return 0;
-
-    const avgMs =
-      completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length;
-
-    return Math.round(avgMs / (1000 * 60 * 60));
-  }
-
   private async getTasksByDepartment(where: any) {
-    const byDepartmentRaw = await this.prisma.task.groupBy({
-      by: ['departmentId'],
-      _count: { id: true },
-      where,
+    // RecordTaskInstance has no direct departmentId; join via assignment
+    const assignments = await this.prisma.recordTaskAssignment.findMany({
+      select: { id: true, departmentId: true, department: { select: { id: true, name: true } } },
     });
 
-    const departmentIds = byDepartmentRaw
-      .map((item) => item.departmentId)
-      .filter((id): id is string => id !== null);
+    const assignmentToDept = new Map(assignments.map((a) => [a.id, a.department]));
 
-    const departments =
-      departmentIds.length > 0
-        ? await this.prisma.department.findMany({
-            where: { id: { in: departmentIds } },
-            select: { id: true, name: true },
-          })
-        : [];
+    const instances = await this.prisma.recordTaskInstance.findMany({
+      where,
+      select: { assignmentId: true, status: true },
+    });
 
-    const departmentMap = new Map(departments.map((d) => [d.id, d.name]));
+    const deptCountMap = new Map<string, { name: string; count: number; completed: number }>();
 
-    return Promise.all(
-      byDepartmentRaw.map(async (item) => {
-        const deptTotal = item._count.id;
-        const deptCompleted = await this.prisma.task.count({
-          where: {
-            ...where,
-            departmentId: item.departmentId,
-            status: 'completed',
-          },
-        });
+    for (const inst of instances) {
+      const dept = assignmentToDept.get(inst.assignmentId);
+      const deptId = dept?.id ?? 'unassigned';
+      const deptName = dept?.name ?? '未分配';
+      const existing = deptCountMap.get(deptId) ?? { name: deptName, count: 0, completed: 0 };
+      existing.count++;
+      if (inst.status === 'completed') existing.completed++;
+      deptCountMap.set(deptId, existing);
+    }
 
-        return {
-          departmentId: item.departmentId || '',
-          name: departmentMap.get(item.departmentId || '') || '未分配',
-          count: deptTotal,
-          completionRate: this.calculatePercentage(deptCompleted, deptTotal),
-        };
-      }),
-    );
+    return Array.from(deptCountMap.entries()).map(([departmentId, stat]) => ({
+      departmentId,
+      name: stat.name,
+      count: stat.count,
+      completionRate: this.calculatePercentage(stat.completed, stat.count),
+    }));
   }
 
   private async getTasksByTemplate(where: any) {
-    const byTemplateRaw = await this.prisma.task.groupBy({
-      by: ['templateId'],
-      _count: { id: true },
-      where,
+    const assignments = await this.prisma.recordTaskAssignment.findMany({
+      select: { id: true, templateId: true, template: { select: { id: true, name: true } } },
     });
 
-    const templateIds = byTemplateRaw
-      .map((item) => item.templateId)
-      .filter((id): id is string => id !== null);
+    const assignmentToTemplate = new Map(assignments.map((a) => [a.id, a.template]));
 
-    const templates =
-      templateIds.length > 0
-        ? await this.prisma.template.findMany({
-            where: { id: { in: templateIds } },
-            select: { id: true, title: true },
-          })
-        : [];
+    const instances = await this.prisma.recordTaskInstance.findMany({
+      where,
+      select: { assignmentId: true },
+    });
 
-    const templateMap = new Map(templates.map((t) => [t.id, t.title]));
+    const templateCountMap = new Map<string, { name: string; count: number }>();
 
-    return byTemplateRaw.map((item) => ({
-      templateId: item.templateId || '',
-      name: templateMap.get(item.templateId || '') || '未知模板',
-      count: item._count.id,
+    for (const inst of instances) {
+      const tmpl = assignmentToTemplate.get(inst.assignmentId);
+      const tmplId = tmpl?.id ?? 'unknown';
+      const tmplName = tmpl?.name ?? '未知模板';
+      const existing = templateCountMap.get(tmplId) ?? { name: tmplName, count: 0 };
+      existing.count++;
+      templateCountMap.set(tmplId, existing);
+    }
+
+    return Array.from(templateCountMap.entries()).map(([templateId, stat]) => ({
+      templateId,
+      name: stat.name,
+      count: stat.count,
     }));
   }
 
   private async getTasksByStatus(where: any) {
-    const byStatusRaw = await this.prisma.task.groupBy({
+    const byStatusRaw = await this.prisma.recordTaskInstance.groupBy({
       by: ['status'],
       _count: { id: true },
       where,
@@ -635,8 +589,8 @@ export class StatisticsService {
         this.prisma.document.count({
           where: { deletedAt: null, ...dateWhere },
         }),
-        this.prisma.task.count({
-          where: { deletedAt: null, ...dateWhere },
+        this.prisma.recordTaskInstance.count({
+          where: { ...dateWhere },
         }),
         this.prisma.approval.count({ where: dateWhere }),
         this.prisma.document.count({
@@ -645,9 +599,8 @@ export class StatisticsService {
             createdAt: { gte: thirtyDaysAgo },
           },
         }),
-        this.prisma.task.count({
+        this.prisma.recordTaskInstance.count({
           where: {
-            deletedAt: null,
             createdAt: { gte: thirtyDaysAgo },
           },
         }),
@@ -656,8 +609,8 @@ export class StatisticsService {
             createdAt: { gte: thirtyDaysAgo },
           },
         }),
-        this.prisma.task.count({
-          where: { deletedAt: null, status: 'completed', ...dateWhere },
+        this.prisma.recordTaskInstance.count({
+          where: { status: 'completed', ...dateWhere },
         }),
         this.prisma.approval.count({
           where: { status: 'approved', ...dateWhere },

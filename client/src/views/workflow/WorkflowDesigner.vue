@@ -11,7 +11,7 @@
     </div>
 
     <div class="designer-body">
-      <!-- Node palette -->
+      <!-- Node palette (left panel) -->
       <div class="node-palette">
         <h4 class="palette-title">节点类型</h4>
         <div
@@ -25,57 +25,73 @@
           <el-icon><component :is="node.icon" /></el-icon>
           <span>{{ node.label }}</span>
         </div>
+        <div class="palette-hint">
+          <p>拖拽节点到右侧画布</p>
+          <p>点击节点连线端口建立连线</p>
+        </div>
       </div>
 
-      <!-- Canvas -->
+      <!-- VueFlow Canvas -->
       <div
-        ref="canvas"
-        class="designer-canvas"
+        class="canvas-wrapper"
         @dragover.prevent
         @drop="onDrop"
       >
-        <div
-          v-for="node in nodes"
-          :key="node.id"
-          class="workflow-node"
-          :style="{ left: node.x + 'px', top: node.y + 'px', borderColor: getNodeColor(node.type) }"
-          @click="selectNode(node)"
+        <VueFlow
+          v-model:nodes="flowNodes"
+          v-model:edges="flowEdges"
+          :default-viewport="{ zoom: 1 }"
+          :min-zoom="0.3"
+          :max-zoom="2"
+          fit-view-on-init
+          @connect="onConnect"
+          @node-click="onNodeClick"
         >
-          <div class="node-type-badge" :style="{ background: getNodeColor(node.type) }">
-            {{ getNodeLabel(node.type) }}
-          </div>
-          <div class="node-name">{{ node.name }}</div>
-          <el-button
-            class="delete-node-btn"
-            circle
-            size="small"
-            type="danger"
-            :icon="Close"
-            @click.stop="deleteNode(node.id)"
-          />
-        </div>
-
-        <div v-if="nodes.length === 0" class="canvas-placeholder">
+          <Background pattern-color="#e0e0e0" :gap="20" />
+          <Controls />
+          <template #node-custom="nodeProps">
+            <div
+              class="workflow-node"
+              :style="{ borderColor: getNodeColor(nodeProps.data.type) }"
+            >
+              <div class="node-type-badge" :style="{ background: getNodeColor(nodeProps.data.type) }">
+                {{ getNodeLabel(nodeProps.data.type) }}
+              </div>
+              <div class="node-name">{{ nodeProps.data.label }}</div>
+              <el-button
+                class="delete-node-btn"
+                circle
+                size="small"
+                type="danger"
+                :icon="Close"
+                @click.stop="deleteNode(nodeProps.id)"
+              />
+              <Handle type="source" :position="Position.Bottom" />
+              <Handle type="target" :position="Position.Top" />
+            </div>
+          </template>
+        </VueFlow>
+        <div v-if="flowNodes.length === 0" class="canvas-placeholder">
           <p>拖拽左侧节点到此处添加工作流步骤</p>
         </div>
       </div>
 
-      <!-- Node config panel -->
-      <div v-if="selectedNode" class="config-panel">
+      <!-- Node config panel (right panel) -->
+      <div v-if="selectedNodeData" class="config-panel">
         <h4 class="config-title">节点配置</h4>
 
-        <el-form :model="selectedNode" label-width="80px" size="small">
+        <el-form :model="selectedNodeData" label-width="80px" size="small">
           <el-form-item label="节点名称">
-            <el-input v-model="selectedNode.name" placeholder="输入节点名称" />
+            <el-input v-model="selectedNodeData.label" placeholder="输入节点名称" @input="syncNodeLabel" />
           </el-form-item>
 
-          <template v-if="selectedNode.type === 'approval'">
+          <template v-if="selectedNodeData.type === 'approval'">
             <el-form-item label="审批人">
-              <el-input v-model="selectedNode.approver" placeholder="输入审批人用户名" />
+              <el-input v-model="selectedNodeData.approver" placeholder="输入审批人用户名" />
             </el-form-item>
             <el-form-item label="抄送人">
               <el-select
-                v-model="selectedNode.ccUsers"
+                v-model="selectedNodeData.ccUsers"
                 multiple
                 filterable
                 placeholder="选择抄送人"
@@ -91,10 +107,10 @@
             </el-form-item>
           </template>
 
-          <template v-if="selectedNode.type === 'condition'">
+          <template v-if="selectedNodeData.type === 'condition'">
             <el-form-item label="条件表达式">
               <el-input
-                v-model="selectedNode.condition"
+                v-model="selectedNodeData.condition"
                 type="textarea"
                 :rows="3"
                 placeholder="如: amount > 10000"
@@ -128,16 +144,24 @@
     <!-- Preview dialog -->
     <el-dialog v-model="previewVisible" title="工作流预览" width="600px">
       <div class="preview-content">
-        <div v-if="nodes.length === 0" class="preview-empty">暂无节点，请先添加工作流步骤</div>
+        <div v-if="flowNodes.length === 0" class="preview-empty">暂无节点，请先添加工作流步骤</div>
         <div v-else class="preview-flow">
-          <div v-for="(node, index) in nodes" :key="node.id" class="preview-step">
-            <div class="preview-node" :style="{ borderColor: getNodeColor(node.type) }">
-              <strong>{{ node.name }}</strong>
-              <span class="preview-type">{{ getNodeLabel(node.type) }}</span>
-              <div v-if="node.approver" class="preview-detail">审批人：{{ node.approver }}</div>
-              <div v-if="node.condition" class="preview-detail">条件：{{ node.condition }}</div>
+          <div v-for="(node, index) in flowNodes" :key="node.id" class="preview-step">
+            <div class="preview-node" :style="{ borderColor: getNodeColor(node.data.type) }">
+              <strong>{{ node.data.label }}</strong>
+              <span class="preview-type">{{ getNodeLabel(node.data.type) }}</span>
+              <div v-if="node.data.approver" class="preview-detail">审批人：{{ node.data.approver }}</div>
+              <div v-if="node.data.condition" class="preview-detail">条件：{{ node.data.condition }}</div>
             </div>
-            <div v-if="index < nodes.length - 1" class="preview-arrow">↓</div>
+            <div v-if="index < flowNodes.length - 1" class="preview-arrow">↓</div>
+          </div>
+          <div v-if="flowEdges.length > 0" class="preview-edges">
+            <h5>连线关系（{{ flowEdges.length }} 条）</h5>
+            <div v-for="edge in flowEdges" :key="edge.id" class="preview-edge">
+              {{ getNodeById(edge.source)?.data?.label ?? edge.source }}
+              →
+              {{ getNodeById(edge.target)?.data?.label ?? edge.target }}
+            </div>
           </div>
         </div>
       </div>
@@ -146,17 +170,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { View, Close } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
+import { VueFlow, useVueFlow, Position, Handle } from '@vue-flow/core';
+import { Background } from '@vue-flow/background';
+import { Controls } from '@vue-flow/controls';
+import '@vue-flow/core/dist/style.css';
+import '@vue-flow/core/dist/theme-default.css';
+import '@vue-flow/controls/dist/style.css';
 import request from '@/api/request';
 
-interface WorkflowNode {
-  id: string;
+interface NodeData {
   type: 'start' | 'approval' | 'condition' | 'end';
-  name: string;
-  x: number;
-  y: number;
+  label: string;
   approver?: string;
   ccUsers?: string[];
   condition?: string;
@@ -175,16 +202,25 @@ const nodeTypes = [
   { type: 'end', label: '结束节点', color: '#f5222d', icon: 'CircleClose' },
 ] as const;
 
-const nodes = ref<WorkflowNode[]>([]);
-const selectedNode = ref<WorkflowNode | null>(null);
+const { addEdges, toObject } = useVueFlow();
+
+const flowNodes = ref<any[]>([]);
+const flowEdges = ref<any[]>([]);
+const selectedNodeId = ref<string | null>(null);
 const saving = ref(false);
 const userOptions = ref<UserOption[]>([]);
 const saveDialogVisible = ref(false);
 const previewVisible = ref(false);
 const templateName = ref('');
 const templateDesc = ref('');
-const canvas = ref<HTMLElement | null>(null);
 let dragNodeType = '';
+let nodeCounter = 0;
+
+const selectedNodeData = computed<NodeData | null>(() => {
+  if (!selectedNodeId.value) return null;
+  const node = flowNodes.value.find((n) => n.id === selectedNodeId.value);
+  return node?.data ?? null;
+});
 
 async function fetchUsers() {
   try {
@@ -207,40 +243,84 @@ function getNodeLabel(type: string): string {
   return found?.label ?? type;
 }
 
+function getNodeById(id: string) {
+  return flowNodes.value.find((n) => n.id === id) ?? null;
+}
+
 function onDragStart(event: DragEvent, type: string) {
   dragNodeType = type;
 }
 
 function onDrop(event: DragEvent) {
-  if (!canvas.value || !dragNodeType) return;
-  const rect = canvas.value.getBoundingClientRect();
+  if (!dragNodeType) return;
+  const canvasEl = (event.currentTarget as HTMLElement);
+  const rect = canvasEl.getBoundingClientRect();
   const x = event.clientX - rect.left - 60;
   const y = event.clientY - rect.top - 30;
 
-  const newNode: WorkflowNode = {
-    id: `node_${Date.now()}`,
-    type: dragNodeType as WorkflowNode['type'],
-    name: getNodeLabel(dragNodeType),
-    x: Math.max(0, x),
-    y: Math.max(0, y),
+  nodeCounter++;
+  const newNode = {
+    id: `node_${nodeCounter}`,
+    type: 'custom',
+    position: { x: Math.max(0, x), y: Math.max(0, y) },
+    data: {
+      type: dragNodeType as NodeData['type'],
+      label: getNodeLabel(dragNodeType),
+      approver: '',
+      ccUsers: [],
+      condition: '',
+    },
   };
-  nodes.value = [...nodes.value, newNode];
+  flowNodes.value = [...flowNodes.value, newNode];
   dragNodeType = '';
 }
 
-function selectNode(node: WorkflowNode) {
-  selectedNode.value = node;
+function onNodeClick(_event: MouseEvent, node: any) {
+  selectedNodeId.value = node.id;
+}
+
+function onConnect(params: any) {
+  if (params.source === params.target) {
+    ElMessage.warning('节点不能连接到自身');
+    return;
+  }
+  // Cycle detection: check if adding this edge would create a cycle
+  if (wouldCreateCycle(params.source, params.target)) {
+    ElMessage.warning('检测到循环连线，已阻止');
+    return;
+  }
+  addEdges([{ ...params, animated: true }]);
+}
+
+function wouldCreateCycle(source: string, target: string): boolean {
+  // BFS from target, checking if we can reach source via existing edges
+  const visited = new Set<string>();
+  const queue = [target];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (current === source) return true;
+    if (visited.has(current)) continue;
+    visited.add(current);
+    const outgoing = flowEdges.value.filter((e) => e.source === current);
+    outgoing.forEach((e) => queue.push(e.target));
+  }
+  return false;
 }
 
 function deleteNode(id: string) {
-  nodes.value = nodes.value.filter((n) => n.id !== id);
-  if (selectedNode.value?.id === id) {
-    selectedNode.value = null;
+  flowNodes.value = flowNodes.value.filter((n) => n.id !== id);
+  flowEdges.value = flowEdges.value.filter((e) => e.source !== id && e.target !== id);
+  if (selectedNodeId.value === id) {
+    selectedNodeId.value = null;
   }
 }
 
+function syncNodeLabel() {
+  // Node label is bound via selectedNodeData (reactive), VueFlow re-renders automatically
+}
+
 function handleSave() {
-  if (nodes.value.length === 0) {
+  if (flowNodes.value.length === 0) {
     ElMessage.warning('请先添加工作流节点');
     return;
   }
@@ -257,13 +337,19 @@ async function confirmSave() {
     await request.post('/workflow/templates', {
       name: templateName.value,
       description: templateDesc.value,
-      steps: nodes.value.map((node, index) => ({
-        name: node.name,
-        type: node.type,
+      steps: flowNodes.value.map((node, index) => ({
+        name: node.data.label,
+        type: node.data.type,
         order: index + 1,
-        condition: node.condition,
-        approver: node.approver,
-        ccUsers: node.ccUsers ?? [],
+        condition: node.data.condition,
+        approver: node.data.approver,
+        ccUsers: node.data.ccUsers ?? [],
+      })),
+      edges: flowEdges.value.map((e) => ({
+        source: e.source,
+        target: e.target,
+        sourceHandle: e.sourceHandle,
+        targetHandle: e.targetHandle,
       })),
     });
     ElMessage.success('工作流模板保存成功');
@@ -292,6 +378,7 @@ async function confirmSave() {
   justify-content: space-between;
   padding: 12px 20px;
   border-bottom: 1px solid #e8e8e8;
+  flex-shrink: 0;
 }
 
 .designer-title {
@@ -310,6 +397,7 @@ async function confirmSave() {
   border-right: 1px solid #e8e8e8;
   padding: 16px 8px;
   flex-shrink: 0;
+  overflow-y: auto;
 }
 
 .palette-title {
@@ -336,14 +424,19 @@ async function confirmSave() {
   background: #f0f5ff;
 }
 
-.designer-canvas {
+.palette-hint {
+  margin-top: 16px;
+  font-size: 11px;
+  color: #bbb;
+  line-height: 1.5;
+}
+
+.palette-hint p { margin: 2px 0; }
+
+.canvas-wrapper {
   flex: 1;
   position: relative;
-  background: #f9fafb;
-  background-image: radial-gradient(circle, #ddd 1px, transparent 1px);
-  background-size: 20px 20px;
-  overflow: auto;
-  min-height: 400px;
+  overflow: hidden;
 }
 
 .canvas-placeholder {
@@ -354,22 +447,19 @@ async function confirmSave() {
   justify-content: center;
   color: #bbb;
   pointer-events: none;
+  z-index: 1;
 }
 
 .workflow-node {
-  position: absolute;
+  position: relative;
   min-width: 120px;
-  padding: 10px 12px 10px;
+  padding: 10px 12px;
   background: #fff;
   border: 2px solid #ddd;
   border-radius: 8px;
-  cursor: pointer;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  transition: box-shadow 0.15s;
-}
-
-.workflow-node:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  user-select: none;
 }
 
 .node-type-badge {
@@ -390,10 +480,11 @@ async function confirmSave() {
   position: absolute;
   top: -8px;
   right: -8px;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  font-size: 10px;
+  width: 20px !important;
+  height: 20px !important;
+  padding: 0 !important;
+  font-size: 10px !important;
+  min-height: unset !important;
 }
 
 .config-panel {
@@ -466,5 +557,24 @@ async function confirmSave() {
   text-align: center;
   color: #bbb;
   padding: 40px;
+}
+
+.preview-edges {
+  margin-top: 16px;
+  width: 100%;
+  text-align: left;
+}
+
+.preview-edges h5 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #666;
+}
+
+.preview-edge {
+  font-size: 12px;
+  color: #555;
+  padding: 4px 0;
+  border-bottom: 1px solid #f0f0f0;
 }
 </style>

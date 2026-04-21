@@ -21,22 +21,22 @@ export class RecycleBinCron {
         },
       })
 
-      // 清理超过 30 天的已删除任务模板
-      const deletedTemplates = await this.prisma.template.deleteMany({
+      // 清理超过 30 天的已删除记录模板（新版动态表单引擎）
+      const deletedRecordTemplates = await this.prisma.recordTemplate.deleteMany({
         where: {
           deletedAt: { lte: thirtyDaysAgo, not: null },
         },
       })
 
-      // 清理超过 30 天的已删除任务
-      const deletedTasks = await this.prisma.task.deleteMany({
+      // 清理超过 30 天的已删除记录实例（新版动态表单引擎）
+      const deletedRecords = await this.prisma.record.deleteMany({
         where: {
           deletedAt: { lte: thirtyDaysAgo, not: null },
         },
       })
 
       this.logger.log(
-        `回收站清理完成：文档 ${deletedDocs.count} 条，模板 ${deletedTemplates.count} 条，任务 ${deletedTasks.count} 条`,
+        `回收站清理完成：文档 ${deletedDocs.count} 条，记录模板 ${deletedRecordTemplates.count} 条，记录实例 ${deletedRecords.count} 条`,
       )
     } catch (error) {
       this.logger.error('回收站自动清理失败', error)

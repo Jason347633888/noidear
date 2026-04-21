@@ -116,5 +116,44 @@
     "avgDuration": "平均耗时",
     "timeoutRate": "超时率",
     "passRate": "通过率"
+  },
+  "recycleBin": {
+    "title": "回收站",
+    "typeFilter": "类型筛选",
+    "keyword": "名称搜索",
+    "deletedBy": "删除人",
+    "deletedAt": "删除时间",
+    "restore": "恢复",
+    "permanentDelete": "彻底删除",
+    "batchRestore": "批量恢复",
+    "batchDelete": "批量彻底删除",
+    "confirmRestore": "确定恢复该项目？恢复后将重新出现在原列表中。",
+    "confirmPermanentDelete": "彻底删除后无法恢复，数据将被永久清除。确定继续？",
+    "restoreSuccess": "恢复成功",
+    "deleteSuccess": "已彻底删除",
+    "fetchFailed": "获取回收站数据失败"
+  },
+  "batchTrace": {
+    "title": "批次追溯",
+    "query": "批次查询",
+    "report": "追溯报告",
+    "batchNumber": "批次号",
+    "search": "查询",
+    "productName": "产品名称",
+    "status": "状态",
+    "createdAt": "创建时间",
+    "noResults": "未找到相关批次"
+  },
+  "permissions": {
+    "title": "权限管理",
+    "userPermissions": "用户权限授予",
+    "permissionDefinitions": "权限定义",
+    "fineGrained": "细粒度权限",
+    "department": "部门权限",
+    "auditLog": "权限审计日志",
+    "grant": "授权",
+    "revoke": "撤销",
+    "grantSuccess": "授权成功",
+    "revokeSuccess": "撤销成功"
   }
 }

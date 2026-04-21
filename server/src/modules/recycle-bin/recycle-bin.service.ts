@@ -8,7 +8,7 @@ import { BusinessException, ErrorCode } from '../../common/exceptions/business.e
 import { convertBigIntToNumber } from '../../common/utils';
 import { Snowflake } from '../../common/utils/snowflake';
 
-type RecycleBinType = 'document' | 'template' | 'task';
+type RecycleBinType = 'document' | 'record-template' | 'record';
 
 @Injectable()
 export class RecycleBinService {
@@ -48,7 +48,7 @@ export class RecycleBinService {
   }
 
   private validateRecycleBinType(type: RecycleBinType): void {
-    const validTypes = ['document', 'template', 'task'];
+    const validTypes = ['document', 'record-template', 'record'];
     if (!validTypes.includes(type)) {
       throw new BusinessException(ErrorCode.VALIDATION_ERROR, '无效的类型');
     }
@@ -91,16 +91,16 @@ export class RecycleBinService {
       ]);
     }
 
-    if (type === 'template') {
+    if (type === 'record-template') {
       return Promise.all([
-        this.prisma.template.findMany(queryOptions),
-        this.prisma.template.count({ where }),
+        this.prisma.recordTemplate.findMany(queryOptions),
+        this.prisma.recordTemplate.count({ where }),
       ]);
     }
 
     return Promise.all([
-      this.prisma.task.findMany(queryOptions),
-      this.prisma.task.count({ where }),
+      this.prisma.record.findMany(queryOptions),
+      this.prisma.record.count({ where }),
     ]);
   }
 
@@ -109,10 +109,10 @@ export class RecycleBinService {
 
     if (type === 'document') {
       await this.restoreDocument(id, userId);
-    } else if (type === 'template') {
-      await this.restoreTemplate(id, userId);
+    } else if (type === 'record-template') {
+      await this.restoreRecordTemplate(id, userId);
     } else {
-      await this.restoreTask(id, userId);
+      await this.restoreRecord(id, userId);
     }
 
     await this.logRestoreOperation(userId, type, id);
@@ -208,74 +208,70 @@ export class RecycleBinService {
     });
   }
 
-  private async restoreTemplate(id: string, adminUserId: string): Promise<void> {
-    const template = await this.findTemplateForRestore(id);
+  private async restoreRecordTemplate(id: string, adminUserId: string): Promise<void> {
+    const template = await this.findRecordTemplateForRestore(id);
 
-    await this.prisma.template.update({
+    await this.prisma.recordTemplate.update({
       where: { id },
       data: { deletedAt: null },
     });
 
-    await this.sendRestoredNotification(
-      template.creatorId,
-      'template_restored',
-      `您的模板《${template.title}》已被管理员恢复`,
-    );
+    this.logger.log(`记录模板已恢复: ${id}，由管理员 ${adminUserId} 操作`);
   }
 
-  private async findTemplateForRestore(id: string) {
-    const template = await this.prisma.template.findUnique({
+  private async findRecordTemplateForRestore(id: string) {
+    const template = await this.prisma.recordTemplate.findUnique({
       where: { id },
-      include: { creator: true },
     });
 
     if (!template) {
-      throw new BusinessException(ErrorCode.NOT_FOUND, '模板不存在');
+      throw new BusinessException(ErrorCode.NOT_FOUND, '记录模板不存在');
     }
 
     if (!template.deletedAt) {
       throw new BusinessException(
         ErrorCode.VALIDATION_ERROR,
-        '该模板未被删除',
+        '该记录模板未被删除',
       );
     }
 
     return template;
   }
 
-  private async restoreTask(id: string, adminUserId: string): Promise<void> {
-    const task = await this.findTaskForRestore(id);
+  private async restoreRecord(id: string, adminUserId: string): Promise<void> {
+    const record = await this.findRecordForRestore(id);
 
-    await this.prisma.task.update({
+    await this.prisma.record.update({
       where: { id },
       data: { deletedAt: null },
     });
 
-    await this.sendRestoredNotification(
-      task.creatorId,
-      'task_restored',
-      `您创建的任务已被管理员恢复`,
-    );
+    if (record.createdBy) {
+      await this.sendRestoredNotification(
+        record.createdBy,
+        'record_restored',
+        `您创建的记录已被管理员恢复`,
+      );
+    }
   }
 
-  private async findTaskForRestore(id: string) {
-    const task = await this.prisma.task.findUnique({
+  private async findRecordForRestore(id: string) {
+    const record = await this.prisma.record.findUnique({
       where: { id },
-      include: { creator: true, template: true },
     });
 
-    if (!task) {
-      throw new BusinessException(ErrorCode.NOT_FOUND, '任务不存在');
+    if (!record) {
+      throw new BusinessException(ErrorCode.NOT_FOUND, '记录不存在');
     }
 
-    if (!task.deletedAt) {
+    if (!record.deletedAt) {
       throw new BusinessException(
         ErrorCode.VALIDATION_ERROR,
-        '该任务未被删除',
+        '该记录未被删除',
       );
     }
 
-    return task;
+    return record;
   }
 
   private async sendRestoredNotification(
@@ -311,10 +307,10 @@ export class RecycleBinService {
 
     if (type === 'document') {
       await this.permanentDeleteDocument(id);
-    } else if (type === 'template') {
-      await this.permanentDeleteTemplate(id);
+    } else if (type === 'record-template') {
+      await this.permanentDeleteRecordTemplate(id);
     } else {
-      await this.permanentDeleteTask(id);
+      await this.permanentDeleteRecord(id);
     }
 
     await this.logPermanentDeleteOperation(userId, type, id);
@@ -378,48 +374,38 @@ export class RecycleBinService {
     });
   }
 
-  private async permanentDeleteTemplate(id: string): Promise<void> {
-    const template = await this.findTemplateForDelete(id);
-    await this.prisma.template.delete({ where: { id } });
-  }
-
-  private async findTemplateForDelete(id: string) {
-    const template = await this.prisma.template.findUnique({ where: { id } });
+  private async permanentDeleteRecordTemplate(id: string): Promise<void> {
+    const template = await this.prisma.recordTemplate.findUnique({ where: { id } });
 
     if (!template) {
-      throw new BusinessException(ErrorCode.NOT_FOUND, '模板不存在');
+      throw new BusinessException(ErrorCode.NOT_FOUND, '记录模板不存在');
     }
 
     if (!template.deletedAt) {
       throw new BusinessException(
         ErrorCode.VALIDATION_ERROR,
-        '该模板未被删除，无法永久删除',
+        '该记录模板未被删除，无法永久删除',
       );
     }
 
-    return template;
+    await this.prisma.recordTemplate.delete({ where: { id } });
   }
 
-  private async permanentDeleteTask(id: string): Promise<void> {
-    const task = await this.findTaskForDelete(id);
-    await this.prisma.task.delete({ where: { id } });
-  }
+  private async permanentDeleteRecord(id: string): Promise<void> {
+    const record = await this.prisma.record.findUnique({ where: { id } });
 
-  private async findTaskForDelete(id: string) {
-    const task = await this.prisma.task.findUnique({ where: { id } });
-
-    if (!task) {
-      throw new BusinessException(ErrorCode.NOT_FOUND, '任务不存在');
+    if (!record) {
+      throw new BusinessException(ErrorCode.NOT_FOUND, '记录不存在');
     }
 
-    if (!task.deletedAt) {
+    if (!record.deletedAt) {
       throw new BusinessException(
         ErrorCode.VALIDATION_ERROR,
-        '该任务未被删除，无法永久删除',
+        '该记录未被删除，无法永久删除',
       );
     }
 
-    return task;
+    await this.prisma.record.delete({ where: { id } });
   }
 
   private async logPermanentDeleteOperation(

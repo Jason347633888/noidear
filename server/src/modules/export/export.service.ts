@@ -100,25 +100,15 @@ export class ExportService {
   async exportTasks(dto: ExportTasksDto, user?: any): Promise<Buffer> {
     const where = this.buildTaskWhere(dto);
 
-    // HIGH-1: 服务层权限过滤（BR-028, BR-313）
-    if (user) {
-      if (user.role === 'user') {
-        // 普通用户：只能导出分配给自己的任务
-        where.taskRecords = {
-          some: { submitterId: user.id },
-        };
-      } else if (user.role === 'leader') {
-        // 部门领导：只能导出本部门的任务
-        where.departmentId = user.departmentId;
-      }
-      // admin 不添加额外过滤
+    if (user && user.role === 'user') {
+      where.createdBy = user.id;
     }
 
     const fields = this.getFilteredFields(this.taskFields, dto.fields);
-    const total = await this.prisma.task.count({ where });
+    const total = await this.prisma.record.count({ where });
 
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('任务列表');
+    const worksheet = workbook.addWorksheet('记录列表');
     this.setupWorksheet(worksheet, fields);
 
     await this.fillTasks(worksheet, where, total, fields);
@@ -128,22 +118,14 @@ export class ExportService {
   async exportTaskRecords(dto: ExportTaskRecordsDto, user?: any): Promise<Buffer> {
     const where = this.buildTaskRecordWhere(dto);
 
-    // HIGH-1: 服务层权限过滤（BR-028, BR-313）
-    if (user) {
-      if (user.role === 'user') {
-        // 普通用户：只能导出自己提交的记录
-        where.submitterId = user.id;
-      } else if (user.role === 'leader') {
-        // 部门领导：只能导出本部门的记录
-        where.submitter = { departmentId: user.departmentId };
-      }
-      // admin 不添加额外过滤
+    if (user && user.role === 'user') {
+      where.createdBy = user.id;
     }
 
-    const total = await this.prisma.taskRecord.count({ where });
+    const total = await this.prisma.record.count({ where });
 
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('任务记录');
+    const worksheet = workbook.addWorksheet('记录数据');
 
     await this.fillTaskRecords(worksheet, where, total);
     return Buffer.from(await workbook.xlsx.writeBuffer());
@@ -327,20 +309,15 @@ export class ExportService {
     let page = 0;
 
     while (page * pageSize < total) {
-      const tasks = await this.prisma.task.findMany({
+      const records = await this.prisma.record.findMany({
         where,
         skip: page * pageSize,
         take: pageSize,
         orderBy: { createdAt: 'desc' },
-        include: {
-          template: { select: { title: true } },
-          department: { select: { name: true } },
-          creator: { select: { name: true } },
-        },
       });
 
-      tasks.forEach((task: any) => {
-        const row = this.mapTaskRow(task);
+      records.forEach((record: any) => {
+        const row = this.mapRecordRow(record);
         worksheet.addRow(this.filterRow(row, fields));
       });
       page++;
@@ -424,7 +401,6 @@ export class ExportService {
     const where: any = { deletedAt: null };
 
     if (dto.status) where.status = dto.status;
-    if (dto.departmentId) where.departmentId = dto.departmentId;
 
     this.addDateRange(where, 'createdAt', dto.startDate, dto.endDate);
     return where;
@@ -474,12 +450,20 @@ export class ExportService {
 
   private mapTaskRow(task: any): any {
     return {
-      templateTitle: task.template.title,
-      departmentName: task.department.name,
-      deadline: this.formatDate(task.deadline),
+      templateTitle: task.template?.title || '',
+      departmentName: task.department?.name || '',
+      deadline: task.deadline ? this.formatDate(task.deadline) : '',
       status: this.formatStatus(task.status),
-      creatorName: task.creator.name,
+      creatorName: task.creator?.name || '',
       createdAt: this.formatDate(task.createdAt),
+    };
+  }
+
+  private mapRecordRow(record: any): any {
+    return {
+      id: record.id,
+      status: this.formatStatus(record.status),
+      createdAt: this.formatDate(record.createdAt),
     };
   }
 
@@ -556,16 +540,9 @@ export class ExportService {
   private buildTaskRecordWhere(dto: ExportTaskRecordsDto): any {
     const where: any = { deletedAt: null };
 
-    if (dto.taskRecordIds && dto.taskRecordIds.length > 0) {
-      where.id = { in: dto.taskRecordIds };
-    }
-
-    if (dto.taskId) where.taskId = dto.taskId;
-    if (dto.templateId) where.templateId = dto.templateId;
     if (dto.status) where.status = dto.status;
-    if (dto.submitterId) where.submitterId = dto.submitterId;
 
-    this.addDateRange(where, 'submittedAt', dto.startDate, dto.endDate);
+    this.addDateRange(where, 'createdAt', dto.startDate, dto.endDate);
     return where;
   }
 
@@ -578,74 +555,22 @@ export class ExportService {
     let page = 0;
 
     while (page * pageSize < total) {
-      const records = await this.prisma.taskRecord.findMany({
+      const records = await this.prisma.record.findMany({
         where,
         skip: page * pageSize,
         take: pageSize,
-        orderBy: { submittedAt: 'desc' },
-        include: {
-          template: { select: { id: true, title: true, fieldsJson: true } },
-          submitter: { select: { name: true } },
-        },
+        orderBy: { createdAt: 'desc' },
       });
 
       if (records.length === 0) break;
 
-      // Generate columns from first record's template
-      if (page === 0 && records.length > 0) {
-        const templateFields = records[0].template.fieldsJson as unknown as TemplateField[];
-        this.setupTaskRecordWorksheet(worksheet, templateFields);
-      }
-
       records.forEach((record: any) => {
-        const row = this.mapTaskRecordRow(record);
-        worksheet.addRow(row);
+        worksheet.addRow(this.mapRecordRow(record));
       });
       page++;
     }
   }
 
-  private setupTaskRecordWorksheet(
-    worksheet: ExcelJS.Worksheet,
-    templateFields: TemplateField[]
-  ) {
-    const fixedColumns = [
-      { header: '记录ID', key: 'id', width: 20 },
-      { header: '模板名称', key: 'templateTitle', width: 30 },
-      { header: '状态', key: 'status', width: 15 },
-      { header: '提交人', key: 'submitterName', width: 15 },
-      { header: '提交时间', key: 'submittedAt', width: 20 },
-    ];
-
-    const dynamicColumns = templateFields.map((field) => ({
-      header: field.label,
-      key: `field_${field.name}`,
-      width: 20,
-    }));
-
-    worksheet.columns = [...fixedColumns, ...dynamicColumns];
-  }
-
-  private mapTaskRecordRow(record: any): any {
-    const templateFields = record.template.fieldsJson as unknown as TemplateField[];
-    const dataJson = record.dataJson as unknown as Record<string, any>;
-
-    const row: any = {
-      id: record.id,
-      templateTitle: record.template.title,
-      status: this.formatStatus(record.status),
-      submitterName: record.submitter?.name || '',
-      submittedAt: record.submittedAt ? this.formatDate(record.submittedAt) : '',
-    };
-
-    // Add dynamic field values
-    templateFields.forEach((field) => {
-      const value = dataJson[field.name];
-      row[`field_${field.name}`] = this.formatFieldValue(value, field);
-    });
-
-    return row;
-  }
 
   private formatFieldValue(value: any, field: TemplateField): string {
     if (value === null || value === undefined) return '';

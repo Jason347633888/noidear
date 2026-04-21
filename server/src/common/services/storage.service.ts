@@ -254,6 +254,28 @@ export class StorageService {
     }
   }
 
+  /**
+   * 列出指定前缀下的所有对象（含 lastModified）
+   * 用于缓存清理等场景
+   */
+  async listObjects(prefix: string): Promise<Array<{ name: string; lastModified: Date; size: number }>> {
+    return new Promise((resolve, reject) => {
+      const objects: Array<{ name: string; lastModified: Date; size: number }> = [];
+      const stream = this.client.listObjects(this.bucket, prefix, true);
+      stream.on('data', (obj) => {
+        if (obj.name && obj.lastModified !== undefined && obj.size !== undefined) {
+          objects.push({
+            name: obj.name,
+            lastModified: obj.lastModified as Date,
+            size: obj.size as number,
+          });
+        }
+      });
+      stream.on('end', () => resolve(objects));
+      stream.on('error', reject);
+    });
+  }
+
   private getFileExtension(filename: string): string {
     const parts = filename.split('.');
     return parts.length > 1 ? `.${parts.pop()?.toLowerCase()}` : '';

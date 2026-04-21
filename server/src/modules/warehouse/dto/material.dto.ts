@@ -1,4 +1,5 @@
 import { IsString, IsNotEmpty, IsOptional, IsNumber, Min, IsInt } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateMaterialDto {
   @IsString()
@@ -71,11 +72,13 @@ export class UpdateMaterialDto {
 }
 
 export class QueryMaterialDto {
+  @Type(() => Number)
   @IsInt()
   @IsOptional()
   @Min(1)
   page?: number = 1;
 
+  @Type(() => Number)
   @IsInt()
   @IsOptional()
   @Min(1)

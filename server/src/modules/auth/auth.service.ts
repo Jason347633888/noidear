@@ -35,7 +35,13 @@ export class AuthService {
       throw new UnauthorizedException('用户名或密码错误');
     }
 
-    const payload = { sub: user.id, username: user.username, role: user.role };
+    // 登录成功：重置失败计数
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data:  { loginAttempts: 0, firstFailedAt: null, lockedUntil: null },
+    });
+
+    const payload = { sub: user.id, username: user.username, role: user.role, name: user.name };
     const token = this.jwtService.sign(payload);
 
     return { token, user: { id: user.id, username: user.username, name: user.name, role: user.role } };
@@ -63,11 +69,25 @@ export class AuthService {
 
   private async handleFailedLogin(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    const attempts = (user?.loginAttempts || 0) + 1;
-    const update: { loginAttempts: number; lockedUntil?: Date } = { loginAttempts: attempts };
+    const now = new Date();
+    const windowMs = 5 * 60 * 1000; // 5 分钟窗口
+
+    // 若超过 5 分钟或从未记录，重新开始计数
+    const withinWindow =
+      user?.firstFailedAt && now.getTime() - new Date(user.firstFailedAt).getTime() < windowMs;
+
+    const attempts = withinWindow ? (user?.loginAttempts || 0) + 1 : 1;
+    const firstFailedAt = (withinWindow && user?.firstFailedAt) ? user.firstFailedAt : now;
+
+    const update: { loginAttempts: number; firstFailedAt: Date; lockedUntil?: Date } = {
+      loginAttempts: attempts,
+      firstFailedAt,
+    };
+
     if (attempts >= 5) {
-      update.lockedUntil = new Date(Date.now() + 1 * 60 * 1000); // 锁定 1 分钟
+      update.lockedUntil = new Date(now.getTime() + 1 * 60 * 1000); // 锁定 1 分钟
     }
+
     await this.prisma.user.update({ where: { id: userId }, data: update });
   }
 }

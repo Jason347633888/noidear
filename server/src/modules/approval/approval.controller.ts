@@ -17,41 +17,11 @@ export class ApprovalController {
     private readonly statisticsService: StatisticsService,
   ) {}
 
-  @Post('chains')
-  @ApiOperation({ summary: '创建审批链' })
-  async createApprovalChain(@Body() dto: CreateApprovalChainDto, @Request() req: any) {
-    return this.approvalService.createApprovalChain(dto.recordId, req.user.userId);
-  }
-
-  @Post('level1/:id/approve')
-  @ApiOperation({ summary: '一级审批（向后兼容）' })
-  @ApiParam({ name: 'id', description: '审批ID' })
-  async approveLevel1(@Param('id') id: string, @Body() dto: ApproveDto, @Request() req: any) {
-    return this.approvalService.approveLevel1(
-      id,
-      req.user.userId,
-      dto.action,
-      dto.comment || dto.rejectionReason,
-    );
-  }
-
-  @Post('level2/:id/approve')
-  @ApiOperation({ summary: '二级审批（向后兼容）' })
-  @ApiParam({ name: 'id', description: '审批ID' })
-  async approveLevel2(@Param('id') id: string, @Body() dto: ApproveDto, @Request() req: any) {
-    return this.approvalService.approveLevel2(
-      id,
-      req.user.userId,
-      dto.action,
-      dto.comment || dto.rejectionReason,
-    );
-  }
-
-  @Get('chains/:recordId')
-  @ApiOperation({ summary: '获取审批链' })
-  @ApiParam({ name: 'recordId', description: '任务记录ID' })
-  async getApprovalChain(@Param('recordId') recordId: string) {
-    return this.approvalService.getApprovalChain(recordId);
+  @Get('chains/:documentId')
+  @ApiOperation({ summary: '获取文档审批链' })
+  @ApiParam({ name: 'documentId', description: '文档ID' })
+  async getApprovalChain(@Param('documentId') documentId: string) {
+    return this.approvalService.getApprovalChain(documentId);
   }
 
   // ========== New Unified Endpoints ==========

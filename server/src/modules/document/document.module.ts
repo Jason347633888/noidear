@@ -15,11 +15,13 @@ import { UserPermissionModule } from '../user-permission/user-permission.module'
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { SearchModule } from '../search/search.module';
 import { DocumentCronService } from './document-cron.service';
+import { DocumentReferenceService } from './services/document-reference.service';
+import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
-  imports: [ConfigModule, NotificationModule, OperationLogModule, ExportModule, DepartmentPermissionModule, StatisticsModule, UserPermissionModule, SearchModule],
+  imports: [ConfigModule, PrismaModule, NotificationModule, OperationLogModule, ExportModule, DepartmentPermissionModule, StatisticsModule, UserPermissionModule, SearchModule],
   controllers: [DocumentController],
-  providers: [DocumentService, DocumentCronService, FilePreviewService, StorageService, StatisticsCacheInterceptor, PermissionGuard, DocumentsListener],
-  exports: [DocumentService],
+  providers: [DocumentService, DocumentCronService, DocumentReferenceService, FilePreviewService, StorageService, StatisticsCacheInterceptor, PermissionGuard, DocumentsListener],
+  exports: [DocumentService, DocumentReferenceService],
 })
 export class DocumentModule {}

@@ -22,6 +22,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagg
 import { ForbiddenException } from '@nestjs/common';
 import { DocumentService } from './document.service';
 import { FilePreviewService } from './services';
+import { DocumentReferenceService, CreateDocumentReferenceDto } from './services/document-reference.service';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto } from './dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -42,6 +43,7 @@ export class DocumentController {
   constructor(
     private readonly documentService: DocumentService,
     private readonly filePreviewService: FilePreviewService,
+    private readonly documentReferenceService: DocumentReferenceService,
     private readonly exportService: ExportService,
     private readonly departmentPermissionService: DepartmentPermissionService,
     private readonly statisticsService: StatisticsService,
@@ -264,5 +266,40 @@ export class DocumentController {
   @ApiOperation({ summary: '获取文档预览信息' })
   async getPreviewUrl(@Param('id') id: string, @Req() req: any) {
     return this.filePreviewService.getPreviewUrl(id, req.user.id, req.user.role);
+  }
+
+  // =============================
+  // P2: 文件格式转换端点（BR-050）
+  // =============================
+
+  @Post('convert')
+  @ApiOperation({ summary: '将 Word/Excel 转换为 HTML 预览（BR-050）' })
+  async convertFile(@Body('minioPath') minioPath: string) {
+    return this.filePreviewService.convertToHtml(minioPath);
+  }
+
+  // =============================
+  // P2: 跨文档引用端点（BR-305/306）
+  // =============================
+
+  @Post(':id/references')
+  @ApiOperation({ summary: '创建文档引用（BR-305）' })
+  async createReference(
+    @Param('id') id: string,
+    @Body() dto: CreateDocumentReferenceDto,
+  ) {
+    return this.documentReferenceService.createReference(id, dto);
+  }
+
+  @Get(':id/references')
+  @ApiOperation({ summary: '查询文档的所有引用（BR-305）' })
+  async getReferences(@Param('id') id: string) {
+    return this.documentReferenceService.getReferences(id);
+  }
+
+  @Get(':id/reference-impact')
+  @ApiOperation({ summary: '查询引用此文档的影响范围（BR-306）' })
+  async getReferenceImpact(@Param('id') id: string) {
+    return this.documentReferenceService.getReferenceImpact(id);
   }
 }

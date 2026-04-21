@@ -20,6 +20,7 @@ import { CreateRecordDto } from './dto/create-record.dto';
 import { UpdateRecordDto } from './dto/update-record.dto';
 import { QueryRecordDto } from './dto/query-record.dto';
 import { QueryChangeLogDto } from './dto/query-change-log.dto';
+import { SubmitRecordDto } from './dto/submit-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { ChangeLogInterceptor } from './interceptors/change-log.interceptor';
@@ -95,8 +96,8 @@ export class RecordController {
   @ApiResponse({ status: 200, description: '提交成功' })
   @ApiResponse({ status: 400, description: '状态不允许提交' })
   @ApiResponse({ status: 404, description: '记录不存在' })
-  submit(@Param('id') id: string, @Req() req: any) {
-    return this.recordService.submit(id, req.user.userId);
+  submit(@Param('id') id: string, @Body() dto: SubmitRecordDto, @Req() req: any) {
+    return this.recordService.submit(id, req.user.userId, dto.deviationReasons);
   }
 
   /**

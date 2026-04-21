@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
@@ -9,6 +10,8 @@ import { CreateBatchDto, UpdateBatchDto, QueryBatchDto } from './dto/batch.dto';
 
 @Injectable()
 export class BatchService {
+  private readonly logger = new Logger(BatchService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createBatchDto: CreateBatchDto) {
@@ -122,7 +125,7 @@ export class BatchService {
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async lockExpiredBatchesCron() {
     const locked = await this.lockExpiredBatches();
-    console.log(`Locked ${locked} expired batches`);
+    this.logger.log(`Locked ${locked} expired batches`);
   }
 
   async lockExpiredBatches(currentDate: Date = new Date()): Promise<number> {

@@ -7,6 +7,21 @@ import {
   PermissionStatus,
 } from './dto/fine-grained-permission.dto';
 
+export interface GrantPermissionOptions {
+  userId: string;
+  permissionCode: string;
+  resourceId?: string;
+  expiresAt?: Date;
+  reason?: string;
+  grantedBy: string;
+}
+
+export interface CheckPermissionOptions {
+  userId: string;
+  permissionCode: string;
+  resourceId?: string;
+}
+
 export interface PermissionMatrixItem {
   id: string;
   code: string;
@@ -344,6 +359,131 @@ export class FineGrainedPermissionService {
         throw error;
       }
       throw new BadRequestException(`获取角色权限失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 授予用户权限（按 permissionCode + resourceId 创建或更新 UserPermission）
+   * REQUIREMENTS P0: grantPermission
+   */
+  async grantPermission(opts: GrantPermissionOptions) {
+    try {
+      const permission = await this.prisma.fineGrainedPermission.findUnique({
+        where: { code: opts.permissionCode },
+      });
+      if (!permission) {
+        throw new NotFoundException(`权限编码 ${opts.permissionCode} 不存在`);
+      }
+
+      const user = await this.prisma.user.findUnique({ where: { id: opts.userId } });
+      if (!user) {
+        throw new NotFoundException(`用户 ID ${opts.userId} 不存在`);
+      }
+
+      const existing = await this.prisma.userPermission.findFirst({
+        where: {
+          userId: opts.userId,
+          fineGrainedPermissionId: permission.id,
+          resourceId: opts.resourceId ?? null,
+        },
+      });
+
+      if (existing) {
+        const updated = await this.prisma.userPermission.update({
+          where: { id: existing.id },
+          data: {
+            expiresAt: opts.expiresAt ?? null,
+            reason: opts.reason ?? existing.reason,
+            grantedBy: opts.grantedBy,
+          },
+        });
+        return { success: true, data: updated, message: '权限授予已更新' };
+      }
+
+      const created = await this.prisma.userPermission.create({
+        data: {
+          userId: opts.userId,
+          fineGrainedPermissionId: permission.id,
+          grantedBy: opts.grantedBy,
+          reason: opts.reason ?? '管理员授予',
+          resourceId: opts.resourceId,
+          expiresAt: opts.expiresAt ?? null,
+        },
+      });
+      return { success: true, data: created, message: '权限授予成功' };
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new BadRequestException(`授予权限失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 撤销用户权限（按 permissionCode 删除 UserPermission 记录）
+   * REQUIREMENTS P0: revokePermission
+   */
+  async revokePermission(userId: string, permissionCode: string) {
+    try {
+      const permission = await this.prisma.fineGrainedPermission.findUnique({
+        where: { code: permissionCode },
+      });
+      if (!permission) {
+        throw new NotFoundException(`权限编码 ${permissionCode} 不存在`);
+      }
+
+      const deleted = await this.prisma.userPermission.deleteMany({
+        where: { userId, fineGrainedPermissionId: permission.id },
+      });
+
+      return {
+        success: true,
+        data: { deletedCount: deleted.count },
+        message: `已撤销用户 ${userId} 的权限 ${permissionCode}`,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new BadRequestException(`撤销权限失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 检查用户是否拥有指定权限（支持资源级校验 + 过期检查）
+   * REQUIREMENTS P0: checkPermission
+   */
+  async checkPermission(opts: CheckPermissionOptions) {
+    try {
+      const permission = await this.prisma.fineGrainedPermission.findUnique({
+        where: { code: opts.permissionCode },
+      });
+      if (!permission) {
+        return { success: true, data: { granted: false, reason: '权限编码不存在' } };
+      }
+
+      const now = new Date();
+      const notExpired = { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] };
+
+      if (opts.resourceId !== undefined) {
+        // 资源级校验：全局权限（resourceId=null）或匹配指定资源的权限均视为有权
+        const record = await this.prisma.userPermission.findFirst({
+          where: {
+            userId: opts.userId,
+            fineGrainedPermissionId: permission.id,
+            OR: [{ resourceId: null }, { resourceId: opts.resourceId }],
+            AND: [notExpired],
+          },
+        });
+        return { success: true, data: { granted: record !== null } };
+      }
+
+      const record = await this.prisma.userPermission.findFirst({
+        where: {
+          userId: opts.userId,
+          fineGrainedPermissionId: permission.id,
+          ...notExpired,
+        },
+      });
+      return { success: true, data: { granted: record !== null } };
+    } catch (error) {
+      throw new BadRequestException(`检查权限失败: ${error.message}`);
     }
   }
 

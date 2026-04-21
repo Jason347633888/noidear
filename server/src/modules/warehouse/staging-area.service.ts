@@ -1,25 +1,27 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+
+export const WORKSHOP_ZONES = ['筛粉间', '称油间', '小料房'] as const;
+export type WorkshopZone = typeof WORKSHOP_ZONES[number];
 
 @Injectable()
 export class StagingAreaService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getCurrentStock(query: any) {
-    const { page = 1, limit = 10 } = query;
-    const skip = (page - 1) * limit;
+    const { page = 1, limit = 10, location } = query;
+    const skip = (Number(page) - 1) * Number(limit);
     const where: any = {};
+    if (location) where.location = location;
 
     const [data, total] = await Promise.all([
       this.prisma.stagingAreaStock.findMany({
         where,
         skip,
-        take: limit,
+        take: Number(limit),
         include: {
           batch: {
-            include: {
-              material: true,
-            },
+            include: { material: true },
           },
         },
         orderBy: { createdAt: 'desc' },
@@ -27,14 +29,138 @@ export class StagingAreaService {
       this.prisma.stagingAreaStock.count({ where }),
     ]);
 
-    return { data, total, page, limit };
+    return { data, total, page: Number(page), limit: Number(limit) };
+  }
+
+  async stageToZone(dto: {
+    batchId: string;
+    quantity: number;
+    zone: WorkshopZone;
+    operatorId: string;
+    note?: string;
+  }) {
+    if (!WORKSHOP_ZONES.includes(dto.zone)) {
+      throw new BadRequestException(`无效区域，必须是：${WORKSHOP_ZONES.join('、')}`);
+    }
+
+    const batch = await this.prisma.materialBatch.findUnique({
+      where: { id: dto.batchId },
+      include: { material: true },
+    });
+    if (!batch) throw new NotFoundException('批次不存在');
+    if (dto.quantity <= 0) throw new BadRequestException('数量必须大于 0');
+
+    const existing = await this.prisma.stagingAreaStock.findFirst({
+      where: { batchId: dto.batchId, location: dto.zone },
+    });
+
+    if (existing) {
+      return this.prisma.stagingAreaStock.update({
+        where: { id: existing.id },
+        data: { quantity: existing.quantity + dto.quantity },
+        include: { batch: { include: { material: true } } },
+      });
+    }
+
+    return this.prisma.stagingAreaStock.create({
+      data: {
+        batchId: dto.batchId,
+        quantity: dto.quantity,
+        location: dto.zone,
+      },
+      include: { batch: { include: { material: true } } },
+    });
+  }
+
+  async transferZone(dto: {
+    stockId: string;
+    toZone: WorkshopZone;
+    quantity: number;
+    operatorId: string;
+    note?: string;
+  }) {
+    if (!WORKSHOP_ZONES.includes(dto.toZone)) {
+      throw new BadRequestException(`无效目标区域，必须是：${WORKSHOP_ZONES.join('、')}`);
+    }
+
+    const stock = await this.prisma.stagingAreaStock.findUnique({
+      where: { id: dto.stockId },
+    });
+    if (!stock) throw new NotFoundException('暂存记录不存在');
+    if (stock.location === dto.toZone) throw new BadRequestException('来源区域与目标区域相同');
+    if (dto.quantity <= 0 || dto.quantity > stock.quantity) {
+      throw new BadRequestException(`迁移数量无效，当前库存：${stock.quantity}`);
+    }
+
+    const fromZone = stock.location!;
+
+    return this.prisma.$transaction(async (tx) => {
+      // 扣减来源
+      await tx.stagingAreaStock.update({
+        where: { id: dto.stockId },
+        data: { quantity: stock.quantity - dto.quantity },
+      });
+
+      // 增加目标
+      const target = await tx.stagingAreaStock.findFirst({
+        where: { batchId: stock.batchId, location: dto.toZone },
+      });
+      if (target) {
+        await tx.stagingAreaStock.update({
+          where: { id: target.id },
+          data: { quantity: target.quantity + dto.quantity },
+        });
+      } else {
+        await tx.stagingAreaStock.create({
+          data: { batchId: stock.batchId, quantity: dto.quantity, location: dto.toZone },
+        });
+      }
+
+      // 写迁移日志
+      return tx.stagingAreaTransfer.create({
+        data: {
+          stockId: dto.stockId,
+          batchId: stock.batchId,
+          fromZone,
+          toZone: dto.toZone,
+          quantity: dto.quantity,
+          operatorId: dto.operatorId,
+          note: dto.note,
+        },
+      });
+    });
+  }
+
+  async dispenseFromZone(stockId: string, quantity: number, operatorId: string) {
+    const stock = await this.prisma.stagingAreaStock.findUnique({
+      where: { id: stockId },
+    });
+    if (!stock) throw new NotFoundException('暂存记录不存在');
+    if (quantity <= 0 || quantity > stock.quantity) {
+      throw new BadRequestException(`发放数量无效，当前库存：${stock.quantity}`);
+    }
+
+    return this.prisma.stagingAreaStock.update({
+      where: { id: stockId },
+      data: { quantity: stock.quantity - quantity },
+      include: { batch: { include: { material: true } } },
+    });
+  }
+
+  async getTransferLogs(batchId?: string) {
+    const where: any = {};
+    if (batchId) where.batchId = batchId;
+    return this.prisma.stagingAreaTransfer.findMany({
+      where,
+      include: { operator: { select: { id: true, name: true, username: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
   }
 
   async recordInventory(recordDto: any) {
     if (recordDto.recordType === 'opening') {
-      return this.prisma.stagingAreaRecord.create({
-        data: recordDto,
-      });
+      return this.prisma.stagingAreaRecord.create({ data: recordDto });
     }
 
     const stock = await this.prisma.stagingAreaStock.findFirst({
@@ -42,17 +168,13 @@ export class StagingAreaService {
     });
 
     return this.prisma.$transaction(async (tx) => {
-      const record = await tx.stagingAreaRecord.create({
-        data: recordDto,
-      });
-
+      const record = await tx.stagingAreaRecord.create({ data: recordDto });
       if (stock) {
         await tx.stagingAreaStock.update({
           where: { id: stock.id },
           data: { quantity: recordDto.quantity },
         });
       }
-
       return record;
     });
   }

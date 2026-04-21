@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { MaterialBatchService } from '../services/material-batch.service';
 
-@Controller('material-batches')
+@Controller('batch-trace/material-batches')
 export class MaterialBatchController {
   constructor(private readonly materialBatchService: MaterialBatchService) {}
 

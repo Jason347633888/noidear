@@ -30,6 +30,13 @@
       </picker>
     </view>
 
+    <!-- New record button -->
+    <view class="records-page__toolbar">
+      <view class="records-page__new-btn" @tap="goCreate">
+        <text class="records-page__new-btn-text">+ 新建记录</text>
+      </view>
+    </view>
+
     <!-- Record list -->
     <view class="records-page__list">
       <RecordCard
@@ -135,6 +142,10 @@ function onRecordTap(item: RecordItem): void {
   uni.navigateTo({ url: `/pages/records/detail?id=${item.id}` })
 }
 
+function goCreate(): void {
+  uni.navigateTo({ url: '/pages/records/create' })
+}
+
 onShow(() => {
   fetchRecords(true)
 })
@@ -184,6 +195,27 @@ onReachBottom(() => {
 .records-page__filter-text {
   font-size: 24rpx;
   color: #666;
+}
+
+.records-page__toolbar {
+  padding: 16rpx 20rpx;
+  background-color: #fff;
+  border-top: 2rpx solid #f5f5f5;
+}
+
+.records-page__new-btn {
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #409eff;
+  border-radius: 8rpx;
+}
+
+.records-page__new-btn-text {
+  font-size: 28rpx;
+  color: #fff;
+  font-weight: 500;
 }
 
 .records-page__list {

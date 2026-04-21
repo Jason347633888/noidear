@@ -5,10 +5,12 @@
       <h2>{{ instance?.productName || '产品研发流程' }} - 打印预览</h2>
       <div class="toolbar-actions">
         <el-button @click="router.back()">返回</el-button>
-        <el-button type="primary" @click="window.print()">打印 / 导出 PDF</el-button>
+        <el-button type="primary" :loading="exporting" @click="exportPdf">导出 PDF</el-button>
       </div>
     </div>
 
+    <!-- 截圖範圍：print-content 以內 -->
+    <div class="print-content">
     <div v-for="sd in completedSteps" :key="sd.stepNumber" class="print-page">
       <div class="print-page-header">
         <h3>产品研发流程 - {{ instance?.productName }}</h3>
@@ -31,11 +33,12 @@
     </div>
 
     <el-empty v-if="!loading && completedSteps.length === 0" description="暂无已完成步骤" />
+    </div><!-- end print-content -->
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, defineAsyncComponent, onMounted } from 'vue';
+import { ref, computed, defineAsyncComponent, onMounted, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { processApi, type ProcessInstance, type ProcessStepData } from '@/api/process';
@@ -59,8 +62,7 @@ const instanceId = route.params.id as string;
 const instance = ref<ProcessInstance | null>(null);
 const stepDataList = ref<ProcessStepData[]>([]);
 const loading = ref(false);
-
-const window = globalThis.window;
+const exporting = ref(false);
 
 const completedSteps = computed(() =>
   stepDataList.value
@@ -77,6 +79,55 @@ const allStepsData = computed(() => {
 });
 
 const formatDate = (d: string) => new Date(d).toLocaleString('zh-CN');
+
+// 用 html2canvas + jsPDF 截圖匯出，繞過 Chrome PDF 引擎的中文字型問題
+const exportPdf = async () => {
+  exporting.value = true;
+  ElMessage.info('正在生成 PDF，请稍候...');
+  await nextTick();
+  try {
+    const [html2canvas, { jsPDF }] = await Promise.all([
+      import('html2canvas').then(m => m.default),
+      import('jspdf'),
+    ]);
+
+    const content = document.querySelector('.print-content') as HTMLElement;
+    if (!content) throw new Error('找不到内容区域');
+
+    const canvas = await html2canvas(content, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      windowWidth: 960,
+    });
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgW = pageW;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    let y = 0;
+    let remaining = imgH;
+
+    while (remaining > 0) {
+      pdf.addImage(imgData, 'JPEG', 0, -y, imgW, imgH);
+      remaining -= pageH;
+      y += pageH;
+      if (remaining > 0) pdf.addPage();
+    }
+
+    const name = instance.value?.productName || '研发流程';
+    pdf.save(`${name}.pdf`);
+    ElMessage.success('PDF 已导出');
+  } catch (err) {
+    ElMessage.error('导出失败，请重试');
+    console.error(err);
+  } finally {
+    exporting.value = false;
+  }
+};
 
 onMounted(async () => {
   loading.value = true;

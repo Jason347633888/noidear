@@ -84,9 +84,9 @@ const statusText = (s: string) =>
 const loadInstances = async () => {
   loading.value = true;
   try {
-    const res = await processApi.listInstances({ page: page.value, limit: 20 });
-    instances.value = res.list ?? [];
-    total.value = res.total ?? 0;
+    const res = await processApi.listInstances();
+    instances.value = Array.isArray(res) ? res : [];
+    total.value = instances.value.length;
   } catch {
     ElMessage.error('加载失败');
   } finally {

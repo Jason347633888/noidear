@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { BatchTraceModule } from '../batch-trace/batch-trace.module';
+import { NotificationModule } from '../notification/notification.module';
 import { MaterialController } from './material.controller';
 import { MaterialService } from './material.service';
 import { SupplierController } from './supplier.controller';
@@ -20,11 +21,12 @@ import { ReturnService } from './services/return.service';
 import { ScrapController } from './controllers/scrap.controller';
 import { ScrapService } from './services/scrap.service';
 import { WarehouseTraceabilityController } from './traceability.controller';
+import { WarehouseCronService } from './warehouse-cron.service';
 
 @Module({
-  imports: [PrismaModule, BatchTraceModule],
+  imports: [PrismaModule, BatchTraceModule, NotificationModule],
   controllers: [MaterialController, SupplierController, InboundController, BatchController, RequisitionController, StagingAreaController, MaterialBalanceController, ReturnController, ScrapController, WarehouseTraceabilityController],
-  providers: [MaterialService, SupplierService, InboundService, BatchService, RequisitionService, StagingAreaService, MaterialBalanceService, ReturnService, ScrapService],
+  providers: [MaterialService, SupplierService, InboundService, BatchService, RequisitionService, StagingAreaService, MaterialBalanceService, ReturnService, ScrapService, WarehouseCronService],
   exports: [MaterialService, SupplierService, InboundService, BatchService, RequisitionService, StagingAreaService, MaterialBalanceService, ReturnService, ScrapService],
 })
 export class WarehouseModule {}

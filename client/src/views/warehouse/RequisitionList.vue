@@ -5,7 +5,7 @@
         <el-form-item label="状态">
           <el-select v-model="filterForm.status" clearable placeholder="全部">
             <el-option value="draft" label="草稿" />
-            <el-option value="submitted" label="已提交" />
+            <el-option value="pending" label="已提交" />
             <el-option value="approved" label="已批准" />
             <el-option value="rejected" label="已驳回" />
             <el-option value="completed" label="已完成" />
@@ -22,7 +22,7 @@
       <template #header>
         <div class="card-header">
           <span>领料单管理</span>
-          <el-button type="primary" @click="router.push('/warehouse/requisitions/create')">
+          <el-button type="primary" @click="openCreateDialog">
             创建领料单
           </el-button>
         </div>
@@ -36,6 +36,12 @@
         <el-table-column label="部门" width="120">
           <template #default="{ row }">{{ row.department?.name || '-' }}</template>
         </el-table-column>
+        <el-table-column label="目标区域" width="110">
+          <template #default="{ row }">
+            <el-tag v-if="row.targetZone" size="small" type="info">{{ row.targetZone }}</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="reqStatusType(row.status)" size="small">{{ reqStatusText(row.status) }}</el-tag>
@@ -44,20 +50,24 @@
         <el-table-column prop="createdAt" label="创建时间" width="180">
           <template #default="{ row }">{{ new Date(row.createdAt).toLocaleString('zh-CN') }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
             <el-button
               v-if="row.status === 'draft'"
               link type="primary" @click="handleSubmit(row)"
             >提交</el-button>
             <el-button
-              v-if="row.status === 'submitted'"
+              v-if="row.status === 'pending'"
               link type="success" @click="handleApprove(row, 'approved')"
             >批准</el-button>
             <el-button
-              v-if="row.status === 'submitted'"
+              v-if="row.status === 'pending'"
               link type="danger" @click="handleApprove(row, 'rejected')"
             >驳回</el-button>
+            <el-button
+              v-if="row.status === 'approved'"
+              link type="warning" @click="handleDispatch(row)"
+            >发放</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -74,23 +84,47 @@
         />
       </div>
     </el-card>
+
+    <!-- 创建领料单对话框 -->
+    <el-dialog v-model="createVisible" title="创建领料单" width="480px">
+      <el-form :model="createForm" :rules="createRules" ref="createFormRef" label-width="90px">
+        <el-form-item label="目标区域" prop="targetZone">
+          <el-select v-model="createForm.targetZone" placeholder="请选择目标区域" style="width:100%">
+            <el-option value="筛粉间" label="筛粉间" />
+            <el-option value="称油间" label="称油间" />
+            <el-option value="小料房" label="小料房" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="createVisible = false">取消</el-button>
+        <el-button type="primary" :loading="creating" @click="submitCreate">确认创建</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { requisitionApi } from '@/api/warehouse';
+import request from '@/api/request';
 
-const router = useRouter();
 const loading = ref(false);
 const tableData = ref<any[]>([]);
 const filterForm = reactive({ status: '' });
 const pagination = reactive({ page: 1, limit: 20, total: 0 });
 
-const reqStatusText = (s: string) => ({ draft: '草稿', submitted: '已提交', approved: '已批准', rejected: '已驳回', completed: '已完成' }[s] || s);
-const reqStatusType = (s: string) => ({ draft: 'info', submitted: 'warning', approved: 'success', rejected: 'danger', completed: 'primary' }[s] || 'info');
+const createVisible = ref(false);
+const creating = ref(false);
+const createFormRef = ref();
+const createForm = reactive({ targetZone: '' });
+const createRules = {
+  targetZone: [{ required: true, message: '请选择目标区域', trigger: 'change' }],
+};
+
+const reqStatusText = (s: string) => ({ draft: '草稿', pending: '已提交', approved: '已批准', rejected: '已驳回', completed: '已完成' }[s] || s);
+const reqStatusType = (s: string) => ({ draft: 'info', pending: 'warning', approved: 'success', rejected: 'danger', completed: 'primary' }[s] || 'info') as 'info' | 'warning' | 'success' | 'danger' | 'primary';
 
 const fetchData = async () => {
   loading.value = true;
@@ -100,7 +134,7 @@ const fetchData = async () => {
       limit: pagination.limit,
       status: filterForm.status || undefined,
     });
-    tableData.value = res.list;
+    tableData.value = res.data ?? res.list ?? [];
     pagination.total = res.total;
   } catch (error) {
     ElMessage.error('获取领料单列表失败');
@@ -111,6 +145,27 @@ const fetchData = async () => {
 
 const handleSearch = () => { pagination.page = 1; fetchData(); };
 const handleReset = () => { filterForm.status = ''; handleSearch(); };
+
+const openCreateDialog = () => {
+  createForm.targetZone = '';
+  createFormRef.value?.resetFields();
+  createVisible.value = true;
+};
+
+const submitCreate = async () => {
+  await createFormRef.value?.validate();
+  creating.value = true;
+  try {
+    await request.post('/warehouse/requisitions', { targetZone: createForm.targetZone });
+    ElMessage.success('领料单已创建');
+    createVisible.value = false;
+    fetchData();
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message ?? '创建失败');
+  } finally {
+    creating.value = false;
+  }
+};
 
 const handleSubmit = async (row: any) => {
   try {
@@ -130,6 +185,16 @@ const handleApprove = async (row: any, action: 'approved' | 'rejected') => {
     ElMessage.success(action === 'approved' ? '已批准' : '已驳回');
     fetchData();
   } catch (error) { /* 取消 */ }
+};
+
+const handleDispatch = async (row: any) => {
+  try {
+    await request.post(`/warehouse/requisitions/${row.id}/complete`);
+    ElMessage.success('发放成功，物料已入库至' + row.targetZone);
+    fetchData();
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message ?? '发放失败');
+  }
 };
 
 onMounted(() => { fetchData(); });

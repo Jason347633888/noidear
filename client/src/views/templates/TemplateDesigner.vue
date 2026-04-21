@@ -58,6 +58,7 @@
           </template>
 
           <div
+            ref="dropZoneRef"
             class="drop-zone"
             @dragover.prevent
             @drop="handleDrop"
@@ -68,9 +69,11 @@
               :key="field.name"
               class="design-field"
               :class="{ selected: selectedIndex === index }"
+              :data-index="index"
               @click="selectedIndex = index"
             >
               <div class="design-field-header">
+                <span class="drag-handle" title="拖拽排序">⠿</span>
                 <span class="field-label">{{ field.label }}</span>
                 <span class="field-type">{{ field.type }}</span>
                 <div class="field-actions">
@@ -170,10 +173,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import Sortable from 'sortablejs';
 import DynamicField from '@/components/fields/DynamicField.vue';
+import { recordTemplateApi } from '@/api/record-template';
 import {
   Edit, Document, Calendar, Clock, Select, CircleCheck,
   Upload, Picture, Stamp, Switch, Grid, Star,
@@ -198,12 +203,32 @@ interface FormField {
   [key: string]: any;
 }
 
+const route = useRoute();
 const router = useRouter();
 const saving = ref(false);
 const previewVisible = ref(false);
 const selectedIndex = ref<number | null>(null);
 const formFields = reactive<FormField[]>([]);
 const previewData = reactive<Record<string, any>>({});
+const dropZoneRef = ref<HTMLElement | null>(null);
+let sortableInstance: Sortable | null = null;
+
+// 从路由参数获取模板 ID（支持 /record-templates/:id/designer 路由）
+const templateId = computed(() => (route.params.id as string) || '');
+
+let fieldCounter = 0;
+
+const loadExistingFields = async () => {
+  if (!templateId.value) return;
+  try {
+    const tpl = await recordTemplateApi.getById(templateId.value);
+    const fields = tpl.fieldsJson?.fields ?? [];
+    formFields.splice(0, formFields.length, ...fields);
+    if (fields.length > 0) fieldCounter = fields.length;
+  } catch {
+    // 新模板，无需加载
+  }
+};
 
 const basicFields: FieldDef[] = [
   { type: 'text', label: '文本输入', icon: Edit },
@@ -236,7 +261,6 @@ const selectedField = computed(() => {
 
 const hasOptions = (type: string): boolean => ['select', 'radio', 'checkbox'].includes(type);
 
-let fieldCounter = 0;
 const handleDragStart = (e: DragEvent, field: FieldDef) => {
   e.dataTransfer?.setData('text/plain', JSON.stringify(field));
 };
@@ -307,14 +331,68 @@ const handleSave = async () => {
   }
   saving.value = true;
   try {
-    // TODO: 保存到后端
-    ElMessage.success('表单模板保存成功');
-  } catch (error) {
-    ElMessage.error('保存失败');
+    if (templateId.value) {
+      await recordTemplateApi.updateFields(templateId.value, [...formFields]);
+      ElMessage.success('表单字段已保存到模板');
+    } else {
+      ElMessage.success('表单设计已保存（预览模式，未关联模板）');
+    }
+  } catch {
+    ElMessage.error('保存失败，请稍后重试');
   } finally {
     saving.value = false;
   }
 };
+
+function initSortable() {
+  if (!dropZoneRef.value) return;
+  if (sortableInstance) {
+    sortableInstance.destroy();
+  }
+  sortableInstance = Sortable.create(dropZoneRef.value, {
+    animation: 150,
+    handle: '.drag-handle',
+    filter: '.el-empty',
+    onEnd(evt) {
+      const oldIndex = evt.oldIndex;
+      const newIndex = evt.newIndex;
+      if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return;
+      const moved = formFields.splice(oldIndex, 1)[0];
+      formFields.splice(newIndex, 0, moved);
+      // Update selectedIndex after reorder
+      if (selectedIndex.value === oldIndex) {
+        selectedIndex.value = newIndex;
+      } else if (
+        selectedIndex.value !== null &&
+        selectedIndex.value > oldIndex &&
+        selectedIndex.value <= newIndex
+      ) {
+        selectedIndex.value--;
+      } else if (
+        selectedIndex.value !== null &&
+        selectedIndex.value < oldIndex &&
+        selectedIndex.value >= newIndex
+      ) {
+        selectedIndex.value++;
+      }
+    },
+  });
+}
+
+onMounted(async () => {
+  await loadExistingFields();
+  await nextTick();
+  initSortable();
+});
+
+// Re-init sortable when fields change (e.g., after loading template fields)
+watch(
+  () => formFields.length,
+  async () => {
+    await nextTick();
+    initSortable();
+  },
+);
 </script>
 
 <style scoped>
@@ -376,6 +454,14 @@ const handleSave = async () => {
   gap: 8px;
   margin-bottom: 4px;
 }
+.drag-handle {
+  cursor: grab;
+  color: #c0c4cc;
+  font-size: 16px;
+  flex-shrink: 0;
+  user-select: none;
+}
+.drag-handle:active { cursor: grabbing; }
 .field-label { font-weight: 500; }
 .field-type { font-size: 12px; color: #909399; }
 .field-actions { margin-left: auto; display: flex; gap: 4px; }

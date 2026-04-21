@@ -1,8 +1,14 @@
 @media print {
-  .no-print {
-    display: none !important;
+  /* 強制使用系統中文字型，確保 PDF 中文正常渲染 */
+  * {
+    font-family: "PingFang SC", "Heiti SC", "STHeiti", "Microsoft YaHei", "SimHei", Arial, sans-serif !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
   }
 
+  /* 隱藏導航 UI */
+  .no-print,
   .aside,
   .header,
   .el-aside,
@@ -15,10 +21,17 @@
     display: none !important;
   }
 
+  body {
+    font-size: 11pt;
+    color: #000 !important;
+    background: #fff !important;
+  }
+
+  /* 分頁控制 */
   .print-page {
     page-break-after: always;
     border: none !important;
-    padding: 0 !important;
+    padding: 12px 0 !important;
     margin: 0 !important;
   }
 
@@ -28,15 +41,99 @@
 
   .print-page-header {
     border-bottom: 2px solid #000 !important;
+    margin-bottom: 12px !important;
   }
 
-  body {
-    font-size: 12pt;
-    color: #000;
+  /* === Element Plus 表單標籤修復 === */
+  /* 核心問題：el-form-item__label 在打印時寬度坍塌導致消失 */
+  .el-form-item {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    margin-bottom: 8px !important;
+    break-inside: avoid !important;
   }
 
+  .el-form-item__label {
+    display: inline-block !important;
+    min-width: 140px !important;
+    width: auto !important;
+    flex-shrink: 0 !important;
+    color: #000 !important;
+    font-weight: 500 !important;
+    text-align: right !important;
+    padding-right: 12px !important;
+    white-space: nowrap !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .el-form-item__content {
+    flex: 1 !important;
+    color: #000 !important;
+  }
+
+  /* 輸入框 / 文字區打印樣式 */
+  .el-input__wrapper,
+  .el-textarea__inner,
+  .el-input__inner {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    background: transparent !important;
+    color: #000 !important;
+    padding: 2px 6px !important;
+  }
+
+  /* 下拉選擇器 */
+  .el-select .el-input__wrapper {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
+
+  /* Radio / Checkbox */
+  .el-radio__label,
+  .el-checkbox__label {
+    color: #000 !important;
+  }
+
+  /* 分割線標題 */
+  .el-divider__text {
+    color: #000 !important;
+    font-weight: 600 !important;
+  }
+
+  /* 表格打印 */
+  .el-table {
+    border: 1px solid #ccc !important;
+  }
+
+  .el-table th,
+  .el-table td {
+    border: 1px solid #ccc !important;
+    color: #000 !important;
+    padding: 4px 8px !important;
+  }
+
+  .el-table__header-wrapper th {
+    background: #f0f0f0 !important;
+    font-weight: 600 !important;
+  }
+
+  /* 卡片 */
   .el-card {
     box-shadow: none !important;
     border: 1px solid #ccc !important;
+  }
+
+  /* 隱藏不必要的 UI 箭頭 / 圖標 */
+  .el-input__suffix,
+  .el-select__caret,
+  .el-input__prefix {
+    display: none !important;
+  }
+
+  /* 步驟條不打印 */
+  .el-steps {
+    display: none !important;
   }
 }
