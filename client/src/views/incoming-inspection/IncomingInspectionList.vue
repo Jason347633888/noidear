@@ -239,8 +239,8 @@ function removeResultRow(index: number) {
 async function loadList() {
   loading.value = true;
   try {
-    const res = await incomingInspectionApi.getList();
-    list.value = res.data as unknown as IncomingInspection[];
+    const data = await incomingInspectionApi.getList();
+    list.value = data as unknown as IncomingInspection[];
   } catch {
     ElMessage.error('加载来料检验列表失败');
   } finally {
@@ -262,7 +262,8 @@ function openCreateDialog() {
 }
 
 async function handleCreate() {
-  await createFormRef.value?.validate();
+  const valid = await createFormRef.value?.validate().catch(() => false);
+  if (!valid) return;
   submitting.value = true;
   try {
     await incomingInspectionApi.create({
@@ -278,7 +279,7 @@ async function handleCreate() {
         is_pass: r.is_pass,
       })),
     });
-    ElMessage.success('新建成功');
+    ElMessage.success('创建成功');
     createDialogVisible.value = false;
     await loadList();
   } catch {
