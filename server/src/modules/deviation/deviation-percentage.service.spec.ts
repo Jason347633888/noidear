@@ -9,7 +9,7 @@ describe('DeviationService - 百分比公差检测', () => {
   const mockPrismaService = {
     deviationReport: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn(), count: jest.fn() },
     template: { findUnique: jest.fn() },
-    taskRecord: { findUnique: jest.fn(), update: jest.fn() },
+    record: { findUnique: jest.fn(), update: jest.fn() },
   };
 
   const mockApprovalService = {

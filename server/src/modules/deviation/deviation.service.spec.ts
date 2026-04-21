@@ -224,8 +224,6 @@ describe('DeviationService - createDeviationReports', () => {
       reportedAt: new Date(),
     });
 
-    mockPrismaService.record.update.mockResolvedValue({});
-
     const reports = await service.createDeviationReports(
       'record-1',
       'template-1',
@@ -244,7 +242,7 @@ describe('DeviationService - createDeviationReports', () => {
         }),
       }),
     );
-    // Production service no longer calls record.update in createDeviationReports
+    expect(mockPrismaService.record.update).not.toHaveBeenCalled();
   });
 
   it('应该在缺少偏离原因时抛出异常', async () => {

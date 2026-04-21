@@ -74,7 +74,7 @@ describe('DeviationService - createDeviationReports', () => {
 
     expect(reports).toHaveLength(1);
     expect(mockPrismaService.deviationReport.create).toHaveBeenCalledTimes(1);
-    // Production service no longer calls record.update in createDeviationReports
+    expect(mockPrismaService.record.update).not.toHaveBeenCalled();
   });
 
   it('应该在缺少偏离原因时抛出异常', async () => {
