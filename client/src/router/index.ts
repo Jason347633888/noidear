@@ -607,6 +607,27 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/environment-record/EnvironmentRecordList.vue'),
         meta: { title: '环境温湿度记录' },
       },
+      // 过程参数监控模块
+      {
+        path: 'process-records',
+        name: 'ProcessRecordList',
+        component: () => import('@/views/process-record/ProcessRecordList.vue'),
+        meta: { title: '过程参数监控' },
+      },
+      // 金属探测记录模块
+      {
+        path: 'metal-detections',
+        name: 'MetalDetectionList',
+        component: () => import('@/views/metal-detection/MetalDetectionList.vue'),
+        meta: { title: '金属探测记录' },
+      },
+      // 清洁消毒记录模块
+      {
+        path: 'cleaning-records',
+        name: 'CleaningRecordList',
+        component: () => import('@/views/cleaning-record/CleaningRecordList.vue'),
+        meta: { title: '清洁消毒记录' },
+      },
       // 产品研发流程模块
       {
         path: 'process',
