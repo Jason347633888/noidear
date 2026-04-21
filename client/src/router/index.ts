@@ -628,6 +628,34 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/cleaning-record/CleaningRecordList.vue'),
         meta: { title: '清洁消毒记录' },
       },
+      // 员工违规记录模块
+      {
+        path: 'violation-records',
+        name: 'ViolationRecordList',
+        component: () => import('@/views/violation-record/ViolationRecordList.vue'),
+        meta: { title: '员工违规记录' },
+      },
+      // 员工用药记录模块
+      {
+        path: 'medication-records',
+        name: 'MedicationRecordList',
+        component: () => import('@/views/medication-record/MedicationRecordList.vue'),
+        meta: { title: '员工用药记录' },
+      },
+      // 测量设备 + 校准记录模块
+      {
+        path: 'measuring-equipment',
+        name: 'MeasuringEquipmentList',
+        component: () => import('@/views/measuring-equipment/EquipmentList.vue'),
+        meta: { title: '测量设备管理' },
+      },
+      // 供应商评估模块
+      {
+        path: 'supplier-evaluations',
+        name: 'SupplierEvaluationList',
+        component: () => import('@/views/supplier-evaluation/EvaluationList.vue'),
+        meta: { title: '供应商评估' },
+      },
       // 产品研发流程模块
       {
         path: 'process',

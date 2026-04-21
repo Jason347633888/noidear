@@ -52,6 +52,10 @@ import { EnvironmentRecordModule } from './modules/environment-record/environmen
 import { ProcessRecordModule } from './modules/process-record/process-record.module';
 import { MetalDetectionModule } from './modules/metal-detection/metal-detection.module';
 import { CleaningRecordModule } from './modules/cleaning-record/cleaning-record.module';
+import { MeasuringEquipmentModule } from './modules/measuring-equipment/measuring-equipment.module';
+import { ViolationRecordModule } from './modules/violation-record/violation-record.module';
+import { MedicationRecordModule } from './modules/medication-record/medication-record.module';
+import { SupplierEvaluationModule } from './modules/supplier-evaluation/supplier-evaluation.module';
 
 @Module({
   imports: [
@@ -114,6 +118,10 @@ import { CleaningRecordModule } from './modules/cleaning-record/cleaning-record.
     ProcessRecordModule,
     MetalDetectionModule,
     CleaningRecordModule,
+    MeasuringEquipmentModule,
+    ViolationRecordModule,
+    MedicationRecordModule,
+    SupplierEvaluationModule,
   ],
   providers: [
     {
