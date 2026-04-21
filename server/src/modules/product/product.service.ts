@@ -39,7 +39,7 @@ export class ProductService {
   async update(id: string, dto: UpdateProductDto) {
     await this.findOne(id);
     return this.prisma.product.update({
-      where: { id },
+      where: { id, company_id: '1' },
       data: { ...dto },
     });
   }
@@ -47,7 +47,7 @@ export class ProductService {
   async remove(id: string) {
     await this.findOne(id);
     return this.prisma.product.update({
-      where: { id },
+      where: { id, company_id: '1' },
       data: { deleted_at: new Date() },
     });
   }
