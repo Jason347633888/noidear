@@ -213,6 +213,42 @@ const menuItems = [
     ],
   },
   {
+    title: '来料与追溯',
+    icon: Box,
+    children: [
+      { path: '/incoming-inspections', title: '来料检验', icon: Document },
+      { path: '/traceability', title: '追溯查询', icon: Search },
+    ],
+  },
+  {
+    title: '质量合规',
+    icon: CircleCheck,
+    children: [
+      { path: '/ccp', title: 'CCP 监控', icon: WarnTriangleFilled },
+      { path: '/non-conformances', title: '不合格品处置', icon: WarnTriangleFilled },
+      { path: '/corrective-actions', title: '纠正措施（CAPA）', icon: CircleCheck },
+      { path: '/customer-complaints', title: '顾客投诉', icon: Message },
+      { path: '/supplier-evaluations', title: '供应商评估', icon: Goods },
+      { path: '/change-events', title: '变更管理', icon: Connection },
+    ],
+  },
+  {
+    title: '过程与人员',
+    icon: Monitor,
+    children: [
+      { path: '/environment-records', title: '环境温湿度', icon: Monitor },
+      { path: '/process-records', title: '过程参数', icon: DataAnalysis },
+      { path: '/metal-detections', title: '金属探测', icon: SetUp },
+      { path: '/cleaning-records', title: '清洁消毒', icon: Grid },
+      { path: '/measuring-equipment', title: '测量设备', icon: SetUp },
+      { path: '/violation-records', title: '员工违规', icon: WarnTriangleFilled },
+      { path: '/medication-records', title: '员工用药', icon: UserFilled },
+      { path: '/visitor-records', title: '访客登记', icon: User },
+      { path: '/emergency-drills', title: '应急演练', icon: HomeFilled },
+      { path: '/waste', title: '废弃物管理', icon: Delete },
+    ],
+  },
+  {
     title: '系统管理',
     icon: Setting,
     children: [
