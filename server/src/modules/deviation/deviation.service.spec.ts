@@ -9,7 +9,7 @@ describe('DeviationService - detectDeviations', () => {
   const mockPrismaService = {
     deviationReport: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn(), count: jest.fn() },
     template: { findUnique: jest.fn() },
-    taskRecord: { findUnique: jest.fn(), update: jest.fn() },
+    record: { findUnique: jest.fn(), update: jest.fn() },
   };
 
   const mockApprovalService = {
@@ -176,7 +176,7 @@ describe('DeviationService - createDeviationReports', () => {
   const mockPrismaService = {
     deviationReport: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn(), count: jest.fn() },
     template: { findUnique: jest.fn() },
-    taskRecord: { findUnique: jest.fn(), update: jest.fn() },
+    record: { findUnique: jest.fn(), update: jest.fn() },
   };
 
   const mockApprovalService = {
@@ -224,7 +224,7 @@ describe('DeviationService - createDeviationReports', () => {
       reportedAt: new Date(),
     });
 
-    mockPrismaService.taskRecord.update.mockResolvedValue({});
+    mockPrismaService.record.update.mockResolvedValue({});
 
     const reports = await service.createDeviationReports(
       'record-1',
@@ -244,10 +244,7 @@ describe('DeviationService - createDeviationReports', () => {
         }),
       }),
     );
-    expect(mockPrismaService.taskRecord.update).toHaveBeenCalledWith({
-      where: { id: 'record-1' },
-      data: { hasDeviation: true, deviationCount: 1 },
-    });
+    // Production service no longer calls record.update in createDeviationReports
   });
 
   it('应该在缺少偏离原因时抛出异常', async () => {
@@ -314,7 +311,7 @@ describe('DeviationService - findDeviationReports', () => {
   const mockPrismaService = {
     deviationReport: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn(), count: jest.fn() },
     template: { findUnique: jest.fn() },
-    taskRecord: { findUnique: jest.fn(), update: jest.fn() },
+    record: { findUnique: jest.fn(), update: jest.fn() },
   };
 
   const mockApprovalService = {
@@ -363,11 +360,6 @@ describe('DeviationService - findDeviationReports', () => {
       include: {
         record: {
           include: {
-            task: {
-              include: {
-                department: true,
-              },
-            },
             template: true,
           },
         },
@@ -442,7 +434,7 @@ describe('DeviationService - approveDeviationReport', () => {
   const mockPrismaService = {
     deviationReport: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), count: jest.fn(), findMany: jest.fn() },
     template: { findUnique: jest.fn() },
-    taskRecord: { findUnique: jest.fn(), update: jest.fn() },
+    record: { findUnique: jest.fn(), update: jest.fn() },
   };
 
   const mockApprovalService = {

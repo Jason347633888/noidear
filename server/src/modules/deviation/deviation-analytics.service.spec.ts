@@ -13,7 +13,7 @@ describe('DeviationAnalyticsService', () => {
       count: jest.fn(),
       findMany: jest.fn(),
     },
-    taskRecord: {
+    record: {
       count: jest.fn(),
     },
   };
@@ -45,7 +45,7 @@ describe('DeviationAnalyticsService', () => {
         { date: '2024-01-03', count: '8' },
       ]);
 
-      mockPrisma.taskRecord.count.mockResolvedValue(100);
+      mockPrisma.record.count.mockResolvedValue(100);
 
       const result = await service.getDeviationTrend(
         startDate,
@@ -75,7 +75,7 @@ describe('DeviationAnalyticsService', () => {
         { week: '2024-W02', count: '30' },
       ]);
 
-      mockPrisma.taskRecord.count.mockResolvedValue(200);
+      mockPrisma.record.count.mockResolvedValue(200);
 
       const result = await service.getDeviationTrend(
         startDate,
@@ -100,7 +100,7 @@ describe('DeviationAnalyticsService', () => {
         { month: '2024-02', count: '60' },
       ]);
 
-      mockPrisma.taskRecord.count.mockResolvedValue(500);
+      mockPrisma.record.count.mockResolvedValue(500);
 
       const result = await service.getDeviationTrend(
         startDate,

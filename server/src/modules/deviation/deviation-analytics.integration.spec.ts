@@ -31,7 +31,7 @@ describe('DeviationAnalyticsController (Integration)', () => {
         groupBy: jest.fn().mockResolvedValue([]),
         count: jest.fn().mockResolvedValue(0),
       },
-      taskRecord: {
+      record: {
         findMany: jest.fn().mockResolvedValue([]),
         count: jest.fn().mockResolvedValue(0),
       },

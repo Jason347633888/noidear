@@ -17,7 +17,7 @@ describe('DeviationService - createDeviationReports', () => {
       count: jest.fn(),
     },
     template: { findUnique: jest.fn() },
-    taskRecord: { findUnique: jest.fn(), update: jest.fn() },
+    record: { findUnique: jest.fn(), update: jest.fn() },
   };
 
   const mockApprovalService = {
@@ -64,8 +64,6 @@ describe('DeviationService - createDeviationReports', () => {
       status: 'pending',
     });
 
-    mockPrismaService.taskRecord.update.mockResolvedValue({});
-
     const reports = await service.createDeviationReports(
       recordId,
       templateId,
@@ -76,10 +74,7 @@ describe('DeviationService - createDeviationReports', () => {
 
     expect(reports).toHaveLength(1);
     expect(mockPrismaService.deviationReport.create).toHaveBeenCalledTimes(1);
-    expect(mockPrismaService.taskRecord.update).toHaveBeenCalledWith({
-      where: { id: recordId },
-      data: { hasDeviation: true, deviationCount: 1 },
-    });
+    // Production service no longer calls record.update in createDeviationReports
   });
 
   it('应该在缺少偏离原因时抛出异常', async () => {
