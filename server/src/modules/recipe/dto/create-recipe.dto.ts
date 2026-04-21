@@ -30,12 +30,30 @@ export class RecipeLineDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  /**
+   * NOTE: `is_allergen` is not yet present in the Prisma schema (`recipe_lines` table).
+   * The field is accepted here for forward-compatibility with the spec, but it is
+   * intentionally excluded before the Prisma create call in RecipeService.create().
+   */
+  @IsOptional()
+  @IsBoolean()
+  is_allergen?: boolean;
 }
 
 export class CreateRecipeDto {
   @IsString()
   @IsNotEmpty()
   product_id: string;
+
+  /**
+   * NOTE: `name` is not yet present in the Prisma schema (`recipes` table).
+   * The field is accepted here for forward-compatibility with the spec, but it is
+   * intentionally excluded before the Prisma create call in RecipeService.create().
+   */
+  @IsOptional()
+  @IsString()
+  name?: string;
 
   @IsOptional()
   @IsString()

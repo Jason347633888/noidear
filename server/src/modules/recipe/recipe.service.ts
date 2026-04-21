@@ -34,7 +34,13 @@ export class RecipeService {
   }
 
   async create(dto: CreateRecipeDto) {
+    // Destructure known-schema fields; `name` and `is_allergen` are spec-only
+    // and not yet present in the DB schema — exclude them from Prisma calls.
     const { product_id, version_note, lines } = dto;
+    const schemaLines = lines.map(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      ({ is_allergen: _ia, ...rest }) => rest,
+    );
 
     // Archive all existing active recipes for this product
     await this.prisma.recipe.updateMany({
@@ -55,7 +61,7 @@ export class RecipeService {
         version: (latest?.version ?? 0) + 1,
         version_note,
         status: 'active',
-        lines: { create: lines },
+        lines: { create: schemaLines },
       },
       include: { lines: true },
     });
