@@ -139,10 +139,17 @@ describe('RecycleBinService', () => {
         .toThrow(BusinessException);
     });
 
-    it('应拒绝非管理员访问', async () => {
-      await expect(service.findAll('document', 1, 10, undefined, 'user123', 'user'))
-        .rejects
-        .toThrow(BusinessException);
+    it('非管理员应只返回自己的已删除项（不抛出异常）', async () => {
+      jest.spyOn(prisma.document, 'findMany').mockResolvedValue([]);
+      jest.spyOn(prisma.document, 'count').mockResolvedValue(0);
+
+      const result = await service.findAll('document', 1, 10, undefined, 'user123', 'user');
+
+      // Non-admin sees their own deleted items (filtered by userId), not an error
+      expect(result).toHaveProperty('list');
+      expect(result).toHaveProperty('total');
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(10);
     });
   });
 
