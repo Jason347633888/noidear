@@ -572,6 +572,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/statistics/StatisticsDashboard.vue'),
         meta: { requiresAdmin: true },
       },
+      // CCP 监控模块
+      {
+        path: 'ccp/records',
+        name: 'CcpRecordList',
+        component: () => import('@/views/ccp/CcpRecordList.vue'),
+        meta: { title: 'CCP 监控记录' },
+      },
       // 不合格品管理模块
       {
         path: 'non-conformances',
