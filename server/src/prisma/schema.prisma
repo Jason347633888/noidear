@@ -2790,3 +2790,28 @@ model FragileItemInspection {
   inspector_id        String?
   created_at          DateTime  @default(now())
 }
+
+model ChangeComplianceRecord {
+  id               String    @id @default(cuid())
+  company_id       String
+  change_event_id  String
+  assessor_id      String?
+  legal_compliance Boolean   @default(true)
+  safety_impact    String?
+  risk_level       String?   // low, medium, high
+  conclusion       String?
+  assessed_at      DateTime  @default(now())
+  notes            String?
+  created_at       DateTime  @default(now())
+}
+
+model ChangeApproval {
+  id              String    @id @default(cuid())
+  company_id      String
+  change_event_id String
+  approver_id     String?
+  decision        String?   // approved, rejected, pending
+  comments        String?
+  approved_at     DateTime?
+  created_at      DateTime  @default(now())
+}

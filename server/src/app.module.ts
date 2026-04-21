@@ -64,6 +64,9 @@ import { ProductModule } from './modules/product/product.module';
 import { RecipeModule } from './modules/recipe/recipe.module';
 import { ReworkRecordModule } from './modules/rework-record/rework-record.module';
 import { FragileItemInspectionModule } from './modules/fragile-item-inspection/fragile-item-inspection.module';
+import { ChangeComplianceRecordModule } from './modules/change-compliance-record/change-compliance-record.module';
+import { ChangeVerificationRecordModule } from './modules/change-verification-record/change-verification-record.module';
+import { ChangeApprovalModule } from './modules/change-approval/change-approval.module';
 
 @Module({
   imports: [
@@ -138,6 +141,9 @@ import { FragileItemInspectionModule } from './modules/fragile-item-inspection/f
     RecipeModule,
     ReworkRecordModule,
     FragileItemInspectionModule,
+    ChangeComplianceRecordModule,
+    ChangeVerificationRecordModule,
+    ChangeApprovalModule,
   ],
   providers: [
     {

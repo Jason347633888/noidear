@@ -1,8 +1,9 @@
 import { IsString, IsOptional } from 'class-validator';
 
 export class CreateChangeEventDto {
+  @IsString() change_type: string; // 'recipe'|'process'|'equipment'|'supplier'|'other'
   @IsString() title: string;
-  @IsString() change_type: string; // 'personnel'|'process'|'equipment'|'formula'|'facility'
   @IsString() description: string;
-  @IsOptional() @IsString() risk_level?: string; // 'low'|'medium'|'high'
+  @IsOptional() @IsString() initiator_id?: string;
+  @IsOptional() @IsString() status?: string;
 }

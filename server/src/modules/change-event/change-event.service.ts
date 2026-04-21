@@ -20,7 +20,7 @@ export class ChangeEventService {
         reason: dto.title,
         applied_by: userId,
         applied_at: new Date(),
-        status: 'pending',
+        status: dto.status ?? 'pending',
       },
     });
   }
@@ -32,14 +32,29 @@ export class ChangeEventService {
     });
   }
 
-  async approve(id: string, userId: string) {
+  async findOne(id: string) {
+    return this.prisma.changeEvent.findUnique({
+      where: { id },
+      include: { verifications: true },
+    });
+  }
+
+  async updateStatus(id: string, status: string, userId: string) {
     return this.prisma.changeEvent.update({
       where: { id },
       data: {
-        status: 'approved',
-        approved_by: userId,
+        status,
+        ...(status === 'approved' ? { approved_by: userId } : {}),
       },
     });
+  }
+
+  async approve(id: string, userId: string) {
+    return this.updateStatus(id, 'approved', userId);
+  }
+
+  async remove(id: string) {
+    return this.prisma.changeEvent.delete({ where: { id } });
   }
 
   async createVerification(dto: CreateVerificationDto, userId: string) {

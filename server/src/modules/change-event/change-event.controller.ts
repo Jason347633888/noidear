@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { ChangeEventService } from './change-event.service';
 import { CreateChangeEventDto } from './dto/create-change-event.dto';
 import { CreateVerificationDto } from './dto/create-verification.dto';
@@ -22,12 +22,31 @@ export class ChangeEventController {
     return this.service.findAll();
   }
 
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.service.findOne(id);
+  }
+
+  @Patch(':id/status')
+  updateStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+    @Request() req: { user: { id: string } },
+  ) {
+    return this.service.updateStatus(id, status, req.user.id);
+  }
+
   @Post(':id/approve')
   approve(
     @Param('id') id: string,
     @Request() req: { user: { id: string } },
   ) {
     return this.service.approve(id, req.user.id);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.service.remove(id);
   }
 
   @Post(':id/verifications')
