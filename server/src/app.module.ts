@@ -42,7 +42,8 @@ import { InternalAuditModule } from './modules/internal-audit/internal-audit.mod
 import { SearchModule } from './modules/search/search.module';
 import { ImportModule } from './modules/import/import.module';
 import { RecordTaskModule } from './modules/record-task/record-task.module';
-import { ProcessModule } from './modules/process/process.module';
+// P2: 已删除独立 process 模块（并入 workflow 引擎）
+// import { ProcessModule } from './modules/process/process.module';
 
 @Module({
   imports: [
@@ -95,7 +96,7 @@ import { ProcessModule } from './modules/process/process.module';
     SearchModule,
     ImportModule,
     RecordTaskModule,
-    ProcessModule,
+    // ProcessModule,  // P2: 已删除独立 process 模块（并入 workflow 引擎）
   ],
   providers: [
     {
