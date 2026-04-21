@@ -710,6 +710,12 @@ model Material {
 
   ingredientInfo String? @db.Text // RD-001: 配料信息（产品研发流程使用）
 
+  // 食品安全扩展字段
+  material_type  String  @default("raw") // 'raw'|'auxiliary'|'packaging'
+  is_allergen    Boolean @default(false)
+  allergen_notes String?
+  shelf_life_days Int?
+
   batches MaterialBatch[]
 
   @@index([materialCode])
@@ -751,6 +757,11 @@ model MaterialBatch {
   returnItems         MaterialReturnItem[]      @relation("ReturnBatches")
   // 报废明细关联（TASK-196）
   scrapItems          MaterialScrapItem[]       @relation("ScrapBatches")
+
+  // 食品安全扩展字段
+  supplier_lot_no   String?  // 供应商批号
+  storage_confirmed Boolean  @default(false)
+  lot_status        String   @default("in_stock") // 'in_stock'|'consumed'|'nonconforming'|'quarantined'|'disposed'
 
   @@index([batchNumber])
   @@index([expiryDate])
@@ -838,6 +849,10 @@ model Supplier {
   qualifications SupplierQualification[]
   batches        MaterialBatch[]
   inbounds       MaterialInbound[]
+
+  // 食品安全扩展字段
+  supplier_status   String    @default("approved") // 'approved'|'suspended'|'eliminated'|'pending'
+  last_evaluated_at DateTime?
 
   @@index([supplierCode])
   @@index([status])
@@ -1090,6 +1105,16 @@ model ProductionBatch {
   materialBalances MaterialBalance[]    @relation("MaterialBalanceProductionBatch")
   // TASK-169: 动态表单记录关联
   relatedRecords   Record[]             @relation("RecordProductionBatch")
+
+  // 食品安全扩展字段
+  output_qty      Decimal?  @db.Decimal(14, 4)
+  loss_qty        Decimal   @default(0) @db.Decimal(14, 4)
+  sample_qty      Decimal   @default(0) @db.Decimal(14, 4)
+  waste_qty       Decimal   @default(0) @db.Decimal(14, 4)
+  shift           String?
+  production_line String?
+  released_by     Int?
+  released_at     DateTime?
 
   @@index([batchNumber])
   @@index([productionDate])
