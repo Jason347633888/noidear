@@ -76,6 +76,7 @@ import { ExternalPartyModule } from './modules/external-party/external-party.mod
 import { PackagingMaterialUsageModule } from './modules/packaging-material-usage/packaging-material-usage.module';
 import { WorkflowTriggersModule } from './modules/workflow-triggers/workflow-triggers.module';
 import { ShiftInstanceModule } from './modules/shift-instance/shift-instance.module';
+import { ProductionRunModule } from './modules/production-run/production-run.module';
 
 @Module({
   imports: [
@@ -162,6 +163,7 @@ import { ShiftInstanceModule } from './modules/shift-instance/shift-instance.mod
     PackagingMaterialUsageModule,
     WorkflowTriggersModule,
     ShiftInstanceModule,
+    ProductionRunModule,
   ],
   providers: [
     {
