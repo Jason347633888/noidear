@@ -82,6 +82,29 @@ describe('validateFields', () => {
     });
   });
 
+  it('validates table child max rules', () => {
+    const fields: FormValidationField[] = [
+      {
+        name: 'ingredients',
+        label: '配料表',
+        type: 'table-input',
+        rowSchema: [{ name: 'weight', label: '重量', type: 'number', max: 100 }],
+      },
+    ];
+
+    const result = validateFields(fields, {
+      ingredients: [{ weight: 101 }],
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors[0]).toMatchObject({
+      fieldKey: 'ingredients',
+      rowIndex: 0,
+      childKey: 'weight',
+      message: '第1行重量不能大于100',
+    });
+  });
+
   it('skips readonly table child fields', () => {
     const fields: FormValidationField[] = [
       {
