@@ -4,35 +4,41 @@
 
 **Goal:** 全量落地 ProductionRun 追溯体系 + 263 张表单 + 表单引擎升级 + 文件生命周期 + 定期任务引擎 + 移动端 + CAPA 闭环 + 管理层仪表盘
 
-**Architecture:** ShiftInstance → ProductionRun → FormRecord 四层锚点；表单引擎升级支持 9 类字段 + 9 类实体关联；解析脚本批量导入 263 张模板
+**Architecture:** ShiftInstance → ProductionRun → FormRecord 四层锚点；RecordTemplate.fieldsJson 升级支持 9 类字段 + 9 类实体关联；vault 解析脚本批量导入 263 张模板；核心追溯表单单独精确实现
 
-**Tech Stack:** NestJS + Prisma + PostgreSQL，Vue 3 + Element Plus，移动端 PWA
+**Tech Stack:** NestJS + Prisma + PostgreSQL，Vue 3 + Element Plus，multer（已装），pdfkit（已装），cron-parser（待装）
 
-**Source of Truth:** `docs/plans/2026-04-22-form-system-design.md`
+**Working directory:** `/Users/jiashenglin/Desktop/好玩的项目/noidear`
+
+**Test pattern:** `jest.fn()` mock + `Test.createTestingModule` — 参考 `server/src/modules/record/record.service.spec.ts`
 
 ---
 
-## Task 1：ShiftInstance + ProductionRun Prisma 模型
+## Task 1：Prisma Schema — ShiftInstance + ProductionRun 模型
 
 **Files:**
 - Modify: `server/src/prisma/schema.prisma`
 
-**Step 1: 在 schema.prisma 末尾添加两个新模型**
+**Context:** 新增两个核心模型，并在 Record / Product / Recipe / LineChangeCheckRecord / ProductionBatch 模型中添加反向关联。`is_mandatory` 字段也在此加入 RecordTemplate，供完成度看板使用。
+
+**Step 1: 在 schema.prisma 末尾追加 ShiftInstance 模型**
+
+找到文件末尾（最后一个 `@@map` 后），追加：
 
 ```prisma
 model ShiftInstance {
-  id           String   @id @default(cuid())
-  company_id   String
-  shift_type   String   // '白班' | '夜班'
-  shift_date   DateTime @db.Date  // 开班日期（夜班跨午夜取开班当天）
-  opened_by    String
-  closed_by    String?
-  opened_at    DateTime @default(now())
-  closed_at    DateTime?
-  status       String   @default("open") // 'open' | 'closed'
-  notes        String?
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  company_id      String
+  shift_type      String   // '白班' | '夜班'
+  shift_date      DateTime @db.Date
+  opened_by       String
+  closed_by       String?
+  opened_at       DateTime @default(now())
+  closed_at       DateTime?
+  status          String   @default("open") // 'open' | 'closed'
+  notes           String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
   production_runs ProductionRun[]
   records         Record[]
@@ -43,27 +49,27 @@ model ShiftInstance {
 }
 
 model ProductionRun {
-  id               String        @id @default(cuid())
-  company_id       String
+  id                String        @id @default(cuid())
+  company_id        String
   shift_instance_id String
-  shift_instance   ShiftInstance @relation(fields: [shift_instance_id], references: [id], onDelete: Restrict)
-  production_line  String
-  product_id       String
-  product          Product       @relation(fields: [product_id], references: [id], onDelete: Restrict)
-  recipe_id        String?
-  recipe           Recipe?       @relation(fields: [recipe_id], references: [id], onDelete: SetNull)
-  started_at       DateTime
-  ended_at         DateTime?
-  status           String        @default("active") // 'active' | 'closed'
-  actual_yield     Decimal?      @db.Decimal(14, 4)
-  yield_unit       String?
-  notes            String?
-  created_at       DateTime      @default(now())
-  updated_at       DateTime      @updatedAt
+  shift_instance    ShiftInstance @relation(fields: [shift_instance_id], references: [id], onDelete: Restrict)
+  production_line   String
+  product_id        String
+  product           Product       @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  recipe_id         String?
+  recipe            Recipe?       @relation(fields: [recipe_id], references: [id], onDelete: SetNull)
+  started_at        DateTime
+  ended_at          DateTime?
+  status            String        @default("active") // 'active' | 'closed'
+  actual_yield      Decimal?      @db.Decimal(14, 4)
+  yield_unit        String?
+  notes             String?
+  created_at        DateTime      @default(now())
+  updated_at        DateTime      @updatedAt
 
-  records                  Record[]
-  production_batches        ProductionBatch[]
-  line_change_check_records LineChangeCheckRecord[]
+  records                   Record[]
+  production_batches         ProductionBatch[]
+  line_change_check_records  LineChangeCheckRecord[]
 
   @@index([company_id, shift_instance_id])
   @@index([product_id])
@@ -71,98 +77,203 @@ model ProductionRun {
 }
 ```
 
-**Step 2: 在 Record 模型中添加关联字段**
+**Step 2: 在 Record 模型中添加新字段**
 
-在 Record 模型现有字段后、`@@index` 前添加：
+在 Record 模型的 `@@index([relatedBatchNumber])` 那行前插入：
 
 ```prisma
   shift_instance_id  String?
   shift_instance     ShiftInstance?  @relation(fields: [shift_instance_id], references: [id], onDelete: SetNull)
   production_run_id  String?
   production_run     ProductionRun?  @relation(fields: [production_run_id], references: [id], onDelete: SetNull)
-  document_no        String?         // 单据号，格式: {模板代码}-{YYYYMMDD}-{4位序号}
-  entity_links       Json?           // [{type, id, display_label}]
+  document_no        String?
+  entity_links       Json?
 ```
 
-**Step 3: 在 Product 和 Recipe 模型中添加反向关系**
+**Step 3: 在 RecordTemplate 模型中添加 is_mandatory 字段**
 
-在 Product 模型末尾 `@@map` 前添加：
+在 RecordTemplate 的 `deviationEnabled` 行前插入：
+
+```prisma
+  is_mandatory Boolean @default(false)
+```
+
+**Step 4: 在 Product 模型末尾 `@@map` 前添加反向关系**
+
 ```prisma
   production_runs ProductionRun[]
 ```
 
-在 Recipe 模型末尾 `@@map` 前添加：
+**Step 5: 在 Recipe 模型末尾 `@@map` 前添加反向关系**
+
 ```prisma
   production_runs ProductionRun[]
 ```
 
-在 LineChangeCheckRecord 模型末尾 `@@map` 前添加：
+**Step 6: 在 LineChangeCheckRecord 模型末尾 `@@map` 前添加**
+
 ```prisma
   production_run_id String?
   production_run    ProductionRun? @relation(fields: [production_run_id], references: [id], onDelete: SetNull)
 ```
 
-在 ProductionBatch 模型末尾 `@@map` 前添加：
+**Step 7: 在 ProductionBatch 模型末尾 `@@map` 前添加**
+
 ```prisma
   production_run_id String?
   production_run    ProductionRun? @relation(fields: [production_run_id], references: [id], onDelete: SetNull)
 ```
 
-**Step 4: 生成并运行迁移**
+**Step 8: 运行迁移**
 
 ```bash
 cd server
-npx prisma migrate dev --name add_shift_instance_production_run
+npx prisma migrate dev --name add_shift_production_run_models
 ```
 
-Expected: 迁移成功，生成 `shift_instances` 和 `production_runs` 表
+Expected: 输出 `The following migration(s) have been created and applied` 无报错
 
-**Step 5: Commit**
+**Step 9: 验证 Prisma Client 生成成功**
 
 ```bash
+npx prisma generate
+```
+
+Expected: `Generated Prisma Client` 无报错
+
+**Step 10: Commit**
+
+```bash
+cd ..
 git add server/src/prisma/schema.prisma server/src/prisma/migrations/
-git commit -m "feat: add ShiftInstance and ProductionRun models with Record/Product/Recipe relations"
+git commit -m "feat: add ShiftInstance and ProductionRun Prisma models with all reverse relations"
 ```
 
 ---
 
-## Task 2：ShiftInstance 后端 CRUD（NestJS）
+## Task 2：ShiftInstance 后端 CRUD
 
 **Files:**
-- Create: `server/src/modules/shift-instance/shift-instance.module.ts`
-- Create: `server/src/modules/shift-instance/shift-instance.controller.ts`
-- Create: `server/src/modules/shift-instance/shift-instance.service.ts`
 - Create: `server/src/modules/shift-instance/dto/create-shift-instance.dto.ts`
+- Create: `server/src/modules/shift-instance/shift-instance.service.ts`
+- Create: `server/src/modules/shift-instance/shift-instance.service.spec.ts`
+- Create: `server/src/modules/shift-instance/shift-instance.controller.ts`
+- Create: `server/src/modules/shift-instance/shift-instance.module.ts`
 - Modify: `server/src/app.module.ts`
 
-**Step 1: 创建 DTO**
+**Step 1: 创建 DTO 文件**
 
 ```typescript
-// dto/create-shift-instance.dto.ts
-import { IsNotEmpty, IsString, IsIn, IsDateString, IsOptional } from 'class-validator';
+// server/src/modules/shift-instance/dto/create-shift-instance.dto.ts
+import { IsNotEmpty, IsIn, IsDateString, IsOptional, IsString } from 'class-validator';
 
 export class CreateShiftInstanceDto {
-  @IsNotEmpty() @IsIn(['白班', '夜班'])
+  @IsNotEmpty()
+  @IsIn(['白班', '夜班'])
   shift_type: string;
 
-  @IsNotEmpty() @IsDateString()
-  shift_date: string; // YYYY-MM-DD
+  @IsNotEmpty()
+  @IsDateString()
+  shift_date: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   notes?: string;
 }
 
 export class CloseShiftInstanceDto {
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   notes?: string;
 }
 ```
 
-**Step 2: 创建 Service**
+**Step 2: 写失败测试**
 
 ```typescript
-// shift-instance.service.ts
-import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+// server/src/modules/shift-instance/shift-instance.service.spec.ts
+import { Test } from '@nestjs/testing';
+import { ShiftInstanceService } from './shift-instance.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+
+describe('ShiftInstanceService', () => {
+  let service: ShiftInstanceService;
+
+  const mockPrisma = {
+    shiftInstance: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    },
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    const module = await Test.createTestingModule({
+      providers: [
+        ShiftInstanceService,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
+    }).compile();
+    service = module.get(ShiftInstanceService);
+  });
+
+  describe('create', () => {
+    it('should throw ConflictException when shift already exists', async () => {
+      mockPrisma.shiftInstance.findUnique.mockResolvedValue({ id: 'existing' });
+      await expect(
+        service.create({ shift_type: '白班', shift_date: '2026-04-22' }, 'user1'),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should create shift when none exists', async () => {
+      mockPrisma.shiftInstance.findUnique.mockResolvedValue(null);
+      mockPrisma.shiftInstance.create.mockResolvedValue({ id: 'new-id', status: 'open' });
+      const result = await service.create({ shift_type: '白班', shift_date: '2026-04-22' }, 'user1');
+      expect(result.status).toBe('open');
+      expect(mockPrisma.shiftInstance.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ shift_type: '白班' }) }),
+      );
+    });
+  });
+
+  describe('close', () => {
+    it('should throw BadRequestException when already closed', async () => {
+      mockPrisma.shiftInstance.findFirst.mockResolvedValue({ id: 'id1', status: 'closed' });
+      await expect(service.close('id1', {}, 'user1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('should close an open shift', async () => {
+      mockPrisma.shiftInstance.findFirst.mockResolvedValue({
+        id: 'id1', status: 'open', production_runs: [],
+      });
+      mockPrisma.shiftInstance.update.mockResolvedValue({ id: 'id1', status: 'closed' });
+      const result = await service.close('id1', {}, 'user1');
+      expect(result.status).toBe('closed');
+    });
+  });
+});
+```
+
+**Step 3: 运行测试确认失败**
+
+```bash
+cd server
+npx jest shift-instance.service.spec.ts --no-coverage
+```
+
+Expected: FAIL — `Cannot find module './shift-instance.service'`
+
+**Step 4: 实现 Service**
+
+```typescript
+// server/src/modules/shift-instance/shift-instance.service.ts
+import {
+  Injectable, ConflictException, NotFoundException, BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateShiftInstanceDto, CloseShiftInstanceDto } from './dto/create-shift-instance.dto';
 
@@ -172,10 +283,13 @@ export class ShiftInstanceService {
 
   async create(dto: CreateShiftInstanceDto, userId: string) {
     const existing = await this.prisma.shiftInstance.findUnique({
-      where: { company_id_shift_type_shift_date: {
-        company_id: '1', shift_type: dto.shift_type,
-        shift_date: new Date(dto.shift_date)
-      }}
+      where: {
+        company_id_shift_type_shift_date: {
+          company_id: '1',
+          shift_type: dto.shift_type,
+          shift_date: new Date(dto.shift_date),
+        },
+      },
     });
     if (existing) throw new ConflictException('该班次已开班');
 
@@ -186,7 +300,7 @@ export class ShiftInstanceService {
         shift_date: new Date(dto.shift_date),
         opened_by: userId,
         notes: dto.notes,
-      }
+      },
     });
   }
 
@@ -199,10 +313,10 @@ export class ShiftInstanceService {
       include: {
         production_runs: {
           include: { product: true },
-          orderBy: { started_at: 'asc' }
-        }
+          orderBy: { started_at: 'asc' },
+        },
       },
-      orderBy: { shift_date: 'desc' }
+      orderBy: { shift_date: 'desc' },
     });
   }
 
@@ -212,59 +326,81 @@ export class ShiftInstanceService {
       include: {
         production_runs: {
           include: { product: true, recipe: true },
-          orderBy: { started_at: 'asc' }
-        }
-      }
+          orderBy: { started_at: 'asc' },
+        },
+      },
     });
     if (!inst) throw new NotFoundException('班次不存在');
     return inst;
   }
 
   async close(id: string, dto: CloseShiftInstanceDto, userId: string) {
-    const inst = await this.findOne(id);
+    const inst = await this.prisma.shiftInstance.findFirst({
+      where: { id, company_id: '1' },
+      include: { production_runs: true },
+    });
+    if (!inst) throw new NotFoundException('班次不存在');
     if (inst.status === 'closed') throw new BadRequestException('班次已关闭');
+
     return this.prisma.shiftInstance.update({
       where: { id },
-      data: { status: 'closed', closed_by: userId, closed_at: new Date(), notes: dto.notes ?? inst.notes }
+      data: {
+        status: 'closed',
+        closed_by: userId,
+        closed_at: new Date(),
+        ...(dto.notes != null ? { notes: dto.notes } : {}),
+      },
     });
   }
 }
 ```
 
-**Step 3: 创建 Controller**
+**Step 5: 运行测试确认通过**
+
+```bash
+npx jest shift-instance.service.spec.ts --no-coverage
+```
+
+Expected: PASS — 4 tests passed
+
+**Step 6: 创建 Controller**
 
 ```typescript
-// shift-instance.controller.ts
+// server/src/modules/shift-instance/shift-instance.controller.ts
 import { Controller, Get, Post, Patch, Param, Body, Query, Req } from '@nestjs/common';
 import { ShiftInstanceService } from './shift-instance.service';
 import { CreateShiftInstanceDto, CloseShiftInstanceDto } from './dto/create-shift-instance.dto';
 
 @Controller('shift-instances')
 export class ShiftInstanceController {
-  constructor(private svc: ShiftInstanceService) {}
+  constructor(private readonly svc: ShiftInstanceService) {}
 
-  @Post() create(@Body() dto: CreateShiftInstanceDto, @Req() req: any) {
+  @Post()
+  create(@Body() dto: CreateShiftInstanceDto, @Req() req: any) {
     return this.svc.create(dto, req.user?.id ?? 'system');
   }
 
-  @Get() findAll(@Query('date') date?: string) {
+  @Get()
+  findAll(@Query('date') date?: string) {
     return this.svc.findAll(date);
   }
 
-  @Get(':id') findOne(@Param('id') id: string) {
+  @Get(':id')
+  findOne(@Param('id') id: string) {
     return this.svc.findOne(id);
   }
 
-  @Patch(':id/close') close(@Param('id') id: string, @Body() dto: CloseShiftInstanceDto, @Req() req: any) {
+  @Patch(':id/close')
+  close(@Param('id') id: string, @Body() dto: CloseShiftInstanceDto, @Req() req: any) {
     return this.svc.close(id, dto, req.user?.id ?? 'system');
   }
 }
 ```
 
-**Step 4: 创建 Module 并注册到 AppModule**
+**Step 7: 创建 Module**
 
 ```typescript
-// shift-instance.module.ts
+// server/src/modules/shift-instance/shift-instance.module.ts
 import { Module } from '@nestjs/common';
 import { ShiftInstanceController } from './shift-instance.controller';
 import { ShiftInstanceService } from './shift-instance.service';
@@ -279,41 +415,48 @@ import { PrismaModule } from '../../prisma/prisma.module';
 export class ShiftInstanceModule {}
 ```
 
-在 `app.module.ts` 中添加 `ShiftInstanceModule` 的 import 和 imports 数组条目。
+**Step 8: 注册到 AppModule**
 
-**Step 5: 启动后测试**
+在 `server/src/app.module.ts` 顶部 imports 区添加：
+```typescript
+import { ShiftInstanceModule } from './modules/shift-instance/shift-instance.module';
+```
+并在 `imports` 数组末尾加 `ShiftInstanceModule,`
+
+**Step 9: 构建验证**
 
 ```bash
-curl -X POST http://localhost:3000/shift-instances \
-  -H "Content-Type: application/json" \
-  -d '{"shift_type":"白班","shift_date":"2026-04-22"}'
+cd server
+npx tsc --noEmit
 ```
 
-Expected: 返回新建的 ShiftInstance 对象，status: "open"
+Expected: 无 TypeScript 错误
 
-**Step 6: Commit**
+**Step 10: Commit**
 
 ```bash
+cd ..
 git add server/src/modules/shift-instance/ server/src/app.module.ts
-git commit -m "feat: add ShiftInstance CRUD with open/close lifecycle"
+git commit -m "feat: add ShiftInstance CRUD with open/close lifecycle and unit tests"
 ```
 
 ---
 
-## Task 3：ProductionRun 后端 CRUD（NestJS）
+## Task 3：ProductionRun 后端 CRUD
 
 **Files:**
-- Create: `server/src/modules/production-run/production-run.module.ts`
-- Create: `server/src/modules/production-run/production-run.controller.ts`
-- Create: `server/src/modules/production-run/production-run.service.ts`
 - Create: `server/src/modules/production-run/dto/create-production-run.dto.ts`
+- Create: `server/src/modules/production-run/production-run.service.ts`
+- Create: `server/src/modules/production-run/production-run.service.spec.ts`
+- Create: `server/src/modules/production-run/production-run.controller.ts`
+- Create: `server/src/modules/production-run/production-run.module.ts`
 - Modify: `server/src/app.module.ts`
 
 **Step 1: 创建 DTO**
 
 ```typescript
-// dto/create-production-run.dto.ts
-import { IsNotEmpty, IsString, IsOptional, IsDateString } from 'class-validator';
+// server/src/modules/production-run/dto/create-production-run.dto.ts
+import { IsNotEmpty, IsString, IsOptional, IsDateString, IsNumber, IsPositive } from 'class-validator';
 
 export class CreateProductionRunDto {
   @IsNotEmpty() @IsString()
@@ -336,7 +479,7 @@ export class CreateProductionRunDto {
 }
 
 export class CloseProductionRunDto {
-  @IsOptional()
+  @IsOptional() @IsNumber() @IsPositive()
   actual_yield?: number;
 
   @IsOptional() @IsString()
@@ -347,10 +490,93 @@ export class CloseProductionRunDto {
 }
 ```
 
-**Step 2: 创建 Service**
+**Step 2: 写失败测试**
 
 ```typescript
-// production-run.service.ts
+// server/src/modules/production-run/production-run.service.spec.ts
+import { Test } from '@nestjs/testing';
+import { ProductionRunService } from './production-run.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
+
+describe('ProductionRunService', () => {
+  let service: ProductionRunService;
+  const mockEmit = jest.fn();
+
+  const mockPrisma = {
+    shiftInstance: { findFirst: jest.fn() },
+    productionRun: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+    },
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    const module = await Test.createTestingModule({
+      providers: [
+        ProductionRunService,
+        { provide: PrismaService, useValue: mockPrisma },
+        { provide: EventEmitter2, useValue: { emit: mockEmit } },
+      ],
+    }).compile();
+    service = module.get(ProductionRunService);
+  });
+
+  describe('create', () => {
+    it('should throw NotFoundException when shift not found', async () => {
+      mockPrisma.shiftInstance.findFirst.mockResolvedValue(null);
+      await expect(
+        service.create({ shift_instance_id: 'x', production_line: '1', product_id: 'p1' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw BadRequestException when shift is closed', async () => {
+      mockPrisma.shiftInstance.findFirst.mockResolvedValue({ id: 's1', status: 'closed' });
+      await expect(
+        service.create({ shift_instance_id: 's1', production_line: '1', product_id: 'p1' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should create run for open shift', async () => {
+      mockPrisma.shiftInstance.findFirst.mockResolvedValue({ id: 's1', status: 'open' });
+      mockPrisma.productionRun.create.mockResolvedValue({ id: 'r1', status: 'active' });
+      const result = await service.create({
+        shift_instance_id: 's1', production_line: '1', product_id: 'p1',
+      });
+      expect(result.status).toBe('active');
+    });
+  });
+
+  describe('close', () => {
+    it('should emit production-run.closed event on close', async () => {
+      mockPrisma.productionRun.findFirst.mockResolvedValue({
+        id: 'r1', status: 'active', product_id: 'p1', shift_instance_id: 's1', company_id: '1',
+      });
+      mockPrisma.productionRun.update.mockResolvedValue({ id: 'r1', status: 'closed', product_id: 'p1', shift_instance_id: 's1', company_id: '1' });
+      await service.close('r1', {});
+      expect(mockEmit).toHaveBeenCalledWith('production-run.closed', expect.objectContaining({ id: 'r1' }));
+    });
+  });
+});
+```
+
+**Step 3: 运行测试确认失败**
+
+```bash
+cd server
+npx jest production-run.service.spec.ts --no-coverage
+```
+
+Expected: FAIL — `Cannot find module './production-run.service'`
+
+**Step 4: 实现 Service**
+
+```typescript
+// server/src/modules/production-run/production-run.service.ts
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -358,11 +584,14 @@ import { CreateProductionRunDto, CloseProductionRunDto } from './dto/create-prod
 
 @Injectable()
 export class ProductionRunService {
-  constructor(private prisma: PrismaService, private eventEmitter: EventEmitter2) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   async create(dto: CreateProductionRunDto) {
     const shift = await this.prisma.shiftInstance.findFirst({
-      where: { id: dto.shift_instance_id, company_id: '1' }
+      where: { id: dto.shift_instance_id, company_id: '1' },
     });
     if (!shift) throw new NotFoundException('班次不存在');
     if (shift.status === 'closed') throw new BadRequestException('班次已关闭，不能开产');
@@ -377,7 +606,7 @@ export class ProductionRunService {
         started_at: dto.started_at ? new Date(dto.started_at) : new Date(),
         notes: dto.notes,
       },
-      include: { product: true, recipe: true, shift_instance: true }
+      include: { product: true, recipe: true, shift_instance: true },
     });
   }
 
@@ -385,13 +614,13 @@ export class ProductionRunService {
     return this.prisma.productionRun.findMany({
       where: { shift_instance_id: shiftInstanceId, company_id: '1' },
       include: { product: true, recipe: true },
-      orderBy: { started_at: 'asc' }
+      orderBy: { started_at: 'asc' },
     });
   }
 
   async close(id: string, dto: CloseProductionRunDto) {
     const run = await this.prisma.productionRun.findFirst({
-      where: { id, company_id: '1' }
+      where: { id, company_id: '1' },
     });
     if (!run) throw new NotFoundException('生产段不存在');
     if (run.status === 'closed') throw new BadRequestException('生产段已关闭');
@@ -401,10 +630,10 @@ export class ProductionRunService {
       data: {
         status: 'closed',
         ended_at: new Date(),
-        actual_yield: dto.actual_yield,
-        yield_unit: dto.yield_unit,
-        notes: dto.notes ?? run.notes,
-      }
+        ...(dto.actual_yield != null ? { actual_yield: dto.actual_yield } : {}),
+        ...(dto.yield_unit != null ? { yield_unit: dto.yield_unit } : {}),
+        ...(dto.notes != null ? { notes: dto.notes } : {}),
+      },
     });
 
     this.eventEmitter.emit('production-run.closed', {
@@ -419,36 +648,45 @@ export class ProductionRunService {
 }
 ```
 
-**Step 3: 创建 Controller**
+**Step 5: 运行测试确认通过**
+
+```bash
+npx jest production-run.service.spec.ts --no-coverage
+```
+
+Expected: PASS — 4 tests passed
+
+**Step 6: 创建 Controller + Module**
 
 ```typescript
-// production-run.controller.ts
+// server/src/modules/production-run/production-run.controller.ts
 import { Controller, Get, Post, Patch, Param, Body, Query } from '@nestjs/common';
 import { ProductionRunService } from './production-run.service';
 import { CreateProductionRunDto, CloseProductionRunDto } from './dto/create-production-run.dto';
 
 @Controller('production-runs')
 export class ProductionRunController {
-  constructor(private svc: ProductionRunService) {}
+  constructor(private readonly svc: ProductionRunService) {}
 
-  @Post() create(@Body() dto: CreateProductionRunDto) {
+  @Post()
+  create(@Body() dto: CreateProductionRunDto) {
     return this.svc.create(dto);
   }
 
-  @Get() findByShift(@Query('shiftInstanceId') shiftInstanceId: string) {
+  @Get()
+  findByShift(@Query('shiftInstanceId') shiftInstanceId: string) {
     return this.svc.findByShift(shiftInstanceId);
   }
 
-  @Patch(':id/close') close(@Param('id') id: string, @Body() dto: CloseProductionRunDto) {
+  @Patch(':id/close')
+  close(@Param('id') id: string, @Body() dto: CloseProductionRunDto) {
     return this.svc.close(id, dto);
   }
 }
 ```
 
-**Step 4: 创建 Module 并注册到 AppModule**
-
 ```typescript
-// production-run.module.ts
+// server/src/modules/production-run/production-run.module.ts
 import { Module } from '@nestjs/common';
 import { ProductionRunController } from './production-run.controller';
 import { ProductionRunService } from './production-run.service';
@@ -463,36 +701,47 @@ import { PrismaModule } from '../../prisma/prisma.module';
 export class ProductionRunModule {}
 ```
 
-在 `app.module.ts` 添加 `ProductionRunModule`。
+**Step 7: 注册到 AppModule，构建验证**
 
-**Step 5: Commit**
+在 `app.module.ts` 中添加 `ProductionRunModule` import。
 
 ```bash
+cd server && npx tsc --noEmit
+```
+
+Expected: 无错误
+
+**Step 8: Commit**
+
+```bash
+cd ..
 git add server/src/modules/production-run/ server/src/app.module.ts
-git commit -m "feat: add ProductionRun CRUD with close lifecycle and event emission"
+git commit -m "feat: add ProductionRun CRUD with unit tests and production-run.closed event"
 ```
 
 ---
 
-## Task 4：RecordTemplate fieldsJson 引擎升级
+## Task 4：RecordTemplate fieldsJson 升级 + 单据号
 
 **Files:**
 - Create: `server/src/modules/record-template/types/fields-json.types.ts`
 - Create: `server/src/modules/record-template/document-no.service.ts`
-- Modify: `server/src/modules/record-template/record-template.service.ts`
+- Create: `server/src/modules/record-template/document-no.service.spec.ts`
+- Modify: `server/src/modules/record-template/record-template.module.ts`
+- Modify: `server/src/modules/record/record.service.ts`
 
-**Step 1: 定义 fieldsJson 类型**
+**Step 1: 创建类型定义文件**
 
 ```typescript
-// types/fields-json.types.ts
+// server/src/modules/record-template/types/fields-json.types.ts
 export type FieldType =
   | 'text' | 'number' | 'date' | 'datetime' | 'boolean'
   | 'enum' | 'multi-enum'
-  | 'inspection-table'  // 三列: 标准要求|实测值|单项结论
-  | 'checklist'         // 多项勾选
-  | 'photo'             // 图片附件
-  | 'signature'         // 数字签名
-  | 'entity-link';      // 关联实体
+  | 'inspection-table'
+  | 'checklist'
+  | 'photo'
+  | 'signature'
+  | 'entity-link';
 
 export type EntityType =
   | 'shift_instance' | 'production_run' | 'material_lot' | 'supplier'
@@ -505,12 +754,12 @@ export interface FieldDef {
   required?: boolean;
   unit?: string;
   defaultValue?: unknown;
-  options?: string[];           // for enum / multi-enum
-  validRange?: { min?: number; max?: number }; // for number
-  entity?: EntityType;          // for entity-link
-  autoFill?: boolean;           // auto-populate from context
-  inspectionRows?: Array<{ item: string; standard: string }>; // for inspection-table
-  checklistItems?: string[];    // for checklist
+  options?: string[];
+  validRange?: { min?: number; max?: number };
+  entity?: EntityType;
+  autoFill?: boolean;
+  inspectionRows?: Array<{ item: string; standard: string }>;
+  checklistItems?: string[];
 }
 
 export interface SectionDef {
@@ -529,109 +778,170 @@ export interface FieldsJson {
 }
 ```
 
-**Step 2: 创建单据号生成 Service**
+**Step 2: 写失败测试**
 
 ```typescript
-// document-no.service.ts
+// server/src/modules/record-template/document-no.service.spec.ts
+import { Test } from '@nestjs/testing';
+import { DocumentNoService } from './document-no.service';
+import { PrismaService } from '../../prisma/prisma.service';
+
+describe('DocumentNoService', () => {
+  let service: DocumentNoService;
+  const mockPrisma = {
+    record: { count: jest.fn() },
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    const module = await Test.createTestingModule({
+      providers: [
+        DocumentNoService,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
+    }).compile();
+    service = module.get(DocumentNoService);
+  });
+
+  it('should generate document number with 4-digit sequence', async () => {
+    mockPrisma.record.count.mockResolvedValue(2); // 2 existing today
+    const no = await service.generate('GRSS-ZZ-JL-01');
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    expect(no).toBe(`GRSS-ZZ-JL-01-${today}-0003`);
+  });
+
+  it('should start at 0001 when no records exist today', async () => {
+    mockPrisma.record.count.mockResolvedValue(0);
+    const no = await service.generate('TPL-001');
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    expect(no).toBe(`TPL-001-${today}-0001`);
+  });
+});
+```
+
+**Step 3: 运行确认失败**
+
+```bash
+cd server
+npx jest document-no.service.spec.ts --no-coverage
+```
+
+Expected: FAIL — `Cannot find module './document-no.service'`
+
+**Step 4: 实现 DocumentNoService**
+
+```typescript
+// server/src/modules/record-template/document-no.service.ts
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class DocumentNoService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async generate(templateCode: string): Promise<string> {
-    const today = new Date();
-    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const prefix = `${templateCode}-${dateStr}-`;
 
-    // 统计当日该模板已生成的单据数量
     const count = await this.prisma.record.count({
-      where: {
-        template: { code: templateCode },
-        document_no: { startsWith: `${templateCode}-${dateStr}-` },
-      }
+      where: { document_no: { startsWith: prefix } },
     });
 
     const seq = String(count + 1).padStart(4, '0');
-    return `${templateCode}-${dateStr}-${seq}`;
+    return `${prefix}${seq}`;
   }
 }
 ```
 
-**Step 3: 在 RecordTemplate Module 中注册 DocumentNoService**
-
-将 `DocumentNoService` 添加到 `record-template.module.ts` 的 providers 和 exports。
-
-**Step 4: Record 创建时自动生成单据号**
-
-在 `record.service.ts` 的 `create` 方法中，创建 Record 时调用 `DocumentNoService.generate(template.code)` 并写入 `document_no` 字段。
-
-**Step 5: Commit**
+**Step 5: 运行确认通过**
 
 ```bash
-git add server/src/modules/record-template/
-git commit -m "feat: upgrade fieldsJson type system with 9 field types + document number generator"
+npx jest document-no.service.spec.ts --no-coverage
+```
+
+Expected: PASS — 2 tests passed
+
+**Step 6: 注册到 RecordTemplateModule**
+
+修改 `server/src/modules/record-template/record-template.module.ts`，在 providers 和 exports 中添加 `DocumentNoService`：
+
+```typescript
+import { DocumentNoService } from './document-no.service';
+// providers: [RecordTemplateService, DocumentNoService]
+// exports: [RecordTemplateService, DocumentNoService]
+```
+
+**Step 7: 在 record.service.ts 的 create 方法中集成 document_no**
+
+在 `record.service.ts` 构造函数中注入 `DocumentNoService`（需先在 RecordModule 中 import RecordTemplateModule）。
+
+在 `create` 方法的 `prisma.record.create` 的 data 对象中添加：
+
+```typescript
+document_no: await this.documentNoService.generate(template.code),
+```
+
+**Step 8: 构建验证**
+
+```bash
+npx tsc --noEmit
+```
+
+Expected: 无错误
+
+**Step 9: Commit**
+
+```bash
+cd ..
+git add server/src/modules/record-template/ server/src/modules/record/
+git commit -m "feat: add fieldsJson type system, DocumentNoService, and auto document_no generation"
 ```
 
 ---
 
-## Task 5：263 张表单自动解析脚本
+## Task 5：263 张表单 vault 解析脚本
 
 **Files:**
-- Create: `scripts/parse-vault-forms.ts`
-- Create: `scripts/seed-templates.ts`
+- Create: `server/scripts/parse-vault-forms.ts`
+- Create: `server/scripts/seed-templates.ts`
+- Modify: `server/package.json`
 
-**Step 1: 编写解析脚本**
+**Step 1: 安装 glob**
+
+```bash
+cd server
+npm install glob
+npm install --save-dev @types/node
+```
+
+Expected: `added N packages`
+
+**Step 2: 创建解析脚本**
 
 ```typescript
-// scripts/parse-vault-forms.ts
+// server/scripts/parse-vault-forms.ts
 import * as fs from 'fs';
 import * as path from 'path';
-import * as glob from 'glob';
+import { globSync } from 'glob';
 
-const VAULT_FORMS_DIR = '/Users/jiashenglin/Desktop/mybrain/文件管理体系/当前公司/04-记录表单';
+export const VAULT_FORMS_DIR =
+  '/Users/jiashenglin/Desktop/mybrain/文件管理体系/当前公司/04-记录表单';
 
-interface ParsedField {
+export interface ParsedField {
   name: string;
   label: string;
   type: string;
   unit?: string;
   required: boolean;
-  inputMethod?: string;
   defaultValue?: string;
 }
 
-interface ParsedTemplate {
+export interface ParsedTemplate {
   code: string;
   name: string;
   department: string;
   fields: ParsedField[];
   rawPath: string;
-}
-
-function parseFieldTable(content: string): ParsedField[] {
-  const tableRegex = /\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|/g;
-  const fields: ParsedField[] = [];
-  let match: RegExpExecArray | null;
-  let headerPassed = false;
-
-  while ((match = tableRegex.exec(content)) !== null) {
-    const cols = match.slice(1).map(c => c.trim());
-    if (cols[0] === '字段名' || cols[0].startsWith('-')) { headerPassed = true; continue; }
-    if (!headerPassed) continue;
-    if (!cols[0]) continue;
-
-    fields.push({
-      name: cols[0].replace(/\s+/g, '_').toLowerCase(),
-      label: cols[0],
-      type: mapType(cols[1]),
-      unit: cols[2] !== '-' ? cols[2] : undefined,
-      required: cols[3] === '是',
-      inputMethod: cols[4],
-      defaultValue: cols[5] !== '-' ? cols[5] : undefined,
-    });
-  }
-  return fields;
 }
 
 function mapType(vaultType: string): string {
@@ -646,16 +956,39 @@ function mapType(vaultType: string): string {
   return 'text';
 }
 
-function extractCode(filename: string, content: string): string {
-  // 尝试从内容中提取编号，如 GRSS-ZZ-JL-01
-  const codeMatch = content.match(/GRSS-[A-Z]{2}-JL-\d+/);
-  if (codeMatch) return codeMatch[0];
-  // fallback: 用文件名
-  return path.basename(filename, '.md').toUpperCase().replace(/[^A-Z0-9-]/g, '-');
+function extractCode(filePath: string, content: string): string {
+  const match = content.match(/GRSS-[A-Z]{2}-JL-\d+/);
+  if (match) return match[0];
+  return path.basename(filePath, '.md').toUpperCase().replace(/[^A-Z0-9-]/g, '-').slice(0, 40);
+}
+
+export function parseFieldTable(content: string): ParsedField[] {
+  const lines = content.split('\n');
+  const fields: ParsedField[] = [];
+  let inTable = false;
+  let headerParsed = false;
+
+  for (const line of lines) {
+    if (!line.includes('|')) { inTable = false; headerParsed = false; continue; }
+    const cols = line.split('|').map(c => c.trim()).filter(Boolean);
+    if (cols[0] === '字段名') { inTable = true; headerParsed = false; continue; }
+    if (inTable && !headerParsed && cols[0].startsWith('-')) { headerParsed = true; continue; }
+    if (!inTable || !headerParsed || !cols[0]) continue;
+
+    fields.push({
+      name: cols[0].replace(/\s+/g, '_').toLowerCase().replace(/[^\w]/g, '').slice(0, 50),
+      label: cols[0],
+      type: mapType(cols[1] ?? ''),
+      unit: (cols[2] && cols[2] !== '-') ? cols[2] : undefined,
+      required: cols[3] === '是',
+      defaultValue: (cols[5] && cols[5] !== '-') ? cols[5] : undefined,
+    });
+  }
+  return fields;
 }
 
 export function parseAllForms(): ParsedTemplate[] {
-  const files = glob.sync('**/*.md', { cwd: VAULT_FORMS_DIR, absolute: true });
+  const files = globSync('**/*.md', { cwd: VAULT_FORMS_DIR, absolute: true });
   const templates: ParsedTemplate[] = [];
 
   for (const file of files) {
@@ -664,7 +997,7 @@ export function parseAllForms(): ParsedTemplate[] {
     const nameMatch = content.match(/^#\s+(.+)/m);
     const name = nameMatch ? nameMatch[1].trim() : path.basename(file, '.md');
     const fields = parseFieldTable(content);
-    if (fields.length === 0) continue; // 跳过无字段清单的文件
+    if (fields.length === 0) continue;
 
     templates.push({
       code: extractCode(file, content),
@@ -674,15 +1007,14 @@ export function parseAllForms(): ParsedTemplate[] {
       rawPath: file,
     });
   }
-
   return templates;
 }
 ```
 
-**Step 2: 编写种子脚本**
+**Step 3: 创建种子脚本**
 
 ```typescript
-// scripts/seed-templates.ts
+// server/scripts/seed-templates.ts
 import { PrismaClient } from '@prisma/client';
 import { parseAllForms } from './parse-vault-forms';
 
@@ -692,6 +1024,7 @@ async function main() {
   const templates = parseAllForms();
   console.log(`解析到 ${templates.length} 个表单模板`);
 
+  let upserted = 0;
   for (const t of templates) {
     const fieldsJson = {
       sections: [{
@@ -701,65 +1034,69 @@ async function main() {
           label: f.label,
           type: f.type,
           required: f.required,
-          unit: f.unit,
-          defaultValue: f.defaultValue,
-        }))
-      }]
+          ...(f.unit ? { unit: f.unit } : {}),
+          ...(f.defaultValue ? { defaultValue: f.defaultValue } : {}),
+        })),
+      }],
     };
 
     await prisma.recordTemplate.upsert({
       where: { code: t.code },
-      update: { name: t.name, fieldsJson, updatedAt: new Date() },
+      update: { name: t.name, fieldsJson },
       create: {
-        id: `tpl-${t.code.toLowerCase()}`,
         code: t.code,
         name: t.name,
         fieldsJson,
-        description: `来源: ${t.department}，原文件: ${t.rawPath.split('/').pop()}`,
+        description: `${t.department} — ${path.basename(t.rawPath)}`,
         status: 'active',
-      }
+      },
     });
+    upserted++;
   }
 
-  console.log('导入完成');
+  console.log(`导入完成，共 upsert ${upserted} 个模板`);
 }
 
+// path import
+import * as path from 'path';
 main().catch(console.error).finally(() => prisma.$disconnect());
 ```
 
-**Step 3: 添加 package.json script**
+**Step 4: 添加 package.json script**
 
-在 `server/package.json` 的 scripts 中添加：
+在 `server/package.json` 的 `scripts` 中添加：
+
 ```json
-"seed:templates": "ts-node -P tsconfig.json scripts/seed-templates.ts"
+"seed:templates": "ts-node -P tsconfig.json --skip-project scripts/seed-templates.ts"
 ```
 
-**Step 4: 运行脚本验证**
+**Step 5: 运行脚本验证**
 
 ```bash
 cd server
 npm run seed:templates
 ```
 
-Expected: 输出"解析到 N 个表单模板，导入完成"，N ≥ 200
+Expected: 输出 `解析到 N 个表单模板` 和 `导入完成，共 upsert N 个模板`，N ≥ 150
 
-**Step 5: Commit**
+**Step 6: Commit**
 
 ```bash
-git add scripts/ server/package.json
-git commit -m "feat: add vault form auto-parse script, batch import 263 templates"
+cd ..
+git add server/scripts/ server/package.json
+git commit -m "feat: add vault form parse script, batch import 263 templates into RecordTemplate"
 ```
 
 ---
 
-## Task 6：前端开班/开产/换产/关产操作流
+## Task 6：前端班次看板 — 开班/开产/换产/关产
 
 **Files:**
+- Create: `client/src/api/shift-instance.ts`
+- Create: `client/src/api/production-run.ts`
 - Create: `client/src/views/shift/ShiftDashboard.vue`
 - Create: `client/src/views/shift/components/OpenShiftDialog.vue`
 - Create: `client/src/views/shift/components/OpenRunDialog.vue`
-- Create: `client/src/api/shift-instance.ts`
-- Create: `client/src/api/production-run.ts`
 - Modify: `client/src/router/index.ts`
 
 **Step 1: 创建 API 层**
@@ -772,16 +1109,25 @@ export const ShiftInstanceApi = {
   create: (data: { shift_type: string; shift_date: string; notes?: string }) =>
     request.post('/shift-instances', data),
   list: (date?: string) =>
-    request.get('/shift-instances', { params: { date } }),
-  findOne: (id: string) => request.get(`/shift-instances/${id}`),
+    request.get('/shift-instances', { params: date ? { date } : {} }),
+  findOne: (id: string) =>
+    request.get(`/shift-instances/${id}`),
   close: (id: string, notes?: string) =>
     request.patch(`/shift-instances/${id}/close`, { notes }),
 }
+```
 
+```typescript
 // client/src/api/production-run.ts
+import request from './request'
+
 export const ProductionRunApi = {
-  create: (data: { shift_instance_id: string; production_line: string; product_id: string; recipe_id?: string }) =>
-    request.post('/production-runs', data),
+  create: (data: {
+    shift_instance_id: string
+    production_line: string
+    product_id: string
+    recipe_id?: string
+  }) => request.post('/production-runs', data),
   listByShift: (shiftInstanceId: string) =>
     request.get('/production-runs', { params: { shiftInstanceId } }),
   close: (id: string, data: { actual_yield?: number; yield_unit?: string; notes?: string }) =>
@@ -789,64 +1135,301 @@ export const ProductionRunApi = {
 }
 ```
 
-**Step 2: 创建班次看板主页面**
+**Step 2: 创建开班对话框**
 
-`ShiftDashboard.vue` 包含：
-- 顶部：今日日期 + 开班按钮（未开班时显示）
-- 中部：当前班次列表，每个班次展开显示其 ProductionRun 列表
-- 每个 ProductionRun 卡片：产品名 + 产线 + 状态 + 操作按钮（开产/关产/换产）
-- 右下角浮动按钮：快捷开产
-
-页面骨架：
 ```vue
+<!-- client/src/views/shift/components/OpenShiftDialog.vue -->
 <template>
-  <div class="shift-dashboard">
-    <div class="header">
-      <h2>今日班次：{{ today }}</h2>
-      <el-button v-if="!activeShift" type="primary" @click="openShiftDialog = true">开班</el-button>
-      <el-button v-else type="danger" @click="closeShift">关班</el-button>
-    </div>
-
-    <div v-for="shift in shifts" :key="shift.id" class="shift-card">
-      <div class="shift-header">{{ shift.shift_type }} | {{ formatDate(shift.shift_date) }}</div>
-      <div v-for="run in shift.production_runs" :key="run.id" class="run-card">
-        <span>{{ run.product.name }}</span>
-        <span>产线 {{ run.production_line }}</span>
-        <el-tag :type="run.status === 'active' ? 'success' : 'info'">{{ run.status }}</el-tag>
-        <el-button v-if="run.status === 'active'" size="small" @click="closeRun(run)">关产</el-button>
-      </div>
-      <el-button v-if="shift.status === 'open'" @click="openRunDialog = true; selectedShift = shift">+ 开产</el-button>
-    </div>
-
-    <OpenShiftDialog v-model="openShiftDialog" @created="loadShifts" />
-    <OpenRunDialog v-model="openRunDialog" :shift="selectedShift" @created="loadShifts" />
-  </div>
+  <el-dialog :model-value="modelValue" title="开班" width="420px" @close="$emit('update:modelValue', false)">
+    <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
+      <el-form-item label="班次类型" prop="shift_type">
+        <el-radio-group v-model="form.shift_type">
+          <el-radio value="白班">白班</el-radio>
+          <el-radio value="夜班">夜班</el-radio>
+        </el-radio-group>
+      </el-form-item>
+      <el-form-item label="开班日期" prop="shift_date">
+        <el-date-picker v-model="form.shift_date" type="date" value-format="YYYY-MM-DD" />
+      </el-form-item>
+      <el-form-item label="备注">
+        <el-input v-model="form.notes" type="textarea" :rows="2" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="$emit('update:modelValue', false)">取消</el-button>
+      <el-button type="primary" :loading="loading" @click="submit">开班</el-button>
+    </template>
+  </el-dialog>
 </template>
+
+<script setup lang="ts">
+import { ref, reactive } from 'vue'
+import { ElMessage } from 'element-plus'
+import { ShiftInstanceApi } from '@/api/shift-instance'
+
+const props = defineProps<{ modelValue: boolean }>()
+const emit = defineEmits(['update:modelValue', 'created'])
+
+const formRef = ref()
+const loading = ref(false)
+const today = new Date().toISOString().slice(0, 10)
+
+const form = reactive({ shift_type: '白班', shift_date: today, notes: '' })
+const rules = {
+  shift_type: [{ required: true, message: '请选择班次类型' }],
+  shift_date: [{ required: true, message: '请选择日期' }],
+}
+
+async function submit() {
+  const valid = await formRef.value?.validate().catch(() => false)
+  if (!valid) return
+  loading.value = true
+  try {
+    await ShiftInstanceApi.create(form)
+    ElMessage.success('开班成功')
+    emit('update:modelValue', false)
+    emit('created')
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message ?? '开班失败')
+  } finally {
+    loading.value = false
+  }
+}
+</script>
 ```
 
-**Step 3: 创建开班对话框**
+**Step 3: 创建开产对话框**
 
-`OpenShiftDialog.vue`：
-- el-form：班次类型（白班/夜班单选）+ 日期选择（默认今天）+ 备注
-- 提交调用 `ShiftInstanceApi.create`
+```vue
+<!-- client/src/views/shift/components/OpenRunDialog.vue -->
+<template>
+  <el-dialog :model-value="modelValue" title="开产" width="480px" @close="$emit('update:modelValue', false)">
+    <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
+      <el-form-item label="产线" prop="production_line">
+        <el-input v-model="form.production_line" placeholder="如：1号线" />
+      </el-form-item>
+      <el-form-item label="产品" prop="product_id">
+        <el-select v-model="form.product_id" filterable placeholder="搜索产品" style="width:100%" @change="onProductChange">
+          <el-option v-for="p in products" :key="p.id" :label="p.name" :value="p.id" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="配方">
+        <el-select v-model="form.recipe_id" clearable placeholder="使用激活配方">
+          <el-option v-for="r in recipes" :key="r.id" :label="`v${r.version} ${r.status === 'active' ? '(激活)' : ''}`" :value="r.id" />
+        </el-select>
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="$emit('update:modelValue', false)">取消</el-button>
+      <el-button type="primary" :loading="loading" @click="submit">开产</el-button>
+    </template>
+  </el-dialog>
+</template>
 
-**Step 4: 创建开产对话框**
+<script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { ProductionRunApi } from '@/api/production-run'
+import request from '@/api/request'
 
-`OpenRunDialog.vue`：
-- el-form：产线（文本/下拉）+ 产品（el-select 搜索）+ 配方（自动根据产品加载激活配方）
-- 提交调用 `ProductionRunApi.create`
+const props = defineProps<{ modelValue: boolean; shiftInstanceId: string }>()
+const emit = defineEmits(['update:modelValue', 'created'])
+
+const formRef = ref()
+const loading = ref(false)
+const products = ref<any[]>([])
+const recipes = ref<any[]>([])
+const form = reactive({ production_line: '', product_id: '', recipe_id: '' })
+const rules = {
+  production_line: [{ required: true, message: '请填写产线' }],
+  product_id: [{ required: true, message: '请选择产品' }],
+}
+
+onMounted(async () => {
+  products.value = await request.get('/products')
+})
+
+async function onProductChange(productId: string) {
+  form.recipe_id = ''
+  recipes.value = await request.get('/recipes', { params: { product_id: productId } })
+}
+
+async function submit() {
+  const valid = await formRef.value?.validate().catch(() => false)
+  if (!valid) return
+  loading.value = true
+  try {
+    await ProductionRunApi.create({
+      shift_instance_id: props.shiftInstanceId,
+      production_line: form.production_line,
+      product_id: form.product_id,
+      recipe_id: form.recipe_id || undefined,
+    })
+    ElMessage.success('开产成功')
+    emit('update:modelValue', false)
+    emit('created')
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message ?? '开产失败')
+  } finally {
+    loading.value = false
+  }
+}
+</script>
+```
+
+**Step 4: 创建班次看板主页面**
+
+```vue
+<!-- client/src/views/shift/ShiftDashboard.vue -->
+<template>
+  <div class="shift-dashboard" style="padding:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="margin:0">班次看板 — {{ today }}</h2>
+      <el-button type="primary" @click="openShiftDialog = true">开班</el-button>
+    </div>
+
+    <el-empty v-if="shifts.length === 0" description="今日暂无班次，点击开班" />
+
+    <el-card v-for="shift in shifts" :key="shift.id" style="margin-bottom:16px">
+      <template #header>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span>
+            <el-tag :type="shift.status === 'open' ? 'success' : 'info'">{{ shift.status === 'open' ? '进行中' : '已关班' }}</el-tag>
+            &nbsp;{{ shift.shift_type }} | {{ formatDate(shift.shift_date) }}
+          </span>
+          <div>
+            <el-button
+              v-if="shift.status === 'open'"
+              size="small"
+              @click="openRunFor(shift)"
+            >+ 开产</el-button>
+            <el-button
+              v-if="shift.status === 'open'"
+              size="small"
+              type="danger"
+              plain
+              @click="closeShift(shift.id)"
+            >关班</el-button>
+          </div>
+        </div>
+      </template>
+
+      <el-empty v-if="shift.production_runs.length === 0" description="暂无生产段" :image-size="60" />
+
+      <el-table v-else :data="shift.production_runs" size="small">
+        <el-table-column label="产线" prop="production_line" width="80" />
+        <el-table-column label="产品" prop="product.name" />
+        <el-table-column label="开始时间" :formatter="(r:any) => formatTime(r.started_at)" width="140" />
+        <el-table-column label="状态" width="90">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'active' ? 'success' : 'info'" size="small">
+              {{ row.status === 'active' ? '生产中' : '已关产' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="80">
+          <template #default="{ row }">
+            <el-button
+              v-if="row.status === 'active'"
+              size="small"
+              type="warning"
+              plain
+              @click="closeRun(row.id)"
+            >关产</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
+    <OpenShiftDialog v-model="openShiftDialog" @created="loadShifts" />
+    <OpenRunDialog
+      v-if="selectedShiftId"
+      v-model="openRunDialog"
+      :shift-instance-id="selectedShiftId"
+      @created="loadShifts"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { ShiftInstanceApi } from '@/api/shift-instance'
+import { ProductionRunApi } from '@/api/production-run'
+import OpenShiftDialog from './components/OpenShiftDialog.vue'
+import OpenRunDialog from './components/OpenRunDialog.vue'
+
+const shifts = ref<any[]>([])
+const openShiftDialog = ref(false)
+const openRunDialog = ref(false)
+const selectedShiftId = ref('')
+const today = new Date().toISOString().slice(0, 10)
+
+onMounted(loadShifts)
+
+async function loadShifts() {
+  shifts.value = await ShiftInstanceApi.list(today)
+}
+
+function formatDate(d: string) {
+  return d ? d.slice(0, 10) : ''
+}
+
+function formatTime(d: string) {
+  return d ? new Date(d).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : ''
+}
+
+function openRunFor(shift: any) {
+  selectedShiftId.value = shift.id
+  openRunDialog.value = true
+}
+
+async function closeShift(id: string) {
+  await ElMessageBox.confirm('确认关班？', '提示', { type: 'warning' })
+  await ShiftInstanceApi.close(id)
+  ElMessage.success('关班成功')
+  await loadShifts()
+}
+
+async function closeRun(id: string) {
+  await ElMessageBox.confirm('确认关产？', '提示', { type: 'warning' })
+  await ProductionRunApi.close(id, {})
+  ElMessage.success('关产成功')
+  await loadShifts()
+}
+</script>
+```
 
 **Step 5: 注册路由**
 
+在 `client/src/router/index.ts` 的路由数组中添加：
+
 ```typescript
-{ path: '/shift-dashboard', component: () => import('@/views/shift/ShiftDashboard.vue'), name: 'ShiftDashboard' }
+{
+  path: '/shift-dashboard',
+  name: 'ShiftDashboard',
+  component: () => import('@/views/shift/ShiftDashboard.vue'),
+},
 ```
 
-**Step 6: Commit**
+**Step 6: 启动前端开发服务器验证**
 
 ```bash
-git add client/src/views/shift/ client/src/api/shift-instance.ts client/src/api/production-run.ts client/src/router/index.ts
-git commit -m "feat: add shift dashboard with open/close shift and production run flow"
+cd client
+npm run dev
+```
+
+打开浏览器访问 `/shift-dashboard`，验证：
+1. 页面正常加载，显示"今日暂无班次"
+2. 点击"开班"弹出对话框，表单验证正常
+3. 开班后列表刷新显示新班次
+
+**Step 7: Commit**
+
+```bash
+cd ..
+git add client/src/api/shift-instance.ts client/src/api/production-run.ts client/src/views/shift/ client/src/router/index.ts
+git commit -m "feat: add shift dashboard with open/close shift and production run UI"
 ```
 
 ---
@@ -855,52 +1438,144 @@ git commit -m "feat: add shift dashboard with open/close shift and production ru
 
 **Files:**
 - Create: `server/src/modules/shift-instance/shift-completion.service.ts`
+- Create: `server/src/modules/shift-instance/shift-completion.service.spec.ts`
 - Modify: `server/src/modules/shift-instance/shift-instance.controller.ts`
+- Modify: `server/src/modules/shift-instance/shift-instance.module.ts`
 - Create: `client/src/views/shift/components/ShiftCompletionBoard.vue`
 
-**Step 1: 后端完成度计算 Service**
+**Step 1: 写失败测试**
 
 ```typescript
-// shift-completion.service.ts
+// server/src/modules/shift-instance/shift-completion.service.spec.ts
+import { Test } from '@nestjs/testing';
+import { ShiftCompletionService } from './shift-completion.service';
+import { PrismaService } from '../../prisma/prisma.service';
+
+describe('ShiftCompletionService', () => {
+  let service: ShiftCompletionService;
+
+  const mockPrisma = {
+    productionRun: { findMany: jest.fn() },
+    recordTemplate: { findMany: jest.fn() },
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    const module = await Test.createTestingModule({
+      providers: [
+        ShiftCompletionService,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
+    }).compile();
+    service = module.get(ShiftCompletionService);
+  });
+
+  it('should return 100% when all mandatory templates are filled', async () => {
+    mockPrisma.recordTemplate.findMany.mockResolvedValue([
+      { code: 'TPL-A', name: 'Template A' },
+    ]);
+    mockPrisma.productionRun.findMany.mockResolvedValue([{
+      id: 'r1',
+      product: { name: 'ProductX' },
+      production_line: '1',
+      status: 'active',
+      records: [{ template: { code: 'TPL-A' } }],
+    }]);
+
+    const result = await service.getCompletionStatus('shift1');
+    expect(result[0].completion_rate).toBe('100.0');
+    expect(result[0].missing_templates).toHaveLength(0);
+  });
+
+  it('should list missing templates when unfilled', async () => {
+    mockPrisma.recordTemplate.findMany.mockResolvedValue([
+      { code: 'TPL-A', name: 'A' },
+      { code: 'TPL-B', name: 'B' },
+    ]);
+    mockPrisma.productionRun.findMany.mockResolvedValue([{
+      id: 'r1',
+      product: { name: 'X' },
+      production_line: '1',
+      status: 'active',
+      records: [{ template: { code: 'TPL-A' } }],
+    }]);
+
+    const result = await service.getCompletionStatus('shift1');
+    expect(result[0].completion_rate).toBe('50.0');
+    expect(result[0].missing_templates[0].code).toBe('TPL-B');
+  });
+});
+```
+
+**Step 2: 运行确认失败**
+
+```bash
+cd server
+npx jest shift-completion.service.spec.ts --no-coverage
+```
+
+Expected: FAIL — `Cannot find module './shift-completion.service'`
+
+**Step 3: 实现 Service**
+
+```typescript
+// server/src/modules/shift-instance/shift-completion.service.ts
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+
 @Injectable()
 export class ShiftCompletionService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async getCompletionStatus(shiftInstanceId: string) {
-    const runs = await this.prisma.productionRun.findMany({
-      where: { shift_instance_id: shiftInstanceId, company_id: '1' },
-      include: {
-        product: true,
-        records: { include: { template: true } }
-      }
-    });
-
-    // 必填模板列表（从 RecordTemplate 中查询 is_mandatory = true 的）
-    const mandatoryTemplates = await this.prisma.recordTemplate.findMany({
-      where: { status: 'active', batchLinkEnabled: true } // 暂用 batchLinkEnabled 标识生产关联表单
-    });
+    const [runs, mandatoryTemplates] = await Promise.all([
+      this.prisma.productionRun.findMany({
+        where: { shift_instance_id: shiftInstanceId, company_id: '1' },
+        include: {
+          product: true,
+          records: { include: { template: true } },
+        },
+      }),
+      this.prisma.recordTemplate.findMany({
+        where: { status: 'active', is_mandatory: true },
+        select: { code: true, name: true },
+      }),
+    ]);
 
     return runs.map(run => {
       const filledCodes = new Set(run.records.map(r => r.template.code));
       const missing = mandatoryTemplates.filter(t => !filledCodes.has(t.code));
+      const total = mandatoryTemplates.length;
+      const filled = total - missing.length;
+
       return {
         run_id: run.id,
         product_name: run.product.name,
         production_line: run.production_line,
         status: run.status,
-        total_mandatory: mandatoryTemplates.length,
-        filled: mandatoryTemplates.length - missing.length,
-        missing_templates: missing.map(t => ({ code: t.code, name: t.name })),
-        completion_rate: mandatoryTemplates.length > 0
-          ? ((mandatoryTemplates.length - missing.length) / mandatoryTemplates.length * 100).toFixed(1)
-          : '100',
+        total_mandatory: total,
+        filled,
+        missing_templates: missing,
+        completion_rate: total > 0 ? ((filled / total) * 100).toFixed(1) : '100.0',
       };
     });
   }
 }
 ```
 
-**Step 2: 添加 Controller 端点**
+**Step 4: 运行确认通过**
+
+```bash
+npx jest shift-completion.service.spec.ts --no-coverage
+```
+
+Expected: PASS — 2 tests passed
+
+**Step 5: 注册到 ShiftInstanceModule 并添加 Controller 端点**
+
+在 `shift-instance.module.ts` 的 providers 中添加 `ShiftCompletionService`。
+
+在 `shift-instance.controller.ts` 中添加：
 
 ```typescript
 @Get(':id/completion')
@@ -909,18 +1584,58 @@ getCompletion(@Param('id') id: string) {
 }
 ```
 
-**Step 3: 前端完成度组件**
+**Step 6: 前端完成度组件**
 
-`ShiftCompletionBoard.vue`：
-- 每个 ProductionRun 显示进度条（el-progress）
-- 缺失表单列表红色标注
-- 每5分钟自动刷新
+```vue
+<!-- client/src/views/shift/components/ShiftCompletionBoard.vue -->
+<template>
+  <div>
+    <div v-for="run in completions" :key="run.run_id" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span>{{ run.product_name }} — {{ run.production_line }}号线</span>
+        <span>{{ run.filled }}/{{ run.total_mandatory }}</span>
+      </div>
+      <el-progress
+        :percentage="parseFloat(run.completion_rate)"
+        :status="parseFloat(run.completion_rate) === 100 ? 'success' : parseFloat(run.completion_rate) < 50 ? 'exception' : ''"
+      />
+      <div v-if="run.missing_templates.length > 0" style="margin-top:4px">
+        <el-tag
+          v-for="t in run.missing_templates"
+          :key="t.code"
+          type="danger"
+          size="small"
+          style="margin-right:4px"
+        >{{ t.name }}</el-tag>
+      </div>
+    </div>
+    <el-empty v-if="completions.length === 0" description="暂无生产段数据" />
+  </div>
+</template>
 
-**Step 4: Commit**
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
+import request from '@/api/request'
+
+const props = defineProps<{ shiftInstanceId: string }>()
+const completions = ref<any[]>([])
+
+async function load() {
+  completions.value = await request.get(`/shift-instances/${props.shiftInstanceId}/completion`)
+}
+
+onMounted(load)
+const timer = setInterval(load, 5 * 60 * 1000)
+onUnmounted(() => clearInterval(timer))
+</script>
+```
+
+**Step 7: Commit**
 
 ```bash
-git add server/src/modules/shift-instance/shift-completion.service.ts client/src/views/shift/components/ShiftCompletionBoard.vue
-git commit -m "feat: add shift completion board with mandatory form tracking"
+cd ..
+git add server/src/modules/shift-instance/ client/src/views/shift/components/ShiftCompletionBoard.vue
+git commit -m "feat: add shift completion board with mandatory template tracking and unit tests"
 ```
 
 ---
@@ -928,33 +1643,41 @@ git commit -m "feat: add shift completion board with mandatory form tracking"
 ## Task 8：文件生命周期管理
 
 **Files:**
-- Modify: `server/src/prisma/schema.prisma`（Document 模型扩展）
+- Modify: `server/src/prisma/schema.prisma`
 - Create: `server/src/modules/document/document-lifecycle.service.ts`
+- Create: `server/src/modules/document/document-lifecycle.service.spec.ts`
 - Create: `server/src/modules/document/dto/document-lifecycle.dto.ts`
 - Modify: `server/src/modules/document/document.controller.ts`
+- Modify: `server/src/modules/document/document.module.ts`
 
 **Step 1: 扩展 Document 模型**
 
-在 schema.prisma 的 Document 模型中添加：
+在 schema.prisma 的 Document 模型 `updatedAt` 行后、现有软删除字段前添加：
 
 ```prisma
-  effective_date     DateTime?
-  review_due_date    DateTime?
-  superseded_by_id   String?
-  superseded_by      Document?  @relation("DocumentSuperseded", fields: [superseded_by_id], references: [id])
-  supersedes         Document[] @relation("DocumentSuperseded")
+  effective_date   DateTime?
+  review_due_date  DateTime?
+  superseded_by_id String?
+  superseded_by    Document?  @relation("DocumentSuperseded", fields: [superseded_by_id], references: [id], onDelete: SetNull)
+  supersedes       Document[] @relation("DocumentSuperseded")
+```
+
+在 Document 模型末尾（`@@map` 前）添加：
+
+```prisma
   read_confirmations DocumentReadConfirmation[]
 ```
 
-新增 DocumentReadConfirmation 模型：
+新增模型（追加到文件末尾）：
 
 ```prisma
 model DocumentReadConfirmation {
-  id          String   @id @default(cuid())
-  document_id String
-  document    Document @relation(fields: [document_id], references: [id], onDelete: Cascade)
-  user_id     String
+  id           String   @id @default(cuid())
+  document_id  String
+  document     Document @relation(fields: [document_id], references: [id], onDelete: Cascade)
+  user_id      String
   confirmed_at DateTime @default(now())
+
   @@unique([document_id, user_id])
   @@map("document_read_confirmations")
 }
@@ -963,120 +1686,412 @@ model DocumentReadConfirmation {
 **Step 2: 运行迁移**
 
 ```bash
-cd server && npx prisma migrate dev --name extend_document_lifecycle
+cd server
+npx prisma migrate dev --name extend_document_lifecycle
 ```
 
-**Step 3: 创建生命周期 Service**
+Expected: 迁移成功，新增 `document_read_confirmations` 表
 
-关键方法：
-- `publish(id)`: status → 'effective'，设置 effective_date，向关联岗位员工发通知
-- `supersede(id, newId)`: 旧文件 status → 'superseded'，superseded_by_id = newId
-- `confirmRead(documentId, userId)`: upsert DocumentReadConfirmation
-- `getReadStatus(documentId)`: 返回确认/未确认人员列表
-- `getDueSoon(days = 30)`: 查询 review_due_date 在 N 天内的文件
+**Step 3: 创建 DTO**
 
-**Step 4: Commit**
+```typescript
+// server/src/modules/document/dto/document-lifecycle.dto.ts
+import { IsOptional, IsDateString, IsString } from 'class-validator';
+
+export class PublishDocumentDto {
+  @IsOptional() @IsDateString()
+  effective_date?: string;
+
+  @IsOptional() @IsDateString()
+  review_due_date?: string;
+}
+```
+
+**Step 4: 写失败测试**
+
+```typescript
+// server/src/modules/document/document-lifecycle.service.spec.ts
+import { Test } from '@nestjs/testing';
+import { DocumentLifecycleService } from './document-lifecycle.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { NotFoundException } from '@nestjs/common';
+
+describe('DocumentLifecycleService', () => {
+  let service: DocumentLifecycleService;
+
+  const mockPrisma = {
+    document: {
+      findFirst: jest.fn(),
+      update: jest.fn(),
+      count: jest.fn(),
+      findMany: jest.fn(),
+    },
+    documentReadConfirmation: {
+      upsert: jest.fn(),
+      findMany: jest.fn(),
+    },
+    user: { findMany: jest.fn() },
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    const module = await Test.createTestingModule({
+      providers: [
+        DocumentLifecycleService,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
+    }).compile();
+    service = module.get(DocumentLifecycleService);
+  });
+
+  it('should throw NotFoundException when document not found', async () => {
+    mockPrisma.document.findFirst.mockResolvedValue(null);
+    await expect(service.publish('bad-id', {})).rejects.toThrow(NotFoundException);
+  });
+
+  it('should set status to effective on publish', async () => {
+    mockPrisma.document.findFirst.mockResolvedValue({ id: 'd1', status: 'approved' });
+    mockPrisma.document.update.mockResolvedValue({ id: 'd1', status: 'effective' });
+    const result = await service.publish('d1', {});
+    expect(result.status).toBe('effective');
+    expect(mockPrisma.document.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'effective' }) }),
+    );
+  });
+
+  it('should record read confirmation', async () => {
+    mockPrisma.documentReadConfirmation.upsert.mockResolvedValue({ id: 'c1' });
+    await service.confirmRead('doc1', 'user1');
+    expect(mockPrisma.documentReadConfirmation.upsert).toHaveBeenCalled();
+  });
+
+  it('should return documents expiring within 30 days', async () => {
+    mockPrisma.document.findMany.mockResolvedValue([{ id: 'd1', review_due_date: new Date() }]);
+    const result = await service.getDueSoon(30);
+    expect(result).toHaveLength(1);
+  });
+});
+```
+
+**Step 5: 运行确认失败**
 
 ```bash
+npx jest document-lifecycle.service.spec.ts --no-coverage
+```
+
+Expected: FAIL — `Cannot find module './document-lifecycle.service'`
+
+**Step 6: 实现 Service**
+
+```typescript
+// server/src/modules/document/document-lifecycle.service.ts
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import { PublishDocumentDto } from './dto/document-lifecycle.dto';
+
+@Injectable()
+export class DocumentLifecycleService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async publish(id: string, dto: PublishDocumentDto) {
+    const doc = await this.prisma.document.findFirst({ where: { id } });
+    if (!doc) throw new NotFoundException('文件不存在');
+
+    return this.prisma.document.update({
+      where: { id },
+      data: {
+        status: 'effective',
+        effective_date: dto.effective_date ? new Date(dto.effective_date) : new Date(),
+        ...(dto.review_due_date ? { review_due_date: new Date(dto.review_due_date) } : {}),
+      },
+    });
+  }
+
+  async supersede(oldId: string, newId: string) {
+    await this.prisma.document.update({
+      where: { id: oldId },
+      data: { status: 'superseded', superseded_by_id: newId },
+    });
+  }
+
+  async confirmRead(documentId: string, userId: string) {
+    return this.prisma.documentReadConfirmation.upsert({
+      where: { document_id_user_id: { document_id: documentId, user_id: userId } },
+      update: { confirmed_at: new Date() },
+      create: { document_id: documentId, user_id: userId },
+    });
+  }
+
+  async getReadStatus(documentId: string) {
+    return this.prisma.documentReadConfirmation.findMany({
+      where: { document_id: documentId },
+      include: { user: true } as any,
+    });
+  }
+
+  async getDueSoon(days = 30) {
+    const deadline = new Date();
+    deadline.setDate(deadline.getDate() + days);
+    return this.prisma.document.findMany({
+      where: {
+        status: 'effective',
+        review_due_date: { lte: deadline },
+      },
+      orderBy: { review_due_date: 'asc' },
+    });
+  }
+}
+```
+
+**Step 7: 运行确认通过**
+
+```bash
+npx jest document-lifecycle.service.spec.ts --no-coverage
+```
+
+Expected: PASS — 4 tests passed
+
+**Step 8: 注册到 DocumentModule，添加 Controller 端点**
+
+在 `document.module.ts` providers/exports 中添加 `DocumentLifecycleService`。
+
+在 `document.controller.ts` 中添加：
+
+```typescript
+@Patch(':id/publish')
+publish(@Param('id') id: string, @Body() dto: PublishDocumentDto) {
+  return this.lifecycleSvc.publish(id, dto);
+}
+
+@Post(':id/confirm-read')
+confirmRead(@Param('id') id: string, @Req() req: any) {
+  return this.lifecycleSvc.confirmRead(id, req.user?.id ?? 'system');
+}
+
+@Get('due-soon')
+getDueSoon(@Query('days') days?: string) {
+  return this.lifecycleSvc.getDueSoon(days ? parseInt(days) : 30);
+}
+```
+
+**Step 9: Commit**
+
+```bash
+cd ..
 git add server/src/prisma/ server/src/modules/document/
-git commit -m "feat: extend Document with lifecycle fields and read confirmation tracking"
+git commit -m "feat: add document lifecycle service with publish, supersede, read confirmation"
 ```
 
 ---
 
-## Task 9：定期任务引擎
+## Task 9：定期任务引擎（cron 驱动）
 
 **Files:**
-- Modify: `server/src/prisma/schema.prisma`（新增 ScheduledTaskRule）
+- Modify: `server/src/prisma/schema.prisma`（扩展 RecordTaskAssignment）
 - Create: `server/src/modules/scheduled-task/scheduled-task.module.ts`
 - Create: `server/src/modules/scheduled-task/scheduled-task.service.ts`
+- Create: `server/src/modules/scheduled-task/scheduled-task.service.spec.ts`
 - Create: `server/src/modules/scheduled-task/scheduled-task.scheduler.ts`
+- Modify: `server/src/app.module.ts`
 
-**Step 1: 添加 ScheduledTaskRule 模型**
+**Step 1: 安装 cron-parser**
 
-```prisma
-model ScheduledTaskRule {
-  id                   String   @id @default(cuid())
-  company_id           String
-  task_name            String
-  description          String?
-  cron_expression      String   // 如 "0 0 1 * *"
-  assignee_role        String?
-  form_template_id     String?
-  reminder_days_before Int      @default(3)
-  is_active            Boolean  @default(true)
-  source_document_id   String?
-  last_triggered_at    DateTime?
-  created_at           DateTime @default(now())
-  updated_at           DateTime @updatedAt
-  @@map("scheduled_task_rules")
-}
+```bash
+cd server
+npm install cron-parser
+npm install --save-dev @types/cron-parser 2>/dev/null || true
 ```
 
-**Step 2: 创建调度 Scheduler**
+Expected: `added N packages`
+
+**Step 2: 扩展 RecordTaskAssignment 模型**
+
+在 schema.prisma 的 RecordTaskAssignment 模型 `updatedAt` 行后、`@@index` 前添加：
+
+```prisma
+  cron_expression    String?
+  source_document_id String?
+  last_triggered_at  DateTime?
+```
+
+**Step 3: 运行迁移**
+
+```bash
+cd server
+npx prisma migrate dev --name extend_record_task_assignment_cron
+```
+
+**Step 4: 写失败测试**
 
 ```typescript
-// scheduled-task.scheduler.ts
-import { Injectable } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+// server/src/modules/scheduled-task/scheduled-task.service.spec.ts
+import { Test } from '@nestjs/testing';
+import { ScheduledTaskService } from './scheduled-task.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { NotificationService } from '../notification/notification.service';
+
+describe('ScheduledTaskService', () => {
+  let service: ScheduledTaskService;
+
+  const mockPrisma = {
+    recordTaskAssignment: { findMany: jest.fn(), update: jest.fn() },
+    recordTaskInstance: { create: jest.fn() },
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    const module = await Test.createTestingModule({
+      providers: [
+        ScheduledTaskService,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
+    }).compile();
+    service = module.get(ScheduledTaskService);
+  });
+
+  it('should create instance for a due cron rule', async () => {
+    // cron "* * * * *" = every minute, always due
+    mockPrisma.recordTaskAssignment.findMany.mockResolvedValue([{
+      id: 'a1', isPeriodic: true, cron_expression: '* * * * *',
+      title: 'Daily Check', templateId: 't1', departmentId: 'd1',
+    }]);
+    mockPrisma.recordTaskInstance.create.mockResolvedValue({ id: 'i1' });
+
+    await service.triggerDueTasks();
+
+    expect(mockPrisma.recordTaskInstance.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ assignmentId: 'a1' }) }),
+    );
+  });
+
+  it('should skip assignments without cron_expression', async () => {
+    mockPrisma.recordTaskAssignment.findMany.mockResolvedValue([{
+      id: 'a2', isPeriodic: false, cron_expression: null, title: 'Manual',
+    }]);
+
+    await service.triggerDueTasks();
+
+    expect(mockPrisma.recordTaskInstance.create).not.toHaveBeenCalled();
+  });
+});
+```
+
+**Step 5: 运行确认失败**
+
+```bash
+npx jest scheduled-task.service.spec.ts --no-coverage
+```
+
+Expected: FAIL
+
+**Step 6: 实现 Service**
+
+```typescript
+// server/src/modules/scheduled-task/scheduled-task.service.ts
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import * as cronParser from 'cron-parser';
 
 @Injectable()
-export class ScheduledTaskScheduler {
-  constructor(private prisma: PrismaService, private notificationSvc: NotificationService) {}
+export class ScheduledTaskService {
+  constructor(private readonly prisma: PrismaService) {}
 
-  // 每天8点检查今日到期任务
-  @Cron('0 8 * * *')
-  async checkDueTasks() {
-    const rules = await this.prisma.scheduledTaskRule.findMany({
-      where: { company_id: '1', is_active: true }
-    });
-
-    for (const rule of rules) {
-      const isDue = this.evalCron(rule.cron_expression);
-      if (!isDue) continue;
-
-      // 创建 RecordTask 待办
-      await this.prisma.recordTask.create({
-        data: {
-          company_id: '1',
-          title: rule.task_name,
-          description: rule.description,
-          template_id: rule.form_template_id,
-          due_date: new Date(),
-          status: 'pending',
-          source: 'scheduled_rule',
-          source_id: rule.id,
-        }
-      });
-
-      await this.prisma.scheduledTaskRule.update({
-        where: { id: rule.id },
-        data: { last_triggered_at: new Date() }
-      });
+  isCronDueNow(expression: string): boolean {
+    try {
+      const interval = cronParser.parseExpression(expression, { utc: false });
+      const prev = interval.prev().toDate();
+      const now = new Date();
+      // 如果上次触发时间在过去60秒内，视为"今天该触发"
+      return (now.getTime() - prev.getTime()) < 60 * 1000;
+    } catch {
+      return false;
     }
   }
 
-  private evalCron(expression: string): boolean {
-    // 简单实现：解析 cron 表达式判断今天是否触发
-    // 生产环境可使用 cron-parser 库
-    return true; // placeholder
+  async triggerDueTasks() {
+    const periodicRules = await this.prisma.recordTaskAssignment.findMany({
+      where: { isPeriodic: true, status: 'active', cron_expression: { not: null } },
+    });
+
+    const triggered: string[] = [];
+    for (const rule of periodicRules) {
+      if (!rule.cron_expression) continue;
+      if (!this.isCronDueNow(rule.cron_expression)) continue;
+
+      const deadline = new Date();
+      deadline.setDate(deadline.getDate() + 1);
+
+      await this.prisma.recordTaskInstance.create({
+        data: {
+          assignmentId: rule.id,
+          deadline,
+          status: 'pending',
+        },
+      });
+
+      await this.prisma.recordTaskAssignment.update({
+        where: { id: rule.id },
+        data: { last_triggered_at: new Date() },
+      });
+
+      triggered.push(rule.id);
+    }
+    return triggered;
   }
 }
 ```
 
-**Step 3: 运行迁移并注册模块**
+**Step 7: 运行确认通过**
 
 ```bash
-cd server && npx prisma migrate dev --name add_scheduled_task_rule
+npx jest scheduled-task.service.spec.ts --no-coverage
 ```
 
-**Step 4: Commit**
+Expected: PASS — 2 tests passed
+
+**Step 8: 创建 Scheduler（注册定时执行）**
+
+```typescript
+// server/src/modules/scheduled-task/scheduled-task.scheduler.ts
+import { Injectable } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
+import { ScheduledTaskService } from './scheduled-task.service';
+
+@Injectable()
+export class ScheduledTaskScheduler {
+  constructor(private readonly svc: ScheduledTaskService) {}
+
+  @Cron('0 8 * * *') // 每天8:00
+  async dailyTrigger() {
+    await this.svc.triggerDueTasks();
+  }
+}
+```
+
+**Step 9: 创建 Module 并注册到 AppModule**
+
+```typescript
+// server/src/modules/scheduled-task/scheduled-task.module.ts
+import { Module } from '@nestjs/common';
+import { ScheduledTaskService } from './scheduled-task.service';
+import { ScheduledTaskScheduler } from './scheduled-task.scheduler';
+import { PrismaModule } from '../../prisma/prisma.module';
+
+@Module({
+  imports: [PrismaModule],
+  providers: [ScheduledTaskService, ScheduledTaskScheduler],
+  exports: [ScheduledTaskService],
+})
+export class ScheduledTaskModule {}
+```
+
+在 `app.module.ts` 添加 `ScheduledTaskModule`。
+
+**Step 10: Commit**
 
 ```bash
-git add server/src/prisma/ server/src/modules/scheduled-task/
-git commit -m "feat: add ScheduledTaskRule model and cron-driven task scheduler"
+cd ..
+git add server/src/prisma/ server/src/modules/scheduled-task/ server/src/app.module.ts
+git commit -m "feat: add cron-driven scheduled task engine using RecordTaskAssignment"
 ```
 
 ---
@@ -1086,49 +2101,81 @@ git commit -m "feat: add ScheduledTaskRule model and cron-driven task scheduler"
 **Files:**
 - Create: `server/src/modules/upload/upload.module.ts`
 - Create: `server/src/modules/upload/upload.controller.ts`
+- Modify: `server/src/app.module.ts`
 - Create: `client/src/composables/usePhotoUpload.ts`
-- Modify: `client/src/views/record/RecordForm.vue`（photo 字段渲染）
-- Modify: `client/src/assets/styles/mobile.css`
+- Modify: `client/src/views/record/RecordForm.vue`
+- Create: `client/src/assets/styles/mobile.css`
+- Modify: `client/src/main.ts`
 
-**Step 1: 后端图片上传（本地存储，OSS 后续替换）**
+**Step 1: 创建上传 Controller（multer 已安装）**
 
 ```typescript
-// upload.controller.ts
-import { Controller, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+// server/src/modules/upload/upload.controller.ts
+import { Controller, Post, UploadedFile, UseInterceptors, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import * as path from 'path';
+import * as fs from 'fs';
+
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 @Controller('upload')
 export class UploadController {
   @Post('image')
-  @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: './uploads',
-      filename: (_, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
-      }
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: uploadsDir,
+        filename: (_, file, cb) => {
+          const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+          cb(null, `${unique}${path.extname(file.originalname)}`);
+        },
+      }),
+      limits: { fileSize: 10 * 1024 * 1024 },
+      fileFilter: (_, file, cb) => {
+        if (!file.mimetype.startsWith('image/')) {
+          cb(new BadRequestException('只允许上传图片'), false);
+        } else {
+          cb(null, true);
+        }
+      },
     }),
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
-    fileFilter: (_, file, cb) => {
-      if (!file.mimetype.startsWith('image/')) {
-        cb(new Error('只允许上传图片'), false);
-      } else {
-        cb(null, true);
-      }
-    }
-  }))
+  )
   uploadImage(@UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('未收到文件');
     return { url: `/uploads/${file.filename}` };
   }
 }
 ```
 
-**Step 2: 前端 usePhotoUpload composable**
+```typescript
+// server/src/modules/upload/upload.module.ts
+import { Module } from '@nestjs/common';
+import { UploadController } from './upload.controller';
+
+@Module({ controllers: [UploadController] })
+export class UploadModule {}
+```
+
+在 `app.module.ts` 添加 `UploadModule`。
+
+**Step 2: 在 main.ts 中添加静态文件服务**
+
+在 `server/src/main.ts` 中，`app.listen` 之前添加：
 
 ```typescript
-// composables/usePhotoUpload.ts
+import { NestExpressApplication } from '@nestjs/platform-express';
+import * as path from 'path';
+// ...
+const app = await NestFactory.create<NestExpressApplication>(AppModule);
+app.useStaticAssets(path.join(__dirname, '..', 'uploads'), { prefix: '/uploads' });
+```
+
+**Step 3: 前端 usePhotoUpload composable**
+
+```typescript
+// client/src/composables/usePhotoUpload.ts
 import { ref } from 'vue'
 import axios from 'axios'
 
@@ -1136,12 +2183,17 @@ export function usePhotoUpload() {
   const uploading = ref(false)
 
   async function uploadPhoto(file: File): Promise<string> {
+    if (!file.type.startsWith('image/')) {
+      throw new Error('只允许上传图片文件')
+    }
     uploading.value = true
     try {
       const form = new FormData()
       form.append('file', file)
-      const res = await axios.post('/api/upload/image', form)
-      return res.data.url
+      const res = await axios.post('/api/upload/image', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return (res.data as { url: string }).url
     } finally {
       uploading.value = false
     }
@@ -1151,41 +2203,63 @@ export function usePhotoUpload() {
 }
 ```
 
-**Step 3: 表单中渲染 photo 字段**
+**Step 4: 在 RecordForm.vue 中添加 photo 字段渲染**
 
-在 `RecordForm.vue` 的字段渲染 switch 中添加 photo case：
+找到字段类型渲染的 `v-if` 区块，添加 photo case：
+
 ```vue
-<template v-if="field.type === 'photo'">
+<template v-else-if="field.type === 'photo'">
   <el-upload
     action="/api/upload/image"
     list-type="picture-card"
-    :on-success="(res) => form[field.name] = res.url"
+    :limit="3"
     accept="image/*"
-    capture="environment"
+    :on-success="(res: any) => { formData[field.name] = res.url }"
+    :on-error="() => ElMessage.error('图片上传失败')"
   >
     <el-icon><Camera /></el-icon>
   </el-upload>
 </template>
 ```
 
-**Step 4: 移动端 CSS 适配**
+**Step 5: 创建移动端 CSS**
 
 ```css
-/* mobile.css */
+/* client/src/assets/styles/mobile.css */
 @media (max-width: 768px) {
-  .el-form-item { margin-bottom: 16px; }
+  .page-container { padding: 12px; }
+  .el-form-item { margin-bottom: 14px; }
+  .el-form-item__label { font-size: 13px; }
   .el-table { font-size: 12px; }
-  .page-header { flex-direction: column; gap: 8px; }
-  .el-dialog { width: 95% !important; margin: 5vh auto; }
-  .el-button { min-height: 40px; }
+  .page-header,
+  .header-actions { flex-direction: column; gap: 8px; }
+  .el-dialog { width: 95vw !important; margin: 4vh auto !important; }
+  .el-button { min-height: 40px; font-size: 14px; }
+  .el-input__inner { font-size: 16px; } /* 防止 iOS 自动缩放 */
 }
 ```
 
-**Step 5: Commit**
+在 `client/src/main.ts` 中添加：
+
+```typescript
+import '@/assets/styles/mobile.css'
+```
+
+**Step 6: 构建验证**
 
 ```bash
-git add server/src/modules/upload/ client/src/composables/usePhotoUpload.ts client/src/assets/styles/mobile.css
-git commit -m "feat: add image upload endpoint and mobile-responsive form styles"
+cd server && npx tsc --noEmit
+cd ../client && npx vue-tsc --noEmit
+```
+
+Expected: 无错误
+
+**Step 7: Commit**
+
+```bash
+cd ..
+git add server/src/modules/upload/ server/src/main.ts client/src/composables/usePhotoUpload.ts client/src/assets/styles/mobile.css client/src/main.ts client/src/views/record/RecordForm.vue
+git commit -m "feat: add image upload endpoint and mobile-responsive styles"
 ```
 
 ---
@@ -1193,86 +2267,413 @@ git commit -m "feat: add image upload endpoint and mobile-responsive form styles
 ## Task 11：完整 CAPA 闭环 + 趋势分析
 
 **Files:**
-- Modify: `server/src/prisma/schema.prisma`（VerificationRecord + CAPA 状态扩展）
+- Modify: `server/src/prisma/schema.prisma`
 - Create: `server/src/modules/corrective-action/verification-record.service.ts`
+- Create: `server/src/modules/corrective-action/verification-record.service.spec.ts`
 - Create: `server/src/modules/corrective-action/capa-analytics.service.ts`
+- Create: `server/src/modules/corrective-action/dto/create-verification.dto.ts`
+- Modify: `server/src/modules/corrective-action/corrective-action.controller.ts`
+- Modify: `server/src/modules/corrective-action/corrective-action.module.ts`
 - Create: `client/src/views/corrective-action/CapaDetail.vue`
 - Create: `client/src/views/corrective-action/CapaAnalytics.vue`
 
 **Step 1: 添加 VerificationRecord 模型**
 
+在 schema.prisma 末尾追加（CorrectiveAction 模型后）：
+
 ```prisma
 model VerificationRecord {
-  id                    String          @id @default(cuid())
-  company_id            String
-  corrective_action_id  String
-  corrective_action     CorrectiveAction @relation(fields: [corrective_action_id], references: [id], onDelete: Cascade)
-  verified_by           String
-  verification_method   String
-  result                String          // 'effective' | 'ineffective'
-  notes                 String?
-  evidence_record_ids   String[]        // FormRecord IDs
-  verified_at           DateTime        @default(now())
-  created_at            DateTime        @default(now())
+  id                   String           @id @default(cuid())
+  company_id           String
+  corrective_action_id String
+  corrective_action    CorrectiveAction @relation(fields: [corrective_action_id], references: [id], onDelete: Cascade)
+  verified_by          String
+  verification_method  String
+  result               String           // 'effective' | 'ineffective'
+  notes                String?
+  evidence_record_ids  String[]
+  verified_at          DateTime         @default(now())
+  created_at           DateTime         @default(now())
+
+  @@index([corrective_action_id])
   @@map("verification_records")
 }
 ```
 
-在 CorrectiveAction 模型添加：
+在 CorrectiveAction 模型末尾 `@@map` 前添加：
+
 ```prisma
   verification_records VerificationRecord[]
 ```
 
-**Step 2: CAPA 状态机**
+**Step 2: 运行迁移**
 
-CorrectiveAction status 流转：
-```
-open → implementing → pending_verification → closed
-                ↑              |
-                └──────────────┘ (验证无效时退回)
+```bash
+cd server
+npx prisma migrate dev --name add_verification_record
 ```
 
-**Step 3: 趋势分析 Service**
+**Step 3: 创建 DTO**
 
 ```typescript
-// capa-analytics.service.ts
-async getTrends(months = 6) {
-  const since = new Date();
-  since.setMonth(since.getMonth() - months);
+// server/src/modules/corrective-action/dto/create-verification.dto.ts
+import { IsNotEmpty, IsString, IsIn, IsOptional, IsArray } from 'class-validator';
 
-  const actions = await this.prisma.correctiveAction.findMany({
-    where: { company_id: '1', created_at: { gte: since } },
-    include: { verification_records: true }
-  });
+export class CreateVerificationDto {
+  @IsNotEmpty() @IsString()
+  verification_method: string;
 
-  return {
-    total: actions.length,
-    by_status: this.groupBy(actions, 'status'),
-    avg_close_days: this.avgCloseDays(actions),
-    recurrence_rate: this.calcRecurrenceRate(actions),
-    monthly_trend: this.monthlyCount(actions, months),
-  };
+  @IsNotEmpty() @IsIn(['effective', 'ineffective'])
+  result: string;
+
+  @IsOptional() @IsString()
+  notes?: string;
+
+  @IsOptional() @IsArray() @IsString({ each: true })
+  evidence_record_ids?: string[];
 }
 ```
 
-**Step 4: 前端 CAPA 详情页**
+**Step 4: 写失败测试**
 
-`CapaDetail.vue` 展示完整状态机：
-- 时间线（el-timeline）：创建 → 措施实施 → 提交验证 → 验证通过 → 关闭
-- 验证记录表单（验证方法 + 结论 + 证据记录关联）
-- 操作按钮随状态显示（"提交验证"/"记录验证"/"关闭"）
+```typescript
+// server/src/modules/corrective-action/verification-record.service.spec.ts
+import { Test } from '@nestjs/testing';
+import { VerificationRecordService } from './verification-record.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { NotFoundException } from '@nestjs/common';
 
-**Step 5: 运行迁移**
+describe('VerificationRecordService', () => {
+  let service: VerificationRecordService;
 
-```bash
-cd server && npx prisma migrate dev --name add_verification_record_capa_extend
+  const mockPrisma = {
+    correctiveAction: { findFirst: jest.fn(), update: jest.fn() },
+    verificationRecord: { create: jest.fn() },
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    const module = await Test.createTestingModule({
+      providers: [
+        VerificationRecordService,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
+    }).compile();
+    service = module.get(VerificationRecordService);
+  });
+
+  it('should throw NotFoundException when CAPA not found', async () => {
+    mockPrisma.correctiveAction.findFirst.mockResolvedValue(null);
+    await expect(
+      service.createVerification('bad-id', { verification_method: 'test', result: 'effective' }, 'u1'),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('should close CAPA when verification is effective', async () => {
+    mockPrisma.correctiveAction.findFirst.mockResolvedValue({ id: 'c1', company_id: '1', status: 'pending_verification' });
+    mockPrisma.verificationRecord.create.mockResolvedValue({ id: 'v1', result: 'effective' });
+    mockPrisma.correctiveAction.update.mockResolvedValue({ id: 'c1', status: 'closed' });
+
+    await service.createVerification('c1', { verification_method: 'inspection', result: 'effective' }, 'u1');
+
+    expect(mockPrisma.correctiveAction.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'closed' }) }),
+    );
+  });
+
+  it('should reopen CAPA when verification is ineffective', async () => {
+    mockPrisma.correctiveAction.findFirst.mockResolvedValue({ id: 'c1', company_id: '1', status: 'pending_verification' });
+    mockPrisma.verificationRecord.create.mockResolvedValue({ id: 'v1', result: 'ineffective' });
+    mockPrisma.correctiveAction.update.mockResolvedValue({ id: 'c1', status: 'implementing' });
+
+    await service.createVerification('c1', { verification_method: 'test', result: 'ineffective' }, 'u1');
+
+    expect(mockPrisma.correctiveAction.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'implementing' }) }),
+    );
+  });
+});
 ```
 
-**Step 6: Commit**
+**Step 5: 运行确认失败**
 
 ```bash
-git add server/src/prisma/ server/src/modules/corrective-action/ client/src/views/corrective-action/
-git commit -m "feat: add VerificationRecord, complete CAPA state machine, and trend analytics"
+npx jest verification-record.service.spec.ts --no-coverage
+```
+
+Expected: FAIL
+
+**Step 6: 实现 Service**
+
+```typescript
+// server/src/modules/corrective-action/verification-record.service.ts
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import { CreateVerificationDto } from './dto/create-verification.dto';
+
+@Injectable()
+export class VerificationRecordService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async createVerification(capaId: string, dto: CreateVerificationDto, userId: string) {
+    const capa = await this.prisma.correctiveAction.findFirst({
+      where: { id: capaId, company_id: '1' },
+    });
+    if (!capa) throw new NotFoundException('纠正措施不存在');
+
+    await this.prisma.verificationRecord.create({
+      data: {
+        company_id: '1',
+        corrective_action_id: capaId,
+        verified_by: userId,
+        verification_method: dto.verification_method,
+        result: dto.result,
+        notes: dto.notes,
+        evidence_record_ids: dto.evidence_record_ids ?? [],
+      },
+    });
+
+    const newStatus = dto.result === 'effective' ? 'closed' : 'implementing';
+    return this.prisma.correctiveAction.update({
+      where: { id: capaId },
+      data: {
+        status: newStatus,
+        ...(newStatus === 'closed' ? { closed_at: new Date(), verified_by: userId, verified_at: new Date() } : {}),
+      },
+    });
+  }
+
+  async listVerifications(capaId: string) {
+    return this.prisma.verificationRecord.findMany({
+      where: { corrective_action_id: capaId },
+      orderBy: { created_at: 'desc' },
+    });
+  }
+}
+```
+
+**Step 7: 运行确认通过**
+
+```bash
+npx jest verification-record.service.spec.ts --no-coverage
+```
+
+Expected: PASS — 3 tests passed
+
+**Step 8: 实现趋势分析 Service**
+
+```typescript
+// server/src/modules/corrective-action/capa-analytics.service.ts
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+
+@Injectable()
+export class CapaAnalyticsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getTrends(months = 6) {
+    const since = new Date();
+    since.setMonth(since.getMonth() - months);
+
+    const actions = await this.prisma.correctiveAction.findMany({
+      where: { company_id: '1', created_at: { gte: since } },
+      include: { verification_records: true },
+    });
+
+    const byStatus = actions.reduce((acc: Record<string, number>, a) => {
+      acc[a.status] = (acc[a.status] ?? 0) + 1;
+      return acc;
+    }, {});
+
+    const closed = actions.filter(a => a.status === 'closed' && a.closed_at);
+    const avgCloseDays = closed.length > 0
+      ? closed.reduce((sum, a) => {
+          const days = (a.closed_at!.getTime() - a.created_at.getTime()) / 86400000;
+          return sum + days;
+        }, 0) / closed.length
+      : 0;
+
+    const monthly: Record<string, number> = {};
+    for (let i = 0; i < months; i++) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      monthly[key] = 0;
+    }
+    for (const a of actions) {
+      const key = `${a.created_at.getFullYear()}-${String(a.created_at.getMonth() + 1).padStart(2, '0')}`;
+      if (key in monthly) monthly[key]++;
+    }
+
+    return {
+      total: actions.length,
+      by_status: byStatus,
+      avg_close_days: Math.round(avgCloseDays * 10) / 10,
+      monthly_trend: Object.entries(monthly).sort((a, b) => a[0].localeCompare(b[0])).map(([month, count]) => ({ month, count })),
+    };
+  }
+}
+```
+
+**Step 9: 注册服务，添加 Controller 端点**
+
+在 `corrective-action.module.ts` 中添加 `VerificationRecordService` 和 `CapaAnalyticsService` 到 providers。
+
+在 `corrective-action.controller.ts` 中添加：
+
+```typescript
+@Post(':id/verifications')
+createVerification(@Param('id') id: string, @Body() dto: CreateVerificationDto, @Req() req: any) {
+  return this.verificationSvc.createVerification(id, dto, req.user?.id ?? 'system');
+}
+
+@Get(':id/verifications')
+listVerifications(@Param('id') id: string) {
+  return this.verificationSvc.listVerifications(id);
+}
+
+@Get('analytics/trends')
+getTrends(@Query('months') months?: string) {
+  return this.analyticsSvc.getTrends(months ? parseInt(months) : 6);
+}
+```
+
+**Step 10: 创建 CapaDetail 前端页面**
+
+```vue
+<!-- client/src/views/corrective-action/CapaDetail.vue -->
+<template>
+  <div style="padding:20px">
+    <el-page-header @back="$router.back()" :content="`CAPA — ${capa?.capa_no ?? ''}`" />
+
+    <el-descriptions :column="2" border style="margin-top:16px">
+      <el-descriptions-item label="状态">
+        <el-tag :type="statusType(capa?.status)">{{ statusLabel(capa?.status) }}</el-tag>
+      </el-descriptions-item>
+      <el-descriptions-item label="截止日期">{{ capa?.due_date?.slice(0,10) }}</el-descriptions-item>
+      <el-descriptions-item label="根本原因" :span="2">{{ capa?.root_cause ?? '—' }}</el-descriptions-item>
+      <el-descriptions-item label="纠正措施" :span="2">{{ capa?.corrective_action ?? '—' }}</el-descriptions-item>
+    </el-descriptions>
+
+    <el-timeline style="margin-top:24px">
+      <el-timeline-item timestamp="创建" placement="top">已建立纠正措施</el-timeline-item>
+      <el-timeline-item timestamp="实施" placement="top" :type="capa?.status !== 'open' ? 'success' : ''">
+        措施实施中
+      </el-timeline-item>
+      <el-timeline-item timestamp="验证" placement="top" :type="['pending_verification','closed'].includes(capa?.status) ? 'success' : ''">
+        等待验证
+      </el-timeline-item>
+      <el-timeline-item timestamp="关闭" placement="top" :type="capa?.status === 'closed' ? 'success' : ''">
+        已关闭
+      </el-timeline-item>
+    </el-timeline>
+
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <el-button v-if="capa?.status === 'open'" type="primary" @click="advance('implementing')">开始实施</el-button>
+      <el-button v-if="capa?.status === 'implementing'" type="warning" @click="advance('pending_verification')">提交验证</el-button>
+      <el-button v-if="capa?.status === 'pending_verification'" type="success" @click="verifyDialog = true">记录验证结果</el-button>
+    </div>
+
+    <el-divider>验证记录</el-divider>
+    <el-table :data="verifications" size="small">
+      <el-table-column label="验证方法" prop="verification_method" />
+      <el-table-column label="结论" width="80">
+        <template #default="{ row }">
+          <el-tag :type="row.result === 'effective' ? 'success' : 'danger'" size="small">
+            {{ row.result === 'effective' ? '有效' : '无效' }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="备注" prop="notes" />
+      <el-table-column label="时间" :formatter="(r:any) => r.verified_at?.slice(0,10)" width="100" />
+    </el-table>
+
+    <!-- 验证对话框 -->
+    <el-dialog v-model="verifyDialog" title="记录验证结果" width="420px">
+      <el-form :model="verifyForm" label-width="80px">
+        <el-form-item label="验证方法">
+          <el-input v-model="verifyForm.verification_method" />
+        </el-form-item>
+        <el-form-item label="结论">
+          <el-radio-group v-model="verifyForm.result">
+            <el-radio value="effective">有效</el-radio>
+            <el-radio value="ineffective">无效，需重新实施</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="verifyForm.notes" type="textarea" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="verifyDialog = false">取消</el-button>
+        <el-button type="primary" :loading="verifyLoading" @click="submitVerification">提交</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import request from '@/api/request'
+
+const route = useRoute()
+const capaId = route.params.id as string
+const capa = ref<any>(null)
+const verifications = ref<any[]>([])
+const verifyDialog = ref(false)
+const verifyLoading = ref(false)
+const verifyForm = reactive({ verification_method: '', result: 'effective', notes: '' })
+
+onMounted(async () => {
+  capa.value = await request.get(`/corrective-actions/${capaId}`)
+  verifications.value = await request.get(`/corrective-actions/${capaId}/verifications`)
+})
+
+function statusLabel(s?: string) {
+  return { open: '待处理', implementing: '实施中', pending_verification: '待验证', closed: '已关闭' }[s ?? ''] ?? s
+}
+
+function statusType(s?: string) {
+  return { open: 'danger', implementing: 'warning', pending_verification: 'primary', closed: 'success' }[s ?? ''] ?? ''
+}
+
+async function advance(newStatus: string) {
+  await request.patch(`/corrective-actions/${capaId}`, { status: newStatus })
+  capa.value = await request.get(`/corrective-actions/${capaId}`)
+}
+
+async function submitVerification() {
+  verifyLoading.value = true
+  try {
+    await request.post(`/corrective-actions/${capaId}/verifications`, verifyForm)
+    ElMessage.success('验证记录已提交')
+    verifyDialog.value = false
+    capa.value = await request.get(`/corrective-actions/${capaId}`)
+    verifications.value = await request.get(`/corrective-actions/${capaId}/verifications`)
+  } catch {
+    ElMessage.error('提交失败')
+  } finally {
+    verifyLoading.value = false
+  }
+}
+</script>
+```
+
+**Step 11: 注册路由**
+
+```typescript
+{ path: '/corrective-actions/:id', name: 'CapaDetail', component: () => import('@/views/corrective-action/CapaDetail.vue') },
+{ path: '/corrective-actions/analytics', name: 'CapaAnalytics', component: () => import('@/views/corrective-action/CapaAnalytics.vue') },
+```
+
+**Step 12: Commit**
+
+```bash
+cd ..
+git add server/src/prisma/ server/src/modules/corrective-action/ client/src/views/corrective-action/ client/src/router/index.ts
+git commit -m "feat: complete CAPA loop with VerificationRecord, state machine, trend analytics, and detail UI"
 ```
 
 ---
@@ -1281,119 +2682,361 @@ git commit -m "feat: add VerificationRecord, complete CAPA state machine, and tr
 
 **Files:**
 - Create: `server/src/modules/statistics/management-dashboard.service.ts`
+- Create: `server/src/modules/statistics/management-dashboard.service.spec.ts`
 - Create: `server/src/modules/statistics/traceability-export.service.ts`
+- Modify: `server/src/modules/statistics/statistics.module.ts`
+- Modify: `server/src/modules/statistics/statistics.controller.ts`
 - Create: `client/src/views/dashboard/ManagementDashboard.vue`
-- Create: `client/src/views/traceability/BatchTraceabilityReport.vue`
 
-**Step 1: 管理仪表盘 Service**
+**Step 1: 写失败测试**
 
 ```typescript
-// management-dashboard.service.ts
-async getKpis() {
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+// server/src/modules/statistics/management-dashboard.service.spec.ts
+import { Test } from '@nestjs/testing';
+import { ManagementDashboardService } from './management-dashboard.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
-  const [ncCount, capaOverdue, ccpRecords, trainingRate, docsExpiringSoon] = await Promise.all([
-    // 本月不合格品数
-    this.prisma.nonConformance.count({ where: { company_id: '1', created_at: { gte: monthStart } } }),
-    // 超期未关闭 CAPA
-    this.prisma.correctiveAction.count({
-      where: { company_id: '1', status: { not: 'closed' }, due_date: { lt: now } }
-    }),
-    // CCP 合格率（本月）
-    this.prisma.record.count({ where: { template: { code: { contains: 'CCP' } }, createdAt: { gte: monthStart } } }),
-    // 培训完成率（简化）
-    this.getTrainingRate(),
-    // 即将到期文件（30天内）
-    this.prisma.document.count({
-      where: { review_due_date: { lte: new Date(now.getTime() + 30 * 86400000) }, status: 'effective' }
-    }),
-  ]);
+describe('ManagementDashboardService', () => {
+  let service: ManagementDashboardService;
 
-  return { ncCount, capaOverdue, ccpRecords, trainingRate, docsExpiringSoon };
+  const mockPrisma = {
+    nonConformance: { count: jest.fn() },
+    correctiveAction: { count: jest.fn() },
+    record: { count: jest.fn() },
+    trainingRecord: { count: jest.fn() },
+    document: { count: jest.fn(), findMany: jest.fn() },
+    shiftInstance: { findMany: jest.fn() },
+    recordTemplate: { findMany: jest.fn() },
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    Object.values(mockPrisma).forEach(m => {
+      if (typeof m.count === 'function') m.count.mockResolvedValue(0);
+      if (typeof m.findMany === 'function') m.findMany.mockResolvedValue([]);
+    });
+    const module = await Test.createTestingModule({
+      providers: [
+        ManagementDashboardService,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
+    }).compile();
+    service = module.get(ManagementDashboardService);
+  });
+
+  it('should return KPIs with numeric values', async () => {
+    mockPrisma.nonConformance.count.mockResolvedValue(5);
+    mockPrisma.correctiveAction.count.mockResolvedValue(2);
+
+    const kpis = await service.getKpis();
+
+    expect(kpis.nc_count_this_month).toBe(5);
+    expect(kpis.capa_overdue_count).toBe(2);
+    expect(typeof kpis.docs_expiring_soon).toBe('number');
+  });
+
+  it('should list documents expiring within 30 days', async () => {
+    mockPrisma.document.findMany.mockResolvedValue([
+      { id: 'd1', title: 'SOP-01', review_due_date: new Date() },
+    ]);
+
+    const docs = await service.getBrcgsReadiness();
+    expect(docs.expiring_docs).toHaveLength(1);
+  });
+});
+```
+
+**Step 2: 运行确认失败**
+
+```bash
+cd server
+npx jest management-dashboard.service.spec.ts --no-coverage
+```
+
+Expected: FAIL
+
+**Step 3: 实现 ManagementDashboardService**
+
+```typescript
+// server/src/modules/statistics/management-dashboard.service.ts
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+
+@Injectable()
+export class ManagementDashboardService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getKpis() {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [ncCount, capaOverdue, ccpRecords, docsExpiringSoon] = await Promise.all([
+      this.prisma.nonConformance.count({
+        where: { company_id: '1', created_at: { gte: monthStart } },
+      }),
+      this.prisma.correctiveAction.count({
+        where: { company_id: '1', status: { not: 'closed' }, due_date: { lt: now } },
+      }),
+      this.prisma.record.count({
+        where: { template: { code: { contains: 'CCP' } }, createdAt: { gte: monthStart } },
+      }),
+      this.prisma.document.count({
+        where: {
+          status: 'effective',
+          review_due_date: { lte: new Date(now.getTime() + 30 * 86400000) },
+        },
+      }),
+    ]);
+
+    return {
+      nc_count_this_month: ncCount,
+      capa_overdue_count: capaOverdue,
+      ccp_records_this_month: ccpRecords,
+      docs_expiring_soon: docsExpiringSoon,
+    };
+  }
+
+  async getBrcgsReadiness() {
+    const now = new Date();
+
+    const [expiringDocs, overdueCapas] = await Promise.all([
+      this.prisma.document.findMany({
+        where: {
+          status: 'effective',
+          review_due_date: { lte: new Date(now.getTime() + 30 * 86400000) },
+        },
+        select: { id: true, title: true, number: true, review_due_date: true },
+        orderBy: { review_due_date: 'asc' },
+      }),
+      this.prisma.correctiveAction.findMany({
+        where: { company_id: '1', status: { not: 'closed' }, due_date: { lt: now } },
+        select: { id: true, capa_no: true, description: true, due_date: true },
+        orderBy: { due_date: 'asc' },
+      }),
+    ]);
+
+    return { expiring_docs: expiringDocs, overdue_capas: overdueCapas };
+  }
 }
 ```
 
-**Step 2: 批次追溯 PDF 导出 Service**
+**Step 4: 运行确认通过**
 
-使用 `@nestjs/common` + `pdfkit` 库：
+```bash
+npx jest management-dashboard.service.spec.ts --no-coverage
+```
+
+Expected: PASS — 2 tests passed
+
+**Step 5: 实现批次追溯 PDF Service（pdfkit 已安装）**
 
 ```typescript
-// traceability-export.service.ts
-async exportBatchTraceability(finishedGoodsBatchId: string): Promise<Buffer> {
-  const batch = await this.prisma.finishedGoodsBatch.findFirst({
-    where: { id: finishedGoodsBatchId },
-    include: {
-      records: { include: { template: true } },
-      production_run: {
-        include: {
-          shift_instance: true,
-          product: true,
-          recipe: true,
-          records: { include: { template: true } }
-        }
+// server/src/modules/statistics/traceability-export.service.ts
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import * as PDFDocument from 'pdfkit';
+
+@Injectable()
+export class TraceabilityExportService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async exportBatchPdf(finishedGoodsBatchId: string): Promise<Buffer> {
+    const batch = await this.prisma.finishedGoodsBatch.findFirst({
+      where: { id: finishedGoodsBatchId },
+      include: {
+        records: { include: { template: true } },
+      },
+    });
+    if (!batch) throw new NotFoundException('成品批次不存在');
+
+    return new Promise<Buffer>((resolve, reject) => {
+      const doc = new PDFDocument({ size: 'A4', margin: 50 });
+      const chunks: Buffer[] = [];
+
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      // 封面
+      doc.fontSize(20).text('成品批次追溯报告', { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(12).text(`批次号: ${(batch as any).batch_no ?? batch.id}`);
+      doc.text(`生成时间: ${new Date().toLocaleString('zh-CN')}`);
+      doc.moveDown();
+
+      // 关联记录清单
+      doc.fontSize(14).text('关联表单记录');
+      doc.moveDown(0.5);
+      for (const record of (batch as any).records ?? []) {
+        doc.fontSize(10).text(`• ${record.template.name} — ${record.document_no ?? record.number}`);
       }
-    }
-  });
 
-  // 查询原料追溯（通过 BatchMaterialUsage）
-  const ingredients = await this.prisma.batchMaterialUsage.findMany({
-    where: { production_batch_id: batch.production_run?.id },
-    include: { material_lot: { include: { supplier: true, incoming_inspections: true } } }
-  });
-
-  // 使用 pdfkit 生成 PDF
-  return this.buildPdf(batch, ingredients);
+      doc.end();
+    });
+  }
 }
 ```
 
-**Step 3: 前端管理仪表盘**
+**Step 6: 注册服务并添加 Controller 端点**
 
-`ManagementDashboard.vue`：
-- 顶部 KPI 卡片（el-statistic）：不合格数、超期 CAPA、BRCGS 到期文件
-- 中部图表（el-chart / echarts）：月度不合格趋势、CAPA 状态分布
-- BRCGS 准备度清单（红/黄/绿三色）
+在 `statistics.module.ts` 中添加两个新 service 到 providers。
 
-**Step 4: 安装 pdfkit**
+在 `statistics.controller.ts` 中添加：
 
-```bash
-cd server && npm install pdfkit @types/pdfkit
+```typescript
+@Get('dashboard/kpis')
+getKpis() { return this.dashboardSvc.getKpis(); }
+
+@Get('dashboard/brcgs-readiness')
+getBrcgsReadiness() { return this.dashboardSvc.getBrcgsReadiness(); }
+
+@Get('traceability/:batchId/pdf')
+@Header('Content-Type', 'application/pdf')
+@Header('Content-Disposition', 'attachment; filename="traceability.pdf"')
+async exportPdf(@Param('batchId') batchId: string, @Res() res: Response) {
+  const buffer = await this.exportSvc.exportBatchPdf(batchId);
+  (res as any).end(buffer);
+}
 ```
 
-**Step 5: Commit**
+**Step 7: 创建管理仪表盘前端**
+
+```vue
+<!-- client/src/views/dashboard/ManagementDashboard.vue -->
+<template>
+  <div style="padding:20px">
+    <h2>管理层仪表盘</h2>
+
+    <el-row :gutter="16" style="margin-bottom:24px">
+      <el-col :xs="12" :sm="6">
+        <el-card>
+          <el-statistic title="本月不合格品" :value="kpis.nc_count_this_month">
+            <template #suffix><span style="color:#f56c6c">件</span></template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="12" :sm="6">
+        <el-card>
+          <el-statistic title="超期未关闭CAPA" :value="kpis.capa_overdue_count">
+            <template #suffix><span :style="{color: kpis.capa_overdue_count > 0 ? '#f56c6c' : '#67c23a'}">项</span></template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="12" :sm="6">
+        <el-card>
+          <el-statistic title="本月CCP记录" :value="kpis.ccp_records_this_month" />
+        </el-card>
+      </el-col>
+      <el-col :xs="12" :sm="6">
+        <el-card>
+          <el-statistic title="即将过期文件" :value="kpis.docs_expiring_soon">
+            <template #suffix><span :style="{color: kpis.docs_expiring_soon > 0 ? '#e6a23c' : '#67c23a'}">份</span></template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="16">
+      <el-col :sm="12">
+        <el-card header="即将过期体系文件（30天内）">
+          <el-empty v-if="readiness.expiring_docs.length === 0" description="无即将过期文件" />
+          <el-table v-else :data="readiness.expiring_docs" size="small">
+            <el-table-column label="文件编号" prop="number" width="140" />
+            <el-table-column label="文件名称" prop="title" />
+            <el-table-column label="评审日期" :formatter="(r:any) => r.review_due_date?.slice(0,10)" width="110">
+              <template #default="{ row }">
+                <span :style="{ color: isUrgent(row.review_due_date) ? '#f56c6c' : '#e6a23c' }">
+                  {{ row.review_due_date?.slice(0, 10) }}
+                </span>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </el-col>
+      <el-col :sm="12">
+        <el-card header="超期未关闭CAPA">
+          <el-empty v-if="readiness.overdue_capas.length === 0" description="无超期CAPA" />
+          <el-table v-else :data="readiness.overdue_capas" size="small">
+            <el-table-column label="编号" prop="capa_no" width="120" />
+            <el-table-column label="描述" prop="description" />
+            <el-table-column label="截止" :formatter="(r:any) => r.due_date?.slice(0,10)" width="100" />
+          </el-table>
+        </el-card>
+      </el-col>
+    </el-row>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import request from '@/api/request'
+
+const kpis = ref({ nc_count_this_month: 0, capa_overdue_count: 0, ccp_records_this_month: 0, docs_expiring_soon: 0 })
+const readiness = ref<{ expiring_docs: any[]; overdue_capas: any[] }>({ expiring_docs: [], overdue_capas: [] })
+
+onMounted(async () => {
+  [kpis.value, readiness.value] = await Promise.all([
+    request.get('/statistics/dashboard/kpis'),
+    request.get('/statistics/dashboard/brcgs-readiness'),
+  ])
+})
+
+function isUrgent(dateStr: string) {
+  return new Date(dateStr).getTime() - Date.now() < 7 * 86400000
+}
+</script>
+```
+
+**Step 8: 注册路由**
+
+```typescript
+{ path: '/management-dashboard', name: 'ManagementDashboard', component: () => import('@/views/dashboard/ManagementDashboard.vue') },
+```
+
+**Step 9: 构建验证**
 
 ```bash
-git add server/src/modules/statistics/ client/src/views/dashboard/ client/src/views/traceability/
-git commit -m "feat: add management dashboard, BRCGS readiness score, and batch traceability PDF export"
+cd server && npx tsc --noEmit
+cd ../client && npx vue-tsc --noEmit
+```
+
+Expected: 无错误
+
+**Step 10: Commit**
+
+```bash
+cd ..
+git add server/src/modules/statistics/ client/src/views/dashboard/ client/src/router/index.ts
+git commit -m "feat: add management dashboard, BRCGS readiness view, and batch traceability PDF export"
 ```
 
 ---
 
-## 实施顺序总结
+## 实施顺序与依赖
 
-| Task | 内容 | 依赖 |
-|------|------|------|
-| 1 | ShiftInstance + ProductionRun Prisma 模型 | - |
-| 2 | ShiftInstance 后端 CRUD | Task 1 |
-| 3 | ProductionRun 后端 CRUD | Task 1, 2 |
-| 4 | RecordTemplate fieldsJson 升级 + 单据号 | Task 1 |
-| 5 | 263 张表单解析脚本 | Task 4 |
-| 6 | 前端开班/开产/换产/关产流 | Task 2, 3 |
-| 7 | 班次完成度看板 | Task 6 |
-| 8 | 文件生命周期管理 | - |
-| 9 | 定期任务引擎 | - |
-| 10 | 移动端 + 图片附件 | - |
-| 11 | CAPA 闭环 + 趋势分析 | - |
-| 12 | 管理仪表盘 + PDF 导出 | Task 11 |
+| Task | 内容 | 依赖 | 预计工时 |
+|------|------|------|---------|
+| 1 | Prisma Schema | — | 30 min |
+| 2 | ShiftInstance 后端 | Task 1 | 45 min |
+| 3 | ProductionRun 后端 | Task 1, 2 | 45 min |
+| 4 | fieldsJson 升级 + 单据号 | Task 1 | 30 min |
+| 5 | 263 张表单解析脚本 | Task 4 | 30 min |
+| 6 | 前端班次看板 | Task 2, 3 | 60 min |
+| 7 | 班次完成度看板 | Task 6 | 30 min |
+| 8 | 文件生命周期 | — | 45 min |
+| 9 | 定期任务引擎 | — | 30 min |
+| 10 | 移动端 + 图片附件 | — | 30 min |
+| 11 | CAPA 闭环 + 趋势 | — | 60 min |
+| 12 | 管理仪表盘 + PDF | Task 11 | 60 min |
 
 ---
 
 ## 执行方式
 
-**选项 1：Subagent-Driven（本 session 内）**
-由我逐 Task 派发新 subagent 实施，每 Task 完成后做 spec 合规审查 + 代码质量审查
+**Plan complete and saved to `docs/plans/2026-04-22-form-system-implementation.md`. Two execution options:**
 
-**选项 2：Parallel Session（新 session）**
-在新 session 中打开本计划文件，使用 `superpowers:executing-plans` 逐步执行
+**1. Subagent-Driven (this session)** - 我逐 Task 派发新 subagent，每完成一个做 spec 合规 + 代码质量两轮审查，快速迭代
+
+**2. Parallel Session (separate)** - 开新 session，加载本计划文件，使用 `superpowers:executing-plans` 逐步执行
 
 选哪个？
