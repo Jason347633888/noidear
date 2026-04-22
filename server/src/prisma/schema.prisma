@@ -574,7 +574,7 @@ model RecordTemplate {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  is_mandatory Boolean @default(false)
+  isMandatory Boolean @default(false)
 
   // 偏差检测配置
   deviationEnabled Boolean @default(false)
@@ -635,13 +635,7 @@ model Record {
   offlineFilled      Boolean   @default(false)
   autoArchiveStatus  String    @default("active")
 
-  changeLogs      RecordChangeLog[]
-  deviationReports DeviationReport[]
-
-  @@index([templateId])
-  @@index([number])
-  @@index([status])
-  @@index([retentionUntil])
+  // ShiftInstance & ProductionRun 关联
   shift_instance_id  String?
   shift_instance     ShiftInstance?  @relation(fields: [shift_instance_id], references: [id], onDelete: SetNull)
   production_run_id  String?
@@ -649,11 +643,20 @@ model Record {
   document_no        String?
   entity_links       Json?
 
+  changeLogs      RecordChangeLog[]
+  deviationReports DeviationReport[]
+
+  @@index([templateId])
+  @@index([number])
+  @@index([status])
+  @@index([retentionUntil])
   @@index([relatedBatchNumber])
   @@index([productionBatchId])
   @@index([finishedGoodsBatchId])
   @@index([workflowId])
   @@index([taskInstanceId])
+  @@index([shift_instance_id])
+  @@index([production_run_id])
   @@map("records")
 }
 
@@ -1155,6 +1158,7 @@ model ProductionBatch {
   @@index([batchNumber])
   @@index([productionDate])
   @@index([status])
+  @@index([production_run_id])
   @@map("production_batches")
 }
 
@@ -2883,6 +2887,8 @@ model LineChangeCheckRecord {
   deleted_at            DateTime?
   production_run_id     String?
   production_run        ProductionRun? @relation(fields: [production_run_id], references: [id], onDelete: SetNull)
+
+  @@index([production_run_id])
 }
 
 model FoodSafetyCultureRecord {
