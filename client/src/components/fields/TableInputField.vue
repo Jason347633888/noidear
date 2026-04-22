@@ -11,11 +11,11 @@
           <template v-if="!col.readonly">
             <el-input
               v-model="row[col.key]"
-              :class="{ 'cell-error': col.required && isCellMissing(row, col.key) }"
+              :class="{ 'cell-error': shouldShowCellError(row, col.key, col.required) }"
               size="small"
-              @change="emitUpdate"
+              @change="handleCellChange(row, col.key)"
             />
-            <div v-if="col.required && isCellMissing(row, col.key)" class="cell-error-text">
+            <div v-if="shouldShowCellError(row, col.key, col.required)" class="cell-error-text">
               {{ col.label }}不能为空
             </div>
           </template>
@@ -49,10 +49,17 @@ const emit = defineEmits<{
 }>();
 
 const rows = ref<Record<string, any>[]>([]);
+const touchedCells = ref<Set<string>>(new Set());
+
 const isCellMissing = (row: Record<string, any>, key: string) => {
   const value = row[key];
   return value === undefined || value === null || String(value).trim() === '';
 };
+
+const getCellId = (row: Record<string, any>, key: string) => `${rows.value.indexOf(row)}:${key}`;
+
+const shouldShowCellError = (row: Record<string, any>, key: string, required?: boolean) =>
+  Boolean(required && touchedCells.value.has(getCellId(row, key)) && isCellMissing(row, key));
 
 watch(
   () => props.modelValue,
@@ -69,6 +76,20 @@ const addRow = () => {
 
 const removeRow = (index: number) => {
   rows.value = rows.value.filter((_, i) => i !== index);
+  touchedCells.value = new Set(
+    [...touchedCells.value]
+      .filter((cellId) => Number(cellId.split(':')[0]) !== index)
+      .map((cellId) => {
+        const [rowIndex, key] = cellId.split(':');
+        const nextIndex = Number(rowIndex) > index ? Number(rowIndex) - 1 : Number(rowIndex);
+        return `${nextIndex}:${key}`;
+      })
+  );
+  emitUpdate();
+};
+
+const handleCellChange = (row: Record<string, any>, key: string) => {
+  touchedCells.value = new Set([...touchedCells.value, getCellId(row, key)]);
   emitUpdate();
 };
 

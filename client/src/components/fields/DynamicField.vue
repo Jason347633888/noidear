@@ -84,7 +84,7 @@ defineEmits<{
   (e: 'update:modelValue', value: any): void;
   (e: 'blur'): void;
   (e: 'change', value: any): void;
-  (e: 'validation-error', message: string): void;
+  (e: 'validation-error', value: any): void;
 }>();
 
 // 字段类型映射表
