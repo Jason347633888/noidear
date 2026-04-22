@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, watch } from 'vue';
 import OvenZoneTable from './OvenZoneTable.vue';
 import FanDeviceTable from './FanDeviceTable.vue';
 
@@ -87,7 +87,20 @@ watch(() => props.modelValue, (val) => {
 
 watch(inner, () => emitUpdate(), { deep: true });
 
-const emitUpdate = () => emit('update:modelValue', { ...inner });
+let hasSyncedInitialValue = false;
+
+const emitUpdate = () => {
+  emit('update:modelValue', { ...inner });
+  hasSyncedInitialValue = true;
+};
+
+onMounted(() => {
+  nextTick(() => {
+    if (!hasSyncedInitialValue) {
+      emitUpdate();
+    }
+  });
+});
 </script>
 
 <style scoped>
