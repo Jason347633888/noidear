@@ -781,6 +781,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/packaging-material-usage/PackagingMaterialUsageList.vue'),
         meta: { title: '包装材料用量记录' },
       },
+      // 班次看板模块
+      {
+        path: 'shift-dashboard',
+        name: 'ShiftDashboard',
+        component: () => import('@/views/shift/ShiftDashboard.vue'),
+        meta: { title: '班次看板' },
+      },
     ],
   },
   // 打印页（无 Layout）
