@@ -51,15 +51,17 @@
 
     <div v-if="!disabled" class="action-bar">
       <el-button @click="emit('saved', getFormData())">暂存草稿</el-button>
-      <el-button type="primary" @click="emit('submitted', getFormData())">提交</el-button>
+      <el-button type="primary" @click="handleSubmit">提交</el-button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { reactive, computed, onMounted } from 'vue';
+import { ElMessage } from 'element-plus';
 import dayjs from 'dayjs';
 import ProcessParams from '@/components/process/ProcessParams.vue';
+import { firstValidationMessage, validateStep5 } from '@/utils/processValidation';
 
 const props = defineProps<{
   instanceId: string;
@@ -114,6 +116,15 @@ onMounted(() => {
 });
 
 const getFormData = () => ({ ...form });
+
+const handleSubmit = () => {
+  const result = validateStep5(getFormData());
+  if (!result.valid) {
+    ElMessage.warning(firstValidationMessage(result));
+    return;
+  }
+  emit('submitted', getFormData());
+};
 </script>
 
 <style scoped>

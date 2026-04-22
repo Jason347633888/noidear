@@ -99,15 +99,17 @@
 
     <div v-if="!disabled && stepStatus !== 'SUBMITTED'" class="action-bar">
       <el-button @click="emit('saved', { ...form })">暂存草稿</el-button>
-      <el-button type="primary" @click="emit('submitted', { ...form })">提交审批</el-button>
+      <el-button type="primary" @click="handleSubmit">提交审批</el-button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { reactive, computed, onMounted } from 'vue';
+import { ElMessage } from 'element-plus';
 import ApprovalStepField from '@/components/fields/ApprovalStepField.vue';
 import dayjs from 'dayjs';
+import { firstValidationMessage, validateStep7 } from '@/utils/processValidation';
 
 const props = defineProps<{
   instanceId: string;
@@ -162,6 +164,15 @@ onMounted(() => {
 
 const handleApprove = (comment: string) => emit('approve', comment);
 const handleReject = (comment: string) => emit('reject', comment);
+
+const handleSubmit = () => {
+  const result = validateStep7({ ...form });
+  if (!result.valid) {
+    ElMessage.warning(firstValidationMessage(result));
+    return;
+  }
+  emit('submitted', { ...form });
+};
 </script>
 
 <style scoped>

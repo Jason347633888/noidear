@@ -69,13 +69,15 @@
 
     <div v-if="!disabled" class="action-bar">
       <el-button @click="emit('saved', { ...form })">暂存草稿</el-button>
-      <el-button type="primary" @click="emit('submitted', { ...form })">提交</el-button>
+      <el-button type="primary" @click="handleSubmit">提交</el-button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { reactive, onMounted } from 'vue';
+import { ElMessage } from 'element-plus';
+import { firstValidationMessage, validateStep6 } from '@/utils/processValidation';
 
 const props = defineProps<{
   instanceId: string;
@@ -117,6 +119,15 @@ onMounted(() => {
     if (mv.inspectionMethod !== undefined) form.inspectionMethod = mv.inspectionMethod;
   }
 });
+
+const handleSubmit = () => {
+  const result = validateStep6({ ...form });
+  if (!result.valid) {
+    ElMessage.warning(firstValidationMessage(result));
+    return;
+  }
+  emit('submitted', { ...form });
+};
 </script>
 
 <style scoped>
