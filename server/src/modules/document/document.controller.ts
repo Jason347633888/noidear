@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -21,9 +22,11 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { ForbiddenException } from '@nestjs/common';
 import { DocumentService } from './document.service';
+import { DocumentLifecycleService } from './document-lifecycle.service';
 import { FilePreviewService } from './services';
 import { DocumentReferenceService, CreateDocumentReferenceDto } from './services/document-reference.service';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto } from './dto';
+import { PublishDocumentDto } from './dto/document-lifecycle.dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionGuard } from '../../common/guards/permission.guard';
@@ -42,6 +45,7 @@ import { StatisticsCacheInterceptor } from '../../common/interceptors/statistics
 export class DocumentController {
   constructor(
     private readonly documentService: DocumentService,
+    private readonly lifecycleSvc: DocumentLifecycleService,
     private readonly filePreviewService: FilePreviewService,
     private readonly documentReferenceService: DocumentReferenceService,
     private readonly exportService: ExportService,
@@ -301,5 +305,27 @@ export class DocumentController {
   @ApiOperation({ summary: '查询引用此文档的影响范围（BR-306）' })
   async getReferenceImpact(@Param('id') id: string) {
     return this.documentReferenceService.getReferenceImpact(id);
+  }
+
+  // =============================
+  // Task 8: 文件生命周期管理
+  // =============================
+
+  @Get('due-soon')
+  @ApiOperation({ summary: '查询即将到期复审的文件' })
+  getDueSoon(@Query('days') days?: string) {
+    return this.lifecycleSvc.getDueSoon(days ? parseInt(days, 10) : 30);
+  }
+
+  @Patch(':id/publish')
+  @ApiOperation({ summary: '发布文件（设为生效状态）' })
+  publish(@Param('id') id: string, @Body() dto: PublishDocumentDto) {
+    return this.lifecycleSvc.publish(id, dto);
+  }
+
+  @Post(':id/confirm-read')
+  @ApiOperation({ summary: '确认已阅读文件' })
+  confirmRead(@Param('id') id: string, @Req() req: any) {
+    return this.lifecycleSvc.confirmRead(id, req.user?.id ?? 'system');
   }
 }

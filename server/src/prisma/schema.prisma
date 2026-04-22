@@ -281,6 +281,13 @@ model Document {
   effective_date  DateTime? // 生效日期
   content_md      String?   @db.Text // Markdown 正文
 
+  // Task 8: 文件生命周期管理
+  review_due_date  DateTime?
+  superseded_by_id String?
+  superseded_by    Document?  @relation("DocumentSuperseded", fields: [superseded_by_id], references: [id], onDelete: SetNull)
+  supersedes       Document[] @relation("DocumentSuperseded")
+  read_confirmations DocumentReadConfirmation[]
+
   @@map("documents")
 }
 
@@ -2989,4 +2996,16 @@ model ProductionRun {
   @@index([company_id, shift_instance_id])
   @@index([product_id])
   @@map("production_runs")
+}
+
+// Task 8: 文件阅读确认
+model DocumentReadConfirmation {
+  id           String   @id @default(cuid())
+  document_id  String
+  document     Document @relation(fields: [document_id], references: [id], onDelete: Cascade)
+  user_id      String
+  confirmed_at DateTime @default(now())
+
+  @@unique([document_id, user_id])
+  @@map("document_read_confirmations")
 }

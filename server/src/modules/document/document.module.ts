@@ -16,12 +16,13 @@ import { PermissionGuard } from '../../common/guards/permission.guard';
 import { SearchModule } from '../search/search.module';
 import { DocumentCronService } from './document-cron.service';
 import { DocumentReferenceService } from './services/document-reference.service';
+import { DocumentLifecycleService } from './document-lifecycle.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
   imports: [ConfigModule, PrismaModule, NotificationModule, OperationLogModule, ExportModule, DepartmentPermissionModule, StatisticsModule, UserPermissionModule, SearchModule],
   controllers: [DocumentController],
-  providers: [DocumentService, DocumentCronService, DocumentReferenceService, FilePreviewService, StorageService, StatisticsCacheInterceptor, PermissionGuard, DocumentsListener],
-  exports: [DocumentService, DocumentReferenceService],
+  providers: [DocumentService, DocumentCronService, DocumentReferenceService, DocumentLifecycleService, FilePreviewService, StorageService, StatisticsCacheInterceptor, PermissionGuard, DocumentsListener],
+  exports: [DocumentService, DocumentReferenceService, DocumentLifecycleService],
 })
 export class DocumentModule {}
