@@ -59,6 +59,42 @@ describe('validateFields', () => {
     });
   });
 
+  it('validates table child min and max rules', () => {
+    const fields: FormValidationField[] = [
+      {
+        name: 'ingredients',
+        label: '配料表',
+        type: 'table-input',
+        rowSchema: [{ name: 'weight', label: '重量', type: 'number', min: 1 }],
+      },
+    ];
+
+    const result = validateFields(fields, {
+      ingredients: [{ weight: 0 }],
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors[0]).toMatchObject({
+      fieldKey: 'ingredients',
+      rowIndex: 0,
+      childKey: 'weight',
+      message: '第1行重量不能小于1',
+    });
+  });
+
+  it('skips readonly table child fields', () => {
+    const fields: FormValidationField[] = [
+      {
+        name: 'ingredients',
+        label: '配料表',
+        type: 'table-input',
+        rowSchema: [{ name: 'code', label: '编码', type: 'text', required: true, readonly: true }],
+      },
+    ];
+
+    expect(validateFields(fields, { ingredients: [{ code: '' }] }).valid).toBe(true);
+  });
+
   it('validates checkbox text fields when checked', () => {
     const fields: FormValidationField[] = [
       {
@@ -75,6 +111,24 @@ describe('validateFields', () => {
 
     expect(result.valid).toBe(false);
     expect(result.errors[0].message).toBe('勾选后必须填写危害说明');
+  });
+
+  it('requires checkbox text before submit when unchecked', () => {
+    const fields: FormValidationField[] = [
+      {
+        name: 'allergen',
+        label: '引入的食品安全危害（含过敏源）',
+        type: 'checkbox-text',
+        required: true,
+      },
+    ];
+
+    const result = validateFields(fields, {
+      allergen: { checked: false, text: '' },
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors[0].message).toBe('引入的食品安全危害（含过敏源）不能为空');
   });
 
   it('skips invisible conditional fields', () => {

@@ -64,20 +64,21 @@ const validateTable = (field: FormValidationField, value: unknown): FormValidati
 
   const errors: FormValidationError[] = [];
   value.forEach((row, rowIndex) => {
+    const rowValues = row && typeof row === 'object' ? (row as Record<string, unknown>) : {};
+
     rowFields.forEach((child) => {
-      if (!child.required) return;
+      const childErrors = validateFieldValue(child as FormValidationField, rowValues[child.name], rowValues);
 
-      const childValue =
-        row && typeof row === 'object' ? (row as Record<string, unknown>)[child.name] : undefined;
-
-      if (isEmptyValue(childValue)) {
+      childErrors.forEach((childError) => {
+        const rowMessage = `第${rowIndex + 1}行${childError.message}`;
+        const errorCode = childError.errorCode === 'REQUIRED' ? 'ROW_REQUIRED' : childError.errorCode;
         errors.push(
-          error(field, 'ROW_REQUIRED', `第${rowIndex + 1}行${child.label}不能为空`, {
+          error(field, errorCode, rowMessage, {
             rowIndex,
             childKey: child.name,
           }),
         );
-      }
+      });
     });
   });
 
@@ -86,7 +87,15 @@ const validateTable = (field: FormValidationField, value: unknown): FormValidati
 
 const validateCheckboxText = (field: FormValidationField, value: unknown): FormValidationError[] => {
   const rule = field.validation?.find((candidate) => candidate.type === 'checkedTextRequired');
-  if (!rule || !getObjectBoolean(value, 'checked') || getObjectText(value, 'text')) return [];
+  const checked = getObjectBoolean(value, 'checked');
+  const text = getObjectText(value, 'text');
+  const hasText = text !== '';
+
+  if (field.required && !checked && !hasText) {
+    return [error(field, 'REQUIRED', `${field.label}不能为空`)];
+  }
+
+  if (!rule || !checked || hasText) return [];
 
   return [error(field, 'CHECKED_TEXT_REQUIRED', rule.message || `${field.label}说明不能为空`)];
 };
