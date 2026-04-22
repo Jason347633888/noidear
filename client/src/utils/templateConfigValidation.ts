@@ -47,31 +47,26 @@ const isFiniteNumber = (value: unknown): value is number => (
 );
 
 export function validateTemplateFields(fields: TemplateConfigField[]): TemplateConfigValidationResult {
-  if (!Array.isArray(fields) || fields.length === 0) {
-    return {
-      valid: false,
-      errors: ['请至少添加一个字段'],
-    };
-  }
-
   const errors: string[] = [];
+  if (!Array.isArray(fields) || fields.length === 0) errors.push('请至少添加一个字段');
+
   const seenNames = new Set<string>();
 
-  fields.forEach((field) => {
+  (Array.isArray(fields) ? fields : []).forEach((field, index) => {
     const name = normalizeText(field?.name);
-    const label = normalizeText(field?.label);
+    const label = normalizeText(field?.label) || `第${index + 1}个字段`;
     const type = normalizeText(field?.type);
 
     if (!name) {
-      errors.push('字段名不能为空');
+      errors.push(`${label} 缺少字段名`);
     }
 
-    if (!label) {
-      errors.push('字段标签不能为空');
+    if (!normalizeText(field?.label)) {
+      errors.push(`${name || label} 缺少标签`);
     }
 
     if (!type) {
-      errors.push('字段类型不能为空');
+      errors.push(`${name || label} 缺少字段类型`);
     }
 
     if (name) {
@@ -88,12 +83,12 @@ export function validateTemplateFields(fields: TemplateConfigField[]): TemplateC
         : [];
 
       if (validOptions.length === 0) {
-        errors.push(`${label || name || '当前字段'} 至少需要一个有效选项`);
+        errors.push(`${label} 至少需要一个有效选项`);
       }
     }
 
-    if ((type === 'number' || type === 'slider') && isFiniteNumber(field?.min) && isFiniteNumber(field?.max) && field.min > field.max) {
-      errors.push(`${label || name || '当前字段'} 的最小值不能大于最大值`);
+    if (isFiniteNumber(field?.min) && isFiniteNumber(field?.max) && field.min > field.max) {
+      errors.push(`${label} 的最小值不能大于最大值`);
     }
   });
 
