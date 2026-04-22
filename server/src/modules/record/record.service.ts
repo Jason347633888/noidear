@@ -3,6 +3,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkflowInstanceService } from '../workflow/workflow-instance.service';
 import { DeviationService } from '../deviation/deviation.service';
+import { DocumentNoService } from '../record-template/document-no.service';
 import { CreateRecordDto } from './dto/create-record.dto';
 import { UpdateRecordDto } from './dto/update-record.dto';
 import { QueryRecordDto } from './dto/query-record.dto';
@@ -16,6 +17,7 @@ export class RecordService {
     private readonly prisma: PrismaService,
     private readonly workflowInstanceService: WorkflowInstanceService,
     private readonly deviationService: DeviationService,
+    private readonly documentNoService: DocumentNoService,
   ) {}
 
   /**
@@ -36,6 +38,7 @@ export class RecordService {
     this.validateDataJson(createDto.dataJson, template.fieldsJson);
 
     const number = await this.generateRecordNumber();
+    const document_no = await this.documentNoService.generate(template.code);
     const retentionUntil = this.calculateRetentionUntil(template.retentionYears);
 
     // TASK-169: 批次关联逻辑
@@ -55,6 +58,7 @@ export class RecordService {
       data: {
         templateId: createDto.templateId,
         number,
+        document_no,
         dataJson: createDto.dataJson,
         createdBy: userId,
         retentionUntil,

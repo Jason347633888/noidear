@@ -7,9 +7,10 @@ import { DynamicFormBatchController } from './controllers/dynamic-form-batch.con
 import { DynamicFormBatchService } from './services/dynamic-form-batch.service';
 import { WorkflowModule } from '../workflow/workflow.module';
 import { DeviationModule } from '../deviation/deviation.module';
+import { RecordTemplateModule } from '../record-template/record-template.module';
 
 @Module({
-  imports: [PrismaModule, WorkflowModule, DeviationModule],
+  imports: [PrismaModule, WorkflowModule, DeviationModule, RecordTemplateModule],
   controllers: [RecordController, DynamicFormBatchController],
   providers: [RecordService, ChangeLogInterceptor, DynamicFormBatchService],
   exports: [RecordService, DynamicFormBatchService],
