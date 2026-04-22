@@ -574,6 +574,8 @@ model RecordTemplate {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
+  is_mandatory Boolean @default(false)
+
   // 偏差检测配置
   deviationEnabled Boolean @default(false)
 
@@ -640,6 +642,13 @@ model Record {
   @@index([number])
   @@index([status])
   @@index([retentionUntil])
+  shift_instance_id  String?
+  shift_instance     ShiftInstance?  @relation(fields: [shift_instance_id], references: [id], onDelete: SetNull)
+  production_run_id  String?
+  production_run     ProductionRun?  @relation(fields: [production_run_id], references: [id], onDelete: SetNull)
+  document_no        String?
+  entity_links       Json?
+
   @@index([relatedBatchNumber])
   @@index([productionBatchId])
   @@index([finishedGoodsBatchId])
@@ -1139,6 +1148,9 @@ model ProductionBatch {
   // Task 15b: 过程监控
   process_monitor_records ProcessMonitorRecord[]
   metal_detection_logs    MetalDetectionLog[]
+
+  production_run_id String?
+  production_run    ProductionRun? @relation(fields: [production_run_id], references: [id], onDelete: SetNull)
 
   @@index([batchNumber])
   @@index([productionDate])
@@ -2305,6 +2317,8 @@ model Product {
   updated_at   DateTime  @updatedAt
   deleted_at   DateTime?
 
+  production_runs ProductionRun[]
+
   @@unique([company_id, code])
   @@map("products")
 }
@@ -2323,6 +2337,8 @@ model Recipe {
   steps        ProcessStep[]
   created_at   DateTime     @default(now())
   updated_at   DateTime     @updatedAt
+
+  production_runs ProductionRun[]
 
   @@unique([company_id, product_id, version])
   @@map("recipes")
@@ -2865,6 +2881,8 @@ model LineChangeCheckRecord {
   notes                 String?
   created_at            DateTime  @default(now())
   deleted_at            DateTime?
+  production_run_id     String?
+  production_run        ProductionRun? @relation(fields: [production_run_id], references: [id], onDelete: SetNull)
 }
 
 model FoodSafetyCultureRecord {
@@ -2915,4 +2933,54 @@ model PackagingMaterialUsage {
   notes               String?
   created_at          DateTime  @default(now())
   deleted_at          DateTime?
+}
+
+model ShiftInstance {
+  id              String   @id @default(cuid())
+  company_id      String
+  shift_type      String   // '白班' | '夜班'
+  shift_date      DateTime @db.Date
+  opened_by       String
+  closed_by       String?
+  opened_at       DateTime @default(now())
+  closed_at       DateTime?
+  status          String   @default("open") // 'open' | 'closed'
+  notes           String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  production_runs ProductionRun[]
+  records         Record[]
+
+  @@unique([company_id, shift_type, shift_date])
+  @@index([company_id, shift_date])
+  @@map("shift_instances")
+}
+
+model ProductionRun {
+  id                String        @id @default(cuid())
+  company_id        String
+  shift_instance_id String
+  shift_instance    ShiftInstance @relation(fields: [shift_instance_id], references: [id], onDelete: Restrict)
+  production_line   String
+  product_id        String
+  product           Product       @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  recipe_id         String?
+  recipe            Recipe?       @relation(fields: [recipe_id], references: [id], onDelete: SetNull)
+  started_at        DateTime
+  ended_at          DateTime?
+  status            String        @default("active") // 'active' | 'closed'
+  actual_yield      Decimal?      @db.Decimal(14, 4)
+  yield_unit        String?
+  notes             String?
+  created_at        DateTime      @default(now())
+  updated_at        DateTime      @updatedAt
+
+  records                   Record[]
+  production_batches         ProductionBatch[]
+  line_change_check_records  LineChangeCheckRecord[]
+
+  @@index([company_id, shift_instance_id])
+  @@index([product_id])
+  @@map("production_runs")
 }
