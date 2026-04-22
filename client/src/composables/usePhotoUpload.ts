@@ -12,7 +12,7 @@ export function usePhotoUpload() {
     try {
       const form = new FormData()
       form.append('file', file)
-      const res = await axios.post('/api/upload/image', form, {
+      const res = await axios.post('/api/v1/upload/image', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       return (res.data as { url: string }).url
