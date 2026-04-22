@@ -1,7 +1,9 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as dotenv from 'dotenv';
+import * as path from 'path';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -10,7 +12,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 dotenv.config();
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // 🔒 安全头中间件
   app.use(helmet({
@@ -74,6 +76,9 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api/docs', app, document);
   }
+
+  // Serve uploaded files as static assets
+  app.useStaticAssets(path.join(__dirname, '..', 'uploads'), { prefix: '/uploads/' });
 
   const logger = new Logger('Bootstrap');
   const port = process.env.PORT || 3000;

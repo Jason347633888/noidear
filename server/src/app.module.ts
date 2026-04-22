@@ -78,6 +78,7 @@ import { WorkflowTriggersModule } from './modules/workflow-triggers/workflow-tri
 import { ShiftInstanceModule } from './modules/shift-instance/shift-instance.module';
 import { ProductionRunModule } from './modules/production-run/production-run.module';
 import { ScheduledTaskModule } from './modules/scheduled-task/scheduled-task.module';
+import { UploadModule } from './modules/upload/upload.module';
 
 @Module({
   imports: [
@@ -166,6 +167,7 @@ import { ScheduledTaskModule } from './modules/scheduled-task/scheduled-task.mod
     ShiftInstanceModule,
     ProductionRunModule,
     ScheduledTaskModule,
+    UploadModule,
   ],
   providers: [
     {

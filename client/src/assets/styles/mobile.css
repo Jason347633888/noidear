@@ -1,0 +1,12 @@
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .page-container { padding: 12px; }
+  .el-form-item { margin-bottom: 14px; }
+  .el-form-item__label { font-size: 13px; }
+  .el-table { font-size: 12px; }
+  .page-header,
+  .header-actions { flex-direction: column; gap: 8px; }
+  .el-dialog { width: 95vw !important; margin: 4vh auto !important; }
+  .el-button { min-height: 40px; font-size: 14px; }
+  .el-input__inner { font-size: 16px; }
+}
