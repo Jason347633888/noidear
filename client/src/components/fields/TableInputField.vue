@@ -35,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 import type { FieldConfig } from './DynamicField.vue';
 
 const props = defineProps<{
@@ -50,6 +50,7 @@ const emit = defineEmits<{
 
 const rows = ref<Record<string, any>[]>([]);
 const touchedCells = ref<Set<string>>(new Set());
+let isEmitting = false;
 
 const isCellMissing = (row: Record<string, any>, key: string) => {
   const value = row[key];
@@ -63,7 +64,10 @@ const shouldShowCellError = (row: Record<string, any>, key: string, required?: b
 
 watch(
   () => props.modelValue,
-  (val) => { rows.value = Array.isArray(val) ? val : []; },
+  (val) => {
+    rows.value = Array.isArray(val) ? val : [];
+    if (!isEmitting) touchedCells.value = new Set();
+  },
   { immediate: true }
 );
 
@@ -95,8 +99,12 @@ const handleCellChange = (row: Record<string, any>, key: string) => {
 
 const emitUpdate = () => {
   const nextRows = [...rows.value];
+  isEmitting = true;
   emit('update:modelValue', nextRows);
   emit('change', nextRows);
+  nextTick(() => {
+    isEmitting = false;
+  });
 };
 </script>
 
