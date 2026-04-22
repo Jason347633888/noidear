@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCapaDto } from './dto/create-capa.dto';
 
@@ -19,6 +19,19 @@ export class CorrectiveActionService {
       where: status ? { status } : {},
       orderBy: { created_at: 'desc' },
       take: 100,
+    });
+  }
+
+  async findById(id: string) {
+    const capa = await this.prisma.correctiveAction.findUnique({ where: { id } });
+    if (!capa) throw new NotFoundException('纠正措施不存在');
+    return capa;
+  }
+
+  async updateStatus(id: string, status: string) {
+    return this.prisma.correctiveAction.update({
+      where: { id },
+      data: { status },
     });
   }
 

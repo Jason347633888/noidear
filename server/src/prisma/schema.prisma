@@ -2508,13 +2508,33 @@ model CorrectiveAction {
   preventive_action String?
   due_date          DateTime? @db.Date
   responsible_id    String?
-  status            String    @default("open") // 'open'|'implementing'|'verifying'|'closed'
+  status            String    @default("open") // 'open'|'implementing'|'pending_verification'|'closed'
   verified_by       String?
   verified_at       DateTime?
   closed_at         DateTime?
   created_at        DateTime  @default(now())
   updated_at        DateTime  @updatedAt
+
+  verification_records VerificationRecord[]
+
   @@unique([company_id, capa_no])
+}
+
+model VerificationRecord {
+  id                   String           @id @default(cuid())
+  company_id           String
+  corrective_action_id String
+  corrective_action    CorrectiveAction @relation(fields: [corrective_action_id], references: [id], onDelete: Cascade)
+  verified_by          String
+  verification_method  String
+  result               String
+  notes                String?
+  evidence_record_ids  String[]
+  verified_at          DateTime         @default(now())
+  created_at           DateTime         @default(now())
+
+  @@index([corrective_action_id])
+  @@map("verification_records")
 }
 
 model CustomerComplaint {

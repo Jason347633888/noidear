@@ -593,6 +593,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/corrective-action/CorrectiveActionList.vue'),
         meta: { title: '纠正措施' },
       },
+      {
+        path: 'corrective-actions/:id',
+        name: 'CapaDetail',
+        component: () => import('@/views/corrective-action/CapaDetail.vue'),
+        meta: { title: 'CAPA 详情' },
+      },
       // 顾客投诉模块
       {
         path: 'customer-complaints',
