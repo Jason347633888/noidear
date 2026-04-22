@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Param,
   Query,
   UseGuards,
   HttpException,
@@ -13,6 +14,8 @@ import { ApiOperation } from '@nestjs/swagger';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { StatisticsService } from './statistics.service';
+import { ManagementDashboardService } from './management-dashboard.service';
+import { TraceabilityExportService } from './traceability-export.service';
 import { DocumentStatsQueryDto } from './dto/document-stats-query.dto';
 import { TaskStatsQueryDto } from './dto/task-stats-query.dto';
 import { ApprovalStatsQueryDto } from './dto/approval-stats-query.dto';
@@ -27,6 +30,8 @@ export class StatisticsController {
   constructor(
     private readonly statisticsService: StatisticsService,
     private readonly exportService: ExportService,
+    private readonly managementDashboardService: ManagementDashboardService,
+    private readonly traceabilityExportService: TraceabilityExportService,
   ) {}
 
   @Get('documents')
@@ -129,6 +134,62 @@ export class StatisticsController {
         'Failed to retrieve equipment statistics',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  @Get('dashboard/kpis')
+  @ApiOperation({ summary: '管理层仪表盘 KPI 数据' })
+  async getDashboardKpis() {
+    try {
+      return await this.managementDashboardService.getKpis();
+    } catch (error) {
+      this.logger.error('Failed to get dashboard KPIs', error.stack);
+      throw new HttpException(
+        'Failed to retrieve dashboard KPIs',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('dashboard/brcgs-readiness')
+  @ApiOperation({ summary: 'BRCGS 准备度视图（即将过期文件 + 超期CAPA）' })
+  async getBrcgsReadiness() {
+    try {
+      return await this.managementDashboardService.getBrcgsReadiness();
+    } catch (error) {
+      this.logger.error('Failed to get BRCGS readiness', error.stack);
+      throw new HttpException(
+        'Failed to retrieve BRCGS readiness data',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('traceability/:batchId/pdf')
+  @ApiOperation({ summary: '批次追溯 PDF 导出' })
+  async exportTraceabilityPdf(
+    @Param('batchId') batchId: string,
+    @Res() res: Response,
+  ) {
+    try {
+      const buffer =
+        await this.traceabilityExportService.exportBatchPdf(batchId);
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="traceability-${batchId}.pdf"`,
+        'Content-Length': buffer.length,
+      });
+      res.end(buffer);
+    } catch (error) {
+      this.logger.error(
+        `Failed to export traceability PDF for batch ${batchId}`,
+        error.stack,
+      );
+      res.status(error.status ?? 500).json({
+        success: false,
+        message: '导出追溯PDF失败',
+        error: error.message,
+      });
     }
   }
 

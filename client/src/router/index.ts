@@ -794,6 +794,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/shift/ShiftDashboard.vue'),
         meta: { title: '班次看板' },
       },
+      // 管理层仪表盘
+      {
+        path: 'management-dashboard',
+        name: 'ManagementDashboard',
+        component: () => import('@/views/dashboard/ManagementDashboard.vue'),
+        meta: { title: '管理层仪表盘' },
+      },
     ],
   },
   // 打印页（无 Layout）
