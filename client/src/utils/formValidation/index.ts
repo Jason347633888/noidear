@@ -1,5 +1,6 @@
 export type {
   FormFieldType,
+  KnownFormFieldType,
   FormOption,
   FormValidationError,
   FormValidationField,

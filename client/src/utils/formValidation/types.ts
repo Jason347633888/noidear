@@ -1,4 +1,4 @@
-export type FormFieldType =
+export type KnownFormFieldType =
   | 'text'
   | 'textarea'
   | 'number'
@@ -18,8 +18,9 @@ export type FormFieldType =
   | 'checkbox-text'
   | 'approval-step'
   | 'section-header'
-  | 'static-content'
-  | string;
+  | 'static-content';
+
+export type FormFieldType = KnownFormFieldType | (string & {});
 
 export type FormValidationSeverity = 'error' | 'warning';
 
