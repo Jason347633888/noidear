@@ -1,3 +1,4 @@
+export { validateFields, validateFieldValue } from './validators';
 export type {
   FormFieldType,
   KnownFormFieldType,
