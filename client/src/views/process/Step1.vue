@@ -130,6 +130,7 @@ import { ElMessage } from 'element-plus';
 import type { FormInstance } from 'element-plus';
 import dayjs from 'dayjs';
 import { useUserStore } from '@/stores/user';
+import { firstValidationMessage, validateStep1 } from '@/utils/processValidation';
 
 const props = defineProps<{
   instanceId: string;
@@ -189,10 +190,13 @@ const handleSave = () => {
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false);
   if (!valid) return;
-  if (!form.processType) {
-    ElMessage.warning('请选择工艺形式');
+
+  const result = validateStep1({ ...form });
+  if (!result.valid) {
+    ElMessage.warning(firstValidationMessage(result));
     return;
   }
+
   emit('submitted', { ...form });
 };
 </script>

@@ -59,6 +59,30 @@ describe('validateFields', () => {
     });
   });
 
+  it('requires a table-input field to contain at least one row', () => {
+    const fields: FormValidationField[] = [
+      {
+        name: 'rawMaterials',
+        label: '原料清单',
+        type: 'table-input',
+        required: true,
+        rowSchema: [
+          { name: 'materialCode', label: '物料编码', type: 'text', required: true },
+          { name: 'name', label: '物料名称', type: 'text', required: true },
+        ],
+      },
+    ];
+
+    const result = validateFields(fields, { rawMaterials: [] });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors[0]).toMatchObject({
+      fieldKey: 'rawMaterials',
+      errorCode: 'REQUIRED',
+      message: '原料清单不能为空',
+    });
+  });
+
   it('validates table child min and max rules', () => {
     const fields: FormValidationField[] = [
       {

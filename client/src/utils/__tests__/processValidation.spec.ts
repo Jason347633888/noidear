@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  firstValidationMessage,
   validateStep1,
   validateStep2,
   validateStep4,
@@ -30,6 +31,25 @@ describe('process validation helpers', () => {
     expect(result.errors.map((e) => e.fieldKey)).toContain('productName');
     expect(result.errors.map((e) => e.fieldKey)).toContain('submitDate');
     expect(result.errors.map((e) => e.fieldKey)).toContain('shelfLife');
+  });
+
+  it('firstValidationMessage returns the first validation error message', () => {
+    const result = validateStep1({
+      applicant: '',
+      flavorRequirement: '',
+      pesticideRequirement: '',
+      heavyMetalRequirement: '',
+      microbiologicalRequirement: '',
+      standardRequirement: '',
+      labelRequirement: '',
+      nutritionRequirement: '',
+      submitDate: '',
+      productName: '',
+      processType: '',
+      shelfLife: '',
+    });
+
+    expect(firstValidationMessage(result)).toBe('申请人不能为空');
   });
 
   it('Step2 requires raw material rows and standardOther when standard is other', () => {
