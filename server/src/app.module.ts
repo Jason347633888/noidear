@@ -77,6 +77,7 @@ import { PackagingMaterialUsageModule } from './modules/packaging-material-usage
 import { WorkflowTriggersModule } from './modules/workflow-triggers/workflow-triggers.module';
 import { ShiftInstanceModule } from './modules/shift-instance/shift-instance.module';
 import { ProductionRunModule } from './modules/production-run/production-run.module';
+import { ScheduledTaskModule } from './modules/scheduled-task/scheduled-task.module';
 
 @Module({
   imports: [
@@ -164,6 +165,7 @@ import { ProductionRunModule } from './modules/production-run/production-run.mod
     WorkflowTriggersModule,
     ShiftInstanceModule,
     ProductionRunModule,
+    ScheduledTaskModule,
   ],
   providers: [
     {

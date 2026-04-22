@@ -2038,15 +2038,18 @@ model RecordTaskAssignment {
   title        String
   departmentId String
   department   Department     @relation("RecordTaskDepartment", fields: [departmentId], references: [id])
-  isPeriodic   Boolean        @default(false)
-  periodType   String?
-  periodConfig Json?
-  status       String         @default("active")
-  creatorId    String
-  creator      User           @relation("RecordTaskCreator", fields: [creatorId], references: [id])
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  instances    RecordTaskInstance[]
+  isPeriodic         Boolean        @default(false)
+  periodType         String?
+  periodConfig       Json?
+  cron_expression    String?
+  source_document_id String?
+  last_triggered_at  DateTime?
+  status             String         @default("active")
+  creatorId          String
+  creator            User           @relation("RecordTaskCreator", fields: [creatorId], references: [id])
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  instances          RecordTaskInstance[]
 
   @@index([departmentId])
   @@index([status])
