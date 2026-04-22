@@ -14,6 +14,7 @@
     @update:model-value="$emit('update:modelValue', $event)"
     @blur="$emit('blur')"
     @change="$emit('change', $event)"
+    @validation-error="$emit('validation-error', $event)"
     :field="field"
   />
   <el-alert
@@ -83,6 +84,7 @@ defineEmits<{
   (e: 'update:modelValue', value: any): void;
   (e: 'blur'): void;
   (e: 'change', value: any): void;
+  (e: 'validation-error', message: string): void;
 }>();
 
 // 字段类型映射表
