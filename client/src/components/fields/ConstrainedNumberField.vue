@@ -21,7 +21,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: number): void;
-  (e: 'validation-error', message: string): void;
+  (
+    e: 'validation-error',
+    payload: {
+      fieldKey: string;
+      errorCode: string;
+      message: string;
+      severity: 'error';
+    }
+  ): void;
 }>();
 
 const handleChange = (val: number | null) => {
@@ -29,11 +37,23 @@ const handleChange = (val: number | null) => {
   const min = props.field.min;
   const max = props.field.max;
   if (typeof min === 'number' && val < min) {
-    emit('validation-error', `${props.field.label}不能小于${min}`);
+    const message = `${props.field.label}不能小于${min}`;
+    emit('validation-error', {
+      fieldKey: props.field.name,
+      errorCode: 'CONSTRAINED_NUMBER',
+      message,
+      severity: 'error',
+    });
     return;
   }
   if (typeof max === 'number' && val > max) {
-    emit('validation-error', `${props.field.label}不能大于${max}`);
+    const message = `${props.field.label}不能大于${max}`;
+    emit('validation-error', {
+      fieldKey: props.field.name,
+      errorCode: 'CONSTRAINED_NUMBER',
+      message,
+      severity: 'error',
+    });
     return;
   }
   emit('update:modelValue', val);

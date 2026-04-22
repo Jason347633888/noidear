@@ -8,12 +8,17 @@
         :prop="col.key"
       >
         <template #default="{ row, $index }">
-          <el-input
-            v-if="!col.readonly"
-            v-model="row[col.key]"
-            size="small"
-            @change="emitUpdate"
-          />
+          <template v-if="!col.readonly">
+            <el-input
+              v-model="row[col.key]"
+              :class="{ 'cell-error': col.required && isCellMissing(row, col.key) }"
+              size="small"
+              @change="emitUpdate"
+            />
+            <div v-if="col.required && isCellMissing(row, col.key)" class="cell-error-text">
+              {{ col.label }}不能为空
+            </div>
+          </template>
           <span v-else>{{ row[col.key] }}</span>
         </template>
       </el-table-column>
@@ -40,9 +45,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: any[]): void;
+  (e: 'change', value: any[]): void;
 }>();
 
 const rows = ref<Record<string, any>[]>([]);
+const isCellMissing = (row: Record<string, any>, key: string) => {
+  const value = row[key];
+  return value === undefined || value === null || String(value).trim() === '';
+};
 
 watch(
   () => props.modelValue,
@@ -62,5 +72,22 @@ const removeRow = (index: number) => {
   emitUpdate();
 };
 
-const emitUpdate = () => emit('update:modelValue', [...rows.value]);
+const emitUpdate = () => {
+  const nextRows = [...rows.value];
+  emit('update:modelValue', nextRows);
+  emit('change', nextRows);
+};
 </script>
+
+<style scoped>
+.cell-error :deep(.el-input__wrapper) {
+  box-shadow: 0 0 0 1px var(--el-color-danger) inset;
+}
+
+.cell-error-text {
+  color: var(--el-color-danger);
+  font-size: 12px;
+  line-height: 18px;
+  margin-top: 2px;
+}
+</style>
