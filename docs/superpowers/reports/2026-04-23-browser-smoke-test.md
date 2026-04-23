@@ -7,13 +7,13 @@
 - Browser: Chrome / Safari
 - Frontend URL: http://localhost:5175
 - Backend URL: http://localhost:3000
-- Test account: admin / 12345678
+- Test account: admin / ChangeMe123!
 
 ## Route Checklist
 
 | Priority | Area | Route | Action | Expected | Actual | Console Error | Network Error | Classification | Status |
 |---|---|---|---|---|---|---|---|---|---|
-| P0 | Login | `/login` | Submit valid credentials | Enters app shell | | | | | pending |
+| P0 | Login | `/login` | Submit valid credentials | Enters app shell | ✅ 登录成功，跳转至 dashboard | None | None | — | **passed** |
 | P0 | Navigation | main app shell | Click each main sidebar item | Route changes and page renders | | | | | pending |
 | P0 | Product R&D | product R&D entry route | Enter Step1 and continue through visible steps | Main workflow can be entered | | | | | pending |
 | P0 | Dynamic Form | dynamic form entry route | Open a template and submit a minimal valid record | Form validates or submits with clear errors | | | | | pending |
@@ -26,10 +26,11 @@
 
 | ID | Priority | Route | Action | Evidence | Root Cause Guess | Fix Plan |
 |---|---|---|---|---|---|---|
+| FIND-001 | P3 | — | 文档密码与实际不符 | README 和 AGENTS.md 记录密码为 12345678，实际为 ChangeMe123! | 文档未随 seed 脚本更新 | 更新所有文档中的默认密码为 ChangeMe123! |
 
 ## Summary
 
-- P0 blocking issues:
-- P1 core issues:
-- P2 normal issues:
-- Display-only issues:
+- P0 blocking issues: 0
+- P1 core issues: 0
+- P2 normal issues: 0
+- Display-only issues: 1 (FIND-001: 文档密码记录不一致)
