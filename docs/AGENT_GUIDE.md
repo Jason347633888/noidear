@@ -95,6 +95,46 @@ run_tests('process')     # 跑研发流程 E2E 测试
 
 ---
 
+## oh-my-opencode 使用说明
+
+本项目已集成 [oh-my-opencode](https://github.com/oh-my-opencode/oh-my-opencode) 智能体框架：
+
+```bash
+# 安装
+npm install -g oh-my-opencode
+
+# 配置（支持 Kimi K2.6 和 GPT-5.4）
+omp config set model kimi-k2.6    # 或 gpt-5.4
+omp config set api_key <your_key>
+
+# 常用命令
+omp run                         # 启动交互式会话
+omp run --task "修复登录页面的429错误"    # 单任务模式
+omp status                      # 查看当前配置
+```
+
+**推荐工作流**：
+1. 使用 `omp run --task` 执行明确的单任务
+2. 复杂任务拆分为多个子任务，利用上下文保持连贯性
+3. 使用 `call_api_as({ role: 'admin', ... })` 进行权限测试
+
+## ultrawork 使用提示
+
+**ultrawork** 是 oh-my-opencode 的增强插件，提供：
+- 自动代码审查（每次提交前运行 ESLint + Prettier）
+- 智能上下文管理（自动注入相关文件到 prompt）
+- 批量重构支持（跨文件变量重命名、接口迁移）
+
+```bash
+# 启用 ultrawork 增强模式
+omp run --ultrawork
+
+# 批量重构示例
+omp refactor --from OldComponent --to NewComponent --path client/src/views
+```
+
+---
+
 ## 已知限制
 
 - `query_db` 只支持 `SELECT`，写操作会被拒绝并返回错误

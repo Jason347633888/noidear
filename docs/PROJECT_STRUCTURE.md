@@ -1,9 +1,10 @@
 # 项目结构导航
 
-> 文档版本: 6.0
-> 最后更新: 2026-02-22
+> 文档版本: 6.1
+> 最后更新: 2026-04-23
 > 用途: AI Agent 快速定位文件 + 项目结构参考
 > 项目状态: 全部 22 个功能模块已开发，总体完成度 **85.6%**（154/180 任务）
+> 最新进展: Vault SaaS Browser Alignment 完成（283张表单对齐，31个缺失映射+3个编号错误修复），oh-my-opencode 集成，E2E测试优化（Playwright全局登录缓存）
 
 ---
 
@@ -453,7 +454,7 @@ server/src/modules/workflow/workflow-task.service.ts (分配步骤任务)
 | 需求设计 | `docs/DESIGN.md` | v10.7 | 113 条业务规则 + P1 技术债务方案 |
 | 功能审计 | `docs/complete-audit-report.md` | 第三次更新 | 22模块任务级精确核查，85.6% 完成 |
 | 交互设计 | `docs/INTERACTION_DESIGN.md` | v1.1 | 7 大模块完整交互规范 |
-| 项目结构 | `docs/PROJECT_STRUCTURE.md` | v6.0（本文件） | 文件导航 + 模块映射 |
+| 项目结构 | `docs/PROJECT_STRUCTURE.md` | v6.1（本文件） | 文件导航 + 模块映射 |
 | AI 指南 | `CLAUDE.md` | v5.1 | AI Agent 开发约束 + 编码预防清单 |
 | README | `README.md` | v4.1 | 快速开始、功能概览 |
 
@@ -550,8 +551,8 @@ server/src/modules/workflow/workflow-task.service.ts (分配步骤任务)
 
 ---
 
-**文档版本**: 6.0
-**最后更新**: 2026-02-22
+**文档版本**: 6.1
+**最后更新**: 2026-04-23
 **变更内容**:
 - 完整重写（原 v5.0 描述的是计划结构而非实际结构）
 - 更新目录结构以反映实际已实现的 40 个后端模块、97 个前端 Vue 组件、33 个 API 文件
@@ -562,3 +563,4 @@ server/src/modules/workflow/workflow-task.service.ts (分配步骤任务)
 - 新增测试文件位置索引（10.3）
 - 新增架构约束与注意事项（10.4）
 - 删除已废弃的"前端开发计划"章节（功能已全部实现）
+- v6.1 更新：同步最新项目状态（Vault对齐完成、oh-my-opencode集成、E2E优化）

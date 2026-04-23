@@ -82,7 +82,10 @@
   - 01-数据模型.md: 新增 22 个实体，总数 70
   - 02-功能设想.md: 新增 6 个功能模块
   - 04-数据模型缺口汇总.md: 已解决缺口标记
+- **Phase 1 状态**: ✅ **已完成**（2026-04-23）
 
 ## Phase 2 Browser Intake
 
 The browser intake is tracked in `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/superpowers/reports/2026-04-23-browser-smoke-test.md`.
+
+**Phase 2 状态**: 🔄 模板就绪，等待执行

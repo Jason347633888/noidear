@@ -13,8 +13,10 @@
 ## Findings To Fix
 
 | Task | Finding ID | Priority | Files To Inspect | Test To Add Or Update | Verification |
-|---|---|---|---|---|---|
-| 1 | FIND-001 | P3 | README.md, AGENTS.md, docs/DESIGN.md, docs/REQUIREMENTS.md | — | 确认所有文档密码统一为 ChangeMe123! |
+|---|---|---|---|---|---|---|
+| 1 | FIND-001 | P3 | README.md, AGENTS.md, docs/DESIGN.md, docs/REQUIREMENTS.md | — | ✅ 已完成：所有文档密码统一为 ChangeMe123! |
+| 2 | FIND-002 | P2 | client/e2e/ | 添加全局 setup（auth.setup.ts） | Playwright 登录缓存，解决429限流 |
+| 3 | FIND-003 | P2 | docs/superpowers/reports/ | 更新执行报告 | Vault SaaS Browser Alignment Phase 1 已完成 |
 
 ## Execution Rules
 
