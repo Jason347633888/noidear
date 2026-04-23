@@ -14,6 +14,7 @@
 
 | Task | Finding ID | Priority | Files To Inspect | Test To Add Or Update | Verification |
 |---|---|---|---|---|---|
+| 1 | FIND-001 | P3 | README.md, AGENTS.md, docs/DESIGN.md, docs/REQUIREMENTS.md | — | 确认所有文档密码统一为 ChangeMe123! |
 
 ## Execution Rules
 
