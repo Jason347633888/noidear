@@ -26,7 +26,7 @@
 
 | ID | Priority | Route | Action | Evidence | Root Cause Guess | Fix Plan |
 |---|---|---|---|---|---|---|
-| FIND-001 | P3 | — | 文档密码与实际不符 | README 和 AGENTS.md 记录密码为 12345678，实际为 ChangeMe123! | 文档未随 seed 脚本更新 | 更新所有文档中的默认密码为 ChangeMe123! |
+| FIND-001 | P3 | — | 文档密码与实际不符 | ✅ 已修复 | 文档未随 seed 脚本更新 | 已批量更新所有文档中的默认密码为 ChangeMe123! |
 
 ## Summary
 

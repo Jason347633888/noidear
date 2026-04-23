@@ -75,7 +75,7 @@ npm run dev
 
 ```
 用户名: admin
-密码: 12345678
+密码: ChangeMe123!
 ```
 
 ---

@@ -29,7 +29,7 @@ cd client
 npm install
 npm run dev
 
-# Access: http://localhost:5173 (admin / 12345678)
+# Access: http://localhost:5173 (admin / ChangeMe123!)
 ```
 
 ## Critical Rules

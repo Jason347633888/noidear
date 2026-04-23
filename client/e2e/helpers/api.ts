@@ -1,4 +1,6 @@
 import { type APIRequestContext } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * API helper for E2E test data setup and teardown.
@@ -9,6 +11,9 @@ import { type APIRequestContext } from '@playwright/test';
 
 const API_BASE = process.env.API_BASE_URL || 'http://localhost:3000/api/v1';
 
+// Token cache to avoid 429 rate limiting
+const tokenCache: Map<string, string> = new Map();
+
 interface ApiResponse<T> {
   code: number;
   data: T;
@@ -16,13 +21,46 @@ interface ApiResponse<T> {
 }
 
 /**
+ * Load cached token from global-setup if available.
+ */
+function loadCachedToken(username: string): string | null {
+  // Check in-memory cache first
+  if (tokenCache.has(username)) {
+    return tokenCache.get(username)!;
+  }
+  
+  // Check file cache from global-setup
+  const tokenFile = path.join(process.cwd(), 'e2e', '.auth', 'admin-token.json');
+  if (fs.existsSync(tokenFile)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(tokenFile, 'utf-8'));
+      if (data.user?.username === username && data.token) {
+        tokenCache.set(username, data.token);
+        return data.token;
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }
+  
+  return null;
+}
+
+/**
  * Obtain a JWT token for the given user credentials.
+ * Uses caching to avoid 429 rate limiting.
  */
 export async function getAuthToken(
   request: APIRequestContext,
   username: string,
   password: string,
 ): Promise<string> {
+  // Try cache first
+  const cached = loadCachedToken(username);
+  if (cached) {
+    return cached;
+  }
+
   const response = await request.post(`${API_BASE}/auth/login`, {
     data: { username, password },
   });
@@ -32,7 +70,12 @@ export async function getAuthToken(
   }
 
   const body = (await response.json()) as ApiResponse<{ token: string }>;
-  return body.data.token;
+  const token = body.data.token;
+  
+  // Cache the token
+  tokenCache.set(username, token);
+  
+  return token;
 }
 
 /**

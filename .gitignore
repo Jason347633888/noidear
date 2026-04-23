@@ -31,3 +31,5 @@ client/playwright-report/
 client/playwright-results.json
 client/e2e/test-results/
 client/.env.e2e
+e2e/.auth/
+test-results/

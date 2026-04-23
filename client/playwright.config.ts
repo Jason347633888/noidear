@@ -14,6 +14,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1,
+  globalSetup: './e2e/global-setup.ts',
   reporter: [
     ['html', { outputFolder: 'playwright-report' }],
     ['json', { outputFile: 'playwright-results.json' }],
@@ -21,6 +22,7 @@ export default defineConfig({
   ],
   use: {
     baseURL: 'http://localhost:5173',
+    storageState: 'e2e/.auth/admin.json',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
