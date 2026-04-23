@@ -72,20 +72,42 @@ function extractCode(filePath: string, content: string): string {
  *   | 字段名 | 类型 | 单位 | 必填 | 填写方式 | 默认值 / 取值范围 |
  * with ✓ for required and — for not applicable.
  */
+/**
+ * Table format variants:
+ *   Format A (standard):  | 字段名 | 类型 | 单位 | 必填 | 填写方式 | 默认值 / 取值范围 |
+ *   Format B (alt):       | 字段名称 | 类型 | 填写方式 | 可选值 / 说明 |
+ */
+type TableFormat = 'standard' | 'alt';
+
 export function parseFieldTable(content: string): ParsedField[] {
   const lines = content.split('\n');
   const fields: ParsedField[] = [];
 
   let inFieldTable = false;
   let headerParsed = false;
+  let tableFormat: TableFormat = 'standard';
 
   for (const line of lines) {
     const trimmed = line.trim();
 
-    // Detect the field table header row
+    // Detect the field table header row — standard format requires 必填
     if (trimmed.includes('字段名') && trimmed.includes('类型') && trimmed.includes('必填')) {
       inFieldTable = true;
       headerParsed = false;
+      tableFormat = 'standard';
+      continue;
+    }
+
+    // Alt format: 字段名称 | 类型 | 填写方式 | 可选值 (no 必填 column)
+    if (
+      trimmed.includes('字段名称') &&
+      trimmed.includes('类型') &&
+      trimmed.includes('填写方式') &&
+      !trimmed.includes('必填')
+    ) {
+      inFieldTable = true;
+      headerParsed = false;
+      tableFormat = 'alt';
       continue;
     }
 
@@ -117,25 +139,42 @@ export function parseFieldTable(content: string): ParsedField[] {
       .map((c) => c.trim())
       .filter(Boolean);
 
-    // Need at least: 字段名, 类型, 单位, 必填
-    if (cols.length < 4) continue;
+    if (cols.length < 3) continue;
 
     const label = cols[0];
-    const typeRaw = cols[1] ?? '';
-    const unit = cols[2];
-    const requiredRaw = cols[3] ?? '';
 
     // Skip rows that look like sub-headers or empty labels
-    if (!label || label.startsWith('---') || label === '字段名') continue;
+    if (!label || label.startsWith('---') || label === '字段名' || label === '字段名称') continue;
 
-    // required: ✓ means yes, anything else (—, 条件必填, 否) means false
-    const required = requiredRaw.includes('✓');
+    let typeRaw: string;
+    let unit: string | undefined;
+    let required: boolean;
+    let defaultValue: string | undefined;
 
-    const defaultValueRaw = cols[5];
-    const defaultValue =
-      defaultValueRaw && defaultValueRaw !== '—' && defaultValueRaw !== '-'
-        ? defaultValueRaw.slice(0, 200)
-        : undefined;
+    if (tableFormat === 'standard') {
+      // Need at least: 字段名, 类型, 单位, 必填
+      if (cols.length < 4) continue;
+      typeRaw = cols[1] ?? '';
+      const unitRaw = cols[2];
+      const requiredRaw = cols[3] ?? '';
+      unit = unitRaw && unitRaw !== '—' && unitRaw !== '-' ? unitRaw : undefined;
+      required = requiredRaw.includes('✓');
+      const defaultValueRaw = cols[5];
+      defaultValue =
+        defaultValueRaw && defaultValueRaw !== '—' && defaultValueRaw !== '-'
+          ? defaultValueRaw.slice(0, 200)
+          : undefined;
+    } else {
+      // Alt format: 字段名称 | 类型 | 填写方式 | 可选值/说明
+      typeRaw = cols[1] ?? '';
+      unit = undefined;
+      required = false; // alt format has no required column
+      const optionsRaw = cols[3];
+      defaultValue =
+        optionsRaw && optionsRaw !== '—' && optionsRaw !== '-'
+          ? optionsRaw.slice(0, 200)
+          : undefined;
+    }
 
     const fieldName = label
       .replace(/[（(][^）)]*[）)]/g, '') // strip parentheses content
@@ -149,7 +188,7 @@ export function parseFieldTable(content: string): ParsedField[] {
       name: fieldName || `field_${fields.length}`,
       label,
       type: mapType(typeRaw),
-      unit: unit && unit !== '—' && unit !== '-' ? unit : undefined,
+      unit,
       required,
       defaultValue,
     });
