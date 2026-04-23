@@ -17,7 +17,7 @@
 
     <!-- number input -->
     <input
-      v-else-if="field.type === 'number'"
+      v-else-if="field.type === 'number' || field.type === 'constrained-number'"
       class="form-field__input"
       type="number"
       :value="String(modelValue || '')"
@@ -154,6 +154,49 @@
       <text class="form-field__checkbox-label">{{ field.placeholder || '确认' }}</text>
     </view>
 
+    <!-- checkbox with text -->
+    <view v-else-if="field.type === 'checkbox-text'" class="form-field__checkbox-text">
+      <view class="form-field__checkbox-item" @tap="toggleCheckboxText">
+        <view
+          class="form-field__checkbox"
+          :class="{ 'form-field__checkbox--checked': checkboxTextValue.checked }"
+        >
+          <text v-if="checkboxTextValue.checked" class="form-field__check-icon">&#x2713;</text>
+        </view>
+        <text class="form-field__checkbox-label">{{ field.placeholder || '确认' }}</text>
+      </view>
+      <textarea
+        v-if="checkboxTextValue.checked"
+        class="form-field__textarea"
+        :value="checkboxTextValue.text"
+        placeholder="请输入说明"
+        @input="onCheckboxTextInput"
+      />
+    </view>
+
+    <!-- table input -->
+    <view v-else-if="field.type === 'table-input'" class="form-field__table">
+      <view
+        v-for="(row, rowIndex) in ((modelValue as Record<string, unknown>[]) || [])"
+        :key="rowIndex"
+        class="form-field__table-row"
+      >
+        <view
+          v-for="child in tableChildren"
+          :key="child.name"
+          class="form-field__table-cell"
+        >
+          <text class="form-field__table-label">{{ child.label }}</text>
+          <input
+            class="form-field__input"
+            :value="String(row[child.name] || '')"
+            :placeholder="child.placeholder || '请输入'"
+            @input="onTableInput(rowIndex, child.name, $event)"
+          />
+        </view>
+      </view>
+    </view>
+
     <!-- image (camera) -->
     <Camera
       v-else-if="field.type === 'image'"
@@ -167,6 +210,11 @@
       :model-value="(modelValue as string) || ''"
       @update:model-value="updateValue($event)"
     />
+
+    <!-- approval fallback -->
+    <view v-else-if="field.type === 'approval-step'" class="form-field__approval">
+      <text>{{ field.placeholder || '审批节点将在提交后处理' }}</text>
+    </view>
 
     <!-- error message -->
     <text v-if="error" class="form-field__error">
@@ -217,16 +265,38 @@ const timePart = computed(() => {
   return val.split(' ')[1] || ''
 })
 
+const checkboxTextValue = computed(() => {
+  const value = props.modelValue as { checked?: boolean; text?: string } | undefined
+  return {
+    checked: !!value?.checked,
+    text: value?.text || '',
+  }
+})
+
+const tableChildren = computed(() => {
+  return props.field.rowSchema || props.field.columns?.map((col) => ({
+    name: col.key,
+    label: col.label,
+    type: col.type || 'text',
+    required: !!col.required,
+  } as FormField)) || []
+})
+
 function updateValue(value: unknown): void {
   emit('update:modelValue', value)
 }
 
-function onInput(event: { detail: { value: string } }): void {
-  updateValue(event.detail.value)
+function getInputValue(event: unknown): string {
+  const value = (event as { detail?: { value?: unknown } }).detail?.value
+  return value === undefined || value === null ? '' : String(value)
 }
 
-function onNumberInput(event: { detail: { value: string } }): void {
-  const num = parseFloat(event.detail.value)
+function onInput(event: unknown): void {
+  updateValue(getInputValue(event))
+}
+
+function onNumberInput(event: unknown): void {
+  const num = parseFloat(getInputValue(event))
   updateValue(isNaN(num) ? undefined : num)
 }
 
@@ -264,6 +334,30 @@ function onDatetimeDateChange(event: { detail: { value: string } }): void {
 function onDatetimeTimeChange(event: { detail: { value: string } }): void {
   const date = datePart.value || new Date().toISOString().split('T')[0]
   updateValue(`${date} ${event.detail.value}`)
+}
+
+function onTableInput(
+  rowIndex: number,
+  key: string,
+  event: unknown,
+): void {
+  const rows = [...((props.modelValue as Record<string, unknown>[]) || [])]
+  rows[rowIndex] = { ...(rows[rowIndex] || {}), [key]: getInputValue(event) }
+  updateValue(rows)
+}
+
+function toggleCheckboxText(): void {
+  updateValue({
+    checked: !checkboxTextValue.value.checked,
+    text: checkboxTextValue.value.text,
+  })
+}
+
+function onCheckboxTextInput(event: unknown): void {
+  updateValue({
+    checked: checkboxTextValue.value.checked,
+    text: getInputValue(event),
+  })
 }
 </script>
 
@@ -393,6 +487,41 @@ function onDatetimeTimeChange(event: { detail: { value: string } }): void {
 .form-field__checkbox-label {
   font-size: 28rpx;
   color: #333;
+}
+
+.form-field__table {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.form-field__table-row {
+  padding: 16rpx;
+  border: 1rpx solid #e5e7eb;
+  border-radius: 8rpx;
+}
+
+.form-field__table-cell + .form-field__table-cell {
+  margin-top: 12rpx;
+}
+
+.form-field__table-label {
+  display: block;
+  margin-bottom: 8rpx;
+  color: #606266;
+  font-size: 24rpx;
+}
+
+.form-field__checkbox-text {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.form-field__approval {
+  color: #606266;
+  font-size: 28rpx;
+  line-height: 40rpx;
 }
 
 .form-field__error {
