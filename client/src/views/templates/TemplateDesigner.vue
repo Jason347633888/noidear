@@ -179,6 +179,7 @@ import { ElMessage } from 'element-plus';
 import Sortable from 'sortablejs';
 import DynamicField from '@/components/fields/DynamicField.vue';
 import { recordTemplateApi } from '@/api/record-template';
+import { validateTemplateFields } from '@/utils/templateConfigValidation';
 import {
   Edit, Document, Calendar, Clock, Select, CircleCheck,
   Upload, Picture, Stamp, Switch, Grid, Star,
@@ -325,8 +326,9 @@ const removeOption = (idx: number) => {
 };
 
 const handleSave = async () => {
-  if (formFields.length === 0) {
-    ElMessage.warning('请至少添加一个字段');
+  const validation = validateTemplateFields([...formFields]);
+  if (!validation.valid) {
+    ElMessage.warning(validation.errors[0]);
     return;
   }
   saving.value = true;

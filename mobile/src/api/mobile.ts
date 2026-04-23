@@ -53,7 +53,7 @@ export async function uploadFieldPhoto(
     throw new Error('未选择图片')
   }
   const compressed = await compressImage(paths[0], { maxWidth: 800, maxHeight: 800, quality: 0.8 })
-  return uploadFile(compressed, 'file', undefined, onProgress) as Promise<UploadResult>
+  return uploadFile<UploadResult>(compressed, 'file', undefined, onProgress)
 }
 
 /**

@@ -37,6 +37,8 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, nextTick } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
+import { validateFieldValue, validateFields } from '@/utils/formValidation';
+import type { FormValidationError, FormValidationField } from '@/utils/formValidation';
 import DynamicField from './fields/DynamicField.vue';
 import type { FieldConfig } from './fields/DynamicField.vue';
 
@@ -63,6 +65,13 @@ const emit = defineEmits<{
 const formRef = ref<FormInstance>();
 const formData = reactive<Record<string, any>>({});
 let isUpdating = false;
+
+const toValidationField = (field: FieldConfig): FormValidationField => ({
+  ...field,
+  type: field.type,
+  name: field.name,
+  label: field.label,
+});
 
 const initFormData = () => {
   if (!props.template?.fieldsJson?.fields) return;
@@ -121,57 +130,30 @@ watch(
   { deep: true }
 );
 
-const createRequiredRule = (field: FieldConfig) => ({
-  required: true,
-  message: `${field.label}不能为空`,
-  trigger: ['blur', 'change'],
-});
-
-const createMinRule = (field: FieldConfig) => ({
-  validator: (_rule: any, value: any, callback: any) => {
-    try {
-      if (value !== null && value !== '' && value < field.min!) {
-        callback(new Error(`${field.label}不能小于${field.min}`));
-      } else {
-        callback();
-      }
-    } catch (error) {
-      callback(new Error('验证失败'));
-    }
-  },
-  trigger: 'blur',
-});
-
-const createMaxRule = (field: FieldConfig) => ({
-  validator: (_rule: any, value: any, callback: any) => {
-    try {
-      if (value !== null && value !== '' && value > field.max!) {
-        callback(new Error(`${field.label}不能大于${field.max}`));
-      } else {
-        callback();
-      }
-    } catch (error) {
-      callback(new Error('验证失败'));
-    }
-  },
-  trigger: 'blur',
-});
-
-const createPatternRule = (field: FieldConfig) => ({
-  pattern: new RegExp(field.pattern!),
-  message: field.patternMessage || `${field.label}格式不正确`,
-  trigger: 'blur',
-});
-
 const buildFieldRules = (field: FieldConfig) => {
-  const rules: any[] = [];
-  if (field.required) rules.push(createRequiredRule(field));
-  if (field.type === 'number') {
-    if (typeof field.min === 'number') rules.push(createMinRule(field));
-    if (typeof field.max === 'number') rules.push(createMaxRule(field));
-  }
-  if (field.pattern) rules.push(createPatternRule(field));
-  return rules;
+  if (isLayoutField(field.type)) return [];
+
+  return [
+    {
+      validator: (_rule: unknown, value: unknown, callback: (error?: Error) => void) => {
+        try {
+          const errors: FormValidationError[] = validateFieldValue(toValidationField(field), value, {
+            ...formData,
+          });
+
+          if (errors.length > 0) {
+            callback(new Error(errors[0].message));
+            return;
+          }
+
+          callback();
+        } catch {
+          callback(new Error('验证失败'));
+        }
+      },
+      trigger: ['blur', 'change'],
+    },
+  ];
 };
 
 const formRules = computed<FormRules>(() => {
@@ -202,8 +184,17 @@ const handleFieldChange = (fieldName: string) => {
 const validate = async (): Promise<boolean> => {
   if (!formRef.value) return false;
   try {
-    await formRef.value.validate();
-    return true;
+    const fields = (props.template?.fieldsJson?.fields || [])
+      .filter((field) => field.name && !isLayoutField(field.type))
+      .map(toValidationField);
+    const unifiedResult = validateFields(fields, { ...formData });
+
+    if (!unifiedResult.valid) {
+      await formRef.value.validate().catch(() => false);
+      return false;
+    }
+
+    return await formRef.value.validate();
   } catch {
     return false;
   }

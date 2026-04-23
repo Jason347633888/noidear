@@ -64,8 +64,10 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
+import { ElMessage } from 'element-plus';
 import dayjs from 'dayjs';
 import ProcessParams from '@/components/process/ProcessParams.vue';
+import { firstValidationMessage, validateStep4 } from '@/utils/processValidation';
 
 const props = defineProps<{
   instanceId: string;
@@ -110,7 +112,14 @@ const getFormData = () => ({
   ingredients: form.ingredients.map(i => ({ ...i })),
 });
 
-const handleSubmit = () => emit('submitted', getFormData());
+const handleSubmit = () => {
+  const result = validateStep4(getFormData());
+  if (!result.valid) {
+    ElMessage.warning(firstValidationMessage(result));
+    return;
+  }
+  emit('submitted', getFormData());
+};
 </script>
 
 <style scoped>

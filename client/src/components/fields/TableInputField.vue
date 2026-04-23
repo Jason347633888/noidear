@@ -8,12 +8,17 @@
         :prop="col.key"
       >
         <template #default="{ row, $index }">
-          <el-input
-            v-if="!col.readonly"
-            v-model="row[col.key]"
-            size="small"
-            @change="emitUpdate"
-          />
+          <template v-if="!col.readonly">
+            <el-input
+              v-model="row[col.key]"
+              :class="{ 'cell-error': shouldShowCellError(row, col.key, col.required) }"
+              size="small"
+              @change="handleCellChange(row, col.key)"
+            />
+            <div v-if="shouldShowCellError(row, col.key, col.required)" class="cell-error-text">
+              {{ col.label }}不能为空
+            </div>
+          </template>
           <span v-else>{{ row[col.key] }}</span>
         </template>
       </el-table-column>
@@ -30,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 import type { FieldConfig } from './DynamicField.vue';
 
 const props = defineProps<{
@@ -40,13 +45,29 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: any[]): void;
+  (e: 'change', value: any[]): void;
 }>();
 
 const rows = ref<Record<string, any>[]>([]);
+const touchedCells = ref<Set<string>>(new Set());
+let isEmitting = false;
+
+const isCellMissing = (row: Record<string, any>, key: string) => {
+  const value = row[key];
+  return value === undefined || value === null || String(value).trim() === '';
+};
+
+const getCellId = (row: Record<string, any>, key: string) => `${rows.value.indexOf(row)}:${key}`;
+
+const shouldShowCellError = (row: Record<string, any>, key: string, required?: boolean) =>
+  Boolean(required && touchedCells.value.has(getCellId(row, key)) && isCellMissing(row, key));
 
 watch(
   () => props.modelValue,
-  (val) => { rows.value = Array.isArray(val) ? val : []; },
+  (val) => {
+    rows.value = Array.isArray(val) ? val : [];
+    if (!isEmitting) touchedCells.value = new Set();
+  },
   { immediate: true }
 );
 
@@ -59,8 +80,43 @@ const addRow = () => {
 
 const removeRow = (index: number) => {
   rows.value = rows.value.filter((_, i) => i !== index);
+  touchedCells.value = new Set(
+    [...touchedCells.value]
+      .filter((cellId) => Number(cellId.split(':')[0]) !== index)
+      .map((cellId) => {
+        const [rowIndex, key] = cellId.split(':');
+        const nextIndex = Number(rowIndex) > index ? Number(rowIndex) - 1 : Number(rowIndex);
+        return `${nextIndex}:${key}`;
+      })
+  );
   emitUpdate();
 };
 
-const emitUpdate = () => emit('update:modelValue', [...rows.value]);
+const handleCellChange = (row: Record<string, any>, key: string) => {
+  touchedCells.value = new Set([...touchedCells.value, getCellId(row, key)]);
+  emitUpdate();
+};
+
+const emitUpdate = () => {
+  const nextRows = [...rows.value];
+  isEmitting = true;
+  emit('update:modelValue', nextRows);
+  emit('change', nextRows);
+  nextTick(() => {
+    isEmitting = false;
+  });
+};
 </script>
+
+<style scoped>
+.cell-error :deep(.el-input__wrapper) {
+  box-shadow: 0 0 0 1px var(--el-color-danger) inset;
+}
+
+.cell-error-text {
+  color: var(--el-color-danger);
+  font-size: 12px;
+  line-height: 18px;
+  margin-top: 2px;
+}
+</style>

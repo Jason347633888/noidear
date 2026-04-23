@@ -2,7 +2,7 @@
   <div class="checkbox-text-field">
     <el-checkbox v-model="checked" :label="field.checkboxLabel || field.label" @change="handleCheck" />
     <el-input
-      v-model="textValue"
+      v-model="text"
       :disabled="!checked || field.disabled"
       :placeholder="field.placeholder || '请输入内容'"
       style="margin-top: 6px"
@@ -25,21 +25,21 @@ const emit = defineEmits<{
 }>();
 
 const checked = ref(props.modelValue?.checked ?? false);
-const textValue = ref(props.modelValue?.text ?? '');
+const text = ref(props.modelValue?.text ?? '');
 
 watch(
   () => props.modelValue,
   (val) => {
     checked.value = val?.checked ?? false;
-    textValue.value = val?.text ?? '';
+    text.value = val?.text ?? '';
   }
 );
 
 const handleCheck = () => {
-  if (!checked.value) textValue.value = '';
+  if (!checked.value) text.value = '';
   emitUpdate();
 };
 
 const emitUpdate = () =>
-  emit('update:modelValue', { checked: checked.value, text: textValue.value });
+  emit('update:modelValue', { checked: checked.value, text: text.value });
 </script>

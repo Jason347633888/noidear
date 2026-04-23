@@ -124,7 +124,8 @@ export interface FormField {
   label: string
   type: 'text' | 'number' | 'textarea' | 'date' | 'time' | 'datetime' |
         'select' | 'multiselect' | 'radio' | 'checkbox' |
-        'image' | 'signature' | 'scan'
+        'image' | 'signature' | 'scan' |
+        'table-input' | 'constrained-number' | 'checkbox-text' | 'approval-step'
   required: boolean
   placeholder?: string
   options?: { label: string; value: string | number }[]
@@ -135,11 +136,15 @@ export interface FormField {
   maxLength?: number
   pattern?: string
   patternMessage?: string
+  columns?: { key: string; label: string; required?: boolean; type?: FormField['type'] }[]
+  rowSchema?: FormField[]
+  validation?: FormRule[]
+  visibility?: { field: string; equals: unknown }
 }
 
 /** Form validation rule */
 export interface FormRule {
-  type: 'required' | 'pattern' | 'min' | 'max' | 'minLength' | 'maxLength' | 'custom'
+  type: 'required' | 'pattern' | 'min' | 'max' | 'minLength' | 'maxLength' | 'custom' | 'checkedTextRequired'
   value?: unknown
   message: string
   validator?: (value: unknown) => boolean

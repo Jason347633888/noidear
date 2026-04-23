@@ -35,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 
 const ROWS = [
   { key: 'topTemp', label: '上火温度(℃)' },
@@ -58,7 +58,25 @@ const emit = defineEmits<{
 const zones = ref(['一区', '二区', '三区', '四区', '五区', '六区', '七区', '八区']);
 const data = ref<Record<string, Record<RowKey, number>>>({});
 
-watch(() => props.modelValue, (val) => { if (val) data.value = val; }, { immediate: true });
+const createDefaultZoneData = () => zones.value.reduce<Record<string, Record<RowKey, number>>>(
+  (zoneData, zone) => {
+    zoneData[zone] = ROWS.reduce<Record<RowKey, number>>((rowData, row) => {
+      rowData[row.key] = 0;
+      return rowData;
+    }, {} as Record<RowKey, number>);
+    return zoneData;
+  },
+  {}
+);
+
+const normalizeZoneData = (val?: Record<string, Record<RowKey, number>>) => {
+  if (val && Object.keys(val).length > 0) return val;
+  return createDefaultZoneData();
+};
+
+watch(() => props.modelValue, (val) => {
+  data.value = normalizeZoneData(val);
+}, { immediate: true });
 
 const getValue = (rowKey: RowKey, zone: string) => data.value[zone]?.[rowKey] ?? 0;
 
@@ -74,6 +92,10 @@ const setValue = (rowKey: RowKey, zone: string, val: number) => {
 };
 
 const emitUpdate = () => emit('update:modelValue', { ...data.value });
+
+onMounted(() => {
+  emitUpdate();
+});
 
 const addZone = () => {
   zones.value = [...zones.value, `${zones.value.length + 1}区`];

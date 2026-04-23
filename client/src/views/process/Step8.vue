@@ -62,14 +62,16 @@
 
     <div v-if="!disabled && stepStatus !== 'SUBMITTED'" class="action-bar">
       <el-button @click="emit('saved', { ...form })">暂存草稿</el-button>
-      <el-button type="primary" @click="emit('submitted', { ...form })">提交审批</el-button>
+      <el-button type="primary" @click="handleSubmit">提交审批</el-button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { reactive, onMounted } from 'vue';
+import { ElMessage } from 'element-plus';
 import ApprovalStepField from '@/components/fields/ApprovalStepField.vue';
+import { firstValidationMessage, validateStep8 } from '@/utils/processValidation';
 
 const props = defineProps<{
   instanceId: string;
@@ -136,6 +138,15 @@ onMounted(() => {
     if (mv.approvalComment !== undefined) form.approvalComment = mv.approvalComment;
   }
 });
+
+const handleSubmit = () => {
+  const result = validateStep8({ ...form });
+  if (!result.valid) {
+    ElMessage.warning(firstValidationMessage(result));
+    return;
+  }
+  emit('submitted', { ...form });
+};
 </script>
 
 <style scoped>

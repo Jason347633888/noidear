@@ -106,6 +106,7 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Loading } from '@element-plus/icons-vue';
 import request from '@/api/request';
+import { firstValidationMessage, validateStep2 } from '@/utils/processValidation';
 
 const props = defineProps<{
   instanceId: string;
@@ -235,7 +236,11 @@ const removeRow = (index: number) => {
 const getFormData = () => ({ ...form, rawMaterials: [...form.rawMaterials] });
 
 const handleSubmit = () => {
-  if (!form.rawMaterials.length) { ElMessage.warning('请至少添加一种原料'); return; }
+  const result = validateStep2(getFormData());
+  if (!result.valid) {
+    ElMessage.warning(firstValidationMessage(result));
+    return;
+  }
   emit('submitted', getFormData());
 };
 </script>

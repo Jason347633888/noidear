@@ -10,7 +10,7 @@ const TIMEOUT = 15000;
 
 interface RequestOptions {
   url: string
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
   data?: Record<string, unknown> | unknown[]
   header?: Record<string, string>
   showLoading?: boolean
@@ -135,10 +135,22 @@ export function del<T = unknown>(url: string, data?: Record<string, unknown>): P
  */
 export function uploadFile(
   filePath: string,
+  name?: string,
+  formData?: Record<string, string>,
+  onProgress?: (progress: number) => void,
+): Promise<{ url: string; thumbnailUrl?: string }>
+export function uploadFile<T>(
+  filePath: string,
+  name?: string,
+  formData?: Record<string, string>,
+  onProgress?: (progress: number) => void,
+): Promise<T>
+export function uploadFile<T = { url: string; thumbnailUrl?: string }>(
+  filePath: string,
   name: string = 'file',
   formData?: Record<string, string>,
   onProgress?: (progress: number) => void,
-): Promise<{ url: string; thumbnailUrl?: string }> {
+): Promise<T> {
   const token = getToken()
   return new Promise((resolve, reject) => {
     const uploadTask = uni.uploadFile({

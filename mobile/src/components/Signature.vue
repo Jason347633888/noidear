@@ -54,6 +54,18 @@ let ctx: UniApp.CanvasContext | null = null
 let lastX = 0
 let lastY = 0
 
+type UniTouch = Touch & {
+  x?: number
+  y?: number
+}
+
+function getTouchPoint(touch: UniTouch): { x: number; y: number } {
+  return {
+    x: touch.x ?? touch.clientX,
+    y: touch.y ?? touch.clientY,
+  }
+}
+
 onMounted(() => {
   // Determine canvas size based on screen
   const sysInfo = uni.getSystemInfoSync()
@@ -81,22 +93,22 @@ function onTouchStart(e: TouchEvent): void {
   if (!ctx) return
   isDrawing.value = true
   hasDrawn.value = true
-  const touch = e.touches[0]
-  lastX = touch.x
-  lastY = touch.y
+  const point = getTouchPoint(e.touches[0] as UniTouch)
+  lastX = point.x
+  lastY = point.y
 }
 
 function onTouchMove(e: TouchEvent): void {
   if (!ctx || !isDrawing.value) return
   e.preventDefault()
-  const touch = e.touches[0]
+  const point = getTouchPoint(e.touches[0] as UniTouch)
   ctx.beginPath()
   ctx.moveTo(lastX, lastY)
-  ctx.lineTo(touch.x, touch.y)
+  ctx.lineTo(point.x, point.y)
   ctx.stroke()
   ctx.draw(true)
-  lastX = touch.x
-  lastY = touch.y
+  lastX = point.x
+  lastY = point.y
 }
 
 function onTouchEnd(): void {

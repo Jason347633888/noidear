@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 
 const DEFAULT_DEVICES = [
   '进炉风机', '出炉风机', '热风循环风机1', '热风循环风机2',
@@ -55,23 +55,33 @@ const emit = defineEmits<{
 
 const rows = ref<FanRow[]>([]);
 
+const createDefaultRows = () => DEFAULT_DEVICES.map((name) => ({ name, lowFreq: 0, highFreq: 0 }));
+
+const emitUpdate = () => {
+  emit('update:modelValue', rows.value.map((row) => ({ ...row })));
+};
+
 watch(
   () => props.modelValue,
   (val) => {
     rows.value = Array.isArray(val) && val.length > 0
       ? val
-      : DEFAULT_DEVICES.map((name) => ({ name, lowFreq: 0, highFreq: 0 }));
+      : createDefaultRows();
   },
   { immediate: true }
 );
 
+onMounted(() => {
+  emitUpdate();
+});
+
 const addDevice = () => {
   rows.value = [...rows.value, { name: `设备${rows.value.length + 1}`, lowFreq: 0, highFreq: 0 }];
-  emit('update:modelValue', rows.value);
+  emitUpdate();
 };
 
 const removeDevice = (index: number) => {
   rows.value = rows.value.filter((_, i) => i !== index);
-  emit('update:modelValue', rows.value);
+  emitUpdate();
 };
 </script>
