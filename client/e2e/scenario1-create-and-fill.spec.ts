@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { TaskCreatePage } from './pages/TaskCreatePage';
 import { TaskListPage } from './pages/TaskListPage';
 import { TaskDetailPage } from './pages/TaskDetailPage';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import { getAuthToken, createTaskViaApi } from './helpers/api';
 import { initSharedTestData, futureDeadline, getCredentials } from './fixtures/task-fixtures';
 
@@ -24,7 +24,7 @@ test.beforeAll(async ({ request }) => {
 
 test('S1-a: admin creates a new task via UI', async ({ page }) => {
   const { adminUser, adminPass } = getCredentials();
-  await loginViaApi(page, adminUser, adminPass);
+  await loginViaApiCached(page, adminUser, adminPass);
   await page.goto('/tasks/create');
   await page.waitForLoadState('networkidle');
 
@@ -50,7 +50,7 @@ test('S1-b: member fills and submits the task', async ({ page, request }) => {
     deadline: futureDeadline(),
   });
 
-  await loginViaApi(page, memberUser, memberPass);
+  await loginViaApiCached(page, memberUser, memberPass);
   await page.goto(`/tasks/${task.id}`);
 
   const detailPage = new TaskDetailPage(page);

@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import { getAuthToken } from './helpers/api';
 import { getCredentials } from './fixtures/task-fixtures';
 
@@ -27,7 +27,7 @@ async function getToken(request: APIRequestContext): Promise<string> {
 test.describe('Document Management (TASK-020)', () => {
   test('DM-01: Level 1 document list renders correctly', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     await page.goto('/documents/level1');
     await page.waitForLoadState('networkidle');
@@ -38,7 +38,7 @@ test.describe('Document Management (TASK-020)', () => {
 
   test('DM-02: Level 2 document list renders correctly', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     await page.goto('/documents/level2');
     await page.waitForLoadState('networkidle');
@@ -48,7 +48,7 @@ test.describe('Document Management (TASK-020)', () => {
 
   test('DM-03: Level 3 document list renders correctly', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     await page.goto('/documents/level3');
     await page.waitForLoadState('networkidle');
@@ -58,7 +58,7 @@ test.describe('Document Management (TASK-020)', () => {
 
   test('DM-04: Document upload page loads', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     await page.goto('/documents/upload/1');
     await page.waitForLoadState('networkidle');
@@ -93,7 +93,7 @@ test.describe('Document Management (TASK-020)', () => {
 
     const docId = docs[0].id as string;
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     await page.goto(`/documents/${docId}`);
     await page.waitForLoadState('networkidle');
@@ -104,7 +104,7 @@ test.describe('Document Management (TASK-020)', () => {
 
   test('DM-06: Search filter works on document list', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     await page.goto('/documents/level1');
     await page.waitForLoadState('networkidle');
@@ -122,7 +122,7 @@ test.describe('Document Management (TASK-020)', () => {
 
   test('DM-07: Recycle bin page renders correctly', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     await page.goto('/recycle-bin');
     await page.waitForLoadState('networkidle');

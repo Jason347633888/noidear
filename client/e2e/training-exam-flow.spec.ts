@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import { getAuthToken } from './helpers/api';
 import { getCredentials } from './fixtures/task-fixtures';
 import { 
@@ -104,7 +104,7 @@ test.describe('Training Exam Flow', () => {
 
   test('T-EXAM-1: fail exam with low score then retry and pass', async ({ page, request }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     const examPage = new ExamPage(page);
     await examPage.goto(projectId);
@@ -168,7 +168,7 @@ test.describe('Training Exam Flow', () => {
   test('T-EXAM-3: verify exam result affects training archive generation', async ({ page }) => {
     // This test verifies BR-114: Training archive includes exam records
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     // Navigate to training statistics page
     await page.goto('/training/projects');

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { TaskDetailPage } from './pages/TaskDetailPage';
 import { TaskListPage } from './pages/TaskListPage';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import { getAuthToken, createTaskViaApi, fetchTaskDetail } from './helpers/api';
 import { initSharedTestData, futureDeadline, getCredentials } from './fixtures/task-fixtures';
 
@@ -37,7 +37,7 @@ test('S5-a: admin cancels a pending task from detail page', async ({ page, reque
   const taskId = await setupPendingTask(request);
   const { adminUser, adminPass } = getCredentials();
 
-  await loginViaApi(page, adminUser, adminPass);
+  await loginViaApiCached(page, adminUser, adminPass);
   await page.goto(`/tasks/${taskId}`);
 
   const detail = new TaskDetailPage(page);
@@ -60,7 +60,7 @@ test('S5-b: admin cancels task from task list page', async ({ page, request }) =
   const { adminUser, adminPass } = getCredentials();
   const taskIdPrefix = taskId.slice(0, 8);
 
-  await loginViaApi(page, adminUser, adminPass);
+  await loginViaApiCached(page, adminUser, adminPass);
   await page.goto('/tasks');
 
   const listPage = new TaskListPage(page);

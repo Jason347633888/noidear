@@ -1,5 +1,5 @@
 import { test, expect, type Page, type APIRequestContext } from '@playwright/test';
-import { loginViaApi } from '../helpers/auth';
+import { loginViaApiCached } from '../helpers/auth';
 import { getCredentials } from '../fixtures/task-fixtures';
 import {
   initProcessTestData,
@@ -27,7 +27,7 @@ test.beforeAll(async ({ request }) => {
 
 async function loginAdmin(page: Page): Promise<void> {
   const { adminUser, adminPass } = getCredentials();
-  await loginViaApi(page, adminUser, adminPass);
+  await loginViaApiCached(page, adminUser, adminPass);
 }
 
 async function createInstance(request: APIRequestContext, productName: string): Promise<string> {

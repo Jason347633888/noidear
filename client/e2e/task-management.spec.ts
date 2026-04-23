@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import { getAuthToken } from './helpers/api';
 import { getCredentials } from './fixtures/task-fixtures';
 
@@ -27,7 +27,7 @@ async function fetchFirstTaskId(request: APIRequestContext): Promise<string | nu
 test.describe('Task Management (TASK-052)', () => {
   test('TK-01: Task list page renders', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/tasks');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.el-table, .el-empty')).toBeVisible({ timeout: 10000 });
@@ -35,7 +35,7 @@ test.describe('Task Management (TASK-052)', () => {
 
   test('TK-02: Task create page loads', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/tasks/create');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('form, .el-form, .el-steps, .el-card')).toBeVisible({ timeout: 10000 });
@@ -46,7 +46,7 @@ test.describe('Task Management (TASK-052)', () => {
     if (!taskId) return test.skip();
 
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto(`/tasks/${taskId}`);
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.el-descriptions, .el-card')).toBeVisible({ timeout: 10000 });
@@ -54,7 +54,7 @@ test.describe('Task Management (TASK-052)', () => {
 
   test('TK-04: Task list pagination renders', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/tasks');
     await page.waitForLoadState('networkidle');
 

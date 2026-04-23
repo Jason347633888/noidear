@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import { getAuthToken } from './helpers/api';
 import { getCredentials } from './fixtures/task-fixtures';
 import { 
@@ -63,7 +63,7 @@ test.describe('Training Todo Integration', () => {
 
   test('T-TODO-1: verify TodoTask auto-creation when project is published', async ({ page, request }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     // Query TodoTask count before creating project
     const todoBefore = await fetchTodoTasksViaApi(request, authToken);
@@ -102,7 +102,7 @@ test.describe('Training Todo Integration', () => {
 
   test('T-TODO-2: verify todo filtering by type', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     const todoListPage = new TodoListPage(page);
     await todoListPage.goto();
@@ -123,7 +123,7 @@ test.describe('Training Todo Integration', () => {
 
   test('T-TODO-3: verify overdue highlighting for past deadline todos', async ({ page, request }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     // Create overdue project (end date in the past)
     const overdueProject = await createTrainingProjectViaApi(request, authToken, {
@@ -163,7 +163,7 @@ test.describe('Training Todo Integration', () => {
 
   test('T-TODO-4: verify todo completion flow', async ({ page, request }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     // Complete todo via API (simulating exam completion)
     if (todoId) {

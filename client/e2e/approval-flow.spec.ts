@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import { getAuthToken } from './helpers/api';
 import { getCredentials } from './fixtures/task-fixtures';
 
@@ -33,7 +33,7 @@ async function fetchFirstApprovalId(request: APIRequestContext): Promise<string 
 test.describe('Approval Flow (TASK-064)', () => {
   test('AP-01: Pending approval list renders', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/approvals/pending');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.el-table, .el-empty')).toBeVisible({ timeout: 10000 });
@@ -41,7 +41,7 @@ test.describe('Approval Flow (TASK-064)', () => {
 
   test('AP-02: Approval list (all) renders', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/approvals');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.el-table, .el-empty')).toBeVisible({ timeout: 10000 });
@@ -49,7 +49,7 @@ test.describe('Approval Flow (TASK-064)', () => {
 
   test('AP-03: Approval history renders', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/approvals/history');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.el-table, .el-empty')).toBeVisible({ timeout: 10000 });
@@ -60,7 +60,7 @@ test.describe('Approval Flow (TASK-064)', () => {
     if (!approvalId) return test.skip();
 
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto(`/approvals/detail/${approvalId}`);
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.el-descriptions, .el-card')).toBeVisible({ timeout: 10000 });
@@ -68,7 +68,7 @@ test.describe('Approval Flow (TASK-064)', () => {
 
   test('AP-05: Approval list status filter applies without error', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/approvals');
     await page.waitForLoadState('networkidle');
 

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { TaskDetailPage } from './pages/TaskDetailPage';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import { getAuthToken, createTaskViaApi, submitTaskViaApi } from './helpers/api';
 import { initSharedTestData, futureDeadline, getCredentials } from './fixtures/task-fixtures';
 
@@ -35,7 +35,7 @@ async function setupSubmittedTask(request: Parameters<typeof getAuthToken>[0]) {
 test('S3: admin approves a submitted task record', async ({ page, request }) => {
   const taskId = await setupSubmittedTask(request);
   const { adminUser, adminPass } = getCredentials();
-  await loginViaApi(page, adminUser, adminPass);
+  await loginViaApiCached(page, adminUser, adminPass);
   await page.goto(`/tasks/${taskId}`);
 
   const detailPage = new TaskDetailPage(page);

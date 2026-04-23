@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import { getAuthToken } from './helpers/api';
 import { getCredentials } from './fixtures/task-fixtures';
 import { ApprovalPendingPage } from './pages/ApprovalPendingPage';
@@ -17,7 +17,7 @@ import { ApprovalPendingPage } from './pages/ApprovalPendingPage';
 test.describe('Document Approval Flow', () => {
   test('S-DOC-1: admin can view pending approval list', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     const pendingPage = new ApprovalPendingPage(page);
     await pendingPage.goto();
@@ -28,7 +28,7 @@ test.describe('Document Approval Flow', () => {
 
   test('S-DOC-2: pending page shows empty state when no approvals', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     const pendingPage = new ApprovalPendingPage(page);
     await pendingPage.goto();
@@ -42,7 +42,7 @@ test.describe('Document Approval Flow', () => {
 
   test('S-DOC-3: approve dialog opens and can be cancelled', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     const pendingPage = new ApprovalPendingPage(page);
     await pendingPage.goto();

@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import { getAuthToken } from './helpers/api';
 import { getCredentials } from './fixtures/task-fixtures';
 
@@ -45,7 +45,7 @@ async function softDeleteDocument(
 test.describe('Recycle Bin (P1-1)', () => {
   test('RB-01: Recycle bin page renders correctly', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/recycle-bin');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.recycle-bin')).toBeVisible({ timeout: 10000 });
@@ -54,7 +54,7 @@ test.describe('Recycle Bin (P1-1)', () => {
 
   test('RB-02: Type filter switching works', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/recycle-bin');
     await page.waitForLoadState('networkidle');
 
@@ -73,7 +73,7 @@ test.describe('Recycle Bin (P1-1)', () => {
 
   test('RB-03: Keyword search triggers data reload', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/recycle-bin');
     await page.waitForLoadState('networkidle');
 
@@ -87,7 +87,7 @@ test.describe('Recycle Bin (P1-1)', () => {
 
   test('RB-04: DeletedBy filter passes parameter', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/recycle-bin');
     await page.waitForLoadState('networkidle');
 
@@ -106,7 +106,7 @@ test.describe('Recycle Bin (P1-1)', () => {
     const docId = await softDeleteDocument(request, token);
     if (!docId) return test.skip();
 
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/recycle-bin');
     await page.waitForLoadState('networkidle');
 
@@ -123,7 +123,7 @@ test.describe('Recycle Bin (P1-1)', () => {
     const docId = await softDeleteDocument(request, token);
     if (!docId) return test.skip();
 
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/recycle-bin');
     await page.waitForLoadState('networkidle');
 
@@ -143,7 +143,7 @@ test.describe('Recycle Bin (P1-1)', () => {
     const docId = await softDeleteDocument(request, token);
     if (!docId) return test.skip();
 
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/recycle-bin');
     await page.waitForLoadState('networkidle');
 
@@ -160,7 +160,7 @@ test.describe('Recycle Bin (P1-1)', () => {
 
   test('RB-08: Reset filter clears inputs', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/recycle-bin');
     await page.waitForLoadState('networkidle');
 

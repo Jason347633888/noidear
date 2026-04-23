@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import { getAuthToken } from './helpers/api';
 import { getCredentials } from './fixtures/task-fixtures';
 
@@ -38,7 +38,7 @@ async function fetchFirstBatchId(
 test.describe('Batch Trace Flow', () => {
   test('BT-01: Batch list page renders', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/batch-trace');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.el-table, .el-empty')).toBeVisible({ timeout: 10000 });
@@ -46,7 +46,7 @@ test.describe('Batch Trace Flow', () => {
 
   test('BT-02: TraceQuery page renders with search form', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/batch-trace/query');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.el-card, .el-input')).toBeVisible({ timeout: 10000 });
@@ -54,7 +54,7 @@ test.describe('Batch Trace Flow', () => {
 
   test('BT-03: TraceQuery search with batch number shows results or empty', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/batch-trace/query');
     await page.waitForLoadState('networkidle');
 
@@ -88,7 +88,7 @@ test.describe('Batch Trace Flow', () => {
       return;
     }
 
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/batch-trace/query');
     await page.waitForLoadState('networkidle');
 
@@ -114,7 +114,7 @@ test.describe('Batch Trace Flow', () => {
 
   test('BT-05: TraceReport page renders', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/batch-trace/report');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.el-card, .el-table, .el-empty')).toBeVisible({ timeout: 10000 });
@@ -129,7 +129,7 @@ test.describe('Batch Trace Flow', () => {
       return;
     }
 
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto(`/batch-trace/${batch.id}`);
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.el-descriptions, .el-card')).toBeVisible({ timeout: 10000 });
@@ -137,7 +137,7 @@ test.describe('Batch Trace Flow', () => {
 
   test('BT-07: Batch list search filter works', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/batch-trace');
     await page.waitForLoadState('networkidle');
 
@@ -155,7 +155,7 @@ test.describe('Batch Trace Flow', () => {
 
   test('BT-08: Batch list has pagination controls', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/batch-trace');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.el-table, .el-empty')).toBeVisible({ timeout: 10000 });

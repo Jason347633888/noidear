@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import { getAuthToken } from './helpers/api';
 import { getCredentials } from './fixtures/task-fixtures';
 import { ApprovalPendingPage } from './pages/ApprovalPendingPage';
@@ -16,7 +16,7 @@ const API_BASE = process.env.API_BASE_URL || 'http://localhost:3000/api/v1';
 test.describe('Countersign Approval Flow', () => {
   test('S-CS-1: countersign type shown in pending list', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     const pendingPage = new ApprovalPendingPage(page);
     await pendingPage.goto();
@@ -40,7 +40,7 @@ test.describe('Countersign Approval Flow', () => {
 
   test('S-CS-3: type tags render correctly', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     const pendingPage = new ApprovalPendingPage(page);
     await pendingPage.goto();

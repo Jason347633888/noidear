@@ -25,6 +25,10 @@ interface LoginApiResponse {
   };
 }
 
+// Global cache token，避免重复登录触发限流
+let cachedToken: string | null = null;
+let cachedUser: LoginApiResponse['data']['user'] | null = null;
+
 /**
  * Login via the backend API and inject the token into the page's localStorage.
  * Returns the user object from the API response.
@@ -56,6 +60,33 @@ export async function loginViaApi(
   );
 
   return body.data;
+}
+
+/**
+ * 带缓存的 API 登录，避免重复请求触发限流（429）
+ */
+export async function loginViaApiCached(
+  page: Page,
+  username: string,
+  password: string,
+): Promise<LoginApiResponse['data']> {
+  if (cachedToken && cachedUser) {
+    // 使用缓存的 token 直接注入
+    await page.goto('/login');
+    await page.evaluate(
+      ({ token, user }) => {
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+      },
+      { token: cachedToken, user: cachedUser },
+    );
+    return { token: cachedToken, user: cachedUser };
+  }
+
+  const result = await loginViaApi(page, username, password);
+  cachedToken = result.token;
+  cachedUser = result.user;
+  return result;
 }
 
 /**

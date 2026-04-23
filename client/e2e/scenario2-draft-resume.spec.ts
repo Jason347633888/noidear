@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { TaskDetailPage } from './pages/TaskDetailPage';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import { getAuthToken, createTaskViaApi } from './helpers/api';
 import { initSharedTestData, futureDeadline, getCredentials } from './fixtures/task-fixtures';
 
@@ -40,7 +40,7 @@ test('S2: member saves draft, navigates away, and resumes', async ({ page, reque
     deadline: futureDeadline(),
   });
 
-  await loginViaApi(page, memberUser, memberPass);
+  await loginViaApiCached(page, memberUser, memberPass);
   await page.goto(`/tasks/${task.id}`);
 
   const detailPage = new TaskDetailPage(page);

@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import { getAuthToken } from './helpers/api';
 import { getCredentials } from './fixtures/task-fixtures';
 
@@ -27,7 +27,7 @@ async function getToken(request: APIRequestContext): Promise<string> {
 test.describe('Template Management (TASK-036)', () => {
   test('TM-01: Template list renders correctly', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     await page.goto('/templates');
     await page.waitForLoadState('networkidle');
@@ -37,7 +37,7 @@ test.describe('Template Management (TASK-036)', () => {
 
   test('TM-02: Template create page loads', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     await page.goto('/templates/create');
     await page.waitForLoadState('networkidle');
@@ -71,7 +71,7 @@ test.describe('Template Management (TASK-036)', () => {
 
     const templateId = templates[0].id as string;
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     await page.goto(`/templates/${templateId}/edit`);
     await page.waitForLoadState('networkidle');
@@ -81,7 +81,7 @@ test.describe('Template Management (TASK-036)', () => {
 
   test('TM-04: Template designer page loads', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     await page.goto('/templates/designer');
     await page.waitForLoadState('networkidle');
@@ -112,7 +112,7 @@ test.describe('Template Management (TASK-036)', () => {
     }
 
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     await page.goto('/templates');
     await page.waitForLoadState('networkidle');
@@ -148,7 +148,7 @@ test.describe('Template Management (TASK-036)', () => {
 
     const templateId = templates[0].id as string;
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     await page.goto(`/templates/${templateId}/tolerance`);
     await page.waitForLoadState('networkidle');

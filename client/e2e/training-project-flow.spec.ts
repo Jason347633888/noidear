@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import { getAuthToken } from './helpers/api';
 import { getCredentials } from './fixtures/task-fixtures';
 import { 
@@ -65,7 +65,7 @@ test.describe('Training Project Flow', () => {
 
   test('T-PROJ-1: admin can create training project via UI', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     const projectListPage = new TrainingProjectListPage(page);
     await projectListPage.goto();
@@ -98,7 +98,7 @@ test.describe('Training Project Flow', () => {
 
   test('T-PROJ-2: publish project triggers status change and TodoTask creation', async ({ page, request }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     // Create project via API for faster test setup
     const project = await createTrainingProjectViaApi(request, authToken, {
@@ -150,7 +150,7 @@ test.describe('Training Project Flow', () => {
 
   test('T-PROJ-3: verify published project appears in trainee todo list', async ({ page, request }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     // Goto todo list
     await page.goto('/todos');

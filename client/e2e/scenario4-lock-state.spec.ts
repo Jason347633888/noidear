@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { TaskDetailPage } from './pages/TaskDetailPage';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import {
   getAuthToken, createTaskViaApi, submitTaskViaApi, approveRecordViaApi,
 } from './helpers/api';
@@ -42,7 +42,7 @@ test('S4: approved task shows locked form (read-only)', async ({ page, request }
   const taskId = await setupApprovedTask(request);
   const { memberUser, memberPass } = getCredentials();
 
-  await loginViaApi(page, memberUser, memberPass);
+  await loginViaApiCached(page, memberUser, memberPass);
   await page.goto(`/tasks/${taskId}`);
 
   const detail = new TaskDetailPage(page);

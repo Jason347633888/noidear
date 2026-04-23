@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import { getAuthToken } from './helpers/api';
 import { getCredentials } from './fixtures/task-fixtures';
 
@@ -33,7 +33,7 @@ async function fetchFirstDeviationReportId(request: APIRequestContext): Promise<
 test.describe('Deviation Detection (TASK-098)', () => {
   test('DEV-01: Deviation report list renders', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/deviation-reports');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.el-table, .el-empty')).toBeVisible({ timeout: 10000 });
@@ -41,7 +41,7 @@ test.describe('Deviation Detection (TASK-098)', () => {
 
   test('DEV-02: Deviation analytics dashboard renders', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/deviation-analytics');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.el-card, canvas, .echarts')).toBeVisible({ timeout: 10000 });
@@ -49,7 +49,7 @@ test.describe('Deviation Detection (TASK-098)', () => {
 
   test('DEV-03: Deviation report filter by severity works', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/deviation-reports');
     await page.waitForLoadState('networkidle');
 
@@ -79,7 +79,7 @@ test.describe('Deviation Detection (TASK-098)', () => {
     if (templates.length === 0) return test.skip();
 
     const templateId = templates[0].id;
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
     await page.goto(`/templates/${templateId}/tolerance`);
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.el-card, form, .el-form')).toBeVisible({ timeout: 10000 });
@@ -90,7 +90,7 @@ test.describe('Deviation Detection (TASK-098)', () => {
     if (!reportId) return test.skip();
 
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     // Navigate to reports page and check if detail link exists
     await page.goto('/deviation-reports');

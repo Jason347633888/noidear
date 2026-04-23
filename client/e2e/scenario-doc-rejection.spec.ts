@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginViaApi } from './helpers/auth';
+import { loginViaApiCached } from './helpers/auth';
 import { getCredentials } from './fixtures/task-fixtures';
 import { ApprovalPendingPage } from './pages/ApprovalPendingPage';
 
@@ -13,7 +13,7 @@ import { ApprovalPendingPage } from './pages/ApprovalPendingPage';
 test.describe('Document Rejection Flow', () => {
   test('S-REJ-1: reject dialog enforces minimum reason length', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     const pendingPage = new ApprovalPendingPage(page);
     await pendingPage.goto();
@@ -41,7 +41,7 @@ test.describe('Document Rejection Flow', () => {
 
   test('S-REJ-2: reject dialog can be cancelled', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     const pendingPage = new ApprovalPendingPage(page);
     await pendingPage.goto();
@@ -60,7 +60,7 @@ test.describe('Document Rejection Flow', () => {
 
   test('S-REJ-3: char counter shows current length', async ({ page }) => {
     const { adminUser, adminPass } = getCredentials();
-    await loginViaApi(page, adminUser, adminPass);
+    await loginViaApiCached(page, adminUser, adminPass);
 
     const pendingPage = new ApprovalPendingPage(page);
     await pendingPage.goto();
