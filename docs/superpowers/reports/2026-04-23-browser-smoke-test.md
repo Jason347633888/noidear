@@ -5,7 +5,7 @@
 - Project: `/Users/jiashenglin/Desktop/好玩的项目/noidear`
 - Date: 2026-04-23
 - Browser: Chrome / Safari
-- Frontend URL: http://localhost:5173
+- Frontend URL: http://localhost:5175
 - Backend URL: http://localhost:3000
 - Test account: admin / 12345678
 
