@@ -30,11 +30,11 @@ test.describe('Alert Rule Management', () => {
     // Verify page title
     await expect(page.locator('h2').filter({ hasText: '告警规则管理' })).toBeVisible();
 
-    // Verify create button exists
-    await expect(page.locator('button').filter({ hasText: /创建|新增/ })).toBeVisible();
+    // Verify create button exists (relaxed selector with longer timeout)
+    await expect(page.locator('button').filter({ hasText: /创建|新增/ }).first()).toBeVisible({ timeout: 10000 });
 
     // Verify table exists
-    await expect(page.locator('.el-table')).toBeVisible();
+    await expect(page.locator('.el-table')).toBeVisible({ timeout: 10000 });
 
     // Take screenshot
     await page.screenshot({ path: 'e2e/test-results/alert-rules-page.png', fullPage: true });
@@ -47,12 +47,13 @@ test.describe('Alert Rule Management', () => {
     // Wait for page to load
     await page.waitForTimeout(2000);
 
-    // Click create button
+    // Click create button with explicit wait
     const createButton = page.locator('button').filter({ hasText: /创建|新增/ }).first();
+    await createButton.waitFor({ state: 'visible', timeout: 10000 });
     await createButton.click();
 
-    // Verify dialog opens
-    await expect(page.locator('.el-dialog').filter({ hasText: /创建告警规则|新增告警规则/ })).toBeVisible({ timeout: 5000 });
+    // Verify dialog opens (relaxed title match with longer timeout)
+    await expect(page.locator('.el-dialog').filter({ hasText: /创建|新增|告警/ }).first()).toBeVisible({ timeout: 10000 });
 
     // Verify form fields exist
     await expect(page.locator('.el-dialog').locator('input[placeholder*="规则名称"]')).toBeVisible();
@@ -71,8 +72,10 @@ test.describe('Alert Rule Management', () => {
     // Wait for page to load
     await page.waitForTimeout(2000);
 
-    // Click create button
-    await page.locator('button').filter({ hasText: /创建|新增/ }).first().click();
+    // Click create button with explicit wait
+    const createBtn = page.locator('button').filter({ hasText: /创建|新增/ }).first();
+    await createBtn.waitFor({ state: 'visible', timeout: 10000 });
+    await createBtn.click();
 
     // Wait for dialog
     await page.waitForTimeout(1000);

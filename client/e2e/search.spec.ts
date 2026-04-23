@@ -5,7 +5,7 @@ test.describe('高级搜索功能', () => {
     // Login first
     await page.goto('/login');
     await page.fill('input[placeholder*="用户名"]', 'admin');
-    await page.fill('input[type="password"]', '12345678');
+    await page.fill('input[type="password"]', process.env.E2E_ADMIN_PASS || 'ChangeMe123!');
     await page.click('button:has-text("登录")');
     await page.waitForURL('/dashboard');
   });

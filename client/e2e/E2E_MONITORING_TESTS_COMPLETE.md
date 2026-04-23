@@ -283,7 +283,7 @@ npx playwright show-report
 Create `.env.e2e` file:
 ```bash
 E2E_ADMIN_USER=admin
-E2E_ADMIN_PASS=12345678
+E2E_ADMIN_PASS=ChangeMe123!
 E2E_USER_USER=user1
 E2E_USER_PASS=password123
 ```
