@@ -89,7 +89,7 @@ import { UploadModule } from './modules/upload/upload.module';
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 1 分钟时间窗口
-        limit: 100, // 每分钟最多 100 次请求
+        limit: 1000, // 测试环境：每分钟最多 1000 次请求
       },
     ]),
     ScheduleModule.forRoot(),
