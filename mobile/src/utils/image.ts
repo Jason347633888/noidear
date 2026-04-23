@@ -90,7 +90,8 @@ export function chooseImages(
       sourceType,
       sizeType: ['compressed'],
       success: (res) => {
-        resolve(res.tempFilePaths)
+        const paths = res.tempFilePaths
+        resolve(Array.isArray(paths) ? paths : [paths])
       },
       fail: (err) => {
         if (err.errMsg?.includes('cancel')) {
