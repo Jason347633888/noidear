@@ -117,6 +117,12 @@ export class DocumentController {
     }
   }
 
+  @Get('due-soon')
+  @ApiOperation({ summary: '查询即将到期复审的文件' })
+  getDueSoon(@Query('days') days?: string) {
+    return this.lifecycleSvc.getDueSoon(days ? parseInt(days, 10) : 30);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: '查询文档详情' })
   async findOne(@Param('id') id: string, @Req() req: any) {
@@ -310,12 +316,6 @@ export class DocumentController {
   // =============================
   // Task 8: 文件生命周期管理
   // =============================
-
-  @Get('due-soon')
-  @ApiOperation({ summary: '查询即将到期复审的文件' })
-  getDueSoon(@Query('days') days?: string) {
-    return this.lifecycleSvc.getDueSoon(days ? parseInt(days, 10) : 30);
-  }
 
   @Patch(':id/publish')
   @ApiOperation({ summary: '发布文件（设为生效状态）' })
