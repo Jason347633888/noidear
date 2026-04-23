@@ -1,326 +1,178 @@
-# 🚨 文档管理系统 - AI Agent 指南
+# Agent Guide - 文档管理系统
 
-> **核心理念**: 规则约束**开发实现方式**（HOW），不限制**业务需求扩展**（WHAT）
+> **Goal**: Get productive quickly without breaking things. Read this first, then `.claude/rules/` if needed.
 
-> **重要**: 在开始任何开发工作之前，必须先阅读 `.Codex/` 目录下的所有规则文件
+## Architecture
 
----
+**Monorepo structure:**
+- `client/` - Vue 3 + Vite + Element Plus frontend (port 5173 dev, 80 prod)
+- `server/` - NestJS + Prisma backend (port 3000)
+- `packages/types/` - Shared TypeScript types
+- `mobile/`, `miniprogram/` - Mobile apps
+- Infrastructure: PostgreSQL 15, Redis 7, MinIO (all via Docker)
 
-## 🚨 AI必须遵守的核心规则（最高优先级）
+## Quick Start
 
-### 绝对禁止 ❌
-- ❌ 更换框架（Vue 3 → React, NestJS → Express）
-- ❌ 修改项目目录结构
-- ❌ 硬编码密码/密钥
-- ❌ 强制推送 Git（force push）
-- ❌ 本地安装运行 Docker 已有的服务（PostgreSQL/Redis/MinIO）
-
-### 必须遵循 ✅
-- ✅ 使用 Element Plus 组件库
-- ✅ 使用 Prisma ORM（复杂查询可用 `$queryRaw`，参考 database.mdc）
-- ✅ 环境变量存储敏感信息
-- ✅ 中文 commit message
-- ✅ 所有API必须有异常处理（try-catch）
-- ✅ PostgreSQL/Redis/MinIO 必须通过 Docker 运行
-- ✅ 编写代码前先描述方法并等待批准
-- ✅ 修改超过3个文件先拆分任务
-- ✅ 编写代码后列出潜在问题和测试方案
-- ✅ 遇到错误先写测试用例再修复
-
-### 🎯 Coding Principle（强制标准）✅
-| 原则 | 具体要求 |
-|------|----------|
-| **Good Taste** | 消除边界优于增加判断，函数<50行，缩进<3层 |
-| **Never break userspace** | 向后兼容性神圣不可侵犯 |
-| **实用主义** | 先确认真问题，寻找最简方案 |
-| **直接犀利** | 技术批评直接，不委婉不模糊 |
-
-
-## 快速开始
-
-1. **先读文档**: 依次阅读 `.Codex/` 目录下的规则文件
-2. **理解约束**: 熟悉 `rules/constraints.mdc` 的27章约束（包含Coding Principle + Docker）
-3. **检查范围**: 确认你要做的功能在 MVP Phase 1-6 范围内
-4. **参考设计**: 对照 `docs/` 目录下的设计文档
-
----
-
-## 📋 实现前检查清单（必须逐项通过）
-
-在实现任何功能前，AI/Agent **必须**回答以下问题：
-
-### 技术选型检查
-```
-□ 1. 这个功能在 docs/DESIGN.md 需求文档中吗？
-□ 2. 需要引入新库吗？
-   - 允许直接引入：Vite插件、@types/*、dayjs、nanoid、@nestjs/*（参考 tech-stack.mdc）
-   - 需要评估：UI组件库、大型框架库（体积 > 100KB）
-□ 3. 使用的是指定框架吗？（Vue 3 / NestJS）
-```
-
-### 代码规范检查
-```
-□ 4. 这个UI符合 Element Plus 规范吗？
-□ 5. 这个API端点在文档里吗？
-□ 6. 这样改会破坏现有结构吗？
-□ 7. 相同功能是否已存在公共函数/组件？
-```
-
-### 安全检查
-```
-□ 8. 密码/密钥硬编码了吗？
-□ 9. 敏感信息写入日志了吗？
-□ 10. 输入验证做了吗？
-□ 11. 权限检查做了吗？
-□ 12. 文件类型/大小是否限制？
-```
-
-### 代码质量检查
-```
-□ 13. 异常处理是否完整？
-□ 14. ESLint/Prettier 能通过吗？
-□ 15. 函数长度合理吗？（建议 < 50行，复杂业务逻辑允许 < 100行）
-□ 16. 重复代码提取了吗？
-```
-
-### 测试检查
-```
-□ 17. 有对应的测试吗？（核心逻辑必须有测试）
-```
-
-### Coding Principle 检查
-```
-□ 18. 是否消除了边界情况？（Good Taste）
-□ 19. 缩进是否避免超过3层？（Good Taste）
-□ 20. 是否满足向后兼容？（Never break userspace）
-□ 21. 是否验证了这是真问题？（实用主义）
-```
-
-**任何一项检查不通过，必须停止实现，先解决问题！**
-
----
-
-## 技术栈清单（完整版）
-
-> **说明**: 以下为项目实际使用的技术栈，新增库参考 tech-stack.mdc 引入流程
-
-### 前端核心
-- Vue 3.4+, Element Plus 2.5+, Vite 5.0+, Pinia 2.1+
-- Vue Router 4.0+, Axios 1.6+, dayjs 1.11+, lodash-es 4.17+
-- echarts 6.0+（数据可视化）, sortablejs 1.15+（拖拽排序）
-- unplugin-auto-import, unplugin-vue-components（自动导入）
-
-### 后端核心
-- Node.js 18 LTS, NestJS 10+, TypeScript 5.3+
-- Prisma 5.7+（ORM）, PostgreSQL 15+, Redis 7+
-- xlsx 0.18+（Excel解析）, exceljs 4.4+（Excel导出）
-- bcrypt 5.1+, @nestjs/jwt, @nestjs/passport（认证）
-- @nestjs/throttler（限流）, @nestjs/swagger（API文档）, helmet（安全）
-- minio 8.0+（对象存储客户端）
-
-### 库引入流程
-**允许直接引入**（无需确认）:
-- Vite 插件：vite-plugin-*, @vitejs/*
-- TypeScript 类型：@types/*
-- 轻量工具库：date-fns, zod, nanoid
-- NestJS 官方包：@nestjs/*
-
-**需要评估后引入**:
-- UI 组件库（Element Plus 之外）
-- 大型框架级库（体积 > 100KB）
-- 数据可视化库（ECharts、D3.js）
-
-**版本管理**:
-- 补丁版本（5.0.0 → 5.0.x）：✅ 允许自动升级
-- 小版本（5.0.0 → 5.x.0）：⚠️ 需评估后升级
-- 大版本（5.x → 6.x）：❌ 需充分测试和批准
-
----
-
-## 文档索引
-
-| 文件 | 用途 | 阅读优先级 |
-|------|------|------------|
-| [rules/constraints.mdc](rules/constraints.mdc) | AI实现约束清单 | 最高 |
-| [rules/tech-stack.mdc](rules/tech-stack.mdc) | 技术选型规范 | 高 |
-| [rules/ui-standards.mdc](rules/ui-standards.mdc) | UI设计标准 | 高 |
-| [rules/api-spec.mdc](rules/api-spec.mdc) | API设计规范 | 高 |
-| [rules/database.mdc](rules/database.mdc) | 数据库规范 | 中 |
-| [rules/git-flow.mdc](rules/git-flow.mdc) | Git提交规范 | 中 |
-
-## 完整文档
-
-| 文档 | 路径 | 说明 |
-|------|------|------|
-| **需求设计** | `docs/DESIGN.md` | 完整功能、规则、数据模型 |
-| **项目结构** | `docs/PROJECT_STRUCTURE.md` | 文件导航 + 前端开发计划 |
-| **README** | `README.md` | 快速开始、访问地址 |
-
----
-
-## ESLint 配置
-
-- **前端**: @typescript-eslint + eslint-plugin-vue（TypeScript + Vue 3 规则）
-- **后端**: NestJS 默认配置（标准 TypeScript 规则）
-- **开发环境**: `no-console` warn, `no-unused-vars` warn
-- **生产环境**: `no-console` error, `no-unused-vars` error
-
----
-
-## 📚 编码预防清单
-
-> **核心原则**：经验要在编码时回顾，而不是事后补救。每次写代码前问自己这些问题。
-
-### 编码前自查
-
-#### 1. Vue Router 导入检查 ✅
-```typescript
-// 写路由代码前先确认
-import { useRoute, useRouter } from 'vue-router';
-
-const route = useRoute();    // Route 对象 - 只读，无 afterEach
-const router = useRouter();  // Router 实例 - 有 afterEach 等方法
-
-// 记住：路由监听用 router.afterEach，不是 route.afterEach
-```
-
-#### 2. 模块导入检查 ✅
-```typescript
-// 写导入前先看导出方式
-import request from '@/api/request';      // 默认导出
-import { request } from '@/api/request';  // 命名导出
-
-// 原则：先看源文件怎么导出的，再写导入语句
-```
-
-#### 3. 编码后立即验证 ✅
 ```bash
-# 每次添加新页面/组件后立即运行
-npx vite build  # 构建是否通过？
+# 1. Start infrastructure
+docker compose up -d postgres redis minio
 
-# 每次添加后端 API 后立即运行
-npm run build  # 后端编译是否通过？
-
-# 每次使用 Prisma 后
+# 2. Backend setup
+cd server
+npm install
 npx prisma generate --schema=src/prisma/schema.prisma
+npx prisma db push --schema=src/prisma/schema.prisma
+npm run start:dev
+
+# 3. Frontend setup (new terminal)
+cd client
+npm install
+npm run dev
+
+# Access: http://localhost:5173 (admin / 12345678)
 ```
 
-#### 4. Worktree 环境初始化 ✅
+## Critical Rules
+
+**Never:**
+- Switch frameworks (Vue 3 → React, NestJS → Express)
+- Modify directory structure
+- Hardcode secrets (use `.env`)
+- Force push Git
+- Run PostgreSQL/Redis/MinIO locally (use Docker only)
+
+**Always:**
+- Use Element Plus for UI
+- Use Prisma ORM (complex queries: `$queryRaw`)
+- Wrap APIs in try-catch
+- Write Chinese commit messages
+- Validate builds after changes: `npm run build` (both)
+- Regenerate Prisma client after schema changes
+
+## Coding Standards
+
+```typescript
+// Good Taste principles
+- Eliminate edge cases over adding checks
+- Functions < 50 lines (< 100 for complex logic)
+- Nesting < 3 levels
+- Never break backward compatibility
+
+// Vue Router - common mistake
+import { useRoute, useRouter } from 'vue-router'
+const route = useRoute()     // Read-only, no afterEach
+const router = useRouter()   // Has afterEach, push, etc.
+
+// Module imports - check source first
+import request from '@/api/request'      // Default export
+import { request } from '@/api/request'  // Named export
+```
+
+## Common Gotchas
+
+**Frontend changes not reflecting?**
 ```bash
-# 创建 worktree 后立即执行
+rm -rf node_modules/.vite  # Clear Vite cache
+npx vite build              # Verify build passes
+# Ctrl+Shift+R in browser to hard reload
+```
+
+**Prisma schema changes?**
+```bash
+cd server
+npx prisma generate --schema=src/prisma/schema.prisma
+npx prisma db push --schema=src/prisma/schema.prisma
+```
+
+**Worktree environment?**
+```bash
 cd .worktrees/feature-name/server
 npx prisma generate --schema=../server/src/prisma/schema.prisma
-
-# 验证前后端都能构建
-npx vite build && npm run build
 ```
 
-#### 5. E2E 测试编码前准备 ✅
-```typescript
-// 使用 Chrome DevTools MCP 前
-// 1. 先 take_snapshot 获取元素 UID
-// 2. 页面导航后重新 take_snapshot
-// 3. 用 wait_for 等待页面加载
-await mcp__chrome-devtools__take_snapshot();
-await mcp__chrome-devtools__click({ uid: 'xxx' });
-await mcp__chrome-devtools__wait_for({ text: '目标', timeout: 5000 });
-```
+**API endpoint not working?**
+- Restart backend to register new routes
+- Prefer existing endpoints with extra data over new single-purpose endpoints
 
-#### 6. API 端点选择原则 ✅
-```typescript
-// 问题：前端调用了 /notifications/unread-count，后端路由未生效导致 404
-// 教训：
-// 1. 后端添加 API 后必须重启服务验证路由生效
-// 2. 优先复用已有的端点获取数据，而非依赖新端点
-// 3. 宁可使用已有端点的冗余字段，也不依赖可能未生效的新端点
+## Commands Reference
 
-// 反例：调用单一路径获取单一数据
-const res = await request.get('/notifications/unread-count');
-
-// 正例：复用已有的列表端点（即使多返回一些数据）
-const res = await request.get('/notifications');
-unreadCount.value = res.unreadCount;
-```
-
-#### 10. 前端代码修改验证原则 ✅
-```typescript
-// 问题：修改前端代码后，页面没变化（浏览器缓存/HMR 失效）
-// 教训：
-// 1. 开发模式用 Vite HMR，但需确认 HMR 正常
-// 2. 构建后必须 Ctrl+Shift+R 强制刷新
-// 3. 页面无变化时，先检查 Network 标签看是否加载了新 JS
-// 4. 必要时清缓存：rm -rf node_modules/.vite
-
-// 验证命令
-rm -rf node_modules/.vite  # 清理 Vite 缓存
-npx vite build  # 重新构建验证
-```
-
-
-#### 13. 文档版本更新同步原则 ✅
+**Backend (`cd server`):**
 ```bash
-# 问题：更新 DESIGN.md 版本后，其他文档未同步更新
-# 教训：
-# 1. DESIGN.md 版本变更必须同步更新 4 个文档
-# 2. 业务规则数量变更必须同步到 README.md
-
-
-# DESIGN.md 版本更新检查清单
-# ✅ DESIGN.md 版本号已更新（如 v10.6 → v10.7）
-# ✅ DESIGN.md 第 22.6 章版本历史表已更新
-# ✅ CHANGELOG.md 新增版本记录（含更新动机、项目状态）
-# ✅ README.md 项目状态更新（业务规则数量、技术债务状态）
-# ✅ README.md 文档表更新（DESIGN.md 描述版本号）
-
-
-
-
-#### 17. 技术方案代码示例质量原则 ✅
-```bash
-# 问题：代码示例不完整，开发时无法直接使用
-# 教训：
-# 1. 代码示例必须是"可直接复制使用"的完整代码
-# 2. 必须包含 import、类型定义、错误处理
-# 3. 必须符合 Vue 3 Composition API + Element Plus 规范
-
-# 代码示例完整性检查清单
-# ✅ 包含 <template> 和 <script setup> 完整结构
-# ✅ 包含 import 语句（ElMessage, ElMessageBox, API 函数）
-# ✅ 包含类型定义（ref, reactive, TypeScript 类型）
-# ✅ 包含错误处理（try-catch + ElMessage.error）
-# ✅ 包含表单验证（rules + ElForm）
-# ✅ 符合 Element Plus 组件使用规范
-
-# 代码示例模板（对话框 + 表单提交）
-# 1. 声明响应式变量（dialogVisible, form, rules）
-# 2. 定义提交函数（handleSubmit + try-catch）
-# 3. API 调用 + 成功/失败提示
-# 4. 关闭对话框 + 刷新列表
+npm run start:dev      # Dev with watch
+npm run build          # Production build
+npm test               # Jest tests
+npm run test:cov       # Coverage
+npm run lint           # ESLint fix
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:seed
 ```
-、
-**重要**：每次编码前回顾这份清单，问题在写代码时就能避免，而不是测试时才发现。
 
+**Frontend (`cd client`):**
+```bash
+npm run dev            # Dev server
+npm run build          # Production build
+npm run build:check    # Type check + build
+npm test               # Vitest
+npm run test:coverage  # Coverage
+npm run test:e2e       # Playwright
+npm run lint           # ESLint fix
+```
+
+**Docker:**
+```bash
+docker compose up -d              # Start all
+docker compose up -d postgres redis minio  # Core only
+docker compose logs -f server     # Tail logs
+```
+
+## Pre-commit Checklist
+
+Before implementing anything:
+
+```
+□ Function exists in docs/DESIGN.md?
+□ Using Vue 3 + NestJS (not switching frameworks)?
+□ UI uses Element Plus components?
+□ API has try-catch error handling?
+□ No hardcoded secrets?
+□ Input validation present?
+□ < 50 lines per function?
+□ Nesting < 3 levels deep?
+□ ESLint passes?
+□ Build passes (both client and server)?
+```
+
+## Library Policy
+
+**Allowed without approval:**
+- Vite plugins (`vite-plugin-*`, `@vitejs/*`)
+- Type definitions (`@types/*`)
+- Utilities: `dayjs`, `nanoid`, `zod`, `date-fns`
+- NestJS official packages
+
+**Needs evaluation:**
+- UI libraries beyond Element Plus
+- Libraries > 100KB
+- Visualization libraries (D3.js, etc.)
+
+## Documentation
+
+| File | Purpose |
+|------|---------|
+| `.claude/rules/constraints.mdc` | Core constraints (27 chapters) |
+| `.claude/rules/tech-stack.mdc` | Stack versions & library policy |
+| `docs/DESIGN.md` | Full requirements (v10.7, 113 rules) |
+| `docs/PROJECT_STRUCTURE.md` | File navigation |
+| `README.md` | Setup & usage |
+
+## Project Status
+
+- **Completion**: 85.6% (154/180 tasks, 22 modules)
+- **Business Rules**: 113 implemented
+- **Test Coverage**: Backend ~85%, Frontend ~45%
+- **Known Debt**: `RoleFineGrainedPermission` table, `RecordTemplate.workflowConfig` field
 
 ---
 
-**文档版本**: 5.2
-**最后更新**: 2026-02-22
-**变更**: 同步审计报告第三次更新结果（BRV-01~05 全部修复，P1-2 前端组件落地，项目结构文档升级至 v6.0）
-
-**项目状态**:
-- 全部 22 个功能模块（TASK-001~402）已开发，总体完成度 **85.6%**（154/180 任务）
-- ✅ P1-1 文档归档作废：已完成
-- ✅ P1-3 工作流引擎：已完成
-- ✅ TASK-401 真实 ElasticSearch 集成：已完成
-- ✅ TASK-402 真实 LDAP 集成（三步认证 + 注入防护）：已完成
-- ✅ BRV-01~05 全部业务规则违规已修复（提交 `2acd23e`）
-- ✅ P1-2 细粒度权限（TASK-239~252）：前端 Vue 组件全部落地，后端控制器完善，完成度 12/18
-- ⚠️ P1-2 残留架构缺陷：`RoleFineGrainedPermission` 中间表仍缺失
-- ⚠️ 动态表单与工作流集成字段缺失（`RecordTemplate.workflowConfig`、`Record.workflowId`）
-- ⚠️ 前端 E2E 测试（Playwright）：30 个 spec 文件，覆盖率约 45%
-
-**相关文档**:
-- [完整功能审计报告](docs/complete-audit-report.md) - 2026-02-22，第三次更新
-- [完整需求设计](docs/DESIGN.md) - 文档版本 10.7（113 条业务规则）
-- [项目结构导航](docs/PROJECT_STRUCTURE.md) - 文档版本 6.0（完整重写）
-- [项目 README](README.md) - 已同步更新
+**Version**: 6.0 | **Updated**: 2026-02-22
