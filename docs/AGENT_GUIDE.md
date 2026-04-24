@@ -268,6 +268,10 @@ When the traceability primary surface has been established, legacy traceability 
 
 If the answer to any of these is no, the work must be redirected to the authority path first.
 
+## Internal Go-Live Gate
+
+Internal formal trial operation requires zero known issues in release scope, one primary traceability authority, complete release evidence, and explicit sign-off. Monitoring and rollback readiness protect trial operation but do not substitute for remediation.
+
 ## 已知限制
 
 - `query_db` 只支持 `SELECT`，写操作会被拒绝并返回错误

@@ -73,6 +73,13 @@
 11. `training-service.e2e-spec.ts` — fixed `result.archive.x` → `result.x` (service returns flat object)
 12. `jest.config.js` — moved unfixable/infrastructure-dependent tests to `testPathIgnorePatterns`
 
+## Convergence Gate
+
+- [x] one primary traceability route remains (/traceability) - verified in router: line 358
+- [x] one primary page remains (TraceabilityQuery.vue) - verified: component import at line 358
+- [x] one primary adapter remains (client/src/api/traceability.ts) - verified: single authority adapter
+- [x] legacy authorities are removed or frozen as bridges/local-only functions - verified: batch-trace/query (line 295-297) and warehouse/traceability (line 349-351) redirect to /traceability
+
 ## Gate Status
 
 - frontend gate: PASS (build + tests green; typecheck has pre-existing warnings)
@@ -80,9 +87,9 @@
 - contract gate: PENDING
 - permission gate: PENDING
 - data/state gate: PENDING
-- convergence gate: PASS (completed in prior convergence plans)
+- convergence gate: PASS (one primary authority confirmed, legacy bridges in place)
 - docs gate: PENDING
-- observability gate: PENDING
+- observability gate: PASS (monitoring signals, error logs, stop-run triggers, rollback triggers, rollback owners all documented)
 
 ## Final Recommendation
 

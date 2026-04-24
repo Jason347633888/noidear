@@ -48,6 +48,6 @@
 
 | 角色 | 负责人 | 联系方式 |
 | --- | --- | --- |
-| 技术负责人 | TBD | TBD |
-| 数据库管理员 | TBD | TBD |
-| 系统管理员 | TBD | TBD |
+| 系统所有人/技术负责人 | system-owner | Internal |
+| 数据库管理员 | db-admin | Internal |
+| 系统管理员 | sysadmin | Internal |
