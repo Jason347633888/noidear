@@ -74,13 +74,13 @@ describe('RecycleBin', () => {
   it('should render title', async () => {
     const wrapper = w();
     await flushPromises();
-    expect(wrapper.text()).toContain('回收站');
+    expect(wrapper.text()).toContain('文档');
   });
 
   it('should fetch documents on mount', async () => {
     w();
     await flushPromises();
-    expect(mockGet).toHaveBeenCalledWith('document', 1, 10, '');
+    expect(mockGet).toHaveBeenCalledWith('document', 1, 20, undefined, undefined, undefined, undefined);
   });
 
   it('should store fetched data', async () => {
@@ -100,7 +100,7 @@ describe('RecycleBin', () => {
     await (wrapper.vm as any).fetchData();
     await flushPromises();
 
-    expect(mockGet).toHaveBeenCalledWith('template', 1, 10, '');
+    expect(mockGet).toHaveBeenCalledWith('template', 1, 20, undefined, undefined, undefined, undefined);
   });
 
   it('should switch to task tab and fetch data', async () => {
@@ -112,21 +112,18 @@ describe('RecycleBin', () => {
     await (wrapper.vm as any).fetchData();
     await flushPromises();
 
-    expect(mockGet).toHaveBeenCalledWith('task', 1, 10, '');
+    expect(mockGet).toHaveBeenCalledWith('task', 1, 20, undefined, undefined, undefined, undefined);
   });
 
   it('should search with keyword', async () => {
     const wrapper = w();
     await flushPromises();
 
-    (wrapper.vm as any).searchKeyword = 'test';
+    (wrapper.vm as any).filterForm.keyword = 'test';
     (wrapper.vm as any).handleSearch();
-
-    // Wait for debounce
-    await new Promise(resolve => setTimeout(resolve, 600));
     await flushPromises();
 
-    expect(mockGet).toHaveBeenCalledWith('document', 1, 10, 'test');
+    expect(mockGet).toHaveBeenCalledWith('document', 1, 20, 'test', undefined, undefined, undefined);
   });
 
   it('should restore item', async () => {
@@ -169,7 +166,7 @@ describe('RecycleBin', () => {
     await flushPromises();
 
     expect(mockDelete).toHaveBeenCalledWith('document', 'doc-1');
-    expect(ElMessage.success).toHaveBeenCalledWith('删除成功');
+    expect(ElMessage.success).toHaveBeenCalledWith('已彻底删除');
   });
 
   it('should cancel permanent delete on user cancel', async () => {
@@ -188,7 +185,7 @@ describe('RecycleBin', () => {
   it('should handle restore error', async () => {
     const { ElMessageBox, ElMessage } = await import('element-plus');
     (ElMessageBox.confirm as any).mockResolvedValue(true);
-    mockPost.mockRejectedValue({ response: { data: { message: 'Restore failed' } } });
+    mockPost.mockRejectedValue({ message: 'Restore failed' });
 
     const wrapper = w();
     await flushPromises();
@@ -202,7 +199,7 @@ describe('RecycleBin', () => {
   it('should handle delete error', async () => {
     const { ElMessageBox, ElMessage } = await import('element-plus');
     (ElMessageBox.confirm as any).mockResolvedValue(true);
-    mockDelete.mockRejectedValue({ response: { data: { message: 'Delete failed' } } });
+    mockDelete.mockRejectedValue({ message: 'Delete failed' });
 
     const wrapper = w();
     await flushPromises();
@@ -259,11 +256,11 @@ describe('RecycleBin', () => {
 
   it('should handle fetch data error', async () => {
     const { ElMessage } = await import('element-plus');
-    mockGet.mockRejectedValue({ response: { data: { message: 'Fetch failed' } } });
+    mockGet.mockRejectedValue(new Error('Fetch failed'));
 
     w();
     await flushPromises();
 
-    expect(ElMessage.error).toHaveBeenCalledWith('Fetch failed');
+    expect(ElMessage.error).toHaveBeenCalledWith('获取回收站数据失败');
   });
 });

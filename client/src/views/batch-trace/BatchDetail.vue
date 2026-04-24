@@ -83,7 +83,8 @@
 import { ref, reactive, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { productionBatchApi, materialUsageApi, traceApi } from '@/api/batch';
+import { productionBatchApi, materialUsageApi } from '@/api/batch';
+import request from '@/api/request';
 
 const route = useRoute();
 const router = useRouter();
@@ -161,7 +162,9 @@ const handleAddUsage = async () => {
 
 const handleExport = async () => {
   try {
-    const res: any = await traceApi.exportReport(batchId);
+    const res: any = await request.get(`/batch-trace/production-batches/${batchId}/export`, {
+      responseType: 'blob',
+    });
     const filename = `trace-report-${batch.value?.batchNumber || batchId}.pdf`;
     downloadBlob(res, filename);
     ElMessage.success('报告导出成功');
