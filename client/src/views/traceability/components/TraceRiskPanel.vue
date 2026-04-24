@@ -1,13 +1,13 @@
 <template>
-  <el-card v-if="result?.risks?.length || result" shadow="never" style="margin-top: 16px">
+  <el-card v-if="result?.risk?.items?.length || result" shadow="never" style="margin-top: 16px">
     <div class="panel-header">风险汇总与操作</div>
 
-    <template v-if="result?.risks?.length">
+    <template v-if="result?.risk?.items?.length">
       <el-alert
-        v-for="risk in result.risks"
-        :key="risk.code"
+        v-for="risk in result.risk.items"
+        :key="risk.riskId"
         :title="risk.message"
-        :type="alertType(risk.level)"
+        :type="alertType(risk.riskLevel)"
         show-icon
         style="margin-bottom: 8px"
         :closable="false"
@@ -15,7 +15,7 @@
     </template>
     <el-empty v-else-if="result" description="无风险标记" :image-size="48" />
 
-    <div v-if="result?.permission?.canInitiateAction" class="action-row">
+    <div v-if="result?.permission?.canInitiateLinkage" class="action-row">
       <span class="action-label">发起联动</span>
       <el-button size="small" @click="$emit('linkage', 'deviation')">偏差</el-button>
       <el-button size="small" @click="$emit('linkage', 'complaint')">投诉</el-button>

@@ -1,7 +1,7 @@
 <template>
   <el-card v-if="result" shadow="never" style="margin-top: 16px">
     <div class="view-header">台账视图</div>
-    <el-table :data="result.ledger" border stripe>
+    <el-table :data="result.ledger.rows" border stripe>
       <el-table-column prop="nodeType" label="节点类型" width="140">
         <template #default="{ row }">
           <el-tag size="small" :type="nodeTypeTag(row.nodeType)">{{ nodeTypeLabel(row.nodeType) }}</el-tag>
@@ -18,7 +18,7 @@
         </template>
       </el-table-column>
     </el-table>
-    <el-empty v-if="!result.ledger?.length" description="无台账数据" />
+    <el-empty v-if="!result.ledger?.rows?.length" description="无台账数据" />
   </el-card>
 </template>
 

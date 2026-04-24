@@ -5,18 +5,18 @@
       <div class="node-list">
         <div
           v-for="node in result.graph.nodes"
-          :key="node.id"
+          :key="node.nodeId"
           class="graph-node"
           :class="`node-${node.riskLevel ?? 'normal'}`"
         >
-          <span class="node-type">{{ node.type }}</span>
+          <span class="node-type">{{ node.nodeType }}</span>
           <span class="node-label">{{ node.label }}</span>
         </div>
       </div>
       <div v-if="result.graph.edges?.length" class="edge-list">
-        <div v-for="edge in result.graph.edges" :key="edge.id" class="graph-edge">
-          {{ edge.source }} → {{ edge.target }}
-          <el-tag size="small" type="info" style="margin-left: 8px">{{ edge.relation }}</el-tag>
+        <div v-for="edge in result.graph.edges" :key="edge.edgeId" class="graph-edge">
+          {{ edge.sourceNodeId }} → {{ edge.targetNodeId }}
+          <el-tag size="small" type="info" style="margin-left: 8px">{{ edge.relationType }}</el-tag>
         </div>
       </div>
     </div>
