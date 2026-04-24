@@ -1,5 +1,76 @@
 # Agent 操作指南
 
+> 本文档是 `noidear` 的 agent 操作协议中心。所有 agent 在进入实现、改 schema、改接口、改行为前，必须先读完本文件要求的前置文档和硬规则。
+
+## 1. 文档优先级
+
+1. `/Users/jiashenglin/Desktop/mybrain/文件管理体系/当前公司/04-记录表单`
+2. `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md`
+3. `/Users/jiashenglin/Desktop/mybrain/SaaS产品构思`
+4. `server/src/prisma/schema.prisma`
+
+## 2. Mandatory Reading
+
+所有 agent 必须先读：
+
+1. `AGENTS.md`
+2. `docs/AGENT_GUIDE.md`
+
+如果任务涉及食品安全、283 张表单、主数据、批次、追溯、召回、仓储/制造/品质跨模块关系，必须继续读：
+
+3. `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md`
+
+## 3. Task Triggers
+
+命中以下任一条件，视为食品安全领域任务：
+
+- 食品安全 SaaS
+- 表单 / 记录表单 / 模板 / 283 张源表单
+- 产品 / 物料 / 供应商 / 客户 / 员工 / 位置
+- 物料批次 / 生产批次 / 成品批次
+- 正追 / 反追 / 物料平衡 / 召回 / 投诉 / 不合格 / 返工
+- 决定 `RecordTemplate/Record` 和独立业务表如何取舍
+
+## 4. Behavior Constraints
+
+### 4.1 先判断对象类型
+
+先判断当前任务处理的是：主数据、批次数据、桥接关系、过程/检验记录、治理记录、还是通用动态表单。
+
+### 4.2 不得复制主数据
+
+系统已有统一语义的 `Product`、`Material`、`Supplier`、`Employee`、`Location` 不能在下游模块再创建平行事实源。
+
+### 4.3 批次问题必须回到主链
+
+涉及投料、来料、放行、留样、发货、投诉、召回、正追、反追、物料平衡时，必须从以下链路出发：
+
+`MaterialLot(MaterialBatch) <-> IngredientUsage(BatchMaterialUsage) <-> ProductionBatch`
+
+### 4.4 表单不自动等于独立表
+
+任何表单落表前，先判断它是核心业务对象、桥接记录、治理记录，还是动态表单表现层。
+
+### 4.5 业务名和代码名分开用
+
+讨论业务关系时使用业务标准名，例如 `MaterialLot`、`IngredientUsage`；查看代码和 schema 时使用实现名，例如 `MaterialBatch`、`BatchMaterialUsage`。
+
+## 5. Conflict Handling
+
+发现冲突时必须：
+
+1. 说明冲突发生在哪两个层级之间
+2. 区分命名差异还是语义差异
+3. 命名差异保留双口径说明
+4. 语义差异按高优先级文档处理
+5. 会影响实现边界时，必须写进当前 spec 或 plan
+
+## 6. Continue To Operational Tools
+
+完成上述阅读和判断后，再使用下方 MCP、API、测试与运行说明。
+
+## 7. MCP / API / 运行操作
+
 > **源表单口径**: 当前四级记录表单口径以 `/Users/jiashenglin/Desktop/mybrain/文件管理体系/当前公司/04-记录表单` 为唯一事实源；截至2026-04-23，源表单为283张。`SaaS产品构思` 是字段映射和产品语义参考层，项目实现以 `noidear` 为落地点。
 >
 > 本文档为 Claude Code 通过 noidear-mcp 操作系统提供最短路径指引。
