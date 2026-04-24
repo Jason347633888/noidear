@@ -246,6 +246,17 @@ omp refactor --from OldComponent --to NewComponent --path client/src/views
 
 ---
 
+## Convergence Authority
+
+When a frozen traceability contract or traceability primary route exists, legacy routes, legacy pages, and legacy adapters may remain only as short-lived bridge layers. New work must land on the authoritative route, contract, and test baseline.
+
+- **Authoritative route:** `/traceability` → `TraceabilityQuery.vue`
+- **Authoritative adapter:** `client/src/api/traceability.ts`
+- **Authoritative contract:** `packages/types/traceability.ts`
+- **Authoritative server module:** `server/src/modules/traceability/`
+- **Legacy bridges (deprecation only):** `/batch-trace/trace/*`, `/warehouse/traceability/*`
+- **Execution register:** `docs/superpowers/reports/2026-04-25-contract-cleanup-convergence-register.md`
+
 ## 已知限制
 
 - `query_db` 只支持 `SELECT`，写操作会被拒绝并返回错误

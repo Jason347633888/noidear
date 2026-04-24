@@ -132,3 +132,27 @@ This register is the live execution record for all keep, bridge, deprecate, and 
 | `docs/superpowers/reports/E2E-TEST-CHECKLIST.md` | E2E test tracking checklist | Keep As Bridge | Still useful overall, but row 17 (批次追溯) points to deprecated flow. Must update row once migration completes. |
 | `docs/superpowers/specs/2026-04-24-model-landing-layer-design.md` | Model landing layer design | Keep As Primary | Upstream authority consumed by traceability query layer. |
 | Any doc sections still describing `/batch-trace/query` or `/warehouse/traceability` as primary entry points | Legacy primary-path documentation | Mark Deprecated | Identify and remove or annotate as superseded once the authoritative paths are confirmed stable. |
+
+---
+
+## Deletion Preflight Checklist
+
+Before deleting any object marked "Delete" or "Mark Deprecated", confirm all of the following:
+
+- [ ] No route reference
+- [ ] No menu reference
+- [ ] No import or code reference
+- [ ] No unit/integration/e2e reference
+- [ ] No docs entry as primary path
+- [ ] No remaining bridge responsibility
+
+### Current Deletion Candidates
+
+| Object | Status | Preflight Status |
+| --- | --- | --- |
+| `client/src/api/warehouse.ts traceabilityApi.trace()` | Deleted | ✅ Removed in Task 4 |
+| `client/api/batch.ts traceApi` | Deleted | ✅ Removed in Task 4 |
+| `client/api/batch.ts TraceResult/TraceNode` | Deleted | ✅ Removed in Task 4 |
+| `client/src/views/batch-trace/TraceQuery.vue` (complex version) | Replaced with bridge | ✅ Replaced in Task 4 |
+| `client/src/views/batch-trace/TraceReport.vue` (complex version) | Replaced with bridge | ✅ Replaced in Task 4 |
+| `client/src/views/warehouse/Traceability.vue` (complex version) | Replaced with bridge | ✅ Replaced in Task 4 |
