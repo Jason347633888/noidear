@@ -99,6 +99,7 @@ This register is the live execution record for all keep, bridge, deprecate, and 
 | `client/src/views/traceability/__tests__/TraceabilityQuery.spec.ts` | Unit/component tests for `TraceabilityQuery.vue` | Keep As Primary | Component-level tests for the authoritative page. |
 | `client/src/api/__tests__/traceability.spec.ts` | API adapter tests for `client/src/api/traceability.ts` | Keep As Primary | Contract adapter tests. Must stay aligned to frozen types. |
 | `client/src/api/__tests__/traceability-contract.spec.ts` | Contract shape tests for traceability types | Keep As Primary | Validates field names against the frozen contract. Critical guard against drift. |
+| `client/src/api/__tests__/traceability-convergence.spec.ts` | Adapter convergence tests | Keep As Primary | Verifies sourceQueryRef in linkage and export calls; verifies traceApi removed from batch module surface. |
 | `client/e2e/batch-trace-flow.spec.ts` | E2E tests for batch trace flow (batch list, TraceQuery, TraceReport, BatchDetail) | Mark Deprecated | Tests deprecated primary flows. Must not receive new scenarios. Migrate batch CRUD portion only after replacement E2E coverage is confirmed. E2E-TEST-CHECKLIST.md row 44 still marks this as 新功能 — update checklist to reflect deprecation. |
 | `server/src/modules/traceability/traceability-query.service.spec.ts` | Unit tests for the query service | Keep As Primary | Primary backend test baseline. |
 | `server/src/modules/traceability/traceability-balance.service.spec.ts` | Unit tests for the balance service | Keep As Primary | Primary backend test baseline. |
@@ -114,6 +115,9 @@ This register is the live execution record for all keep, bridge, deprecate, and 
 | `server/src/modules/batch-trace/services/batch-material-usage.service.spec.ts` | Unit tests for batch-material usage CRUD | Keep As Bridge | Batch CRUD. |
 | `server/src/modules/batch-trace/services/batch-number-generator.service.spec.ts` | Unit tests for batch number generation | Keep As Bridge | Utility service. Batch CRUD support. |
 | `docs/superpowers/reports/E2E-TEST-CHECKLIST.md` (row 17: 批次追溯) | Test status tracking for batch-trace-flow | Mark Deprecated | Row tracks a deprecated E2E path. Must be updated to point to authoritative flow once migration completes. |
+
+### Deletion Candidates
+- None identified. All legacy test files have been removed or replaced. Bridge tests (batch-trace traceability.service.spec.ts) are marked as bridge.
 
 ---
 
