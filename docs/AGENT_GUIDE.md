@@ -257,6 +257,17 @@ When a frozen traceability contract or traceability primary route exists, legacy
 - **Legacy bridges (deprecation only):** `/batch-trace/trace/*`, `/warehouse/traceability/*`
 - **Execution register:** `docs/superpowers/reports/2026-04-25-contract-cleanup-convergence-register.md`
 
+## Hard Cutover Rule
+
+When the traceability primary surface has been established, legacy traceability pages, routes, adapters, and payload vocabularies may remain only as short-lived bridges or local-only functions. They may not continue to act as alternate primary traceability authorities.
+
+**Gate checks before any new traceability work:**
+1. Does the new work land on `/traceability` route and `client/src/api/traceability.ts`?
+2. Does the new work use field names from `packages/types/traceability.ts` only?
+3. Does the new work go through `server/src/modules/traceability/`?
+
+If the answer to any of these is no, the work must be redirected to the authority path first.
+
 ## 已知限制
 
 - `query_db` 只支持 `SELECT`，写操作会被拒绝并返回错误

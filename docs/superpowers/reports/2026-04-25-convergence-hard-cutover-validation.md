@@ -80,3 +80,24 @@ All three convergence checkpoints pass:
 3. **Server vocabulary:** Zero legacy terms outside intentional internal usages (known exceptions documented above).
 
 Hard cutover is confirmed complete. The traceability system has a single authoritative surface on all layers.
+
+## Final Gate Status
+
+**Date:** 2026-04-25
+**Overall Status:** ✅ PASS
+
+### Gate Checks
+
+| Check | Status | Evidence |
+| --- | --- | --- |
+| Single primary route | ✅ PASS | /traceability → TraceabilityQuery |
+| Legacy routes are redirects only | ✅ PASS | 3 redirect routes confirmed |
+| Single primary menu entry | ✅ PASS | Layout.vue verified |
+| Primary adapter authority | ✅ PASS | traceabilityApi in client/src/api/traceability.ts |
+| Legacy adapters stripped of trace methods | ✅ PASS | traceApi removed, traceabilityApi.trace() removed |
+| Type authority | ✅ PASS | packages/types/traceability.ts, client re-export |
+| Legacy pages are bridges | ✅ PASS | TraceQuery.vue, TraceReport.vue, Traceability.vue |
+| Server primary module | ✅ PASS | server/src/modules/traceability/ |
+| Legacy server endpoints deprecated | ✅ PASS | meta.deprecated=true on 4 endpoints |
+| No active legacy vocabulary in client | ✅ PASS | grep confirms zero active matches |
+| Delete candidate register | ✅ PASS | docs/superpowers/reports/2026-04-25-convergence-delete-candidate-register.md |
