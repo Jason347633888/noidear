@@ -172,6 +172,10 @@ export class TraceabilityQueryService {
     }));
   }
 
+  getTraceabilityPermissionView(currentUser: any) {
+    return this.buildPermissionView(currentUser);
+  }
+
   private buildPermissionView(currentUser: any) {
     return {
       canViewSummary: true,

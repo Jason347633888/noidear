@@ -27,6 +27,19 @@ describe('TraceabilityQueryService contract', () => {
     });
   });
 
+  it('trims traceability actions for warehouse users', () => {
+    const service = new TraceabilityQueryService({} as any, {} as any);
+    const response = service.getTraceabilityPermissionView({
+      department: '仓储',
+      scenarioPermissions: ['forwardTrace', 'materialBalance'],
+    } as any);
+
+    expect(response.canViewSummary).toBe(true);
+    expect(response.canViewDetail).toBe(true);
+    expect(response.canInitiateAction).toBe(true);
+    expect(response.canExecuteHighRiskAction).toBe(false);
+  });
+
   it('assembles the main traceability chain for a material lot query', async () => {
     const prisma = {
       materialBatch: {

@@ -85,6 +85,23 @@ cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server && npm run model-la
 
 除非冻结 spec 显式更新，否则不得在实现工作中对 283 张表单重新分类。
 
+## Traceability Query Layer
+
+实现或修改 `/traceability` 时，必须将以下文件视为冻结权威链：
+
+1. `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md`
+2. `docs/superpowers/specs/2026-04-24-model-landing-layer-design.md`
+3. `docs/superpowers/specs/2026-04-24-model-landing-layer-form-expansion.csv`
+4. `docs/superpowers/specs/2026-04-24-traceability-query-layer-design.md`
+
+不得在客户端代码、报告构建器或导出处理器中构造平行的追溯链。所有查询必须经过 `TraceabilityQueryService`，合规联动必须经过 `TraceabilityLinkageService`，异步导出必须使用 `TraceabilityExportService` + `TraceabilitySnapshot` 模型。
+
+验证命令：
+
+```bash
+cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server && npm run traceability:test
+```
+
 ## 7. MCP / API / 运行操作
 
 ---
