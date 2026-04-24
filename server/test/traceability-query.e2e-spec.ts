@@ -1,4 +1,4 @@
-import supertest from 'supertest';
+import * as supertest from 'supertest';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';

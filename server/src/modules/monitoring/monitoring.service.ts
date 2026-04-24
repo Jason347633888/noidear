@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RecordMetricDto, QueryMetricsDto } from './dto';
+import { convertBigIntToNumber } from '../../common/utils/bigint.util';
 
 /**
  * 监控服务
@@ -17,7 +18,7 @@ export class MonitoringService {
    */
   async recordMetric(dto: RecordMetricDto) {
     try {
-      return await this.prisma.systemMetric.create({
+      const metric = await this.prisma.systemMetric.create({
         data: {
           metricName: dto.metricName,
           metricValue: dto.metricValue,
@@ -25,6 +26,7 @@ export class MonitoringService {
           tags: dto.tags,
         },
       });
+      return convertBigIntToNumber(metric);
     } catch (error) {
       this.logger.error(
         `Failed to record metric: ${error.message}`,
@@ -84,7 +86,7 @@ export class MonitoringService {
       ]);
 
       return {
-        data,
+        data: convertBigIntToNumber(data),
         meta: {
           total,
           page,

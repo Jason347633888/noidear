@@ -4,6 +4,7 @@ import { PrismaService } from '../../src/prisma/prisma.service';
 import { StorageService } from '../../src/common/services/storage.service';
 import { NotificationService } from '../../src/modules/notification/notification.service';
 import { OperationLogService } from '../../src/modules/operation-log/operation-log.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BusinessException, ErrorCode } from '../../src/common/exceptions/business.exception';
 
 describe('DocumentService - Permanent Delete', () => {
@@ -34,6 +35,7 @@ describe('DocumentService - Permanent Delete', () => {
 
   const mockNotificationService = {};
   const mockOperationLogService = { log: jest.fn() };
+  const mockEventEmitter = { emit: jest.fn() };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -43,6 +45,7 @@ describe('DocumentService - Permanent Delete', () => {
         { provide: StorageService, useValue: mockStorageService },
         { provide: NotificationService, useValue: mockNotificationService },
         { provide: OperationLogService, useValue: mockOperationLogService },
+        { provide: EventEmitter2, useValue: mockEventEmitter },
       ],
     }).compile();
 

@@ -272,8 +272,8 @@ describe('Training System Service Layer (e2e)', () => {
         testData.userId
       );
 
-      expect(result.archive.projectId).toBe(testData.projectId);
-      expect(result.archive.pdfPath).toBeDefined();
+      expect(result.projectId).toBe(testData.projectId);
+      expect(result.pdfPath).toBeDefined();
     });
 
     it('BR-114: 应拒绝重复生成档案', async () => {

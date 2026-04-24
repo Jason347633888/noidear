@@ -47,7 +47,7 @@ describe('MonitoringService', () => {
 
       const result = await service.recordMetric(dto);
 
-      expect(result).toEqual(mockMetric);
+      expect(result).toEqual({ ...mockMetric, id: 1 });
       expect(prisma.systemMetric.create).toHaveBeenCalledWith({
         data: {
           metricName: dto.metricName,

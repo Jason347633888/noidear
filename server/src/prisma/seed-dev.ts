@@ -1,0 +1,93 @@
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🌱 开始补充开发环境演示数据...');
+
+  const admin = await prisma.user.findUnique({ where: { username: 'admin' } });
+  if (!admin) {
+    console.error('❌ 请先运行 npm run prisma:seed 创建基础数据');
+    return;
+  }
+
+  console.log('📄 创建文档数据...');
+  for (const doc of [
+    { id: 'doc_001', level: 1, number: 'QM-001', title: '质量手册', filePath: '/files/qm-001.pdf', fileName: '质量手册.pdf', fileSize: 1024, fileType: 'application/pdf', status: 'active', creatorId: admin.id },
+    { id: 'doc_002', level: 2, number: 'QP-001', title: '文件控制程序', filePath: '/files/qp-001.pdf', fileName: '文件控制程序.pdf', fileSize: 2048, fileType: 'application/pdf', status: 'active', creatorId: admin.id },
+    { id: 'doc_003', level: 3, number: 'WI-001', title: '温度记录作业指导书', filePath: '/files/wi-001.pdf', fileName: '温度记录作业指导书.pdf', fileSize: 512, fileType: 'application/pdf', status: 'active', creatorId: admin.id },
+  ]) {
+    await prisma.document.upsert({ where: { id: doc.id }, update: {}, create: doc });
+  }
+
+  console.log('✅ 创建审批数据...');
+  await prisma.approval.createMany({
+    data: [
+      { id: 'app_001', documentId: 'doc_001', status: 'approved', approverId: admin.id, approvedAt: new Date() },
+      { id: 'app_002', documentId: 'doc_002', status: 'pending', approverId: admin.id },
+    ] as any,
+    skipDuplicates: true,
+  });
+
+  console.log('📋 创建模板数据...');
+  await prisma.recordTemplate.createMany({
+    data: [
+      { code: 'TMPL-001', name: '温度记录表', fieldsJson: {}, description: '生产车间温度监控记录' },
+      { code: 'TMPL-002', name: '巡检记录表', fieldsJson: {}, description: '日常巡检检查记录' },
+    ] as any,
+    skipDuplicates: true,
+  });
+
+  console.log('🚨 创建告警规则...');
+  await prisma.alertRule.createMany({
+    data: [
+      { name: '设备温度超限', metricName: 'temperature', condition: '>', threshold: 80, severity: 'critical', enabled: true },
+      { name: '任务逾期提醒', metricName: 'task_deadline', condition: '<', threshold: 0, severity: 'warning', enabled: true },
+    ] as any,
+    skipDuplicates: true,
+  });
+
+  console.log('📝 创建审计日志...');
+  await prisma.loginLog.createMany({
+    data: [
+      { username: 'admin', action: 'login', ipAddress: '127.0.0.1', userAgent: 'Playwright', status: 'success' },
+      { username: 'admin', action: 'login', ipAddress: '192.168.1.1', userAgent: 'Chrome', status: 'success' },
+    ] as any,
+    skipDuplicates: true,
+  });
+
+  console.log('💾 创建备份记录...');
+  await prisma.backupHistory.createMany({
+    data: [
+      { backupType: 'postgres', fileName: 'backup-001.sql', status: 'success', fileSize: 1024000, startedAt: new Date(Date.now() - 86400000 * 2), completedAt: new Date(Date.now() - 86400000 * 2 + 300000) },
+      { backupType: 'minio', fileName: 'backup-002.zip', status: 'success', fileSize: 2048000, startedAt: new Date(Date.now() - 86400000), completedAt: new Date(Date.now() - 86400000 + 600000) },
+    ] as any,
+    skipDuplicates: true,
+  });
+
+  console.log('⚠️ 偏离报告需要关联记录，跳过...');
+
+  console.log('🗑️ 创建回收站数据...');
+  await prisma.document.upsert({
+    where: { id: 'doc_del_001' },
+    update: {},
+    create: {
+      id: 'doc_del_001',
+      level: 2,
+      number: 'QP-DEL-001',
+      title: '已删除的程序文件',
+      filePath: '/files/del-001.pdf',
+      fileName: '已删除文件.pdf',
+      fileSize: 1024,
+      fileType: 'application/pdf',
+      status: 'deleted',
+      creatorId: admin.id,
+      deletedAt: new Date(),
+    },
+  });
+
+  console.log('✅ 开发环境演示数据补充完成！');
+}
+
+main()
+  .catch((e) => { console.error('❌ Seed 失败:', e); process.exit(1); })
+  .finally(async () => { await prisma.$disconnect(); });

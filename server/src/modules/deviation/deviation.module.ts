@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { DeviationService } from './deviation.service';
 import { DeviationController } from './deviation.controller';
+import { DeviationAliasController } from './deviation-alias.controller';
 import { DeviationAnalyticsService } from './deviation-analytics.service';
 import { DeviationAnalyticsController } from './deviation-analytics.controller';
 import { DeviationCronService } from './deviation-cron.service';
@@ -13,7 +14,7 @@ import { ApprovalModule } from '../approval/approval.module';
     ExportModule,
     forwardRef(() => ApprovalModule),
   ],
-  controllers: [DeviationController, DeviationAnalyticsController],
+  controllers: [DeviationController, DeviationAliasController, DeviationAnalyticsController],
   providers: [DeviationService, DeviationAnalyticsService, DeviationCronService],
   exports: [DeviationService, DeviationAnalyticsService],
 })

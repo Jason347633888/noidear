@@ -102,9 +102,10 @@ describe('Monitoring API (e2e)', () => {
         })
         .expect(201);
 
-      expect(response.body).toHaveProperty('id');
-      expect(response.body.metricName).toBe('test_metric_1');
-      expect(response.body.metricValue).toBe(100);
+      const data = getData(response.body);
+      expect(data).toHaveProperty('id');
+      expect(data.metricName).toBe('test_metric_1');
+      expect(data.metricValue).toBe(100);
     });
 
     it('should fail without authentication', async () => {
@@ -149,9 +150,10 @@ describe('Monitoring API (e2e)', () => {
         .send({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body).toHaveProperty('data');
-      expect(response.body).toHaveProperty('meta');
-      expect(response.body.meta).toHaveProperty('total');
+      const body = getData(response.body);
+      expect(body).toHaveProperty('data');
+      expect(body).toHaveProperty('meta');
+      expect(body.meta).toHaveProperty('total');
     });
 
     it('should filter metrics by metricName', async () => {
@@ -161,7 +163,7 @@ describe('Monitoring API (e2e)', () => {
         .send({ metricName: 'test_metric_1', page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body.data).toBeInstanceOf(Array);
+      expect(getData(response.body).data).toBeInstanceOf(Array);
     });
 
     it('should filter metrics by metricType', async () => {
@@ -171,7 +173,7 @@ describe('Monitoring API (e2e)', () => {
         .send({ metricType: 'system', page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body.data).toBeInstanceOf(Array);
+      expect(getData(response.body).data).toBeInstanceOf(Array);
     });
 
     it('should filter metrics by date range', async () => {
@@ -184,7 +186,7 @@ describe('Monitoring API (e2e)', () => {
         .send({ startDate, endDate, page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body.data).toBeInstanceOf(Array);
+      expect(getData(response.body).data).toBeInstanceOf(Array);
     });
   });
 
@@ -198,11 +200,12 @@ describe('Monitoring API (e2e)', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
 
-      expect(response.body).toHaveProperty('count');
-      expect(response.body).toHaveProperty('min');
-      expect(response.body).toHaveProperty('max');
-      expect(response.body).toHaveProperty('avg');
-      expect(response.body).toHaveProperty('sum');
+      const stats = getData(response.body);
+      expect(stats).toHaveProperty('count');
+      expect(stats).toHaveProperty('min');
+      expect(stats).toHaveProperty('max');
+      expect(stats).toHaveProperty('avg');
+      expect(stats).toHaveProperty('sum');
     });
   });
 
@@ -213,7 +216,7 @@ describe('Monitoring API (e2e)', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
 
-      expect(response.body).toHaveProperty('count');
+      expect(getData(response.body)).toHaveProperty('count');
     });
   });
 });

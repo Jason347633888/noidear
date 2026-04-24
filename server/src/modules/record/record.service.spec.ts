@@ -3,6 +3,7 @@ import { RecordService } from './record.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkflowInstanceService } from '../workflow/workflow-instance.service';
 import { DeviationService } from '../deviation/deviation.service';
+import { DocumentNoService } from '../record-template/document-no.service';
 import { NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 
 describe('RecordService', () => {
@@ -68,6 +69,10 @@ describe('RecordService', () => {
     createDeviationReports: jest.fn().mockResolvedValue([]),
   };
 
+  const mockDocumentNoService = {
+    generate: jest.fn().mockResolvedValue('REC-20260215-0001'),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -75,6 +80,7 @@ describe('RecordService', () => {
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: WorkflowInstanceService, useValue: mockWorkflowInstanceService },
         { provide: DeviationService, useValue: mockDeviationService },
+        { provide: DocumentNoService, useValue: mockDocumentNoService },
       ],
     }).compile();
 

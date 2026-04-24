@@ -30,7 +30,7 @@ export class RecordTaskController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: '创建任务配置（管理员）' })
   create(@Body() dto: CreateAssignmentDto, @Req() req: any) {
-    return this.assignmentService.create(dto, req.user.userId);
+    return this.assignmentService.create(dto, req.user.id);
   }
 
   @Get('record-task-assignments')

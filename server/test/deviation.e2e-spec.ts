@@ -34,7 +34,6 @@ describe('DeviationController (e2e)', () => {
     user: `${TEST_PREFIX}-user`,
     dept: `${TEST_PREFIX}-dept`,
     template: `${TEST_PREFIX}-template`,
-    task: `${TEST_PREFIX}-task`,
     record: `${TEST_PREFIX}-record`,
     deviationReport: `${TEST_PREFIX}-deviation-report`,
   };
@@ -100,21 +99,21 @@ describe('DeviationController (e2e)', () => {
         .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body.success).toBe(true);
+      expect(response.body.code).toBe(0);
       expect(response.body.data).toBeDefined();
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.meta).toBeDefined();
-      expect(response.body.meta.total).toBeGreaterThanOrEqual(0);
+      const data = response.body.data;
+      expect(Array.isArray(data.list)).toBe(true);
+      expect(data.total).toBeGreaterThanOrEqual(0);
     });
 
-    it('should filter by taskId', async () => {
+    it('should filter by recordId', async () => {
       const response = await request(app.getHttpServer())
         .get('/api/v1/deviation-reports')
         .set('Authorization', `Bearer ${adminToken}`)
-        .query({ taskId: ids.task })
+        .query({ recordId: ids.record })
         .expect(200);
 
-      expect(response.body.success).toBe(true);
+      expect(response.body.code).toBe(0);
     });
 
     it('should filter by status', async () => {
@@ -124,7 +123,7 @@ describe('DeviationController (e2e)', () => {
         .query({ status: 'pending' })
         .expect(200);
 
-      expect(response.body.success).toBe(true);
+      expect(response.body.code).toBe(0);
     });
 
     it('should require authentication', async () => {
@@ -155,7 +154,7 @@ describe('DeviationController (e2e)', () => {
           deviationRate: 20,
           deviationType: 'exceeds_tolerance',
           reason: '超出温度阈值范围',
-          reportedBy: ids.admin,
+          reporterId: ids.admin,
           status: 'pending',
         },
       });
@@ -169,7 +168,7 @@ describe('DeviationController (e2e)', () => {
         .send({ status: 'approved', comment: '审批通过' })
         .expect(201);
 
-      expect(response.body.success).toBe(true);
+      expect(response.body.code).toBe(0);
 
       // 验证状态已更新
       const updated = await prisma.deviationReport.findUnique({
@@ -185,7 +184,7 @@ describe('DeviationController (e2e)', () => {
         .send({ status: 'rejected', comment: '数据不准确，需重新提交' })
         .expect(201);
 
-      expect(response.body.success).toBe(true);
+      expect(response.body.code).toBe(0);
 
       // 验证状态已更新
       const updated = await prisma.deviationReport.findUnique({
@@ -235,117 +234,46 @@ describe('DeviationController (e2e)', () => {
   // ========== Helper Functions ==========
 
   async function seedTestData(prisma: PrismaService, passwordHash: string) {
-    // 创建部门
     await prisma.department.create({
-      data: {
-        id: ids.dept,
-        code: `${TEST_PREFIX}-DEPT`,
-        name: 'E2E Test Department',
-      },
+      data: { id: ids.dept, code: `${TEST_PREFIX}-DEPT`, name: 'E2E Test Department' },
     });
-
-    // 创建用户
     await prisma.user.createMany({
       data: [
-        {
-          id: ids.admin,
-          username: `${TEST_PREFIX}-admin`,
-          name: 'E2E Admin',
-          password: passwordHash,
-          role: 'admin',
-          departmentId: ids.dept,
-        },
-        {
-          id: ids.user,
-          username: `${TEST_PREFIX}-user`,
-          name: 'E2E User',
-          password: passwordHash,
-          role: 'user',
-          departmentId: ids.dept,
-        },
+        { id: ids.admin, username: `${TEST_PREFIX}-admin`, name: 'E2E Admin', password: passwordHash, role: 'admin', departmentId: ids.dept },
+        { id: ids.user, username: `${TEST_PREFIX}-user`, name: 'E2E User', password: passwordHash, role: 'user', departmentId: ids.dept },
       ],
     });
-
-    // 创建模板
-    const templateFields = [
-      {
-        key: 'temperature',
-        label: '温度',
-        type: 'number' as const,
-        required: true,
-        standardValue: 25,
-        deviationThreshold: 2,
-      },
-      {
-        key: 'pressure',
-        label: '压力',
-        type: 'number' as const,
-        required: true,
-        standardValue: 100,
-        deviationThreshold: 5,
-      },
-    ];
-
-    await prisma.template.create({
+    await prisma.recordTemplate.create({
       data: {
         id: ids.template,
-        title: 'E2E Test Template',
-        number: `${TEST_PREFIX}-TPL-001`,
-        level: 4,
-        fieldsJson: templateFields,
-        creatorId: ids.admin,
+        code: `${TEST_PREFIX}-TPL-001`,
+        name: 'E2E Test Template',
+        fieldsJson: [
+          { key: 'temperature', label: '温度', type: 'number', required: true, standardValue: 25, deviationThreshold: 2 },
+          { key: 'pressure', label: '压力', type: 'number', required: true, standardValue: 100, deviationThreshold: 5 },
+        ],
         version: 1,
+        deviationEnabled: true,
       },
     });
-
-    // 创建任务
-    await prisma.task.create({
-      data: {
-        id: ids.task,
-        templateId: ids.template,
-        departmentId: ids.dept,
-        deadline: new Date(Date.now() + 86400000),
-        status: 'pending',
-        creatorId: ids.admin,
-      },
-    });
-
-    // 创建任务记录（带偏离）
-    await prisma.taskRecord.create({
+    await prisma.record.create({
       data: {
         id: ids.record,
-        taskId: ids.task,
         templateId: ids.template,
-        submitterId: ids.user,
-        hasDeviation: true,
-        status: 'pending',
-        dataJson: {
-          temperature: 30, // 偏离标准值 25，超出阈值 2
-          pressure: 110,   // 偏离标准值 100，超出阈值 5
-        },
+        number: `${TEST_PREFIX}-REC-001`,
+        dataJson: { temperature: 30, pressure: 110 },
+        status: 'draft',
+        createdBy: ids.admin,
       },
     });
   }
 
   async function cleanTestData(prisma: PrismaService) {
-    await prisma.deviationReport.deleteMany({
-      where: { id: { startsWith: ids.deviationReport } },
-    });
-    await prisma.taskRecord.deleteMany({
-      where: { id: ids.record },
-    });
-    await prisma.task.deleteMany({
-      where: { id: ids.task },
-    });
-    await prisma.template.deleteMany({
-      where: { id: ids.template },
-    });
-    await prisma.user.deleteMany({
-      where: { id: { in: [ids.admin, ids.user] } },
-    });
-    await prisma.department.deleteMany({
-      where: { id: ids.dept },
-    });
+    await prisma.deviationReport.deleteMany({ where: { recordId: ids.record } });
+    await prisma.record.deleteMany({ where: { id: ids.record } });
+    await prisma.recordTemplate.deleteMany({ where: { id: ids.template } });
+    await prisma.user.deleteMany({ where: { id: { in: [ids.admin, ids.user] } } });
+    await prisma.department.deleteMany({ where: { id: ids.dept } });
   }
 
   async function doLogin(
