@@ -26,4 +26,42 @@ describe('TraceabilityQueryService contract', () => {
       permission: expect.any(Object),
     });
   });
+
+  it('assembles the main traceability chain for a material lot query', async () => {
+    const prisma = {
+      materialBatch: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'mb-1',
+          batch_no: 'RM-001',
+          batchMaterialUsages: [{ id: 'use-1', productionBatchId: 'pb-1', quantity: 25 }],
+        }),
+      },
+      productionBatch: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'pb-1', batch_no: 'PB-001', finishedGoods: [{ id: 'fg-1', batch_no: 'FG-001' }], delivery_notes: [{ id: 'dn-1', delivery_no: 'DN-001' }] },
+        ]),
+      },
+    };
+
+    const service = new TraceabilityQueryService(prisma as any, { getSummary: jest.fn() } as any);
+    const result = await service.query(
+      {
+        entryMode: 'object',
+        objectType: 'materialLot',
+        objectId: 'mb-1',
+        traceMode: 'forward',
+        viewMode: 'ledger',
+        timeMode: 'current',
+      },
+      { department: '品质', scenarioPermissions: ['forwardTrace'] } as any,
+    );
+
+    expect(result.ledger.map((row) => row.nodeType)).toEqual([
+      'materialLot',
+      'ingredientUsage',
+      'productionBatch',
+      'finishedGoodsBatch',
+      'deliveryNote',
+    ]);
+  });
 });
