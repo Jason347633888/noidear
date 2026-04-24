@@ -47,7 +47,7 @@ This register is the live execution record for all keep, bridge, deprecate, and 
 | `client/src/api/traceability.ts` (`traceabilityApi`) | Client adapter for the frozen contract (`/traceability/*`) | Keep As Primary | Uses frozen contract types from `packages/types/traceability.ts`. New pages must import from here. |
 | `client/src/api/batch.ts` — trace methods (`traceApi.forward`, `traceApi.backward`, `traceApi.getTrace`, `traceApi.exportTrace`) | Client adapter for `/batch-trace/trace/*` endpoints | Mark Deprecated | Uses local `TraceResult` type with different field names. Must not be consumed by new pages. |
 | `client/src/api/batch.ts` — batch management methods (`productionBatchApi`, `materialUsageApi`) | Client adapter for batch production CRUD | Keep As Bridge | Batch CRUD operations not yet covered by the traceability module. Preserve pending batch management decision. |
-| `client/src/api/warehouse.ts` — `traceabilityApi.trace()` | Client adapter for `/warehouse/traceability/:batchId` | Delete | Single thin `GET` wrapper with `any` response type. No typed contract, no active consumer confirmed. |
+| `client/src/api/warehouse.ts` — `traceabilityApi.trace()` | Client adapter for `/warehouse/traceability/:batchId` | Delete | Single thin `GET` wrapper with `any` response type. No typed contract, no active consumer confirmed. Pre-deletion: audit all imports of warehouse.traceabilityApi to confirm zero active consumers. |
 
 ---
 
@@ -87,7 +87,7 @@ This register is the live execution record for all keep, bridge, deprecate, and 
 | `server/src/modules/batch-trace/controllers/material-batch.controller.ts` | Material batch CRUD controller | Keep As Bridge | Batch CRUD. Not a traceability query surface. |
 | `server/src/modules/batch-trace/controllers/material-usage.controller.ts` | Material usage CRUD controller | Keep As Bridge | Batch CRUD. Not a traceability query surface. |
 | `server/src/modules/batch-trace/controllers/batch-material-usage.controller.ts` | Batch-material usage CRUD controller | Keep As Bridge | Batch CRUD. Not a traceability query surface. |
-| `server/src/modules/warehouse/traceability.controller.ts` (`@Controller('warehouse/traceability')`) | Warehouse-level trace controller (GET forward/backward) | Mark Deprecated | Delegates to the batch-trace `TraceabilityService`. Duplicate trace chain path. GET semantics diverge from contract. |
+| `server/src/modules/warehouse/traceability.controller.ts` (`@Controller('warehouse/traceability')`) | Warehouse-level trace controller (GET forward/backward) | Mark Deprecated | Delegates to the batch-trace `TraceabilityService`. Duplicate trace chain path. GET semantics diverge from contract. Delegates to batch-trace/services/traceability.service — both are deprecated together; decouple before deletion. |
 
 ---
 
@@ -99,12 +99,13 @@ This register is the live execution record for all keep, bridge, deprecate, and 
 | `client/src/views/traceability/__tests__/TraceabilityQuery.spec.ts` | Unit/component tests for `TraceabilityQuery.vue` | Keep As Primary | Component-level tests for the authoritative page. |
 | `client/src/api/__tests__/traceability.spec.ts` | API adapter tests for `client/src/api/traceability.ts` | Keep As Primary | Contract adapter tests. Must stay aligned to frozen types. |
 | `client/src/api/__tests__/traceability-contract.spec.ts` | Contract shape tests for traceability types | Keep As Primary | Validates field names against the frozen contract. Critical guard against drift. |
-| `client/e2e/batch-trace-flow.spec.ts` | E2E tests for batch trace flow (batch list, TraceQuery, TraceReport, BatchDetail) | Mark Deprecated | Tests deprecated primary flows. Must not receive new scenarios. Migrate batch CRUD portion only after replacement E2E coverage is confirmed. |
+| `client/e2e/batch-trace-flow.spec.ts` | E2E tests for batch trace flow (batch list, TraceQuery, TraceReport, BatchDetail) | Mark Deprecated | Tests deprecated primary flows. Must not receive new scenarios. Migrate batch CRUD portion only after replacement E2E coverage is confirmed. E2E-TEST-CHECKLIST.md row 44 still marks this as 新功能 — update checklist to reflect deprecation. |
 | `server/src/modules/traceability/traceability-query.service.spec.ts` | Unit tests for the query service | Keep As Primary | Primary backend test baseline. |
 | `server/src/modules/traceability/traceability-balance.service.spec.ts` | Unit tests for the balance service | Keep As Primary | Primary backend test baseline. |
 | `server/src/modules/traceability/traceability-linkage.service.spec.ts` | Unit tests for the linkage service | Keep As Primary | Primary backend test baseline. |
 | `server/src/modules/traceability/traceability-export.service.spec.ts` | Unit tests for the export service | Keep As Primary | Primary backend test baseline. |
 | `server/src/modules/traceability/traceability-contract.mapper.spec.ts` | Unit tests for contract field mapping | Keep As Primary | Validates that internal-to-contract mapping is correct. |
+| `server/test/traceability-contract.mapper.spec.ts` | Duplicate unit tests for contract field mapping | Keep As Bridge | Duplicate of server/src/modules/traceability/traceability-contract.mapper.spec.ts — consolidate or delete. |
 | `server/src/modules/batch-trace/services/trace.service.spec.ts` | Unit tests for batch-trace `TraceService` | Mark Deprecated | Tests a deprecated trace chain. Do not add new scenarios. |
 | `server/src/modules/batch-trace/services/trace-export.service.spec.ts` | Unit tests for batch-trace PDF export service | Mark Deprecated | Tests a deprecated export path. |
 | `server/src/modules/batch-trace/services/production-batch.service.spec.ts` | Unit tests for production batch CRUD | Keep As Bridge | Batch CRUD. Separate from traceability query. |
