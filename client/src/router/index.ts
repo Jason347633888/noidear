@@ -308,7 +308,7 @@ const routes: RouteRecordRaw[] = [
         name: 'BatchDetail',
         component: () => import('@/views/batch-trace/BatchDetail.vue'),
       },
-      // TraceVisualization removed: duplicate of TraceQuery, use /batch-trace/query instead
+      // TraceVisualization removed: use /traceability instead
       {
         path: 'production/workshop-staging',
         name: 'WorkshopStaging',
