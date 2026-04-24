@@ -8,6 +8,18 @@ This register is the live execution record for all keep, bridge, deprecate, and 
 
 ---
 
+## Outcome Vocabulary
+
+| Term | Meaning |
+| --- | --- |
+| **Authority** | The one authoritative implementation. Only one per layer. |
+| **Bridge** | Exists only as a redirect or deprecation wrapper. No primary business logic. |
+| **Frozen Local Function** | A valid local responsibility that is NOT a duplicate of traceability. Keep as-is. |
+| **Delete Candidate** | Has no remaining bridge responsibility and passes the deletion preflight. Safe to remove. |
+| **Authority Conflict** | Claims to be primary when the authority already exists. Must be resolved. |
+
+---
+
 ## Route Layer
 
 | Object | Current Role | Outcome | Notes |
