@@ -1,10 +1,10 @@
 # 项目结构导航
 
-> 文档版本: 6.1
-> 最后更新: 2026-04-23
+> 文档版本: 6.2
+> 最后更新: 2026-04-24
 > 用途: AI Agent 快速定位文件 + 项目结构参考
 > 项目状态: 全部 22 个功能模块已开发，总体完成度 **85.6%**（154/180 任务）
-> 最新进展: Vault SaaS Browser Alignment 完成（283张表单对齐，31个缺失映射+3个编号错误修复），oh-my-opencode 集成，E2E测试优化（Playwright全局登录缓存）
+> 最新进展: Agent 入仓协议层完成（AGENTS.md + AGENT_GUIDE.md 协议化），Model Landing 层完成（283张表单/59组 冻结为可查询 TypeScript artifact）
 
 ---
 
@@ -215,6 +215,7 @@ noidear/
 | `record-template/` | 记录模板管理、动态字段配置 |
 | `todo/` | 待办事项管理 |
 | `wechat/` | 微信集成、消息推送 |
+| `model-landing/` | model landing 查询层：283 张表单 / 59 执行组冻结 artifact，REST 查询接口，freeze-guard 测试 |
 
 ---
 
@@ -457,6 +458,10 @@ server/src/modules/workflow/workflow-task.service.ts (分配步骤任务)
 | 项目结构 | `docs/PROJECT_STRUCTURE.md` | v6.1（本文件） | 文件导航 + 模块映射 |
 | AI 指南 | `CLAUDE.md` | v5.1 | AI Agent 开发约束 + 编码预防清单 |
 | README | `README.md` | v4.1 | 快速开始、功能概览 |
+| Agent 入仓验证脚本 | `scripts/validate-agent-onboarding-docs.sh` | — | 校验 AGENTS.md / AGENT_GUIDE.md / CLAUDE.md 三文档完整性 |
+| Model Landing 生成器 | `server/scripts/generate-model-landing-artifacts.ts` | — | 从 CSV 源生成 283张表单/59组 TypeScript artifact |
+| Model Landing 验证器 | `server/scripts/verify-model-landing-artifacts.ts` | — | 校验 artifact 与冻结 spec 对齐 |
+| Model Landing Artifact | `server/src/modules/model-landing/generated/model-landing.generated.ts` | — | 生成的 283张表单 / 59执行组可查询 TypeScript artifact |
 
 ### 9.2 各模块任务文档
 
@@ -551,8 +556,8 @@ server/src/modules/workflow/workflow-task.service.ts (分配步骤任务)
 
 ---
 
-**文档版本**: 6.1
-**最后更新**: 2026-04-23
+**文档版本**: 6.2
+**最后更新**: 2026-04-24
 **变更内容**:
 - 完整重写（原 v5.0 描述的是计划结构而非实际结构）
 - 更新目录结构以反映实际已实现的 40 个后端模块、97 个前端 Vue 组件、33 个 API 文件
@@ -564,3 +569,4 @@ server/src/modules/workflow/workflow-task.service.ts (分配步骤任务)
 - 新增架构约束与注意事项（10.4）
 - 删除已废弃的"前端开发计划"章节（功能已全部实现）
 - v6.1 更新：同步最新项目状态（Vault对齐完成、oh-my-opencode集成、E2E优化）
+- v6.2 更新：新增 ModelLandingModule（283张表单/59执行组 artifact），新增 Agent 入仓协议层相关脚本和文档，更新后端模块映射表和文档索引
