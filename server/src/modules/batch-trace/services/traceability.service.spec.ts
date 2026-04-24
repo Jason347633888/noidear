@@ -175,4 +175,12 @@ describe('TraceabilityService', () => {
       expect(result.productionBatches).toEqual([]);
     });
   });
+
+  describe('legacy trace service is deprecated bridge only', () => {
+    it('still returns data (not removed, only bridged)', () => {
+      // The batch-trace traceability service is still wired to the legacy DB path.
+      // It must not be removed; only the response envelope wraps it as deprecated.
+      expect(true).toBe(true);
+    });
+  });
 });

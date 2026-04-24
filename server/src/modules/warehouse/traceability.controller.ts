@@ -11,16 +11,32 @@ export class WarehouseTraceabilityController {
   constructor(private readonly traceabilityService: TraceabilityService) {}
 
   @Get('backward/:finishedGoodsBatchId')
-  traceBackward(
+  async traceBackward(
     @Param('finishedGoodsBatchId', ParseUUIDPipe) finishedGoodsBatchId: string,
   ) {
-    return this.traceabilityService.traceBackward(finishedGoodsBatchId);
+    const data = await this.traceabilityService.traceBackward(finishedGoodsBatchId);
+    return {
+      data,
+      meta: {
+        deprecated: true,
+        authority: 'traceability',
+        message: '此端点已弃用，请使用 POST /traceability/query',
+      },
+    };
   }
 
   @Get('forward/:materialBatchId')
-  traceForward(
+  async traceForward(
     @Param('materialBatchId', ParseUUIDPipe) materialBatchId: string,
   ) {
-    return this.traceabilityService.traceForward(materialBatchId);
+    const data = await this.traceabilityService.traceForward(materialBatchId);
+    return {
+      data,
+      meta: {
+        deprecated: true,
+        authority: 'traceability',
+        message: '此端点已弃用，请使用 POST /traceability/query',
+      },
+    };
   }
 }
