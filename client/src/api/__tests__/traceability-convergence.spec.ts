@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { productionBatchApi, materialUsageApi } from '@/api/batch';
 
 // Mock the request module
 vi.mock('@/api/request', () => ({
@@ -38,5 +39,18 @@ describe('traceability adapter convergence', () => {
     expect(request.post).toHaveBeenCalledWith('/traceability/export', expect.objectContaining({
       sourceQueryRef: 'query-1',
     }));
+  });
+});
+
+describe('legacy batch adapter surface', () => {
+  it('keeps batch CRUD methods (productionBatchApi and materialUsageApi)', () => {
+    expect(typeof productionBatchApi.getList).toBe('function');
+    expect(typeof materialUsageApi.getByBatch).toBe('function');
+  });
+
+  it('does not expose traceApi (removed duplicate trace query surface)', async () => {
+    // traceApi is no longer exported from @/api/batch — verify via dynamic import
+    const batchModule = await import('@/api/batch');
+    expect('traceApi' in batchModule).toBe(false);
   });
 });

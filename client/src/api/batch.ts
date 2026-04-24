@@ -37,24 +37,6 @@ export interface MaterialUsage {
   };
 }
 
-export interface TraceResult {
-  batchId: string;
-  batchNumber: string;
-  productName: string;
-  forwardTrace: TraceNode[];
-  backwardTrace: TraceNode[];
-}
-
-export interface TraceNode {
-  type: 'material' | 'batch' | 'product';
-  id: string;
-  name: string;
-  batchNumber?: string;
-  quantity?: number;
-  date?: string;
-  children?: TraceNode[];
-}
-
 export interface PaginatedResponse<T> {
   list: T[];
   total: number;
@@ -106,24 +88,3 @@ export const materialUsageApi = {
   },
 };
 
-// =========================================================================
-// Trace APIs
-// =========================================================================
-
-export const traceApi = {
-  forwardTrace(batchId: string) {
-    return request.get<TraceResult>(`/batch-trace/trace/${batchId}/forward`);
-  },
-
-  backwardTrace(batchId: string) {
-    return request.get<TraceResult>(`/batch-trace/trace/${batchId}/backward`);
-  },
-
-  fullTrace(batchId: string) {
-    return request.get<TraceResult>(`/batch-trace/trace/${batchId}`);
-  },
-
-  exportReport(batchId: string) {
-    return request.get(`/batch-trace/trace/${batchId}/export`, { responseType: 'blob' });
-  },
-};

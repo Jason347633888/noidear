@@ -226,12 +226,3 @@ export const materialBalanceApi = {
   },
 };
 
-// =========================================================================
-// Traceability APIs
-// =========================================================================
-
-export const traceabilityApi = {
-  trace(batchId: string) {
-    return request.get<any>(`/warehouse/traceability/${batchId}`);
-  },
-};
