@@ -72,7 +72,7 @@ const createLinkage = async (actionType: string) => {
   try {
     await traceabilityApi.createLinkage({
       actionType,
-      sourceQueryRef: JSON.stringify(result.value.summary),
+      sourceQueryRef: result.value.summary.queryId ?? '',
     });
     ElMessage.success('联动已发起');
   } catch {
@@ -85,7 +85,7 @@ const createExport = async (exportMode: 'simple' | 'fullPackage') => {
   try {
     await traceabilityApi.export({
       exportMode,
-      sourceQueryRef: JSON.stringify(result.value.summary),
+      sourceQueryRef: result.value.summary.queryId ?? '',
     });
     ElMessage.success(exportMode === 'simple' ? '导出已就绪' : '完整包已排队，稍后可下载');
   } catch {

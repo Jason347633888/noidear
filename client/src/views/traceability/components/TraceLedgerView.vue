@@ -46,7 +46,7 @@ const nodeTypeTag = (type: string) => {
     finishedGoodsBatch: 'success',
     deliveryNote: 'danger',
   };
-  return (map[type] ?? '') as any;
+  return map[type] ?? '';
 };
 
 const riskTag = (level: string) => {
@@ -56,7 +56,7 @@ const riskTag = (level: string) => {
     important: 'warning',
     high: 'danger',
   };
-  return (map[level] ?? 'info') as any;
+  return map[level] ?? 'info';
 };
 </script>
 
