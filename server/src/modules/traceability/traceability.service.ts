@@ -4,7 +4,46 @@ import { mapForwardTraceResult } from './traceability-contract.mapper';
 
 const SOURCE_VERSION = 'traceability-query-contract/v1';
 
-const buildPermission = (currentUser: any, isHighRisk: boolean) => ({
+interface TraceCurrentUser {
+  id?: string;
+  department?: string;
+  scenarioPermissions?: string[];
+}
+
+interface TraceQueryDto {
+  entryMode?: string;
+  objectType?: string;
+  objectId?: string;
+  traceMode?: string;
+  viewMode?: string;
+  timeMode?: string;
+}
+
+interface TraceActionDto {
+  actionType?: string;
+  sourceQueryRef?: string;
+  sourceNodeIds?: string[];
+  sourceRiskIds?: string[];
+}
+
+interface TraceExportDto {
+  exportMode?: string;
+  sourceQueryRef?: string;
+}
+
+interface TraceSnapshotDto {
+  sourceQueryRef?: string;
+  snapshotType?: string;
+}
+
+interface TraceBalanceDto {
+  productionBatchId?: string;
+  materialLotId?: string;
+}
+
+const HIGH_RISK_DEPARTMENTS = ['品质', '管理层'];
+
+const buildPermission = (currentUser: TraceCurrentUser, isHighRisk: boolean) => ({
   departmentScope: currentUser?.department ?? 'unknown',
   scenarioPermissions: currentUser?.scenarioPermissions ?? [],
   canViewSummary: true,
@@ -17,7 +56,7 @@ const buildPermission = (currentUser: any, isHighRisk: boolean) => ({
   canExecuteHighRiskAction: isHighRisk,
 });
 
-const buildEmptyResult = (dto: any, currentUser: any) => ({
+const buildEmptyResult = (dto: TraceQueryDto, currentUser: TraceCurrentUser) => ({
   summary: {
     queryId: `missing:${dto.objectId ?? 'unknown'}`,
     entryMode: dto.entryMode,
@@ -60,7 +99,7 @@ const MATERIAL_LOT_INCLUDE = {
 export class TraceabilityService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async query(dto: any, currentUser: any) {
+  async query(dto: TraceQueryDto, currentUser: TraceCurrentUser) {
     const isMaterialLotQuery =
       dto.entryMode === 'object' &&
       dto.objectType === 'materialLot' &&
@@ -76,9 +115,7 @@ export class TraceabilityService {
 
       if (!materialBatch) return buildEmptyResult(dto, currentUser);
 
-      const isHighRisk =
-        currentUser?.department === '品质' ||
-        currentUser?.department === '管理层';
+      const isHighRisk = HIGH_RISK_DEPARTMENTS.includes(currentUser?.department ?? '');
 
       return mapForwardTraceResult(materialBatch, buildPermission(currentUser, isHighRisk));
     } catch (error) {
@@ -86,7 +123,7 @@ export class TraceabilityService {
     }
   }
 
-  async balance(dto: any, _currentUser: any) {
+  async balance(dto: TraceBalanceDto, _currentUser: TraceCurrentUser) {
     return {
       summary: {
         analysisId: `balance:${dto.productionBatchId ?? dto.materialLotId ?? 'unknown'}`,
@@ -112,7 +149,7 @@ export class TraceabilityService {
     };
   }
 
-  async createAction(dto: any, currentUser: any) {
+  async createAction(dto: TraceActionDto, currentUser: TraceCurrentUser) {
     const status = dto.actionType === 'recallAssessment' ? 'pendingReview' : 'created';
     return {
       actionId: `action:${Date.now()}`,
@@ -128,7 +165,7 @@ export class TraceabilityService {
     };
   }
 
-  async createExport(dto: any, currentUser: any) {
+  async createExport(dto: TraceExportDto, currentUser: TraceCurrentUser) {
     const isSimple = dto.exportMode === 'simple';
     return {
       exportId: `export:${Date.now()}`,
@@ -143,7 +180,7 @@ export class TraceabilityService {
     };
   }
 
-  async createSnapshot(dto: any, _currentUser: any) {
+  async createSnapshot(dto: TraceSnapshotDto, _currentUser: TraceCurrentUser) {
     return {
       snapshotId: `snapshot:${Date.now()}`,
       sourceQueryRef: dto.sourceQueryRef,
