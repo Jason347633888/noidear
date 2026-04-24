@@ -3028,6 +3028,7 @@ model TraceabilitySnapshot {
   exportMode      String
   requesterId     String
   status          String   @default("pending")
+  snapshotType    String   @default("query")
   summary         Json
   filePath        String?
   createdAt       DateTime @default(now())

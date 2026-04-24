@@ -21,8 +21,9 @@
     "model-landing:generate": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/generate-model-landing-artifacts.ts",
     "model-landing:verify": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/verify-model-landing-artifacts.ts",
     "traceability:test": "jest traceability-query.service.spec.ts traceability-balance.service.spec.ts traceability-linkage.service.spec.ts traceability-export.service.spec.ts --runInBand",
-    "traceability:e2e": "jest traceability-query.e2e-spec.ts --runInBand",
-    "traceability:verify": "npm run traceability:test && npm run traceability:e2e"
+    "traceability:contract:test": "jest traceability-contract.mapper.spec.ts --runInBand",
+    "traceability:e2e": "jest traceability-contract.e2e-spec.ts traceability-query.e2e-spec.ts --runInBand",
+    "traceability:verify": "npm run traceability:test && npm run traceability:contract:test && npm run traceability:e2e"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",
