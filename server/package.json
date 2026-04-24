@@ -15,8 +15,11 @@
     "prisma:migrate": "prisma migrate dev --schema=src/prisma/schema.prisma",
     "prisma:seed": "ts-node src/prisma/seed.ts",
     "prisma:seed-org": "ts-node src/prisma/seed-org.ts",
+    "prisma:seed-dev": "ts-node src/prisma/seed-dev.ts",
     "prisma:reset": "prisma db push --force-reset --schema=src/prisma/schema.prisma && npm run prisma:seed",
-    "seed:templates": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/seed-templates.ts"
+    "seed:templates": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/seed-templates.ts",
+    "model-landing:generate": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/generate-model-landing-artifacts.ts",
+    "model-landing:verify": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/verify-model-landing-artifacts.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",
