@@ -13,6 +13,10 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/login/SsoLogin.vue'),
   },
   {
+    path: '/sso',
+    redirect: '/login/sso',
+  },
+  {
     path: '/',
     component: () => import('@/views/Layout.vue'),
     children: [
@@ -97,6 +101,21 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/approvals/ApprovalHistory.vue'),
       },
       {
+        path: 'approvals/all',
+        name: 'ApprovalAll',
+        component: () => import('@/views/approvals/ApprovalAll.vue'),
+      },
+      {
+        path: 'tasks',
+        name: 'TaskList',
+        component: () => import('@/views/tasks/TaskList.vue'),
+      },
+      {
+        path: 'i18n',
+        name: 'I18nManager',
+        component: () => import('@/views/i18n/I18nManager.vue'),
+      },
+      {
         path: 'notifications',
         name: 'Notifications',
         component: () => import('@/views/NotificationList.vue'),
@@ -136,6 +155,11 @@ const routes: RouteRecordRaw[] = [
         path: 'password',
         name: 'Password',
         component: () => import('@/views/Password.vue'),
+      },
+      {
+        path: 'statistics',
+        name: 'StatisticsIndex',
+        component: () => import('@/views/statistics/StatisticsIndex.vue'),
       },
       {
         path: 'statistics/overview',
@@ -269,15 +293,15 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'batch-trace/query',
-        name: 'TraceQuery',
-        component: () => import('@/views/batch-trace/TraceQuery.vue'),
-        meta: { title: '批次追溯查询' },
+        name: 'TraceabilityLegacyRedirect',
+        redirect: '/traceability',
+        meta: { title: '批次追溯查询（已弃用）' },
       },
       {
         path: 'batch-trace/report',
-        name: 'TraceReport',
-        component: () => import('@/views/batch-trace/TraceReport.vue'),
-        meta: { title: '追溯报告' },
+        name: 'TraceReportLegacyRedirect',
+        redirect: '/traceability',
+        meta: { title: '追溯报告（已弃用）' },
       },
       {
         path: 'batch-trace/:id',
@@ -323,8 +347,9 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'warehouse/traceability',
-        name: 'Traceability',
-        component: () => import('@/views/warehouse/Traceability.vue'),
+        name: 'WarehouseTraceabilityLegacyRedirect',
+        redirect: '/traceability',
+        meta: { title: '仓库追溯（已弃用）' },
       },
       // 追溯查询模块（Task 19）
       {
@@ -528,6 +553,7 @@ const routes: RouteRecordRaw[] = [
         name: 'AuditSearch',
         component: () => import('@/views/audit/AuditSearchPage.vue'),
       },
+      { path: 'backup', redirect: '/backup/manage' },
       {
         path: 'backup/manage',
         name: 'BackupManage',
@@ -819,7 +845,7 @@ const router = createRouter({
 });
 
 // 导航守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const publicPaths = ['/login', '/login/sso'];
   const token = localStorage.getItem('token');
 
@@ -830,6 +856,9 @@ router.beforeEach((to, from, next) => {
 
   if (to.meta?.requiresAdmin) {
     const userStore = useUserStore();
+    if (!userStore.user && token) {
+      await userStore.fetchUser();
+    }
     if (!userStore.isAdmin) {
       next('/dashboard');
       return;

@@ -167,8 +167,6 @@ const menuItems = [
       { path: '/record-tasks/my', title: '待填任务', icon: List },
       { path: '/record-tasks/manage', title: '任务配置', icon: Setting },
       { path: '/batch-trace', title: '批次列表', icon: Box },
-      { path: '/batch-trace/query', title: '批次追溯查询', icon: Search },
-      { path: '/batch-trace/report', title: '追溯报告', icon: Document },
       { path: '/production/workshop-staging', title: '车间暂存区', icon: Grid },
       { path: '/warehouse/requisitions', title: '领料管理', icon: Goods },
       { path: '/warehouse/material-balance', title: '物料平衡', icon: Goods },
