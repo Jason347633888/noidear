@@ -6,9 +6,9 @@ describe('TraceabilityExportService', () => {
     const service = new TraceabilityExportService(prisma as any);
 
     const result = await service.create(
-      { exportMode: 'simple', sourceQueryHash: 'hash-001' },
+      { exportMode: 'simple', sourceQueryRef: 'hash-001' },
       { id: 'user-1' } as any,
-    );
+    ) as any;
 
     expect(result).toMatchObject({ mode: 'simple', status: 'ready' });
     expect(result.fileName).toContain('hash-001');
@@ -21,9 +21,9 @@ describe('TraceabilityExportService', () => {
     const service = new TraceabilityExportService(prisma as any);
 
     const result = await service.create(
-      { exportMode: 'fullPackage', sourceQueryHash: 'hash-002' },
+      { exportMode: 'fullPackage', sourceQueryRef: 'hash-002' },
       { id: 'user-2' } as any,
-    );
+    ) as any;
 
     expect(prisma.traceabilitySnapshot.create).toHaveBeenCalledWith(
       expect.objectContaining({

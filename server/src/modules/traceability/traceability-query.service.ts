@@ -2,11 +2,37 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ModelLandingService } from '../model-landing/model-landing.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueryTraceabilityDto } from './dto/query-traceability.dto';
-import {
-  TraceQueryResult,
-  TraceLedgerRow,
-  TraceRiskLevel,
-} from './traceability.types';
+
+type TraceRiskLevel = 'normal' | 'minor' | 'important' | 'high';
+
+interface TraceLedgerRow {
+  nodeType: string;
+  nodeId: string;
+  label: string;
+  batchNo?: string;
+  status?: string;
+  riskLevel?: TraceRiskLevel;
+  upstreamNodeId?: string;
+  downstreamNodeId?: string;
+}
+
+interface TraceQueryResult {
+  summary: {
+    entryMode?: string;
+    objectType?: string;
+    objectId?: string;
+    scenario?: string;
+    traceMode?: string;
+    viewMode?: string;
+    timeMode?: string;
+    asOfAt?: string;
+  };
+  ledger: TraceLedgerRow[];
+  graph: { nodes: Array<{ id: string; type: string; label: string; riskLevel?: TraceRiskLevel }>; edges: Array<{ id: string; source: string; target: string; relation: string }> };
+  risks: Array<{ code: string; level: TraceRiskLevel; message: string }>;
+  evidence: Array<{ type: 'record'; label: string; refId: string }>;
+  permission: { canViewSummary: boolean; canViewDetail: boolean; canInitiateAction: boolean; canExecuteHighRiskAction: boolean };
+}
 
 @Injectable()
 export class TraceabilityQueryService {

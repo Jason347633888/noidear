@@ -9,6 +9,7 @@ export type {
   TraceActionStatus,
   TraceEdge,
   TraceEntryMode,
+  TraceEvidenceRef,
   TraceExportResult,
   TraceExportStatus,
   TraceLocalPermission,

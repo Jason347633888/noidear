@@ -5,13 +5,13 @@ describe('TraceabilityLinkageService', () => {
     const service = new TraceabilityLinkageService();
 
     const result = await service.create(
-      { actionType: 'deviation', sourceQueryHash: 'hash-abc', note: '有异常' },
+      { actionType: 'deviation', sourceQueryRef: 'hash-abc', note: '有异常' },
       { id: 'user-1', department: '品质' } as any,
     );
 
     expect(result).toMatchObject({
       actionType: 'deviation',
-      sourceQueryHash: 'hash-abc',
+      sourceQueryRef: 'hash-abc',
       requestedBy: 'user-1',
       note: '有异常',
       status: 'created',
@@ -23,7 +23,7 @@ describe('TraceabilityLinkageService', () => {
     const service = new TraceabilityLinkageService();
 
     const result = await service.create(
-      { actionType: 'recallAssessment', sourceQueryHash: 'hash-xyz' },
+      { actionType: 'recallAssessment', sourceQueryRef: 'hash-xyz' },
       { id: 'user-2' } as any,
     );
 
@@ -34,7 +34,7 @@ describe('TraceabilityLinkageService', () => {
     const service = new TraceabilityLinkageService();
 
     const result = await service.create(
-      { actionType: 'capa', sourceQueryHash: 'hash-001' },
+      { actionType: 'capa', sourceQueryRef: 'hash-001' },
       null as any,
     );
 

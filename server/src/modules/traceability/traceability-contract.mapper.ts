@@ -1,4 +1,4 @@
-const SOURCE_VERSION = 'traceability-query-contract/v1';
+export const SOURCE_VERSION = 'traceability-query-contract/v1';
 
 const baseMeta = () => ({
   generatedAt: new Date().toISOString(),

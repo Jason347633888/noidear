@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { mapForwardTraceResult } from './traceability-contract.mapper';
-
-const SOURCE_VERSION = 'traceability-query-contract/v1';
+import { mapForwardTraceResult, SOURCE_VERSION } from './traceability-contract.mapper';
 
 interface TraceCurrentUser {
   id?: string;
