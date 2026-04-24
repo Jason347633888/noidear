@@ -69,6 +69,22 @@
 
 完成上述阅读和判断后，再使用下方 MCP、API、测试与运行说明。
 
+## Model Landing Runtime Contract
+
+当任务依赖冻结的 model-landing 映射时，以下三个文件为运行时真实来源：
+
+- `docs/superpowers/specs/2026-04-24-model-landing-layer-design.md`
+- `docs/superpowers/specs/2026-04-24-model-landing-layer-form-expansion.csv`
+- `server/src/modules/model-landing/generated/model-landing.generated.ts`
+
+在信任对 generated artifact 的任何修改前，先运行：
+
+```bash
+cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server && npm run model-landing:verify
+```
+
+除非冻结 spec 显式更新，否则不得在实现工作中对 283 张表单重新分类。
+
 ## 7. MCP / API / 运行操作
 
 ---
