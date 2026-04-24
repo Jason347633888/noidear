@@ -1,9 +1,17 @@
-import { IsIn, IsString } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class CreateTraceabilityExportDto {
-  @IsIn(['simple', 'fullPackage'])
+  @IsEnum(['simple', 'fullPackage'] as const)
   exportMode!: 'simple' | 'fullPackage';
 
   @IsString()
-  sourceQueryHash!: string;
+  sourceQueryRef!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  includeEvidence?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  includeMaskedData?: boolean;
 }

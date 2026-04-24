@@ -1,46 +1,54 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { QueryTraceabilityDto } from './dto/query-traceability.dto';
-import { QueryMaterialBalanceDto } from './dto/query-material-balance.dto';
-import { CreateTraceabilityLinkageDto } from './dto/create-traceability-linkage.dto';
+import { QueryBalanceDto } from './dto/query-material-balance.dto';
+import { CreateTraceabilityActionDto } from './dto/create-traceability-linkage.dto';
 import { CreateTraceabilityExportDto } from './dto/create-traceability-export.dto';
-import { TraceabilityQueryService } from './traceability-query.service';
-import { TraceabilityBalanceService } from './traceability-balance.service';
-import { TraceabilityLinkageService } from './traceability-linkage.service';
-import { TraceabilityExportService } from './traceability-export.service';
+import { CreateTraceabilitySnapshotDto } from './dto/create-traceability-snapshot.dto';
+import { TraceabilityService } from './traceability.service';
 
 @Controller('traceability')
 @UseGuards(JwtAuthGuard)
 export class TraceabilityController {
-  constructor(
-    private readonly queryService: TraceabilityQueryService,
-    private readonly balanceService: TraceabilityBalanceService,
-    private readonly linkageService: TraceabilityLinkageService,
-    private readonly exportService: TraceabilityExportService,
-  ) {}
+  constructor(private readonly service: TraceabilityService) {}
 
   @Post('query')
   query(@Body() dto: QueryTraceabilityDto, @Req() req: any) {
-    return this.queryService.query(dto, req.user);
+    return this.service.query(dto, req.user);
   }
 
   @Post('query/graph')
   graph(@Body() dto: QueryTraceabilityDto, @Req() req: any) {
-    return this.queryService.query({ ...dto, viewMode: 'graph' }, req.user);
+    return this.service.query({ ...dto, viewMode: 'graph' }, req.user);
   }
 
   @Post('balance')
-  materialBalance(@Body() dto: QueryMaterialBalanceDto, @Req() req: any) {
-    return this.balanceService.analyze(dto, req.user);
+  balance(@Body() dto: QueryBalanceDto, @Req() req: any) {
+    return this.service.balance(dto, req.user);
   }
 
   @Post('actions')
-  createAction(@Body() dto: CreateTraceabilityLinkageDto, @Req() req: any) {
-    return this.linkageService.create(dto, req.user);
+  createAction(@Body() dto: CreateTraceabilityActionDto, @Req() req: any) {
+    return this.service.createAction(dto, req.user);
   }
 
   @Post('export')
-  export(@Body() dto: CreateTraceabilityExportDto, @Req() req: any) {
-    return this.exportService.create(dto, req.user);
+  createExport(@Body() dto: CreateTraceabilityExportDto, @Req() req: any) {
+    return this.service.createExport(dto, req.user);
+  }
+
+  @Post('snapshots')
+  createSnapshot(@Body() dto: CreateTraceabilitySnapshotDto, @Req() req: any) {
+    return this.service.createSnapshot(dto, req.user);
+  }
+
+  @Get('snapshots/:snapshotId')
+  getSnapshot(@Param('snapshotId') snapshotId: string) {
+    return this.service.getSnapshot(snapshotId);
+  }
+
+  @Get('snapshots/:snapshotId/result')
+  getSnapshotResult(@Param('snapshotId') snapshotId: string) {
+    return this.service.getSnapshotResult(snapshotId);
   }
 }

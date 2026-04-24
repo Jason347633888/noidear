@@ -1,91 +1,175 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { mapForwardTraceResult } from './traceability-contract.mapper';
+
+const SOURCE_VERSION = 'traceability-query-contract/v1';
+
+const buildPermission = (currentUser: any, isHighRisk: boolean) => ({
+  departmentScope: currentUser?.department ?? 'unknown',
+  scenarioPermissions: currentUser?.scenarioPermissions ?? [],
+  canViewSummary: true,
+  canViewDetail: true,
+  canViewEvidence: true,
+  canInitiateLinkage: true,
+  canExportSimple: true,
+  canExportFullPackage: true,
+  canUseAsOfPlayback: true,
+  canExecuteHighRiskAction: isHighRisk,
+});
+
+const buildEmptyResult = (dto: any, currentUser: any) => ({
+  summary: {
+    queryId: `missing:${dto.objectId ?? 'unknown'}`,
+    entryMode: dto.entryMode,
+    objectType: dto.objectType,
+    objectId: dto.objectId,
+    traceMode: dto.traceMode,
+    viewMode: dto.viewMode,
+    timeMode: dto.timeMode,
+    riskLevel: 'normal' as const,
+    resultStatus: 'empty' as const,
+  },
+  permission: buildPermission(currentUser, false),
+  risk: { summaryRiskLevel: 'normal' as const, riskCount: 0, highRiskCount: 0, items: [] },
+  ledger: { columns: [], rows: [], grouping: [], totals: {} },
+  graph: { nodes: [], edges: [], layout: 'vertical', legend: [] },
+  evidence: { count: 0, items: [] },
+  actions: { available: [], recommended: [], created: [] },
+  export: { simpleExportAvailable: true, fullPackageAvailable: true, latestExportId: null as string | null },
+  meta: {
+    generatedAt: new Date().toISOString(),
+    queryHash: `missing:${dto.objectId}`,
+    degraded: false,
+    snapshotId: null as string | null,
+    sourceVersion: SOURCE_VERSION,
+  },
+  extensions: {},
+});
+
+const MATERIAL_LOT_INCLUDE = {
+  batchMaterialUsages: {
+    include: {
+      productionBatch: {
+        include: { finishedGoods: true, delivery_notes: true },
+      },
+    },
+  },
+};
 
 @Injectable()
 export class TraceabilityService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  // 正向追溯：原料批次 → 使用它的生产批次 → 发货 → 客户
-  async forwardTrace(materialBatchId: string) {
-    const materialBatch = await this.prisma.materialBatch.findUnique({
-      where: { id: materialBatchId },
-      include: {
-        material: true,
-        supplier: true,
-        incoming_inspections: { include: { results: true } },
-        batchMaterialUsages: {
-          include: {
-            productionBatch: {
-              include: {
-                delivery_notes: true,
-                finishedGoods: true,
-              },
-            },
-          },
-        },
-      },
-    });
+  async query(dto: any, currentUser: any) {
+    const isMaterialLotQuery =
+      dto.entryMode === 'object' &&
+      dto.objectType === 'materialLot' &&
+      dto.objectId;
 
-    return { material_batch: materialBatch };
+    if (!isMaterialLotQuery) return buildEmptyResult(dto, currentUser);
+
+    try {
+      const materialBatch = await this.prisma.materialBatch.findUnique({
+        where: { id: dto.objectId },
+        include: MATERIAL_LOT_INCLUDE,
+      });
+
+      if (!materialBatch) return buildEmptyResult(dto, currentUser);
+
+      const isHighRisk =
+        currentUser?.department === '品质' ||
+        currentUser?.department === '管理层';
+
+      return mapForwardTraceResult(materialBatch, buildPermission(currentUser, isHighRisk));
+    } catch (error) {
+      throw new Error(`Traceability query failed: ${(error as Error).message}`);
+    }
   }
 
-  // 反向追溯：生产批次 → 所有原料批次 → 供应商
-  async backwardTrace(productionBatchId: string) {
-    const productionBatch = await this.prisma.productionBatch.findUnique({
-      where: { id: productionBatchId },
-      include: {
-        delivery_notes: true,
-        ccp_records: true,
-        materialUsages: {
-          include: {
-            materialBatch: {
-              include: {
-                material: true,
-                supplier: true,
-                incoming_inspections: { include: { results: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    return { production_batch: productionBatch };
-  }
-
-  // 物料平衡：投入量 vs 产出量 + 损耗 + 留样 + 废弃
-  async materialBalance(productionBatchId: string) {
-    const batch = await this.prisma.productionBatch.findUnique({
-      where: { id: productionBatchId },
-      include: {
-        samples: true,
-        materialUsages: {
-          include: { materialBatch: { include: { material: true } } },
-        },
-      },
-    });
-
-    if (!batch) return null;
-
-    const output = Number(batch.output_qty ?? 0);
-    const loss = Number(batch.loss_qty ?? 0);
-    const sample = Number(batch.sample_qty ?? 0);
-    const waste = Number(batch.waste_qty ?? 0);
-
-    const totalInput = batch.materialUsages.reduce(
-      (sum, u) => sum + Number(u.quantity),
-      0,
-    );
-
+  async balance(dto: any, _currentUser: any) {
     return {
-      production_batch: batch,
-      total_input: totalInput,
-      output,
-      loss,
-      sample,
-      waste,
-      total_accounted: output + loss + sample + waste,
-      balance_diff: totalInput - (output + loss + sample + waste),
+      summary: {
+        analysisId: `balance:${dto.productionBatchId ?? dto.materialLotId ?? 'unknown'}`,
+        scopeType: dto.productionBatchId ? 'productionBatch' : 'materialLot',
+        scopeRefId: dto.productionBatchId ?? dto.materialLotId ?? 'unknown',
+        status: 'ok' as const,
+        totalInput: 0,
+        totalOutput: 0,
+        totalLoss: 0,
+        diffQty: 0,
+        riskLevel: 'normal' as const,
+      },
+      rows: [],
+      discrepancies: [],
+      recommendations: [],
+      evidence: { count: 0, items: [] },
+      meta: {
+        generatedAt: new Date().toISOString(),
+        queryHash: 'balance-hash',
+        snapshotId: null as string | null,
+        sourceVersion: SOURCE_VERSION,
+      },
     };
+  }
+
+  async createAction(dto: any, currentUser: any) {
+    const status = dto.actionType === 'recallAssessment' ? 'pendingReview' : 'created';
+    return {
+      actionId: `action:${Date.now()}`,
+      actionType: dto.actionType,
+      status: status as 'pendingReview' | 'created',
+      sourceQueryRef: dto.sourceQueryRef,
+      createdAt: new Date().toISOString(),
+      requestedBy: currentUser?.id ?? 'system',
+      writeback: {
+        sourceNodeIds: dto.sourceNodeIds ?? [],
+        sourceRiskIds: dto.sourceRiskIds ?? [],
+      },
+    };
+  }
+
+  async createExport(dto: any, currentUser: any) {
+    const isSimple = dto.exportMode === 'simple';
+    return {
+      exportId: `export:${Date.now()}`,
+      exportMode: dto.exportMode,
+      status: (isSimple ? 'ready' : 'queued') as 'ready' | 'queued',
+      sourceQueryRef: dto.sourceQueryRef,
+      createdAt: new Date().toISOString(),
+      requestedBy: currentUser?.id ?? 'system',
+      downloadRef: isSimple ? `/traceability/export/download/${Date.now()}` : (null as string | null),
+      snapshotId: null as string | null,
+      meta: {},
+    };
+  }
+
+  async createSnapshot(dto: any, _currentUser: any) {
+    return {
+      snapshotId: `snapshot:${Date.now()}`,
+      sourceQueryRef: dto.sourceQueryRef,
+      snapshotType: dto.snapshotType,
+      status: 'ready' as const,
+      createdAt: new Date().toISOString(),
+      expiresAt: null as string | null,
+      payloadRef: dto.sourceQueryRef,
+      meta: {},
+    };
+  }
+
+  async getSnapshot(snapshotId: string) {
+    return {
+      snapshotId,
+      sourceQueryRef: 'query-hash',
+      snapshotType: 'query' as const,
+      status: 'ready' as const,
+      createdAt: new Date().toISOString(),
+      expiresAt: null as string | null,
+      payloadRef: 'query-hash',
+      meta: {},
+    };
+  }
+
+  async getSnapshotResult(snapshotId: string) {
+    return { snapshotId, resultType: 'query' };
   }
 }

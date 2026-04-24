@@ -11,13 +11,13 @@ export class TraceabilityExportService {
       return {
         mode: 'simple' as const,
         status: 'ready',
-        fileName: `traceability-${dto.sourceQueryHash}.xlsx`,
+        fileName: `traceability-${dto.sourceQueryRef}.xlsx`,
       };
     }
 
     return this.prisma.traceabilitySnapshot.create({
       data: {
-        sourceQueryHash: dto.sourceQueryHash,
+        sourceQueryHash: dto.sourceQueryRef,
         exportMode: dto.exportMode,
         requesterId: currentUser.id,
         summary: { queued: true },

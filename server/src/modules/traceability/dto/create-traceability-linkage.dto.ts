@@ -1,11 +1,17 @@
-import { IsIn, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
 
-export class CreateTraceabilityLinkageDto {
-  @IsIn(['deviation', 'complaint', 'recallAssessment', 'traceabilityDrill', 'capa'])
+export class CreateTraceabilityActionDto {
+  @IsEnum(['deviation', 'complaint', 'recallAssessment', 'traceabilityDrill', 'capa'] as const)
   actionType!: 'deviation' | 'complaint' | 'recallAssessment' | 'traceabilityDrill' | 'capa';
 
   @IsString()
-  sourceQueryHash!: string;
+  sourceQueryRef!: string;
+
+  @IsOptional()
+  sourceNodeIds?: string[];
+
+  @IsOptional()
+  sourceRiskIds?: string[];
 
   @IsOptional()
   @IsString()

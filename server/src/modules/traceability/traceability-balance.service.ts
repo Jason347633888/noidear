@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { QueryMaterialBalanceDto } from './dto/query-material-balance.dto';
+import { QueryBalanceDto as QueryMaterialBalanceDto } from './dto/query-material-balance.dto';
 
 type BalanceStatus = 'normal' | 'minor' | 'important' | 'high';
 

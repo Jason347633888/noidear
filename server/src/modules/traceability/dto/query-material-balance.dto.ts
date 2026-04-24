@@ -1,6 +1,6 @@
-import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 
-export class QueryMaterialBalanceDto {
+export class QueryBalanceDto {
   @IsOptional()
   @IsString()
   materialLotId?: string;
@@ -16,4 +16,12 @@ export class QueryMaterialBalanceDto {
   @IsOptional()
   @IsDateString()
   to?: string;
+
+  @IsOptional()
+  @IsEnum(['current', 'asOf'] as const)
+  timeMode?: 'current' | 'asOf';
+
+  @IsOptional()
+  @IsDateString()
+  asOfAt?: string;
 }

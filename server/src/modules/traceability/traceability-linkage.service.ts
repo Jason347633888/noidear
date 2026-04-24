@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CreateTraceabilityLinkageDto } from './dto/create-traceability-linkage.dto';
+import { CreateTraceabilityActionDto as CreateTraceabilityLinkageDto } from './dto/create-traceability-linkage.dto';
 
 @Injectable()
 export class TraceabilityLinkageService {
@@ -8,12 +8,12 @@ export class TraceabilityLinkageService {
 
     return {
       actionType: dto.actionType,
-      sourceQueryHash: dto.sourceQueryHash,
+      sourceQueryRef: dto.sourceQueryRef,
       requestedBy: currentUser?.id ?? 'system',
       note: dto.note ?? null,
       status,
       writeback: {
-        sourceQueryHash: dto.sourceQueryHash,
+        sourceQueryRef: dto.sourceQueryRef,
         linkedAt: new Date().toISOString(),
       },
     };

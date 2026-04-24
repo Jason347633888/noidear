@@ -1,31 +1,51 @@
-import { IsDateString, IsEnum, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsObject, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 export class QueryTraceabilityDto {
   @IsEnum(['object', 'scenario'] as const)
   entryMode!: 'object' | 'scenario';
 
-  @IsOptional()
+  @IsEnum(['forward', 'backward', 'bidirectional'] as const)
+  traceMode!: 'forward' | 'backward' | 'bidirectional';
+
+  @IsEnum(['ledger', 'graph'] as const)
+  viewMode!: 'ledger' | 'graph';
+
+  @IsEnum(['current', 'asOf'] as const)
+  timeMode!: 'current' | 'asOf';
+
+  @ValidateIf((o) => o.entryMode === 'object')
   @IsString()
   objectType?: string;
 
-  @IsOptional()
+  @ValidateIf((o) => o.entryMode === 'object')
   @IsString()
   objectId?: string;
 
-  @IsOptional()
+  @ValidateIf((o) => o.entryMode === 'scenario')
   @IsString()
   scenario?: string;
 
-  @IsIn(['forward', 'backward', 'bidirectional'])
-  traceMode!: 'forward' | 'backward' | 'bidirectional';
-
-  @IsIn(['ledger', 'graph'])
-  viewMode!: 'ledger' | 'graph';
-
-  @IsIn(['current', 'asOf'])
-  timeMode!: 'current' | 'asOf';
-
-  @IsOptional()
+  @ValidateIf((o) => o.timeMode === 'asOf')
   @IsDateString()
   asOfAt?: string;
+
+  @IsOptional()
+  @IsString()
+  departmentScope?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  includeEvidence?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  includeAuxiliaryNodes?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  includeRiskDetails?: boolean;
+
+  @IsOptional()
+  @IsObject()
+  filters?: Record<string, unknown>;
 }
