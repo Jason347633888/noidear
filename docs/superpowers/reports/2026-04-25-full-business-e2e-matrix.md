@@ -37,13 +37,15 @@ Every business domain in release scope must list:
 | 回收站 (Recycle Bin) | restore and delete items | delete conflict handling | admin-only purge | n/a | e2e/recycle-bin.spec.ts | NOT_RUN |
 | 国际化 (i18n) | language switch | locale fallback | n/a | n/a | e2e/i18n.spec.ts | NOT_RUN |
 
+> **Note on NOT_RUN status**: All E2E Playwright tests require a live Docker stack (PostgreSQL + Redis + MinIO). They cannot be run in this validation pass. Previous test-results/ artifacts confirm `audit` and `backup` specs have passed. All remaining Playwright specs are marked NOT_RUN pending a full-stack test run.
+
 ## Unit Test Coverage (Client)
 
 | Layer | Result | Files | PASS/FAIL |
 | --- | --- | --- | --- |
 | Client unit tests (total) | 344 passed / 9 failed | 41 test files | FAIL |
 | Failing file | RecycleBin.spec.ts (9 tests) | src/views/recycle-bin/\_\_tests\_\_/RecycleBin.spec.ts | FAIL |
-| All other unit test files (40) | 344 tests passed | client/src/\*\*/\_\_tests\_\_/\*.spec.ts | PASS |
+| All other unit test files (40) | 344 tests passed | client/src/**/__tests__/*.spec.ts | PASS |
 | Traceability contract tests | 3 files | traceability-contract.spec.ts, traceability-convergence.spec.ts, traceability.spec.ts | PASS |
 | Router convergence tests | 1 file | client/src/router/\_\_tests\_\_/traceability-convergence.spec.ts | PASS |
 
@@ -69,6 +71,12 @@ Every business domain in release scope must list:
 **Impact:** Unit test suite exits with status FAIL (1 file failed / 40 passed). Does not block E2E runs.
 
 **Recommended fix:** Update test expectations to match the actual i18n strings used by the component, or add a test-only i18n override.
+
+### Excluded Test File
+
+**File:** `client/e2e/temp-test.spec.ts`
+
+**Status:** Intentionally excluded from release matrix. This is an orphaned/temporary test file and does not represent a production test flow.
 
 ### NOTE: E2E Playwright Tests
 
