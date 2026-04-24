@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class CreateTraceabilityActionDto {
   @IsEnum(['deviation', 'complaint', 'recallAssessment', 'traceabilityDrill', 'capa'] as const)
@@ -8,9 +8,13 @@ export class CreateTraceabilityActionDto {
   sourceQueryRef!: string;
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
   sourceNodeIds?: string[];
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
   sourceRiskIds?: string[];
 
   @IsOptional()
