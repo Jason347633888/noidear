@@ -1,20 +1,40 @@
 import request from './request';
-import type { TraceQueryPayload, TraceQueryResult } from '@/types/traceability';
+import type {
+  BalanceQueryRequest,
+  BalanceQueryResult,
+  ExportCreateRequest,
+  LinkageCreateRequest,
+  SnapshotCreateRequest,
+  TraceActionResult,
+  TraceExportResult,
+  TraceQueryRequest,
+  TraceQueryResult,
+  TraceSnapshotResult,
+} from '@/types/traceability';
 
 export const traceabilityApi = {
-  query(payload: TraceQueryPayload) {
+  query(payload: TraceQueryRequest) {
     return request.post<TraceQueryResult>('/traceability/query', payload);
   },
-  graph(payload: TraceQueryPayload) {
+  graph(payload: TraceQueryRequest) {
     return request.post<TraceQueryResult>('/traceability/query/graph', { ...payload, viewMode: 'graph' });
   },
-  materialBalance(payload: { materialLotId?: string; productionBatchId?: string; from?: string; to?: string }) {
-    return request.post('/traceability/balance', payload);
+  materialBalance(payload: BalanceQueryRequest) {
+    return request.post<BalanceQueryResult>('/traceability/balance', payload);
   },
-  createLinkage(payload: { actionType: string; sourceQueryHash: string; note?: string }) {
-    return request.post('/traceability/actions', payload);
+  createLinkage(payload: LinkageCreateRequest) {
+    return request.post<TraceActionResult>('/traceability/actions', payload);
   },
-  export(payload: { exportMode: 'simple' | 'fullPackage'; sourceQueryHash: string }) {
-    return request.post('/traceability/export', payload);
+  export(payload: ExportCreateRequest) {
+    return request.post<TraceExportResult>('/traceability/export', payload);
+  },
+  createSnapshot(payload: SnapshotCreateRequest) {
+    return request.post<TraceSnapshotResult>('/traceability/snapshots', payload);
+  },
+  getSnapshot(snapshotId: string) {
+    return request.get<TraceSnapshotResult>(`/traceability/snapshots/${snapshotId}`);
+  },
+  getSnapshotResult(snapshotId: string) {
+    return request.get(`/traceability/snapshots/${snapshotId}/result`);
   },
 };

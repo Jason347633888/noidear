@@ -102,6 +102,17 @@ cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server && npm run model-la
 cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server && npm run traceability:test
 ```
 
+### Traceability API Contract
+
+修改追溯请求或响应字段时，必须遵循以下权威链：
+
+1. `docs/superpowers/specs/2026-04-24-traceability-query-api-contract-design.md`
+2. `packages/types/traceability.ts`（共享类型定义）
+3. `server/src/modules/traceability/`（后端实现）
+4. `client/src/api/traceability.ts`（前端适配器）
+
+禁止在页面、导出处理器或 E2E 测试中使用临时字段（如旧的 `sourceQueryHash`）。所有追溯请求字段均以 `packages/types/traceability.ts` 为唯一真实来源。
+
 ## 7. MCP / API / 运行操作
 
 ---

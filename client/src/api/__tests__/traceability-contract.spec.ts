@@ -1,51 +1,67 @@
-import type { TraceQueryRequest, TraceQueryResult } from '@noidear/types';
+import { traceabilityApi } from '@/api/traceability';
 
-describe('traceability contract types', () => {
-  it('exposes the frozen query request and result contracts', () => {
-    const request: TraceQueryRequest = {
+vi.mock('@/api/request', () => ({
+  default: { post: vi.fn(), get: vi.fn() },
+}));
+
+describe('traceabilityApi contract adapter', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('posts the frozen query contract to /traceability/query', async () => {
+    const { default: request } = await import('@/api/request');
+    await traceabilityApi.query({
       entryMode: 'object',
       objectType: 'materialLot',
       objectId: 'mb-1',
       traceMode: 'forward',
       viewMode: 'ledger',
       timeMode: 'current',
-    };
+    });
+    expect(request.post).toHaveBeenCalledWith('/traceability/query', expect.objectContaining({
+      entryMode: 'object',
+      objectType: 'materialLot',
+      objectId: 'mb-1',
+    }));
+  });
 
-    const result: TraceQueryResult = {
-      summary: {
-        queryId: 'q-1',
-        entryMode: 'object',
-        objectType: 'materialLot',
-        objectId: 'mb-1',
-        traceMode: 'forward',
-        viewMode: 'ledger',
-        timeMode: 'current',
-        riskLevel: 'normal',
-        resultStatus: 'ok',
-      },
-      permission: {
-        departmentScope: '品质',
-        scenarioPermissions: ['forwardTrace'],
-        canViewSummary: true,
-        canViewDetail: true,
-        canViewEvidence: true,
-        canInitiateLinkage: true,
-        canExportSimple: true,
-        canExportFullPackage: true,
-        canUseAsOfPlayback: true,
-        canExecuteHighRiskAction: false,
-      },
-      risk: { summaryRiskLevel: 'normal', riskCount: 0, highRiskCount: 0, items: [] },
-      ledger: { columns: [], rows: [], grouping: [], totals: {} },
-      graph: { nodes: [], edges: [], layout: 'vertical', legend: [] },
-      evidence: { count: 0, items: [] },
-      actions: { available: [], recommended: [], created: [] },
-      export: { simpleExportAvailable: true, fullPackageAvailable: true, latestExportId: null },
-      meta: { generatedAt: '2026-04-24T00:00:00.000Z', queryHash: 'hash-1', degraded: false, snapshotId: null, sourceVersion: 'traceability-query-contract/v1' },
-      extensions: {},
-    };
+  it('creates linkage with sourceQueryRef field', async () => {
+    const { default: request } = await import('@/api/request');
+    await traceabilityApi.createLinkage({
+      actionType: 'deviation',
+      sourceQueryRef: 'hash-001',
+    });
+    expect(request.post).toHaveBeenCalledWith('/traceability/actions', expect.objectContaining({
+      sourceQueryRef: 'hash-001',
+    }));
+  });
 
-    expect(request.entryMode).toBe('object');
-    expect(result.summary.resultStatus).toBe('ok');
+  it('creates export with sourceQueryRef field', async () => {
+    const { default: request } = await import('@/api/request');
+    await traceabilityApi.export({
+      exportMode: 'simple',
+      sourceQueryRef: 'hash-001',
+    });
+    expect(request.post).toHaveBeenCalledWith('/traceability/export', expect.objectContaining({
+      sourceQueryRef: 'hash-001',
+    }));
+  });
+
+  it('creates snapshot via POST /traceability/snapshots', async () => {
+    const { default: request } = await import('@/api/request');
+    await traceabilityApi.createSnapshot({
+      sourceQueryRef: 'hash-001',
+      snapshotType: 'query',
+    });
+    expect(request.post).toHaveBeenCalledWith('/traceability/snapshots', expect.objectContaining({
+      sourceQueryRef: 'hash-001',
+    }));
+  });
+
+  it('fetches snapshot via GET /traceability/snapshots/:id', async () => {
+    const { default: request } = await import('@/api/request');
+    await traceabilityApi.getSnapshot('snap-123');
+    expect(request.get).toHaveBeenCalledWith('/traceability/snapshots/snap-123');
   });
 });
