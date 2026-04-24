@@ -43,12 +43,12 @@ This register is the live execution record for all keep, bridge, deprecate, and 
 | `client/src/views/traceability/components/TraceLedgerView.vue` | Sub-panel: ledger view | Keep As Primary | Part of the authoritative result surface. |
 | `client/src/views/traceability/components/TraceGraphView.vue` | Sub-panel: graph view | Keep As Primary | Part of the authoritative result surface. |
 | `client/src/views/traceability/components/TraceRiskPanel.vue` | Sub-panel: risk display | Keep As Primary | Part of the authoritative result surface. |
-| `client/src/views/batch-trace/TraceQuery.vue` | Batch-level trace query page | Mark Deprecated | Direct duplicate of the authoritative `/traceability` page function. Must not receive new features. |
-| `client/src/views/batch-trace/TraceReport.vue` | Batch-level trace report page | Mark Deprecated | Overlaps with traceability export/snapshot result pages. Must not receive new features. |
+| `client/src/views/batch-trace/TraceQuery.vue` | Batch-level trace query page | Bridge | Replaced with redirect page pointing to `/traceability`. No unique local function remains. |
+| `client/src/views/batch-trace/TraceReport.vue` | Batch-level trace report page | Delete Candidate | Bridge redirect only; no unique local function. Safe to remove once `/traceability` covers all report flows. |
 | `client/src/views/batch-trace/TraceVisualization.vue` | Batch trace visualization page | Delete | Router comment already notes it was removed as duplicate. File still on disk. |
 | `client/src/views/batch-trace/BatchList.vue` | Batch list management page | Keep As Bridge | Batch CRUD management. Observe whether a non-trace batch management path replaces this. |
 | `client/src/views/batch-trace/BatchDetail.vue` | Batch detail page | Keep As Bridge | Batch production detail. May have non-trace local role. |
-| `client/src/views/warehouse/Traceability.vue` | Warehouse-level traceability page | Mark Deprecated | Warehouse-scoped trace, overlaps with the authoritative `/traceability` query. No new features. |
+| `client/src/views/warehouse/Traceability.vue` | Warehouse-level traceability page | Bridge | Replaced with redirect page pointing to `/traceability`. Warehouse-scoped trace overlap eliminated. |
 
 ---
 
