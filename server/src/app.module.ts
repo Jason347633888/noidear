@@ -71,6 +71,7 @@ import { AssetLoanRecordModule } from './modules/asset-loan-record/asset-loan-re
 import { DocumentIssuanceModule } from './modules/document-issuance/document-issuance.module';
 import { LineChangeCheckRecordModule } from './modules/line-change-check-record/line-change-check-record.module';
 import { FoodSafetyCultureRecordModule } from './modules/food-safety-culture-record/food-safety-culture-record.module';
+import { ProcessModule } from './modules/process/process.module';
 import { ProcessStepModule } from './modules/process-step/process-step.module';
 import { ExternalPartyModule } from './modules/external-party/external-party.module';
 import { PackagingMaterialUsageModule } from './modules/packaging-material-usage/packaging-material-usage.module';
@@ -79,6 +80,7 @@ import { ShiftInstanceModule } from './modules/shift-instance/shift-instance.mod
 import { ProductionRunModule } from './modules/production-run/production-run.module';
 import { ScheduledTaskModule } from './modules/scheduled-task/scheduled-task.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { ModelLandingModule } from './modules/model-landing/model-landing.module';
 
 @Module({
   imports: [
@@ -160,6 +162,7 @@ import { UploadModule } from './modules/upload/upload.module';
     DocumentIssuanceModule,
     LineChangeCheckRecordModule,
     FoodSafetyCultureRecordModule,
+    ProcessModule,
     ProcessStepModule,
     ExternalPartyModule,
     PackagingMaterialUsageModule,
@@ -168,6 +171,7 @@ import { UploadModule } from './modules/upload/upload.module';
     ProductionRunModule,
     ScheduledTaskModule,
     UploadModule,
+    ModelLandingModule,
   ],
   providers: [
     {
