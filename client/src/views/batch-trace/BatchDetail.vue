@@ -162,7 +162,7 @@ const handleAddUsage = async () => {
 
 const handleExport = async () => {
   try {
-    const res: any = await request.get(`/batch-trace/production-batches/${batchId}/export`, {
+    const res: any = await request.get(`/batch-trace/trace/${batchId}/export-pdf`, {
       responseType: 'blob',
     });
     const filename = `trace-report-${batch.value?.batchNumber || batchId}.pdf`;
