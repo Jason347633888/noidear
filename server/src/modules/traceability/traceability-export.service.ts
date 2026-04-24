@@ -6,11 +6,22 @@ import { CreateTraceabilityExportDto } from './dto/create-traceability-export.dt
 export class TraceabilityExportService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateTraceabilityExportDto, _currentUser: any) {
-    return {
-      mode: dto.exportMode,
-      status: 'ready',
-      fileName: `traceability-${dto.sourceQueryHash}.xlsx`,
-    };
+  async create(dto: CreateTraceabilityExportDto, currentUser: any) {
+    if (dto.exportMode === 'simple') {
+      return {
+        mode: 'simple' as const,
+        status: 'ready',
+        fileName: `traceability-${dto.sourceQueryHash}.xlsx`,
+      };
+    }
+
+    return this.prisma.traceabilitySnapshot.create({
+      data: {
+        sourceQueryHash: dto.sourceQueryHash,
+        exportMode: dto.exportMode,
+        requesterId: currentUser.id,
+        summary: { queued: true },
+      },
+    });
   }
 }
