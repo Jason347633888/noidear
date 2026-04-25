@@ -1,5 +1,7 @@
 # Internal Go-Live Readiness Report
 
+> **Reconstruction update (2026-04-25):** This report has been updated as part of baseline reconstruction. See `2026-04-25-release-baseline-reconstruction-report.md` for current verified facts.
+
 **Date:** 2026-04-25
 **Version:** noidear v1.0 内测试运行版
 **Status:** IN PROGRESS
@@ -37,7 +39,7 @@
 
 - [x] build passes (vite build ✓, 3317 modules transformed)
 - [x] typecheck passes (vue-tsc --noEmit exits 0, zero errors — previously reported ~40 errors were resolved in a subsequent commit)
-- [~] unit/integration/e2e pass (352/353 unit tests pass — 1 failing: `traceability-convergence.spec.ts` asserts `traceApi` NOT in `@/api/batch` but it IS present; Playwright E2E: ✅ PASS — 124/124 通过，20 skip（设计跳过），2 未运行（任务提交路由功能缺口），零失败，2026-04-25)
+- [x] unit/integration/e2e pass (353/353 unit tests pass — `traceApi` duplicate removed from `client/src/api/batch.ts` in reconstruction session, closing `traceability-convergence.spec.ts`; Playwright E2E: ✅ PASS — 124/124 通过，20 skip（设计跳过），2 未运行（任务提交路由功能缺口），零失败，2026-04-25)
 - [x] primary navigation works (router convergence confirmed, `/traceability` authority route intact)
 - [x] primary pages render (no missing component imports blocking render)
 - [x] core interactions complete (batch, traceability, recycle-bin flows verified)
@@ -45,7 +47,7 @@
 - [x] no contract drift remains (TraceLedger, TraceRisk, TraceGraph, TraceabilityQuery aligned in Task 2)
 - [x] no legacy primary path remains (batch-trace and warehouse legacy bridges in place)
 
-**Note:** `vue-tsc` typecheck now passes cleanly (exit 0, zero errors). One unit test is currently failing: `src/api/__tests__/traceability-convergence.spec.ts` — the test asserts `traceApi` is NOT exported from `@/api/batch`, but it IS. This is a test expectation that does not yet match the actual code state. Flagged as LOW-MEDIUM risk — no runtime crash, but the cleanup the test anticipated has not been completed.
+**Note:** `vue-tsc` typecheck passes cleanly (exit 0, zero errors). All 353/353 client unit tests now pass — `traceApi` duplicate was removed from `client/src/api/batch.ts` during reconstruction, which closed the `traceability-convergence.spec.ts` assertion. See `2026-04-25-release-baseline-reconstruction-report.md` for details.
 
 ## Backend Gate
 
@@ -90,7 +92,7 @@
 
 > **Note (2026-04-25 reconstruction):** Gate status updated to reflect current verification results.
 
-- frontend gate: PASS WITH NOTE (build green; typecheck now passes cleanly; 1/353 unit tests failing — `traceApi` export cleanup incomplete)
+- frontend gate: PASS (build green; typecheck passes cleanly exit 0; 353/353 unit tests pass — `traceApi` cleanup completed in reconstruction session)
 - backend gate: PASS (build clean; 1118/1122 tests pass; 4 known non-regression failures documented)
 - contract gate: PASS (22/22 contract tests pass; no unresolved drift)
 - permission gate: PASS (role-limited action and permission-gated UI verified in E2E matrix)
@@ -107,9 +109,10 @@
 - go / no-go: GO
 - blockers: none remaining in release scope
 - known deferred items:
-  - vue-tsc typecheck: NOW PASSES (exit 0, zero errors — previously reported ~40 errors have been resolved)
-  - 1 client unit test failing: `traceability-convergence.spec.ts` expects `traceApi` NOT in `@/api/batch` but it IS — the anticipated cleanup is incomplete
-  - 4 training-related backend tests failing: root cause re-investigation needed — the `todo` module was NOT removed (directory exists); actual failure cause unknown without re-running server tests
+  - vue-tsc typecheck: PASSES (exit 0, zero errors)
+  - client unit tests: 353/353 PASS — `traceApi` removed from `client/src/api/batch.ts` in reconstruction session; `traceability-convergence.spec.ts` now passes
+  - todo module: EXISTS at `server/src/modules/todo/` — was NOT removed; wired into `app.module.ts` in reconstruction session
+  - 4 training-related backend tests failing: test isolation issue (project year 2028 conflict across runs); root cause documented, not a regression
   - Playwright E2E: Final run 2026-04-25 exit code 0 — 124 passed / 0 failed / 20 skipped (intentional) / 2 did not run (功能缺口：/tasks/create路由缺失 + tasks submit 404，待对应业务模块就绪)
 - evidence links:
   - `docs/superpowers/reports/2026-04-25-full-business-e2e-matrix.md`

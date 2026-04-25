@@ -160,11 +160,13 @@ Before deleting any object marked "Delete" or "Mark Deprecated", confirm all of 
 
 ### Current Deletion Candidates
 
+> **Closed in reconstruction (2026-04-25):** `traceApi` duplicate removed from `client/src/api/batch.ts`; 353/353 client unit tests now pass. `traceability-convergence.spec.ts` assertion confirmed green. See `2026-04-25-release-baseline-reconstruction-report.md` for full evidence.
+
 | Object | Status | Preflight Status |
 | --- | --- | --- |
 | `client/src/api/warehouse.ts traceabilityApi.trace()` | Deleted | ✅ Removed in Task 4 |
-| `client/api/batch.ts traceApi` | Deleted | ✅ Removed in Task 4 |
-| `client/api/batch.ts TraceResult/TraceNode` | Deleted | ✅ Removed in Task 4 |
+| `client/src/api/batch.ts traceApi` | Deleted | ✅ Removed in reconstruction (2026-04-25) — `traceability-convergence.spec.ts` now passes |
+| `client/src/api/batch.ts TraceResult/TraceNode` | Deleted | ✅ Removed in reconstruction (2026-04-25) |
 | `client/src/views/batch-trace/TraceQuery.vue` (complex version) | Replaced with bridge | ✅ Replaced in Task 4 |
 | `client/src/views/batch-trace/TraceReport.vue` (complex version) | Replaced with bridge | ✅ Replaced in Task 4 |
 | `client/src/views/warehouse/Traceability.vue` (complex version) | Replaced with bridge | ✅ Replaced in Task 4 |
