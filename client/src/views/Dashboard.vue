@@ -71,10 +71,6 @@
       </el-card>
     </div>
 
-    <!-- Recommended Documents -->
-    <div class="section-title">推荐文档</div>
-    <RecommendedDocuments :max-count="10" style="margin-bottom: 20px" />
-
     <!-- Pending Approvals -->
     <el-card class="pending-approvals" v-if="pendingApprovals.length">
       <template #header>
@@ -113,7 +109,6 @@ import {
   Document, List, CircleCheckFilled,
   Upload, Files, CircleCheck, Bell
 } from '@element-plus/icons-vue';
-import RecommendedDocuments from '@/components/RecommendedDocuments.vue';
 
 const userStore = useUserStore();
 const currentDate = new Date().toLocaleDateString('zh-CN', { weekday: 'long', month: 'long', day: 'numeric' });
