@@ -18,30 +18,45 @@ export class ExamPage {
     await this.page.waitForLoadState('networkidle');
   }
 
+  async waitForStartButton() {
+    await this.startButton.waitFor({ state: 'visible', timeout: 10000 });
+  }
+
   async startExam() {
+    await this.startButton.waitFor({ state: 'visible', timeout: 10000 });
     await this.startButton.click();
-    await this.page.waitForTimeout(1000);
+  }
+
+  async waitForQuestions() {
+    // Wait for at least one question card to appear after the API returns
+    await this.questionCards.first().waitFor({ state: 'visible', timeout: 15000 });
   }
 
   async answerQuestion(index: number, answer: string) {
     const card = this.questionCards.nth(index);
-    await card.locator(`label`).filter({ hasText: answer }).click();
+    await card.waitFor({ state: 'visible', timeout: 5000 });
+    await card.locator('label').filter({ hasText: answer }).click();
   }
 
   async submitExam() {
+    await this.submitButton.waitFor({ state: 'visible', timeout: 5000 });
     await this.submitButton.click();
+    // Handle confirmation dialog
+    const confirmBtn = this.page.locator('.el-message-box').locator('button').filter({ hasText: /确定提交/ });
+    await confirmBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await confirmBtn.click();
   }
 
   async expectExamResult(passed: boolean) {
     if (passed) {
-      await expect(this.page.locator('text=恭喜您通过考试')).toBeVisible();
+      await expect(this.page.locator('text=恭喜您通过考试')).toBeVisible({ timeout: 10000 });
     } else {
-      await expect(this.page.locator('text=很遗憾，未通过考试')).toBeVisible();
+      await expect(this.page.locator('text=很遗憾，未通过考试')).toBeVisible({ timeout: 10000 });
     }
   }
 
   async expectScore(score: number) {
-    await expect(this.page.locator(`text=${score} 分`)).toBeVisible();
+    await expect(this.page.locator(`text=${score} 分`)).toBeVisible({ timeout: 5000 });
   }
 
   async clickRetry() {

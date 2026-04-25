@@ -13,7 +13,28 @@ interface ApiResponse<T> {
 }
 
 /**
- * Create a training plan via the API.
+ * Fetch current authenticated user info.
+ */
+export async function fetchCurrentUserViaApi(
+  request: APIRequestContext,
+  token: string,
+): Promise<{ id: string; username: string; name?: string }> {
+  const response = await request.get(`${API_BASE}/auth/profile`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok()) {
+    throw new Error(`Fetch current user API failed: ${response.status()}`);
+  }
+
+  const body = await response.json();
+  // /auth/profile returns req.user directly (not wrapped in ApiResponse)
+  return body.data ?? body;
+}
+
+/**
+ * Create a training plan via the API. Idempotent: if a plan for that year
+ * already exists (409), fetches and returns the existing one.
  */
 export async function createTrainingPlanViaApi(
   request: APIRequestContext,
@@ -21,15 +42,30 @@ export async function createTrainingPlanViaApi(
   payload: {
     year: number;
     title: string;
-    departmentId: string;
-    budget: number;
-    status?: string;
   },
 ) {
   const response = await request.post(`${API_BASE}/training/plans`, {
     headers: { Authorization: `Bearer ${token}` },
     data: payload,
   });
+
+  if (response.status() === 409) {
+    // Plan for this year already exists — find and return it
+    const listResp = await request.get(
+      `${API_BASE}/training/plans?year=${payload.year}&limit=10`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (listResp.ok()) {
+      const listBody = (await listResp.json()) as ApiResponse<{
+        list?: Array<Record<string, unknown>>;
+        items?: Array<Record<string, unknown>>;
+      }>;
+      const items = listBody.data.list ?? listBody.data.items ?? [];
+      const existing = items[0];
+      if (existing) return existing;
+    }
+    throw new Error(`Create training plan 409 but could not fetch existing plan for year ${payload.year}`);
+  }
 
   if (!response.ok()) {
     const errorBody = await response.text();
@@ -49,12 +85,15 @@ export async function createTrainingProjectViaApi(
   payload: {
     planId: string;
     title: string;
-    type: string;
-    startDate: string;
-    endDate: string;
-    requiredTrainees: string[];
-    trainer?: string;
+    department: string;
+    quarter: number;
+    trainerId: string;
+    trainees: string[];
     description?: string;
+    scheduledDate?: string;
+    documentIds?: string[];
+    passingScore?: number;
+    maxAttempts?: number;
   },
 ) {
   const response = await request.post(`${API_BASE}/training/projects`, {
@@ -79,16 +118,16 @@ export async function createQuestionViaApi(
   token: string,
   projectId: string,
   payload: {
-    type: 'choice' | 'truefalse' | 'essay';
+    type: 'choice' | 'judge';
     content: string;
-    options?: string[];
+    options?: Record<string, string>;
     correctAnswer: string;
     points: number;
   },
 ) {
-  const response = await request.post(`${API_BASE}/training/projects/${projectId}/questions`, {
+  const response = await request.post(`${API_BASE}/training/questions`, {
     headers: { Authorization: `Bearer ${token}` },
-    data: payload,
+    data: { ...payload, projectId },
   });
 
   if (!response.ok()) {
@@ -108,9 +147,9 @@ export async function publishProjectViaApi(
   token: string,
   projectId: string,
 ) {
-  const response = await request.patch(`${API_BASE}/training/projects/${projectId}`, {
+  const response = await request.put(`${API_BASE}/training/projects/${projectId}/status`, {
     headers: { Authorization: `Bearer ${token}` },
-    data: { status: 'published' },
+    data: { status: 'ongoing' },
   });
 
   if (!response.ok()) {
@@ -123,6 +162,48 @@ export async function publishProjectViaApi(
 }
 
 /**
+ * Approve a training plan directly (admin convenience endpoint for test setup).
+ */
+export async function approvePlanViaApi(
+  request: APIRequestContext,
+  token: string,
+  planId: string,
+) {
+  const response = await request.post(`${API_BASE}/training/plans/${planId}/approve`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok()) {
+    const errorBody = await response.text();
+    throw new Error(`Approve plan API failed: ${response.status()} ${errorBody}`);
+  }
+
+  const body = (await response.json()) as ApiResponse<Record<string, unknown>>;
+  return body.data;
+}
+
+/**
+ * Cancel a training project (works for planned/ongoing projects).
+ */
+export async function cancelProjectViaApi(
+  request: APIRequestContext,
+  token: string,
+  projectId: string,
+) {
+  const response = await request.put(`${API_BASE}/training/projects/${projectId}/status`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { status: 'cancelled' },
+  });
+
+  if (!response.ok()) {
+    const errorBody = await response.text();
+    throw new Error(`Cancel project API failed: ${response.status()} ${errorBody}`);
+  }
+
+  return true;
+}
+
+/**
  * Start an exam via the API.
  */
 export async function startExamViaApi(
@@ -130,8 +211,9 @@ export async function startExamViaApi(
   token: string,
   projectId: string,
 ) {
-  const response = await request.post(`${API_BASE}/exam/${projectId}/start`, {
+  const response = await request.post(`${API_BASE}/training/exam/start`, {
     headers: { Authorization: `Bearer ${token}` },
+    data: { projectId },
   });
 
   if (!response.ok()) {
@@ -139,7 +221,11 @@ export async function startExamViaApi(
     throw new Error(`Start exam API failed: ${response.status()} ${errorBody}`);
   }
 
-  const body = (await response.json()) as ApiResponse<{ recordId: string }>;
+  const body = (await response.json()) as ApiResponse<{
+    project: { id: string; title: string; passingScore: number; maxAttempts: number };
+    learningRecord: { attempts: number; remainingAttempts: number };
+    questions: Array<{ id: string; type: string; content: string; options: unknown; points: number; order: number }>;
+  }>;
   return body.data;
 }
 
@@ -151,13 +237,12 @@ export async function submitExamViaApi(
   token: string,
   projectId: string,
   payload: {
-    recordId: string;
     answers: Record<string, string>;
   },
 ) {
-  const response = await request.post(`${API_BASE}/exam/${projectId}/submit`, {
+  const response = await request.post(`${API_BASE}/training/exam/submit`, {
     headers: { Authorization: `Bearer ${token}` },
-    data: payload,
+    data: { projectId, answers: payload.answers },
   });
 
   if (!response.ok()) {
@@ -234,6 +319,28 @@ export async function deleteProjectViaApi(
   }
 
   return true;
+}
+
+/**
+ * Fetch users list for getting valid user IDs.
+ */
+export async function fetchUsersViaApi(
+  request: APIRequestContext,
+  token: string,
+  limit: number = 10,
+) {
+  const response = await request.get(`${API_BASE}/users?page=1&limit=${limit}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok()) {
+    throw new Error(`Fetch users API failed: ${response.status()}`);
+  }
+
+  const body = (await response.json()) as ApiResponse<{
+    list: Array<{ id: string; username: string; name?: string }>;
+  }>;
+  return body.data.list;
 }
 
 /**

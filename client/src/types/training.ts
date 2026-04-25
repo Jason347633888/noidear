@@ -202,20 +202,24 @@ export interface ExamRecord {
 }
 
 export interface StartExamResponse {
+  project: {
+    id: string;
+    title: string;
+    passingScore: number;
+    maxAttempts: number;
+  };
+  learningRecord: {
+    attempts: number;
+    remainingAttempts: number;
+  };
   questions: Array<{
     id: string;
     type: QuestionType;
     content: string;
-    options?: string[];
+    options?: Record<string, string>;
     points: number;
     order: number;
   }>;
-  projectInfo: {
-    title: string;
-    passingScore: number;
-    maxAttempts: number;
-    remainingAttempts: number;
-  };
 }
 
 export interface SubmitExamDto {

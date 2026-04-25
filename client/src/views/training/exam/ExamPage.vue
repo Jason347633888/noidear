@@ -145,7 +145,12 @@ const handleStartExam = async () => {
 
     const response: StartExamResponse = await startExam(projectId);
     questions.value = response.questions;
-    examInfo.value = response.projectInfo;
+    examInfo.value = {
+      title: response.project.title,
+      passingScore: response.project.passingScore,
+      maxAttempts: response.project.maxAttempts,
+      remainingAttempts: response.learningRecord.remainingAttempts,
+    };
     examStarted.value = true;
   } catch (error: any) {
     ElMessage.error(error.message || '开始考试失败');

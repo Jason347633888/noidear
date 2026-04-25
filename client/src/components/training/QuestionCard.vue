@@ -12,8 +12,9 @@
 
     <div v-if="question.type === 'choice'" class="question-options">
       <el-radio-group v-model="answer" @change="handleAnswerChange">
-        <el-radio v-for="(option, idx) in question.options" :key="idx" :value="['A', 'B', 'C', 'D'][idx]" class="option-radio">
-          <span class="option-label">{{ ['A', 'B', 'C', 'D'][idx] }}.</span>
+        <!-- options is {A: label, B: label, ...} — use the key directly as the answer value -->
+        <el-radio v-for="(option, key) in question.options" :key="key" :value="String(key)" class="option-radio">
+          <span class="option-label">{{ key }}.</span>
           {{ option }}
         </el-radio>
       </el-radio-group>
@@ -35,7 +36,7 @@ interface Question {
   id: string;
   type: 'choice' | 'judge';
   content: string;
-  options?: string[];
+  options?: Record<string, string>;
   points: number;
   order: number;
 }

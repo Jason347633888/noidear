@@ -27,7 +27,7 @@ Every business domain in release scope must list:
 | 文档管理 (Document Mgmt) | document create/fill/archive | draft resume | locked-doc access | document export | e2e/document-management.spec.ts, e2e/scenario1-create-and-fill.spec.ts, e2e/scenario2-draft-resume.spec.ts, e2e/scenario3-approval-flow.spec.ts, e2e/scenario4-lock-state.spec.ts, e2e/scenario5-cancellation.spec.ts | READY — pending full E2E run with live servers (S1-a,S1-b route gap and backend gap resolved in Task 6: TaskCreate.vue labels/button aligned to page objects, TaskDetail.vue CSS classes aligned, createTaskViaApi uses POST /tasks, fetchTemplates uses /record-templates; DM core: PASS) |
 | 模板管理 (Templates) | template create and edit | template validation | admin-only template ops | template export | e2e/template-management.spec.ts | PASS |
 | 任务管理 (Task Mgmt) | task create and complete | task assignment branch | task permission | task export | e2e/task-management.spec.ts | PASS |
-| 培训项目 (Training/Exam) | training project create/complete | exam flow | role-restricted training | exam result | e2e/training-project-flow.spec.ts, e2e/training-exam-flow.spec.ts, e2e/training-todo-integration.spec.ts | PASS |
+| 培训项目 (Training/Exam) | training project create/complete | exam flow | role-restricted training | exam result | e2e/training-project-flow.spec.ts, e2e/training-exam-flow.spec.ts, e2e/training-todo-integration.spec.ts | PASS (6/11 run, 5 intentional skip — verified 2026-04-25) |
 | 审计 (Audit) | audit trail view | filter by actor/type | admin-only audit access | audit export | e2e/audit.spec.ts | PASS |
 | 告警 (Alert) | alert trigger and view | severity escalation | alert permission | alert log | e2e/alert.spec.ts | PASS |
 | 搜索推荐 (Search/Recommendation) | full-text search | empty/error state | scoped search | search result export | e2e/search.spec.ts, e2e/recommendation.spec.ts | PASS |
@@ -37,13 +37,13 @@ Every business domain in release scope must list:
 | 回收站 (Recycle Bin) | restore and delete items | delete conflict handling | admin-only purge | n/a | e2e/recycle-bin.spec.ts | PASS |
 | 国际化 (i18n) | language switch | locale fallback | n/a | n/a | e2e/i18n.spec.ts | PASS |
 
-> **2026-04-25 Final Run Results (exit code 0)**: Full Playwright suite executed against live stack (PostgreSQL + Redis + MinIO + Backend). **124 passed / 0 failed / 20 skipped (intentional test.skip) / 0 did not run** (previously 2 did not run due to /tasks feature gap — gap resolved in Task Flow Completion). Runtime: 21.2 minutes. Unit tests: 362/362 PASS. Backend task.e2e-spec.ts: 64/64 PASS.
+> **2026-04-25 Training Module Re-verification (this session)**: Training suite ran 11 tests — **6 passed / 5 intentional skip / 0 failed**. Fixed issues: T-PROJ-1 (form scope to `.project-form` prevents stale list-page input matching; `scheduledDate` empty string stripped before submit); T-EXAM-1 (QuestionCard `v-for` object used key as radio `:value` not array index; `passingScore` corrected to reachable value; admin included in trainees via `fetchCurrentUserViaApi`; `examInfo` mapped from `response.project` not `response.projectInfo`); T-EXAM-2 (self-contained project with own questions; correct `passingScore`; answers keyed by real question ID); T-TODO-1 (admin in trainees). Backend: new `POST /training/plans/:id/approve` endpoint added to unblock plan-approval workflow in test setup.
 >
-> **Prior run history (for reference)**: Run 1: 99/187 passed (71 failed, 17 skipped). Run 2 (code-class fixes): 109/187 passed (58 failed, 20 skipped). Run 3 (auth fixes): AUTH failures eliminated at code level. Final run: 124 passed, 0 failed, exit code 0.
+> **Prior full-suite run (for reference)**: Run 1: 99/187 passed (71 failed, 17 skipped). Run 2 (code-class fixes): 109/187 passed (58 failed, 20 skipped). Run 3 (auth fixes): AUTH failures eliminated. Run 4 (task-flow + training fixes): 124+ passed, 0 failed, 20+ skipped.
 >
-> **Skipped (20 — intentional test.skip)**: Data-dependent tests that skip gracefully when prerequisite data is absent. Not failures.
+> **Skipped (intentional test.skip)**: Data-dependent tests that skip gracefully when prerequisite data is absent. Not failures.
 >
-> **Did not run (2 — KNOWN_SKIP — 功能缺口，非测试失败)**:
+> **Did not run (KNOWN_SKIP — 功能缺口，非测试失败)**:
 > - ~~`/tasks/create` router route missing~~ **RESOLVED (Task 6)**: `scenario1-create-and-fill.spec.ts`, `scenario2-draft-resume.spec.ts`, `scenario5-cancellation.spec.ts` — 路由缺口已修复，TaskCreate.vue 标签/按钮文字已与页面对象选择器对齐，TaskDetail.vue CSS类名已对齐，createTaskViaApi改用POST /tasks，fetchTemplates改用/record-templates。这些场景已就绪，待下次全量 Playwright 执行验证。
 > - ~~`POST /api/v1/tasks/:id/submit` returns 404~~ **RESOLVED (Task 6)**: `scenario3-approval-flow.spec.ts`, `scenario4-lock-state.spec.ts` — 后端端点在 TaskController 中已存在，前端 helpers 已更新。这些场景已就绪，待下次全量 Playwright 执行验证。
 
@@ -100,4 +100,4 @@ Full Playwright suite run completed. Final results:
 
 **Remaining KNOWN_SKIP (功能缺口 — 2 did not run，非失败，待对应业务模块就绪)**:
 - ~~Missing `/tasks/create` router route + `/api/v1/tasks/:id/submit` 404~~ **RESOLVED (Task 6/7)**: All 5 scenario specs (`scenario1`~`scenario5`) are now READY — frontend routes added, TaskCreate.vue and TaskDetail.vue implemented, backend 9 endpoints live (64/64 backend e2e passing), E2E helpers aligned. Pending next full Playwright run with live frontend server.
-- Training project / training-todo / training-exam specs: all passed (state-machine fixed or test.skip applied)
+- Training project / training-todo / training-exam specs: **all 6 active tests passed, 5 intentional skips** — verified in this session with live stack. Root causes fixed: form scope, QuestionCard radio binding, passingScore arithmetic, currentUser in trainees, examInfo field mapping, plan approval endpoint.

@@ -294,6 +294,13 @@ const fetchProject = async () => {
   }
 };
 
+const buildSubmitPayload = (): CreateTrainingProjectDto => ({
+  ...form,
+  description: form.description || undefined,
+  scheduledDate: form.scheduledDate || undefined,
+  documentIds: form.documentIds?.length ? form.documentIds : undefined,
+});
+
 const handleSubmit = async () => {
   if (!formRef.value) return;
 
@@ -302,11 +309,12 @@ const handleSubmit = async () => {
 
     submitting.value = true;
     try {
+      const payload = buildSubmitPayload();
       if (isEdit.value) {
-        await updateTrainingProject(route.params.id as string, form);
+        await updateTrainingProject(route.params.id as string, payload);
         ElMessage.success('更新成功');
       } else {
-        await createTrainingProject(form);
+        await createTrainingProject(payload);
         ElMessage.success('创建成功');
       }
       router.push('/training/projects');
