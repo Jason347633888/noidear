@@ -263,7 +263,7 @@ export async function fetchTodoTasksViaApi(
   params: Record<string, string> = {},
 ) {
   const qs = new URLSearchParams(params).toString();
-  const url = qs ? `${API_BASE}/todo?${qs}` : `${API_BASE}/todo`;
+  const url = qs ? `${API_BASE}/todos?${qs}` : `${API_BASE}/todos`;
 
   const response = await request.get(url, {
     headers: { Authorization: `Bearer ${token}` },
@@ -274,8 +274,34 @@ export async function fetchTodoTasksViaApi(
   }
 
   const body = (await response.json()) as ApiResponse<{
-    list: Array<Record<string, unknown>>;
+    items: Array<Record<string, unknown>>;
     total: number;
+    page: number;
+    limit: number;
+    hasMore: boolean;
+  }>;
+  return body.data;
+}
+
+/**
+ * Fetch todo statistics for the authenticated user.
+ */
+export async function fetchTodoStatisticsViaApi(
+  request: APIRequestContext,
+  token: string,
+) {
+  const response = await request.get(`${API_BASE}/todos/statistics`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok()) {
+    throw new Error(`Fetch todo statistics API failed: ${response.status()}`);
+  }
+
+  const body = (await response.json()) as ApiResponse<{
+    total: number;
+    byType: Record<string, number>;
+    byStatus: { pending: number; completed: number };
   }>;
   return body.data;
 }
@@ -288,7 +314,7 @@ export async function completeTodoViaApi(
   token: string,
   todoId: string,
 ) {
-  const response = await request.post(`${API_BASE}/todo/${todoId}/complete`, {
+  const response = await request.post(`${API_BASE}/todos/${todoId}/complete`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
