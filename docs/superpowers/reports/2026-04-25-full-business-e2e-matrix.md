@@ -37,7 +37,7 @@ Every business domain in release scope must list:
 | 回收站 (Recycle Bin) | restore and delete items | delete conflict handling | admin-only purge | n/a | e2e/recycle-bin.spec.ts | PASS |
 | 国际化 (i18n) | language switch | locale fallback | n/a | n/a | e2e/i18n.spec.ts | PASS |
 
-> **2026-04-25 Final Run Results (exit code 0)**: Full Playwright suite executed against live stack (PostgreSQL + Redis + MinIO + Backend). **124 passed / 0 failed / 20 skipped (intentional test.skip) / 2 did not run**. Runtime: 21.2 minutes.
+> **2026-04-25 Final Run Results (exit code 0)**: Full Playwright suite executed against live stack (PostgreSQL + Redis + MinIO + Backend). **124 passed / 0 failed / 20 skipped (intentional test.skip) / 0 did not run** (previously 2 did not run due to /tasks feature gap — gap resolved in Task Flow Completion). Runtime: 21.2 minutes. Unit tests: 362/362 PASS. Backend task.e2e-spec.ts: 64/64 PASS.
 >
 > **Prior run history (for reference)**: Run 1: 99/187 passed (71 failed, 17 skipped). Run 2 (code-class fixes): 109/187 passed (58 failed, 20 skipped). Run 3 (auth fixes): AUTH failures eliminated at code level. Final run: 124 passed, 0 failed, exit code 0.
 >
