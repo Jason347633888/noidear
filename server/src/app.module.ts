@@ -81,6 +81,7 @@ import { ProductionRunModule } from './modules/production-run/production-run.mod
 import { ScheduledTaskModule } from './modules/scheduled-task/scheduled-task.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { ModelLandingModule } from './modules/model-landing/model-landing.module';
+import { TodoModule } from './modules/todo/todo.module';
 
 @Module({
   imports: [
@@ -172,6 +173,7 @@ import { ModelLandingModule } from './modules/model-landing/model-landing.module
     ScheduledTaskModule,
     UploadModule,
     ModelLandingModule,
+    TodoModule,
   ],
   providers: [
     {
