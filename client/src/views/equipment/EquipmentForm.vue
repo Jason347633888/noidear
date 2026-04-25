@@ -97,7 +97,7 @@
 
       <div class="maintenance-config">
         <div
-          v-for="(levelKey, index) in maintenanceLevels"
+          v-for="levelKey in maintenanceLevels"
           :key="levelKey.key"
           class="config-item"
         >

@@ -83,7 +83,7 @@ import {
   getTrainingPlanById,
   submitTrainingPlanForApproval,
 } from '@/api/training';
-import type { TrainingPlan, TrainingProject } from '@/types/training';
+import type { TrainingPlan } from '@/types/training';
 
 const router = useRouter();
 const route = useRoute();

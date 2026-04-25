@@ -90,7 +90,7 @@ const props = defineProps<{
   modelValue?: Record<string, unknown>
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'update:modelValue', value: Record<string, unknown>): void
 }>()
 

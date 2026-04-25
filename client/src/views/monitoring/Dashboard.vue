@@ -150,7 +150,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { FullScreen, Refresh, VideoPlay, VideoPause } from '@element-plus/icons-vue';

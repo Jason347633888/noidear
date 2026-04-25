@@ -7,7 +7,7 @@
         :label="col.label"
         :prop="col.key"
       >
-        <template #default="{ row, $index }">
+        <template #default="{ row }">
           <template v-if="!col.readonly">
             <el-input
               v-model="row[col.key]"

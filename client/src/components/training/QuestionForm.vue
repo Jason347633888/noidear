@@ -115,7 +115,7 @@ const form = reactive({
 });
 
 const choiceOptionValidator = (optionName: string) => {
-  return (rule: any, value: string, callback: (error?: Error) => void) => {
+  return (_rule: any, value: string, callback: (error?: Error) => void) => {
     if (form.type === 'choice' && !value) {
       callback(new Error(`请输入选项${optionName}`));
     } else {

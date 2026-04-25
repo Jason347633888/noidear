@@ -202,7 +202,7 @@ const nodeTypes = [
   { type: 'end', label: '结束节点', color: '#f5222d', icon: 'CircleClose' },
 ] as const;
 
-const { addEdges, toObject } = useVueFlow();
+const { addEdges } = useVueFlow();
 
 const flowNodes = ref<any[]>([]);
 const flowEdges = ref<any[]>([]);
@@ -247,7 +247,7 @@ function getNodeById(id: string) {
   return flowNodes.value.find((n) => n.id === id) ?? null;
 }
 
-function onDragStart(event: DragEvent, type: string) {
+function onDragStart(_event: DragEvent, type: string) {
   dragNodeType = type;
 }
 

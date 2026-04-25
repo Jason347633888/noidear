@@ -851,7 +851,7 @@ const router = createRouter({
 });
 
 // 导航守卫
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const publicPaths = ['/login', '/login/sso'];
   const token = localStorage.getItem('token');
 

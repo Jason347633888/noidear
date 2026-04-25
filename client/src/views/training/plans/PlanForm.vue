@@ -74,7 +74,6 @@ const isEdit = computed(() => !!route.params.id);
 
 // Generate year options (2020-2030)
 const yearOptions = computed(() => {
-  const currentYear = new Date().getFullYear();
   const years: number[] = [];
   for (let year = 2020; year <= 2030; year++) {
     years.push(year);

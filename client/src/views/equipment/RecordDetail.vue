@@ -176,7 +176,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { ArrowLeft } from '@element-plus/icons-vue';
 import equipmentApi, {
@@ -188,7 +188,6 @@ import equipmentApi, {
 } from '@/api/equipment';
 
 const route = useRoute();
-const router = useRouter();
 const loading = ref(false);
 const record = ref<MaintenanceRecord | null>(null);
 const submitting = ref(false);

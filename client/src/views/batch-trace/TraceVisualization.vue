@@ -35,7 +35,7 @@
           default-expand-all
           :expand-on-click-node="false"
         >
-          <template #default="{ node, data }">
+          <template #default="{ data }">
             <div class="tree-node">
               <el-tag :type="nodeTypeMap[data.type]" size="small">
                 {{ nodeTypeLabel[data.type] }}

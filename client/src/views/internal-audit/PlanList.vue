@@ -288,7 +288,7 @@ const handleEdit = (row: AuditPlan) => {
   dialogVisible.value = true;
 };
 
-const handleView = (row: AuditPlan) => {
+const handleView = (_row: AuditPlan) => {
   ElMessage.info('查看功能待实现');
 };
 

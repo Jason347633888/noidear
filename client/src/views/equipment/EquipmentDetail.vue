@@ -103,7 +103,7 @@
               </el-table-column>
               <el-table-column prop="responsiblePerson" label="责任人" width="100" />
               <el-table-column label="操作" width="100">
-                <template #default="{ row }">
+                <template #default>
                   <el-button link type="primary" @click="$router.push(`/equipment/plans`)">
                     查看
                   </el-button>

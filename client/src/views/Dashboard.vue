@@ -110,7 +110,7 @@ import { ref, onMounted } from 'vue';
 import { useUserStore } from '@/stores/user';
 import request from '@/api/request';
 import {
-  Document, Folder, Task, CheckCircle,
+  Document, List, CircleCheckFilled,
   Upload, Files, CircleCheck, Bell
 } from '@element-plus/icons-vue';
 import RecommendedDocuments from '@/components/RecommendedDocuments.vue';
@@ -119,17 +119,17 @@ const userStore = useUserStore();
 const currentDate = new Date().toLocaleDateString('zh-CN', { weekday: 'long', month: 'long', day: 'numeric' });
 
 const stats = ref([
-  { label: '文档总数', value: '128', icon: 'Document', color: '#c9a227' },
-  { label: '待审批', value: '5', icon: 'CircleCheck', color: '#e74c3c' },
-  { label: '进行中任务', value: '12', icon: 'Task', color: '#3498db' },
-  { label: '已完成', value: '89', icon: 'CheckCircle', color: '#27ae60' },
+  { label: '文档总数', value: '128', icon: Document, color: '#c9a227' },
+  { label: '待审批', value: '5', icon: CircleCheck, color: '#e74c3c' },
+  { label: '进行中任务', value: '12', icon: List, color: '#3498db' },
+  { label: '已完成', value: '89', icon: CircleCheckFilled, color: '#27ae60' },
 ]);
 
 const quickActions = [
-  { path: '/documents/upload/1', label: '上传一级文件', icon: 'Upload', color: 'linear-gradient(135deg, #c9a227 0%, #d4af37 100%)' },
-  { path: '/tasks/create', label: '创建任务', icon: 'Task', color: 'linear-gradient(135deg, #3498db 0%, #5dade2 100%)' },
-  { path: '/templates', label: '模板管理', icon: 'Files', color: 'linear-gradient(135deg, #9b59b6 0%, #a569bd 100%)' },
-  { path: '/notifications', label: '消息中心', icon: 'Bell', color: 'linear-gradient(135deg, #e74c3c 0%, #ec7063 100%)' },
+  { path: '/documents/upload/1', label: '上传一级文件', icon: Upload, color: 'linear-gradient(135deg, #c9a227 0%, #d4af37 100%)' },
+  { path: '/tasks/create', label: '创建任务', icon: List, color: 'linear-gradient(135deg, #3498db 0%, #5dade2 100%)' },
+  { path: '/templates', label: '模板管理', icon: Files, color: 'linear-gradient(135deg, #9b59b6 0%, #a569bd 100%)' },
+  { path: '/notifications', label: '消息中心', icon: Bell, color: 'linear-gradient(135deg, #e74c3c 0%, #ec7063 100%)' },
 ];
 
 const recentDocs = ref<any[]>([]);

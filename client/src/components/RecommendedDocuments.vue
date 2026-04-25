@@ -45,7 +45,7 @@ import dayjs from 'dayjs';
 import recommendationApi from '@/api/recommendation';
 import type { RecommendedDocument } from '@/api/recommendation';
 
-const props = withDefaults(defineProps<{
+withDefaults(defineProps<{
   title?: string;
   maxCount?: number;
 }>(), {

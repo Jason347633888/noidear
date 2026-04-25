@@ -120,7 +120,7 @@ import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Calendar, Clock, CircleCheck, User, Download, Refresh } from '@element-plus/icons-vue';
 import * as echarts from 'echarts';
-import { getTrainingProjects, getTrainingPlans, getLearningRecords } from '@/api/training';
+import { getTrainingProjects, getLearningRecords } from '@/api/training';
 import * as XLSX from 'xlsx';
 import StatCard from '@/components/StatCard.vue';
 

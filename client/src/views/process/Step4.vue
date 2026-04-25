@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
+import { reactive, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import dayjs from 'dayjs';
 import ProcessParams from '@/components/process/ProcessParams.vue';
