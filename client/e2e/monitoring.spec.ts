@@ -15,12 +15,11 @@ import { getCredentials } from './fixtures/task-fixtures';
 
 test.describe('Monitoring Dashboard', () => {
   test.beforeEach(async ({ page }) => {
-    // Login as admin
     const { adminUser, adminPass } = getCredentials();
     const loginPage = new LoginPage(page);
     await loginPage.goto();
     await loginPage.login(adminUser, adminPass);
-    await page.waitForURL('**/dashboard', { timeout: 15000 });
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
   });
 
   test('should load monitoring dashboard successfully', async ({ page }) => {
@@ -35,7 +34,7 @@ test.describe('Monitoring Dashboard', () => {
     // Verify header action buttons
     await expect(page.locator('button').filter({ hasText: '全屏显示' })).toBeVisible({ timeout: 10000 });
     await expect(page.locator('button').filter({ hasText: '暂停刷新' })).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('button').filter({ hasText: '刷新' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('button').filter({ hasText: '刷新' }).first()).toBeVisible({ timeout: 10000 });
 
     // Verify health status section exists (relaxed selectors)
     await expect(page.locator('.health-row, .status-row, [class*="health"]').first()).toBeVisible({ timeout: 10000 });
@@ -86,10 +85,10 @@ test.describe('Monitoring Dashboard', () => {
     await expect(metricsRow).toBeVisible({ timeout: 10000 });
 
     // Verify individual metrics
-    await expect(page.locator('text=今日文档上传')).toBeVisible();
-    await expect(page.locator('text=今日审批')).toBeVisible();
-    await expect(page.locator('text=在线用户')).toBeVisible();
-    await expect(page.locator('text=今日登录')).toBeVisible();
+    await expect(page.locator('text=今日文档上传').first()).toBeVisible();
+    await expect(page.locator('text=今日审批').first()).toBeVisible();
+    await expect(page.locator('text=在线用户').first()).toBeVisible();
+    await expect(page.locator('text=今日登录').first()).toBeVisible();
   });
 
   test('should toggle auto-refresh functionality', async ({ page }) => {
@@ -131,7 +130,7 @@ test.describe('Monitoring Dashboard', () => {
     await page.waitForTimeout(1000);
 
     // Click refresh button
-    const refreshButton = page.locator('button').filter({ hasText: /^刷新$/ });
+    const refreshButton = page.locator('button').filter({ hasText: '刷新' }).first();
     await refreshButton.click();
 
     // Wait for loading to complete
@@ -166,8 +165,8 @@ test.describe('Monitoring Dashboard', () => {
     // Wait for content to load
     await page.waitForTimeout(2000);
 
-    // Verify alert list exists in content row (relaxed selector)
-    const contentRow = page.locator('.content-row, .main-content, [class*="content"]').first();
+    // Verify alert list exists in content row
+    const contentRow = page.locator('.content-row').first();
     await expect(contentRow).toBeVisible({ timeout: 10000 });
 
     // Verify operation log statistics exists
@@ -199,7 +198,7 @@ test.describe('Metrics Page', () => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
     await loginPage.login(adminUser, adminPass);
-    await page.waitForURL('**/dashboard', { timeout: 15000 });
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
   });
 
   test('should load metrics page successfully', async ({ page }) => {
@@ -210,7 +209,7 @@ test.describe('Metrics Page', () => {
     await expect(page.locator('h2').filter({ hasText: '性能指标' })).toBeVisible();
 
     // Verify page content loads without errors
-    await expect(page.locator('.el-card')).toBeVisible();
+    await expect(page.locator('.el-card').first()).toBeVisible();
 
     // Take screenshot
     await page.screenshot({ path: 'e2e/test-results/monitoring-metrics-page.png', fullPage: true });

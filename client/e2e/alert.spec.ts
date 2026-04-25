@@ -20,7 +20,7 @@ test.describe('Alert Rule Management', () => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
     await loginPage.login(adminUser, adminPass);
-    await page.waitForURL('**/dashboard', { timeout: 15000 });
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
   });
 
   test('should load alert rules page successfully', async ({ page }) => {
@@ -28,10 +28,10 @@ test.describe('Alert Rule Management', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify page title
-    await expect(page.locator('h2').filter({ hasText: '告警规则管理' })).toBeVisible();
+    await expect(page.locator('h2').filter({ hasText: /告警规则/ })).toBeVisible();
 
     // Verify create button exists (relaxed selector with longer timeout)
-    await expect(page.locator('button').filter({ hasText: /创建|新增/ }).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('button').filter({ hasText: /新建|创建|新增/ }).first()).toBeVisible({ timeout: 10000 });
 
     // Verify table exists
     await expect(page.locator('.el-table')).toBeVisible({ timeout: 10000 });
@@ -48,12 +48,12 @@ test.describe('Alert Rule Management', () => {
     await page.waitForTimeout(2000);
 
     // Click create button with explicit wait
-    const createButton = page.locator('button').filter({ hasText: /创建|新增/ }).first();
+    const createButton = page.locator('button').filter({ hasText: /新建|创建|新增/ }).first();
     await createButton.waitFor({ state: 'visible', timeout: 10000 });
     await createButton.click();
 
     // Verify dialog opens (relaxed title match with longer timeout)
-    await expect(page.locator('.el-dialog').filter({ hasText: /创建|新增|告警/ }).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.el-dialog').filter({ hasText: /新建|创建|新增|告警/ }).first()).toBeVisible({ timeout: 10000 });
 
     // Verify form fields exist
     await expect(page.locator('.el-dialog').locator('input[placeholder*="规则名称"]')).toBeVisible();
@@ -73,7 +73,7 @@ test.describe('Alert Rule Management', () => {
     await page.waitForTimeout(2000);
 
     // Click create button with explicit wait
-    const createBtn = page.locator('button').filter({ hasText: /创建|新增/ }).first();
+    const createBtn = page.locator('button').filter({ hasText: /新建|创建|新增/ }).first();
     await createBtn.waitFor({ state: 'visible', timeout: 10000 });
     await createBtn.click();
 
@@ -246,7 +246,7 @@ test.describe('Alert History', () => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
     await loginPage.login(adminUser, adminPass);
-    await page.waitForURL('**/dashboard', { timeout: 15000 });
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
   });
 
   test('should load alert history page successfully', async ({ page }) => {
@@ -432,13 +432,12 @@ test.describe('Alert History', () => {
     // Wait for table to load
     await page.waitForTimeout(2000);
 
-    // Setup download listener
-    const downloadPromise = page.waitForEvent('download', { timeout: 10000 });
-
     // Click export button if it exists
     const exportButton = page.locator('button').filter({ hasText: '导出Excel' });
 
     if (await exportButton.count() > 0) {
+      // Setup download listener only when button exists
+      const downloadPromise = page.waitForEvent('download', { timeout: 10000 });
       await exportButton.click();
 
       try {

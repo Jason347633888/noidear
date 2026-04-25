@@ -1,12 +1,14 @@
 import { test, expect } from '@playwright/test';
+import { LoginPage } from './pages/LoginPage';
+import { getCredentials } from './fixtures/task-fixtures';
 
 test.describe('智能文档推荐', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/login');
-    await page.fill('input[placeholder*="用户名"]', 'admin');
-    await page.fill('input[type="password"]', process.env.E2E_ADMIN_PASS || 'ChangeMe123!');
-    await page.click('button:has-text("登录")');
-    await page.waitForURL('/dashboard');
+    const { adminUser, adminPass } = getCredentials();
+    const loginPage = new LoginPage(page);
+    await loginPage.goto();
+    await loginPage.login(adminUser, adminPass);
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
   });
 
   test('首页显示推荐文档模块', async ({ page }) => {
