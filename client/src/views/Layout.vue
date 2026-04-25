@@ -22,7 +22,14 @@
         <template v-for="item in menuItems" :key="item.title">
           <el-menu-item v-if="!item.children" :index="item.path">
             <el-icon><component :is="item.icon" /></el-icon>
-            <template #title>{{ item.title }}</template>
+            <template #title>
+              <el-badge
+                v-if="item.badge && todoStore.pendingTodoCount > 0"
+                :value="todoStore.pendingTodoCount"
+                :max="99"
+              >{{ item.title }}</el-badge>
+              <span v-else>{{ item.title }}</span>
+            </template>
           </el-menu-item>
           <el-sub-menu v-else :index="item.title">
             <template #title>
@@ -108,6 +115,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/user';
+import { useTodoStore } from '@/stores/todo';
 import {
   Document, Fold, Expand, Bell, ArrowDown,
   User, Lock, SwitchButton, HomeFilled, Files,
@@ -121,6 +129,7 @@ import request from '@/api/request';
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
+const todoStore = useTodoStore();
 const isCollapsed = ref(false);
 const unreadCount = ref(0);
 
@@ -129,6 +138,7 @@ const currentTitle = computed(() => route.meta.title as string || '');
 
 const menuItems = [
   { path: '/dashboard', title: '工作台', icon: HomeFilled },
+  { path: '/my-todos', title: '我的待办', icon: Bell, badge: true },
   {
     title: '文档管理',
     icon: Files,
@@ -291,6 +301,7 @@ onMounted(async () => {
     await userStore.fetchUser();
   }
   fetchUnreadCount();
+  todoStore.refreshPendingCount();
 });
 
 const fetchUnreadCount = async () => {

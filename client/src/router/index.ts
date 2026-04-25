@@ -231,6 +231,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/workflow/TemplateEditor.vue'),
       },
       {
+        path: 'my-todos',
+        name: 'MyTodos',
+        component: () => import('@/views/my-todos/MyTodos.vue'),
+        meta: { title: '我的待办' },
+      },
+      {
         path: 'workflow/my-tasks',
         name: 'WorkflowMyTasks',
         component: () => import('@/views/workflow/MyTasks.vue'),
