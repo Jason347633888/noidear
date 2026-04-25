@@ -141,7 +141,7 @@ import { ElMessage } from 'element-plus';
 import request from '@/api/request';
 import { Search, RefreshRight, Plus, Edit, Key } from '@element-plus/icons-vue';
 
-interface User { id: string; username: string; name: string; role: string; status: string; department: { name: string } | null; createdAt: string; }
+interface User { id: string; username: string; name: string; role: string; status: string; department: { id: string; name: string } | null; createdAt: string; }
 interface Department { id: string; name: string; }
 
 const loading = ref(false);

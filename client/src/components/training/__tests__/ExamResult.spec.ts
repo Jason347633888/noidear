@@ -36,13 +36,13 @@ describe('ExamResult', () => {
 
   it('should emit retry event', async () => {
     const wrapper = createWrapper();
-    await wrapper.vm.handleRetry();
+    await (wrapper.vm as any).handleRetry();
     expect(wrapper.emitted('retry')).toBeTruthy();
   });
 
   it('should emit back event', async () => {
     const wrapper = createWrapper();
-    await wrapper.vm.handleBack();
+    await (wrapper.vm as any).handleBack();
     expect(wrapper.emitted('back')).toBeTruthy();
   });
 });

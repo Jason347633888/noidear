@@ -50,7 +50,7 @@ describe('QuestionCard', () => {
 
   it('should handle answer change', async () => {
     const wrapper = createWrapper();
-    await wrapper.vm.handleAnswerChange('B');
+    await (wrapper.vm as any).handleAnswerChange('B');
     expect(wrapper.emitted('update:modelValue')).toBeTruthy();
     expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['B']);
   });

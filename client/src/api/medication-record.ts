@@ -29,7 +29,7 @@ const medicationRecordApi = {
     const params: Record<string, string> = {};
     if (employeeId) params['employee_id'] = employeeId;
     if (fitForDuty !== undefined) params['fit_for_duty'] = String(fitForDuty);
-    return request.get<MedicationRecord[]>('/medication-records', { params });
+    return request.get<{ data: MedicationRecord[]; total?: number }>('/medication-records', { params });
   },
 
   create(payload: CreateMedicationPayload) {

@@ -101,12 +101,14 @@ const isStepDisabled = computed(() => {
 
 const statusType = computed(() => {
   const s = instance.value?.status;
-  return { DRAFT: 'info', IN_PROGRESS: 'warning', COMPLETED: 'success', REJECTED: 'danger' }[s ?? ''] ?? 'info';
+  const map: Record<string, string> = { DRAFT: 'info', IN_PROGRESS: 'warning', COMPLETED: 'success', REJECTED: 'danger' };
+  return map[s ?? ''] ?? 'info';
 });
 
 const statusText = computed(() => {
   const s = instance.value?.status;
-  return { DRAFT: '草稿', IN_PROGRESS: '进行中', COMPLETED: '已完成', REJECTED: '已驳回' }[s ?? ''] ?? '';
+  const map: Record<string, string> = { DRAFT: '草稿', IN_PROGRESS: '进行中', COMPLETED: '已完成', REJECTED: '已驳回' };
+  return map[s ?? ''] ?? '';
 });
 
 const getStepStatus = (stepNum: number) => {

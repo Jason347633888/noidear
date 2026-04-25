@@ -39,7 +39,7 @@ const processRecordApi = {
   },
 
   getByBatch(batchId: string) {
-    return request.get<ProcessRecord[]>(`/process-records/batch/${batchId}`);
+    return request.get<{ data: ProcessRecord[]; total?: number }>(`/process-records/batch/${batchId}`);
   },
 };
 

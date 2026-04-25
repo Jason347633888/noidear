@@ -141,7 +141,7 @@ const getStatusText = (status: string) => ({ draft: '草稿', pending: '待审�
 
 const fetchData = async () => {
   try {
-    const docsRes = await request.get<any[]>('/documents', { params: { limit: 5 } });
+    const docsRes = await request.get<{ list: any[]; total?: number }>('/documents', { params: { limit: 5 } });
     recentDocs.value = docsRes.list || [];
     const approvalsRes = await request.get<any>('/documents/pending-approvals');
     pendingApprovals.value = approvalsRes.list || [];

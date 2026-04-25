@@ -95,11 +95,11 @@ export function getCalibrationResultType(result: string): string {
 
 const measuringEquipmentApi = {
   getList() {
-    return request.get<MeasuringEquipment[]>('/measuring-equipment');
+    return request.get<{ data: MeasuringEquipment[]; total?: number }>('/measuring-equipment');
   },
 
   getOverdue() {
-    return request.get<MeasuringEquipment[]>('/measuring-equipment/overdue');
+    return request.get<{ data: MeasuringEquipment[]; total?: number }>('/measuring-equipment/overdue');
   },
 
   create(payload: CreateEquipmentPayload) {
@@ -111,7 +111,7 @@ const measuringEquipmentApi = {
   },
 
   getCalibrations(equipmentId: string) {
-    return request.get<CalibrationRecord[]>(`/measuring-equipment/${equipmentId}/calibrations`);
+    return request.get<{ data: CalibrationRecord[]; total?: number }>(`/measuring-equipment/${equipmentId}/calibrations`);
   },
 };
 

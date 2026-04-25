@@ -37,7 +37,7 @@ export interface CreateFragileItemInspectionPayload {
 
 const fragileItemInspectionApi = {
   getList(startDate?: string, endDate?: string) {
-    return request.get<FragileItemInspection[]>('/fragile-item-inspections', {
+    return request.get<{ data: FragileItemInspection[]; total?: number }>('/fragile-item-inspections', {
       params: {
         ...(startDate ? { start_date: startDate } : {}),
         ...(endDate ? { end_date: endDate } : {}),

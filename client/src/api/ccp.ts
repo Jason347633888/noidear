@@ -58,11 +58,11 @@ const ccpApi = {
   },
 
   getRecordsByBatch(batchId: string) {
-    return request.get<CcpRecord[]>(`/ccp/records/batch/${batchId}`);
+    return request.get<{ data: CcpRecord[]; total?: number }>(`/ccp/records/batch/${batchId}`);
   },
 
   getMissingCCPs(batchId: string) {
-    return request.get<CcpPoint[]>(`/ccp/records/missing/${batchId}`);
+    return request.get<{ data: CcpPoint[]; total?: number }>(`/ccp/records/missing/${batchId}`);
   },
 };
 

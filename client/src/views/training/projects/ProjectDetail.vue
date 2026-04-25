@@ -317,14 +317,14 @@ const handleCancel = async () => {
   if (!project.value) return;
 
   try {
-    const { value: reason } = await ElMessageBox.prompt('请输入取消原因', '取消培训', {
+    const result = await ElMessageBox.prompt('请输入取消原因', '取消培训', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       inputPattern: /.+/,
       inputErrorMessage: '请输入取消原因',
     });
 
-    await cancelTrainingProject(project.value.id, reason);
+    await cancelTrainingProject(project.value.id, (result as { value: string }).value);
     ElMessage.success('培训项目已取消');
     await fetchProject();
   } catch (error: any) {

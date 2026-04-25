@@ -48,7 +48,7 @@ const cleaningRecordApi = {
   },
 
   getList(targetType?: string) {
-    return request.get<CleaningRecord[]>('/cleaning-records', {
+    return request.get<{ data: CleaningRecord[]; total?: number }>('/cleaning-records', {
       params: targetType ? { target_type: targetType } : {},
     });
   },

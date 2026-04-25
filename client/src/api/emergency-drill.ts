@@ -48,7 +48,7 @@ export function getResultText(result: string): string {
 
 const emergencyDrillApi = {
   getList() {
-    return request.get<EmergencyDrillRecord[]>('/emergency-drills');
+    return request.get<{ data: EmergencyDrillRecord[]; total?: number }>('/emergency-drills');
   },
 
   create(payload: CreateDrillPayload) {

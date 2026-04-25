@@ -38,8 +38,8 @@ describe('QuestionForm', () => {
 
   it('should initialize with default form values', () => {
     const wrapper = createWrapper();
-    expect(wrapper.vm.form.type).toBe('choice');
-    expect(wrapper.vm.form.points).toBe(5);
+    expect((wrapper.vm as any).form.type).toBe('choice');
+    expect((wrapper.vm as any).form.points).toBe(5);
   });
 
   it('should load question data when question prop is provided', async () => {
@@ -56,8 +56,8 @@ describe('QuestionForm', () => {
     const wrapper = createWrapper({ question: mockQuestion });
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.vm.form.content).toBe('测试题目');
-    expect(wrapper.vm.form.points).toBe(10);
-    expect(wrapper.vm.form.optionA).toBe('选项A');
+    expect((wrapper.vm as any).form.content).toBe('测试题目');
+    expect((wrapper.vm as any).form.points).toBe(10);
+    expect((wrapper.vm as any).form.optionA).toBe('选项A');
   });
 });

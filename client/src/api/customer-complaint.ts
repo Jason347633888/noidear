@@ -56,7 +56,7 @@ export function getComplaintStatusType(status: string): string {
 
 const customerComplaintApi = {
   getList(status?: string) {
-    return request.get<CustomerComplaint[]>('/customer-complaints', {
+    return request.get<{ data: CustomerComplaint[]; total?: number }>('/customer-complaints', {
       params: status ? { status } : {},
     });
   },

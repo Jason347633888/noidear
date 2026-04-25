@@ -88,7 +88,7 @@ export function getNcSourceTypeText(sourceType: string): string {
 
 const nonConformanceApi = {
   getList(status?: string) {
-    return request.get<NonConformance[]>('/non-conformances', {
+    return request.get<{ data: NonConformance[]; total?: number }>('/non-conformances', {
       params: status ? { status } : {},
     });
   },

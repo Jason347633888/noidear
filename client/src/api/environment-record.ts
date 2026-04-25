@@ -53,7 +53,7 @@ export function getRecordTypeText(recordType: string): string {
 
 const environmentRecordApi = {
   getList(startDate?: string, endDate?: string) {
-    return request.get<EnvironmentRecord[]>('/environment-records', {
+    return request.get<{ data: EnvironmentRecord[]; total?: number }>('/environment-records', {
       params: {
         ...(startDate ? { start_date: startDate } : {}),
         ...(endDate ? { end_date: endDate } : {}),

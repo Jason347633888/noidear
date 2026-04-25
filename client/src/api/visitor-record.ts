@@ -27,7 +27,7 @@ export interface CreateVisitorPayload {
 
 const visitorRecordApi = {
   getList(date?: string) {
-    return request.get<VisitorRecord[]>('/visitor-records', {
+    return request.get<{ data: VisitorRecord[]; total?: number }>('/visitor-records', {
       params: date ? { date } : {},
     });
   },

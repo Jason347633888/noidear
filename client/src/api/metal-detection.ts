@@ -43,7 +43,7 @@ const metalDetectionApi = {
   },
 
   getByBatch(batchId: string) {
-    return request.get<MetalDetectionLog[]>(`/metal-detections/batch/${batchId}`);
+    return request.get<{ data: MetalDetectionLog[]; total?: number }>(`/metal-detections/batch/${batchId}`);
   },
 };
 

@@ -61,11 +61,11 @@ export function getVerdictType(verdict: string): string {
 
 const supplierEvaluationApi = {
   getList() {
-    return request.get<SupplierEvaluation[]>('/supplier-evaluations');
+    return request.get<{ data: SupplierEvaluation[]; total?: number }>('/supplier-evaluations');
   },
 
   getBySupplier(supplierId: string) {
-    return request.get<SupplierEvaluation[]>(`/supplier-evaluations/supplier/${supplierId}`);
+    return request.get<{ data: SupplierEvaluation[]; total?: number }>(`/supplier-evaluations/supplier/${supplierId}`);
   },
 
   create(payload: CreateEvaluationPayload) {

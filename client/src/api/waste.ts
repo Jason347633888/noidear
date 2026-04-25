@@ -77,7 +77,7 @@ export function getDisposalReasonText(reason: string): string {
 
 const wasteApi = {
   getDisposals() {
-    return request.get<WasteDisposalRecord[]>('/waste/disposals');
+    return request.get<{ data: WasteDisposalRecord[]; total?: number }>('/waste/disposals');
   },
 
   createDisposal(payload: CreateDisposalPayload) {
@@ -85,7 +85,7 @@ const wasteApi = {
   },
 
   getWasteRecords(wasteType?: string) {
-    return request.get<WasteRecord[]>('/waste/records', {
+    return request.get<{ data: WasteRecord[]; total?: number }>('/waste/records', {
       params: wasteType ? { waste_type: wasteType } : {},
     });
   },

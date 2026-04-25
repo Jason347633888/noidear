@@ -101,7 +101,7 @@ const handleBeforeUpload = (file: File): boolean => {
   return true;
 };
 
-const handleSuccess = (response: { code: number; data: { url: string; name: string } }, file: File) => {
+const handleSuccess = (response: { code: number; data: { url: string; name: string; message?: string } }, file: File) => {
   if (response.code === 0) {
     ElMessage.success('上传成功');
     emit('success', response, file);

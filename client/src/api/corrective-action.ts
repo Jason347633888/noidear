@@ -74,7 +74,7 @@ export function getCapaTriggerTypeText(triggerType: string): string {
 
 const correctiveActionApi = {
   getList(status?: string) {
-    return request.get<CorrectiveAction[]>('/corrective-actions', {
+    return request.get<{ data: CorrectiveAction[]; total?: number }>('/corrective-actions', {
       params: status ? { status } : {},
     });
   },

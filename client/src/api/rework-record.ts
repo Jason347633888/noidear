@@ -53,7 +53,7 @@ export function getVerdictText(verdict: string): string {
 
 const reworkRecordApi = {
   getList(startDate?: string, endDate?: string) {
-    return request.get<ReworkRecord[]>('/rework-records', {
+    return request.get<{ data: ReworkRecord[]; total?: number }>('/rework-records', {
       params: {
         ...(startDate ? { start_date: startDate } : {}),
         ...(endDate ? { end_date: endDate } : {}),

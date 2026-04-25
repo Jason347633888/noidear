@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig, AxiosError } from 'axios';
+import axios, { AxiosError } from 'axios';
 import { ElMessage } from 'element-plus';
 
 export interface ApiResponse<T = unknown> {
@@ -43,7 +43,9 @@ request.interceptors.response.use(
   (response) => {
     const { code, message, data, details } = response.data as ApiResponse;
     if (code === 0) {
-      return data;
+      // Cast needed: interceptor unwraps data so callers receive T directly,
+      // but axios types require returning AxiosResponse.
+      return data as unknown as typeof response;
     }
     const displayMessage = Array.isArray(message) ? message.join('; ') : message || '请求失败';
     ElMessage.error(displayMessage);
@@ -68,4 +70,27 @@ request.interceptors.response.use(
   },
 );
 
-export default request;
+// Typed wrapper: callers get Promise<T> directly.
+// The response interceptor already unwraps data, but TypeScript can't see through interceptors.
+type RequestConfig = Parameters<typeof request.get>[1];
+
+const typedRequest = {
+  get<T = unknown>(url: string, config?: RequestConfig): Promise<T> {
+    return request.get(url, config) as unknown as Promise<T>;
+  },
+  post<T = unknown>(url: string, data?: unknown, config?: RequestConfig): Promise<T> {
+    return request.post(url, data, config) as unknown as Promise<T>;
+  },
+  put<T = unknown>(url: string, data?: unknown, config?: RequestConfig): Promise<T> {
+    return request.put(url, data, config) as unknown as Promise<T>;
+  },
+  patch<T = unknown>(url: string, data?: unknown, config?: RequestConfig): Promise<T> {
+    return request.patch(url, data, config) as unknown as Promise<T>;
+  },
+  delete<T = unknown>(url: string, config?: RequestConfig): Promise<T> {
+    return request.delete(url, config) as unknown as Promise<T>;
+  },
+};
+
+export { typedRequest as request };
+export default typedRequest;

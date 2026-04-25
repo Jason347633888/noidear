@@ -24,7 +24,7 @@ export interface CreateViolationPayload {
 
 const violationRecordApi = {
   getList(employeeId?: string) {
-    return request.get<ViolationRecord[]>('/violation-records', {
+    return request.get<{ data: ViolationRecord[]; total?: number }>('/violation-records', {
       params: employeeId ? { employee_id: employeeId } : {},
     });
   },
