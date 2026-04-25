@@ -191,7 +191,7 @@ noidear/
 | `import/` | 批量导入（Excel/CSV）、数据校验 | `import.service.ts` |
 | `recycle-bin/` | 软删除管理、恢复、彻底删除、30天自动清理 | `recycle-bin.service.ts`, `recycle-bin.cron.ts` |
 | `workflow/` | 工作流模板、实例、任务、条件分支 | `workflow-template.controller.ts`, `workflow-task.service.ts` |
-| `batch-trace/` | 批次管理、追溯链可视化 | `batch-trace.controller.ts` |
+| `batch-trace/` | 批次管理；追溯端点已加弃用标记（`meta.deprecated: true`），追溯流量收敛至 `traceability/` | `batch-trace.controller.ts` |
 | `warehouse/` | 仓库、物料、领料、物料平衡 | `warehouse.controller.ts` |
 | `equipment/` | 设备台账、维保计划、故障报修 | `equipment.controller.ts` |
 | `training/` | 培训计划、考试题库、学习记录 | `training.controller.ts` |
@@ -248,8 +248,8 @@ noidear/
 | `templates/TemplateDesigner.vue` | `/templates/:id/designer` | 拖拽表单设计器 |
 | `templates/ToleranceConfig.vue` | `/templates/:id/tolerance` | 公差配置 |
 | `tasks/TaskList.vue` | `/tasks` | 任务列表 |
-| `tasks/TaskCreate.vue` | `/tasks/create` | 新建/派发任务 |
-| `tasks/TaskDetail.vue` | `/tasks/:id` | 任务详情与填报 |
+| `tasks/TaskCreate.vue` | `/tasks/create` | 规划中，当前未实现（见 known-feature-gap-register） |
+| `tasks/TaskDetail.vue` | `/tasks/:id` | 规划中，当前未实现（见 known-feature-gap-register） |
 | `approvals/ApprovalPending.vue` | `/approvals/pending` | 待审批列表 |
 | `approvals/ApprovalList.vue` | `/approvals` | 审批历史 |
 | `approvals/ApprovalDetail.vue` | `/approvals/:id` | 审批详情 |
@@ -274,8 +274,9 @@ noidear/
 |-----|---------|--------|------|
 | `deviation/` | `/deviation` | 2 | 偏离报告、偏离分析仪表板 |
 | `workflow/` | `/workflow` | 7 | 工作流模板/实例/设计器/待办/统计 |
-| `batch-trace/` | `/batch-trace` | 3 | 批次列表/详情/追溯可视化 |
-| `warehouse/` | `/warehouse` | 7 | 物料/供应商/领料/暂存/物料平衡/追溯 |
+| `batch-trace/` | `/batch-trace` | 3 | 批次列表/详情；`TraceQuery.vue`、`TraceReport.vue` 已改为桥接页（重定向至 `/traceability`） |
+| `warehouse/` | `/warehouse` | 7 | 物料/供应商/领料/暂存/物料平衡；`Traceability.vue` 已改为桥接页（重定向至 `/traceability`） |
+| `traceability/` | `/traceability` | — | **主权威追溯模块**（单一入口，`TraceabilityQuery.vue`） |
 | `equipment/` | `/equipment` | 10 | 设备/维护计划/维保记录/报修/统计 |
 | `training/` | `/training` | 10 | 培训计划/项目/档案/考试/题库/统计 |
 | `internal-audit/` | `/internal-audit` | 6 | 审计计划/执行/整改/验证/报告 |
@@ -306,7 +307,8 @@ noidear/
 | `approval.ts` | approval | 审批列表、审批操作、审批链 |
 | `audit.ts` | audit | 登录/权限/敏感操作日志查询 |
 | `backup.ts` | backup | 备份管理 |
-| `batch.ts` | batch-trace | 批次 CRUD、追溯链查询 |
+| `batch.ts` | batch-trace | 批次 CRUD（`traceApi` 已删除，追溯查询统一由 `traceability.ts` 承担） |
+| `traceability.ts` | traceability | **权威追溯 API**（正向/反向追溯、导出报告） |
 | `department.ts` | department | 部门 CRUD、部门树 |
 | `deviation.ts` | deviation | 偏离报告查询 |
 | `deviation-analytics.ts` | deviation | 偏离统计分析 |
@@ -333,7 +335,7 @@ noidear/
 | `task.ts` | task | 任务 CRUD + 派发 + 填报 |
 | `todo.ts` | todo | 待办事项 |
 | `training.ts` | training | 培训计划/项目/档案/统计 |
-| `warehouse.ts` | warehouse | 仓库/物料/领料/物料平衡 |
+| `warehouse.ts` | warehouse | 仓库/物料/领料/物料平衡（`traceabilityApi.trace()` 已删除） |
 | `workflow.ts` | workflow | 工作流实例 + 任务审批 |
 
 ---
@@ -384,20 +386,25 @@ server/src/modules/notification/notification.service.ts (站内消息通知)
 
 ### 7.4 任务派发填报流程
 
+> **注意**: 此流程目前**未实现**。`TaskCreate.vue` 和 `TaskDetail.vue` 不存在，
+> 后端 task 模块仅有只读端点（GET list / GET one）。
+> 完整实现已推迟至 `task-flow-completion` 子项目。
+> 详见 `docs/superpowers/reports/2026-04-25-known-feature-gap-register.md`。
+
 ```
-client/src/views/tasks/TaskCreate.vue
+[规划中] client/src/views/tasks/TaskCreate.vue
     ↓
-server/src/modules/task/task.service.ts (create)
+[规划中] server/src/modules/task/task.service.ts (create)
     ↓
-server/src/modules/notification/notification.service.ts (通知执行人)
+[规划中] server/src/modules/notification/notification.service.ts (通知执行人)
     ↓
-client/src/views/tasks/TaskDetail.vue (执行人填报)
+[规划中] client/src/views/tasks/TaskDetail.vue (执行人填报)
     ↓
-server/src/modules/record/record.service.ts (提交记录)
+[规划中] server/src/modules/record/record.service.ts (提交记录)
     ↓
-server/src/modules/deviation/deviation.service.ts (偏离检测)
+[规划中] server/src/modules/deviation/deviation.service.ts (偏离检测)
     ↓
-server/src/modules/approval/approval.service.ts (触发审批)
+[规划中] server/src/modules/approval/approval.service.ts (触发审批)
 ```
 
 ### 7.5 工作流引擎流程
@@ -556,12 +563,13 @@ server/src/modules/workflow/workflow-task.service.ts (分配步骤任务)
 
 ---
 
-**文档版本**: 6.2
-**最后更新**: 2026-04-24
+**文档版本**: 6.3
+**最后更新**: 2026-04-25
 **变更内容**:
 - 完整重写（原 v5.0 描述的是计划结构而非实际结构）
 - 更新目录结构以反映实际已实现的 40 个后端模块、97 个前端 Vue 组件、33 个 API 文件
 - 新增后端模块完整映射表（4.1~4.4）
+- 反映追溯系统收敛：`/traceability` 为唯一权威入口；旧页面（TraceQuery、TraceReport、warehouse/Traceability）改为桥接重定向；`traceApi`/`traceabilityApi.trace()` 已删除；服务端旧端点加弃用标记
 - 新增前端页面完整映射表（5.1~5.5）
 - 新增 API 文件完整索引（第六章）
 - 更新核心流程文件（第七章），新增工作流引擎和 SSO 流程
