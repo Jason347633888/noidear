@@ -1,6 +1,6 @@
 <template>
   <div class="task-detail-page" v-loading="loading">
-    <h2 class="page-title">{{ task?.template?.title || '任务详情' }}</h2>
+    <h2 class="page-title">{{ task?.template?.name || task?.template?.title || '任务详情' }}</h2>
 
     <template v-if="task">
       <!-- Info card: task meta with el-descriptions so statusTag locator works -->
@@ -8,6 +8,7 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="状态">
             <el-tag :type="statusTagType">{{ statusLabel }}</el-tag>
+            <el-tag v-if="isLocked" type="warning" style="margin-left: 8px;">已锁定</el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="截止日期">{{ task.deadline }}</el-descriptions-item>
           <el-descriptions-item label="执行部门">{{ task.department?.name || '-' }}</el-descriptions-item>
@@ -25,14 +26,17 @@
       </el-card>
 
       <!-- Form card: fill-in form rendered from template fieldsJson -->
-      <el-card class="form-card" style="margin-bottom: 16px;" v-if="!isLocked && task.template?.fieldsJson?.length">
+      <el-card class="form-card" style="margin-bottom: 16px;" v-if="!isLocked">
         <el-form label-width="120px">
           <el-form-item
-            v-for="field in task.template.fieldsJson"
+            v-for="field in templateFields"
             :key="(field as FieldDef).name"
             :label="(field as FieldDef).label || (field as FieldDef).name"
           >
             <el-input v-model="formData[(field as FieldDef).name]" />
+          </el-form-item>
+          <el-form-item v-if="templateFields.length === 0">
+            <span style="color: #909399;">暂无表单字段</span>
           </el-form-item>
         </el-form>
 
@@ -109,6 +113,16 @@ const router = useRouter();
 const loading = ref(false);
 const task = ref<Task | null>(null);
 const formData = ref<Record<string, unknown>>({});
+
+const templateFields = computed((): FieldDef[] => {
+  const json = task.value?.template?.fieldsJson as any;
+  if (!json) return [];
+  if (Array.isArray(json)) return json as FieldDef[];
+  if (json.sections && Array.isArray(json.sections)) {
+    return json.sections.flatMap((s: any) => (Array.isArray(s.fields) ? s.fields : []));
+  }
+  return [];
+});
 
 const isLocked = computed(
   () => task.value != null && (isTaskLocked(task.value.status) || task.value.status === 'submitted'),

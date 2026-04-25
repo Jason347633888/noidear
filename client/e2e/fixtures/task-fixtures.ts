@@ -1,4 +1,4 @@
-import { getAuthToken, fetchTemplates, fetchDepartments } from '../helpers/api';
+import { getAuthToken, fetchTemplates, fetchUserDepartmentId } from '../helpers/api';
 
 /**
  * Shared test configuration and data for task E2E tests.
@@ -23,10 +23,10 @@ function requireEnv(name: string): string {
  */
 export function getCredentials() {
   return {
-    adminUser: requireEnv('E2E_ADMIN_USER'),
-    adminPass: requireEnv('E2E_ADMIN_PASS'),
-    memberUser: requireEnv('E2E_USER_USER'),
-    memberPass: requireEnv('E2E_USER_PASS'),
+    adminUser: process.env.E2E_ADMIN_USER || 'admin',
+    adminPass: process.env.E2E_ADMIN_PASS || 'ChangeMe123!',
+    memberUser: process.env.E2E_USER_USER || 'user1',
+    memberPass: process.env.E2E_USER_PASS || '12345678',
   };
 }
 
@@ -44,20 +44,33 @@ export function futureDeadline(): string {
  * Call this in test.beforeAll().
  */
 export async function initSharedTestData(request: Parameters<typeof getAuthToken>[0]) {
-  const { adminUser, adminPass } = getCredentials();
-  const token = await getAuthToken(request, adminUser, adminPass);
-  const templates = await fetchTemplates(request, token);
-  const departments = await fetchDepartments(request, token);
+  const { adminUser, adminPass, memberUser, memberPass } = getCredentials();
+  const adminToken = await getAuthToken(request, adminUser, adminPass);
 
+  const templates = await fetchTemplates(request, adminToken);
   if (templates.length === 0) {
     throw new Error('No active templates. Seed the database before running E2E tests.');
   }
-  if (departments.length === 0) {
-    throw new Error('No active departments. Seed the database before running E2E tests.');
+
+  // Use the member user's department so they can submit tasks created for their department
+  const memberDeptId = await fetchUserDepartmentId(request, adminToken, memberUser);
+  if (!memberDeptId) {
+    throw new Error(`Member user '${memberUser}' has no department assigned.`);
   }
 
-  sharedTemplateId = templates[0].id;
-  sharedDepartmentId = departments[0].id;
+  // Prefer a template that has actual form fields so draft/fill tests work
+  const hasFields = (t: (typeof templates)[0]) => {
+    const fj = t.fieldsJson as any;
+    if (Array.isArray(fj) && fj.length > 0) return true;
+    if (fj && typeof fj === 'object' && Array.isArray(fj.sections)) {
+      return fj.sections.some((s: any) => Array.isArray(s.fields) && s.fields.length > 0);
+    }
+    return false;
+  };
+  const templateWithFields = templates.find(hasFields) ?? templates[0];
 
-  return { templateId: sharedTemplateId, departmentId: sharedDepartmentId, token };
+  sharedTemplateId = templateWithFields.id;
+  sharedDepartmentId = memberDeptId;
+
+  return { templateId: sharedTemplateId, departmentId: sharedDepartmentId, token: adminToken };
 }

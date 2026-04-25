@@ -56,7 +56,7 @@ export class TaskService {
       throw new ForbiddenException('Only admin or leader can create tasks');
     }
 
-    const template = await this.prisma.template.findUnique({
+    const template = await this.prisma.recordTemplate.findUnique({
       where: { id: dto.templateId },
     });
     if (!template) {
@@ -95,7 +95,7 @@ export class TaskService {
     await this.notifyDepartmentMembers(dto.departmentId, {
       type: 'task',
       title: '新任务分配',
-      content: `您有新任务：${template.title}，截止时间 ${new Date(dto.deadline).toLocaleDateString()}`,
+      content: `您有新任务：${template.name}，截止时间 ${new Date(dto.deadline).toLocaleDateString()}`,
     });
 
     return task;
@@ -235,7 +235,7 @@ export class TaskService {
     }
 
     // Validate fields against template
-    const fields = task.template.fieldsJson as unknown as TemplateField[];
+    const fields = this.extractFields(task.template.fieldsJson);
     this.validateFields(dto.data ?? {}, fields);
 
     // Detect deviations
@@ -276,6 +276,12 @@ export class TaskService {
     if (task.status !== 'pending') {
       throw new ConflictException('Task is not in pending status');
     }
+
+    // Persist draft data on the Task itself for quick frontend access
+    await this.prisma.task.update({
+      where: { id: taskId },
+      data: { draftData: (dto.data ?? {}) as object },
+    });
 
     // Upsert: update existing pending draft or create a new one
     const existingDraft = await this.prisma.taskRecord.findFirst({
@@ -359,6 +365,11 @@ export class TaskService {
       },
     });
 
+    await this.prisma.task.update({
+      where: { id: record.taskId },
+      data: { status: dto.status },
+    });
+
     return { success: true };
   }
 
@@ -389,6 +400,19 @@ export class TaskService {
     ]);
 
     return { list, total, page, limit };
+  }
+
+  private extractFields(fieldsJson: unknown): TemplateField[] {
+    if (Array.isArray(fieldsJson)) return fieldsJson as TemplateField[];
+    if (fieldsJson && typeof fieldsJson === 'object') {
+      const json = fieldsJson as Record<string, unknown>;
+      if (Array.isArray(json['sections'])) {
+        return (json['sections'] as Array<{ fields?: TemplateField[] }>).flatMap(
+          (s) => (Array.isArray(s.fields) ? s.fields : []),
+        );
+      }
+    }
+    return [];
   }
 
   private validateFields(data: Record<string, unknown>, fields: TemplateField[]) {
