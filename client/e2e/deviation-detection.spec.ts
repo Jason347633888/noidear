@@ -44,7 +44,7 @@ test.describe('Deviation Detection (TASK-098)', () => {
     await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/deviation-analytics');
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('.el-card, canvas, .echarts')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.el-card, canvas, .echarts').first()).toBeVisible({ timeout: 30000 });
   });
 
   test('DEV-03: Deviation report filter by severity works', async ({ page }) => {

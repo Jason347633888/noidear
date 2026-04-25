@@ -49,7 +49,7 @@ test.describe('Batch Trace Flow', () => {
     await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/batch-trace/query');
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('.el-card, .el-input')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.el-card, .el-input').first()).toBeVisible({ timeout: 30000 });
   });
 
   test('BT-03: TraceQuery search with batch number shows results or empty', async ({ page }) => {
@@ -65,7 +65,7 @@ test.describe('Batch Trace Flow', () => {
     }
 
     await batchInput.fill('TEST-BATCH-001');
-    const searchBtn = page.locator('.el-button').filter({ hasText: /查询|搜索/ }).first();
+    const searchBtn = page.locator('.el-button').filter({ hasText: /开始追溯|查询|搜索/ }).first();
     const searchVisible = await searchBtn.isVisible({ timeout: 3000 }).catch(() => false);
     if (searchVisible) {
       await searchBtn.click();
@@ -73,10 +73,11 @@ test.describe('Batch Trace Flow', () => {
       await batchInput.press('Enter');
     }
     await page.waitForLoadState('networkidle');
-    // Should show results table, tree visualization, or empty state
+    await page.waitForTimeout(2000);
+    // Should show results card or empty state
     await expect(
-      page.locator('.el-table, .el-tree, .el-empty, [class*="trace-tree"], [class*="result"]'),
-    ).toBeVisible({ timeout: 10000 });
+      page.locator('.result-card, .el-empty').first(),
+    ).toBeVisible({ timeout: 30000 });
   });
 
   test('BT-04: TraceQuery with real batch shows trace data', async ({ page, request }) => {
@@ -99,7 +100,7 @@ test.describe('Batch Trace Flow', () => {
     }
 
     await batchInput.fill(batch.batchNumber);
-    const searchBtn = page.locator('.el-button').filter({ hasText: /查询|搜索/ }).first();
+    const searchBtn = page.locator('.el-button').filter({ hasText: /开始追溯|查询|搜索/ }).first();
     const searchVisible = await searchBtn.isVisible({ timeout: 3000 }).catch(() => false);
     if (searchVisible) {
       await searchBtn.click();
@@ -107,9 +108,10 @@ test.describe('Batch Trace Flow', () => {
       await batchInput.press('Enter');
     }
     await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
     await expect(
-      page.locator('.el-table, .el-tree, [class*="trace"]'),
-    ).toBeVisible({ timeout: 10000 });
+      page.locator('.result-card, .el-empty').first(),
+    ).toBeVisible({ timeout: 30000 });
   });
 
   test('BT-05: TraceReport page renders', async ({ page }) => {

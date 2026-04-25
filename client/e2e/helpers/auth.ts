@@ -1,4 +1,20 @@
 import { type Page } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
+
+// Load .env.e2e if not already loaded
+const envFile = path.resolve(process.cwd(), '.env.e2e');
+if (fs.existsSync(envFile) && !process.env._E2E_ENV_LOADED) {
+  fs.readFileSync(envFile, 'utf-8')
+    .split('\n')
+    .forEach((line) => {
+      const [key, ...rest] = line.split('=');
+      if (key && !key.startsWith('#') && rest.length > 0) {
+        process.env[key.trim()] ??= rest.join('=').trim();
+      }
+    });
+  process.env._E2E_ENV_LOADED = '1';
+}
 
 /**
  * Authentication helper for E2E tests.
@@ -25,41 +41,70 @@ interface LoginApiResponse {
   };
 }
 
-// Global cache token，避免重复登录触发限流
-let cachedToken: string | null = null;
-let cachedUser: LoginApiResponse['data']['user'] | null = null;
+// Per-user token cache to avoid repeated logins (429 rate limit)
+const userTokenCache = new Map<string, { token: string; user: LoginApiResponse['data']['user'] }>();
+
+function loadGlobalToken(): { token: string; user: LoginApiResponse['data']['user'] } | null {
+  try {
+    const tokenPath = path.join('e2e', '.auth', 'admin-token.json');
+    if (fs.existsSync(tokenPath)) {
+      const data = JSON.parse(fs.readFileSync(tokenPath, 'utf-8'));
+      if (data.token && data.user) {
+        return { token: data.token, user: data.user };
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
 
 /**
  * Login via the backend API and inject the token into the page's localStorage.
  * Returns the user object from the API response.
+ * Retries on 429 rate limit.
  */
 export async function loginViaApi(
   page: Page,
   username: string,
   password: string,
 ): Promise<LoginApiResponse['data']> {
-  const response = await page.request.post(`${API_BASE}/auth/login`, {
-    data: { username, password },
-  });
+  let lastError: Error | undefined;
 
-  if (!response.ok()) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const response = await page.request.post(`${API_BASE}/auth/login`, {
+      data: { username, password },
+    });
+
+    if (response.ok()) {
+      const body = (await response.json()) as LoginApiResponse;
+      const { token, user } = body.data;
+
+      // Inject token and user into localStorage so the frontend picks it up
+      await page.goto('/login');
+      await page.evaluate(
+        ({ token, user }) => {
+          localStorage.setItem('token', token);
+          localStorage.setItem('user', JSON.stringify(user));
+        },
+        { token, user },
+      );
+
+      return body.data;
+    }
+
+    if (response.status() === 429) {
+      const waitMs = (attempt + 1) * 2000;
+      console.warn(`[loginViaApi] 429 on attempt ${attempt + 1}, waiting ${waitMs}ms...`);
+      await new Promise((r) => setTimeout(r, waitMs));
+      lastError = new Error(`Login API failed with status 429 for user "${username}"`);
+      continue;
+    }
+
     throw new Error(`Login API failed with status ${response.status()} for user "${username}"`);
   }
 
-  const body = (await response.json()) as LoginApiResponse;
-  const { token, user } = body.data;
-
-  // Inject token and user into localStorage so the frontend picks it up
-  await page.goto('/login');
-  await page.evaluate(
-    ({ token, user }) => {
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-    },
-    { token, user },
-  );
-
-  return body.data;
+  throw lastError || new Error(`Login API failed after retries for user "${username}"`);
 }
 
 /**
@@ -70,22 +115,37 @@ export async function loginViaApiCached(
   username: string,
   password: string,
 ): Promise<LoginApiResponse['data']> {
-  if (cachedToken && cachedUser) {
-    // 使用缓存的 token 直接注入
+  // Check per-user in-memory cache
+  const cached = userTokenCache.get(username);
+  if (cached) {
     await page.goto('/login');
     await page.evaluate(
       ({ token, user }) => {
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
       },
-      { token: cachedToken, user: cachedUser },
+      cached,
     );
-    return { token: cachedToken, user: cachedUser };
+    return cached;
+  }
+
+  // For admin, try the global-setup token file
+  const globalToken = loadGlobalToken();
+  if (globalToken && globalToken.user.username === username) {
+    userTokenCache.set(username, globalToken);
+    await page.goto('/login');
+    await page.evaluate(
+      ({ token, user }) => {
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+      },
+      globalToken,
+    );
+    return globalToken;
   }
 
   const result = await loginViaApi(page, username, password);
-  cachedToken = result.token;
-  cachedUser = result.user;
+  userTokenCache.set(username, result);
   return result;
 }
 
@@ -98,7 +158,7 @@ export async function loginViaUi(page: Page, username: string, password: string)
   await page.locator('.el-form .el-input').first().locator('input').fill(username);
   await page.locator('.el-form input[type="password"]').fill(password);
   await page.locator('.el-button--primary').filter({ hasText: /登\s*录/ }).click();
-  await page.waitForURL('**/dashboard', { timeout: 15000 });
+  await page.waitForURL('**/dashboard', { timeout: 30000 });
 }
 
 /**

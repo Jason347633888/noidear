@@ -293,6 +293,27 @@ export async function fetchTemplates(
 }
 
 /**
+ * Fetch a user's departmentId by their username (admin token required).
+ */
+export async function fetchUserDepartmentId(
+  request: APIRequestContext,
+  adminToken: string,
+  username: string,
+): Promise<string | null> {
+  const response = await request.get(`${API_BASE}/users?keyword=${encodeURIComponent(username)}&limit=10`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+
+  if (!response.ok()) {
+    throw new Error(`Fetch users failed: ${response.status()}`);
+  }
+
+  const body = (await response.json()) as ApiResponse<{ list: Array<{ username: string; departmentId: string | null }> }>;
+  const user = body.data.list.find((u) => u.username === username);
+  return user?.departmentId ?? null;
+}
+
+/**
  * Fetch available departments.
  */
 export async function fetchDepartments(

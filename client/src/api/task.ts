@@ -14,7 +14,8 @@ export type TaskStatus =
 
 export interface TaskTemplate {
   id: string;
-  title: string;
+  name: string;
+  title?: string;
   fieldsJson: unknown[];
 }
 

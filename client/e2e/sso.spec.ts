@@ -23,13 +23,13 @@ test.describe('SSO 单点登录', () => {
   test('表单校验必填字段', async ({ page }) => {
     await page.goto('/login/sso');
     await page.click('button:has-text("LDAP 登录")');
-    await expect(page.locator('.el-form-item__error')).toBeVisible();
+    await expect(page.locator('.el-form-item__error').first()).toBeVisible();
   });
 
   test('返回普通登录链接正常', async ({ page }) => {
     await page.goto('/login/sso');
     await page.click('button:has-text("返回普通登录")');
-    await expect(page.url()).toContain('/login');
+    await page.waitForURL('**/login', { timeout: 10000 });
     await expect(page.url()).not.toContain('/sso');
   });
 });

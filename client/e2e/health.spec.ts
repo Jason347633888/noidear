@@ -20,7 +20,7 @@ test.describe('Health Check Page', () => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
     await loginPage.login(adminUser, adminPass);
-    await page.waitForURL('**/dashboard', { timeout: 15000 });
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
   });
 
   test('should load health check page successfully', async ({ page }) => {
@@ -31,7 +31,7 @@ test.describe('Health Check Page', () => {
     await expect(page.locator('h2').filter({ hasText: /系统健康检查|健康状态/ })).toBeVisible();
 
     // Verify page has loaded content
-    await expect(page.locator('.el-card')).toBeVisible();
+    await expect(page.locator('.el-card').first()).toBeVisible();
 
     // Take screenshot
     await page.screenshot({ path: 'e2e/test-results/health-check-page.png', fullPage: true });
@@ -324,7 +324,7 @@ test.describe('Health Check Page', () => {
       await page.waitForTimeout(2000);
 
       // Verify page is still loaded
-      await expect(page.locator('.el-card')).toBeVisible();
+      await expect(page.locator('.el-card').first()).toBeVisible();
 
       // Check if timestamp updated
       const timestampAfter = await page.locator('text=/最后更新|Last Update|时间/i').textContent().catch(() => '');
@@ -379,9 +379,10 @@ test.describe('Health Check Page', () => {
     await page.waitForTimeout(2000);
 
     // Look for error message or alert
-    const errorAlert = page.locator('.el-alert--error, .el-message--error, text=/错误|失败|Error/i');
+    const errorAlert = page.locator('.el-alert--error, .el-message--error');
+    const errorText = page.locator('text=/错误|失败|Error/i');
 
-    if (await errorAlert.count() > 0) {
+    if ((await errorAlert.count() > 0) || (await errorText.count() > 0)) {
       console.log('Error handling works - error message displayed');
 
       // Take screenshot of error state

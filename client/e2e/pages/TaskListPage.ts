@@ -31,10 +31,10 @@ export class TaskListPage {
   }
 
   async waitForTableLoaded() {
-    // Wait until loading overlay disappears
-    await this.loadingOverlay.waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {
-      // Loading may already be hidden
-    });
+    // Wait for the table element to exist (component mounted)
+    await this.taskTable.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
+    // Wait until loading overlay disappears (API response received)
+    await this.loadingOverlay.waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
     await this.page.waitForLoadState('networkidle');
   }
 

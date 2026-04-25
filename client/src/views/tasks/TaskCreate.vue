@@ -68,7 +68,7 @@ async function loadTemplates() {
     const data = await request.get<{ list?: Array<{ id: string; name: string; title?: string }> } | Array<{ id: string; name: string; title?: string }>>(
       '/record-templates?status=active&limit=100',
     );
-    const items = Array.isArray(data) ? data : (data as any).list ?? [];
+    const items = Array.isArray(data) ? data : (data as any).data ?? (data as any).list ?? [];
     templateOptions.value = items.map((t: any) => ({
       id: t.id,
       name: t.name ?? t.title ?? t.code ?? t.id,
@@ -86,7 +86,7 @@ async function loadDepartments() {
     const data = await request.get<{ list?: Array<{ id: string; name: string }> } | Array<{ id: string; name: string }>>(
       '/departments?status=active&limit=100',
     );
-    const items = Array.isArray(data) ? data : (data as any).list ?? [];
+    const items = Array.isArray(data) ? data : (data as any).data ?? (data as any).list ?? [];
     departmentOptions.value = items.map((d: any) => ({ id: d.id, name: d.name }));
   } catch {
     // Non-fatal

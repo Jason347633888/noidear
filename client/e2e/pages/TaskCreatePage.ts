@@ -38,7 +38,7 @@ export class TaskCreatePage {
    */
   async selectFirstTemplate() {
     await this.templateSelect.click();
-    // Wait for dropdown options to appear
+    await this.page.waitForTimeout(300);
     const option = this.page.locator('.el-select-dropdown__item').first();
     await option.waitFor({ state: 'visible', timeout: 10000 });
     await option.click();
@@ -56,12 +56,22 @@ export class TaskCreatePage {
 
   /**
    * Select the first available department from the dropdown.
+   * Uses aria-controls to scope to the department select's own dropdown panel.
    */
   async selectFirstDepartment() {
+    const input = this.departmentSelect.locator('input');
     await this.departmentSelect.click();
-    const option = this.page.locator('.el-select-dropdown__item').first();
-    await option.waitFor({ state: 'visible', timeout: 10000 });
-    await option.click();
+    const dropdownId = await input.getAttribute('aria-controls');
+    if (dropdownId) {
+      const option = this.page.locator(`#${dropdownId} .el-select-dropdown__item`).first();
+      await option.waitFor({ state: 'visible', timeout: 10000 });
+      await option.click();
+    } else {
+      // Fallback: wait for any non-selected item to be visible
+      const option = this.page.locator('.el-select-dropdown__item:not(.is-selected)').first();
+      await option.waitFor({ state: 'visible', timeout: 10000 });
+      await option.click();
+    }
   }
 
   /**
@@ -99,6 +109,18 @@ export class TaskCreatePage {
       // Fallback: select any available future date
       const anyDay = this.page.locator('.el-date-table td.available:not(.disabled)').nth(20);
       await anyDay.click();
+    }
+    // For datetime picker, confirm the time portion and close the panel
+    const confirmBtn = this.page.locator('.el-picker-panel .el-button').filter({ hasText: /确认|确定|OK/ }).first();
+    if (await confirmBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await confirmBtn.click();
+    } else {
+      // Dismiss by pressing Escape if panel is still open
+      const panel = this.page.locator('.el-date-picker, .el-date-time-picker');
+      if (await panel.isVisible({ timeout: 500 }).catch(() => false)) {
+        await this.page.keyboard.press('Escape');
+        await this.page.waitForTimeout(200);
+      }
     }
   }
 

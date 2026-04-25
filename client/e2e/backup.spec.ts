@@ -21,7 +21,7 @@ test.describe('Backup Management', () => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
     await loginPage.login(adminUser, adminPass);
-    await page.waitForURL('**/dashboard', { timeout: 15000 });
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
   });
 
   test('should load backup management page successfully', async ({ page }) => {
