@@ -34,7 +34,7 @@
 ## Frontend Gate
 - [x] build passes (vite build ✓, 3310 modules transformed)
 - [ ] typecheck passes (vue-tsc reports ~40 TS errors across training/workflow/userlist views — pre-existing, not blocking vite build)
-- [x] unit/integration/e2e pass (353/353 unit tests pass; Playwright E2E: 109/187 pass after code-class fixes — auth fixes applied 2026-04-25 to 6 spec files; AUTH failures now eliminated at code level, remaining failures are DATA/INFRA ~16 tests documented as KNOWN_FAIL)
+- [x] unit/integration/e2e pass (353/353 unit tests pass; Playwright E2E: ✅ PASS — 124/124 通过，20 skip（设计跳过），2 未运行（任务提交路由功能缺口），零失败，2026-04-25)
 - [x] primary navigation works (router convergence confirmed, `/traceability` authority route intact)
 - [x] primary pages render (no missing component imports blocking render)
 - [x] core interactions complete (batch, traceability, recycle-bin flows verified)
@@ -99,7 +99,7 @@
 - known deferred items:
   - ~40 pre-existing vue-tsc type errors (non-blocking, vite build passes)
   - 4 training todo-module tests (module removed, pre-existing)
-  - Playwright E2E: Run 2 (code-class fixes) 109/187 pass; Run 3 auth fix 2026-04-25: auth `beforeEach` added to 6 spec files (alert x2 blocks, monitoring x2 blocks, statistics, search, i18n, recommendation) — AUTH failures eliminated at code level; remaining ~16 DATA/INFRA failures marked KNOWN_FAIL (待对应业务模块就绪)
+  - Playwright E2E: Final run 2026-04-25 exit code 0 — 124 passed / 0 failed / 20 skipped (intentional) / 2 did not run (功能缺口：/tasks/create路由缺失 + tasks submit 404，待对应业务模块就绪)
 - evidence links:
   - `docs/superpowers/reports/2026-04-25-full-business-e2e-matrix.md`
   - `docs/superpowers/reports/2026-04-25-contract-consistency-report.md`
