@@ -116,19 +116,22 @@ limit: number
 
 ### actionRoute 映射表
 
-后端根据 `type` 计算 `actionRoute`，前端不自行维护映射：
+后端根据 `type` 计算 `actionRoute`，前端不自行维护映射。  
+映射表以**当前 `client/src/router/index.ts` 中实际存在的路由**为准：
 
-| type | actionRoute 模板 |
-|------|-----------------|
-| `training_attend` | `/training/projects/{relatedId}` |
-| `training_organize` | `/training/projects/{relatedId}` |
-| `approval` | `/approvals/{relatedId}` |
-| `audit_rectification` | `/internal-audit/rectification/{relatedId}` |
-| `equipment_maintain` | `/equipment/{relatedId}` |
-| `inventory` | `/inventory/{relatedId}` |
-| `change_request` | `/change-requests/{relatedId}` |
+| type | actionRoute 模板 | 状态 |
+|------|-----------------|------|
+| `training_attend` | `/training/projects/{relatedId}` | ✅ 路由存在（router:444） |
+| `training_organize` | `/training/projects/{relatedId}` | ✅ 路由存在（router:444） |
+| `approval` | `/approvals/detail/{relatedId}` | ✅ 路由存在（router:94） |
+| `audit_rectification` | `/internal-audit/rectifications` | ⚠️ 仅列表页，无详情路由；跳转至列表，用户自行定位 |
+| `equipment_maintain` | `/equipment/{relatedId}` | ✅ 路由存在（router:373） |
+| `inventory` | `null` | ❌ 路由不存在，本次不新增，返回 null |
+| `change_request` | `null` | ❌ 路由不存在，本次不新增，返回 null |
 
-**兜底规则**：`type` 未命中映射时返回 `actionRoute: null`，前端显示"暂不支持跳转"。
+**兜底规则**：`type` 未命中映射，或映射值为 `null` 时，返回 `actionRoute: null`，前端显示"暂不支持跳转"。
+
+**后续**：`inventory` / `change_request` 路由待对应业务模块就绪后再补映射，后端映射表集中在 `todo.service.ts` 一处修改即可，不影响前端。
 
 ---
 
@@ -141,6 +144,23 @@ client/src/views/my-todos/MyTodos.vue
 client/src/api/todo.ts
 client/src/stores/todo.ts   (useTodoStore)
 ```
+
+### 旧 Todo 类型迁移
+
+`client/src/types/training.ts` 中当前存在以下类型定义（第 258 行起）：
+
+```ts
+// 需要废弃的旧定义
+export interface TodoTask { ... }        // 缺 actionRoute、completedBy
+export interface TodoStatistics { ... }  // byType 是 Record（非 Partial），含 overdue（新设计不含）
+```
+
+**处理规则**：
+
+1. 新建 `client/src/types/todo.ts`，定义权威 `TodoItem`、`TodoListResponse`、`TodoStatisticsResponse` 类型（与后端 API 返回结构一致，含 `actionRoute`、`completedBy`、`Partial<Record<TodoType, number>>`）
+2. `client/src/api/todo.ts` 只从 `client/src/types/todo.ts` 引用类型
+3. `client/src/types/training.ts` 中的 `TodoTask` / `TodoStatistics` 标记 `@deprecated`，不删除（避免破坏已有调用方），待后续统一清理
+4. `client/src/views/my-todos/` 只使用新类型，不引用旧 `training.ts` 的 Todo 相关类型
 
 ### 路由
 
@@ -269,8 +289,8 @@ Docker 基础服务已就绪（postgres/redis/minio）。
 1. `cd server && npm run start:dev`（监听 3000）
 2. `cd client && npm run dev`（监听 5173）
 3. **健康检查**（端口就绪不等于服务就绪）：
-   - 后端：验证 `GET /api/v1/health` 或任意公开端点返回 2xx
-   - 前端：验证 `GET http://localhost:5173` 返回 200
+   - 后端：`GET http://localhost:3000/api/v1/health` 返回 2xx（全局前缀 `api/v1` 已在 `server/src/main.ts:51` 确认，`HealthController` 挂载在 `@Controller('health')`)
+   - 前端：`GET http://localhost:5173` 返回 200
 4. 确认就绪后运行：`cd client && npx playwright test --reporter=list`
 
 ### 认证规则
