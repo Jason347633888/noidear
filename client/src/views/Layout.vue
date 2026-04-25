@@ -597,6 +597,13 @@ router.afterEach(() => {
   background: var(--bg);
   padding: 24px;
   overflow-y: auto;
+  min-height: 0; /* flexbox 内滚动必须 */
+}
+
+/* 内层纵向容器需要高度约束才能让 el-main 滚动 */
+.layout-container > :deep(.el-container) {
+  height: 100vh;
+  overflow: hidden;
 }
 
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
