@@ -154,6 +154,12 @@ model User {
   // Training Management System relations
   todoTasks TodoTask[] @relation("UserTodoTasks")
 
+  // Task Flow relations
+  templatesCreated    Template[]     @relation("TemplateCreator")
+  tasksCreated        Task[]         @relation("TaskCreator")
+  taskRecordsSubmitted TaskRecord[]  @relation("TaskRecordSubmitter")
+  taskRecordsApproved  TaskRecord[]  @relation("TaskRecordApprover")
+
   // Internal Audit Management System relations (TASK-325)
   createdAuditPlans     AuditPlan[]    @relation("CreatedAuditPlans")
   auditedPlans          AuditPlan[]    @relation("AuditedPlans")
@@ -191,6 +197,9 @@ model Department {
   departmentPermissions DepartmentPermission[]
   documents            Document[]            @relation("DocumentDepartment")
   recordTaskAssignments RecordTaskAssignment[] @relation("RecordTaskDepartment")
+
+  // Task Flow relations
+  tasks Task[] @relation("TaskDepartment")
 
   @@map("departments")
 }
@@ -3048,4 +3057,68 @@ model DocumentReadConfirmation {
 
   @@unique([document_id, user_id])
   @@map("document_read_confirmations")
+}
+
+// ========================================
+// One-time Task Flow (TASK-FLOW)
+// ========================================
+
+model Template {
+  id         String   @id @default(cuid())
+  number     String   @unique
+  title      String
+  fieldsJson Json
+  version    Float    @default(1.0)
+  status     String   @default("active")
+  creatorId  String
+  creator    User     @relation("TemplateCreator", fields: [creatorId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  tasks      Task[]
+
+  @@map("templates")
+}
+
+model Task {
+  id           String       @id @default(cuid())
+  templateId   String
+  template     Template     @relation(fields: [templateId], references: [id])
+  departmentId String
+  department   Department   @relation("TaskDepartment", fields: [departmentId], references: [id])
+  deadline     DateTime
+  status       String       @default("pending")
+  title        String?
+  description  String?
+  creatorId    String
+  creator      User         @relation("TaskCreator", fields: [creatorId], references: [id])
+  draftData    Json?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  records      TaskRecord[]
+
+  @@index([departmentId])
+  @@index([status])
+  @@map("tasks")
+}
+
+model TaskRecord {
+  id               String    @id @default(cuid())
+  taskId           String
+  task             Task      @relation(fields: [taskId], references: [id])
+  templateId       String
+  dataJson         Json      @default("{}")
+  submitterId      String
+  submitter        User      @relation("TaskRecordSubmitter", fields: [submitterId], references: [id])
+  status           String    @default("pending")
+  submittedAt      DateTime  @default(now())
+  approvedAt       DateTime?
+  approverId       String?
+  approver         User?     @relation("TaskRecordApprover", fields: [approverId], references: [id])
+  comment          String?
+  hasDeviation     Boolean   @default(false)
+  deviationCount   Int       @default(0)
+  deviationReasons Json?
+
+  @@index([taskId])
+  @@map("task_records")
 }

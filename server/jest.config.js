@@ -23,7 +23,8 @@ module.exports = {
     'test/export.e2e-spec.ts',
     'test/statistics.e2e-spec.ts',
     'test/task-batch-export.e2e-spec.ts',
-    'test/task.e2e-spec.ts',
+    // task.e2e-spec.ts: now enabled after Task Flow backend implementation
+    // 'test/task.e2e-spec.ts',
     // Tests requiring pre-seeded admin user with known password (env: TEST_USERNAME/TEST_PASSWORD)
     'test/health.e2e-spec.ts',
     'test/audit.e2e-spec.ts',

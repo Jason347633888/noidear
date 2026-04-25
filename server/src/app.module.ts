@@ -82,6 +82,7 @@ import { ScheduledTaskModule } from './modules/scheduled-task/scheduled-task.mod
 import { UploadModule } from './modules/upload/upload.module';
 import { ModelLandingModule } from './modules/model-landing/model-landing.module';
 import { TodoModule } from './modules/todo/todo.module';
+import { TaskModule } from './modules/task/task.module';
 
 @Module({
   imports: [
@@ -174,6 +175,7 @@ import { TodoModule } from './modules/todo/todo.module';
     UploadModule,
     ModelLandingModule,
     TodoModule,
+    TaskModule,
   ],
   providers: [
     {
