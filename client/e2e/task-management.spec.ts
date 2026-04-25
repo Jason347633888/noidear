@@ -30,7 +30,7 @@ test.describe('Task Management (TASK-052)', () => {
     await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/tasks');
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('.el-table, .el-empty')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.el-table, .el-empty').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('TK-02: Task create page loads', async ({ page }) => {
@@ -38,7 +38,7 @@ test.describe('Task Management (TASK-052)', () => {
     await loginViaApiCached(page, adminUser, adminPass);
     await page.goto('/tasks/create');
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('form, .el-form, .el-steps, .el-card')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('form, .el-form, .el-steps, .el-card').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('TK-03: Task detail page loads for an existing task', async ({ page, request }) => {

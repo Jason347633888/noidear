@@ -99,7 +99,7 @@ test.describe('Document Management (TASK-020)', () => {
     await page.waitForLoadState('networkidle');
 
     // Detail page should display document info
-    await expect(page.locator('.el-descriptions, .el-card')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.el-descriptions, .el-card').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('DM-06: Search filter works on document list', async ({ page }) => {
