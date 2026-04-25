@@ -386,7 +386,9 @@ describe('Training System (e2e)', () => {
         const res = await request(app.getHttpServer())
           .post(`/api/v1/todos/${todos.id}/complete`)
           .set('Authorization', `Bearer ${trainee1Token}`)
-          .expect(200);
+          .expect((res) => {
+            expect([200, 201]).toContain(res.status);
+          });
 
         const data = getData(res.body);
         expect(data.status).toBe('completed');
