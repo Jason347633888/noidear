@@ -111,6 +111,16 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/tasks/TaskList.vue'),
       },
       {
+        path: 'tasks/create',
+        name: 'TaskCreate',
+        component: () => import('@/views/tasks/TaskCreate.vue'),
+      },
+      {
+        path: 'tasks/:id',
+        name: 'TaskDetail',
+        component: () => import('@/views/tasks/TaskDetail.vue'),
+      },
+      {
         path: 'i18n',
         name: 'I18nManager',
         component: () => import('@/views/i18n/I18nManager.vue'),

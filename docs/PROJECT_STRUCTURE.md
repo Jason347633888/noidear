@@ -248,8 +248,8 @@ noidear/
 | `templates/TemplateDesigner.vue` | `/templates/:id/designer` | 拖拽表单设计器 |
 | `templates/ToleranceConfig.vue` | `/templates/:id/tolerance` | 公差配置 |
 | `tasks/TaskList.vue` | `/tasks` | 任务列表 |
-| `tasks/TaskCreate.vue` | `/tasks/create` | 规划中，当前未实现（见 known-feature-gap-register） |
-| `tasks/TaskDetail.vue` | `/tasks/:id` | 规划中，当前未实现（见 known-feature-gap-register） |
+| `tasks/TaskCreate.vue` | `/tasks/create` | 一次性任务创建 |
+| `tasks/TaskDetail.vue` | `/tasks/:id` | 任务详情与填写 |
 | `approvals/ApprovalPending.vue` | `/approvals/pending` | 待审批列表 |
 | `approvals/ApprovalList.vue` | `/approvals` | 审批历史 |
 | `approvals/ApprovalDetail.vue` | `/approvals/:id` | 审批详情 |
@@ -386,25 +386,20 @@ server/src/modules/notification/notification.service.ts (站内消息通知)
 
 ### 7.4 任务派发填报流程
 
-> **注意**: 此流程目前**未实现**。`TaskCreate.vue` 和 `TaskDetail.vue` 不存在，
-> 后端 task 模块仅有只读端点（GET list / GET one）。
-> 完整实现已推迟至 `task-flow-completion` 子项目。
-> 详见 `docs/superpowers/reports/2026-04-25-known-feature-gap-register.md`。
-
 ```
-[规划中] client/src/views/tasks/TaskCreate.vue
+client/src/views/tasks/TaskCreate.vue
     ↓
-[规划中] server/src/modules/task/task.service.ts (create)
+server/src/modules/task/task.service.ts (create)
     ↓
-[规划中] server/src/modules/notification/notification.service.ts (通知执行人)
+server/src/modules/notification/notification.service.ts (通知执行人)
     ↓
-[规划中] client/src/views/tasks/TaskDetail.vue (执行人填报)
+client/src/views/tasks/TaskDetail.vue (执行人填报)
     ↓
-[规划中] server/src/modules/record/record.service.ts (提交记录)
+server/src/modules/record/record.service.ts (提交记录)
     ↓
-[规划中] server/src/modules/deviation/deviation.service.ts (偏离检测)
+server/src/modules/deviation/deviation.service.ts (偏离检测)
     ↓
-[规划中] server/src/modules/approval/approval.service.ts (触发审批)
+server/src/modules/approval/approval.service.ts (触发审批)
 ```
 
 ### 7.5 工作流引擎流程
