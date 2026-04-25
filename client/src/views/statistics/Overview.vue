@@ -171,8 +171,8 @@ const getDateRange = (range: string): { startDate: string; endDate: string } => 
 const fetchData = async () => {
   try {
     const params = getDateRange(timeRange.value);
-    const res = await request.get('/statistics/overview', { params });
-    overviewData.value = res.data || res;
+    const res = await request.get<any>('/statistics/overview', { params });
+    overviewData.value = (res as any).data || res;
     await nextTick();
     initChart();
   } catch (error: any) {

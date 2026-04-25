@@ -310,6 +310,7 @@ export interface QuestionQueryDto {
 export interface LearningRecordQueryDto {
   projectId?: string;
   userId?: string;
+  limit?: number;
 }
 
 export interface TodoTaskQueryDto {

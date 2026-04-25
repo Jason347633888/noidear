@@ -71,7 +71,7 @@ const createLinkage = async (actionType: string) => {
   if (!result.value) return;
   try {
     await traceabilityApi.createLinkage({
-      actionType,
+      actionType: actionType as 'deviation' | 'complaint' | 'recallAssessment' | 'traceabilityDrill' | 'capa',
       sourceQueryRef: result.value.summary.queryId ?? '',
     });
     ElMessage.success('联动已发起');

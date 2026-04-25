@@ -88,7 +88,7 @@ export const queryLoginLogs = (params: QueryLogsParams) => {
 
 // 导出登录日志
 export const exportLoginLogs = (params: QueryLogsParams) => {
-  return request.get('/audit/login-logs/export', {
+  return request.get<Blob>('/audit/login-logs/export', {
     params,
     responseType: 'blob',
   });
@@ -106,7 +106,7 @@ export const queryPermissionLogs = (params: QueryLogsParams) => {
 
 // 导出权限变更日志
 export const exportPermissionLogs = (params: QueryLogsParams) => {
-  return request.get('/audit/permission-logs/export', {
+  return request.get<Blob>('/audit/permission-logs/export', {
     params,
     responseType: 'blob',
   });
@@ -124,7 +124,7 @@ export const querySensitiveLogs = (params: QueryLogsParams) => {
 
 // 导出敏感操作日志
 export const exportSensitiveLogs = (params: QueryLogsParams) => {
-  return request.get('/audit/sensitive-logs/export', {
+  return request.get<Blob>('/audit/sensitive-logs/export', {
     params,
     responseType: 'blob',
   });

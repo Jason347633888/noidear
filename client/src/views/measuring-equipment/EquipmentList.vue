@@ -355,7 +355,7 @@ async function handleCreateCalibration() {
       measuring_equipment_id: currentEquipment.value.id,
       calibrated_at: calibrationForm.calibrated_at,
       valid_until: calibrationForm.valid_until,
-      result: calibrationForm.result,
+      result: calibrationForm.result as 'pass' | 'fail' | 'conditional',
       calibration_body: calibrationForm.calibration_body || undefined,
       certificate_no: calibrationForm.certificate_no || undefined,
       notes: calibrationForm.notes || undefined,

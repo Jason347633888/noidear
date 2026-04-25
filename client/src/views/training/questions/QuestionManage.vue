@@ -149,7 +149,7 @@ const initSortable = () => {
     return;
   }
 
-  if (project.value.status !== 'planned' && project.value.status !== 'draft') {
+  if (project.value.status !== 'planned') {
     return;
   }
 

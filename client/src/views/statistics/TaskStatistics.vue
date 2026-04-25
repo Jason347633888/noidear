@@ -197,8 +197,8 @@ const handleDateChange = (value: any) => {
 
 const fetchDepartments = async () => {
   try {
-    const res = await request.get('/departments');
-    departments.value = res.data || res.list || [];
+    const res = await request.get<any>('/departments');
+    departments.value = (res as any).data || (res as any).list || [];
   } catch (error: any) {
     ElMessage.error('获取部门列表失败');
   }
@@ -206,8 +206,8 @@ const fetchDepartments = async () => {
 
 const fetchTemplates = async () => {
   try {
-    const res = await request.get('/templates');
-    templates.value = res.data || res.list || [];
+    const res = await request.get<any>('/templates');
+    templates.value = (res as any).data || (res as any).list || [];
   } catch (error: any) {
     ElMessage.error('获取模板列表失败');
   }
@@ -222,8 +222,8 @@ const fetchData = async () => {
     if (filters.value.startDate) params.startDate = filters.value.startDate;
     if (filters.value.endDate) params.endDate = filters.value.endDate;
 
-    const res = await request.get('/statistics/tasks', { params });
-    statisticsData.value = res.data || res;
+    const res = await request.get<any>('/statistics/tasks', { params });
+    statisticsData.value = (res as any).data || res;
 
     await nextTick();
     initCharts();

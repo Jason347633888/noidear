@@ -87,28 +87,30 @@ const form = reactive<CreateTrainingPlanDto>({
 });
 
 // Year uniqueness validator (BR-091)
-const validateYearUnique = async (_rule: any, value: number, callback: any) => {
-  if (!value) {
-    return callback();
-  }
-
-  // Skip validation in edit mode (year is disabled anyway)
-  if (isEdit.value) {
-    return callback();
-  }
-
-  try {
-    // Check if a plan for this year already exists
-    const res = await getTrainingPlans({ year: value, limit: 1 });
-    if (res.items && res.items.length > 0) {
-      return callback(new Error(`${value}年的培训计划已存在`));
+const validateYearUnique = (_rule: any, value: number, callback: any): void => {
+  void (async () => {
+    if (!value) {
+      return callback();
     }
-    return callback();
-  } catch (error) {
-    // If API fails, allow submission (don't block user)
-    console.error('Year validation failed:', error);
-    return callback();
-  }
+
+    // Skip validation in edit mode (year is disabled anyway)
+    if (isEdit.value) {
+      return callback();
+    }
+
+    try {
+      // Check if a plan for this year already exists
+      const res = await getTrainingPlans({ year: value, limit: 1 });
+      if (res.items && res.items.length > 0) {
+        return callback(new Error(`${value}年的培训计划已存在`));
+      }
+      return callback();
+    } catch (error) {
+      // If API fails, allow submission (don't block user)
+      console.error('Year validation failed:', error);
+      return callback();
+    }
+  })();
 };
 
 const rules: FormRules = {

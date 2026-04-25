@@ -275,7 +275,7 @@ function onDrop(event: DragEvent) {
   dragNodeType = '';
 }
 
-function onNodeClick(_event: MouseEvent, node: any) {
+function onNodeClick({ node }: { node: any }) {
   selectedNodeId.value = node.id;
 }
 

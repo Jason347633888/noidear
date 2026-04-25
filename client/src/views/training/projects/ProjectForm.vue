@@ -114,7 +114,7 @@
               :value="doc.id"
             />
           </el-select>
-          <div class="form-hint">已选择 {{ form.documentIds.length }} 份文档</div>
+          <div class="form-hint">已选择 {{ form.documentIds?.length ?? 0 }} 份文档</div>
         </el-form-item>
 
         <el-form-item label="计划日期" prop="scheduledDate">

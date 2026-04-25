@@ -180,7 +180,7 @@ const getOverallIcon = () => {
 };
 
 const formatStatus = (status: string) => {
-  const map = { healthy: '健康', degraded: '降级', unhealthy: '不健康' };
+  const map: Record<string, string> = { healthy: '健康', degraded: '降级', unhealthy: '不健康' };
   return map[status] || status;
 };
 

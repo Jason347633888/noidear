@@ -6,8 +6,8 @@
     <el-card shadow="never" class="section-card">
       <template #header><span class="section-title">3.1 产品原料致敏原信息表</span></template>
       <AllergenTable
-        v-model="form.allergenData"
-        :raw-materials="rawMaterials"
+        v-model="(form.allergenData as any[])"
+        :raw-materials="(rawMaterials as any[])"
         :disabled="disabled"
       />
     </el-card>

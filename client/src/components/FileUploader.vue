@@ -176,6 +176,7 @@ watch(
         name: `file-${index}`,
         url,
         uid: Date.now() + index,
+        status: 'success' as const,
       }));
     }
   },

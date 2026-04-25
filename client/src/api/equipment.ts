@@ -487,7 +487,7 @@ const equipmentApi = {
 
   // --- File Upload ---
 
-  uploadPhoto(file: File) {
+  uploadPhoto(file: File | Blob) {
     const formData = new FormData();
     formData.append('file', file);
     return request.post<{ url: string }>('/upload/photo', formData, {

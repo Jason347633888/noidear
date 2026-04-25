@@ -21,8 +21,8 @@ const approvalList = ref([]);
 onMounted(async () => {
   loading.value = true;
   try {
-    const res = await request.get('/approvals');
-    approvalList.value = res.data?.list || [];
+    const res = await request.get<{ data?: { list?: any[] }; list?: any[] }>('/approvals');
+    approvalList.value = (res as any).data?.list || [];
   } catch (error) {
     console.error('获取审批列表失败:', error);
   } finally {

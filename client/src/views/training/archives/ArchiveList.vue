@@ -113,9 +113,9 @@ const fetchArchives = async () => {
       params.year = filters.value.year.getFullYear();
     }
 
-    const res = await request.get('/api/v1/training/archives', { params });
-    archives.value = res.data || [];
-    pagination.value.total = res.total || 0;
+    const res = await request.get<any>('/api/v1/training/archives', { params });
+    archives.value = (res as any).data || [];
+    pagination.value.total = (res as any).total || 0;
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || '获取培训档案失败');
   } finally {
@@ -125,8 +125,8 @@ const fetchArchives = async () => {
 
 const fetchDepartments = async () => {
   try {
-    const res = await request.get('/api/v1/departments');
-    departments.value = res.data || [];
+    const res = await request.get<any>('/api/v1/departments');
+    departments.value = (res as any).data || [];
   } catch (error) {
     console.error('获取部门列表失败', error);
   }
@@ -151,7 +151,7 @@ const downloadArchive = async (id: string) => {
       responseType: 'blob',
     });
 
-    const url = window.URL.createObjectURL(new Blob([res]));
+    const url = window.URL.createObjectURL(new Blob([res as BlobPart]));
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', `培训档案_${id}.pdf`);

@@ -9,13 +9,13 @@
       <el-descriptions-item
         v-for="(value, key) in displayData"
         :key="key"
-        :label="formatLabel(key)"
+        :label="formatLabel(String(key))"
       >
-        <template v-if="isTimestamp(key)">
-          {{ formatDateTime(value) }}
+        <template v-if="isTimestamp(String(key))">
+          {{ formatDateTime(String(value)) }}
         </template>
-        <template v-else-if="isStatus(key)">
-          <el-tag :type="getStatusType(value)">{{ value }}</el-tag>
+        <template v-else-if="isStatus(String(key))">
+          <el-tag :type="getStatusType(String(value))">{{ value }}</el-tag>
         </template>
         <template v-else-if="isJSON(value)">
           <pre class="json-content">{{ formatJSON(value) }}</pre>

@@ -21,8 +21,8 @@ const taskList = ref([]);
 onMounted(async () => {
   loading.value = true;
   try {
-    const res = await request.get('/tasks');
-    taskList.value = res.data?.list || [];
+    const res = await request.get<{ data?: { list?: any[] } }>('/tasks');
+    taskList.value = (res as any).data?.list || [];
   } catch (error) {
     console.error('获取任务列表失败:', error);
   } finally {

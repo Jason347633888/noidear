@@ -343,7 +343,7 @@ const handleSubmit = async () => {
 
     const data = {
       title: form.title,
-      type: form.type,
+      type: form.type as 'quarterly' | 'semiannual' | 'annual',
       startDate: form.dateRange[0],
       endDate: form.dateRange[1],
       auditorId: form.auditorId,

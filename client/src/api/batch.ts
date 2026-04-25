@@ -88,3 +88,30 @@ export const materialUsageApi = {
   },
 };
 
+// =========================================================================
+// Trace Types and API
+// =========================================================================
+
+export interface TraceNode {
+  id: string;
+  name: string;
+  type: string;
+  batchNumber?: string;
+  quantity?: number;
+  date?: string;
+  children?: TraceNode[];
+}
+
+export interface TraceResult {
+  batchNumber: string;
+  productName: string;
+  forwardTrace: TraceNode[];
+  backwardTrace: TraceNode[];
+}
+
+export const traceApi = {
+  fullTrace(batchId: string) {
+    return request.get<TraceResult>(`/batch-trace/production-batches/${batchId}/trace`);
+  },
+};
+

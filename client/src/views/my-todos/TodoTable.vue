@@ -3,7 +3,7 @@
     <el-table-column label="标题" prop="title" min-width="200" />
     <el-table-column label="类型" width="130">
       <template #default="{ row }">
-        <el-tag size="small">{{ TYPE_LABELS[row.type] ?? row.type }}</el-tag>
+        <el-tag size="small">{{ TYPE_LABELS[row.type as TodoType] ?? row.type }}</el-tag>
       </template>
     </el-table-column>
     <el-table-column label="优先级" width="90">

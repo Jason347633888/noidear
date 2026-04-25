@@ -88,15 +88,15 @@ const fetchArchive = async () => {
     loading.value = true;
     const id = route.params.id as string;
 
-    const res = await request.get(`/api/v1/training/archives/${id}`);
-    archive.value = res.data || res;
+    const res = await request.get<any>(`/api/v1/training/archives/${id}`);
+    archive.value = (res as any).data || res;
 
     // 获取 PDF URL
     const pdfRes = await request.get(
       `/api/v1/training/archives/${id}/download`,
       { responseType: 'blob' }
     );
-    pdfUrl.value = URL.createObjectURL(new Blob([pdfRes]));
+    pdfUrl.value = URL.createObjectURL(new Blob([pdfRes as BlobPart]));
 
     // 获取关联文档
     if (archive.value.relatedDocuments) {
@@ -116,7 +116,7 @@ const downloadPdf = async () => {
       responseType: 'blob',
     });
 
-    const url = window.URL.createObjectURL(new Blob([res]));
+    const url = window.URL.createObjectURL(new Blob([res as BlobPart]));
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', `${archive.value.projectTitle}_培训档案.pdf`);

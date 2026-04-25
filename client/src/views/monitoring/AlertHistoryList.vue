@@ -97,7 +97,7 @@ const fetchData = async () => {
     const { items, total } = await queryAlertHistory({
       page: pagination.page,
       limit: pagination.limit,
-      status: filterForm.status || undefined,
+      status: (filterForm.status || undefined) as 'acknowledged' | 'triggered' | 'resolved' | undefined,
       startTime: timeRange.value?.[0],
       endTime: timeRange.value?.[1],
     });

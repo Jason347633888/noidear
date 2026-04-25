@@ -106,7 +106,7 @@
     <el-row :gutter="20" class="content-row">
       <el-col :span="12">
         <AlertList
-          :alerts="recentAlerts"
+          :alerts="(recentAlerts as any[])"
           @refresh="fetchAlertHistory"
           @acknowledge="handleAcknowledgeAlert"
           @show-more="goToAlertHistory"

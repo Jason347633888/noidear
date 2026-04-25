@@ -224,7 +224,7 @@ const loadExistingFields = async () => {
   try {
     const tpl = await recordTemplateApi.getById(templateId.value);
     const fields = tpl.fieldsJson?.fields ?? [];
-    formFields.splice(0, formFields.length, ...fields);
+    formFields.splice(0, formFields.length, ...(fields as FormField[]));
     if (fields.length > 0) fieldCounter = fields.length;
   } catch {
     // 新模板，无需加载
@@ -334,7 +334,7 @@ const handleSave = async () => {
   saving.value = true;
   try {
     if (templateId.value) {
-      await recordTemplateApi.updateFields(templateId.value, [...formFields]);
+      await recordTemplateApi.updateFields(templateId.value, [...formFields] as any);
       ElMessage.success('表单字段已保存到模板');
     } else {
       ElMessage.success('表单设计已保存（预览模式，未关联模板）');

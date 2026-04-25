@@ -255,7 +255,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted, nextTick } from 'vue';
-import type { FormInstance, FormRules } from 'element-plus';
+import type { FormInstance, FormRules, FormItemRule } from 'element-plus';
 import { Rank, Message, Phone, Link, Plus } from '@element-plus/icons-vue';
 import Sortable from 'sortablejs';
 import type { FieldTypeValue } from '@/constants/field-types';
@@ -323,7 +323,7 @@ const getDefaultValue = (type: string): unknown => {
 };
 
 const getValidationRules = (field: TemplateField) => {
-  const fieldRules: unknown[] = [];
+  const fieldRules: FormItemRule[] = [];
 
   if (field.required) {
     const isSelectionType = ['select', 'radio', 'cascader', 'checkbox', 'date', 'time', 'datetime', 'color'].includes(field.type);

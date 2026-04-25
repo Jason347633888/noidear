@@ -10,7 +10,7 @@ export default {
     startDate?: string,
     endDate?: string,
   ) {
-    return request.get(`/recycle-bin/${type}`, {
+    return request.get<{ list: any[]; total: number }>(`/recycle-bin/${type}`, {
       params: { page, limit, keyword, deletedBy, startDate, endDate },
     });
   },
