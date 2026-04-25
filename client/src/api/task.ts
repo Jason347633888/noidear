@@ -81,6 +81,8 @@ export interface CreateTaskPayload {
   templateId: string;
   departmentId: string;
   deadline: string;
+  title?: string;
+  description?: string;
 }
 
 export interface UpdateTaskPayload {
