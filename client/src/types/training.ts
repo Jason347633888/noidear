@@ -255,6 +255,7 @@ export interface TrainingArchive {
 // Todo Task
 // =========================================================================
 
+/** @deprecated Use TodoItem from '@/types/todo' instead. */
 export interface TodoTask {
   id: string;
   userId: string;
@@ -271,6 +272,7 @@ export interface TodoTask {
   isOverdue?: boolean;
 }
 
+/** @deprecated Use TodoStatisticsResponse from '@/types/todo' instead. */
 export interface TodoStatistics {
   total: number;
   pending: number;
