@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["vitest/globals", "node"],
+    "lib": ["ES2021", "DOM", "DOM.Iterable"],
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "src/**/__tests__/**/*.ts",
+    "src/**/*.spec.ts",
+    "src/**/*.test.ts"
+  ]
+}

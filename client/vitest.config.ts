@@ -13,6 +13,9 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     globals: true,
+    typecheck: {
+      tsconfig: './tsconfig.vitest.json',
+    },
     exclude: ['e2e/**', 'node_modules/**'],
     coverage: {
       provider: 'v8',
