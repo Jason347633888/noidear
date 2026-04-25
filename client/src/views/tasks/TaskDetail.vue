@@ -1,20 +1,31 @@
 <template>
   <div class="task-detail-page" v-loading="loading">
-    <el-card v-if="task">
-      <template #header>
-        <div class="card-header">
-          <span>{{ task.template?.title || '任务详情' }}</span>
-          <el-tag :type="statusTagType">{{ statusLabel }}</el-tag>
+    <h2 class="page-title">{{ task?.template?.title || '任务详情' }}</h2>
+
+    <template v-if="task">
+      <!-- Info card: task meta with el-descriptions so statusTag locator works -->
+      <el-card class="info-card" style="margin-bottom: 16px;">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="状态">
+            <el-tag :type="statusTagType">{{ statusLabel }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="截止日期">{{ task.deadline }}</el-descriptions-item>
+          <el-descriptions-item label="执行部门">{{ task.department?.name || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="创建人">{{ task.creator?.name || '-' }}</el-descriptions-item>
+        </el-descriptions>
+
+        <!-- Task-level actions (e.g. cancel) -->
+        <div class="task-actions" style="margin-top: 12px;">
+          <el-button
+            v-if="canCancel"
+            type="danger"
+            @click="handleCancelTask"
+          >取消任务</el-button>
         </div>
-      </template>
+      </el-card>
 
-      <div class="task-meta" style="margin-bottom: 16px;">
-        <div>截止时间：{{ task.deadline }}</div>
-        <div>部门：{{ task.department?.name || '-' }}</div>
-        <div>创建人：{{ task.creator?.name || '-' }}</div>
-      </div>
-
-      <div v-if="!isLocked && task.template?.fieldsJson?.length" class="task-form">
+      <!-- Form card: fill-in form rendered from template fieldsJson -->
+      <el-card class="form-card" style="margin-bottom: 16px;" v-if="!isLocked && task.template?.fieldsJson?.length">
         <el-form label-width="120px">
           <el-form-item
             v-for="field in task.template.fieldsJson"
@@ -24,38 +35,47 @@
             <el-input v-model="formData[(field as FieldDef).name]" />
           </el-form-item>
         </el-form>
-      </div>
 
-      <div v-if="isLocked" class="locked-notice" style="color: #909399; margin-bottom: 16px;">
-        任务已锁定，不可修改
-      </div>
-
-      <div v-if="task.records?.length" class="records-section" style="margin-top: 16px;">
-        <h4>提交记录</h4>
-        <div
-          v-for="record in task.records"
-          :key="record.id"
-          class="record-item"
-          style="border: 1px solid #eee; padding: 8px; margin-bottom: 8px; border-radius: 4px;"
-        >
-          <el-tag :type="getRecordStatusType(record.status)" size="small">
-            {{ getRecordStatusText(record.status) }}
-          </el-tag>
-          <span style="margin-left: 8px; color: #606266; font-size: 12px;">
-            {{ record.submitter?.name || '-' }}
-          </span>
-          <span v-if="record.comment" style="margin-left: 8px; color: #909399; font-size: 12px;">
-            备注：{{ record.comment }}
-          </span>
+        <div v-if="isLocked" class="locked-notice" style="color: #909399; margin-bottom: 16px;">
+          任务已锁定，不可修改
         </div>
-      </div>
 
-      <div class="actions" style="margin-top: 16px; display: flex; gap: 8px;">
-        <el-button @click="router.back()">返回</el-button>
-        <el-button v-if="canDraft" @click="handleSaveDraft">保存草稿</el-button>
-        <el-button v-if="canSubmit" type="primary" @click="handleSubmit">提交</el-button>
-      </div>
-    </el-card>
+        <!-- Record-level submit actions -->
+        <div class="actions" style="margin-top: 16px; display: flex; gap: 8px;">
+          <el-button v-if="canDraft" @click="handleSaveDraft">保存草稿</el-button>
+          <el-button v-if="canSubmit" type="primary" @click="handleSubmit">提交</el-button>
+        </div>
+      </el-card>
+
+      <!-- Locked state without form -->
+      <el-card class="form-card" style="margin-bottom: 16px;" v-else-if="isLocked">
+        <div class="locked-notice" style="color: #909399;">任务已锁定，不可修改</div>
+      </el-card>
+
+      <!-- Records card: submission history -->
+      <el-card class="records-card" v-if="task.records?.length">
+        <template #header><span>提交记录</span></template>
+        <el-table :data="task.records" style="width: 100%">
+          <el-table-column label="状态" width="120">
+            <template #default="{ row }">
+              <el-tag :type="getRecordStatusType(row.status)" size="small">
+                {{ getRecordStatusText(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="提交人" prop="submitter.name" />
+          <el-table-column label="备注" prop="comment" />
+          <el-table-column label="操作" width="160">
+            <template #default="{ row }">
+              <template v-if="row.status === 'submitted'">
+                <el-button size="small" type="success" @click="handleApproveRecord(row.id)">通过</el-button>
+                <el-button size="small" type="danger" @click="handleRejectRecord(row.id)">驳回</el-button>
+              </template>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-card>
+    </template>
 
     <el-card v-else-if="!loading">
       <div>任务不存在或无权访问</div>
@@ -67,7 +87,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import taskApi, {
   isTaskLocked,
   getTaskStatusText,
@@ -95,6 +115,9 @@ const isLocked = computed(
 );
 const canDraft = computed(() => task.value?.status === 'pending');
 const canSubmit = computed(
+  () => task.value?.status === 'pending' || task.value?.status === 'rejected',
+);
+const canCancel = computed(
   () => task.value?.status === 'pending' || task.value?.status === 'rejected',
 );
 
@@ -144,7 +167,50 @@ async function handleSubmit() {
   }
 }
 
-defineExpose({ handleSaveDraft, handleSubmit });
+async function handleCancelTask() {
+  if (!task.value) return;
+  try {
+    await ElMessageBox.confirm('确认取消该任务？', '提示', {
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      type: 'warning',
+    });
+    await taskApi.cancelTask(task.value.id);
+    ElMessage.success('任务已取消');
+    await loadTask();
+  } catch (err: any) {
+    if (err !== 'cancel') {
+      ElMessage.error('取消任务失败');
+      throw err;
+    }
+  }
+}
+
+async function handleApproveRecord(recordId: string) {
+  if (!task.value) return;
+  try {
+    await taskApi.approveTask({ recordId, status: 'approved' });
+    ElMessage.success('已通过');
+    await loadTask();
+  } catch (err) {
+    ElMessage.error('操作失败');
+    throw err;
+  }
+}
+
+async function handleRejectRecord(recordId: string) {
+  if (!task.value) return;
+  try {
+    await taskApi.approveTask({ recordId, status: 'rejected' });
+    ElMessage.success('已驳回');
+    await loadTask();
+  } catch (err) {
+    ElMessage.error('操作失败');
+    throw err;
+  }
+}
+
+defineExpose({ handleSaveDraft, handleSubmit, handleCancelTask });
 </script>
 
 <style scoped>
@@ -154,9 +220,7 @@ defineExpose({ handleSaveDraft, handleSubmit });
   margin: 0 auto;
 }
 
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.page-title {
+  margin-bottom: 16px;
 }
 </style>

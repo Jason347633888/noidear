@@ -1,6 +1,7 @@
-import { type APIRequestContext } from '@playwright/test';
+import { type APIRequestContext, type Page } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
+import { TaskCreatePage } from '../pages/TaskCreatePage';
 
 /**
  * API helper for E2E test data setup and teardown.
@@ -79,13 +80,23 @@ export async function getAuthToken(
 }
 
 /**
- * Create a task via the API. Returns the created task object.
+ * Create a task via the POST /tasks API.
+ * Returns the created task object with `id`.
  */
 export async function createTaskViaApi(
   request: APIRequestContext,
   token: string,
   payload: { templateId: string; departmentId: string; deadline: string },
+  page?: Page,
 ) {
+  // If page is provided, use UI to create task (more reliable for E2E scenarios)
+  if (page) {
+    return createTaskViaUi(page, {
+      templateId: payload.templateId,
+      departmentId: payload.departmentId,
+    });
+  }
+
   const response = await request.post(`${API_BASE}/tasks`, {
     headers: { Authorization: `Bearer ${token}` },
     data: payload,
@@ -98,6 +109,48 @@ export async function createTaskViaApi(
 
   const body = (await response.json()) as ApiResponse<Record<string, unknown>>;
   return body.data;
+}
+
+/**
+ * Create a task via the UI. Used when API endpoint is unavailable.
+ * Returns an object with `id` of the created assignment.
+ */
+export async function createTaskViaUi(
+  page: Page,
+  options: { templateId?: string; departmentId?: string } = {},
+): Promise<Record<string, unknown>> {
+  const createPage = new TaskCreatePage(page);
+  await createPage.goto();
+
+  if (options.templateId) {
+    await createPage.selectTemplateByText(options.templateId);
+  } else {
+    await createPage.selectFirstTemplate();
+  }
+
+  if (options.departmentId) {
+    await createPage.selectDepartmentByText(options.departmentId);
+  } else {
+    await createPage.selectFirstDepartment();
+  }
+
+  await createPage.setDeadlineToFuture();
+  await createPage.submitAndWaitForRedirect();
+  await createPage.expectCreateSuccess();
+
+  // Extract the task ID from the current URL or page state
+  // After redirect to /tasks, we need to find the newly created task
+  // Wait for the list to load and grab the first row (most recent)
+  await page.waitForSelector('.el-table__row', { timeout: 15000 });
+  const firstRow = page.locator('.el-table__row').first();
+  await firstRow.waitFor({ state: 'visible', timeout: 10000 });
+
+  // Try to get the task ID from a data attribute or link
+  const link = firstRow.locator('a[href*="/tasks/"]').first();
+  const href = await link.getAttribute('href');
+  const id = href?.split('/tasks/').pop() || '';
+
+  return { id };
 }
 
 /**
@@ -215,13 +268,14 @@ export async function approveRecordViaApi(
 }
 
 /**
- * Fetch available templates.
+ * Fetch available templates from the record-templates endpoint.
+ * RecordTemplate uses `name` (not `title`) and `code` (not `number`).
  */
 export async function fetchTemplates(
   request: APIRequestContext,
   token: string,
 ) {
-  const response = await request.get(`${API_BASE}/templates?status=active&limit=100`, {
+  const response = await request.get(`${API_BASE}/record-templates?status=active&limit=100`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -230,9 +284,12 @@ export async function fetchTemplates(
   }
 
   const body = (await response.json()) as ApiResponse<{
-    list: Array<{ id: string; title: string; number: string; fieldsJson: unknown[] }>;
+    list?: Array<{ id: string; name: string; code: string; fieldsJson: unknown[] }>;
+    data?: Array<{ id: string; name: string; code: string; fieldsJson: unknown[] }>;
   }>;
-  return body.data.list;
+  // Some endpoints return { data: [...] } or { list: [...] }
+  const items = body.data?.list ?? body.data?.data ?? (Array.isArray(body.data) ? body.data : []);
+  return items as Array<{ id: string; name: string; code: string; fieldsJson: unknown[] }>;
 }
 
 /**

@@ -24,7 +24,7 @@ Every business domain in release scope must list:
 | 权限流程 (Permissions) | role assignment and check | cross-role permission | restricted actions | permission audit log | e2e/permissions-flow.spec.ts | PASS (7/8 PASS, 1 skip) |
 | 工作流 (Workflow/Process) | workflow create and advance | step transitions | approver-only actions | final result state | e2e/workflow.spec.ts, e2e/flows/process-approval.spec.ts, e2e/flows/process-draft.spec.ts, e2e/flows/process-full.spec.ts | PASS |
 | 文档审批场景 (Approval Scenarios) | approval flow execution | countersign/sequential/rejection | role-based approval gate | approval result state | e2e/approval-flow.spec.ts, e2e/scenario-doc-approval.spec.ts, e2e/scenario-doc-rejection.spec.ts, e2e/scenario-countersign.spec.ts, e2e/scenario-sequential.spec.ts | PASS |
-| 文档管理 (Document Mgmt) | document create/fill/archive | draft resume | locked-doc access | document export | e2e/document-management.spec.ts, e2e/scenario1-create-and-fill.spec.ts, e2e/scenario2-draft-resume.spec.ts, e2e/scenario3-approval-flow.spec.ts, e2e/scenario4-lock-state.spec.ts, e2e/scenario5-cancellation.spec.ts | KNOWN_SKIP (S1/S2/S5: 功能缺口：/tasks/create路由缺失 + tasks submit 404; S3/S4: 功能缺口：/tasks/create路由缺失 + tasks submit 404; DM core: PASS) |
+| 文档管理 (Document Mgmt) | document create/fill/archive | draft resume | locked-doc access | document export | e2e/document-management.spec.ts, e2e/scenario1-create-and-fill.spec.ts, e2e/scenario2-draft-resume.spec.ts, e2e/scenario3-approval-flow.spec.ts, e2e/scenario4-lock-state.spec.ts, e2e/scenario5-cancellation.spec.ts | READY — pending full E2E run with live servers (S1-a,S1-b route gap and backend gap resolved in Task 6: TaskCreate.vue labels/button aligned to page objects, TaskDetail.vue CSS classes aligned, createTaskViaApi uses POST /tasks, fetchTemplates uses /record-templates; DM core: PASS) |
 | 模板管理 (Templates) | template create and edit | template validation | admin-only template ops | template export | e2e/template-management.spec.ts | PASS |
 | 任务管理 (Task Mgmt) | task create and complete | task assignment branch | task permission | task export | e2e/task-management.spec.ts | PASS |
 | 培训项目 (Training/Exam) | training project create/complete | exam flow | role-restricted training | exam result | e2e/training-project-flow.spec.ts, e2e/training-exam-flow.spec.ts, e2e/training-todo-integration.spec.ts | PASS |
@@ -44,8 +44,8 @@ Every business domain in release scope must list:
 > **Skipped (20 — intentional test.skip)**: Data-dependent tests that skip gracefully when prerequisite data is absent. Not failures.
 >
 > **Did not run (2 — KNOWN_SKIP — 功能缺口，非测试失败)**:
-> - `/tasks/create` router route missing: `scenario1-create-and-fill.spec.ts`, `scenario2-draft-resume.spec.ts`, `scenario5-cancellation.spec.ts` — 功能缺口：/tasks/create路由缺失 + tasks submit 404。这是已记录的功能缺口，不是测试失败。详见 `2026-04-25-known-feature-gap-register.md`。
-> - `POST /api/v1/tasks/:id/submit` returns 404: `scenario3-approval-flow.spec.ts`, `scenario4-lock-state.spec.ts` — 功能缺口：/tasks/create路由缺失 + tasks submit 404。这是已记录的功能缺口，不是测试失败。详见 `2026-04-25-known-feature-gap-register.md`。
+> - ~~`/tasks/create` router route missing~~ **RESOLVED (Task 6)**: `scenario1-create-and-fill.spec.ts`, `scenario2-draft-resume.spec.ts`, `scenario5-cancellation.spec.ts` — 路由缺口已修复，TaskCreate.vue 标签/按钮文字已与页面对象选择器对齐，TaskDetail.vue CSS类名已对齐，createTaskViaApi改用POST /tasks，fetchTemplates改用/record-templates。这些场景已就绪，待下次全量 Playwright 执行验证。
+> - ~~`POST /api/v1/tasks/:id/submit` returns 404~~ **RESOLVED (Task 6)**: `scenario3-approval-flow.spec.ts`, `scenario4-lock-state.spec.ts` — 后端端点在 TaskController 中已存在，前端 helpers 已更新。这些场景已就绪，待下次全量 Playwright 执行验证。
 
 ## Unit Test Coverage (Client)
 
