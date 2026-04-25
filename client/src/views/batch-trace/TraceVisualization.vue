@@ -58,7 +58,30 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { traceApi, type TraceResult, type TraceNode } from '@/api/batch';
+import request from '@/api/request';
+
+interface TraceNode {
+  id: string;
+  name: string;
+  type: 'material' | 'batch' | 'product';
+  batchNumber?: string;
+  quantity?: number;
+  date?: string;
+  children?: TraceNode[];
+}
+
+interface TraceResult {
+  batchNumber: string;
+  productName: string;
+  forwardTrace: TraceNode[];
+  backwardTrace: TraceNode[];
+}
+
+const traceApi = {
+  fullTrace(batchId: string) {
+    return request.get<TraceResult>(`/batch-trace/production-batches/${batchId}/trace`);
+  },
+};
 
 const route = useRoute();
 const router = useRouter();

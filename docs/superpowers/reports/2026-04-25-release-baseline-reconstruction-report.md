@@ -89,3 +89,31 @@ The corrected baseline does not change the overall GO recommendation, but the ev
 - The typecheck status is now **better** than reported (was: ~40 errors; is: 0 errors)
 - The unit test count is now **worse** than reported (was: 353/353; is: 352/353, 1 failing)
 - The "todo module removed" rationale for backend failures needs re-investigation (module exists)
+
+---
+
+## Final Baseline Outcome
+
+**Outcome:** baseline_recovered
+
+**Reason:**
+- `client build:check` (vue-tsc): PASS — 0 type errors
+- `client test` (Vitest): PASS — 353/353
+- `server build` (NestJS): PASS — clean compilation
+- Baseline-distorting traceability drift closed: `traceApi` duplicate removed from `@/api/batch`; `TraceVisualization.vue` now defines the type and call locally, eliminating the circular conflict between the convergence test and the component
+- `/tasks` create/submit gap formally classified in `2026-04-25-known-feature-gap-register.md` (not a drift, a known planned gap)
+- Workspace and document assets classified in workspace-asset-register and document-asset-register
+- Historical specs/plans separated from current-path docs (16 files committed as deletions)
+- Current-path reports updated to reflect reconstruction truth
+
+**Remaining intentional items (not blocking):**
+- `client/e2e/.auth/admin-token.json` — auth token, expected to drift between runs
+- E2E spec files — modified with auth fixes (correct current state)
+- Server module files — modified with todo module integration (correct current state)
+- 2 E2E scenario1 tests — KNOWN_SKIP (feature gap, documented)
+- 2 undated orphan reports — `form-validation-audit.md`, `E2E-TEST-CHECKLIST.md` (historical value, deferred rename)
+
+## Next Subproject
+
+**Name:** Task Flow Completion  
+**Why next:** `/tasks` create/detail/submit remains a real feature gap after baseline truth is restored. Documented in `2026-04-25-known-feature-gap-register.md`.
