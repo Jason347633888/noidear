@@ -49,15 +49,19 @@ Every business domain in release scope must list:
 
 ## Unit Test Coverage (Client)
 
-> **Reconstruction update (2026-04-25):** Unit test results updated to reflect reconstruction fixes. `traceApi` duplicate removed from `client/src/api/batch.ts`; `traceability-convergence.spec.ts` now passes. Final verified count: **353/353 PASS**. See `2026-04-25-release-baseline-reconstruction-report.md`.
+> **Task Flow update (2026-04-25, Task 7):** Task flow unit tests added (task-routes.spec.ts: 2 tests). Final verified count: **362/362 PASS** (45 test files). Backend task e2e spec: **64/64 PASS**.
+
+> **Reconstruction update (2026-04-25):** Unit test results updated to reflect reconstruction fixes. `traceApi` duplicate removed from `client/src/api/batch.ts`; `traceability-convergence.spec.ts` now passes. Prior count: **353/353 PASS**. See `2026-04-25-release-baseline-reconstruction-report.md`.
 
 | Layer | Result | Files | PASS/FAIL |
 | --- | --- | --- | --- |
-| Client unit tests (total) | **353 passed / 0 failed** | 41 test files | **PASS** |
+| Client unit tests (total) | **362 passed / 0 failed** | 45 test files | **PASS** |
+| task-routes.spec.ts | PASS (added Task 6/7 — `/tasks/create`, `/tasks/:id` route assertions) | src/router/\_\_tests\_\_/task-routes.spec.ts | PASS |
 | traceability-convergence.spec.ts | PASS (fixed in reconstruction — `traceApi` removed from batch.ts) | src/api/\_\_tests\_\_/traceability-convergence.spec.ts | PASS |
-| All other unit test files (40) | 353 tests passed | client/src/**/__tests__/*.spec.ts | PASS |
+| All other unit test files (43) | 362 tests passed | client/src/**/__tests__/*.spec.ts | PASS |
 | Traceability contract tests | 3 files | traceability-contract.spec.ts, traceability-convergence.spec.ts, traceability.spec.ts | PASS |
-| Router convergence tests | 1 file | client/src/router/\_\_tests\_\_/traceability-convergence.spec.ts | PASS |
+| Router convergence tests | 2 files | client/src/router/\_\_tests\_\_/traceability-convergence.spec.ts, task-routes.spec.ts | PASS |
+| Backend task e2e spec | **64 passed / 0 failed** | server/test/task.e2e-spec.ts | **PASS** |
 
 ## Remediation Blockers
 
@@ -95,5 +99,5 @@ Full Playwright suite run completed. Final results:
 `alert.spec.ts` (both describe blocks), `monitoring.spec.ts` (both describe blocks), `statistics.spec.ts`, `search.spec.ts`, `i18n.spec.ts`, `recommendation.spec.ts`. Audit and backup already had auth.
 
 **Remaining KNOWN_SKIP (功能缺口 — 2 did not run，非失败，待对应业务模块就绪)**:
-- Missing `/tasks/create` router route + `/api/v1/tasks/:id/submit` 404: `scenario1`~`scenario5` specs — 功能缺口，已记录在 `2026-04-25-known-feature-gap-register.md`。不计入失败统计。
+- ~~Missing `/tasks/create` router route + `/api/v1/tasks/:id/submit` 404~~ **RESOLVED (Task 6/7)**: All 5 scenario specs (`scenario1`~`scenario5`) are now READY — frontend routes added, TaskCreate.vue and TaskDetail.vue implemented, backend 9 endpoints live (64/64 backend e2e passing), E2E helpers aligned. Pending next full Playwright run with live frontend server.
 - Training project / training-todo / training-exam specs: all passed (state-machine fixed or test.skip applied)
