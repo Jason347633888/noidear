@@ -80,4 +80,16 @@ describe('DocumentLifecycleService', () => {
     const result = await service.publish('d1', {});
     expect(result.status).toBe('effective');
   });
+
+  it('supersede() should set status to superseded (not obsolete)', async () => {
+    mockPrisma.document.update.mockResolvedValue({ id: 'old', status: 'superseded', superseded_by_id: 'new' });
+    const result = await service.supersede('old', 'new');
+    expect(result.status).toBe('superseded');
+    expect(mockPrisma.document.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'old' },
+        data: expect.objectContaining({ status: 'superseded', superseded_by_id: 'new' }),
+      }),
+    );
+  });
 });

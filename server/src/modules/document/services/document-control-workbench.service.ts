@@ -40,7 +40,7 @@ export class DocumentControlWorkbenchService {
         take: 100,
       }),
       this.prisma.documentReference.findMany({
-        where: { targetDoc: { status: { in: ['obsolete', 'archived'] } } },
+        where: { targetDoc: { status: { in: ['obsolete', 'archived', 'superseded'] } } },
         include: {
           sourceDoc: { select: { id: true, title: true, status: true } },
           targetDoc: { select: { id: true, title: true, status: true } },
