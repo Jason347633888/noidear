@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger, Optional } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkflowInstanceService } from '../workflow/workflow-instance.service';
 import { DeviationService } from '../deviation/deviation.service';
 import { DocumentNoService } from '../record-template/document-no.service';
+import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 import { CreateRecordDto } from './dto/create-record.dto';
 import { UpdateRecordDto } from './dto/update-record.dto';
 import { QueryRecordDto } from './dto/query-record.dto';
@@ -18,6 +19,7 @@ export class RecordService {
     private readonly workflowInstanceService: WorkflowInstanceService,
     private readonly deviationService: DeviationService,
     private readonly documentNoService: DocumentNoService,
+    @Optional() private readonly approvalEngine: ApprovalEngineService,
   ) {}
 
   /**
@@ -284,6 +286,7 @@ export class RecordService {
         });
 
         await this.handleTaskInstanceSubmit(record);
+        await this.startUnifiedApproval(submitted, template, userId);
 
         return { ...submitted, deviationCount: deviations.length };
       }
@@ -295,6 +298,7 @@ export class RecordService {
     });
 
     await this.handleTaskInstanceSubmit(record);
+    await this.startUnifiedApproval(submitted, template, userId);
 
     return submitted;
   }
@@ -313,6 +317,30 @@ export class RecordService {
       });
     } catch (error) {
       this.logger.warn(`更新任务实例状态失败 ${record.taskInstanceId}: ${error.message}`);
+    }
+  }
+
+  /**
+   * 启动统一审批流程（可选）
+   * 若无匹配的 ApprovalDefinition，静默跳过
+   */
+  private async startUnifiedApproval(record: any, template: any, userId: string) {
+    if (!this.approvalEngine) return;
+    try {
+      const approval = await this.approvalEngine.startApproval({
+        resourceType: 'record',
+        resourceId: record.id,
+        resourceStep: 'submit',
+        triggerKey: 'submit',
+        title: `记录审批：${template.name} ${record.number ?? record.id}`,
+        createdById: userId,
+      });
+      await this.prisma.record.update({
+        where: { id: record.id },
+        data: { approvalInstanceId: approval.id },
+      });
+    } catch {
+      // No ApprovalDefinition matched — skip unified tracking silently
     }
   }
 

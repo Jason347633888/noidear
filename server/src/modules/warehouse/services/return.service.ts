@@ -1,10 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { ApprovalEngineService } from '../../unified-approval/approval-engine.service';
 import { CreateReturnDto, ApproveReturnDto } from '../dto/return.dto';
 
 @Injectable()
 export class ReturnService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly approvalEngine: ApprovalEngineService,
+  ) {}
 
   async create(dto: CreateReturnDto) {
     // Validate all batches exist
@@ -20,7 +24,7 @@ export class ReturnService {
     // Generate return number
     const returnNo = await this.generateReturnNumber();
 
-    return this.prisma.materialReturn.create({
+    const materialReturn = await this.prisma.materialReturn.create({
       data: {
         returnNo,
         requesterId: dto.requesterId,
@@ -44,6 +48,27 @@ export class ReturnService {
         },
       },
     });
+
+    if (this.approvalEngine) {
+      try {
+        const approval = await this.approvalEngine.startApproval({
+          resourceType: 'material_return',
+          resourceId: materialReturn.id,
+          resourceStep: 'submit',
+          triggerKey: 'submit',
+          title: `退料单审批：${materialReturn.returnNo ?? materialReturn.id}`,
+          createdById: dto.requesterId,
+        });
+        await this.prisma.materialReturn.update({
+          where: { id: materialReturn.id },
+          data: { approvalInstanceId: approval.id },
+        });
+      } catch {
+        // No ApprovalDefinition matched — skip unified tracking silently
+      }
+    }
+
+    return materialReturn;
   }
 
   async approve(id: string, dto: ApproveReturnDto) {
