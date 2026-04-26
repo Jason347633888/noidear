@@ -35,4 +35,32 @@ export class DocumentQueryDto {
   @IsString()
   @IsOptional()
   status?: string;
+
+  @ApiPropertyOptional({ description: '文档类型' })
+  @IsString()
+  @IsOptional()
+  documentType?: string;
+
+  @ApiPropertyOptional({ description: '来源文件夹 01-06' })
+  @IsString()
+  @IsOptional()
+  sourceFolder?: string;
+
+  @ApiPropertyOptional({ description: '负责部门' })
+  @IsString()
+  @IsOptional()
+  ownerDepartment?: string;
+
+  @ApiPropertyOptional({ description: '标签' })
+  @IsString()
+  @IsOptional()
+  tag?: string;
+
+  @ApiPropertyOptional({ description: '复审到期天数' })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  @IsOptional()
+  dueWithinDays?: number;
 }
