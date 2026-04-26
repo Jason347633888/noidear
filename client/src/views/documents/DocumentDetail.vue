@@ -130,6 +130,28 @@
       style="margin-top: 16px;"
     />
 
+    <el-card class="control-card" v-if="document">
+      <template #header>文控信息</template>
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="文件类型">{{ document.document_type || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="来源分类">{{ document.source_folder || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="负责部门">{{ document.owner_department || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="复审日期">{{ document.review_due_date ? formatControlDate(document.review_due_date) : '-' }}</el-descriptions-item>
+      </el-descriptions>
+    </el-card>
+
+    <el-card class="reference-card" v-if="document?.sourceReferences?.length || document?.targetReferences?.length">
+      <template #header>引用关系</template>
+      <el-table :data="document.sourceReferences || []" stripe>
+        <el-table-column prop="relationType" label="关系" width="150" />
+        <el-table-column label="目标">
+          <template #default="{ row }">
+            {{ row.targetDoc?.title || row.targetLabel || row.targetRoute || row.targetId }}
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
     <el-card class="version-card" v-if="versionHistory.length">
       <template #header>
         <span>版本历史</span>
@@ -287,6 +309,19 @@ interface Document {
   archivedAt?: string | null;
   obsoleteReason?: string | null;
   obsoletedAt?: string | null;
+  document_type?: string;
+  source_folder?: string;
+  owner_department?: string;
+  review_due_date?: string;
+  sourceReferences?: Array<{
+    id: string;
+    relationType: string;
+    targetLabel?: string;
+    targetRoute?: string;
+    targetId?: string;
+    targetDoc?: { id: string; title: string; status: string } | null;
+  }>;
+  targetReferences?: unknown[];
 }
 
 const route = useRoute();
@@ -363,6 +398,8 @@ const formatSize = (bytes: number): string => {
 const formatDate = (date: string): string => {
   return new Date(date).toLocaleString('zh-CN');
 };
+
+const formatControlDate = (value: string): string => new Date(value).toLocaleDateString('zh-CN');
 
 const getStatusType = (status: string): string => {
   const map: Record<string, string> = {
@@ -612,6 +649,14 @@ onMounted(() => {
 }
 
 .version-card {
+  margin-top: 16px;
+}
+
+.control-card {
+  margin-top: 16px;
+}
+
+.reference-card {
   margin-top: 16px;
 }
 

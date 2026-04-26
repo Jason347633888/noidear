@@ -148,6 +148,15 @@ const menuItems = [
     ],
   },
   {
+    title: '文控中心',
+    icon: DataAnalysis,
+    children: [
+      { path: '/documents/control/library', title: '体系文件库', icon: Files },
+      { path: '/documents/control/record-form-index', title: '记录表单索引', icon: List },
+      { path: '/documents/control/workbench', title: '文控工作台', icon: Monitor },
+    ],
+  },
+  {
     title: '审批与工作流',
     icon: CircleCheck,
     children: [

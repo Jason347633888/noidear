@@ -50,6 +50,25 @@ const routes: RouteRecordRaw[] = [
         name: 'DocumentEdit',
         component: () => import('@/views/documents/DocumentUpload.vue'),
       },
+      // 文控中心
+      {
+        path: 'documents/control/library',
+        name: 'SystemFileLibrary',
+        component: () => import('@/views/documents/SystemFileLibrary.vue'),
+        meta: { title: '体系文件库' },
+      },
+      {
+        path: 'documents/control/record-form-index',
+        name: 'RecordFormLandingIndex',
+        component: () => import('@/views/documents/RecordFormLandingIndex.vue'),
+        meta: { title: '记录表单索引' },
+      },
+      {
+        path: 'documents/control/workbench',
+        name: 'DocumentControlWorkbench',
+        component: () => import('@/views/documents/DocumentControlWorkbench.vue'),
+        meta: { title: '文控工作台' },
+      },
       {
         path: 'templates',
         name: 'Templates',
