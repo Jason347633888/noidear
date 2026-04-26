@@ -1,35 +1,3 @@
-# Dependencies
-node_modules/
-dist/
-build/
-
-# Environment
-.env
-.env.local
-.env.*.local
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# OS
 .DS_Store
-Thumbs.db
-
-# Worktrees
-.worktrees/
-worktrees/
-
-# Logs
-*.log
-npm-debug.log*
-
-# Playwright E2E
-client/playwright-report/
-client/playwright-results.json
-client/e2e/test-results/
-client/.env.e2e
-e2e/.auth/
-test-results/
+node_modules/
+.env

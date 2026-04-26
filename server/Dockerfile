@@ -1,20 +1,33 @@
-FROM node:20-alpine
+# ---- Stage 1: Build ----
+FROM node:20-alpine AS builder
 
-# Prisma 需要 openssl
 RUN apk add --no-cache openssl
 
 WORKDIR /app
 
-# 安装所有依赖（包含 prisma CLI）
 COPY package*.json ./
 RUN npm ci --legacy-peer-deps
 
-# 复制 Prisma schema 并生成适配当前平台的客户端
 COPY src/prisma ./src/prisma
 RUN npx prisma generate --schema=src/prisma/schema.prisma
 
-# 复制本地已构建的 dist
-COPY dist ./dist
+COPY . .
+RUN npm run build
+
+# ---- Stage 2: Runtime ----
+FROM node:20-alpine
+
+RUN apk add --no-cache openssl
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production --legacy-peer-deps
+
+COPY src/prisma ./src/prisma
+RUN npx prisma generate --schema=src/prisma/schema.prisma
+
+COPY --from=builder /app/dist ./dist
 
 ENV NODE_ENV=production
 
