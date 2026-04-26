@@ -1,6 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { NotificationModule } from '../notification/notification.module';
+import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
+import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
 import { StorageService } from '../../common/services/storage.service';
 import { EquipmentController } from './equipment.controller';
 import { EquipmentService } from './equipment.service';
@@ -17,7 +19,7 @@ import { TodoService } from './todo.service';
 import { SchedulerService } from './scheduler.service';
 
 @Module({
-  imports: [PrismaModule, NotificationModule],
+  imports: [PrismaModule, NotificationModule, UnifiedApprovalModule],
   controllers: [
     EquipmentController,
     PlanController,
@@ -45,4 +47,19 @@ import { SchedulerService } from './scheduler.service';
     TodoService,
   ],
 })
-export class EquipmentModule {}
+export class EquipmentModule implements OnModuleInit {
+  constructor(private readonly callbacks: ApprovalCallbackRegistry) {}
+
+  onModuleInit() {
+    this.callbacks.register('equipment.maintenanceApproved', async (context: any) => {
+      await context.tx.maintenanceRecord.update({
+        where: { id: context.resourceId },
+        data: {
+          status: 'approved',
+          reviewerId: context.actorId,
+          approvedAt: new Date(),
+        },
+      });
+    });
+  }
+}

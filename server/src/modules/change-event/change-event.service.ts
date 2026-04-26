@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 import { CreateChangeEventDto } from './dto/create-change-event.dto';
 import { CreateVerificationDto } from './dto/create-verification.dto';
 
@@ -9,13 +10,14 @@ export class ChangeEventService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
+    @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {}
 
   async create(dto: CreateChangeEventDto, userId: string) {
     const count = await this.prisma.changeEvent.count();
     const year = new Date().getFullYear();
     const change_no = `CE-${year}-${String(count + 1).padStart(4, '0')}`;
-    return this.prisma.changeEvent.create({
+    const changeEvent = await this.prisma.changeEvent.create({
       data: {
         company_id: '1',
         change_no,
@@ -27,6 +29,19 @@ export class ChangeEventService {
         status: dto.status ?? 'pending',
       },
     });
+
+    try {
+      await this.approvalEngine?.startApproval({
+        resourceType: 'change_event',
+        resourceId: changeEvent.id,
+        resourceStep: 'submit',
+        triggerKey: 'submit',
+        title: `变更事件审批：${change_no}`,
+        createdById: userId,
+      });
+    } catch { /* no definition = skip */ }
+
+    return changeEvent;
   }
 
   async findAll() {
