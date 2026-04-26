@@ -201,3 +201,27 @@ CREATE INDEX IF NOT EXISTS "document_coverage_reviews_coverageStatus_idx" ON "do
 
 ALTER TABLE "document_coverage_reviews" ADD CONSTRAINT "document_coverage_reviews_documentId_fkey"
   FOREIGN KEY ("documentId") REFERENCES "documents"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- ─── Permission seed for document control governance ─────────────────────────
+
+INSERT INTO "fine_grained_permissions" (
+  "id",
+  "code",
+  "name",
+  "category",
+  "scope",
+  "status",
+  "description",
+  "createdAt",
+  "updatedAt"
+) VALUES (
+  'perm_013',
+  'document:control_manage',
+  '文控中心管理',
+  'document',
+  'cross_department',
+  'active',
+  '可维护文控中心治理数据、记录表单落地入口、阅读要求、培训需求和影响评审',
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+) ON CONFLICT ("code") DO NOTHING;
