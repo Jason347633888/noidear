@@ -4,3 +4,4 @@ export * from './document-query.dto';
 export * from './archive-document.dto';
 export * from './approve-document.dto';
 export * from './document-control.dto';
+export * from './document-operations.dto';
