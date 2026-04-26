@@ -9,9 +9,10 @@ import { WorkflowAdvancedController } from './workflow-advanced.controller';
 import { WorkflowAdvancedService } from './workflow-advanced.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { NotificationModule } from '../notification/notification.module';
+import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
 
 @Module({
-  imports: [PrismaModule, NotificationModule],
+  imports: [PrismaModule, NotificationModule, UnifiedApprovalModule],
   controllers: [
     WorkflowTemplateController,
     WorkflowInstanceController,

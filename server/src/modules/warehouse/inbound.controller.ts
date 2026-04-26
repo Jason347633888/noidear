@@ -18,8 +18,9 @@ export class InboundController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createInboundDto: CreateInboundDto) {
-    return this.inboundService.create(createInboundDto);
+  create(@Body() createInboundDto: CreateInboundDto, @Request() req: any) {
+    const userId = req?.user?.id ?? req?.user?.userId ?? req?.user?.sub;
+    return this.inboundService.create(createInboundDto, userId);
   }
 
   @Get()

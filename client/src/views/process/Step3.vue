@@ -1,84 +1,116 @@
 <template>
   <div class="step-view">
-    <el-divider>三. 风险识别</el-divider>
+    <el-form ref="formRef" :model="form" label-width="160px" :disabled="disabled">
+      <el-divider>研发试验记录（JL-11）</el-divider>
 
-    <!-- 3.1 致敏原表 -->
-    <el-card shadow="never" class="section-card">
-      <template #header><span class="section-title">3.1 产品原料致敏原信息表</span></template>
-      <AllergenTable
-        v-model="(form.allergenData as any[])"
-        :raw-materials="(rawMaterials as any[])"
-        :disabled="disabled"
-      />
-    </el-card>
-
-    <!-- 3.2 其他风险识别 -->
-    <el-card shadow="never" class="section-card">
-      <template #header><span class="section-title">3.2 其他风险识别（内控标准）</span></template>
-      <div class="static-content">
-        <pre>{{ RISK_CONTENT }}</pre>
-      </div>
-    </el-card>
-
-    <!-- 3.3 食品添加剂 -->
-    <el-card shadow="never" class="section-card">
-      <template #header><span class="section-title">3.3 食品添加剂使用情况</span></template>
-      <el-form :model="form" label-width="160px" :disabled="disabled">
-        <el-form-item label="符合 GB2760">
-          <el-checkbox v-model="form.gb2760Compliant">符合 GB2760</el-checkbox>
+      <el-card shadow="never" class="section-card">
+        <template #header><span class="section-title">区块一：新产品制作实验</span></template>
+        <el-form-item label="产品名称">
+          <el-input :model-value="productName" disabled />
         </el-form-item>
-        <el-form-item label="按照其他标准">
-          <el-input v-model="form.additiveOther" placeholder="可选填" />
+        <el-form-item label="试验日期" prop="experimentDate">
+          <el-date-picker v-model="form.experimentDate" type="date" value-format="YYYY-MM-DD" :disabled="disabled" />
         </el-form-item>
-      </el-form>
-    </el-card>
+        <el-form-item label="实验目的">
+          <el-input v-model="form.experimentPurpose" type="textarea" :rows="2" />
+        </el-form-item>
+        <el-form-item label="实验材料（配料）">
+          <el-table :data="form.experimentMaterials" border size="small" style="width:100%">
+            <el-table-column type="index" label="序号" width="55" />
+            <el-table-column label="物料名称" prop="name" min-width="160" />
+            <el-table-column label="用量" width="120">
+              <template #default="{ row }">
+                <el-input v-if="!disabled" v-model="row.qty" size="small" placeholder="如100g" />
+                <span v-else>{{ row.qty }}</span>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-form-item>
+        <el-form-item label="配方及工艺">
+          <el-input v-model="form.formulaAndProcess" type="textarea" :rows="4" placeholder="描述配方比例和制作工艺步骤" />
+        </el-form-item>
+        <el-form-item label="实验参数">
+          <el-input v-model="form.experimentParameters" type="textarea" :rows="3" placeholder="温度、时间、转速等关键参数" />
+        </el-form-item>
+        <el-form-item label="生产记录">
+          <el-radio-group v-model="form.productionStatus">
+            <el-radio value="正常">正常</el-radio>
+            <el-radio value="异常">异常</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="form.productionStatus === '异常'" label="异常说明">
+          <el-input v-model="form.productionAbnormalNote" type="textarea" :rows="2" />
+        </el-form-item>
+        <el-form-item label="样品记录">
+          <el-radio-group v-model="form.sampleStatus">
+            <el-radio value="正常">正常</el-radio>
+            <el-radio value="异常">异常</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="form.sampleStatus === '异常'" label="样品异常说明">
+          <el-input v-model="form.sampleAbnormalNote" type="textarea" :rows="2" />
+        </el-form-item>
+      </el-card>
 
-    <div v-if="!disabled" class="action-bar">
+      <el-card shadow="never" class="section-card">
+        <template #header><span class="section-title">区块二：保质期实验</span></template>
+        <el-form-item label="保质期试验日期">
+          <el-date-picker v-model="form.shelfLifeDate" type="date" value-format="YYYY-MM-DD" :disabled="disabled" />
+        </el-form-item>
+        <el-form-item label="实验目的">
+          <el-input v-model="form.shelfLifePurpose" type="textarea" :rows="2" />
+        </el-form-item>
+        <el-form-item label="储存条件">
+          <el-select v-model="form.storageCondition">
+            <el-option value="常温库（25°C）" label="常温库（25°C）" />
+            <el-option value="阴凉库（≤20°C）" label="阴凉库（≤20°C）" />
+            <el-option value="高温高湿加速" label="高温高湿加速" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="检测结果">
+          <el-radio-group v-model="form.inspectionResult">
+            <el-radio value="符合">符合</el-radio>
+            <el-radio value="不符合">不符合</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="数据分析">
+          <el-input v-model="form.dataAnalysis" type="textarea" :rows="3" />
+        </el-form-item>
+      </el-card>
+
+      <el-card shadow="never" class="section-card">
+        <template #header><span class="section-title">结论</span></template>
+        <el-form-item label="结论与建议" prop="trialConclusion" :rules="[{ required: true, message: '请填写结论' }]">
+          <el-radio-group v-model="form.trialConclusion">
+            <el-radio value="通过">通过（可进入下一阶段）</el-radio>
+            <el-radio value="需改进">需改进（重新试验）</el-radio>
+            <el-radio value="终止">终止项目</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="改进说明" v-if="form.trialConclusion !== '通过'">
+          <el-input v-model="form.conclusionNote" type="textarea" :rows="2" />
+        </el-form-item>
+      </el-card>
+    </el-form>
+
+    <div v-if="!disabled && stepStatus !== 'APPROVED'" class="action-bar">
       <el-button @click="emit('saved', getFormData())">暂存草稿</el-button>
-      <el-button type="primary" @click="emit('submitted', getFormData())">提交</el-button>
+      <el-button type="primary" @click="handleSubmit">提交</el-button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, onMounted } from 'vue';
-import AllergenTable from '@/components/process/AllergenTable.vue';
-
-const RISK_CONTENT = `1 感官要求
-1.1 色泽：均匀颜色或与添加的原辅料相对应的颜色，均匀一致
-1.2 气味：具有该产品应有的气味，无异味
-1.3 杂质：无正常视力可见外来异物
-
-2 理化指标
-2.1 水分/(g/100g)：≤35（内控标准），检验方法 GB 5009.3
-
-3 微生物指标
-3.1 菌落总数：n=5, c=2, m=10⁴, M=10⁵ CFU/g，检验方法 GB 4789.2
-3.2 大肠菌群：n=5, c=2, m=10, M=10² CFU/g，检验方法 GB 4789.3
-3.3 霉菌：≤150 CFU/g，检验方法 GB 4789.15
-
-4 检验方法
-4.1 组织形态、色泽、滋味与口感、杂质按目测法测定。
-4.2 理化指标按 GB 5009 规定的方法测定。
-4.3 微生物指标按 GB 4789 规定的方法测定。
-4.4 产品要求按 GB 7099《糕点面包》规定的方法测定。
-4.5 净含量：常温条件下，采用校准后的电子秤称量测定。
-4.6 外观检验：
-4.6.1 标签：每箱产品均有标签，标签内容应符合 GB 7718 的规定。
-
-5 检验规则
-5.1 组批：按同一班次、同一品名、同一规格的产品为一批。
-5.2 抽样：
-5.2.1 感官及理化指标检验样品的抽样方法按 GB 7099 规定执行，具体如下：
-5.2.2 批量范围 < 300 kg 时，抽样数量为 3 kg。
-5.2.3 批量范围 300 ≤ n ≤ 800 时，抽样数量为 4~6 件。
-5.2.4 批量范围 800 ≤ n ≤ 1000 时，抽样数量为 5% × n。`;
+import { reactive, computed, onMounted, ref } from 'vue';
+import { ElMessage } from 'element-plus';
+import dayjs from 'dayjs';
 
 const props = defineProps<{
   instanceId: string;
   modelValue?: Record<string, unknown>;
   allStepsData?: Record<number, Record<string, unknown>>;
   disabled?: boolean;
+  stepStatus?: string;
 }>();
 
 const emit = defineEmits<{
@@ -86,33 +118,55 @@ const emit = defineEmits<{
   (e: 'submitted', data: Record<string, unknown>): void;
 }>();
 
-const form = reactive({
-  allergenData: [] as unknown[],
-  gb2760Compliant: true,
-  additiveOther: '',
+const formRef = ref();
+
+const productName = computed(() => (props.allStepsData?.[1] as any)?.productName ?? '-');
+
+const rawMatsFromStep2 = computed(() => {
+  const s2 = props.allStepsData?.[2] as any;
+  return (s2?.rawMaterials ?? []).map((m: any) => ({ name: m.name, qty: '' }));
 });
 
-const rawMaterials = computed(() => {
-  const step2 = props.allStepsData?.[2] as Record<string, unknown> | undefined;
-  return (step2?.rawMaterials as unknown[]) ?? [];
+const form = reactive({
+  experimentDate: dayjs().format('YYYY-MM-DD'),
+  experimentPurpose: '',
+  experimentMaterials: [] as { name: string; qty: string }[],
+  formulaAndProcess: '',
+  experimentParameters: '',
+  productionStatus: '正常',
+  productionAbnormalNote: '',
+  sampleStatus: '正常',
+  sampleAbnormalNote: '',
+  shelfLifeDate: '',
+  shelfLifePurpose: '',
+  storageCondition: '常温库（25°C）',
+  inspectionResult: '符合',
+  dataAnalysis: '',
+  trialConclusion: '',
+  conclusionNote: '',
 });
 
 onMounted(() => {
   if (props.modelValue) {
-    const mv = props.modelValue as typeof form;
-    if (mv.allergenData !== undefined) form.allergenData = mv.allergenData;
-    if (mv.gb2760Compliant !== undefined) form.gb2760Compliant = mv.gb2760Compliant;
-    if (mv.additiveOther !== undefined) form.additiveOther = mv.additiveOther;
+    const mv = props.modelValue as any;
+    Object.keys(form).forEach(k => { if (mv[k] !== undefined) (form as any)[k] = mv[k]; });
+  }
+  if (form.experimentMaterials.length === 0 && rawMatsFromStep2.value.length > 0) {
+    form.experimentMaterials = rawMatsFromStep2.value;
   }
 });
 
-const getFormData = () => ({ ...form, allergenData: [...(form.allergenData as unknown[])] });
+const getFormData = () => ({ ...form, experimentMaterials: form.experimentMaterials.map(m => ({ ...m })) });
+
+const handleSubmit = async () => {
+  if (!form.trialConclusion) { ElMessage.warning('请选择试验结论'); return; }
+  emit('submitted', getFormData());
+};
 </script>
 
 <style scoped>
 .step-view { padding: 16px; }
 .section-card { margin-bottom: 16px; }
 .section-title { font-weight: 600; }
-.static-content pre { white-space: pre-wrap; font-family: inherit; line-height: 1.8; font-size: 14px; }
 .action-bar { display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px; }
 </style>

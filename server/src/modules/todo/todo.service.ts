@@ -7,12 +7,13 @@ const ACTION_ROUTE_MAP: Partial<Record<TodoType, (id: string) => string>> = {
   training_attend: (id) => `/training/projects/${id}`,
   training_organize: (id) => `/training/projects/${id}`,
   approval: (id) => `/approvals/detail/${id}`,
+  approval_task: (id) => `/approvals/detail/${id}`,
   audit_rectification: (_id) => `/internal-audit/rectifications`,
   equipment_maintain: (id) => `/equipment/${id}`,
 };
 
 const ALL_TODO_TYPES: TodoType[] = [
-  'training_attend', 'training_organize', 'approval',
+  'training_attend', 'training_organize', 'approval', 'approval_task',
   'audit_rectification', 'equipment_maintain', 'inventory', 'change_request',
 ];
 

@@ -22,7 +22,7 @@
           <span>{{ currentStep?.title }}</span>
           <div class="step-nav">
             <el-button :disabled="viewStep <= 1" @click="viewStep--">上一步</el-button>
-            <el-button :disabled="viewStep >= 9" @click="viewStep++">下一步</el-button>
+            <el-button :disabled="viewStep >= 7" @click="viewStep++">下一步</el-button>
           </div>
         </div>
       </template>
@@ -36,8 +36,7 @@
         :step-status="getStepStatus(viewStep)"
         @saved="(data: Record<string, unknown>) => handleSave(data)"
         @submitted="(data: Record<string, unknown>) => handleSubmit(data)"
-        @approve="(comment: string) => handleApprove(comment)"
-        @reject="(comment: string) => handleReject(comment)"
+        @signed="loadInstance"
       />
     </el-card>
   </div>
@@ -50,15 +49,13 @@ import { ElMessage } from 'element-plus';
 import { processApi, type ProcessInstance, type ProcessStepData } from '@/api/process';
 
 const STEPS = [
-  { number: 1, title: 'Step 1 立项申请' },
-  { number: 2, title: 'Step 2 设计输入' },
-  { number: 3, title: 'Step 3 风险识别' },
-  { number: 4, title: 'Step 4 小试记录' },
-  { number: 5, title: 'Step 5 中试验证' },
-  { number: 6, title: 'Step 6 验证评审' },
-  { number: 7, title: 'Step 7 危害评估' },
-  { number: 8, title: 'Step 8 放行审批' },
-  { number: 9, title: 'Step 9 开发输出' },
+  { number: 1, title: '新产品开发申请书' },
+  { number: 2, title: '新产品开发计划书' },
+  { number: 3, title: '研发试验记录' },
+  { number: 4, title: '产品开发评审' },
+  { number: 5, title: '产品标签信息记录' },
+  { number: 6, title: '产品操作规程' },
+  { number: 7, title: '产品验证记录' },
 ];
 
 const stepComponents = [
@@ -69,8 +66,6 @@ const stepComponents = [
   defineAsyncComponent(() => import('./Step5.vue')),
   defineAsyncComponent(() => import('./Step6.vue')),
   defineAsyncComponent(() => import('./Step7.vue')),
-  defineAsyncComponent(() => import('./Step8.vue')),
-  defineAsyncComponent(() => import('./Step9.vue')),
 ];
 
 const route = useRoute();
@@ -85,7 +80,7 @@ const viewStep = ref(1);
 const allStepsData = computed(() => {
   const map: Record<number, Record<string, unknown>> = {};
   for (const sd of stepDataList.value) {
-    map[sd.stepNumber] = sd.data as Record<string, unknown>;
+    map[sd.stepNumber] = { ...(sd.data as Record<string, unknown>), approvalInstanceId: sd.approvalInstanceId };
   }
   return map;
 });
@@ -96,7 +91,9 @@ const currentStepComponent = computed(() => stepComponents[viewStep.value - 1]);
 
 const isStepDisabled = computed(() => {
   if (!instance.value) return true;
-  return viewStep.value > instance.value.currentStep;
+  if (viewStep.value > instance.value.currentStep) return true;
+  const status = getStepStatus(viewStep.value);
+  return status === 'APPROVED';
 });
 
 const statusType = computed(() => {
@@ -121,7 +118,7 @@ const loadInstance = async () => {
   try {
     const res = await processApi.getInstance(instanceId);
     instance.value = res;
-    stepDataList.value = res.stepDataList ?? [];
+    stepDataList.value = res.stepData ?? [];
     viewStep.value = res.currentStep ?? 1;
   } catch {
     ElMessage.error('加载失败');
@@ -150,25 +147,6 @@ const handleSubmit = async (data: Record<string, unknown>) => {
   }
 };
 
-const handleApprove = async (comment: string) => {
-  try {
-    await processApi.approveStep(instanceId, { stepNumber: viewStep.value, action: 'approve', comment });
-    await loadInstance();
-    ElMessage.success('审批通过');
-  } catch {
-    ElMessage.error('审批失败');
-  }
-};
-
-const handleReject = async (comment: string) => {
-  try {
-    await processApi.approveStep(instanceId, { stepNumber: viewStep.value, action: 'reject', comment });
-    await loadInstance();
-    ElMessage.warning('已驳回');
-  } catch {
-    ElMessage.error('驳回失败');
-  }
-};
 
 onMounted(loadInstance);
 </script>

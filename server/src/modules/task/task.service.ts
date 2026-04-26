@@ -4,8 +4,11 @@ import {
   ForbiddenException,
   BadRequestException,
   ConflictException,
+  Logger,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 import { Snowflake } from '../../common/utils/snowflake';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
@@ -32,8 +35,12 @@ interface UserContext {
 @Injectable()
 export class TaskService {
   private readonly snowflake: Snowflake;
+  private readonly logger = new Logger(TaskService.name);
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly approvalEngine: ApprovalEngineService,
+  ) {
     this.snowflake = new Snowflake(2, 1);
   }
 
@@ -255,6 +262,25 @@ export class TaskService {
         deviationReasons: dto.deviationReasons ? (dto.deviationReasons as object) : undefined,
       },
     });
+
+    if (this.approvalEngine) {
+      try {
+        const approval = await this.approvalEngine.startApproval({
+          resourceType: 'taskRecord',
+          resourceId: record.id,
+          resourceStep: 'submit',
+          triggerKey: 'submit',
+          title: `任务记录审批：${task.title ?? taskId}`,
+          createdById: userId,
+        });
+        await this.prisma.taskRecord.update({
+          where: { id: record.id },
+          data: { approvalInstanceId: approval.id },
+        });
+      } catch {
+        // No ApprovalDefinition matched — skip unified tracking silently
+      }
+    }
 
     return record;
   }

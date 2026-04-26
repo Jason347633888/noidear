@@ -1,105 +1,101 @@
 <template>
   <div class="step-view">
-    <el-form :model="form" label-width="240px" :disabled="disabled">
-      <el-divider>七. 新产品危害评估与验证</el-divider>
+    <el-form :model="form" label-width="200px" :disabled="disabled">
+      <el-divider>产品验证记录（JL-07）</el-divider>
 
-      <el-form-item label="验证产线（自动带出中试）">
-        <el-input :model-value="productionLineDisplay" disabled />
-      </el-form-item>
-
-      <el-form-item label="验证时间">
-        <el-date-picker v-model="form.verificationDate" type="date" format="YYYY-MM-DD"
-          value-format="YYYY-MM-DD" :disabled="disabled" />
-      </el-form-item>
-
-      <el-form-item label="现场工艺">
-        <el-radio-group v-model="form.onSiteProcess">
-          <el-radio value="符合标准">符合标准</el-radio>
-          <el-radio value="不符合标准">不符合标准</el-radio>
-        </el-radio-group>
-      </el-form-item>
-
-      <!-- 现场验证 -->
       <el-card shadow="never" class="section-card">
-        <template #header><span class="section-title">现场验证</span></template>
-        <div class="template-content">
-          <p>1、确认原则：食品安全小组组长应组织公司的食品安全小组对烤蛋糕等的加工生产流程图和生产工艺操作描述进行确认，该确认工作必须在危害分析前完成，以后在体系运行遇到危害控制计划的重新评估也必须首先执行该确认工作。</p>
-          <p>2、进行确认的方式有：现场询问、观察及进行实际操作以验证工艺流程图和工艺描述的准确性与符合性。同时还可以对照已绘制的加工车间物流图与现有设施设备布局进行确认，确定其中是否存在交叉污染的危害风险。如果存在，就必须对工艺进行调整并再次确认。</p>
-          <p>3、实施确认：公司食品安全小组于 <strong>{{ form.verificationDate || '____' }}</strong> 在公司食品安全小组组长的组织下对烤蛋糕/蒸蛋糕等的加工工艺流程图和工艺描述进行了现场确认，结论认为公司编制烤蛋糕/蒸蛋糕的加工工艺流程图和工艺描述符合现场实际的工艺布局，符合现场所执行的工艺操作方法及工艺参数要求。同时在工艺布局和人员、物品流向上已经做到避免交叉污染的危害。</p>
-        </div>
+        <template #header><span class="section-title">试生产基本信息</span></template>
+        <el-form-item label="产品名称"><el-input :model-value="productName" disabled /></el-form-item>
+        <el-form-item label="项目负责人"><el-input v-model="form.projectManager" /></el-form-item>
+        <el-form-item label="试生产日期">
+          <el-date-picker v-model="form.trialProductionDate" type="date" value-format="YYYY-MM-DD" :disabled="disabled" />
+        </el-form-item>
+        <el-form-item label="验证阶段">
+          <el-radio-group v-model="form.verificationStage">
+            <el-radio value="小试">小试</el-radio>
+            <el-radio value="中试">中试</el-radio>
+            <el-radio value="大试">大试</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="试生产批次号"><el-input v-model="form.batchNumber" /></el-form-item>
+      </el-card>
 
-        <el-form-item label="潜在危害">
-          <el-radio-group v-model="form.potentialHazard">
+      <el-card shadow="never" class="section-card">
+        <template #header><span class="section-title">实际使用配方（来自Step6，只读）</span></template>
+        <el-table :data="recipeFromStep6" border size="small">
+          <el-table-column type="index" label="序号" width="55" />
+          <el-table-column label="物料编码" prop="materialCode" width="130" />
+          <el-table-column label="物料名称" prop="materialName" min-width="160" />
+          <el-table-column label="用量(kg/批)" prop="qtyPerBatch" width="120" />
+          <el-table-column label="单位" prop="unit" width="80" />
+        </el-table>
+      </el-card>
+
+      <el-card shadow="never" class="section-card">
+        <template #header><span class="section-title">原辅料验证</span></template>
+        <el-form-item label="原料生产商三证合一"><el-checkbox v-model="form.supplierLicenseVerified" /></el-form-item>
+        <el-form-item label="拥有第三方检测标准"><el-checkbox v-model="form.thirdPartyStandard" /></el-form-item>
+        <el-form-item label="批次检验报告"><el-checkbox v-model="form.batchInspectionReport" /></el-form-item>
+        <el-form-item label="原辅料可靠性结论">
+          <el-radio-group v-model="form.materialReliabilityConclusion">
+            <el-radio value="可靠">可靠</el-radio>
+            <el-radio value="不可靠">不可靠</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-card>
+
+      <el-card shadow="never" class="section-card">
+        <template #header><span class="section-title">产品理化及安全性检验</span></template>
+        <el-form-item label="理化及安全性检验">
+          <el-radio-group v-model="form.safetyInspectionConclusion">
             <el-radio value="符合标准">符合标准</el-radio>
             <el-radio value="不符合标准">不符合标准</el-radio>
           </el-radio-group>
         </el-form-item>
-      </el-card>
-
-      <!-- 风险是否显著 -->
-      <el-card shadow="never" class="section-card">
-        <template #header><span class="section-title">风险是否显著</span></template>
-        <el-form-item label="生物危害（沙门氏菌、金黄色葡萄球菌...）">
-          <el-radio-group v-model="form.bioHazard">
-            <el-radio value="是">是</el-radio><el-radio value="否">否</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="化学危害（农药残留、重金属...）">
-          <el-radio-group v-model="form.chemHazard">
-            <el-radio value="是">是</el-radio><el-radio value="否">否</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="物理危害（金属、玻璃、塑料...）">
-          <el-radio-group v-model="form.physHazard">
-            <el-radio value="是">是</el-radio><el-radio value="否">否</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="过敏原（八大过敏原之一）">
-          <el-radio-group v-model="form.allergenHazard">
-            <el-radio value="是">是</el-radio><el-radio value="否">否</el-radio>
-          </el-radio-group>
+        <el-form-item label="生产中潜在危害">
+          <el-input v-model="form.potentialHazard" type="textarea" :rows="2" />
         </el-form-item>
         <el-form-item label="控制措施">
-          <el-radio-group v-model="form.controlMeasure">
-            <el-radio value="已具备">已具备</el-radio>
-            <el-radio value="待完善">待完善</el-radio>
+          <el-input v-model="form.controlMeasure" type="textarea" :rows="2" />
+        </el-form-item>
+        <el-form-item label="储运测试结果（必要时）">
+          <el-input v-model="form.storageTransportTest" type="textarea" :rows="2" />
+        </el-form-item>
+        <el-form-item label="顾客试吃意见（必要时）">
+          <el-input v-model="form.customerFeedback" type="textarea" :rows="2" />
+        </el-form-item>
+      </el-card>
+
+      <el-card shadow="never" class="section-card">
+        <template #header><span class="section-title">验证结论</span></template>
+        <el-form-item label="验证结论" prop="verificationConclusion">
+          <el-radio-group v-model="form.verificationConclusion">
+            <el-radio value="合格">合格（可量产）</el-radio>
+            <el-radio value="不合格">不合格（需重新研发）</el-radio>
+            <el-radio value="需修改">需修改后再验证</el-radio>
           </el-radio-group>
         </el-form-item>
-      </el-card>
-
-      <!-- CCP 验证 -->
-      <el-card shadow="never" class="section-card">
-        <template #header><span class="section-title">CCP 验证</span></template>
-        <el-form-item label="关键限值符合工艺范围">
-          <el-checkbox v-model="form.ccpLimitOk" />
-        </el-form-item>
-        <el-form-item label="明确监控方法、频率、责任人">
-          <el-checkbox v-model="form.ccpMonitorOk" />
-        </el-form-item>
-        <el-form-item label="设备具备纠偏控制">
-          <el-checkbox v-model="form.ccpDeviceOk" />
-        </el-form-item>
-        <el-form-item label="关键岗位人员具有纠偏措施意识">
-          <el-checkbox v-model="form.ccpPersonnelOk" />
+        <el-form-item label="验证日期">
+          <el-date-picker v-model="form.verificationDate" type="date" value-format="YYYY-MM-DD" :disabled="disabled" />
         </el-form-item>
       </el-card>
 
-      <!-- 审核 -->
       <el-card shadow="never" class="section-card">
-        <template #header><span class="section-title">审核（HACCP 小组）</span></template>
-        <ApprovalStepField
-          :step-status="stepStatus"
-          :approval-comment="form.approvalComment"
-          :field="haccpApprovalField"
-          @approve="handleApprove"
-          @reject="handleReject"
+        <template #header><span class="section-title">3人会签（制造部 + 品质部 + 食品安全组长）</span></template>
+        <ApprovalTaskPanel
+          v-if="stepStatus === 'SUBMITTED'"
+          :approval-instance-id="(modelValue as any)?.approvalInstanceId"
+          :disabled="disabled"
+          @signed="emit('signed')"
         />
+        <el-text v-else-if="stepStatus === 'APPROVED'" type="success">食品安全组长已批准，产品正式激活</el-text>
+        <el-text v-else type="info" size="small">提交后由制造部、品质部、食品安全小组长依次签署</el-text>
       </el-card>
     </el-form>
 
-    <div v-if="!disabled && stepStatus !== 'SUBMITTED'" class="action-bar">
+    <div v-if="!disabled && stepStatus !== 'SUBMITTED' && stepStatus !== 'APPROVED'" class="action-bar">
       <el-button @click="emit('saved', { ...form })">暂存草稿</el-button>
-      <el-button type="primary" @click="handleSubmit">提交审批</el-button>
+      <el-button type="primary" @click="handleSubmit">提交验证</el-button>
     </div>
   </div>
 </template>
@@ -107,9 +103,9 @@
 <script setup lang="ts">
 import { reactive, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import ApprovalStepField from '@/components/fields/ApprovalStepField.vue';
 import dayjs from 'dayjs';
-import { firstValidationMessage, validateStep7 } from '@/utils/processValidation';
+import ApprovalTaskPanel from '@/components/approval/ApprovalTaskPanel.vue';
+import type { RecipeLine } from '@/api/process';
 
 const props = defineProps<{
   instanceId: string;
@@ -122,55 +118,43 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'saved', data: Record<string, unknown>): void;
   (e: 'submitted', data: Record<string, unknown>): void;
-  (e: 'approve', comment: string): void;
-  (e: 'reject', comment: string): void;
+  (e: 'signed'): void;
 }>();
 
-const form = reactive({
-  verificationDate: dayjs().format('YYYY-MM-DD'),
-  onSiteProcess: '符合标准',
-  potentialHazard: '符合标准',
-  bioHazard: '是', chemHazard: '是', physHazard: '是', allergenHazard: '是',
-  controlMeasure: '已具备',
-  ccpLimitOk: true, ccpMonitorOk: true, ccpDeviceOk: true, ccpPersonnelOk: true,
-  approvalComment: '',
+const productName = computed(() => (props.allStepsData?.[1] as any)?.productName ?? '-');
+const recipeFromStep6 = computed((): RecipeLine[] => {
+  const s6 = props.allStepsData?.[6] as any;
+  return s6?.recipeLines ?? [];
 });
 
-const haccpApprovalField = { name: 'approval', label: '审核', type: 'approval-step', approverRoles: ['admin', 'HACCP', 'manager'] };
-
-const productionLineDisplay = computed(() => {
-  const step5 = props.allStepsData?.[5] as Record<string, unknown> | undefined;
-  return (step5?.productionLine as string) ?? '-';
+const form = reactive({
+  projectManager: '',
+  trialProductionDate: dayjs().format('YYYY-MM-DD'),
+  verificationStage: '中试',
+  batchNumber: '',
+  supplierLicenseVerified: true,
+  thirdPartyStandard: true,
+  batchInspectionReport: true,
+  materialReliabilityConclusion: '可靠',
+  safetyInspectionConclusion: '符合标准',
+  potentialHazard: '',
+  controlMeasure: '',
+  storageTransportTest: '',
+  customerFeedback: '',
+  verificationConclusion: '',
+  verificationDate: dayjs().format('YYYY-MM-DD'),
 });
 
 onMounted(() => {
   if (props.modelValue) {
-    const mv = props.modelValue as typeof form;
-    if (mv.verificationDate !== undefined) form.verificationDate = mv.verificationDate;
-    if (mv.onSiteProcess !== undefined) form.onSiteProcess = mv.onSiteProcess;
-    if (mv.potentialHazard !== undefined) form.potentialHazard = mv.potentialHazard;
-    if (mv.bioHazard !== undefined) form.bioHazard = mv.bioHazard;
-    if (mv.chemHazard !== undefined) form.chemHazard = mv.chemHazard;
-    if (mv.physHazard !== undefined) form.physHazard = mv.physHazard;
-    if (mv.allergenHazard !== undefined) form.allergenHazard = mv.allergenHazard;
-    if (mv.controlMeasure !== undefined) form.controlMeasure = mv.controlMeasure;
-    if (mv.ccpLimitOk !== undefined) form.ccpLimitOk = mv.ccpLimitOk;
-    if (mv.ccpMonitorOk !== undefined) form.ccpMonitorOk = mv.ccpMonitorOk;
-    if (mv.ccpDeviceOk !== undefined) form.ccpDeviceOk = mv.ccpDeviceOk;
-    if (mv.ccpPersonnelOk !== undefined) form.ccpPersonnelOk = mv.ccpPersonnelOk;
-    if (mv.approvalComment !== undefined) form.approvalComment = mv.approvalComment;
+    const mv = props.modelValue as any;
+    Object.keys(form).forEach(k => { if (mv[k] !== undefined) (form as any)[k] = mv[k]; });
   }
 });
 
-const handleApprove = (comment: string) => emit('approve', comment);
-const handleReject = (comment: string) => emit('reject', comment);
-
 const handleSubmit = () => {
-  const result = validateStep7({ ...form });
-  if (!result.valid) {
-    ElMessage.warning(firstValidationMessage(result));
-    return;
-  }
+  if (!form.verificationConclusion) { ElMessage.warning('请选择验证结论'); return; }
+  if (!form.batchNumber.trim()) { ElMessage.warning('请填写试生产批次号'); return; }
   emit('submitted', { ...form });
 };
 </script>
@@ -179,6 +163,5 @@ const handleSubmit = () => {
 .step-view { padding: 16px; }
 .section-card { margin-bottom: 16px; }
 .section-title { font-weight: 600; }
-.template-content p { margin: 12px 0; line-height: 1.8; }
 .action-bar { display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px; }
 </style>

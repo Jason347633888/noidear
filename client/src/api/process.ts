@@ -4,12 +4,14 @@ export interface ProcessInstance {
   id: string;
   templateId: string;
   productName: string;
+  productId?: string;
   currentStep: number;
   status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'REJECTED';
   createdById: string;
   createdAt: string;
   updatedAt: string;
   createdBy?: { id: string; name: string };
+  stepData?: ProcessStepData[];
 }
 
 export interface ProcessStepData {
@@ -20,23 +22,44 @@ export interface ProcessStepData {
   status: 'PENDING' | 'IN_PROGRESS' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
   submittedById?: string;
   submittedAt?: string;
+  submittedBy?: { id: string; name: string };
   approvedById?: string;
   approvedAt?: string;
-  approvalComment?: string;
-  submittedBy?: { id: string; name: string };
   approvedBy?: { id: string; name: string };
+  approvalComment?: string;
+  approvalInstanceId?: string;
 }
 
-export interface SubmitStepPayload {
+export interface ProcessStepApproval {
+  id: string;
+  instanceId: string;
   stepNumber: number;
-  data: Record<string, unknown>;
-  saveAsDraft?: boolean;
-}
-
-export interface ApproveStepPayload {
-  stepNumber: number;
-  action: 'approve' | 'reject';
+  approverId?: string;
+  approver?: { id: string; name: string };
+  department: string;
+  role: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
   comment?: string;
+  signedAt?: string;
+}
+
+export interface RawMaterial {
+  id: string;
+  materialCode: string;
+  name: string;
+  ingredientInfo?: string;
+  qtyPerBatch?: number;
+  unit?: string;
+}
+
+export interface RecipeLine {
+  materialId: string;
+  materialCode: string;
+  materialName: string;
+  qtyPerBatch: number;
+  unit: string;
+  isCritical?: boolean;
+  notes?: string;
 }
 
 export const processApi = {
@@ -47,7 +70,7 @@ export const processApi = {
     request.get<ProcessInstance[]>('/process/instances'),
 
   getInstance: (id: string) =>
-    request.get<ProcessInstance & { stepDataList: ProcessStepData[] }>(`/process/instances/${id}`),
+    request.get<ProcessInstance & { stepDataList?: ProcessStepData[] }>(`/process/instances/${id}`),
 
   createInstance: (templateId: string, productName?: string) =>
     request.post<ProcessInstance>('/process/instances', { templateId, productName }),
@@ -55,12 +78,19 @@ export const processApi = {
   deleteInstance: (id: string) =>
     request.delete(`/process/instances/${id}`),
 
-  getStepData: (instanceId: string, stepNumber: number) =>
-    request.get<ProcessStepData>(`/process/instances/${instanceId}/steps/${stepNumber}`),
+  submitStep: (instanceId: string, payload: { stepNumber: number; data: Record<string, unknown>; saveAsDraft?: boolean }) =>
+    request.post(`/process/instances/${instanceId}/steps`, payload),
 
-  submitStep: (instanceId: string, payload: SubmitStepPayload) =>
-    request.post<ProcessStepData>(`/process/instances/${instanceId}/steps`, payload),
+  submitApproval: (instanceId: string, stepNumber: number, payload: { action: 'approve' | 'reject'; comment?: string; role?: string }) =>
+    request.post(`/process/instances/${instanceId}/steps/${stepNumber}/approvals`, payload),
 
-  approveStep: (instanceId: string, payload: ApproveStepPayload) =>
-    request.post<ProcessStepData>(`/process/instances/${instanceId}/approve`, payload),
+  getApprovals: (instanceId: string, stepNumber?: number) =>
+    request.get<ProcessStepApproval[]>(`/process/instances/${instanceId}/approvals`, { params: stepNumber ? { stepNumber } : {} }),
+
+  getPendingApprovals: () =>
+    request.get<ProcessStepApproval[]>('/process/instances/approvals/pending'),
+
+  // Backward compatibility: approveStep uses submitApproval internally
+  approveStep: (instanceId: string, payload: { stepNumber: number; action: 'approve' | 'reject'; comment?: string }) =>
+    request.post(`/process/instances/${instanceId}/approve`, payload),
 };

@@ -98,10 +98,10 @@ export class ApprovalService {
   // ========== Pending Approvals Query ==========
 
   /**
-   * 获取当前用户的待审批列表
+   * 获取当前用户的待审批列表（旧 Approval 表 + 统一审批任务）
    */
   async getPendingApprovals(approverId: string) {
-    return this.prisma.approval.findMany({
+    const legacyApprovals = await this.prisma.approval.findMany({
       where: { approverId, status: 'pending' },
       include: {
         approver: { select: { id: true, name: true } },
@@ -109,6 +109,22 @@ export class ApprovalService {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    // 追加统一审批引擎中该用户的待办任务（兼容旧部署）
+    let unifiedTasks: Array<{ source: 'unified'; task: any }> = [];
+    try {
+      const tasks = await this.prisma.approvalTask.findMany({
+        where: { assigneeUserId: approverId, status: 'PENDING' },
+        include: { instance: true },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      });
+      unifiedTasks = tasks.map((task) => ({ source: 'unified' as const, task }));
+    } catch {
+      // approvalTask 表在旧部署中可能不存在，静默跳过
+    }
+
+    return { legacy: legacyApprovals, unified: unifiedTasks };
   }
 
   // ========== Approval Detail ==========

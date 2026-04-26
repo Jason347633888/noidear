@@ -2,13 +2,18 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { ApprovalEngineService } from '../../unified-approval/approval-engine.service';
 import { CreateScrapDto, ApproveScrapDto } from '../dto/scrap.dto';
 
 @Injectable()
 export class ScrapService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly approvalEngine: ApprovalEngineService,
+  ) {}
 
   async create(dto: CreateScrapDto) {
     for (const item of dto.items) {
@@ -24,7 +29,7 @@ export class ScrapService {
 
     const scrapNo = await this.generateScrapNumber();
 
-    return this.prisma.materialScrap.create({
+    const materialScrap = await this.prisma.materialScrap.create({
       data: {
         scrapNo,
         requesterId: dto.requesterId,
@@ -48,6 +53,27 @@ export class ScrapService {
         },
       },
     });
+
+    if (this.approvalEngine) {
+      try {
+        const approval = await this.approvalEngine.startApproval({
+          resourceType: 'material_scrap',
+          resourceId: materialScrap.id,
+          resourceStep: 'submit',
+          triggerKey: 'submit',
+          title: `报废单审批：${materialScrap.scrapNo ?? materialScrap.id}`,
+          createdById: dto.requesterId,
+        });
+        await this.prisma.materialScrap.update({
+          where: { id: materialScrap.id },
+          data: { approvalInstanceId: approval.id },
+        });
+      } catch {
+        // No ApprovalDefinition matched — skip unified tracking silently
+      }
+    }
+
+    return materialScrap;
   }
 
   async approve(id: string, dto: ApproveScrapDto) {

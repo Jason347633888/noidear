@@ -7,7 +7,6 @@ import {
   validateStep5,
   validateStep6,
   validateStep7,
-  validateStep8,
 } from '../processValidation';
 
 describe('process validation helpers', () => {
@@ -133,18 +132,16 @@ describe('process validation helpers', () => {
     expect(result.errors.map((e) => e.message)).toContain('包装中心温度不能大于60');
   });
 
-  it('Step5 through Step8 reject incomplete submit data', () => {
+  it('Step5 through Step7 reject incomplete submit data', () => {
     expect(validateStep5({ productionLine: '', output: 0, trialRecord: '', processParams: {}, verificationConclusion: '' }).valid).toBe(false);
     expect(validateStep6({ materialConclusion: '', physicoChemical: '', shelfLifeTest: '', finalInspection: '', inspectionMethod: '' }).valid).toBe(false);
     expect(validateStep7({ verificationDate: '', onSiteProcess: '', potentialHazard: '', bioHazard: '', chemHazard: '', physHazard: '', allergenHazard: '', controlMeasure: '' }).valid).toBe(false);
-    expect(validateStep8({ formulaConfirm: '', processConfirm: '', standardConfirm: '', shelfLifeVerify: '', inspectionReport: '', hazardAssessment: '', labelConfirm: '', packagingConfirm: '', conclusion: '' }).valid).toBe(false);
   });
 
-  it('Step5 through Step8 surface the first submit validation message', () => {
+  it('Step5 through Step7 surface the first submit validation message', () => {
     expect(firstValidationMessage(validateStep5({ date: '2026-04-22', productionLine: '烤蛋糕1号线', output: 1, trialRecord: '记录', processParams: {}, verificationConclusion: '合格' }))).toBe('出炉中心温度不能为空');
     expect(firstValidationMessage(validateStep6({ cert3in1: false, thirdPartyTest: true, batchReport: true, hazardAnalysis: true, materialCompliant: true, materialConclusion: '可靠', physicoChemical: '符合理化要求(GRSS/PZ-JL-29)', shelfLifeTest: '符合保质期要求(GRSS/PZ-JL-62)', finalInspection: '合格', inspectionMethod: '型式检验' }))).toBe('原料生产商三证合一必须确认');
     expect(firstValidationMessage(validateStep7({ verificationDate: '2026-04-22', onSiteProcess: '符合标准', potentialHazard: '符合标准', bioHazard: '是', chemHazard: '是', physHazard: '是', allergenHazard: '是', controlMeasure: '已具备', ccpLimitOk: false, ccpMonitorOk: true, ccpDeviceOk: true, ccpPersonnelOk: true }))).toBe('关键限值符合工艺范围必须确认');
-    expect(firstValidationMessage(validateStep8({ c1: false, c2: true, c3: true, c4: true, c5: true, c6: true, c7: true, c8: true, c9: true, c10: true, c11: true, c12: true, formulaConfirm: '已确认', processConfirm: '已确认', standardConfirm: '已确认', shelfLifeVerify: '完成', inspectionReport: '合格', hazardAssessment: '完成', labelConfirm: '合规', packagingConfirm: '合格', conclusion: '同意放行' }))).toBe('原辅料采购的可行性必须确认');
   });
 
   it('Step6 requires checklist confirmations', () => {
@@ -185,32 +182,4 @@ describe('process validation helpers', () => {
     expect(result.errors.map((e) => e.fieldKey)).toContain('ccpLimitOk');
   });
 
-  it('Step8 requires all review checkboxes', () => {
-    const result = validateStep8({
-      c1: true,
-      c2: true,
-      c3: false,
-      c4: true,
-      c5: true,
-      c6: true,
-      c7: true,
-      c8: true,
-      c9: true,
-      c10: true,
-      c11: true,
-      c12: true,
-      formulaConfirm: '已确认',
-      processConfirm: '已确认',
-      standardConfirm: '已确认',
-      shelfLifeVerify: '完成',
-      inspectionReport: '合格',
-      hazardAssessment: '完成',
-      labelConfirm: '合规',
-      packagingConfirm: '合格',
-      conclusion: '同意放行',
-    });
-
-    expect(result.valid).toBe(false);
-    expect(result.errors.map((e) => e.fieldKey)).toContain('c3');
-  });
 });

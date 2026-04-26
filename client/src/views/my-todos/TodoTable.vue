@@ -29,7 +29,7 @@
     <el-table-column label="操作" width="160" fixed="right">
       <template #default="{ row }">
         <el-button
-          v-if="row.status === 'pending'"
+          v-if="row.status === 'pending' && row.type !== 'approval_task'"
           type="primary"
           size="small"
           :loading="completing === row.id"
@@ -61,6 +61,7 @@ const TYPE_LABELS: Record<TodoType, string> = {
   equipment_maintain: '设备维护',
   inventory: '盘点',
   change_request: '变更请求',
+  approval_task: '审批',
 };
 
 const PRIORITY_LABELS: Record<string, string> = {

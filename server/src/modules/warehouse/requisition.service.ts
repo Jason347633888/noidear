@@ -1,10 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 import * as dayjs from 'dayjs';
 
 @Injectable()
 export class RequisitionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly approvalEngine: ApprovalEngineService,
+  ) {}
 
   async create(createDto: any) {
     const requisitionNo = this.generateRequisitionNo();
@@ -82,10 +86,31 @@ export class RequisitionService {
   async submit(id: string) {
     const req = await this.findOne(id);
     if (req.status !== 'draft') throw new BadRequestException('只有草稿状态可提交');
-    return this.prisma.materialRequisition.update({
+    const updated = await this.prisma.materialRequisition.update({
       where: { id },
       data: { status: 'pending', submittedAt: new Date() },
     });
+
+    if (this.approvalEngine) {
+      try {
+        const approval = await this.approvalEngine.startApproval({
+          resourceType: 'material_requisition',
+          resourceId: id,
+          resourceStep: 'submit',
+          triggerKey: 'submit',
+          title: `领料单审批：${req.requisitionNo ?? id}`,
+          createdById: req.applicantId,
+        });
+        await this.prisma.materialRequisition.update({
+          where: { id },
+          data: { approvalInstanceId: approval.id },
+        });
+      } catch {
+        // No ApprovalDefinition matched — skip unified tracking silently
+      }
+    }
+
+    return updated;
   }
 
   async approve(id: string, approverId: string, action: 'approved' | 'rejected' = 'approved') {
