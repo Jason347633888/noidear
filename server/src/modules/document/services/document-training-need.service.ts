@@ -1,0 +1,59 @@
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../../prisma/prisma.service';
+
+@Injectable()
+export class DocumentTrainingNeedService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async suggestForDocument(documentId: string, actorId: string) {
+    const document = await this.prisma.document.findUnique({ where: { id: documentId, deletedAt: null } });
+    if (!document) throw new NotFoundException('文件不存在');
+
+    const targetDepartment = (document as any).owner_department ?? null;
+    const existing = await this.prisma.documentTrainingNeed.findFirst({
+      where: { documentId, targetDepartment, status: { in: ['suggested', 'accepted', 'linked'] } },
+    });
+    if (existing) return existing;
+
+    return this.prisma.documentTrainingNeed.create({
+      data: {
+        documentId,
+        triggerType: document.status === 'effective' ? 'revised_document' : 'manual',
+        targetDepartment,
+        reason: `文件 ${document.title} 已发布或变更，需要评估培训需求`,
+        createdBy: actorId,
+      },
+    });
+  }
+
+  async list(status?: string) {
+    return this.prisma.documentTrainingNeed.findMany({
+      where: status ? { status } : {},
+      include: { document: { select: { id: true, title: true, number: true, status: true } } },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
+  async accept(id: string) {
+    const need = await this.prisma.documentTrainingNeed.findUnique({ where: { id } });
+    if (!need) throw new NotFoundException('培训需求不存在');
+    if (need.status === 'dismissed') throw new ConflictException('已驳回的培训需求不能接受');
+    return this.prisma.documentTrainingNeed.update({ where: { id }, data: { status: 'accepted' } });
+  }
+
+  async dismiss(id: string, reason?: string) {
+    if (!reason) throw new BadRequestException('dismiss reason is required');
+    return this.prisma.documentTrainingNeed.update({
+      where: { id },
+      data: { status: 'dismissed', dismissedReason: reason },
+    });
+  }
+
+  async link(id: string, linkedTrainingProjectId?: string) {
+    if (!linkedTrainingProjectId) throw new BadRequestException('linkedTrainingProjectId is required');
+    return this.prisma.documentTrainingNeed.update({
+      where: { id },
+      data: { status: 'linked', linkedTrainingProjectId },
+    });
+  }
+}
