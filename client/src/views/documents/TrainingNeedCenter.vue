@@ -26,7 +26,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { documentOperationsApi } from '@/api/document-operations';
 
 const status = ref('');
@@ -50,8 +50,19 @@ const accept = async (id: string) => {
 };
 
 const dismiss = async (id: string) => {
-  await documentOperationsApi.dismissTrainingNeed(id, '当前不适用');
-  await load();
+  try {
+    const { value, action } = await ElMessageBox.prompt('请输入驳回原因', '驳回培训需求', {
+      confirmButtonText: '确认驳回',
+      cancelButtonText: '取消',
+      inputPattern: /.+/,
+      inputErrorMessage: '驳回原因不能为空',
+    }) as any;
+    if (action !== 'confirm') return;
+    await documentOperationsApi.dismissTrainingNeed(id, value);
+    await load();
+  } catch {
+    // user cancelled
+  }
 };
 
 onMounted(load);
