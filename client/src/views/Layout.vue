@@ -157,6 +157,18 @@ const menuItems = [
     ],
   },
   {
+    title: '文控运营',
+    icon: Connection,
+    children: [
+      { path: '/documents/operations/read-confirmations', title: '阅读确认', icon: List },
+      { path: '/documents/operations/training-needs', title: '培训需求', icon: UserFilled },
+      { path: '/documents/operations/health', title: '文控健康度', icon: DataAnalysis },
+      { path: '/documents/operations/audit-coverage', title: '审核覆盖', icon: CircleCheck },
+      { path: '/documents/operations/impact', title: '影响分析', icon: Connection },
+      { path: '/documents/operations/audit-chain', title: '审核链路', icon: Monitor },
+    ],
+  },
+  {
     title: '审批与工作流',
     icon: CircleCheck,
     children: [
