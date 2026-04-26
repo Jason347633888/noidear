@@ -374,6 +374,325 @@ async function main() {
 
   console.log('✅ 产品研发流程模板配置完成');
 
+  // 9. 统一审批定义（Unified Approval Definitions）
+  const approvalDefinitions = [
+    {
+      module: 'document',
+      resourceType: 'document',
+      triggerKey: 'publish.level1',
+      name: '一级文件发布审批',
+      version: 1,
+      steps: [
+        {
+          stepKey: 'document-level1',
+          stepName: '一级文件审批',
+          mode: 'sequential',
+          assignments: [{ type: 'role', roleCode: 'gm', label: '总经理' }],
+          rejectPolicy: 'reject_instance',
+          onApproved: 'document.approvalApproved',
+        },
+      ],
+    },
+    {
+      module: 'process',
+      resourceType: 'process_instance',
+      triggerKey: 'step:4',
+      name: '产品开发评审五部门会签',
+      version: 1,
+      steps: [
+        {
+          stepKey: 'process-step4-review',
+          stepName: '产品开发评审会签',
+          mode: 'countersign_all',
+          assignments: [
+            { type: 'role', roleCode: 'quality', label: '品质部' },
+            { type: 'role', roleCode: 'manufacture', label: '制造部' },
+            { type: 'role', roleCode: 'purchase', label: '采购部' },
+            { type: 'role', roleCode: 'development', label: '产品开发部' },
+            { type: 'role', roleCode: 'gm', label: '总经理' },
+          ],
+          rejectPolicy: 'reject_instance',
+          onApproved: 'process.stepApproved',
+        },
+      ],
+    },
+    {
+      module: 'record',
+      resourceType: 'record',
+      triggerKey: 'submit',
+      name: '记录提交审批',
+      version: 1,
+      steps: [
+        {
+          stepKey: 'record-submit',
+          stepName: '记录审批',
+          mode: 'single',
+          assignments: [{ type: 'permission', permissionCode: 'approve:record', label: '记录审批人' }],
+          rejectPolicy: 'reject_instance',
+          onApproved: 'record.submitApproved',
+        },
+      ],
+    },
+    {
+      module: 'task',
+      resourceType: 'task_record',
+      triggerKey: 'submit',
+      name: '任务记录审批',
+      version: 1,
+      steps: [
+        {
+          stepKey: 'task-record-submit',
+          stepName: '任务记录审批',
+          mode: 'single',
+          assignments: [{ type: 'permission', permissionCode: 'approve:task_record', label: '任务记录审批人' }],
+          rejectPolicy: 'reject_instance',
+          onApproved: 'taskRecord.approvalApproved',
+        },
+      ],
+    },
+    {
+      module: 'warehouse',
+      resourceType: 'material_requisition',
+      triggerKey: 'submit',
+      name: '领料单审批',
+      version: 1,
+      steps: [
+        {
+          stepKey: 'warehouse-requisition',
+          stepName: '领料审批',
+          mode: 'single',
+          assignments: [{ type: 'permission', permissionCode: 'approve:warehouse', label: '仓储审批人' }],
+          rejectPolicy: 'reject_instance',
+          onApproved: 'warehouse.requisitionApproved',
+        },
+      ],
+    },
+    {
+      module: 'warehouse',
+      resourceType: 'material_inbound',
+      triggerKey: 'submit',
+      name: '入库单审批',
+      version: 1,
+      steps: [
+        {
+          stepKey: 'warehouse-inbound',
+          stepName: '入库审批',
+          mode: 'single',
+          assignments: [{ type: 'permission', permissionCode: 'approve:warehouse', label: '仓储审批人' }],
+          rejectPolicy: 'reject_instance',
+          onApproved: 'warehouse.inboundApproved',
+        },
+      ],
+    },
+    {
+      module: 'warehouse',
+      resourceType: 'material_return',
+      triggerKey: 'submit',
+      name: '退料单审批',
+      version: 1,
+      steps: [
+        {
+          stepKey: 'warehouse-return',
+          stepName: '退料审批',
+          mode: 'single',
+          assignments: [{ type: 'permission', permissionCode: 'approve:warehouse', label: '仓储审批人' }],
+          rejectPolicy: 'reject_instance',
+          onApproved: 'warehouse.returnApproved',
+        },
+      ],
+    },
+    {
+      module: 'warehouse',
+      resourceType: 'material_scrap',
+      triggerKey: 'submit',
+      name: '报废单审批',
+      version: 1,
+      steps: [
+        {
+          stepKey: 'warehouse-scrap',
+          stepName: '报废审批',
+          mode: 'single',
+          assignments: [{ type: 'permission', permissionCode: 'approve:warehouse', label: '仓储审批人' }],
+          rejectPolicy: 'reject_instance',
+          onApproved: 'warehouse.scrapApproved',
+        },
+      ],
+    },
+    {
+      module: 'training',
+      resourceType: 'training_plan',
+      triggerKey: 'submit',
+      name: '培训计划审批',
+      version: 1,
+      steps: [
+        {
+          stepKey: 'training-plan',
+          stepName: '培训计划审批',
+          mode: 'single',
+          assignments: [{ type: 'permission', permissionCode: 'approve:training_plan', label: '培训审批人' }],
+          rejectPolicy: 'reject_instance',
+          onApproved: 'training.planApproved',
+        },
+      ],
+    },
+    {
+      module: 'equipment',
+      resourceType: 'maintenance_record',
+      triggerKey: 'submit',
+      name: '设备维保审核',
+      version: 1,
+      steps: [
+        {
+          stepKey: 'maintenance-record',
+          stepName: '维保审核',
+          mode: 'single',
+          assignments: [{ type: 'permission', permissionCode: 'approve:maintenance_record', label: '设备审核人' }],
+          rejectPolicy: 'reject_instance',
+          onApproved: 'equipment.maintenanceApproved',
+        },
+      ],
+    },
+    {
+      module: 'audit',
+      resourceType: 'audit_finding',
+      triggerKey: 'rectification_submitted',
+      name: '内审整改复审',
+      version: 1,
+      steps: [
+        {
+          stepKey: 'audit-finding-verification',
+          stepName: '整改复审',
+          mode: 'single',
+          assignments: [{ type: 'permission', permissionCode: 'approve:audit_finding', label: '内审复审人' }],
+          rejectPolicy: 'reject_instance',
+          onApproved: 'audit.findingVerified',
+        },
+      ],
+    },
+    {
+      module: 'capa',
+      resourceType: 'corrective_action',
+      triggerKey: 'verify_close',
+      name: 'CAPA验证关闭',
+      version: 1,
+      steps: [
+        {
+          stepKey: 'capa-verify-close',
+          stepName: 'CAPA验证',
+          mode: 'single',
+          assignments: [{ type: 'permission', permissionCode: 'approve:capa', label: 'CAPA验证人' }],
+          rejectPolicy: 'reject_instance',
+          onApproved: 'capa.verificationApproved',
+        },
+      ],
+    },
+    {
+      module: 'deviation',
+      resourceType: 'deviation_report',
+      triggerKey: 'submit',
+      name: '偏离报告审批',
+      version: 1,
+      steps: [
+        {
+          stepKey: 'deviation-submit',
+          stepName: '偏离审批',
+          mode: 'single',
+          assignments: [{ type: 'permission', permissionCode: 'approve:deviation', label: '偏离审批人' }],
+          rejectPolicy: 'reject_instance',
+          onApproved: 'deviation.approvalApproved',
+        },
+      ],
+    },
+    {
+      module: 'change',
+      resourceType: 'change_event',
+      triggerKey: 'approve_change',
+      name: '变更审批',
+      version: 1,
+      steps: [
+        {
+          stepKey: 'change-approval',
+          stepName: '变更审批',
+          mode: 'single',
+          assignments: [{ type: 'permission', permissionCode: 'approve:change_event', label: '变更审批人' }],
+          rejectPolicy: 'reject_instance',
+          onApproved: 'changeEvent.approvalApproved',
+        },
+      ],
+    },
+  ];
+
+  for (const definition of approvalDefinitions) {
+    await prisma.approvalDefinition.upsert({
+      where: {
+        module_resourceType_triggerKey_version: {
+          module: definition.module,
+          resourceType: definition.resourceType,
+          triggerKey: definition.triggerKey,
+          version: definition.version,
+        },
+      },
+      update: { name: definition.name, steps: definition.steps as any, status: 'active' },
+      create: { ...definition, steps: definition.steps as any, status: 'active' },
+    });
+  }
+
+  // Individual process step definitions
+  const processApprovalDefinitions = [
+    { triggerKey: 'step:1', name: '新产品开发申请审批', roleCode: 'gm', stepName: '总经理审批' },
+    { triggerKey: 'step:2', name: '新产品开发计划审批', roleCode: 'manager', stepName: '研发经理审批' },
+    { triggerKey: 'step:5', name: '产品标签信息确认', roleCode: 'gm', stepName: '总经理确认' },
+    { triggerKey: 'step:6', name: '产品操作规程审批', roleCode: 'quality', stepName: '品质部审批' },
+    { triggerKey: 'step:7', name: '产品验证记录三人会签', roleCode: 'food_safety_leader', stepName: '食品安全组长审批' },
+  ];
+
+  for (const row of processApprovalDefinitions) {
+    await prisma.approvalDefinition.upsert({
+      where: {
+        module_resourceType_triggerKey_version: {
+          module: 'process',
+          resourceType: 'process_instance',
+          triggerKey: row.triggerKey,
+          version: 1,
+        },
+      },
+      update: {
+        name: row.name,
+        status: 'active',
+        steps: [
+          {
+            stepKey: `process-${row.triggerKey}`,
+            stepName: row.stepName,
+            mode: 'single',
+            assignments: [{ type: 'role', roleCode: row.roleCode, label: row.stepName }],
+            rejectPolicy: 'reject_instance',
+            onApproved: 'process.stepApproved',
+          },
+        ] as any,
+      },
+      create: {
+        module: 'process',
+        resourceType: 'process_instance',
+        triggerKey: row.triggerKey,
+        name: row.name,
+        version: 1,
+        status: 'active',
+        steps: [
+          {
+            stepKey: `process-${row.triggerKey}`,
+            stepName: row.stepName,
+            mode: 'single',
+            assignments: [{ type: 'role', roleCode: row.roleCode, label: row.stepName }],
+            rejectPolicy: 'reject_instance',
+            onApproved: 'process.stepApproved',
+          },
+        ] as any,
+      },
+    });
+  }
+
+  console.log(`✅ 统一审批定义配置完成（共 ${approvalDefinitions.length + processApprovalDefinitions.length} 个）`);
+
   console.log('🎉 数据库种子数据填充完成！');
 }
 
