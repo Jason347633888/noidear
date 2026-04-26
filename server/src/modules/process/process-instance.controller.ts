@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Param,
   Request,
@@ -114,6 +115,18 @@ export class ProcessInstanceController {
       });
     }
 
+    return { code: 0, data: { success: true }, message: 'success' };
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: '删除流程实例' })
+  async remove(@Param('id') id: string) {
+    const instance = await this.prisma.processInstance.findUnique({ where: { id } });
+    if (!instance) {
+      throw new NotFoundException('流程实例不存在');
+    }
+    await this.prisma.processStepData.deleteMany({ where: { instanceId: id } });
+    await this.prisma.processInstance.delete({ where: { id } });
     return { code: 0, data: { success: true }, message: 'success' };
   }
 
