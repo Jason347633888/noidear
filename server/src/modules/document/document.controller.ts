@@ -27,7 +27,7 @@ import { FilePreviewService } from './services';
 import { DocumentReferenceService } from './services/document-reference.service';
 import { DocumentControlWorkbenchService } from './services/document-control-workbench.service';
 import { RecordFormLandingService } from './services/record-form-landing.service';
-import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto } from './dto';
+import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto, WorkbenchQueryDto } from './dto';
 import { UpdateRecordFormLandingEntryDto } from './dto/document-control.dto';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
@@ -130,8 +130,8 @@ export class DocumentController {
 
   @Get('control/workbench')
   @ApiOperation({ summary: '文控工作台' })
-  getControlWorkbench(@Query('days') days?: string) {
-    return this.workbenchService.getWorkbench(days ? parseInt(days, 10) : 30);
+  getControlWorkbench(@Query() query: WorkbenchQueryDto) {
+    return this.workbenchService.getWorkbench(query.days ?? 30);
   }
 
   // =============================

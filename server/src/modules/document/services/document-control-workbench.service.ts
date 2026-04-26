@@ -6,8 +6,9 @@ export class DocumentControlWorkbenchService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getWorkbench(days = 30) {
+    const safeDays = Math.min(Math.max(days, 1), 365);
     const deadline = new Date();
-    deadline.setDate(deadline.getDate() + days);
+    deadline.setDate(deadline.getDate() + safeDays);
 
     const [
       pendingReview,

@@ -47,6 +47,7 @@ const fetchRows = async () => {
 };
 
 const openRoute = (route: string) => {
+  if (!route.startsWith('/')) return;
   router.push(route);
 };
 
