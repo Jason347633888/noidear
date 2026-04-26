@@ -80,7 +80,7 @@ const viewStep = ref(1);
 const allStepsData = computed(() => {
   const map: Record<number, Record<string, unknown>> = {};
   for (const sd of stepDataList.value) {
-    map[sd.stepNumber] = sd.data as Record<string, unknown>;
+    map[sd.stepNumber] = { ...(sd.data as Record<string, unknown>), approvalInstanceId: sd.approvalInstanceId };
   }
   return map;
 });

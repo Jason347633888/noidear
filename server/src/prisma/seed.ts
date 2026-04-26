@@ -637,13 +637,24 @@ async function main() {
     });
   }
 
-  // Individual process step definitions
-  const processApprovalDefinitions = [
-    { triggerKey: 'step:1', name: '新产品开发申请审批', roleCode: 'gm', stepName: '总经理审批' },
-    { triggerKey: 'step:2', name: '新产品开发计划审批', roleCode: 'manager', stepName: '研发经理审批' },
-    { triggerKey: 'step:5', name: '产品标签信息确认', roleCode: 'gm', stepName: '总经理确认' },
-    { triggerKey: 'step:6', name: '产品操作规程审批', roleCode: 'quality', stepName: '品质部审批' },
-    { triggerKey: 'step:7', name: '产品验证记录三人会签', roleCode: 'food_safety_leader', stepName: '食品安全组长审批' },
+  // Individual process step definitions (steps 1/2/5 = single approver; 6/7 = countersign_all)
+  type StepDef = { triggerKey: string; name: string; stepName: string; mode: string; assignments: { type: string; roleCode: string; label: string }[] };
+  const processApprovalDefinitions: StepDef[] = [
+    { triggerKey: 'step:1', name: '新产品开发申请审批', stepName: '总经理审批', mode: 'single', assignments: [{ type: 'role', roleCode: 'gm', label: '总经理' }] },
+    { triggerKey: 'step:2', name: '新产品开发计划审批', stepName: '研发经理审批', mode: 'single', assignments: [{ type: 'role', roleCode: 'manager', label: '研发经理' }] },
+    { triggerKey: 'step:5', name: '产品标签信息确认', stepName: '总经理确认', mode: 'single', assignments: [{ type: 'role', roleCode: 'gm', label: '总经理' }] },
+    {
+      triggerKey: 'step:6', name: '产品操作规程审批', stepName: '品质部+制造部会签', mode: 'countersign_all',
+      assignments: [{ type: 'role', roleCode: 'quality', label: '品质部' }, { type: 'role', roleCode: 'manufacture', label: '制造部' }],
+    },
+    {
+      triggerKey: 'step:7', name: '产品验证记录三人会签', stepName: '制造部+品质部+食品安全组长会签', mode: 'countersign_all',
+      assignments: [
+        { type: 'role', roleCode: 'manufacture', label: '制造部' },
+        { type: 'role', roleCode: 'quality', label: '品质部' },
+        { type: 'role', roleCode: 'food_safety_leader', label: '食品安全组长' },
+      ],
+    },
   ];
 
   for (const row of processApprovalDefinitions) {
@@ -663,8 +674,8 @@ async function main() {
           {
             stepKey: `process-${row.triggerKey}`,
             stepName: row.stepName,
-            mode: 'single',
-            assignments: [{ type: 'role', roleCode: row.roleCode, label: row.stepName }],
+            mode: row.mode,
+            assignments: row.assignments,
             rejectPolicy: 'reject_instance',
             onApproved: 'process.stepApproved',
           },
@@ -681,8 +692,8 @@ async function main() {
           {
             stepKey: `process-${row.triggerKey}`,
             stepName: row.stepName,
-            mode: 'single',
-            assignments: [{ type: 'role', roleCode: row.roleCode, label: row.stepName }],
+            mode: row.mode,
+            assignments: row.assignments,
             rejectPolicy: 'reject_instance',
             onApproved: 'process.stepApproved',
           },

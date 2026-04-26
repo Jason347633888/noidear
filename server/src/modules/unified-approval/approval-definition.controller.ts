@@ -1,7 +1,12 @@
 import { IsArray, IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
-import { Body, Controller, Get, NotFoundException, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
+
+function assertAdmin(req: any) {
+  const role = req?.user?.role ?? req?.user?.roleObj?.code;
+  if (role !== 'admin') throw new ForbiddenException('仅管理员可操作审批定义');
+}
 
 class CreateApprovalDefinitionDto {
   @IsString() module!: string;
@@ -40,22 +45,26 @@ export class ApprovalDefinitionController {
   }
 
   @Post()
-  create(@Body() body: CreateApprovalDefinitionDto) {
+  create(@Body() body: CreateApprovalDefinitionDto, @Request() req: any) {
+    assertAdmin(req);
     return this.prisma.approvalDefinition.create({ data: body as any });
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() body: UpdateApprovalDefinitionDto) {
+  update(@Param('id') id: string, @Body() body: UpdateApprovalDefinitionDto, @Request() req: any) {
+    assertAdmin(req);
     return this.prisma.approvalDefinition.update({ where: { id }, data: body as any });
   }
 
   @Post(':id/activate')
-  activate(@Param('id') id: string) {
+  activate(@Param('id') id: string, @Request() req: any) {
+    assertAdmin(req);
     return this.prisma.approvalDefinition.update({ where: { id }, data: { status: 'active' } });
   }
 
   @Post(':id/deactivate')
-  deactivate(@Param('id') id: string) {
+  deactivate(@Param('id') id: string, @Request() req: any) {
+    assertAdmin(req);
     return this.prisma.approvalDefinition.update({ where: { id }, data: { status: 'inactive' } });
   }
 }
