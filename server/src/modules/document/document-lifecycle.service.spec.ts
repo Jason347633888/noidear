@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { DocumentLifecycleService } from './document-lifecycle.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 
 describe('DocumentLifecycleService', () => {
   let service: DocumentLifecycleService;
@@ -55,5 +55,29 @@ describe('DocumentLifecycleService', () => {
     mockPrisma.document.findMany.mockResolvedValue([{ id: 'd1', review_due_date: new Date() }]);
     const result = await service.getDueSoon(30);
     expect(result).toHaveLength(1);
+  });
+
+  it('should reject publishing when another effective version exists in same lineage', async () => {
+    mockPrisma.document.findFirst.mockResolvedValue({
+      id: 'd1',
+      number: 'CX-01',
+      status: 'approved',
+      lineage_key: 'CX-01',
+    });
+    mockPrisma.document.count.mockResolvedValue(1);
+    await expect(service.publish('d1', {})).rejects.toThrow(ConflictException);
+  });
+
+  it('should allow publishing when no other effective version exists in lineage', async () => {
+    mockPrisma.document.findFirst.mockResolvedValue({
+      id: 'd1',
+      number: 'CX-01',
+      status: 'approved',
+      lineage_key: 'CX-01',
+    });
+    mockPrisma.document.count.mockResolvedValue(0);
+    mockPrisma.document.update.mockResolvedValue({ id: 'd1', status: 'effective' });
+    const result = await service.publish('d1', {});
+    expect(result.status).toBe('effective');
   });
 });

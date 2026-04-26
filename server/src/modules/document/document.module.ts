@@ -18,12 +18,13 @@ import { DocumentCronService } from './document-cron.service';
 import { DocumentReferenceService } from './services/document-reference.service';
 import { DocumentLifecycleService } from './document-lifecycle.service';
 import { DocumentControlMetadataService } from './services/document-control-metadata.service';
+import { DocumentControlWorkbenchService } from './services/document-control-workbench.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
   imports: [ConfigModule, PrismaModule, NotificationModule, OperationLogModule, ExportModule, DepartmentPermissionModule, StatisticsModule, UserPermissionModule, SearchModule],
   controllers: [DocumentController],
-  providers: [DocumentService, DocumentCronService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, FilePreviewService, StorageService, StatisticsCacheInterceptor, PermissionGuard, DocumentsListener],
-  exports: [DocumentService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService],
+  providers: [DocumentService, DocumentCronService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, DocumentControlWorkbenchService, FilePreviewService, StorageService, StatisticsCacheInterceptor, PermissionGuard, DocumentsListener],
+  exports: [DocumentService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, DocumentControlWorkbenchService],
 })
 export class DocumentModule {}

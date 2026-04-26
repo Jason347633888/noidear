@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
 
@@ -9,6 +9,23 @@ export class DocumentLifecycleService {
   async publish(id: string, dto: PublishDocumentDto) {
     const doc = await this.prisma.document.findFirst({ where: { id } });
     if (!doc) throw new NotFoundException('文件不存在');
+
+    const lineageKey = (doc as any).lineage_key ?? doc.number;
+    const effectiveCount = await this.prisma.document.count({
+      where: {
+        id: { not: id },
+        deletedAt: null,
+        status: 'effective',
+        OR: [
+          { lineage_key: lineageKey },
+          { number: doc.number },
+        ],
+      },
+    });
+
+    if (effectiveCount > 0) {
+      throw new ConflictException(`同一受控文件谱系已存在有效版本: ${lineageKey}`);
+    }
 
     return this.prisma.document.update({
       where: { id },
@@ -21,9 +38,13 @@ export class DocumentLifecycleService {
   }
 
   async supersede(oldId: string, newId: string) {
-    await this.prisma.document.update({
+    return this.prisma.document.update({
       where: { id: oldId },
-      data: { status: 'superseded', superseded_by_id: newId },
+      data: {
+        status: 'obsolete',
+        superseded_by_id: newId,
+        obsoletedAt: new Date(),
+      },
     });
   }
 

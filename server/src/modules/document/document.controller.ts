@@ -25,6 +25,7 @@ import { DocumentService } from './document.service';
 import { DocumentLifecycleService } from './document-lifecycle.service';
 import { FilePreviewService } from './services';
 import { DocumentReferenceService, CreateDocumentReferenceDto } from './services/document-reference.service';
+import { DocumentControlWorkbenchService } from './services/document-control-workbench.service';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto } from './dto';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
@@ -51,6 +52,7 @@ export class DocumentController {
     private readonly exportService: ExportService,
     private readonly departmentPermissionService: DepartmentPermissionService,
     private readonly statisticsService: StatisticsService,
+    private readonly workbenchService: DocumentControlWorkbenchService,
   ) {}
 
   @Post('upload')
@@ -121,6 +123,12 @@ export class DocumentController {
   @ApiOperation({ summary: '查询即将到期复审的文件' })
   getDueSoon(@Query('days') days?: string) {
     return this.lifecycleSvc.getDueSoon(days ? parseInt(days, 10) : 30);
+  }
+
+  @Get('control/workbench')
+  @ApiOperation({ summary: '文控工作台' })
+  getControlWorkbench(@Query('days') days?: string) {
+    return this.workbenchService.getWorkbench(days ? parseInt(days, 10) : 30);
   }
 
   @Get(':id')
