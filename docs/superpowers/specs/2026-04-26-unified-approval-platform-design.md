@@ -2,7 +2,7 @@
 
 **版本**: 1.0  
 **日期**: 2026-04-26  
-**范围**: 文档审批、研发流程会签、记录表单审批、跨模块审批待办  
+**范围**: 文档审批、研发流程会签、记录表单审批、工作流审批、仓储审批、培训审批、设备审核、内审复审、CAPA 验证、跨模块审批待办
 **状态**: 待评审
 
 ---
@@ -39,7 +39,7 @@
 
 本设计不一次性重做所有业务页面，也不要求第一阶段迁移所有历史审批数据。
 
-第一阶段不做复杂 BPMN 设计器，只实现审批模板配置、审批实例、审批任务、统一待办和研发流程接入。后续可在此基础上做可视化流程设计。
+第一阶段不做复杂 BPMN 设计器。先完成统一审批底座、统一待办/通知/历史、审批定义 seed、业务回调注册和现有审批场景的一次性接入。后续可在此基础上做可视化流程设计。
 
 ---
 
@@ -546,7 +546,108 @@ approval_task
 
 ---
 
-## 15. 迁移计划
+## 15. 一次性接入范围
+
+本次统一审批底座不是只服务研发流程。凡是当前系统中已经有“提交、审批、审核、复审、验证、驳回、待审批状态”的业务，都必须纳入接入清单。接入时区分三类：
+
+1. **审批型**：需要一个或多人做 approve/reject 决策，必须接入 `ApprovalInstance/ApprovalTask`。
+2. **执行型待办**：只提醒某人执行动作，不做 approve/reject 决策，继续使用 `TodoTask`，但可由审批回调创建。
+3. **历史兼容型**：旧数据保留原表读取，新发起的审批走统一底座。
+
+### 15.1 第一批必须接入
+
+| 模块 | 当前模型/服务 | 统一 resourceType | 触发点 | 审批模式 | 通过后回调 |
+| --- | --- | --- | --- | --- | --- |
+| 文档生命周期 | `Document` + `Approval` + `DocumentService.approve` | `document` | `publish` / `revision` / `obsolete` | 按文件级别 single/sequential/countersign_all | `document.approvalApproved` |
+| 研发流程 | `ProcessInstance` + `ProcessStepData` + `ProcessStepApproval` | `process_instance` | `step:1/2/4/5/6/7` | single 或 countersign_all | `process.stepApproved` |
+| 动态记录表单 | `RecordTemplate.approvalRequired` + `Record.workflowId` | `record` | `submit` | 模板配置决定 | `record.submitApproved` |
+| 任务记录审批 | `TaskRecord.status/approverId` + `TaskService.approve` | `task_record` | `submit` | single | `taskRecord.approvalApproved` |
+| 通用工作流 | `WorkflowTemplate/WorkflowInstance/WorkflowTask` | `workflow_resource` | 原 workflow template code | sequential/countersign_any/countersign_all | `workflow.compatApproved` |
+| 变更审批 | `ChangeApproval` + `ChangeEventService.approve` | `change_event` | `approve_change` | single 或 sequential | `changeEvent.approvalApproved` |
+| 仓储领料 | `MaterialRequisition` | `material_requisition` | `submit` | single | `warehouse.requisitionApproved` |
+| 物料入库 | `MaterialInbound` | `material_inbound` | `submit` | single | `warehouse.inboundApproved` |
+| 退料单 | `MaterialReturn` | `material_return` | `submit` | single | `warehouse.returnApproved` |
+| 报废单 | `MaterialScrap` | `material_scrap` | `submit` | single | `warehouse.scrapApproved` |
+| 培训计划 | `TrainingPlan.status=pending_approval` | `training_plan` | `submit` | sequential 或 single | `training.planApproved` |
+| 设备维保审核 | `MaintenanceRecord.status/reviewerId` | `maintenance_record` | `submit` | single | `equipment.maintenanceApproved` |
+| 内审整改复审 | `AuditFinding.status=pending_verification` | `audit_finding` | `rectification_submitted` | single | `audit.findingVerified` |
+| CAPA 验证关闭 | `CorrectiveAction.status=pending_verification` | `corrective_action` | `verify_close` | single | `capa.verificationApproved` |
+| 偏离报告 | `DeviationReport` + `ApprovalService.approveUnified` | `deviation_report` | `submit` | single/sequential | `deviation.approvalApproved` |
+
+### 15.2 保留为执行型待办，不作为审批实例
+
+这些场景不应被误塞进审批底座，除非后续业务明确要求 approve/reject：
+
+| 场景 | 当前模型 | 处理方式 |
+| --- | --- | --- |
+| 培训参加/考试 | `TodoTask(training_attend)`、学习记录、考试记录 | 保留执行型 `TodoTask` |
+| 培训组织 | `TodoTask(training_organize)` | 保留执行型 `TodoTask` |
+| 设备维护提醒 | `TodoTask(equipment_maintain)` | 保留执行型 `TodoTask` |
+| 盘点提醒 | `TodoTask(inventory)` | 保留执行型 `TodoTask` |
+| 文件阅读确认 | `DocumentReadConfirmation` | 保留确认记录，可由审批通过后批量创建 |
+
+### 15.3 旧表迁移原则
+
+| 旧对象 | 处理 |
+| --- | --- |
+| `Approval` | 历史只读；新文档审批走统一底座；兼容 API 可读旧表和新表 |
+| `ProcessStepApproval` | 研发迁移后停止创建；旧流程详情仍可显示旧会签记录 |
+| `WorkflowInstance/WorkflowTask` | 新工作流审批定义迁入 `ApprovalDefinition`；旧 workflow 实例保留只读或兼容执行 |
+| `Record.workflowId` | 新记录审批改存 `approvalInstanceId`；旧 `workflowId` 保留兼容 |
+| 各业务表 `approvedBy/approvedAt/reviewerId/verifiedBy` | 作为业务快照字段保留，由审批回调写入，不再作为审批事实源 |
+
+### 15.4 必须新增的业务关联字段
+
+为了让业务对象能稳定反查统一审批实例，需要在接入模块增加可选字段。字段只保存当前或最近一次审批实例 ID，不替代审批历史。
+
+| 模型 | 字段 |
+| --- | --- |
+| `Document` | `approvalInstanceId String?` |
+| `ProcessStepData` | `approvalInstanceId String?` |
+| `Record` | `approvalInstanceId String?` |
+| `TaskRecord` | `approvalInstanceId String?` |
+| `MaterialRequisition` | `approvalInstanceId String?` |
+| `MaterialInbound` | `approvalInstanceId String?` |
+| `MaterialReturn` | `approvalInstanceId String?` |
+| `MaterialScrap` | `approvalInstanceId String?` |
+| `TrainingPlan` | `approvalInstanceId String?` |
+| `MaintenanceRecord` | `approvalInstanceId String?` |
+| `AuditFinding` | `approvalInstanceId String?` |
+| `CorrectiveAction` | `approvalInstanceId String?` |
+| `DeviationReport` | `approvalInstanceId String?` |
+| `ChangeApproval` 或 `ChangeEvent` | `approvalInstanceId String?` |
+
+### 15.5 审批定义 seed
+
+第一批接入必须在 seed 中创建 active `ApprovalDefinition`，不要依赖手工后台配置。
+
+| definition key | resourceType | triggerKey |
+| --- | --- | --- |
+| `document.publish.level1` | `document` | `publish.level1` |
+| `document.publish.level2` | `document` | `publish.level2` |
+| `document.publish.level3` | `document` | `publish.level3` |
+| `process.rd.step1` | `process_instance` | `step:1` |
+| `process.rd.step2` | `process_instance` | `step:2` |
+| `process.rd.step4` | `process_instance` | `step:4` |
+| `process.rd.step5` | `process_instance` | `step:5` |
+| `process.rd.step6` | `process_instance` | `step:6` |
+| `process.rd.step7` | `process_instance` | `step:7` |
+| `record.submit.default` | `record` | `submit` |
+| `task_record.submit.default` | `task_record` | `submit` |
+| `warehouse.requisition.submit` | `material_requisition` | `submit` |
+| `warehouse.inbound.submit` | `material_inbound` | `submit` |
+| `warehouse.return.submit` | `material_return` | `submit` |
+| `warehouse.scrap.submit` | `material_scrap` | `submit` |
+| `training.plan.submit` | `training_plan` | `submit` |
+| `equipment.maintenance.submit` | `maintenance_record` | `submit` |
+| `audit.finding.rectification` | `audit_finding` | `rectification_submitted` |
+| `capa.verify_close` | `corrective_action` | `verify_close` |
+| `deviation.submit` | `deviation_report` | `submit` |
+| `change.approve` | `change_event` | `approve_change` |
+
+---
+
+## 16. 迁移计划
 
 ### Phase 1：审批底座落地
 
@@ -555,32 +656,32 @@ approval_task
 - 新增 assignment resolver
 - 接入 `TodoTask` 和 `Notification`
 - 新增基础 API
-- 单元测试覆盖 single、countersign_all、sequential、reject、permission resolver
+- 新增审批定义 seed
+- 单元测试覆盖 single、countersign_all、countersign_any、sequential、reject、permission resolver
 
-### Phase 2：研发流程接入
+### Phase 2：核心审批场景一次性接入
 
 - 研发流程停止创建 `ProcessStepApproval`
 - 用统一审批定义表达 Step1/2/4/5/6/7 审批
 - `DeptSignoffPanel` 替换为 `ApprovalTaskPanel`
 - Step1/5/6/7 副作用改为审批回调事务执行
-- E2E 覆盖完整 7 步流程
-
-### Phase 3：文档审批接入
-
 - 文档发布、修订、作废审批接入统一审批底座
 - `/approvals` 页面改读统一审批任务
 - 旧 `ApprovalService` 变为兼容层
 - 保留旧数据只读或迁移到新模型
+- 动态记录、任务记录、通用工作流、仓储审批、培训计划、设备维保审核、内审复审、CAPA 验证、偏离报告、变更审批全部改为通过统一审批底座发起和处理
 
-### Phase 4：动态记录和跨模块审批接入
+### Phase 3：统一页面和兼容清理
 
-- 记录表单提交审批接入统一审批底座
-- CAPA、不合格、采购、仓储等模块按需迁移
+- `/my-todos` 只展示一套审批待办
+- `/approvals` 审批中心展示全部 `ApprovalTask/ApprovalInstance`
+- 旧 workflow task 页面改为兼容入口或跳转统一审批中心
+- 旧独立 approve endpoint 保留，但内部转调统一审批底座
 - 审批定义管理页面上线
 
 ---
 
-## 16. 测试要求
+## 17. 测试要求
 
 ### 单元测试
 
@@ -601,18 +702,26 @@ approval_task
 - 研发 Step6 RecipeLine 创建失败时审批任务和流程状态回滚
 - 文档发布审批通过后文档状态更新
 - `/my-todos` 能看到审批任务并跳转
+- 记录表单 `approvalRequired` 时创建统一审批实例
+- 仓储领料、入库、退料、报废通过统一审批后写回业务状态
+- 培训计划审批通过后状态变为 approved
+- 内审整改复审通过后 finding 变为 verified
+- CAPA 验证通过后状态变为 closed
+- 旧 approve endpoint 调用后实际产生 `ApprovalAction`
 
 ### E2E 测试
 
 - 研发 7 步完整流程
 - 文档发布审批流程
+- 仓储领料审批流程
+- 记录表单审批流程
 - 驳回后不可继续推进
 - 非授权用户不能审批
 - admin 覆盖审批可用且有审计记录
 
 ---
 
-## 17. 风险与取舍
+## 18. 风险与取舍
 
 ### 为什么不直接复用旧 `Approval` 表
 
@@ -624,11 +733,11 @@ approval_task
 
 ### 最大风险
 
-这是基础设施重构，范围比修研发会签大。必须分阶段落地，第一阶段只做底座和研发接入，不同时重写所有业务模块。
+这是基础设施重构，范围比修研发会签大。为了避免继续产生多套审批，第一轮 implementation plan 必须覆盖底座、研发、文档、动态记录、工作流、仓储、培训、设备、内审、CAPA、偏离和变更审批。页面可以分阶段打磨，但后端审批事实源必须一次性收敛。
 
 ---
 
-## 18. 成功标准
+## 19. 成功标准
 
 1. 新增审批场景不再新建独立审批表。
 2. 新增审批场景只需要创建 `ApprovalDefinition` 和业务回调。
@@ -638,3 +747,4 @@ approval_task
 6. 文档审批可以通过兼容层或迁移读取统一审批底座。
 7. 客户端不能伪造审批角色或部门。
 8. 审批通过后的业务副作用具备事务一致性。
+9. 所有现有 `approve`/`verify` 类 endpoint 要么接入统一审批底座，要么被明确标记为执行型待办或历史兼容。
