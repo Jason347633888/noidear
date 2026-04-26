@@ -42,12 +42,18 @@ export class DocumentReadRequirementService {
     const now = new Date();
 
     return requirements.map((requirement: any) => {
-      const directlyConfirmed = requirement.scopeType === 'user' && confirmedUserIds.has(requirement.scopeId);
-      const overdue = Boolean(requirement.dueAt && new Date(requirement.dueAt) < now && !directlyConfirmed);
+      const isUserScope = requirement.scopeType === 'user';
+      const confirmed = isUserScope ? confirmedUserIds.has(requirement.scopeId) : null;
+      const overdue = Boolean(
+        requirement.dueAt &&
+        new Date(requirement.dueAt) < now &&
+        confirmed !== true,
+      );
       return {
         ...requirement,
-        confirmed: directlyConfirmed,
+        confirmed,
         overdue,
+        confirmedUserCount: confirmations.length,
       };
     });
   }

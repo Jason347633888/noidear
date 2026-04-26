@@ -41,9 +41,8 @@ export class DocumentLifecycleService {
     return this.prisma.document.update({
       where: { id: oldId },
       data: {
-        status: 'obsolete',
+        status: 'superseded',
         superseded_by_id: newId,
-        obsoletedAt: new Date(),
       },
     });
   }

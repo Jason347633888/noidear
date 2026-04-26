@@ -167,7 +167,8 @@ export class DocumentService {
       where.OR = [
         { title: { contains: keyword } },
         { number: { contains: keyword } },
-        { content_md: { contains: keyword } },
+        // TODO: Replace with GIN full-text index for better performance
+        { content_md: { contains: keyword, mode: 'insensitive' } },
       ];
     }
 

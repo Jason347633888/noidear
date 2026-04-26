@@ -22,10 +22,12 @@ export class DocumentControlWorkbenchService {
       this.prisma.document.findMany({
         where: { deletedAt: null, status: { in: ['pending_review', 'pending'] } },
         orderBy: { updatedAt: 'desc' },
+        take: 100,
       }),
       this.prisma.document.findMany({
         where: { deletedAt: null, status: 'effective', review_due_date: { lte: deadline } },
         orderBy: { review_due_date: 'asc' },
+        take: 100,
       }),
       this.prisma.document.findMany({
         where: {
@@ -35,6 +37,7 @@ export class DocumentControlWorkbenchService {
           status: { in: ['effective', 'approved'] },
         },
         orderBy: { external_expires_at: 'asc' },
+        take: 100,
       }),
       this.prisma.documentReference.findMany({
         where: { targetDoc: { status: { in: ['obsolete', 'archived'] } } },
@@ -42,6 +45,7 @@ export class DocumentControlWorkbenchService {
           sourceDoc: { select: { id: true, title: true, status: true } },
           targetDoc: { select: { id: true, title: true, status: true } },
         },
+        take: 100,
       }),
       this.prisma.documentReference.findMany({
         where: {
@@ -49,10 +53,12 @@ export class DocumentControlWorkbenchService {
           targetRoute: null,
         },
         include: { sourceDoc: { select: { id: true, title: true, status: true } } },
+        take: 100,
       }),
       this.prisma.recordFormLandingEntry.findMany({
         where: { OR: [{ targetRoute: null }, { targetModule: null }] },
         orderBy: { updatedAt: 'desc' },
+        take: 100,
       }),
       this.prisma.document.findMany({
         where: {
@@ -64,6 +70,7 @@ export class DocumentControlWorkbenchService {
           ],
         },
         orderBy: { updatedAt: 'desc' },
+        take: 100,
       }),
     ]);
 
