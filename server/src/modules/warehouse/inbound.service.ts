@@ -2,9 +2,11 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BatchNumberGeneratorService } from '../batch-trace/services/batch-number-generator.service';
+import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 import { CreateInboundDto, QueryInboundDto } from './dto/inbound.dto';
 import * as dayjs from 'dayjs';
 
@@ -13,14 +15,15 @@ export class InboundService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly batchNumberGenerator: BatchNumberGeneratorService,
+    @Optional() private readonly approvalEngine: ApprovalEngineService,
   ) {}
 
-  async create(createInboundDto: CreateInboundDto) {
+  async create(createInboundDto: CreateInboundDto, createdById?: string) {
     const { supplierId, items, remark } = createInboundDto;
     const inboundNo = await this.generateInboundNo();
 
-    return this.prisma.$transaction(async (tx) => {
-      const inbound = await tx.materialInbound.create({
+    const inbound = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.materialInbound.create({
         data: {
           inboundNo,
           supplierId,
@@ -31,13 +34,34 @@ export class InboundService {
 
       await tx.materialInboundItem.createMany({
         data: items.map((item) => ({
-          inboundId: inbound.id,
+          inboundId: created.id,
           ...item,
         })),
       });
 
-      return inbound;
+      return created;
     });
+
+    if (this.approvalEngine) {
+      try {
+        const approval = await this.approvalEngine.startApproval({
+          resourceType: 'material_inbound',
+          resourceId: inbound.id,
+          resourceStep: 'submit',
+          triggerKey: 'submit',
+          title: `入库单审批：${inbound.inboundNo ?? inbound.id}`,
+          createdById: createdById ?? supplierId,
+        });
+        await this.prisma.materialInbound.update({
+          where: { id: inbound.id },
+          data: { approvalInstanceId: approval.id },
+        });
+      } catch {
+        // No ApprovalDefinition matched — skip unified tracking silently
+      }
+    }
+
+    return inbound;
   }
 
   private async generateInboundNo(): Promise<string> {

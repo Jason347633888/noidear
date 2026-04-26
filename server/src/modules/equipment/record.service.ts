@@ -3,8 +3,10 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 import {
   CreateRecordDto,
   UpdateRecordDto,
@@ -23,6 +25,7 @@ export class RecordService {
     private readonly prisma: PrismaService,
     private readonly planService: PlanService,
     private readonly statsService: StatsService,
+    @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {}
 
   async create(dto: CreateRecordDto) {
@@ -99,14 +102,32 @@ export class RecordService {
     return this.prisma.maintenanceRecord.update({ where: { id }, data });
   }
 
-  async submit(id: string) {
+  async submit(id: string, userId?: string) {
     const record = await this.findOne(id);
     this.assertDraftStatus(record.status, 'submitted');
 
-    return this.prisma.maintenanceRecord.update({
+    const updated = await this.prisma.maintenanceRecord.update({
       where: { id },
       data: { status: 'submitted', submittedAt: new Date() },
     });
+
+    if (userId) {
+      try {
+        const approval = await this.approvalEngine?.startApproval({
+          resourceType: 'maintenance_record',
+          resourceId: id,
+          resourceStep: 'submit',
+          triggerKey: 'submit',
+          title: `设备维护记录审批：${record.recordNumber}`,
+          createdById: userId,
+        });
+        if (approval) {
+          await this.prisma.maintenanceRecord.update({ where: { id }, data: { approvalInstanceId: approval.id } });
+        }
+      } catch { /* no definition = skip */ }
+    }
+
+    return updated;
   }
 
   async approve(id: string, dto: ApproveRecordDto) {

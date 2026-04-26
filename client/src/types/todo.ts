@@ -7,7 +7,8 @@ export type TodoType =
   | 'audit_rectification'
   | 'equipment_maintain'
   | 'inventory'
-  | 'change_request';
+  | 'change_request'
+  | 'approval_task';
 
 export interface TodoItem {
   id: string;

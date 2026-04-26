@@ -1,7 +1,8 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BusinessException, ErrorCode } from '../../common/exceptions/business.exception';
 import { ApprovalService } from '../approval/approval.service';
+import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 
 export interface DeviationDetectionResult {
   fieldName: string;
@@ -32,6 +33,7 @@ export class DeviationService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => ApprovalService))
     private readonly approvalService: ApprovalService,
+    @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {}
 
   detectDeviations(
@@ -153,6 +155,20 @@ export class DeviationService {
           reportedAt: new Date(),
         },
       });
+
+      try {
+        const approval = await this.approvalEngine?.startApproval({
+          resourceType: 'deviation_report',
+          resourceId: report.id,
+          resourceStep: 'submit',
+          triggerKey: 'submit',
+          title: `偏离报告审批：${deviation.fieldName}`,
+          createdById: userId,
+        });
+        if (approval) {
+          await this.prisma.deviationReport.update({ where: { id: report.id }, data: { approvalInstanceId: approval.id } });
+        }
+      } catch { /* no definition = skip */ }
 
       reports.push(report);
     }

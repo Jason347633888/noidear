@@ -1,7 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { BatchTraceModule } from '../batch-trace/batch-trace.module';
 import { NotificationModule } from '../notification/notification.module';
+import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
+import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
 import { MaterialController } from './material.controller';
 import { MaterialService } from './material.service';
 import { SupplierController } from './supplier.controller';
@@ -24,9 +26,25 @@ import { WarehouseTraceabilityController } from './traceability.controller';
 import { WarehouseCronService } from './warehouse-cron.service';
 
 @Module({
-  imports: [PrismaModule, BatchTraceModule, NotificationModule],
+  imports: [PrismaModule, BatchTraceModule, NotificationModule, UnifiedApprovalModule],
   controllers: [MaterialController, SupplierController, InboundController, BatchController, RequisitionController, StagingAreaController, MaterialBalanceController, ReturnController, ScrapController, WarehouseTraceabilityController],
   providers: [MaterialService, SupplierService, InboundService, BatchService, RequisitionService, StagingAreaService, MaterialBalanceService, ReturnService, ScrapService, WarehouseCronService],
   exports: [MaterialService, SupplierService, InboundService, BatchService, RequisitionService, StagingAreaService, MaterialBalanceService, ReturnService, ScrapService],
 })
-export class WarehouseModule {}
+export class WarehouseModule implements OnModuleInit {
+  constructor(private readonly callbacks: ApprovalCallbackRegistry) {}
+
+  onModuleInit() {
+    const makeCallback = (modelName: string) => async (context: any) => {
+      await (context.tx as any)[modelName].update({
+        where: { id: context.resourceId },
+        data: { status: 'approved', approvedBy: context.actorId, approvedAt: new Date() },
+      });
+    };
+
+    this.callbacks.register('warehouse.requisitionApproved', makeCallback('materialRequisition'));
+    this.callbacks.register('warehouse.inboundApproved', makeCallback('materialInbound'));
+    this.callbacks.register('warehouse.returnApproved', makeCallback('materialReturn'));
+    this.callbacks.register('warehouse.scrapApproved', makeCallback('materialScrap'));
+  }
+}

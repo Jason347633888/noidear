@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -9,6 +9,7 @@ import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto } from './dto';
 import { NotificationService } from '../notification/notification.service';
 import { OperationLogService } from '../operation-log/operation-log.service';
 import { DocumentControlMetadataService } from './services/document-control-metadata.service';
+import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 
 @Injectable()
 export class DocumentService {
@@ -21,6 +22,7 @@ export class DocumentService {
     private readonly operationLog: OperationLogService,
     private readonly eventEmitter: EventEmitter2,
     private readonly metadataService: DocumentControlMetadataService,
+    @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {
     this.snowflake = new Snowflake(1, 1);
   }
@@ -400,7 +402,7 @@ export class DocumentService {
       data: { status: 'pending' },
     });
 
-    // 创建审批记录
+    // 创建审批记录（旧 Approval 表保持兼容）
     await this.prisma.approval.create({
       data: {
         id: this.snowflake.nextId(),
@@ -409,6 +411,27 @@ export class DocumentService {
         status: 'pending',
       },
     });
+
+    // 尝试通过统一审批引擎发起新流程（无匹配定义时降级，不影响旧流程）
+    if (this.approvalEngine) {
+      const triggerKey = `publish.level${document.level ?? 3}`;
+      try {
+        const instance = await this.approvalEngine.startApproval({
+          resourceType: 'document',
+          resourceId: id,
+          resourceStep: 'publish',
+          triggerKey,
+          title: `文件发布审批：${document.title || id}`,
+          createdById: userId,
+        });
+        await this.prisma.document.update({
+          where: { id },
+          data: { approvalInstanceId: instance.id },
+        });
+      } catch {
+        // 无匹配 ApprovalDefinition 时跳过统一追踪，旧 Approval 表继续工作
+      }
+    }
 
     // 发送通知给审批人
     await this.notification.create({

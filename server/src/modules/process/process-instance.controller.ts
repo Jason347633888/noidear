@@ -7,17 +7,25 @@ import {
   Param,
   Request,
   NotFoundException,
+  BadRequestException,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { ProcessStepApprovalService } from './process-step-approval.service';
+import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 
 @ApiTags('流程实例')
 @UseGuards(JwtAuthGuard)
 @Controller('process/instances')
 export class ProcessInstanceController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly approvalService: ProcessStepApprovalService,
+    private readonly approvalEngine: ApprovalEngineService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: '获取流程实例列表' })
@@ -26,6 +34,14 @@ export class ProcessInstanceController {
       include: { stepData: true },
     });
     return { code: 0, data: instances, message: 'success' };
+  }
+
+  @Get('approvals/pending')
+  @ApiOperation({ summary: '查我的待签任务' })
+  async getPendingApprovals(@Request() req: any) {
+    const userId = req.user?.sub || req.user?.id;
+    const list = await this.approvalService.listPendingForUser(userId);
+    return { code: 0, data: list, message: 'success' };
   }
 
   @Get(':id')
@@ -74,12 +90,13 @@ export class ProcessInstanceController {
     }
 
     const { stepNumber, data, saveAsDraft } = body;
+    const actualStepNumber: number = stepNumber || instance.currentStep;
 
-    await this.prisma.processStepData.upsert({
+    const savedStepData = await this.prisma.processStepData.upsert({
       where: {
         instanceId_stepNumber: {
           instanceId: id,
-          stepNumber: stepNumber || instance.currentStep,
+          stepNumber: actualStepNumber,
         },
       },
       update: {
@@ -90,7 +107,7 @@ export class ProcessInstanceController {
       },
       create: {
         instanceId: id,
-        stepNumber: stepNumber || instance.currentStep,
+        stepNumber: actualStepNumber,
         data: data || {},
         status: saveAsDraft ? 'PENDING' : 'SUBMITTED',
         submittedById: userId,
@@ -99,23 +116,90 @@ export class ProcessInstanceController {
     });
 
     if (!saveAsDraft) {
-      const nextStep = (stepNumber || instance.currentStep) + 1;
       const template = await this.prisma.processTemplate.findUnique({
         where: { id: instance.templateId },
       });
-      const steps = (template?.steps as any[]) || [];
-      const maxStep = steps.length;
+      const steps = (template?.steps as any[]) ?? [];
+      const stepConfig = steps.find((s: any) => s.stepNumber === actualStepNumber);
+      if (!stepConfig) throw new BadRequestException('步骤配置不存在');
 
-      await this.prisma.processInstance.update({
-        where: { id },
-        data: {
-          currentStep: nextStep > maxStep ? maxStep : nextStep,
-          status: nextStep > maxStep ? 'COMPLETED' : 'IN_PROGRESS',
-        },
-      });
+      const requiredApprovals: any[] = stepConfig.requiredApprovals ?? [];
+
+      if (requiredApprovals.length > 0) {
+        // Route through unified approval engine
+        const productName =
+          (data as any)?.productName ||
+          instance.productName ||
+          `流程实例 ${id}`;
+        const approvalInstance = await this.approvalEngine.startApproval({
+          resourceType: 'process_instance',
+          resourceId: id,
+          resourceStep: `step:${actualStepNumber}`,
+          triggerKey: `step:${actualStepNumber}`,
+          title: `${productName} — ${stepConfig.name ?? `步骤${actualStepNumber}`}审批`,
+          createdById: userId,
+        });
+        // Persist the approval instance id on the step data
+        await this.prisma.processStepData.update({
+          where: { instanceId_stepNumber: { instanceId: id, stepNumber: actualStepNumber } },
+          data: { approvalInstanceId: approvalInstance.id },
+        });
+      } else {
+        // Step3: auto-approve when trialConclusion === '通过'
+        const isStep3Pass =
+          actualStepNumber === 3 && (data as any)?.trialConclusion === '通过';
+        if (!isStep3Pass) {
+          throw new BadRequestException('无审批步骤必须满足通过条件后才能提交');
+        }
+
+        const maxStep = steps.length;
+        const nextStep = actualStepNumber + 1;
+        await this.prisma.$transaction([
+          this.prisma.processStepData.update({
+            where: { instanceId_stepNumber: { instanceId: id, stepNumber: actualStepNumber } },
+            data: { status: 'APPROVED', approvedById: userId, approvedAt: new Date() },
+          }),
+          this.prisma.processInstance.update({
+            where: { id },
+            data: {
+              currentStep: nextStep > maxStep ? maxStep : nextStep,
+              status: 'IN_PROGRESS',
+            },
+          }),
+        ]);
+      }
     }
 
-    return { code: 0, data: { success: true }, message: 'success' };
+    return { code: 0, data: savedStepData, message: 'success' };
+  }
+
+  @Post(':id/steps/:stepNumber/approvals')
+  @ApiOperation({ summary: '提交会签（旧接口，保留向后兼容）' })
+  async submitApproval(
+    @Param('id') id: string,
+    @Param('stepNumber') stepNumber: string,
+    @Body() body: any,
+    @Request() req: any,
+  ) {
+    const userId = req.user?.sub || req.user?.id;
+    const { action, comment = '' } = body;
+    // Never trust role from client — omit requestedRole entirely
+    const result = await this.approvalService.submitApproval(
+      id, parseInt(stepNumber), userId, action, comment, undefined,
+    );
+    return { code: 0, data: result, message: 'success' };
+  }
+
+  @Get(':id/approvals')
+  @ApiOperation({ summary: '查询步骤会签记录' })
+  async getApprovals(
+    @Param('id') id: string,
+    @Query('stepNumber') stepNumber?: string,
+  ) {
+    const approvals = await this.approvalService.listApprovals(
+      id, stepNumber ? parseInt(stepNumber) : undefined,
+    );
+    return { code: 0, data: approvals, message: 'success' };
   }
 
   @Delete(':id')
@@ -127,40 +211,6 @@ export class ProcessInstanceController {
     }
     await this.prisma.processStepData.deleteMany({ where: { instanceId: id } });
     await this.prisma.processInstance.delete({ where: { id } });
-    return { code: 0, data: { success: true }, message: 'success' };
-  }
-
-  @Post(':id/approve')
-  @ApiOperation({ summary: '审批流程步骤' })
-  async approveStep(
-    @Param('id') id: string,
-    @Body() body: any,
-    @Request() req: any,
-  ) {
-    const userId = req.user?.sub || req.user?.id;
-
-    const instance = await this.prisma.processInstance.findUnique({
-      where: { id },
-    });
-    if (!instance) {
-      throw new NotFoundException('流程实例不存在');
-    }
-
-    const { stepNumber, action, comment } = body;
-
-    await this.prisma.processStepData.updateMany({
-      where: {
-        instanceId: id,
-        stepNumber: stepNumber || instance.currentStep,
-      },
-      data: {
-        status: action === 'approve' ? 'APPROVED' : 'REJECTED',
-        approvedById: userId,
-        approvedAt: new Date(),
-        approvalComment: comment || '',
-      },
-    });
-
     return { code: 0, data: { success: true }, message: 'success' };
   }
 }

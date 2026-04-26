@@ -79,18 +79,6 @@ const baseStep7Fields = [
   requiredText('controlMeasure', '控制措施'),
 ];
 
-const baseStep8Fields = [
-  requiredText('formulaConfirm', '配方确认'),
-  requiredText('processConfirm', '工艺确认'),
-  requiredText('standardConfirm', '标准确认'),
-  requiredText('shelfLifeVerify', '保质期验证'),
-  requiredText('inspectionReport', '检验报告'),
-  requiredText('hazardAssessment', '危害评估'),
-  requiredText('labelConfirm', '标签'),
-  requiredText('packagingConfirm', '包装材料'),
-  requiredText('conclusion', '结论'),
-];
-
 const validateProcessParams = (values: Record<string, unknown>): FormValidationError[] => {
   const params = values.processParams;
   if (!isRecord(params)) {
@@ -217,27 +205,6 @@ export const validateStep7 = (values: Record<string, unknown>): FormValidationRe
       { key: 'ccpMonitorOk', label: '明确监控方法、频率、责任人' },
       { key: 'ccpDeviceOk', label: '设备具备纠偏控制' },
       { key: 'ccpPersonnelOk', label: '关键岗位人员具有纠偏措施意识' },
-    ]),
-  },
-);
-
-export const validateStep8 = (values: Record<string, unknown>): FormValidationResult => mergeResults(
-  validateFields(baseStep8Fields, values),
-  {
-    valid: false,
-    errors: validateChecklist(values, [
-      { key: 'c1', label: '原辅料采购的可行性' },
-      { key: 'c2', label: '产品标准的符合性' },
-      { key: 'c3', label: '产品批产性能的稳定性' },
-      { key: 'c4', label: '产品特性' },
-      { key: 'c5', label: '产品检测/试验记录的完整性和可追溯性' },
-      { key: 'c6', label: '产品符合性' },
-      { key: 'c7', label: '产品过敏原的识别和控制' },
-      { key: 'c8', label: '产品制作、生产规范及工艺文件的完整性与可追溯性' },
-      { key: 'c9', label: '过程监控记录的完整性和可追溯性' },
-      { key: 'c10', label: '批量生产能力和质量保证能力评价' },
-      { key: 'c11', label: '设计更改、让步使用、器材代用有效性检查' },
-      { key: 'c12', label: '批量生产 - 质量问题分析处理情况评价' },
     ]),
   },
 );

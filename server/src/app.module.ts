@@ -83,6 +83,7 @@ import { UploadModule } from './modules/upload/upload.module';
 import { ModelLandingModule } from './modules/model-landing/model-landing.module';
 import { TodoModule } from './modules/todo/todo.module';
 import { TaskModule } from './modules/task/task.module';
+import { UnifiedApprovalModule } from './modules/unified-approval/unified-approval.module';
 
 @Module({
   imports: [
@@ -176,6 +177,7 @@ import { TaskModule } from './modules/task/task.module';
     ModelLandingModule,
     TodoModule,
     TaskModule,
+    UnifiedApprovalModule,
   ],
   providers: [
     {

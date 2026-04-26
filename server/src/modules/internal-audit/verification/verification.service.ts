@@ -3,9 +3,11 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OperationLogService } from '../../operation-log/operation-log.service';
+import { ApprovalEngineService } from '../../unified-approval/approval-engine.service';
 import { VerifyRectificationDto, RejectRectificationDto } from './dto';
 
 @Injectable()
@@ -13,6 +15,7 @@ export class VerificationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly operationLogService: OperationLogService,
+    @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {}
 
   async getPendingVerifications(userId: string) {
@@ -66,6 +69,20 @@ export class VerificationService {
     }
 
     // 5. Update finding status and record verification
+    try {
+      const approval = await this.approvalEngine?.startApproval({
+        resourceType: 'audit_finding',
+        resourceId: findingId,
+        resourceStep: 'verify',
+        triggerKey: 'verify',
+        title: `审计发现核查审批：${findingId}`,
+        createdById: userId,
+      });
+      if (approval) {
+        await this.prisma.auditFinding.update({ where: { id: findingId }, data: { approvalInstanceId: approval.id } });
+      }
+    } catch { /* no definition = skip */ }
+
     const updatedFinding = await this.prisma.auditFinding.update({
       where: { id: findingId },
       data: {

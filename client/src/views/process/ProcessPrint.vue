@@ -15,7 +15,7 @@
       <div class="print-page-header">
         <h3>产品研发流程 - {{ instance?.productName }}</h3>
         <p class="page-meta">
-          Step {{ sd.stepNumber }} / 9
+          Step {{ sd.stepNumber }} / 7
           <span v-if="sd.submittedBy"> | 提交人：{{ sd.submittedBy.name }}</span>
           <span v-if="sd.submittedAt"> | 提交时间：{{ formatDate(sd.submittedAt) }}</span>
           <span v-if="sd.approvedBy"> | 审批人：{{ sd.approvedBy.name }}</span>
@@ -52,8 +52,6 @@ const stepComponents = [
   defineAsyncComponent(() => import('./Step5.vue')),
   defineAsyncComponent(() => import('./Step6.vue')),
   defineAsyncComponent(() => import('./Step7.vue')),
-  defineAsyncComponent(() => import('./Step8.vue')),
-  defineAsyncComponent(() => import('./Step9.vue')),
 ];
 
 const route = useRoute();

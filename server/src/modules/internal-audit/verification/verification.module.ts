@@ -6,6 +6,7 @@ import { OperationLogModule } from '../../operation-log/operation-log.module';
 import { AuditModule } from '../../audit/audit.module';
 import { UserPermissionModule } from '../../user-permission/user-permission.module';
 import { RedisModule } from '../../redis/redis.module';
+import { UnifiedApprovalModule } from '../../unified-approval/unified-approval.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { RedisModule } from '../../redis/redis.module';
     AuditModule,
     UserPermissionModule,
     RedisModule,
+    UnifiedApprovalModule,
   ],
   controllers: [VerificationController],
   providers: [VerificationService],

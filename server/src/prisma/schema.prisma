@@ -150,6 +150,14 @@ model User {
   processInstances         ProcessInstance[]  @relation("ProcessCreator")
   processStepSubmissions   ProcessStepData[]  @relation("StepSubmitter")
   processStepApprovals     ProcessStepData[]  @relation("StepApprover")
+  stepApprovals            ProcessStepApproval[] @relation("StepApprovalUser")
+
+  // Unified Approval Platform relations
+  approvalInstancesCreated ApprovalInstance[] @relation("ApprovalInstanceCreator")
+  approvalTasksAssigned    ApprovalTask[]     @relation("ApprovalTaskAssignee")
+  approvalTasksClaimed     ApprovalTask[]     @relation("ApprovalTaskClaimer")
+  approvalTasksActed       ApprovalTask[]     @relation("ApprovalTaskActor")
+  approvalActions          ApprovalAction[]   @relation("ApprovalActionActor")
 
   // Training Management System relations
   todoTasks TodoTask[] @relation("UserTodoTasks")
@@ -241,9 +249,10 @@ model Document {
   status     String
   creatorId  String
   creator    User      @relation("DocumentCreator", fields: [creatorId], references: [id], onDelete: Restrict)
-  approverId String?
-  approver   User?     @relation("DocumentApprover", fields: [approverId], references: [id], onDelete: SetNull)
-  approvedAt DateTime?
+  approverId         String?
+  approver           User?     @relation("DocumentApprover", fields: [approverId], references: [id], onDelete: SetNull)
+  approvedAt         DateTime?
+  approvalInstanceId String?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
@@ -312,6 +321,7 @@ model Document {
   coverageReviews    DocumentCoverageReview[]
 
   @@index([lineage_key])
+  @@index([approvalInstanceId])
   @@map("documents")
 }
 
@@ -357,6 +367,111 @@ model Approval {
   @@index([approvalChainId])
   @@index([groupId])
   @@map("approvals")
+}
+
+// ========================================
+// 统一审批平台 (Unified Approval Platform)
+// ========================================
+
+model ApprovalDefinition {
+  id           String   @id @default(cuid())
+  module       String
+  resourceType String
+  triggerKey   String
+  name         String
+  version      Int
+  status       String   @default("active")
+  steps        Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  instances ApprovalInstance[]
+
+  @@unique([module, resourceType, triggerKey, version])
+  @@index([resourceType, triggerKey, status])
+  @@map("approval_definitions")
+}
+
+model ApprovalInstance {
+  id                String             @id @default(cuid())
+  definitionId      String
+  definition        ApprovalDefinition @relation(fields: [definitionId], references: [id], onDelete: Restrict)
+  definitionVersion Int
+  resourceType      String
+  resourceId        String
+  resourceStep      String?
+  triggerKey        String
+  title             String
+  status            String             @default("PENDING")
+  currentStepKey    String?
+  createdById       String
+  createdBy         User               @relation("ApprovalInstanceCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  completedAt       DateTime?
+
+  tasks   ApprovalTask[]
+  actions ApprovalAction[]
+
+  @@index([resourceType, resourceId])
+  @@index([resourceType, resourceId, resourceStep])
+  @@index([status])
+  @@map("approval_instances")
+}
+
+model ApprovalTask {
+  id                     String           @id @default(cuid())
+  instanceId             String
+  instance               ApprovalInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  stepKey                String
+  stepName               String
+  approvalMode           String
+  assignmentType         String
+  assigneeUserId         String?
+  assigneeUser           User?            @relation("ApprovalTaskAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+  assigneeRoleCode       String?
+  assigneeDepartmentId   String?
+  assigneePermissionCode String?
+  claimMode              String           @default("DIRECT")
+  status                 String           @default("PENDING")
+  claimedById            String?
+  claimedBy              User?            @relation("ApprovalTaskClaimer", fields: [claimedById], references: [id], onDelete: SetNull)
+  actedById              String?
+  actedBy                User?            @relation("ApprovalTaskActor", fields: [actedById], references: [id], onDelete: SetNull)
+  comment                String?
+  actedAt                DateTime?
+  dueAt                  DateTime?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  actions ApprovalAction[]
+
+  @@index([instanceId, stepKey])
+  @@index([status])
+  @@index([assigneeUserId, status])
+  @@index([assigneeRoleCode, status])
+  @@index([assigneeDepartmentId, status])
+  @@index([assigneePermissionCode, status])
+  @@map("approval_tasks")
+}
+
+model ApprovalAction {
+  id         String           @id @default(cuid())
+  instanceId String
+  instance   ApprovalInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  taskId     String?
+  task       ApprovalTask?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  actorId    String
+  actor      User             @relation("ApprovalActionActor", fields: [actorId], references: [id], onDelete: Restrict)
+  action     String
+  comment    String?
+  snapshot   Json?
+  createdAt  DateTime         @default(now())
+
+  @@index([instanceId])
+  @@index([taskId])
+  @@index([actorId])
+  @@map("approval_actions")
 }
 
 model OperationLog {
@@ -406,13 +521,15 @@ model DeviationReport {
   reporterId      String
   reporter        User       @relation("DeviationReporter", fields: [reporterId], references: [id], onDelete: Restrict)
   reportedAt      DateTime   @default(now())
-  approvedBy      String?
-  approvedAt      DateTime?
-  comment         String?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
-  deletedAt       DateTime?
+  approvedBy         String?
+  approvedAt         DateTime?
+  comment            String?
+  approvalInstanceId String?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  deletedAt          DateTime?
 
+  @@index([approvalInstanceId])
   @@map("deviation_reports")
 }
 
@@ -655,8 +772,9 @@ model Record {
   finishedGoodsBatch   FinishedGoodsBatch? @relation("RecordFinishedGoodsBatch", fields: [finishedGoodsBatchId], references: [id], onDelete: SetNull)
 
   // 工作流集成字段
-  workflowId String?
-  workflow   WorkflowInstance? @relation("RecordWorkflow", fields: [workflowId], references: [id], onDelete: SetNull)
+  workflowId         String?
+  workflow           WorkflowInstance? @relation("RecordWorkflow", fields: [workflowId], references: [id], onDelete: SetNull)
+  approvalInstanceId String?
 
   // 任务实例关联
   taskInstanceId String?
@@ -689,6 +807,7 @@ model Record {
   @@index([taskInstanceId])
   @@index([shift_instance_id])
   @@index([production_run_id])
+  @@index([approvalInstanceId])
   @@map("records")
 }
 
@@ -851,18 +970,20 @@ model MaterialRequisition {
   remark          String?
   targetZone      String?   // 目标车间区域：筛粉间 | 称油间 | 小料房
   submittedAt     DateTime?
-  approvedAt      DateTime?
-  approvedBy      String?
-  completedAt     DateTime?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  deletedAt       DateTime?
+  approvedAt         DateTime?
+  approvedBy         String?
+  completedAt        DateTime?
+  approvalInstanceId String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  deletedAt          DateTime?
 
   items MaterialRequisitionItem[]
 
   @@index([status])
   @@index([createdAt])
   @@index([requisitionType])
+  @@index([approvalInstanceId])
   @@map("material_requisitions")
 }
 
@@ -1020,19 +1141,21 @@ model MaterialInbound {
   approvedAt  DateTime?
   approvedBy  String?
   approver    User?         @relation("InboundApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
-  completedAt DateTime?
-  operatorId  String?
-  operator    User?         @relation("InboundOperator", fields: [operatorId], references: [id], onDelete: SetNull)
-  remark      String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  deletedAt   DateTime?
+  completedAt        DateTime?
+  operatorId         String?
+  operator           User?         @relation("InboundOperator", fields: [operatorId], references: [id], onDelete: SetNull)
+  remark             String?
+  approvalInstanceId String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  deletedAt          DateTime?
 
   items MaterialInboundItem[]
 
   @@index([status])
   @@index([createdAt])
   @@index([supplierId])
+  @@index([approvalInstanceId])
   @@map("material_inbounds")
 }
 
@@ -1062,18 +1185,20 @@ model MaterialReturn {
   status      MaterialReturnStatus @default(draft) // draft, approved, completed
   reason      String?
   requesterId String
-  approvedBy  String?
-  approvedAt  DateTime?
-  completedAt DateTime?
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  deletedAt   DateTime?
+  approvedBy         String?
+  approvedAt         DateTime?
+  completedAt        DateTime?
+  approvalInstanceId String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  deletedAt          DateTime?
 
   items MaterialReturnItem[]
 
   @@index([status])
   @@index([createdAt])
   @@index([returnNo])
+  @@index([approvalInstanceId])
   @@map("material_returns")
 }
 
@@ -1100,18 +1225,20 @@ model MaterialScrap {
   status      MaterialScrapStatus @default(draft) // draft, approved, completed
   reason      String // 报废原因（必填）
   requesterId String
-  approvedBy  String?
-  approvedAt  DateTime?
-  completedAt DateTime?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  deletedAt   DateTime? // 软删除（报废记录不可物理删除）
+  approvedBy         String?
+  approvedAt         DateTime?
+  completedAt        DateTime?
+  approvalInstanceId String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime? // 软删除（报废记录不可物理删除）
 
   items MaterialScrapItem[]
 
   @@index([status])
   @@index([createdAt])
   @@index([scrapNo])
+  @@index([approvalInstanceId])
   @@map("material_scraps")
 }
 
@@ -1378,6 +1505,7 @@ model MaintenanceRecord {
   performerId        String? // 维保人员ID
   reviewerId         String? // 审核人员ID
   workflowId         String? // 工作流实例ID
+  approvalInstanceId String?
   status             MaintenanceRecordStatus @default(draft)
   submittedAt        DateTime?
   approvedAt         DateTime?
@@ -1394,6 +1522,7 @@ model MaintenanceRecord {
   @@index([status])
   @@index([planId])
   @@index([performerId])
+  @@index([approvalInstanceId])
   @@map("maintenance_records")
 }
 
@@ -1657,6 +1786,7 @@ enum TodoType {
   training_organize // 培训组织任务
   training_attend // 培训参加任务
   approval // 审批任务
+  approval_task // 统一审批任务
   audit_rectification // 内审整改任务（TASK-326）
   equipment_maintain // 设备维护任务
   inventory // 盘点任务
@@ -1725,16 +1855,18 @@ model TrainingPlan {
   id        String             @id @default(cuid())
   year      Int                @unique // BR-091: 年度唯一性
   title     String
-  status    TrainingPlanStatus @default(draft)
-  createdBy String
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
+  status             TrainingPlanStatus @default(draft)
+  approvalInstanceId String?
+  createdBy          String
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   // 反向关系
   projects TrainingProject[]
 
   @@index([year])
   @@index([status])
+  @@index([approvalInstanceId])
   @@map("training_plans")
 }
 
@@ -1898,12 +2030,13 @@ model AuditFinding {
   assigneeId String? // 责任人
   dueDate    DateTime? // 整改期限(审核日期 + 30 天)
 
-  status String @default("pending")
+  status             String @default("pending")
   // pending: 待整改(仅"不符合"项有此状态)
   // rectifying: 整改中
   // pending_verification: 待复审
   // verified: 已验证通过
   // rejected: 复审驳回
+  approvalInstanceId String?
 
   // 整改证据(系统自动记录)
   rectificationDocumentId String? // 整改后的文档 ID
@@ -1925,6 +2058,7 @@ model AuditFinding {
   @@index([planId, auditResult])
   @@index([assigneeId, status])
   @@index([status, dueDate])
+  @@index([approvalInstanceId])
   @@map("audit_findings")
 }
 
@@ -2119,7 +2253,7 @@ enum ProcessStepStatus {
 model ProcessTemplate {
   id        String   @id @default(cuid())
   name      String
-  steps     Json     // 9步流程配置
+  steps     Json     // 7步流程配置（CX-26）
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2142,9 +2276,13 @@ model ProcessInstance {
   updatedAt   DateTime      @updatedAt
 
   stepData ProcessStepData[]
+  productId   String?
+  product     Product?              @relation("ProcessProduct", fields: [productId], references: [id], onDelete: SetNull)
+  approvals   ProcessStepApproval[]
 
   @@index([createdById])
   @@index([status])
+  @@index([productId])
   @@map("process_instances")
 }
 
@@ -2154,8 +2292,9 @@ model ProcessStepData {
   instance        ProcessInstance   @relation(fields: [instanceId], references: [id], onDelete: Cascade)
   stepNumber      Int
   data            Json              @default("{}")
-  status          ProcessStepStatus @default(PENDING)
-  submittedById   String?
+  status             ProcessStepStatus @default(PENDING)
+  approvalInstanceId String?
+  submittedById      String?
   submittedBy     User?             @relation("StepSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
   submittedAt     DateTime?
   approvedById    String?
@@ -2167,7 +2306,30 @@ model ProcessStepData {
 
   @@unique([instanceId, stepNumber])
   @@index([instanceId])
+  @@index([approvalInstanceId])
   @@map("process_step_data")
+}
+
+model ProcessStepApproval {
+  id          String          @id @default(cuid())
+  instanceId  String
+  instance    ProcessInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  stepNumber  Int
+  approverId  String?
+  approver    User?           @relation("StepApprovalUser", fields: [approverId], references: [id], onDelete: SetNull)
+  department  String
+  role        String
+  status      String          @default("PENDING")
+  comment     String?
+  signedAt    DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([instanceId, stepNumber, role])
+  @@index([instanceId, stepNumber])
+  @@index([role, status])
+  @@index([approverId, status])
+  @@map("process_step_approvals")
 }
 
 // P2: 跨文档引用表（BR-305/306）
@@ -2380,6 +2542,21 @@ model Product {
   net_weight   Decimal?  @db.Decimal(12,4)
   weight_unit  String?
   label_claims String?
+  shelf_life_days     Int?
+  nutrition_energy    Decimal? @db.Decimal(10,2)
+  nutrition_protein   Decimal? @db.Decimal(10,2)
+  nutrition_fat       Decimal? @db.Decimal(10,2)
+  nutrition_trans_fat Decimal? @db.Decimal(10,2)
+  nutrition_carb      Decimal? @db.Decimal(10,2)
+  nutrition_sodium    Decimal? @db.Decimal(10,2)
+  product_type        String?
+  processing_method   String?
+  standard_code       String?
+  storage_method      String?
+  consumption_method  String?
+  label_allergens     String?
+  consumer_notice     String?
+  process_instances   ProcessInstance[] @relation("ProcessProduct")
   status       String    @default("active") // 'active'|'inactive'|'discontinued'
   recipes      Recipe[]
   created_at   DateTime  @default(now())
@@ -2562,9 +2739,10 @@ model CorrectiveAction {
   corrective_action String?
   preventive_action String?
   due_date          DateTime? @db.Date
-  responsible_id    String?
-  status            String    @default("open") // 'open'|'implementing'|'pending_verification'|'closed'
-  verified_by       String?
+  responsible_id     String?
+  status             String    @default("open") // 'open'|'implementing'|'pending_verification'|'closed'
+  approvalInstanceId String?
+  verified_by        String?
   verified_at       DateTime?
   closed_at         DateTime?
   created_at        DateTime  @default(now())
@@ -2573,6 +2751,7 @@ model CorrectiveAction {
   verification_records VerificationRecord[]
 
   @@unique([company_id, capa_no])
+  @@index([approvalInstanceId])
 }
 
 model VerificationRecord {
@@ -2942,14 +3121,17 @@ model ChangeComplianceRecord {
 }
 
 model ChangeApproval {
-  id              String    @id @default(cuid())
-  company_id      String
-  change_event_id String
-  approver_id     String?
-  decision        String?   // approved, rejected, pending
-  comments        String?
-  approved_at     DateTime?
-  created_at      DateTime  @default(now())
+  id                 String    @id @default(cuid())
+  company_id         String
+  change_event_id    String
+  approver_id        String?
+  decision           String?   // approved, rejected, pending
+  comments           String?
+  approved_at        DateTime?
+  approvalInstanceId String?
+  created_at         DateTime  @default(now())
+
+  @@index([approvalInstanceId])
 }
 
 model LineChangeCheckRecord {
@@ -3242,16 +3424,18 @@ model TaskRecord {
   dataJson         Json      @default("{}")
   submitterId      String
   submitter        User      @relation("TaskRecordSubmitter", fields: [submitterId], references: [id])
-  status           String    @default("pending")
-  submittedAt      DateTime  @default(now())
-  approvedAt       DateTime?
-  approverId       String?
-  approver         User?     @relation("TaskRecordApprover", fields: [approverId], references: [id])
-  comment          String?
+  status             String    @default("pending")
+  approvalInstanceId String?
+  submittedAt        DateTime  @default(now())
+  approvedAt         DateTime?
+  approverId         String?
+  approver           User?     @relation("TaskRecordApprover", fields: [approverId], references: [id])
+  comment            String?
   hasDeviation     Boolean   @default(false)
   deviationCount   Int       @default(0)
   deviationReasons Json?
 
   @@index([taskId])
+  @@index([approvalInstanceId])
   @@map("task_records")
 }

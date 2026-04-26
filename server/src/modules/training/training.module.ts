@@ -1,6 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { WorkflowModule } from '../workflow/workflow.module';
+import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
+import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
 import { TrainingController } from './training.controller';
 import { TrainingService } from './training.service';
 import { QuestionController } from './question.controller';
@@ -15,9 +17,20 @@ import { TrainingScheduleService } from './training.schedule';
 import { StorageService } from '../../common/services/storage.service';
 
 @Module({
-  imports: [PrismaModule, WorkflowModule],
+  imports: [PrismaModule, WorkflowModule, UnifiedApprovalModule],
   controllers: [TrainingController, QuestionController, ExamController, RecordController, ArchiveController],
   providers: [TrainingService, QuestionService, ExamService, RecordService, ArchiveService, TrainingScheduleService, StorageService],
   exports: [TrainingService, QuestionService, ExamService, RecordService, ArchiveService],
 })
-export class TrainingModule {}
+export class TrainingModule implements OnModuleInit {
+  constructor(private readonly callbacks: ApprovalCallbackRegistry) {}
+
+  onModuleInit() {
+    this.callbacks.register('training.planApproved', async (context: any) => {
+      await context.tx.trainingPlan.update({
+        where: { id: context.resourceId },
+        data: { status: 'approved' },
+      });
+    });
+  }
+}

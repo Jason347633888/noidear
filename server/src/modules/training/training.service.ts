@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkflowInstanceService } from '../workflow/workflow-instance.service';
+import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 import { CreateTrainingPlanDto } from './dto/create-plan.dto';
 import { UpdateTrainingPlanDto } from './dto/update-plan.dto';
 import { QueryTrainingPlanDto } from './dto/query-plan.dto';
@@ -10,6 +11,7 @@ export class TrainingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly workflowService: WorkflowInstanceService,
+    @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {}
 
   // ==================== 培训计划管理 ====================
@@ -138,6 +140,20 @@ export class TrainingService {
       },
       plan.createdBy,
     );
+
+    try {
+      const approval = await this.approvalEngine?.startApproval({
+        resourceType: 'training_plan',
+        resourceId: id,
+        resourceStep: 'submit',
+        triggerKey: 'submit',
+        title: `培训计划审批：${plan.title}`,
+        createdById: plan.createdBy,
+      });
+      if (approval) {
+        await this.prisma.trainingPlan.update({ where: { id }, data: { approvalInstanceId: approval.id } });
+      }
+    } catch { /* no definition = skip */ }
 
     return this.prisma.trainingPlan.update({
       where: { id },
