@@ -5,12 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-
-export interface CreateDocumentReferenceDto {
-  targetDocId: string;
-  sectionId?: string;
-  snapshot?: Record<string, unknown>;
-}
+import { CreateGenericDocumentReferenceDto } from '../dto/document-control.dto';
 
 /**
  * 跨文档引用服务（BR-305/306）
@@ -29,26 +24,32 @@ export class DocumentReferenceService {
    * 创建文档引用（BR-305）
    * POST /documents/:id/references
    */
-  async createReference(sourceDocId: string, dto: CreateDocumentReferenceDto) {
+  async createReference(sourceDocId: string, dto: CreateGenericDocumentReferenceDto) {
     try {
-      const [source, target] = await Promise.all([
-        this.prisma.document.findUnique({ where: { id: sourceDocId, deletedAt: null } }),
-        this.prisma.document.findUnique({ where: { id: dto.targetDocId, deletedAt: null } }),
-      ]);
-
+      const source = await this.prisma.document.findUnique({ where: { id: sourceDocId, deletedAt: null } });
       if (!source) throw new NotFoundException(`源文档 ${sourceDocId} 不存在`);
-      if (!target) throw new NotFoundException(`目标文档 ${dto.targetDocId} 不存在`);
-      if (sourceDocId === dto.targetDocId) {
-        throw new BadRequestException('不能引用自身文档');
-      }
 
-      await this.validateNoCircularReference(sourceDocId, dto.targetDocId);
-      await this.validateDepthLimit(sourceDocId, dto.targetDocId);
+      let target: any = null;
+      if (dto.targetType === 'document') {
+        if (!dto.targetDocId) throw new BadRequestException('document target requires targetDocId');
+        target = await this.prisma.document.findUnique({ where: { id: dto.targetDocId, deletedAt: null } });
+        if (!target) throw new NotFoundException(`目标文档 ${dto.targetDocId} 不存在`);
+        if (sourceDocId === dto.targetDocId) throw new BadRequestException('不能引用自身文档');
+        await this.validateNoCircularReference(sourceDocId, dto.targetDocId);
+        await this.validateDepthLimit(sourceDocId, dto.targetDocId);
+      } else if (!dto.targetId && !dto.targetRoute) {
+        throw new BadRequestException('non-document target requires targetId or targetRoute');
+      }
 
       const reference = await this.prisma.documentReference.create({
         data: {
           sourceDocId,
-          targetDocId: dto.targetDocId,
+          targetDocId: dto.targetType === 'document' ? dto.targetDocId : null,
+          targetType: dto.targetType,
+          targetId: dto.targetId ?? dto.targetDocId ?? null,
+          targetRoute: dto.targetRoute ?? null,
+          targetLabel: dto.targetLabel ?? target?.title ?? null,
+          relationType: dto.relationType,
           sectionId: dto.sectionId,
           snapshot: dto.snapshot as any ?? null,
           syncedAt: dto.snapshot ? new Date() : null,
@@ -174,7 +175,7 @@ export class DocumentReferenceService {
       });
 
       for (const ref of nextRefs) {
-        if (!visited.has(ref.targetDocId)) {
+        if (ref.targetDocId && !visited.has(ref.targetDocId)) {
           queue.push(ref.targetDocId);
         }
       }
@@ -205,6 +206,7 @@ export class DocumentReferenceService {
 
     let maxDepth = currentDepth;
     for (const ref of outgoing) {
+      if (!ref.targetDocId) continue;
       const d = await this.calculateDepth(ref.targetDocId, currentDepth + 1);
       if (d > maxDepth) maxDepth = d;
     }

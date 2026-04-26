@@ -24,9 +24,9 @@ import { ForbiddenException } from '@nestjs/common';
 import { DocumentService } from './document.service';
 import { DocumentLifecycleService } from './document-lifecycle.service';
 import { FilePreviewService } from './services';
-import { DocumentReferenceService, CreateDocumentReferenceDto } from './services/document-reference.service';
+import { DocumentReferenceService } from './services/document-reference.service';
 import { DocumentControlWorkbenchService } from './services/document-control-workbench.service';
-import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto } from './dto';
+import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto } from './dto';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -304,7 +304,7 @@ export class DocumentController {
   @ApiOperation({ summary: '创建文档引用（BR-305）' })
   async createReference(
     @Param('id') id: string,
-    @Body() dto: CreateDocumentReferenceDto,
+    @Body() dto: CreateGenericDocumentReferenceDto,
   ) {
     return this.documentReferenceService.createReference(id, dto);
   }
