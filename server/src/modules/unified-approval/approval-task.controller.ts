@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, NotFoundException, Param, Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalEngineService } from './approval-engine.service';
@@ -45,11 +45,22 @@ export class ApprovalTaskController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.prisma.approvalTask.findUnique({
+  async findOne(@Param('id') id: string, @Request() req: any) {
+    const userId = req.user?.id ?? req.user?.userId ?? req.user?.sub;
+    const record = await this.prisma.approvalTask.findUnique({
       where: { id },
       include: { instance: { include: { tasks: true, actions: true } } },
     });
+    if (!record) throw new NotFoundException(`ApprovalTask ${id} not found`);
+    try {
+      await this.resolver.assertCanAct({ userId, task: record });
+    } catch {
+      // Still allow viewing if user is the instance creator
+      if (record.instance?.createdById !== userId) {
+        throw new ForbiddenException('Access denied');
+      }
+    }
+    return record;
   }
 
   @Post(':id/approve')

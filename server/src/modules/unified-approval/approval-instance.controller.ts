@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalEngineService } from './approval-engine.service';
@@ -35,10 +35,12 @@ export class ApprovalInstanceController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.prisma.approvalInstance.findUnique({
+  async findOne(@Param('id') id: string) {
+    const record = await this.prisma.approvalInstance.findUnique({
       where: { id },
       include: { tasks: true, actions: true, definition: true },
     });
+    if (!record) throw new NotFoundException(`ApprovalInstance ${id} not found`);
+    return record;
   }
 }
