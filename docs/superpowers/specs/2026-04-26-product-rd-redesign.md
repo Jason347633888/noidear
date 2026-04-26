@@ -215,64 +215,124 @@ Step 7: 产品验证记录 (JL-07)
 ```
 ProcessInstance
   ├── productName          ← 由 Step1.productName 写入
+  ├── productId            ← Step1 提交时创建 Product(draft)，写入此字段
   ├── processTemplateId    ← 7步模板ID
   ├── status               ← DRAFT/IN_PROGRESS/COMPLETED
   └── currentStep          ← 当前可操作步骤（审批通过才推进）
+
+Product
+  ├── status: 'draft'      ← Step1 提交时创建
+  ├── status: 'active'     ← Step7 食品安全组长批准后变更
+  └── nutrition fields     ← Step5 提交时同步写入
 
 ProcessStepData (每步一条记录)
   ├── instanceId
   ├── stepNumber (1-7)
   ├── data (JSON)          ← 各步骤字段
   ├── status               ← PENDING/SUBMITTED/APPROVED/REJECTED
-  ├── submittedById
-  └── approvedById
+  └── submittedById
 
-Recipe (Step6 提交时创建/更新)
-  └── RecipeLine[]         ← 由 Step6.recipeLines 写入
+ProcessStepApproval (多人会签，每人每次独立一行)
+  ├── instanceId
+  ├── stepNumber
+  ├── approverId
+  ├── department
+  ├── status               ← PENDING/APPROVED/REJECTED
+  ├── comment
+  └── signedAt
 
-Product (流程COMPLETED时更新状态)
-  └── status: 'ACTIVE'
+Recipe (Step6 提交时创建/更新，关联 Step1 创建的 Product)
+  └── RecipeLine[]         ← 由 Step6.recipeLines 写入，material_id 来自仓库
 ```
 
-**步骤推进规则**（取代当前的 currentStep+1 逻辑）：
+**步骤推进规则**（取代当前的 currentStep+1 逻辑，后端校验）：
 
-| 步骤 | 解锁下一步的条件 |
-|------|----------------|
-| Step 1 | `gmApproval.status === 'APPROVED'` |
-| Step 2 | `managerApproval.status === 'APPROVED'` |
-| Step 3 | `trialConclusion === '通过'` + 研发员签名 |
-| Step 4 | 5个 `departmentSignoffs` 全部 `APPROVED` |
-| Step 5 | `gmConfirmation.status === 'APPROVED'` |
-| Step 6 | 品质+制造两个审核均 `APPROVED` |
-| Step 7 | `foodSafetyLeaderApproval.status === 'APPROVED'` → COMPLETED |
+| 步骤 | 解锁下一步的条件 | 触发的副作用 |
+|------|----------------|-------------|
+| Step 1 | GM 在 ProcessStepApproval 中 APPROVED | 创建 Product(draft)，写入 ProcessInstance.productId，同步 productName |
+| Step 2 | 研发经理在 ProcessStepApproval 中 APPROVED | — |
+| Step 3 | `trialConclusion === '通过'` + 研发员提交 | — |
+| Step 4 | 5条 ProcessStepApproval 全部 APPROVED | — |
+| Step 5 | GM 在 ProcessStepApproval 中 APPROVED | 同步营养成分字段到 Product |
+| Step 6 | 品质+制造两条 ProcessStepApproval 均 APPROVED | 创建/更新 Recipe + RecipeLine |
+| Step 7 | 食品安全组长在 ProcessStepApproval 中 APPROVED | Product.status → 'active'，ProcessInstance.status → COMPLETED |
 
-**已批准步骤锁定规则**：`status === 'APPROVED'` 的 ProcessStepData 不允许前端表单编辑（所有字段只读）
+**已批准步骤锁定规则**：`ProcessStepData.status === 'APPROVED'` 的步骤，前端所有表单字段只读
 
 ---
 
 ## 5. 数据库变更
 
-### 需要修改的 Schema
+### 新增表
 
 ```prisma
-model ProcessInstance {
-  // 现有字段保持不变
-  // 新增:
-  productId   String?  // 关联已有产品（可选）
-  product     Product? @relation(fields: [productId], references: [id])
-}
+model ProcessStepApproval {
+  id          String    @id @default(cuid())
+  instanceId  String
+  instance    ProcessInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  stepNumber  Int
+  approverId  String
+  approver    User      @relation(fields: [approverId], references: [id])
+  department  String    // '品质部'|'制造部'|'采购部'|'产品开发部'|'总经办'
+  role        String    // 'gm'|'manager'|'quality'|'manufacture'|'purchase'|'food_safety_leader'
+  status      String    @default("PENDING") // 'PENDING'|'APPROVED'|'REJECTED'
+  comment     String?
+  signedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-model ProcessStepData {
-  // 现有字段保持不变，status 枚举值确认包含:
-  // PENDING / SUBMITTED / APPROVED / REJECTED
+  @@unique([instanceId, stepNumber, approverId])
+  @@index([instanceId, stepNumber])
+  @@index([approverId, status])
+  @@map("process_step_approvals")
 }
 ```
 
-> 配方数据写入已有的 `Recipe` + `RecipeLine` 表，无需新建模型
+> `@@index([approverId, status])` 支持"查我的待签任务"场景，后续做消息通知也用这个索引。
 
-### 需要创建的 ProcessTemplate 种子数据
+### 修改现有 Schema
 
-在 `prisma/seed.ts` 中插入7步模板，`steps` JSON 字段描述每步的 name/description/requiredApprovers。
+```prisma
+model ProcessInstance {
+  // 新增:
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id])
+  approvals   ProcessStepApproval[]
+}
+
+model Product {
+  // 新增营养成分字段（对应 JL-04 字段映射表）：
+  shelf_life_days      Int?
+  nutrition_energy     Decimal? @db.Decimal(10,2)  // kJ/100g
+  nutrition_protein    Decimal? @db.Decimal(10,2)  // g/100g
+  nutrition_fat        Decimal? @db.Decimal(10,2)  // g/100g
+  nutrition_trans_fat  Decimal? @db.Decimal(10,2)  // g/100g
+  nutrition_carb       Decimal? @db.Decimal(10,2)  // g/100g
+  nutrition_sodium     Decimal? @db.Decimal(10,2)  // mg/100g
+  product_type         String?  // 默认'烘烤类糕点'
+  processing_method    String?  // 默认'热加工'
+  standard_code        String?  // 默认'GB 7099'
+  storage_method       String?  // 默认'阴凉干燥处'
+  consumption_method   String?  // 默认'开袋即食'
+  label_allergens      String?  // 过敏原文本
+  consumer_notice      String?
+}
+```
+
+### ProcessTemplate 种子数据更新
+
+将现有9步模板改为7步，`steps` JSON：
+```json
+[
+  { "stepNumber": 1, "name": "新产品开发申请书", "formCode": "JL-09", "requiredApprovals": [{"role": "gm", "dept": "总经办"}] },
+  { "stepNumber": 2, "name": "新产品开发计划书", "formCode": "JL-10", "requiredApprovals": [{"role": "manager", "dept": "产品开发部"}] },
+  { "stepNumber": 3, "name": "研发试验记录",     "formCode": "JL-11", "requiredApprovals": [] },
+  { "stepNumber": 4, "name": "产品开发评审",     "formCode": "JL-01", "requiredApprovals": [{"role": "quality"},{"role": "manufacture"},{"role": "purchase"},{"role": "development"},{"role": "gm"}] },
+  { "stepNumber": 5, "name": "产品标签信息记录", "formCode": "JL-04", "requiredApprovals": [{"role": "gm", "dept": "总经办"}] },
+  { "stepNumber": 6, "name": "产品操作规程",     "formCode": "JL-02+JL-06", "requiredApprovals": [{"role": "quality"},{"role": "manufacture"}] },
+  { "stepNumber": 7, "name": "产品验证记录",     "formCode": "JL-07", "requiredApprovals": [{"role": "manufacture"},{"role": "quality"},{"role": "food_safety_leader"}] }
+]
+```
 
 ---
 
@@ -306,45 +366,77 @@ model ProcessStepData {
 
 ## 7. 后端 API 改造
 
-### 需要修改的接口
+### 新增接口
+
+```typescript
+// POST /process/instances/:id/steps/:stepNumber/approvals
+// 提交会签（创建或更新一条 ProcessStepApproval 记录）
+// Body: { action: 'approve'|'reject', comment?: string }
+// 后端逻辑：
+// 1. 写入/更新 ProcessStepApproval
+// 2. 检查该步骤所有必要审批人是否全部 APPROVED
+// 3. 全部通过 → 将 ProcessStepData.status 改为 APPROVED，推进 currentStep
+// 4. 触发副作用（见步骤推进规则表）
+
+// GET /process/instances/:id/approvals?stepNumber=4
+// 查询某步骤的所有会签记录（供前端显示签署面板）
+
+// GET /process/approvals/pending?approverId=xxx
+// 查我的待签任务（跨所有流程实例）
+```
+
+### 修改现有接口
 
 ```typescript
 // POST /process/instances/:id/steps
-// 新增逻辑：
-// 1. 写入 stepData 后，检查审批条件
-// 2. 条件满足时自动推进 currentStep
-// 3. Step1 提交审批时同步更新 ProcessInstance.productName
-// 4. Step6 APPROVED 时写入 Recipe/RecipeLine
-// 5. Step7 食品安全组长批准时将 status 改为 COMPLETED
+// 修改逻辑：
+// - saveAsDraft=false 时不再自动推进 currentStep（改由 approval 驱动）
+// - Step3 特殊处理：无审批人，提交即推进（trialConclusion==='通过'时）
+// - 删除旧的 approveStep 端点（由新的 approvals 端点替代）
 
-// GET /process/instances/:id/step-context/:stepNumber
-// 新接口：返回前序步骤的关联数据（rawMaterials, processSteps等）
-// 供前端预填表单使用
+// 副作用处理（在 approvals 端点中）：
+// Step1 全部通过 → prisma.$transaction([创建Product, 更新ProcessInstance.productId+productName])
+// Step5 全部通过 → 同步营养成分到 Product
+// Step6 全部通过 → 创建/更新 Recipe + RecipeLine
+// Step7 全部通过 → Product.status='active', ProcessInstance.status='COMPLETED'
 ```
 
 ---
 
 ## 8. 实施顺序（分阶段）
 
-**Phase 1 — 后端基础（不影响现有功能）**
-1. 更新 ProcessTemplate 种子数据（7步模板）
-2. 新增 `GET /process/instances/:id/step-context/:stepNumber` 接口
-3. 修改步骤推进逻辑（审批条件驱动）
+**Phase 1 — 数据库 Migration**
+1. 新增 `ProcessStepApproval` 表
+2. `ProcessInstance` 加 `productId` 字段
+3. `Product` 加营养成分字段（8个）
+4. 更新 ProcessTemplate 种子数据（7步模板 JSON）
 
-**Phase 2 — 前端步骤重写（逐步替换）**
-4. 新建公共组件：ApprovalPanel、DeptSignoffTable、RecipeLineEditor
-5. 逐步重写 Step1~7（每步独立可测试）
-6. 更新 ProcessDetail.vue 的锁定逻辑
-7. 删除旧的 Step8、Step9
+**Phase 2 — 后端 API**
+5. 新增 `POST /process/instances/:id/steps/:stepNumber/approvals`（含副作用逻辑）
+6. 新增 `GET /process/instances/:id/approvals`
+7. 新增 `GET /process/approvals/pending`
+8. 修改 `POST /process/instances/:id/steps`（去掉自动推进，保留暂存）
+9. 删除旧的 `POST /process/instances/:id/approve`
 
-**Phase 3 — 数据联动**
-8. Step2 rawMaterials → Step3/Step6 预填
-9. Step6 APPROVED → 写入 Recipe/RecipeLine
-10. Step1 → ProcessInstance.productName 同步
+**Phase 3 — 前端公共组件**
+10. `DeptSignoffPanel.vue`（多人签署面板，含"我要签字"按钮）
+11. `RecipeLineEditor.vue`（配料行编辑，复用 Step2 物料选择器逻辑）
+12. `processApi.ts` 新增 approvals 相关方法
 
-**Phase 4 — 变更记录模块**
-11. ChangeRecordDialog 组件
-12. 变更记录后端 API
+**Phase 4 — 前端步骤重写（逐步，不影响旧流程）**
+13. Step1.vue（JL-09，提交后触发 GM 会签）
+14. Step2.vue（JL-10，rawMaterials 加 qty_per_batch 字段）
+15. Step3.vue（JL-11，rawMaterials 从 Step2 预填名称，数量可调整）
+16. Step4.vue（JL-01，5部门签署面板）
+17. Step5.vue（JL-04，营养成分表，提交后触发 GM 会签）
+18. Step6.vue（JL-02+JL-06，RecipeLineEditor，工艺参数）
+19. Step7.vue（JL-07，配方只读，3人签署）
+20. 删除 Step8.vue、Step9.vue
+21. ProcessDetail.vue 更新：步骤数量7、isStepDisabled 加 APPROVED 锁定逻辑
+
+**Phase 5 — 变更记录模块（按需）**
+22. `ChangeRecordDialog.vue`
+23. 变更记录后端 API（关联 Product + Recipe 更新）
 
 ---
 
