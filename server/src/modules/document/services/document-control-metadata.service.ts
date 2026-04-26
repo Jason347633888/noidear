@@ -19,7 +19,7 @@ export class DocumentControlMetadataService {
       throw new BadRequestException(`Unsupported documentType: ${documentType}`);
     }
 
-    if (sourceFolder && !SOURCE_FOLDERS.includes(sourceFolder as any)) {
+    if (sourceFolder && !SOURCE_FOLDERS.includes(sourceFolder as typeof SOURCE_FOLDERS[number])) {
       throw new BadRequestException(`Unsupported sourceFolder: ${sourceFolder}`);
     }
 
