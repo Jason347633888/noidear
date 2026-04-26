@@ -1,3 +1,8 @@
 .DS_Store
 node_modules/
 .worktrees/
+client/.env.e2e
+client/dist/
+server/dist/
+client/e2e/.auth/
+client/e2e/test-results/
