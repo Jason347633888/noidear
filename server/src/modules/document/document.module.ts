@@ -19,12 +19,14 @@ import { DocumentReferenceService } from './services/document-reference.service'
 import { DocumentLifecycleService } from './document-lifecycle.service';
 import { DocumentControlMetadataService } from './services/document-control-metadata.service';
 import { DocumentControlWorkbenchService } from './services/document-control-workbench.service';
+import { RecordFormLandingService } from './services/record-form-landing.service';
 import { PrismaModule } from '../../prisma/prisma.module';
+import { ModelLandingModule } from '../model-landing/model-landing.module';
 
 @Module({
-  imports: [ConfigModule, PrismaModule, NotificationModule, OperationLogModule, ExportModule, DepartmentPermissionModule, StatisticsModule, UserPermissionModule, SearchModule],
+  imports: [ConfigModule, PrismaModule, NotificationModule, OperationLogModule, ExportModule, DepartmentPermissionModule, StatisticsModule, UserPermissionModule, SearchModule, ModelLandingModule],
   controllers: [DocumentController],
-  providers: [DocumentService, DocumentCronService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, DocumentControlWorkbenchService, FilePreviewService, StorageService, StatisticsCacheInterceptor, PermissionGuard, DocumentsListener],
-  exports: [DocumentService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, DocumentControlWorkbenchService],
+  providers: [DocumentService, DocumentCronService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, DocumentControlWorkbenchService, RecordFormLandingService, FilePreviewService, StorageService, StatisticsCacheInterceptor, PermissionGuard, DocumentsListener],
+  exports: [DocumentService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, DocumentControlWorkbenchService, RecordFormLandingService],
 })
 export class DocumentModule {}

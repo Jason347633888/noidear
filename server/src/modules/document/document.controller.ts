@@ -26,7 +26,9 @@ import { DocumentLifecycleService } from './document-lifecycle.service';
 import { FilePreviewService } from './services';
 import { DocumentReferenceService } from './services/document-reference.service';
 import { DocumentControlWorkbenchService } from './services/document-control-workbench.service';
+import { RecordFormLandingService } from './services/record-form-landing.service';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto } from './dto';
+import { UpdateRecordFormLandingEntryDto } from './dto/document-control.dto';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -53,6 +55,7 @@ export class DocumentController {
     private readonly departmentPermissionService: DepartmentPermissionService,
     private readonly statisticsService: StatisticsService,
     private readonly workbenchService: DocumentControlWorkbenchService,
+    private readonly recordFormLandingService: RecordFormLandingService,
   ) {}
 
   @Post('upload')
@@ -129,6 +132,35 @@ export class DocumentController {
   @ApiOperation({ summary: '文控工作台' })
   getControlWorkbench(@Query('days') days?: string) {
     return this.workbenchService.getWorkbench(days ? parseInt(days, 10) : 30);
+  }
+
+  // =============================
+  // Task 6: 记录表单落地索引
+  // =============================
+
+  @Get('record-form-index')
+  @ApiOperation({ summary: '查询04记录表单落地索引' })
+  listRecordFormIndex(
+    @Query('keyword') keyword?: string,
+    @Query('department') department?: string,
+    @Query('templateGroupId') templateGroupId?: string,
+  ) {
+    return this.recordFormLandingService.list({ keyword, department, templateGroupId });
+  }
+
+  @Get('record-form-index/:code')
+  @ApiOperation({ summary: '查询单张源表单落地信息' })
+  getRecordFormIndexEntry(@Param('code') code: string) {
+    return this.recordFormLandingService.get(code);
+  }
+
+  @Patch('record-form-index/:code')
+  @ApiOperation({ summary: '维护源表单目标入口' })
+  updateRecordFormIndexEntry(
+    @Param('code') code: string,
+    @Body() dto: UpdateRecordFormLandingEntryDto,
+  ) {
+    return this.recordFormLandingService.upsertTarget(code, dto);
   }
 
   @Get(':id')
