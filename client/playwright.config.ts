@@ -21,7 +21,7 @@ export default defineConfig({
     ['list'],
   ],
   use: {
-    baseURL: 'http://localhost:5178',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173',
     storageState: 'e2e/.auth/admin.json',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',

@@ -25,6 +25,22 @@ ALTER TABLE "document_references" ADD COLUMN IF NOT EXISTS "targetRoute" TEXT;
 ALTER TABLE "document_references" ADD COLUMN IF NOT EXISTS "targetLabel" TEXT;
 ALTER TABLE "document_references" ADD COLUMN IF NOT EXISTS "relationType" TEXT NOT NULL DEFAULT 'RELATED_TO';
 
+-- Recreate targetDocId FK with SET NULL (was CASCADE in prior schema)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'document_references_targetDocId_fkey'
+      AND conrelid = 'document_references'::regclass
+  ) THEN
+    ALTER TABLE "document_references" DROP CONSTRAINT "document_references_targetDocId_fkey";
+  END IF;
+END$$;
+
+ALTER TABLE "document_references"
+  ADD CONSTRAINT "document_references_targetDocId_fkey"
+  FOREIGN KEY ("targetDocId") REFERENCES "documents"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
 -- Drop old unique constraint if it exists, create new generalized one
 DO $$
 BEGIN

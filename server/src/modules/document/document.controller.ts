@@ -167,6 +167,8 @@ export class DocumentController {
   }
 
   @Patch('record-form-index/:code')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:control_manage')
   @ApiOperation({ summary: '维护源表单目标入口' })
   updateRecordFormIndexEntry(
     @Param('code') code: string,
@@ -180,6 +182,8 @@ export class DocumentController {
   // =============================
 
   @Post(':id/read-requirements')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:control_manage')
   @ApiOperation({ summary: '创建阅读要求' })
   createReadRequirement(@Param('id') id: string, @Body() dto: CreateReadRequirementDto, @Req() req: any) {
     return this.readRequirementService.create(id, dto, req.user.id);
@@ -198,24 +202,32 @@ export class DocumentController {
   }
 
   @Post(':id/training-needs/suggest')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:control_manage')
   @ApiOperation({ summary: '建议培训需求' })
   suggestTrainingNeed(@Param('id') id: string, @Req() req: any) {
     return this.trainingNeedService.suggestForDocument(id, req.user.id);
   }
 
   @Post('control/training-needs/:id/accept')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:control_manage')
   @ApiOperation({ summary: '接受培训需求' })
   acceptTrainingNeed(@Param('id') id: string) {
     return this.trainingNeedService.accept(id);
   }
 
   @Post('control/training-needs/:id/dismiss')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:control_manage')
   @ApiOperation({ summary: '驳回培训需求' })
   dismissTrainingNeed(@Param('id') id: string, @Body() dto: TrainingNeedActionDto) {
     return this.trainingNeedService.dismiss(id, dto.reason);
   }
 
   @Post('control/training-needs/:id/link')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:control_manage')
   @ApiOperation({ summary: '关联培训项目' })
   linkTrainingNeed(@Param('id') id: string, @Body() dto: TrainingNeedActionDto) {
     return this.trainingNeedService.link(id, dto.linkedTrainingProjectId);
@@ -228,12 +240,16 @@ export class DocumentController {
   }
 
   @Post('control/impact-reviews')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:control_manage')
   @ApiOperation({ summary: '创建影响评审' })
   createImpactReview(@Body() dto: ImpactReviewCreateDto) {
     return this.impactService.createReview(dto);
   }
 
   @Patch('control/impact-items/:id')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:control_manage')
   @ApiOperation({ summary: '更新影响评审条目' })
   updateImpactItem(@Param('id') id: string, @Body() dto: ImpactItemUpdateDto) {
     return this.impactService.updateItem(id, dto);
