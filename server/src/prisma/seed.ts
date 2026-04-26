@@ -335,6 +335,45 @@ async function main() {
 
   console.log(`✅ 系统配置创建完成（共 ${configs.length} 个）`);
 
+  // 8. 创建产品研发7步流程模板（CX-26）
+  const productRd7StepTemplate = {
+    name: '产品研发流程（7步）',
+    steps: [
+      { stepNumber: 1, name: '新产品开发申请书', formCode: 'JL-09', requiredApprovals: [{ role: 'gm', dept: '总经办' }] },
+      { stepNumber: 2, name: '新产品开发计划书', formCode: 'JL-10', requiredApprovals: [{ role: 'manager', dept: '产品开发部' }] },
+      { stepNumber: 3, name: '研发试验记录', formCode: 'JL-11', requiredApprovals: [] },
+      { stepNumber: 4, name: '产品开发评审', formCode: 'JL-01', requiredApprovals: [{ role: 'quality', dept: '品质部' }, { role: 'manufacture', dept: '制造部' }, { role: 'purchase', dept: '采购部' }, { role: 'development', dept: '产品开发部' }, { role: 'gm', dept: '总经办' }] },
+      { stepNumber: 5, name: '产品标签信息记录', formCode: 'JL-04', requiredApprovals: [{ role: 'gm', dept: '总经办' }] },
+      { stepNumber: 6, name: '产品操作规程', formCode: 'JL-02+JL-06', requiredApprovals: [{ role: 'quality', dept: '品质部' }, { role: 'manufacture', dept: '制造部' }] },
+      { stepNumber: 7, name: '产品验证记录', formCode: 'JL-07', requiredApprovals: [{ role: 'manufacture', dept: '制造部' }, { role: 'quality', dept: '品质部' }, { role: 'food_safety_leader', dept: '食品安全小组' }] },
+    ],
+  };
+
+  await prisma.$transaction(async (tx) => {
+    const existing7Step = await tx.processTemplate.findFirst({
+      where: { name: productRd7StepTemplate.name },
+    });
+
+    if (existing7Step) {
+      await tx.processTemplate.update({
+        where: { id: existing7Step.id },
+        data: { steps: productRd7StepTemplate.steps as any, isActive: true },
+      });
+      console.log('✅ 已更新产品研发7步流程模板，ID:', existing7Step.id);
+    } else {
+      await tx.processTemplate.updateMany({
+        where: { isActive: true },
+        data: { isActive: false },
+      });
+      const created = await tx.processTemplate.create({
+        data: { ...productRd7StepTemplate, steps: productRd7StepTemplate.steps as any },
+      });
+      console.log('✅ 已创建产品研发7步流程模板，ID:', created.id);
+    }
+  });
+
+  console.log('✅ 产品研发流程模板配置完成');
+
   console.log('🎉 数据库种子数据填充完成！');
 }
 
