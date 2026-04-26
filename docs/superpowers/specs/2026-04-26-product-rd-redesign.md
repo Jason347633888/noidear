@@ -215,15 +215,15 @@ Step 7: 产品验证记录 (JL-07)
 ```
 ProcessInstance
   ├── productName          ← 由 Step1.productName 写入
-  ├── productId            ← Step1 提交时创建 Product(draft)，写入此字段
+  ├── productId            ← Step1 审批全通过后创建 Product(draft)，写入此字段
   ├── processTemplateId    ← 7步模板ID
   ├── status               ← DRAFT/IN_PROGRESS/COMPLETED
   └── currentStep          ← 当前可操作步骤（审批通过才推进）
 
 Product
-  ├── status: 'draft'      ← Step1 提交时创建
+  ├── status: 'draft'      ← Step1 审批全通过后创建
   ├── status: 'active'     ← Step7 食品安全组长批准后变更
-  └── nutrition fields     ← Step5 提交时同步写入
+  └── nutrition fields     ← Step5 审批全通过后同步写入
 
 ProcessStepData (每步一条记录)
   ├── instanceId
@@ -232,16 +232,17 @@ ProcessStepData (每步一条记录)
   ├── status               ← PENDING/SUBMITTED/APPROVED/REJECTED
   └── submittedById
 
-ProcessStepApproval (多人会签，每人每次独立一行)
+ProcessStepApproval (多人会签，每个必签角色一个待签槽位)
   ├── instanceId
   ├── stepNumber
-  ├── approverId
+  ├── role                 ← 必签角色，来自 ProcessTemplate.steps.requiredApprovals
   ├── department
+  ├── approverId           ← 实际签署人；待签时为空
   ├── status               ← PENDING/APPROVED/REJECTED
   ├── comment
   └── signedAt
 
-Recipe (Step6 提交时创建/更新，关联 Step1 创建的 Product)
+Recipe (Step6 审批全通过后创建/更新，关联 Step1 审批后创建的 Product)
   └── RecipeLine[]         ← 由 Step6.recipeLines 写入，material_id 来自仓库
 ```
 
@@ -257,6 +258,13 @@ Recipe (Step6 提交时创建/更新，关联 Step1 创建的 Product)
 | Step 6 | 品质+制造两条 ProcessStepApproval 均 APPROVED | 创建/更新 Recipe + RecipeLine |
 | Step 7 | 食品安全组长在 ProcessStepApproval 中 APPROVED | Product.status → 'active'，ProcessInstance.status → COMPLETED |
 
+**审批安全规则**：
+
+1. `POST /process/instances/:id/steps` 保存步骤数据；有 `requiredApprovals` 的步骤只创建待签槽位，不推进流程。
+2. `POST /process/instances/:id/steps/:stepNumber/approvals` 必须先校验对应 `ProcessStepData.status === 'SUBMITTED'`，否则拒绝审批。
+3. 客户端只能传 `action/comment` 和可选的目标 `role`；后端必须根据当前用户的 `roleObj/role + department` 解析可签角色，禁止信任客户端传入的部门或审批身份。
+4. Step1 Product 创建、Step5 营养字段同步、Step6 Recipe/RecipeLine 写入、Step7 Product 激活、步骤 APPROVED 和 currentStep 推进必须在同一个 `prisma.$transaction` 中完成。
+
 **已批准步骤锁定规则**：`ProcessStepData.status === 'APPROVED'` 的步骤，前端所有表单字段只读
 
 ---
@@ -271,8 +279,8 @@ model ProcessStepApproval {
   instanceId  String
   instance    ProcessInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
   stepNumber  Int
-  approverId  String
-  approver    User      @relation(fields: [approverId], references: [id])
+  approverId  String?
+  approver    User?     @relation(fields: [approverId], references: [id], onDelete: SetNull)
   department  String    // '品质部'|'制造部'|'采购部'|'产品开发部'|'总经办'
   role        String    // 'gm'|'manager'|'quality'|'manufacture'|'purchase'|'food_safety_leader'
   status      String    @default("PENDING") // 'PENDING'|'APPROVED'|'REJECTED'
@@ -281,14 +289,15 @@ model ProcessStepApproval {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  @@unique([instanceId, stepNumber, approverId])
+  @@unique([instanceId, stepNumber, role])
   @@index([instanceId, stepNumber])
+  @@index([role, status])
   @@index([approverId, status])
   @@map("process_step_approvals")
 }
 ```
 
-> `@@index([approverId, status])` 支持"查我的待签任务"场景，后续做消息通知也用这个索引。
+> `@@index([role, status])` 支持按当前用户可签角色查询待签槽位；`@@index([approverId, status])` 支持签署历史和后续消息通知。
 
 ### 修改现有 Schema
 
@@ -342,7 +351,7 @@ model Product {
 
 | 文件 | 改造内容 |
 |------|---------|
-| `ProcessDetail.vue` | 步骤锁定逻辑：`isStepEditable` 改为检查 status；去掉 `viewStep > currentStep` 判断 |
+| `ProcessDetail.vue` | 步骤锁定逻辑：未解锁步骤不可编辑，`APPROVED` 步骤只读；读取后端返回的 `stepData` 字段 |
 | `ProcessList.vue` | 无需改动（删除功能已修复）|
 | `Step1.vue` | 完全重写，对应 JL-09 字段 |
 | `Step2.vue` | 完全重写，对应 JL-10 字段，rawMaterials 为后续步骤数据源 |
@@ -357,8 +366,7 @@ model Product {
 
 | 组件 | 用途 |
 |------|------|
-| `ApprovalPanel.vue` | 通用审批面板（显示审批人/时间/意见，已批准则只读）|
-| `DeptSignoffTable.vue` | 多部门签署表格（Step4/5/7使用）|
+| `DeptSignoffPanel.vue` | 多部门签署面板；渲染后端待签槽位，由后端校验当前用户可签角色 |
 | `RecipeLineEditor.vue` | 配料行编辑器（Step2/6共用，Step3/7只读）|
 | `ChangeRecordDialog.vue` | 变更记录对话框（按需触发）|
 
@@ -370,18 +378,18 @@ model Product {
 
 ```typescript
 // POST /process/instances/:id/steps/:stepNumber/approvals
-// 提交会签（创建或更新一条 ProcessStepApproval 记录）
-// Body: { action: 'approve'|'reject', comment?: string }
+// 提交会签（签署一个后端已创建的 ProcessStepApproval 槽位）
+// Body: { action: 'approve'|'reject', comment?: string, role?: string }
 // 后端逻辑：
-// 1. 写入/更新 ProcessStepApproval
-// 2. 检查该步骤所有必要审批人是否全部 APPROVED
-// 3. 全部通过 → 将 ProcessStepData.status 改为 APPROVED，推进 currentStep
-// 4. 触发副作用（见步骤推进规则表）
+// 1. 校验 ProcessStepData 已 SUBMITTED
+// 2. 根据当前用户角色/部门解析允许签署的 requiredApprovals 角色
+// 3. 更新对应 role 的 ProcessStepApproval 槽位
+// 4. 全部通过 → 在同一 transaction 中将 ProcessStepData.status 改为 APPROVED、触发副作用、推进 currentStep
 
 // GET /process/instances/:id/approvals?stepNumber=4
 // 查询某步骤的所有会签记录（供前端显示签署面板）
 
-// GET /process/approvals/pending?approverId=xxx
+// GET /process/instances/approvals/pending
 // 查我的待签任务（跨所有流程实例）
 ```
 
@@ -395,7 +403,7 @@ model Product {
 // - 删除旧的 approveStep 端点（由新的 approvals 端点替代）
 
 // 副作用处理（在 approvals 端点中）：
-// Step1 全部通过 → prisma.$transaction([创建Product, 更新ProcessInstance.productId+productName])
+// Step1 全部通过 → 同一 transaction 内创建Product并更新ProcessInstance.productId+productName
 // Step5 全部通过 → 同步营养成分到 Product
 // Step6 全部通过 → 创建/更新 Recipe + RecipeLine
 // Step7 全部通过 → Product.status='active', ProcessInstance.status='COMPLETED'
@@ -414,12 +422,12 @@ model Product {
 **Phase 2 — 后端 API**
 5. 新增 `POST /process/instances/:id/steps/:stepNumber/approvals`（含副作用逻辑）
 6. 新增 `GET /process/instances/:id/approvals`
-7. 新增 `GET /process/approvals/pending`
+7. 新增 `GET /process/instances/approvals/pending`
 8. 修改 `POST /process/instances/:id/steps`（去掉自动推进，保留暂存）
 9. 删除旧的 `POST /process/instances/:id/approve`
 
 **Phase 3 — 前端公共组件**
-10. `DeptSignoffPanel.vue`（多人签署面板，含"我要签字"按钮）
+10. `DeptSignoffPanel.vue`（多人签署面板，显示后端待签槽位）
 11. `RecipeLineEditor.vue`（配料行编辑，复用 Step2 物料选择器逻辑）
 12. `processApi.ts` 新增 approvals 相关方法
 
