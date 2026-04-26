@@ -308,6 +308,7 @@ model Document {
   supersedes       Document[] @relation("DocumentSuperseded")
   read_confirmations DocumentReadConfirmation[]
 
+  @@index([lineage_key])
   @@map("documents")
 }
 
@@ -2173,7 +2174,7 @@ model DocumentReference {
   sourceDoc   Document @relation("SourceRefs", fields: [sourceDocId], references: [id], onDelete: Cascade)
 
   targetDocId String?
-  targetDoc   Document? @relation("TargetRefs", fields: [targetDocId], references: [id], onDelete: Cascade)
+  targetDoc   Document? @relation("TargetRefs", fields: [targetDocId], references: [id], onDelete: SetNull)
 
   targetType  String   @default("document")
   targetId    String?
