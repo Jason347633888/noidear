@@ -20,13 +20,19 @@ import { DocumentLifecycleService } from './document-lifecycle.service';
 import { DocumentControlMetadataService } from './services/document-control-metadata.service';
 import { DocumentControlWorkbenchService } from './services/document-control-workbench.service';
 import { RecordFormLandingService } from './services/record-form-landing.service';
+import { DocumentReadRequirementService } from './services/document-read-requirement.service';
+import { DocumentTrainingNeedService } from './services/document-training-need.service';
+import { DocumentAuditCoverageService } from './services/document-audit-coverage.service';
+import { DocumentImpactService } from './services/document-impact.service';
+import { DocumentHealthService } from './services/document-health.service';
+import { DocumentAuditChainService } from './services/document-audit-chain.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { ModelLandingModule } from '../model-landing/model-landing.module';
 
 @Module({
   imports: [ConfigModule, PrismaModule, NotificationModule, OperationLogModule, ExportModule, DepartmentPermissionModule, StatisticsModule, UserPermissionModule, SearchModule, ModelLandingModule],
   controllers: [DocumentController],
-  providers: [DocumentService, DocumentCronService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, DocumentControlWorkbenchService, RecordFormLandingService, FilePreviewService, StorageService, StatisticsCacheInterceptor, PermissionGuard, DocumentsListener],
-  exports: [DocumentService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, DocumentControlWorkbenchService, RecordFormLandingService],
+  providers: [DocumentService, DocumentCronService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, DocumentControlWorkbenchService, RecordFormLandingService, DocumentReadRequirementService, DocumentTrainingNeedService, DocumentAuditCoverageService, DocumentImpactService, DocumentHealthService, DocumentAuditChainService, FilePreviewService, StorageService, StatisticsCacheInterceptor, PermissionGuard, DocumentsListener],
+  exports: [DocumentService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, DocumentControlWorkbenchService, RecordFormLandingService, DocumentReadRequirementService, DocumentTrainingNeedService, DocumentAuditCoverageService, DocumentImpactService, DocumentHealthService, DocumentAuditChainService],
 })
 export class DocumentModule {}

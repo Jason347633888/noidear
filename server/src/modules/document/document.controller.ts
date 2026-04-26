@@ -27,7 +27,13 @@ import { FilePreviewService } from './services';
 import { DocumentReferenceService } from './services/document-reference.service';
 import { DocumentControlWorkbenchService } from './services/document-control-workbench.service';
 import { RecordFormLandingService } from './services/record-form-landing.service';
-import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto, WorkbenchQueryDto } from './dto';
+import { DocumentReadRequirementService } from './services/document-read-requirement.service';
+import { DocumentTrainingNeedService } from './services/document-training-need.service';
+import { DocumentAuditCoverageService } from './services/document-audit-coverage.service';
+import { DocumentImpactService } from './services/document-impact.service';
+import { DocumentHealthService } from './services/document-health.service';
+import { DocumentAuditChainService } from './services/document-audit-chain.service';
+import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto, WorkbenchQueryDto, CreateReadRequirementDto, TrainingNeedActionDto, ImpactReviewCreateDto, ImpactItemUpdateDto, CoverageQueryDto, AuditChainQueryDto } from './dto';
 import { UpdateRecordFormLandingEntryDto } from './dto/document-control.dto';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
@@ -56,6 +62,12 @@ export class DocumentController {
     private readonly statisticsService: StatisticsService,
     private readonly workbenchService: DocumentControlWorkbenchService,
     private readonly recordFormLandingService: RecordFormLandingService,
+    private readonly readRequirementService: DocumentReadRequirementService,
+    private readonly trainingNeedService: DocumentTrainingNeedService,
+    private readonly auditCoverageService: DocumentAuditCoverageService,
+    private readonly impactService: DocumentImpactService,
+    private readonly healthService: DocumentHealthService,
+    private readonly auditChainService: DocumentAuditChainService,
   ) {}
 
   @Post('upload')
@@ -161,6 +173,82 @@ export class DocumentController {
     @Body() dto: UpdateRecordFormLandingEntryDto,
   ) {
     return this.recordFormLandingService.upsertTarget(code, dto);
+  }
+
+  // =============================
+  // Task 6: 文档运控中心端点
+  // =============================
+
+  @Post(':id/read-requirements')
+  @ApiOperation({ summary: '创建阅读要求' })
+  createReadRequirement(@Param('id') id: string, @Body() dto: CreateReadRequirementDto, @Req() req: any) {
+    return this.readRequirementService.create(id, dto, req.user.id);
+  }
+
+  @Get(':id/read-status')
+  @ApiOperation({ summary: '查询阅读状态' })
+  getReadStatus(@Param('id') id: string) {
+    return this.readRequirementService.getStatus(id);
+  }
+
+  @Get('control/training-needs')
+  @ApiOperation({ summary: '列出培训需求' })
+  listTrainingNeeds(@Query('status') status?: string) {
+    return this.trainingNeedService.list(status);
+  }
+
+  @Post(':id/training-needs/suggest')
+  @ApiOperation({ summary: '建议培训需求' })
+  suggestTrainingNeed(@Param('id') id: string, @Req() req: any) {
+    return this.trainingNeedService.suggestForDocument(id, req.user.id);
+  }
+
+  @Post('control/training-needs/:id/accept')
+  @ApiOperation({ summary: '接受培训需求' })
+  acceptTrainingNeed(@Param('id') id: string) {
+    return this.trainingNeedService.accept(id);
+  }
+
+  @Post('control/training-needs/:id/dismiss')
+  @ApiOperation({ summary: '驳回培训需求' })
+  dismissTrainingNeed(@Param('id') id: string, @Body() dto: TrainingNeedActionDto) {
+    return this.trainingNeedService.dismiss(id, dto.reason);
+  }
+
+  @Post('control/training-needs/:id/link')
+  @ApiOperation({ summary: '关联培训项目' })
+  linkTrainingNeed(@Param('id') id: string, @Body() dto: TrainingNeedActionDto) {
+    return this.trainingNeedService.link(id, dto.linkedTrainingProjectId);
+  }
+
+  @Get('control/audit-coverage')
+  @ApiOperation({ summary: '查询审核覆盖率' })
+  getAuditCoverage(@Query() dto: CoverageQueryDto) {
+    return this.auditCoverageService.getCoverage(new Date(dto.periodStart), new Date(dto.periodEnd));
+  }
+
+  @Post('control/impact-reviews')
+  @ApiOperation({ summary: '创建影响评审' })
+  createImpactReview(@Body() dto: ImpactReviewCreateDto) {
+    return this.impactService.createReview(dto);
+  }
+
+  @Patch('control/impact-items/:id')
+  @ApiOperation({ summary: '更新影响评审条目' })
+  updateImpactItem(@Param('id') id: string, @Body() dto: ImpactItemUpdateDto) {
+    return this.impactService.updateItem(id, dto);
+  }
+
+  @Get('control/health')
+  @ApiOperation({ summary: '查询文控健康度' })
+  getHealth(@Query('days') days?: string) {
+    return this.healthService.getHealth(days ? parseInt(days, 10) : 30);
+  }
+
+  @Get('control/audit-chain')
+  @ApiOperation({ summary: '查询审计链' })
+  getAuditChain(@Query() dto: AuditChainQueryDto) {
+    return this.auditChainService.getChain(dto.sourceType, dto.sourceId, dto.maxDepth ?? 4);
   }
 
   @Get(':id')
