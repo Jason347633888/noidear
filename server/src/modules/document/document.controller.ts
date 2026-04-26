@@ -242,7 +242,8 @@ export class DocumentController {
   @Get('control/health')
   @ApiOperation({ summary: '查询文控健康度' })
   getHealth(@Query('days') days?: string) {
-    return this.healthService.getHealth(days ? parseInt(days, 10) : 30);
+    const parsed = days ? parseInt(days, 10) : 30;
+    return this.healthService.getHealth(Number.isNaN(parsed) ? 30 : Math.min(Math.max(parsed, 1), 365));
   }
 
   @Get('control/audit-chain')

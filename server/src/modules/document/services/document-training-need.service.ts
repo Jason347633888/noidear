@@ -27,6 +27,10 @@ export class DocumentTrainingNeedService {
   }
 
   async list(status?: string) {
+    const validStatuses = ['suggested', 'accepted', 'dismissed', 'linked'];
+    if (status && !validStatuses.includes(status)) {
+      throw new BadRequestException(`Invalid status. Valid values: ${validStatuses.join(', ')}`);
+    }
     return this.prisma.documentTrainingNeed.findMany({
       where: status ? { status } : {},
       include: { document: { select: { id: true, title: true, number: true, status: true } } },
@@ -43,6 +47,8 @@ export class DocumentTrainingNeedService {
 
   async dismiss(id: string, reason?: string) {
     if (!reason) throw new BadRequestException('dismiss reason is required');
+    const need = await this.prisma.documentTrainingNeed.findUnique({ where: { id } });
+    if (!need) throw new NotFoundException('培训需求不存在');
     return this.prisma.documentTrainingNeed.update({
       where: { id },
       data: { status: 'dismissed', dismissedReason: reason },
@@ -51,6 +57,8 @@ export class DocumentTrainingNeedService {
 
   async link(id: string, linkedTrainingProjectId?: string) {
     if (!linkedTrainingProjectId) throw new BadRequestException('linkedTrainingProjectId is required');
+    const need = await this.prisma.documentTrainingNeed.findUnique({ where: { id } });
+    if (!need) throw new NotFoundException('培训需求不存在');
     return this.prisma.documentTrainingNeed.update({
       where: { id },
       data: { status: 'linked', linkedTrainingProjectId },
