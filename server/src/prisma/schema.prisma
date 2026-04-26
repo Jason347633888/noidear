@@ -283,6 +283,18 @@ model Document {
   // 食品安全元数据（Task 11）
   doc_code        String?   // 文件编号，如 GRSS-CX-01-2024
   doc_level       String?   // 'level1'|'level2'|'level3'|'level4'
+
+  // Document Control Center: 6-category controlled file system
+  document_type      String?   // MANUAL | PROCEDURE | WORK_INSTRUCTION | RECORD_FORM_INDEX | COMPANY_FILE | EXTERNAL_FILE
+  source_folder      String?   // 01 | 02 | 03 | 04 | 05 | 06
+  owner_department   String?
+  owner_user_id      String?
+  tags               String[]  @default([])
+  metadata           Json?
+  external_source    String?
+  external_expires_at DateTime?
+  lineage_key        String?
+
   fill_frequency  String?   // 填写频率：每班/每日/每周/每批次/每月/每年
   retention_years Int?      // 保存年限
   reviewer        String?   // 审核人
@@ -2156,21 +2168,50 @@ model ProcessStepData {
 
 // P2: 跨文档引用表（BR-305/306）
 model DocumentReference {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   sourceDocId String
-  sourceDoc   Document  @relation("SourceRefs", fields: [sourceDocId], references: [id], onDelete: Cascade)
-  targetDocId String
-  targetDoc   Document  @relation("TargetRefs", fields: [targetDocId], references: [id], onDelete: Cascade)
-  sectionId   String?   // 引用的章节 ID
-  snapshot    Json?     // 引用块快照（源文档审批后异步同步）
-  syncedAt    DateTime? // 最后同步时间
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  sourceDoc   Document @relation("SourceRefs", fields: [sourceDocId], references: [id], onDelete: Cascade)
 
-  @@unique([sourceDocId, targetDocId, sectionId])
+  targetDocId String?
+  targetDoc   Document? @relation("TargetRefs", fields: [targetDocId], references: [id], onDelete: Cascade)
+
+  targetType  String   @default("document")
+  targetId    String?
+  targetRoute String?
+  targetLabel String?
+  relationType String @default("RELATED_TO")
+
+  sectionId   String?
+  snapshot    Json?
+  syncedAt    DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([sourceDocId, targetType, targetId, targetRoute, sectionId])
   @@index([sourceDocId])
   @@index([targetDocId])
+  @@index([targetType, targetId])
+  @@index([relationType])
   @@map("document_references")
+}
+
+model RecordFormLandingEntry {
+  id              String   @id @default(cuid())
+  sourceCode      String   @unique
+  targetModule    String?
+  targetModel     String?
+  targetRoute     String?
+  targetTemplateId String?
+  landingStrategy String?
+  relatedDocIds   String[] @default([])
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([targetModule])
+  @@index([targetModel])
+  @@index([landingStrategy])
+  @@map("record_form_landing_entries")
 }
 
 // Agent 操作审计日志（MCP 自动记录）
