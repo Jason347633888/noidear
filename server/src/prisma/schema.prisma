@@ -150,6 +150,7 @@ model User {
   processInstances         ProcessInstance[]  @relation("ProcessCreator")
   processStepSubmissions   ProcessStepData[]  @relation("StepSubmitter")
   processStepApprovals     ProcessStepData[]  @relation("StepApprover")
+  stepApprovals            ProcessStepApproval[] @relation("StepApprovalUser")
 
   // Training Management System relations
   todoTasks TodoTask[] @relation("UserTodoTasks")
@@ -2126,6 +2127,9 @@ model ProcessInstance {
   updatedAt   DateTime      @updatedAt
 
   stepData ProcessStepData[]
+  productId   String?
+  product     Product?              @relation("ProcessProduct", fields: [productId], references: [id], onDelete: SetNull)
+  approvals   ProcessStepApproval[]
 
   @@index([createdById])
   @@index([status])
@@ -2152,6 +2156,28 @@ model ProcessStepData {
   @@unique([instanceId, stepNumber])
   @@index([instanceId])
   @@map("process_step_data")
+}
+
+model ProcessStepApproval {
+  id          String          @id @default(cuid())
+  instanceId  String
+  instance    ProcessInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  stepNumber  Int
+  approverId  String?
+  approver    User?           @relation("StepApprovalUser", fields: [approverId], references: [id], onDelete: SetNull)
+  department  String
+  role        String
+  status      String          @default("PENDING")
+  comment     String?
+  signedAt    DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([instanceId, stepNumber, role])
+  @@index([instanceId, stepNumber])
+  @@index([role, status])
+  @@index([approverId, status])
+  @@map("process_step_approvals")
 }
 
 // P2: 跨文档引用表（BR-305/306）
@@ -2335,6 +2361,21 @@ model Product {
   net_weight   Decimal?  @db.Decimal(12,4)
   weight_unit  String?
   label_claims String?
+  shelf_life_days     Int?
+  nutrition_energy    Decimal? @db.Decimal(10,2)
+  nutrition_protein   Decimal? @db.Decimal(10,2)
+  nutrition_fat       Decimal? @db.Decimal(10,2)
+  nutrition_trans_fat Decimal? @db.Decimal(10,2)
+  nutrition_carb      Decimal? @db.Decimal(10,2)
+  nutrition_sodium    Decimal? @db.Decimal(10,2)
+  product_type        String?
+  processing_method   String?
+  standard_code       String?
+  storage_method      String?
+  consumption_method  String?
+  label_allergens     String?
+  consumer_notice     String?
+  process_instances   ProcessInstance[] @relation("ProcessProduct")
   status       String    @default("active") // 'active'|'inactive'|'discontinued'
   recipes      Recipe[]
   created_at   DateTime  @default(now())
