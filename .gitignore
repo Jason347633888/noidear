@@ -33,3 +33,12 @@ client/e2e/test-results/
 client/.env.e2e
 e2e/.auth/
 test-results/
+
+# Raw data files (Excel originals)
+docs/raw/
+
+# E2E auth tokens
+client/e2e/.auth/
+
+# Codex tool directory
+.codex/
