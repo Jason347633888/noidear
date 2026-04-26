@@ -6,6 +6,7 @@ import { NotificationService } from '../src/modules/notification/notification.se
 import { OperationLogService } from '../src/modules/operation-log/operation-log.service';
 import { BusinessException } from '../src/common/exceptions/business.exception';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { DocumentControlMetadataService } from '../src/modules/document/services/document-control-metadata.service';
 
 describe('DocumentService', () => {
   let service: DocumentService;
@@ -66,6 +67,7 @@ describe('DocumentService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DocumentService,
+        DocumentControlMetadataService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: StorageService, useValue: mockStorageService },
         { provide: NotificationService, useValue: mockNotificationService },
