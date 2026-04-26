@@ -18,7 +18,7 @@ export class InboundService {
     @Optional() private readonly approvalEngine: ApprovalEngineService,
   ) {}
 
-  async create(createInboundDto: CreateInboundDto) {
+  async create(createInboundDto: CreateInboundDto, createdById?: string) {
     const { supplierId, items, remark } = createInboundDto;
     const inboundNo = await this.generateInboundNo();
 
@@ -50,7 +50,7 @@ export class InboundService {
           resourceStep: 'submit',
           triggerKey: 'submit',
           title: `入库单审批：${inbound.inboundNo ?? inbound.id}`,
-          createdById: supplierId,
+          createdById: createdById ?? supplierId,
         });
         await this.prisma.materialInbound.update({
           where: { id: inbound.id },

@@ -123,20 +123,20 @@ export class ProcessInstanceController {
       const stepConfig = steps.find((s: any) => s.stepNumber === actualStepNumber);
       if (!stepConfig) throw new BadRequestException('步骤配置不存在');
 
-      const triggerKey: string | undefined = stepConfig.approvalTriggerKey;
+      const requiredApprovals: any[] = stepConfig.requiredApprovals ?? [];
 
-      if (triggerKey) {
+      if (requiredApprovals.length > 0) {
         // Route through unified approval engine
         const productName =
           (data as any)?.productName ||
           instance.productName ||
           `流程实例 ${id}`;
         const approvalInstance = await this.approvalEngine.startApproval({
-          resourceType: 'process_step',
+          resourceType: 'process_instance',
           resourceId: id,
           resourceStep: `step:${actualStepNumber}`,
-          triggerKey,
-          title: `${productName} — 步骤${actualStepNumber}审批`,
+          triggerKey: `step:${actualStepNumber}`,
+          title: `${productName} — ${stepConfig.name ?? `步骤${actualStepNumber}`}审批`,
           createdById: userId,
         });
         // Persist the approval instance id on the step data

@@ -147,25 +147,6 @@ const handleSubmit = async (data: Record<string, unknown>) => {
   }
 };
 
-const handleApprove = async (comment: string) => {
-  try {
-    await processApi.approveStep(instanceId, { stepNumber: viewStep.value, action: 'approve', comment });
-    await loadInstance();
-    ElMessage.success('审批通过');
-  } catch {
-    ElMessage.error('审批失败');
-  }
-};
-
-const handleReject = async (comment: string) => {
-  try {
-    await processApi.approveStep(instanceId, { stepNumber: viewStep.value, action: 'reject', comment });
-    await loadInstance();
-    ElMessage.warning('已驳回');
-  } catch {
-    ElMessage.error('驳回失败');
-  }
-};
 
 onMounted(loadInstance);
 </script>
