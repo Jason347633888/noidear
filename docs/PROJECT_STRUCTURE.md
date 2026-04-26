@@ -163,7 +163,7 @@ noidear/
 | `auth/` | JWT 认证、LDAP SSO、密码管理 | `auth.service.ts`, `auth.guard.ts`, `sso.service.ts` |
 | `user/` | 用户 CRUD、状态管理 | `user.service.ts`, `user.controller.ts` |
 | `department/` | 组织架构、部门树 | `department.service.ts` |
-| `document/` | 三级文档管理、版本控制、归档作废 | `document.service.ts`, `document.controller.ts` |
+| `document/` | 文控中心、01-06体系文件、记录表单落地索引、版本/审批/归档作废 | `document.service.ts`, `document.controller.ts`, `document-control-metadata.service.ts`, `document-lifecycle.service.ts`, `document-reference.service.ts`, `services/record-form-landing.service.ts`, `services/document-control-workbench.service.ts` |
 | `template/` | 四级模板、Excel 解析、动态表单 | `template.service.ts`, `excel.parser.ts` |
 | `task/` | 任务派发、填报、逾期检查 | `task.service.ts`, `task.cron.ts` |
 | `record/` | 记录管理、锁定、变更追踪 | `record.service.ts`, `record.controller.ts` |
@@ -241,8 +241,11 @@ noidear/
 | 目录/文件 | 路由前缀 | 说明 |
 |---------|---------|------|
 | `documents/Level1List.vue` | `/documents/level/1,2,3` | 三级文档列表（通过路由参数复用） |
-| `documents/DocumentDetail.vue` | `/documents/:id` | 文档详情 |
+| `documents/DocumentDetail.vue` | `/documents/:id` | 文档详情（含文控元数据、文档引用、生命周期谱系） |
 | `documents/DocumentUpload.vue` | `/documents/upload` | 文档上传 |
+| `documents/SystemFileLibrary.vue` | `/documents/system-file-library` | 01-06体系文件库（六类体系文件分类展示） |
+| `documents/RecordFormLandingIndex.vue` | `/documents/record-form-landing` | 记录表单落地索引（283张表单/59执行组） |
+| `documents/DocumentControlWorkbench.vue` | `/documents/document-control-workbench` | 文控工作台（待发布/临期/无关联文档看板） |
 | `templates/TemplateList.vue` | `/templates` | 模板列表 |
 | `templates/TemplateEdit.vue` | `/templates/:id/edit` | 模板编辑 |
 | `templates/TemplateDesigner.vue` | `/templates/:id/designer` | 拖拽表单设计器 |
@@ -558,8 +561,8 @@ server/src/modules/workflow/workflow-task.service.ts (分配步骤任务)
 
 ---
 
-**文档版本**: 6.3
-**最后更新**: 2026-04-25
+**文档版本**: 6.4
+**最后更新**: 2026-04-26
 **变更内容**:
 - 完整重写（原 v5.0 描述的是计划结构而非实际结构）
 - 更新目录结构以反映实际已实现的 40 个后端模块、97 个前端 Vue 组件、33 个 API 文件
@@ -573,3 +576,4 @@ server/src/modules/workflow/workflow-task.service.ts (分配步骤任务)
 - 删除已废弃的"前端开发计划"章节（功能已全部实现）
 - v6.1 更新：同步最新项目状态（Vault对齐完成、oh-my-opencode集成、E2E优化）
 - v6.2 更新：新增 ModelLandingModule（283张表单/59执行组 artifact），新增 Agent 入仓协议层相关脚本和文档，更新后端模块映射表和文档索引
+- v6.4 更新：文控中心落地 — 后端新增文控元数据/文档引用/生命周期/记录表单落地/文控工作台服务；前端新增 SystemFileLibrary、RecordFormLandingIndex、DocumentControlWorkbench 页面，DocumentDetail 扩展文控元数据与引用面板
