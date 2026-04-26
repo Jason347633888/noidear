@@ -11,6 +11,7 @@ declare module 'vue' {
     AlertList: typeof import('./src/components/monitoring/AlertList.vue')['default']
     AllergenTable: typeof import('./src/components/process/AllergenTable.vue')['default']
     ApprovalStepField: typeof import('./src/components/fields/ApprovalStepField.vue')['default']
+    ApprovalTaskPanel: typeof import('./src/components/approval/ApprovalTaskPanel.vue')['default']
     AutoDateField: typeof import('./src/components/fields/AutoDateField.vue')['default']
     AutoDisplayField: typeof import('./src/components/fields/AutoDisplayField.vue')['default']
     AutoUsernameField: typeof import('./src/components/fields/AutoUsernameField.vue')['default']
