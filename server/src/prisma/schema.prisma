@@ -307,6 +307,9 @@ model Document {
   superseded_by    Document?  @relation("DocumentSuperseded", fields: [superseded_by_id], references: [id], onDelete: SetNull)
   supersedes       Document[] @relation("DocumentSuperseded")
   read_confirmations DocumentReadConfirmation[]
+  readRequirements   DocumentReadRequirement[]
+  trainingNeeds      DocumentTrainingNeed[]
+  coverageReviews    DocumentCoverageReview[]
 
   @@index([lineage_key])
   @@map("documents")
@@ -3099,6 +3102,110 @@ model DocumentReadConfirmation {
 
   @@unique([document_id, user_id])
   @@map("document_read_confirmations")
+}
+
+// Document Control Operations Center models
+model DocumentReadRequirement {
+  id         String   @id @default(cuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  scopeType  String
+  scopeId    String
+  requiredBy String
+  requiredAt DateTime @default(now())
+  dueAt      DateTime?
+  reason     String?
+  status     String   @default("active")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([documentId, scopeType, scopeId, status])
+  @@index([documentId])
+  @@index([scopeType, scopeId])
+  @@index([status])
+  @@map("document_read_requirements")
+}
+
+model DocumentTrainingNeed {
+  id                      String   @id @default(cuid())
+  documentId              String
+  document                Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  triggerType             String
+  targetDepartment        String?
+  targetRole              String?
+  reason                  String
+  status                  String   @default("suggested")
+  linkedTrainingProjectId String?
+  dismissedReason         String?
+  createdBy               String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([documentId])
+  @@index([status])
+  @@index([targetDepartment])
+  @@map("document_training_needs")
+}
+
+model DocumentImpactReview {
+  id         String   @id @default(cuid())
+  sourceType String
+  sourceId   String
+  title      String
+  status     String   @default("draft")
+  summary    String?
+  reviewedBy String?
+  reviewedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  items      DocumentImpactItem[]
+
+  @@index([sourceType, sourceId])
+  @@index([status])
+  @@map("document_impact_reviews")
+}
+
+model DocumentImpactItem {
+  id              String               @id @default(cuid())
+  reviewId        String
+  review          DocumentImpactReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  targetType      String
+  targetId        String?
+  targetRoute     String?
+  targetLabel     String
+  relationType    String?
+  impactLevel     String               @default("medium")
+  suggestedAction String?
+  status          String               @default("open")
+  notes           String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([reviewId])
+  @@index([targetType, targetId])
+  @@index([status])
+  @@map("document_impact_items")
+}
+
+model DocumentCoverageReview {
+  id                 String   @id @default(cuid())
+  periodStart        DateTime
+  periodEnd          DateTime
+  documentId         String
+  document           Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  coverageStatus     String
+  auditPlanId        String?
+  findingId          String?
+  correctiveActionId String?
+  reviewedBy         String?
+  reviewedAt         DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([documentId])
+  @@index([periodStart, periodEnd])
+  @@index([coverageStatus])
+  @@map("document_coverage_reviews")
 }
 
 // ========================================
