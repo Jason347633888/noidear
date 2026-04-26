@@ -197,7 +197,7 @@ const fetchData = async () => {
       category: filters.category || undefined,
       status: (filters.status as EquipmentStatus) || undefined,
     }) as unknown as EquipmentListResponse;
-    tableData.value = res.list;
+    tableData.value = (res as any).data ?? (res as any).list ?? [];
     pagination.total = res.total;
   } catch {
     ElMessage.error('获取设备列表失败');

@@ -13,8 +13,8 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, ResponseWrappe
   intercept(context: ExecutionContext, next: CallHandler): Observable<ResponseWrapper<T>> {
     return next.handle().pipe(
       map((data) => {
-        // 如果已经是被包装的响应，直接返回
-        if (data && typeof data === 'object' && 'code' in data) {
+        // 如果已经是被包装的响应（code 为数字），直接返回
+        if (data && typeof data === 'object' && typeof (data as any).code === 'number' && 'message' in data && 'data' in data) {
           return data as ResponseWrapper<T>;
         }
         return {

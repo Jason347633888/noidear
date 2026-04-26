@@ -53,7 +53,8 @@ export interface EquipmentListParams {
 }
 
 export interface EquipmentListResponse {
-  list: Equipment[];
+  data: Equipment[];
+  list?: Equipment[];
   total: number;
   page: number;
   limit: number;

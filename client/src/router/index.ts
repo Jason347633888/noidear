@@ -766,6 +766,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/recipe/RecipeList.vue'),
         meta: { title: '配方管理' },
       },
+      {
+        path: 'recipes/:id/edit',
+        name: 'RecipeEdit',
+        component: () => import('@/views/recipe/RecipeEdit.vue'),
+        meta: { title: '修改配方' },
+      },
       // 工序步骤/CCP管理模块
       {
         path: 'process-steps',

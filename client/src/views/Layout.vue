@@ -348,6 +348,7 @@ router.afterEach(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  height: 100vh;
 }
 
 .logo {
@@ -386,6 +387,8 @@ router.afterEach(() => {
   border-right: none;
   background: transparent;
   padding: 12px 8px;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .aside-menu:not(.el-menu--collapse) { width: 100%; }

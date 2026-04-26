@@ -13,8 +13,8 @@
             <span class="card-count">共 {{ list.length }} 条记录</span>
           </div>
           <div class="header-actions">
-            <el-button type="primary" @click="openCreateDialog">
-              <el-icon><Plus /></el-icon>新建产品
+            <el-button type="primary" @click="$router.push('/process')">
+              <el-icon><Plus /></el-icon>发起新产品研发
             </el-button>
           </div>
         </div>
@@ -53,10 +53,10 @@
       </el-table>
     </el-card>
 
-    <!-- 新建 / 编辑对话框 -->
+    <!-- 编辑产品对话框 -->
     <el-dialog
       v-model="dialogVisible"
-      :title="editingId ? '编辑产品' : '新建产品'"
+      title="编辑产品"
       width="520px"
       :close-on-click-modal="false"
     >
@@ -102,7 +102,7 @@
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="submitting" @click="handleSubmit">
-          {{ editingId ? '保存修改' : '确认新建' }}
+          保存修改
         </el-button>
       </template>
     </el-dialog>
@@ -111,6 +111,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
@@ -123,6 +124,7 @@ import {
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
+const router = useRouter();
 const list = ref<Product[]>([]);
 const loading = ref(false);
 
@@ -162,22 +164,7 @@ async function loadList() {
   }
 }
 
-// ── Create / Edit ─────────────────────────────────────────────────────────────
-
-function resetForm() {
-  form.code = '';
-  form.name = '';
-  form.spec = '';
-  form.net_weight = undefined;
-  form.weight_unit = '';
-  form.status = 'active';
-}
-
-function openCreateDialog() {
-  editingId.value = null;
-  resetForm();
-  dialogVisible.value = true;
-}
+// ── Edit ──────────────────────────────────────────────────────────────────────
 
 function openEditDialog(row: Product) {
   editingId.value = row.id;
@@ -206,14 +193,11 @@ async function handleSubmit() {
     if (editingId.value) {
       await productApi.update(editingId.value, payload);
       ElMessage.success('修改成功');
-    } else {
-      await productApi.create(payload);
-      ElMessage.success('新建成功');
     }
     dialogVisible.value = false;
     await loadList();
   } catch {
-    ElMessage.error(editingId.value ? '修改失败，请重试' : '新建失败，请重试');
+    ElMessage.error('修改失败，请重试');
   } finally {
     submitting.value = false;
   }
