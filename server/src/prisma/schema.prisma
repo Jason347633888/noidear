@@ -2133,6 +2133,7 @@ model ProcessInstance {
 
   @@index([createdById])
   @@index([status])
+  @@index([productId])
   @@map("process_instances")
 }
 

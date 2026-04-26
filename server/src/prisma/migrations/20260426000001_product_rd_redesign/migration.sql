@@ -58,3 +58,6 @@ ALTER TABLE "process_step_approvals" ADD CONSTRAINT "process_step_approvals_inst
 -- AddForeignKey: ProcessStepApproval.approverId -> users.id
 ALTER TABLE "process_step_approvals" ADD CONSTRAINT "process_step_approvals_approverId_fkey"
   FOREIGN KEY ("approverId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- CreateIndex: ProcessInstance.productId
+CREATE INDEX IF NOT EXISTS "process_instances_productId_idx" ON "process_instances"("productId");
