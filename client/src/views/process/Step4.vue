@@ -1,63 +1,66 @@
 <template>
   <div class="step-view">
-    <el-form ref="formRef" :model="form" label-width="160px" :disabled="disabled">
-      <el-divider>四. 研发试验原始记录（小试）</el-divider>
+    <el-form :model="form" label-width="320px" :disabled="disabled">
+      <el-divider>产品开发评审（JL-01）</el-divider>
 
-      <el-form-item label="试验日期">
-        <el-input :model-value="form.trialDate" disabled />
-      </el-form-item>
+      <el-card shadow="never" class="section-card">
+        <template #header><span class="section-title">基本信息</span></template>
+        <el-form-item label="产品名称"><el-input :model-value="productName" disabled /></el-form-item>
+        <el-form-item label="项目负责人"><el-input v-model="form.projectManager" /></el-form-item>
+        <el-form-item label="评审日期">
+          <el-date-picker v-model="form.reviewDate" type="date" value-format="YYYY-MM-DD" :disabled="disabled" />
+        </el-form-item>
+        <el-form-item label="评审阶段">
+          <el-radio-group v-model="form.reviewStage">
+            <el-radio value="小试评审">小试评审</el-radio>
+            <el-radio value="中试评审">中试评审</el-radio>
+            <el-radio value="输出评审">输出评审</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-card>
 
-      <el-form-item label="生产批次" prop="batchNumber"
-        :rules="[{ required: true, message: '请填写生产批次' }]">
-        <el-input v-model="form.batchNumber" />
-      </el-form-item>
+      <el-card shadow="never" class="section-card">
+        <template #header><span class="section-title">评审项目（一）</span></template>
+        <el-form-item v-for="item in reviewItems1" :key="item.key" :label="item.label">
+          <el-radio-group v-model="(form as any)[item.key]">
+            <el-radio value="是">是</el-radio><el-radio value="否">否</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-card>
 
-      <!-- 配料表 -->
-      <el-form-item label="配料表">
-        <div class="table-wrap">
-          <el-table :data="form.ingredients" border size="small">
-            <el-table-column type="index" label="序号" width="60" />
-            <el-table-column label="配料名称" prop="name" min-width="200">
-              <template #default="{ row }">
-                <el-input v-if="!disabled" v-model="row.name" size="small" />
-                <span v-else>{{ row.name }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="重量" prop="weight" width="120">
-              <template #default="{ row }">
-                <el-input v-if="!disabled" v-model="row.weight" size="small" />
-                <span v-else>{{ row.weight }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column v-if="!disabled" label="操作" width="80">
-              <template #default="{ $index }">
-                <el-button link type="danger" @click="form.ingredients = form.ingredients.filter((_, i) => i !== $index)">删除</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <el-button v-if="!disabled" size="small" @click="addIngredient" style="margin-top:8px">
-            + 添加配料
-          </el-button>
-        </div>
-      </el-form-item>
+      <el-card shadow="never" class="section-card">
+        <template #header><span class="section-title">评审项目（二）关键工序</span></template>
+        <el-form-item v-for="item in reviewItems2" :key="item.key" :label="item.label">
+          <el-radio-group v-model="(form as any)[item.key]">
+            <el-radio value="是">是</el-radio><el-radio value="否">否</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-card>
 
-      <!-- 工艺参数 -->
-      <el-form-item label="工艺参数" class="full-width">
-        <ProcessParams
-          v-model="form.processParams"
-          :process-type="processType"
+      <el-card shadow="never" class="section-card">
+        <template #header><span class="section-title">评审意见及结论</span></template>
+        <el-form-item label="评审意见及结论">
+          <el-input v-model="form.reviewOpinionConclusion" type="textarea" :rows="4" placeholder="须含量产结论与建议" />
+        </el-form-item>
+      </el-card>
+
+      <el-card shadow="never" class="section-card">
+        <template #header><span class="section-title">5部门会签</span></template>
+        <DeptSignoffPanel
+          v-if="stepStatus === 'SUBMITTED'"
+          :instance-id="instanceId"
+          :step-number="4"
           :disabled="disabled"
+          @signed="emit('signed')"
         />
-      </el-form-item>
-
-      <el-form-item label="实验记录/结论">
-        <el-input v-model="form.trialConclusion" type="textarea" :rows="4" />
-      </el-form-item>
+        <el-text v-else-if="stepStatus === 'APPROVED'" type="success">5部门会签完成</el-text>
+        <el-text v-else type="info" size="small">提交后由5部门依次签署</el-text>
+      </el-card>
     </el-form>
 
-    <div v-if="!disabled" class="action-bar">
-      <el-button @click="emit('saved', getFormData())">暂存草稿</el-button>
-      <el-button type="primary" @click="handleSubmit">提交</el-button>
+    <div v-if="!disabled && stepStatus !== 'SUBMITTED' && stepStatus !== 'APPROVED'" class="action-bar">
+      <el-button @click="emit('saved', { ...form })">暂存草稿</el-button>
+      <el-button type="primary" @click="handleSubmit">提交评审</el-button>
     </div>
   </div>
 </template>
@@ -66,65 +69,69 @@
 import { reactive, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import dayjs from 'dayjs';
-import ProcessParams from '@/components/process/ProcessParams.vue';
-import { firstValidationMessage, validateStep4 } from '@/utils/processValidation';
+import DeptSignoffPanel from '@/components/process/DeptSignoffPanel.vue';
 
 const props = defineProps<{
   instanceId: string;
   modelValue?: Record<string, unknown>;
   allStepsData?: Record<number, Record<string, unknown>>;
   disabled?: boolean;
+  stepStatus?: string;
 }>();
 
 const emit = defineEmits<{
   (e: 'saved', data: Record<string, unknown>): void;
   (e: 'submitted', data: Record<string, unknown>): void;
+  (e: 'signed'): void;
 }>();
 
-const form = reactive({
-  trialDate: dayjs().format('YYYY-MM-DD'),
-  batchNumber: '',
-  ingredients: [] as { name: string; weight: string }[],
-  processParams: {} as Record<string, unknown>,
-  trialConclusion: '',
-});
+const productName = computed(() => (props.allStepsData?.[1] as any)?.productName ?? '-');
 
-const processType = computed(() => {
-  const step1 = props.allStepsData?.[1] as Record<string, unknown> | undefined;
-  return (step1?.processType as string[]) ?? [];
+const reviewItems1 = [
+  { key: 'procurementFeasibility', label: '原辅料采购的可行性' },
+  { key: 'standardCompliance', label: '产品标准的符合性' },
+  { key: 'batchStability', label: '产品批产性能的稳定性' },
+  { key: 'productCharacteristics', label: '产品特性' },
+  { key: 'inspectionTraceability', label: '产品检测/试验记录的完整性和可追溯性' },
+  { key: 'reVerificationCompliance', label: '产品符合性' },
+  { key: 'allergenControl', label: '产品过敏原的识别和控制' },
+];
+
+const reviewItems2 = [
+  { key: 'processDocTraceability', label: '产品制作、生产规范及工艺文件的完整性与可追溯性' },
+  { key: 'processMonitorTraceability', label: '过程监控记录的完整性和可追溯性' },
+  { key: 'batchProductionCapacity', label: '批量生产能力和质量保证能力评价' },
+  { key: 'designChangeEffectiveness', label: '设计更改、让步使用、器材代用有效性检查' },
+  { key: 'trialQualityIssueEvaluation', label: '试制/试验过程中质量问题分析处理情况评价' },
+];
+
+const form = reactive({
+  projectManager: '',
+  reviewDate: dayjs().format('YYYY-MM-DD'),
+  reviewStage: '小试评审',
+  procurementFeasibility: '是', standardCompliance: '是', batchStability: '是',
+  productCharacteristics: '是', inspectionTraceability: '是', reVerificationCompliance: '是',
+  allergenControl: '是', processDocTraceability: '是', processMonitorTraceability: '是',
+  batchProductionCapacity: '是', designChangeEffectiveness: '是', trialQualityIssueEvaluation: '是',
+  reviewOpinionConclusion: '',
 });
 
 onMounted(() => {
   if (props.modelValue) {
-    const mv = props.modelValue as typeof form;
-    if (mv.trialDate !== undefined) form.trialDate = mv.trialDate;
-    if (mv.batchNumber !== undefined) form.batchNumber = mv.batchNumber;
-    if (mv.ingredients !== undefined) form.ingredients = mv.ingredients;
-    if (mv.processParams !== undefined) form.processParams = mv.processParams;
-    if (mv.trialConclusion !== undefined) form.trialConclusion = mv.trialConclusion;
+    const mv = props.modelValue as any;
+    Object.keys(form).forEach(k => { if (mv[k] !== undefined) (form as any)[k] = mv[k]; });
   }
-});
-
-const addIngredient = () => form.ingredients.push({ name: '', weight: '' });
-
-const getFormData = () => ({
-  ...form,
-  ingredients: form.ingredients.map(i => ({ ...i })),
 });
 
 const handleSubmit = () => {
-  const result = validateStep4(getFormData());
-  if (!result.valid) {
-    ElMessage.warning(firstValidationMessage(result));
-    return;
-  }
-  emit('submitted', getFormData());
+  if (!form.reviewOpinionConclusion.trim()) { ElMessage.warning('请填写评审意见及结论'); return; }
+  emit('submitted', { ...form });
 };
 </script>
 
 <style scoped>
 .step-view { padding: 16px; }
-.table-wrap { width: 100%; }
-.full-width :deep(.el-form-item__content) { display: block; }
+.section-card { margin-bottom: 16px; }
+.section-title { font-weight: 600; }
 .action-bar { display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px; }
 </style>
