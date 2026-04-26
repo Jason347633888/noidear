@@ -41,4 +41,13 @@ export const unifiedApprovalApi = {
 
   getMyPending: () =>
     request.get<ApprovalTask[]>('/approval-tasks/my-pending'),
+
+  myPending: () =>
+    request.get<(ApprovalTask & { instance?: ApprovalInstance })[]>('/approval-tasks/my-pending'),
+
+  history: () =>
+    request.get<{ task?: ApprovalTask; instance?: ApprovalInstance; action: string; comment?: string; createdAt: string }[]>('/approval-tasks/history'),
+
+  getTask: (id: string) =>
+    request.get<ApprovalTask & { instance?: ApprovalInstance }>(`/approval-tasks/${id}`),
 };

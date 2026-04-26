@@ -10,59 +10,28 @@
         <div class="card-header">
           <div class="card-title-wrap">
             <span class="card-title">待审批列表</span>
-            <el-badge :value="filteredData.length" :max="99" class="approval-badge" v-if="filteredData.length" />
-          </div>
-          <div class="filter-wrap">
-            <el-select v-model="filterDocType" placeholder="全部类型" clearable style="width: 140px" size="default">
-              <el-option label="全部类型" value="" />
-              <el-option label="一级文档" value="1" />
-              <el-option label="二级文档" value="2" />
-              <el-option label="三级文档" value="3" />
-              <el-option label="任务记录" value="task" />
-            </el-select>
+            <el-badge :value="tasks.length" :max="99" class="approval-badge" v-if="tasks.length" />
           </div>
         </div>
       </template>
 
-      <el-table :data="filteredData" v-loading="loading" stripe class="approval-table">
-        <el-table-column label="类型" width="100">
+      <el-table :data="tasks" v-loading="loading" stripe class="approval-table" row-key="id">
+        <el-table-column label="审批事项" min-width="200">
           <template #default="{ row }">
-            <el-tag size="small" :type="row.documentId ? 'warning' : 'primary'">
-              {{ row.documentId ? '文档' : '任务记录' }}
-            </el-tag>
+            <span class="doc-title">{{ row.stepName ?? '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="来源" min-width="200">
+        <el-table-column label="关联业务" min-width="200">
           <template #default="{ row }">
-            <div class="doc-info">
-              <div class="doc-icon" :class="getSourceClass(row)">
-                <el-icon><Document /></el-icon>
-              </div>
-              <span class="doc-title">{{ getSourceTitle(row) }}</span>
-            </div>
+            <span>{{ row.instance?.title ?? '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="审批类型" width="100">
+        <el-table-column label="业务类型" width="120">
           <template #default="{ row }">
-            <el-tag size="small" effect="plain" :type="getApprovalTypeTag(row.approvalType)">
-              {{ getApprovalTypeLabel(row.approvalType) }}
-            </el-tag>
+            <el-tag size="small" effect="plain">{{ resourceTypeLabel(row.instance?.resourceType) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="level" label="审批级别" width="100">
-          <template #default="{ row }">
-            <el-tag size="small" effect="plain">{{ row.level }}级</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="申请人" width="120">
-          <template #default="{ row }">
-            <div class="creator-info">
-              <div class="creator-avatar">{{ getSubmitterInitial(row) }}</div>
-              <span>{{ getSubmitterName(row) }}</span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createdAt" label="申请时间" width="180">
+        <el-table-column label="创建时间" width="160">
           <template #default="{ row }">
             <span class="time-text">{{ formatDate(row.createdAt) }}</span>
           </template>
@@ -70,7 +39,7 @@
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
             <div class="action-btns">
-              <el-button link type="primary" @click="handleView(row)" class="action-btn">
+              <el-button link type="primary" @click="router.push(`/approvals/detail/${row.id}`)" class="action-btn">
                 <el-icon><View /></el-icon>详情
               </el-button>
               <el-button link type="success" @click="handleApprove(row)" class="action-btn approve-btn">
@@ -84,7 +53,7 @@
         </el-table-column>
       </el-table>
 
-      <el-empty v-if="!loading && !filteredData.length" description="暂无待审批记录" :image-size="120" />
+      <el-empty v-if="!loading && !tasks.length" description="暂无待审批记录" :image-size="120" />
     </el-card>
 
     <!-- 通过确认对话框 -->
@@ -137,158 +106,107 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import approvalApi from '@/api/approval';
-import type { Approval } from '@/api/approval';
-import { Document, View, Check, Close, Warning } from '@element-plus/icons-vue';
+import { View, Check, Close, Warning } from '@element-plus/icons-vue';
+import { unifiedApprovalApi, type ApprovalTask, type ApprovalInstance } from '@/api/unified-approval';
 
 const router = useRouter();
 const loading = ref(false);
 const approving = ref(false);
 const rejecting = ref(false);
-const tableData = ref<Approval[]>([]);
+const tasks = ref<(ApprovalTask & { instance?: ApprovalInstance })[]>([]);
 const showApproveDialog = ref(false);
 const showRejectDialog = ref(false);
 const approveComment = ref('');
 const rejectReason = ref('');
-const currentApproval = ref<Approval | null>(null);
-const filterDocType = ref<string>('');
+const currentTask = ref<ApprovalTask | null>(null);
 
-const filteredData = computed(() => {
-  if (!filterDocType.value) return tableData.value;
+const RESOURCE_TYPE_LABELS: Record<string, string> = {
+  process_instance: '产品研发',
+  document: '文件',
+  record: '记录',
+  task_record: '任务记录',
+  material_requisition: '领料',
+  material_inbound: '入库',
+  material_return: '退料',
+  material_scrap: '报废',
+  training_plan: '培训计划',
+  maintenance_record: '设备维保',
+  audit_finding: '内审整改',
+  corrective_action: 'CAPA',
+  deviation_report: '偏离报告',
+  change_event: '变更',
+};
 
-  return tableData.value.filter((row) => {
-    if (filterDocType.value === 'task') {
-      return !!row.recordId;
-    }
-    return row.document?.level?.toString() === filterDocType.value;
-  });
-});
+function resourceTypeLabel(type?: string): string {
+  return RESOURCE_TYPE_LABELS[type ?? ''] ?? type ?? '-';
+}
 
-const formatDate = (date?: string) => {
+function formatDate(date?: string): string {
   if (!date) return '-';
   return new Date(date).toLocaleString('zh-CN');
-};
+}
 
-const getSourceTitle = (row: Approval): string => {
-  if (row.document) {
-    return `${row.document.number || ''} ${row.document.title || ''}`.trim();
-  }
-  if (row.record?.task?.template) {
-    return row.record.task.template.title;
-  }
-  return row.recordId || row.documentId || '-';
-};
-
-const getSourceClass = (row: Approval): string => {
-  if (row.document) {
-    return `level-${row.document.level || 1}`;
-  }
-  return 'level-task';
-};
-
-const getSubmitterName = (row: Approval): string => {
-  if (row.record?.submitter) return row.record.submitter.name;
-  if (row.document?.creator) return row.document.creator.name;
-  return '-';
-};
-
-const getSubmitterInitial = (row: Approval): string => {
-  const name = getSubmitterName(row);
-  return name.charAt(0) || 'U';
-};
-
-const getApprovalTypeLabel = (type?: string): string => {
-  const labels: Record<string, string> = {
-    single: '单人',
-    countersign: '会签',
-    sequential: '顺签',
-  };
-  return labels[type || 'single'] || '单人';
-};
-
-const getApprovalTypeTag = (type?: string): '' | 'success' | 'warning' => {
-  const tags: Record<string, '' | 'success' | 'warning'> = {
-    single: '',
-    countersign: 'success',
-    sequential: 'warning',
-  };
-  return tags[type || 'single'] || '';
-};
-
-const fetchData = async () => {
+async function load() {
   loading.value = true;
   try {
-    const res = await approvalApi.getPendingApprovals();
-    tableData.value = (res as unknown as Approval[]) || [];
+    tasks.value = await unifiedApprovalApi.myPending();
   } catch {
     ElMessage.error('获取待审批列表失败');
   } finally {
     loading.value = false;
   }
-};
+}
 
-const handleView = (row: Approval) => {
-  router.push(`/approvals/detail/${row.id}`);
-};
-
-const handleApprove = (row: Approval) => {
-  currentApproval.value = row;
+function handleApprove(row: ApprovalTask) {
+  currentTask.value = row;
   approveComment.value = '';
   showApproveDialog.value = true;
-};
+}
 
-const confirmApprove = async () => {
-  if (!currentApproval.value) return;
+async function confirmApprove() {
+  if (!currentTask.value) return;
   approving.value = true;
   try {
-    await approvalApi.approveUnified(
-      currentApproval.value.id,
-      'approved',
-      approveComment.value || undefined,
-    );
+    await unifiedApprovalApi.approveTask(currentTask.value.id, { comment: approveComment.value || undefined });
     ElMessage.success('已通过');
     showApproveDialog.value = false;
-    fetchData();
+    await load();
   } catch {
     ElMessage.error('操作失败');
   } finally {
     approving.value = false;
   }
-};
+}
 
-const handleReject = (row: Approval) => {
-  currentApproval.value = row;
+function handleReject(row: ApprovalTask) {
+  currentTask.value = row;
   rejectReason.value = '';
   showRejectDialog.value = true;
-};
+}
 
-const confirmReject = async () => {
-  if (!currentApproval.value) return;
+async function confirmReject() {
+  if (!currentTask.value) return;
   if (rejectReason.value.trim().length < 10) {
     ElMessage.warning('驳回原因至少10个字符');
     return;
   }
   rejecting.value = true;
   try {
-    await approvalApi.approveUnified(
-      currentApproval.value.id,
-      'rejected',
-      rejectReason.value,
-    );
+    await unifiedApprovalApi.rejectTask(currentTask.value.id, { comment: rejectReason.value });
     ElMessage.success('已驳回');
     showRejectDialog.value = false;
-    fetchData();
+    await load();
   } catch {
     ElMessage.error('操作失败');
   } finally {
     rejecting.value = false;
   }
-};
+}
 
-onMounted(fetchData);
+onMounted(load);
 </script>
 
 <style scoped>
@@ -328,8 +246,6 @@ onMounted(fetchData);
 
 .card-title-wrap { display: flex; align-items: center; gap: 12px; }
 
-.filter-wrap { display: flex; gap: 12px; align-items: center; }
-
 .card-title {
   font-family: 'Cormorant Garamond', serif;
   font-size: 18px;
@@ -346,46 +262,7 @@ onMounted(fetchData);
   font-size: 12px;
 }
 
-.doc-number {
-  font-family: 'SF Mono', monospace;
-  font-size: 12px;
-  color: var(--text-light);
-}
-
-.doc-info { display: flex; align-items: center; gap: 10px; }
-
-.doc-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 16px;
-}
-
-.doc-icon.level-1 { background: linear-gradient(135deg, #c9a227 0%, #d4af37 100%); }
-.doc-icon.level-2 { background: linear-gradient(135deg, #3498db 0%, #5dade2 100%); }
-.doc-icon.level-3 { background: linear-gradient(135deg, #9b59b6 0%, #a569bd 100%); }
-.doc-icon.level-task { background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); }
-
 .doc-title { font-size: 14px; color: var(--text); font-weight: 500; }
-
-.creator-info { display: flex; align-items: center; gap: 8px; }
-
-.creator-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: var(--primary);
-  color: var(--accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
-}
 
 .time-text { font-size: 12px; color: var(--text-light); }
 
