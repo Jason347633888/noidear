@@ -101,6 +101,15 @@ async function main() {
       status: 'active',
       description: '可删除本部门的文档',
     },
+    {
+      id: 'perm_013',
+      code: 'document:control_manage',
+      name: '文控中心管理',
+      category: 'document',
+      scope: 'cross_department',
+      status: 'active',
+      description: '可维护文控中心治理数据、记录表单落地入口、阅读要求、培训需求和影响评审',
+    },
     // 记录权限
     {
       id: 'perm_006',

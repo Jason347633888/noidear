@@ -1,0 +1,108 @@
+import request from './request';
+
+export type DocumentType =
+  | 'MANUAL'
+  | 'PROCEDURE'
+  | 'WORK_INSTRUCTION'
+  | 'RECORD_FORM_INDEX'
+  | 'COMPANY_FILE'
+  | 'EXTERNAL_FILE';
+
+export interface DocumentControlDocument {
+  id: string;
+  number: string;
+  title: string;
+  level: number;
+  status: string;
+  document_type?: DocumentType;
+  source_folder?: string;
+  owner_department?: string;
+  tags?: string[];
+  metadata?: Record<string, unknown>;
+  content_md?: string;
+  review_due_date?: string;
+  external_expires_at?: string;
+  sourceReferences?: DocumentReference[];
+  targetReferences?: DocumentReference[];
+}
+
+export interface DocumentReference {
+  id: string;
+  sourceDocId: string;
+  targetDocId?: string | null;
+  targetType: string;
+  targetId?: string | null;
+  targetRoute?: string | null;
+  targetLabel?: string | null;
+  relationType: string;
+  targetDoc?: { id: string; title: string; status: string } | null;
+  sourceDoc?: { id: string; title: string; status: string } | null;
+}
+
+export interface DocumentListResponse {
+  list: DocumentControlDocument[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface RecordFormLandingEntry {
+  code: string;
+  formName: string;
+  department: string;
+  templateGroupId: string;
+  groupName?: string;
+  entities: string[];
+  chain: string;
+  basis: string;
+  landingEntry?: {
+    targetModule?: string;
+    targetModel?: string;
+    targetRoute?: string;
+    targetTemplateId?: string;
+    landingStrategy?: string;
+    relatedDocIds?: string[];
+    notes?: string;
+  } | null;
+}
+
+export interface WorkbenchResponse {
+  pendingReview: DocumentControlDocument[];
+  dueForReview: DocumentControlDocument[];
+  expiringExternalFiles: DocumentControlDocument[];
+  obsoleteReferences: DocumentReference[];
+  brokenReferences: DocumentReference[];
+  missingLandingTargets: unknown[];
+  missingMetadata: DocumentControlDocument[];
+  counts: Record<string, number>;
+}
+
+export const documentControlApi = {
+  listDocuments(params?: Record<string, unknown>) {
+    return request.get<DocumentListResponse>('/documents', { params });
+  },
+
+  getDocument(id: string) {
+    return request.get<DocumentControlDocument>(`/documents/${id}`);
+  },
+
+  createReference(documentId: string, payload: Partial<DocumentReference>) {
+    return request.post(`/documents/${documentId}/references`, payload);
+  },
+
+  getReferences(documentId: string) {
+    return request.get(`/documents/${documentId}/references`);
+  },
+
+  listRecordFormIndex(params?: { keyword?: string; department?: string; templateGroupId?: string }) {
+    return request.get<RecordFormLandingEntry[]>('/documents/record-form-index', { params });
+  },
+
+  updateRecordFormIndex(code: string, payload: Record<string, unknown>) {
+    return request.patch(`/documents/record-form-index/${code}`, payload);
+  },
+
+  getWorkbench(days = 30) {
+    return request.get<WorkbenchResponse>('/documents/control/workbench', { params: { days } });
+  },
+};

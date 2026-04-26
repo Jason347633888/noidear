@@ -70,6 +70,14 @@ const mockDocument = {
   creatorId: 'user-1', creator: { name: '管理员' },
   approver: null, approvedAt: null,
   createdAt: '2026-01-15T10:00:00Z',
+  document_type: 'PROCEDURE',
+  source_folder: '02',
+  owner_department: '品质部',
+  review_due_date: '2026-05-30T00:00:00Z',
+  sourceReferences: [
+    { id: 'ref1', relationType: 'REQUIRES_RECORD', targetLabel: '研发流程', targetRoute: '/process' },
+  ],
+  targetReferences: [],
 };
 
 const w = () => mount(DocumentDetail, { global: { stubs } });
@@ -204,5 +212,12 @@ describe('DocumentDetail', () => {
     await (c.vm as any).handleDelete();
     await flushPromises();
     expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it('renders document control metadata and references', async () => {
+    const c = w();
+    await flushPromises();
+    expect((c.vm as any).document.document_type).toBe('PROCEDURE');
+    expect((c.vm as any).document.sourceReferences).toHaveLength(1);
   });
 });

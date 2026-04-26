@@ -50,6 +50,62 @@ const routes: RouteRecordRaw[] = [
         name: 'DocumentEdit',
         component: () => import('@/views/documents/DocumentUpload.vue'),
       },
+      // 文控中心
+      {
+        path: 'documents/control/library',
+        name: 'SystemFileLibrary',
+        component: () => import('@/views/documents/SystemFileLibrary.vue'),
+        meta: { title: '体系文件库' },
+      },
+      {
+        path: 'documents/control/record-form-index',
+        name: 'RecordFormLandingIndex',
+        component: () => import('@/views/documents/RecordFormLandingIndex.vue'),
+        meta: { title: '记录表单索引' },
+      },
+      {
+        path: 'documents/control/workbench',
+        name: 'DocumentControlWorkbench',
+        component: () => import('@/views/documents/DocumentControlWorkbench.vue'),
+        meta: { title: '文控工作台' },
+      },
+      // 文控运营中心
+      {
+        path: 'documents/operations/read-confirmations',
+        name: 'ReadConfirmationCenter',
+        component: () => import('@/views/documents/ReadConfirmationCenter.vue'),
+        meta: { title: '阅读确认' },
+      },
+      {
+        path: 'documents/operations/training-needs',
+        name: 'TrainingNeedCenter',
+        component: () => import('@/views/documents/TrainingNeedCenter.vue'),
+        meta: { title: '培训需求' },
+      },
+      {
+        path: 'documents/operations/health',
+        name: 'DocumentHealthDashboard',
+        component: () => import('@/views/documents/DocumentHealthDashboard.vue'),
+        meta: { title: '文控健康度' },
+      },
+      {
+        path: 'documents/operations/audit-coverage',
+        name: 'AuditCoverageCenter',
+        component: () => import('@/views/documents/AuditCoverageCenter.vue'),
+        meta: { title: '审核覆盖' },
+      },
+      {
+        path: 'documents/operations/impact',
+        name: 'ImpactAnalysisWorkbench',
+        component: () => import('@/views/documents/ImpactAnalysisWorkbench.vue'),
+        meta: { title: '影响分析' },
+      },
+      {
+        path: 'documents/operations/audit-chain',
+        name: 'AuditChainExplorer',
+        component: () => import('@/views/documents/AuditChainExplorer.vue'),
+        meta: { title: '审核链路' },
+      },
       {
         path: 'templates',
         name: 'Templates',

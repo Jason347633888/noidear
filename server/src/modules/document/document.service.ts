@@ -8,6 +8,7 @@ import { BusinessException, ErrorCode } from '../../common/exceptions/business.e
 import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto } from './dto';
 import { NotificationService } from '../notification/notification.service';
 import { OperationLogService } from '../operation-log/operation-log.service';
+import { DocumentControlMetadataService } from './services/document-control-metadata.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 
 @Injectable()
@@ -20,6 +21,7 @@ export class DocumentService {
     private readonly notification: NotificationService,
     private readonly operationLog: OperationLogService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly metadataService: DocumentControlMetadataService,
     @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {
     this.snowflake = new Snowflake(1, 1);
@@ -113,6 +115,7 @@ export class DocumentService {
 
     const number = await this.generateDocumentNumber(dto.level, user.departmentId);
     const uploadResult = await this.storage.uploadFile(file, `documents/level${dto.level}`);
+    const controlData = this.metadataService.normalize(dto.control);
 
     const result = await this.prisma.document.create({
       data: {
@@ -126,6 +129,8 @@ export class DocumentService {
         fileType: file.mimetype,
         status: 'draft',
         creatorId: userId,
+        departmentId: user.departmentId,
+        ...(controlData as any),
       },
     });
 
@@ -147,7 +152,7 @@ export class DocumentService {
   async findAll(query: DocumentQueryDto, userId: string, role: string) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
-    const { level, keyword, status } = query;
+    const { level, keyword, status, documentType, sourceFolder, ownerDepartment, tag, dueWithinDays } = query;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { deletedAt: null };
@@ -164,11 +169,24 @@ export class DocumentService {
       where.OR = [
         { title: { contains: keyword } },
         { number: { contains: keyword } },
+        // TODO: Replace with GIN full-text index for better performance
+        { content_md: { contains: keyword, mode: 'insensitive' } },
       ];
     }
 
     if (status) {
       where.status = status;
+    }
+
+    if (documentType) where.document_type = documentType;
+    if (sourceFolder) where.source_folder = sourceFolder;
+    if (ownerDepartment) where.owner_department = ownerDepartment;
+    if (tag) where.tags = { has: tag };
+
+    if (dueWithinDays) {
+      const deadline = new Date();
+      deadline.setDate(deadline.getDate() + dueWithinDays);
+      where.review_due_date = { lte: deadline };
     }
 
     const [list, total] = await Promise.all([
@@ -206,6 +224,16 @@ export class DocumentService {
   async findOne(id: string, userId: string, role: string) {
     const document = await this.prisma.document.findUnique({
       where: { id, deletedAt: null },
+      include: {
+        sourceReferences: {
+          include: { targetDoc: { select: { id: true, title: true, status: true } } },
+          orderBy: { createdAt: 'desc' },
+        },
+        targetReferences: {
+          include: { sourceDoc: { select: { id: true, title: true, status: true } } },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
     }) as unknown as any;
 
     if (!document) {
@@ -240,6 +268,8 @@ export class DocumentService {
       );
     }
 
+    const controlData = dto.control ? this.metadataService.normalize(dto.control) : {};
+
     if (file) {
       await this.prisma.documentVersion.create({
         data: {
@@ -264,6 +294,7 @@ export class DocumentService {
           fileSize: Number(file.size),
           fileType: file.mimetype,
           version: { increment: new Prisma.Decimal(0.1) },
+          ...(controlData as any),
         },
       });
       this.eventEmitter.emit('document.updated', { documentId: id });
@@ -272,7 +303,7 @@ export class DocumentService {
 
     const result = await this.prisma.document.update({
       where: { id },
-      data: { title: dto.title ?? document.title },
+      data: { title: dto.title ?? document.title, ...(controlData as any) },
     });
     this.eventEmitter.emit('document.updated', { documentId: id });
     return convertBigIntToNumber(result);
