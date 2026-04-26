@@ -22,9 +22,12 @@ export interface ProcessStepData {
   status: 'PENDING' | 'IN_PROGRESS' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
   submittedById?: string;
   submittedAt?: string;
+  submittedBy?: { id: string; name: string };
   approvedById?: string;
   approvedAt?: string;
+  approvedBy?: { id: string; name: string };
   approvalComment?: string;
+  approvalInstanceId?: string;
 }
 
 export interface ProcessStepApproval {

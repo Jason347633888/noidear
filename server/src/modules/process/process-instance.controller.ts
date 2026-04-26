@@ -15,6 +15,7 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ProcessStepApprovalService } from './process-step-approval.service';
+import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 
 @ApiTags('流程实例')
 @UseGuards(JwtAuthGuard)
@@ -23,6 +24,7 @@ export class ProcessInstanceController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly approvalService: ProcessStepApprovalService,
+    private readonly approvalEngine: ApprovalEngineService,
   ) {}
 
   @Get()
@@ -88,12 +90,13 @@ export class ProcessInstanceController {
     }
 
     const { stepNumber, data, saveAsDraft } = body;
+    const actualStepNumber: number = stepNumber || instance.currentStep;
 
     const savedStepData = await this.prisma.processStepData.upsert({
       where: {
         instanceId_stepNumber: {
           instanceId: id,
-          stepNumber: stepNumber || instance.currentStep,
+          stepNumber: actualStepNumber,
         },
       },
       update: {
@@ -104,7 +107,7 @@ export class ProcessInstanceController {
       },
       create: {
         instanceId: id,
-        stepNumber: stepNumber || instance.currentStep,
+        stepNumber: actualStepNumber,
         data: data || {},
         status: saveAsDraft ? 'PENDING' : 'SUBMITTED',
         submittedById: userId,
@@ -113,7 +116,6 @@ export class ProcessInstanceController {
     });
 
     if (!saveAsDraft) {
-      const actualStepNumber = stepNumber || instance.currentStep;
       const template = await this.prisma.processTemplate.findUnique({
         where: { id: instance.templateId },
       });
@@ -121,12 +123,31 @@ export class ProcessInstanceController {
       const stepConfig = steps.find((s: any) => s.stepNumber === actualStepNumber);
       if (!stepConfig) throw new BadRequestException('步骤配置不存在');
 
-      const requiredApprovals = stepConfig.requiredApprovals ?? [];
-      if (requiredApprovals.length > 0) {
-        await this.approvalService.ensureApprovalSlots(id, actualStepNumber, requiredApprovals);
+      const triggerKey: string | undefined = stepConfig.approvalTriggerKey;
+
+      if (triggerKey) {
+        // Route through unified approval engine
+        const productName =
+          (data as any)?.productName ||
+          instance.productName ||
+          `流程实例 ${id}`;
+        const approvalInstance = await this.approvalEngine.startApproval({
+          resourceType: 'process_step',
+          resourceId: id,
+          resourceStep: `step:${actualStepNumber}`,
+          triggerKey,
+          title: `${productName} — 步骤${actualStepNumber}审批`,
+          createdById: userId,
+        });
+        // Persist the approval instance id on the step data
+        await this.prisma.processStepData.update({
+          where: { instanceId_stepNumber: { instanceId: id, stepNumber: actualStepNumber } },
+          data: { approvalInstanceId: approvalInstance.id },
+        });
       } else {
-        // Step3 无需审批人，只有 trialConclusion==='通过' 才自动批准并推进
-        const isStep3Pass = actualStepNumber === 3 && (data as any)?.trialConclusion === '通过';
+        // Step3: auto-approve when trialConclusion === '通过'
+        const isStep3Pass =
+          actualStepNumber === 3 && (data as any)?.trialConclusion === '通过';
         if (!isStep3Pass) {
           throw new BadRequestException('无审批步骤必须满足通过条件后才能提交');
         }
@@ -153,7 +174,7 @@ export class ProcessInstanceController {
   }
 
   @Post(':id/steps/:stepNumber/approvals')
-  @ApiOperation({ summary: '提交会签' })
+  @ApiOperation({ summary: '提交会签（旧接口，保留向后兼容）' })
   async submitApproval(
     @Param('id') id: string,
     @Param('stepNumber') stepNumber: string,
@@ -161,9 +182,10 @@ export class ProcessInstanceController {
     @Request() req: any,
   ) {
     const userId = req.user?.sub || req.user?.id;
-    const { action, comment = '', role: requestedRole } = body;
+    const { action, comment = '' } = body;
+    // Never trust role from client — omit requestedRole entirely
     const result = await this.approvalService.submitApproval(
-      id, parseInt(stepNumber), userId, action, comment, requestedRole,
+      id, parseInt(stepNumber), userId, action, comment, undefined,
     );
     return { code: 0, data: result, message: 'success' };
   }

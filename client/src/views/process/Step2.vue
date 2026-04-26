@@ -60,10 +60,9 @@
 
       <el-card shadow="never" class="section-card">
         <template #header><span class="section-title">审批 — 研发经理</span></template>
-        <DeptSignoffPanel
+        <ApprovalTaskPanel
           v-if="stepStatus === 'SUBMITTED'"
-          :instance-id="instanceId"
-          :step-number="2"
+          :approval-instance-id="(modelValue as any)?.approvalInstanceId"
           :disabled="disabled"
           @signed="emit('signed')"
         />
@@ -105,7 +104,7 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import type { FormInstance } from 'element-plus';
 import request from '@/api/request';
-import DeptSignoffPanel from '@/components/process/DeptSignoffPanel.vue';
+import ApprovalTaskPanel from '@/components/approval/ApprovalTaskPanel.vue';
 
 const props = defineProps<{
   instanceId: string;

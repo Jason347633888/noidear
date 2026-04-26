@@ -82,10 +82,9 @@
 
       <el-card shadow="never" class="section-card">
         <template #header><span class="section-title">3人会签（制造部 + 品质部 + 食品安全组长）</span></template>
-        <DeptSignoffPanel
+        <ApprovalTaskPanel
           v-if="stepStatus === 'SUBMITTED'"
-          :instance-id="instanceId"
-          :step-number="7"
+          :approval-instance-id="(modelValue as any)?.approvalInstanceId"
           :disabled="disabled"
           @signed="emit('signed')"
         />
@@ -105,7 +104,7 @@
 import { reactive, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import dayjs from 'dayjs';
-import DeptSignoffPanel from '@/components/process/DeptSignoffPanel.vue';
+import ApprovalTaskPanel from '@/components/approval/ApprovalTaskPanel.vue';
 import type { RecipeLine } from '@/api/process';
 
 const props = defineProps<{

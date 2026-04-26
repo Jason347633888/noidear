@@ -46,10 +46,9 @@
 
       <el-card shadow="never" class="section-card">
         <template #header><span class="section-title">5部门会签</span></template>
-        <DeptSignoffPanel
+        <ApprovalTaskPanel
           v-if="stepStatus === 'SUBMITTED'"
-          :instance-id="instanceId"
-          :step-number="4"
+          :approval-instance-id="(modelValue as any)?.approvalInstanceId"
           :disabled="disabled"
           @signed="emit('signed')"
         />
@@ -69,7 +68,7 @@
 import { reactive, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import dayjs from 'dayjs';
-import DeptSignoffPanel from '@/components/process/DeptSignoffPanel.vue';
+import ApprovalTaskPanel from '@/components/approval/ApprovalTaskPanel.vue';
 
 const props = defineProps<{
   instanceId: string;
