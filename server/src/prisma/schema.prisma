@@ -750,6 +750,7 @@ model RecordTemplate {
   taskAssignments      RecordTaskAssignment[]
   tasks                Task[]
   landingEntries       RecordFormLandingEntry[]
+  changeFormTasks      ChangeEventFormTask[]
 
   @@index([code])
   @@index([status])
@@ -807,6 +808,13 @@ model Record {
   changeLogs      RecordChangeLog[]
   deviationReports DeviationReport[]
 
+  usageType      String?
+  sourceType     String?
+  sourceId       String?
+  changeEventId  String?
+  changeEvent    ChangeEvent? @relation("ChangeEventRecords", fields: [changeEventId], references: [id], onDelete: SetNull)
+  changeFormTasks ChangeEventFormTask[]
+
   @@index([templateId])
   @@index([number])
   @@index([status])
@@ -819,6 +827,9 @@ model Record {
   @@index([shift_instance_id])
   @@index([production_run_id])
   @@index([approvalInstanceId])
+  @@index([usageType])
+  @@index([sourceType, sourceId])
+  @@index([changeEventId])
   @@map("records")
 }
 
@@ -3031,6 +3042,11 @@ model ChangeEvent {
   created_at    DateTime                   @default(now())
   updated_at    DateTime                   @updatedAt
 
+  records       Record[]                   @relation("ChangeEventRecords")
+  relations     ChangeEventRelation[]
+  formTasks     ChangeEventFormTask[]
+  impactReviews DocumentImpactReview[]
+
   @@unique([company_id, change_no])
 }
 
@@ -3046,6 +3062,51 @@ model ChangeVerificationRecord {
   approved_by         String?
   verified_at         DateTime    @db.Date
   created_at          DateTime    @default(now())
+}
+
+model ChangeEventRelation {
+  id             String      @id @default(cuid())
+  changeEventId  String
+  changeEvent    ChangeEvent @relation(fields: [changeEventId], references: [id], onDelete: Cascade)
+  targetType     String
+  targetId       String?
+  targetRoute    String?
+  targetLabel    String
+  relationType   String?
+  impactLevel    String      @default("medium")
+  requiredAction String?
+  status         String      @default("open")
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([changeEventId])
+  @@index([targetType, targetId])
+  @@index([status])
+  @@map("change_event_relations")
+}
+
+model ChangeEventFormTask {
+  id            String         @id @default(cuid())
+  changeEventId String
+  changeEvent   ChangeEvent    @relation(fields: [changeEventId], references: [id], onDelete: Cascade)
+  templateId    String
+  template      RecordTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  recordId      String?
+  record        Record?        @relation(fields: [recordId], references: [id], onDelete: SetNull)
+  sourceFormCode String
+  title         String
+  status        String         @default("pending")
+  required      Boolean        @default(true)
+  sortOrder     Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@unique([changeEventId, templateId])
+  @@index([changeEventId])
+  @@index([templateId])
+  @@index([recordId])
+  @@index([status])
+  @@map("change_event_form_tasks")
 }
 
 model WasteDisposalRecord {
@@ -3371,20 +3432,24 @@ model DocumentTrainingNeed {
 }
 
 model DocumentImpactReview {
-  id         String   @id @default(cuid())
-  sourceType String
-  sourceId   String
-  title      String
-  status     String   @default("draft")
-  summary    String?
-  reviewedBy String?
-  reviewedAt DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  items      DocumentImpactItem[]
+  id            String   @id @default(cuid())
+  sourceType    String
+  sourceId      String
+  title         String
+  status        String   @default("draft")
+  summary       String?
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  items         DocumentImpactItem[]
+
+  changeEventId String?
+  changeEvent   ChangeEvent? @relation(fields: [changeEventId], references: [id], onDelete: SetNull)
 
   @@index([sourceType, sourceId])
   @@index([status])
+  @@index([changeEventId])
   @@map("document_impact_reviews")
 }
 
