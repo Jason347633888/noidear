@@ -435,6 +435,35 @@ describe('DocumentDetail', () => {
     expect(mockPush).toHaveBeenCalledWith('/documents/doc-old');
   });
 
+  it('shows resolved owner department before legacy owner_department', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url.includes('/versions')) return Promise.resolve({ versions: [] });
+      return Promise.resolve({
+        id: 'doc1',
+        title: '质量手册',
+        number: 'QM-001',
+        level: 1,
+        status: 'effective',
+        version: 1,
+        fileName: 'qm.pdf',
+        fileSize: 100,
+        creatorId: 'u1',
+        creator: { name: 'Admin' },
+        approver: null,
+        approvedAt: null,
+        createdAt: '2026-04-27T00:00:00.000Z',
+        owner_department: '旧品质部',
+        ownerDepartment: { id: 'dep1', name: '品质部' },
+      });
+    });
+
+    const wrapper = mount(DocumentDetail, { global: { stubs } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('品质部');
+    expect(wrapper.text()).not.toContain('旧品质部');
+  });
+
   it('does not expose or keep markdown editor visible for non-editable statuses', async () => {
     mockGet.mockImplementation((url: string) => {
       if (url.includes('/versions')) return Promise.resolve([]);

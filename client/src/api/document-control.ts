@@ -17,6 +17,10 @@ export interface DocumentControlDocument {
   document_type?: DocumentType;
   source_folder?: string;
   owner_department?: string;
+  ownerDepartmentId?: string | null;
+  ownerUserId?: string | null;
+  ownerDepartment?: { id: string; name: string; code?: string } | null;
+  ownerUser?: { id: string; name: string; username?: string } | null;
   tags?: string[];
   metadata?: Record<string, unknown>;
   content_md?: string;
