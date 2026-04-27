@@ -61,6 +61,10 @@ const CHANGE_TYPE_MAP: Record<string, string> = {
   process: '工艺变更',
   supplier: '供应商变更',
   equipment: '设备变更',
+  document: '文件变更',
+  record_form: '记录表单变更',
+  product: '产品变更',
+  haccp: 'HACCP变更',
   other: '其他',
 };
 

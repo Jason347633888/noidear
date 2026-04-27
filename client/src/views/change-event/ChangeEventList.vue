@@ -74,6 +74,10 @@
             <el-option label="工艺变更" value="process" />
             <el-option label="供应商变更" value="supplier" />
             <el-option label="设备变更" value="equipment" />
+            <el-option label="文件变更" value="document" />
+            <el-option label="记录表单变更" value="record_form" />
+            <el-option label="产品变更" value="product" />
+            <el-option label="HACCP变更" value="haccp" />
             <el-option label="其他" value="other" />
           </el-select>
         </el-form-item>
@@ -139,10 +143,13 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="记录" width="140">
+            <el-table-column label="操作" width="140">
               <template #default="{ row }">
                 <el-button v-if="row.record" link type="primary" @click="router.push(`/records/${row.record.id}`)">
                   {{ row.record.number }}
+                </el-button>
+                <el-button v-else-if="row.status === 'pending'" link type="warning" @click="goFillTask(row)">
+                  去填写
                 </el-button>
                 <span v-else>-</span>
               </template>
@@ -535,6 +542,13 @@ function formatDate(dateStr: string | null): string {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
+  });
+}
+
+function goFillTask(task: { id: string; templateId: string; changeEventId: string }) {
+  router.push({
+    path: `/records/fill/${task.templateId}`,
+    query: { changeEventTaskId: task.id, changeEventId: task.changeEventId },
   });
 }
 

@@ -82,6 +82,7 @@ import DynamicForm from '@/components/DynamicForm.vue';
 import { recordTemplateApi } from '@/api/record-template';
 import { instanceApi } from '@/api/record-task';
 import { newRecordApi, type DeviationInfo } from '@/api/new-record';
+import changeEventApi from '@/api/change-event';
 
 const route = useRoute();
 const router = useRouter();
@@ -98,6 +99,8 @@ const deviationForm = reactive<{ reasons: string[] }>({ reasons: [] });
 const currentRecordId = ref('');
 
 const isTaskMode = computed(() => !!route.params.instanceId);
+
+const changeEventTaskId = computed(() => route.query.changeEventTaskId as string | undefined);
 
 const pageTitle = computed(() => {
   if (isTaskMode.value) return '填写任务';
@@ -144,6 +147,12 @@ const buildCreatePayload = () => {
   if (isTaskMode.value) {
     payload.taskInstanceId = route.params.instanceId as string;
   }
+  if (changeEventTaskId.value) {
+    payload.usageType = 'change';
+    payload.sourceType = 'change_event';
+    payload.sourceId = route.query.changeEventId as string;
+    payload.changeEventId = route.query.changeEventId as string;
+  }
   return payload;
 };
 
@@ -157,6 +166,9 @@ const handleSubmit = async () => {
   try {
     const record: any = await newRecordApi.create(buildCreatePayload());
     currentRecordId.value = record.id;
+    if (changeEventTaskId.value) {
+      await changeEventApi.fillFormTask(changeEventTaskId.value, { ...formData });
+    }
     await submitRecord();
   } catch {
     submitting.value = false;
