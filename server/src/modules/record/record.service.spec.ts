@@ -170,14 +170,15 @@ describe('RecordService', () => {
     });
 
     it('creates a change record with usage and source fields', async () => {
-      prisma.recordTemplate.findUnique.mockResolvedValue({
+      mockPrismaService.record.findFirst.mockResolvedValue(null);
+      mockPrismaService.recordTemplate.findUnique.mockResolvedValue({
         id: 'tpl1',
         code: 'GRSS-PZ-JL-07',
         fieldsJson: { fields: [] },
         retentionYears: 5,
         batchLinkEnabled: false,
       });
-      prisma.record.create.mockResolvedValue({
+      mockPrismaService.record.create.mockResolvedValue({
         id: 'record1',
         templateId: 'tpl1',
         usageType: 'change',
@@ -195,7 +196,7 @@ describe('RecordService', () => {
         changeEventId: 'change1',
       } as any, 'user1');
 
-      expect(prisma.record.create).toHaveBeenCalledWith({
+      expect(mockPrismaService.record.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           usageType: 'change',
           sourceType: 'change_event',

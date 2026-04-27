@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsObject, IsOptional, IsBoolean, IsDateString } from 'class-validator';
+import { IsString, IsNotEmpty, IsObject, IsOptional, IsBoolean, IsDateString, IsIn } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateRecordDto {
@@ -19,6 +19,7 @@ export class CreateRecordDto {
 
   @ApiPropertyOptional({ description: '填写用途', enum: ['initial', 'change', 'periodic'] })
   @IsOptional()
+  @IsIn(['initial', 'change', 'periodic'])
   @IsString()
   usageType?: string;
 
