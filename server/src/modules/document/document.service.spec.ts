@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Prisma } from '@prisma/client';
 import { DocumentService } from './document.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services/storage.service';
@@ -190,5 +191,93 @@ describe('document status compatibility', () => {
         status: { in: EFFECTIVE_COMPAT_STATUSES },
       }),
     });
+  });
+});
+
+describe('document version operations', () => {
+  const prisma = {
+    document: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+    documentVersion: {
+      findFirst: jest.fn(),
+      create: jest.fn(),
+    },
+    $transaction: jest.fn(),
+  };
+  const storage = { uploadFile: jest.fn() };
+  const notification = { create: jest.fn() };
+  const operationLog = { log: jest.fn() };
+  const eventEmitter = { emit: jest.fn() };
+
+  let service: DocumentService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    const module = await Test.createTestingModule({
+      providers: [
+        DocumentService,
+        DocumentControlMetadataService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: StorageService, useValue: storage },
+        { provide: NotificationService, useValue: notification },
+        { provide: OperationLogService, useValue: operationLog },
+        { provide: EventEmitter2, useValue: eventEmitter },
+      ],
+    }).compile();
+    service = module.get(DocumentService);
+  });
+
+  it('saves the current file before rollback and writes rollback audit details', async () => {
+    prisma.$transaction.mockImplementation(async (cb) => cb(prisma));
+    prisma.document.findUnique.mockResolvedValue({
+      id: 'doc1',
+      version: new Prisma.Decimal('1.2'),
+      filePath: 'documents/current.pdf',
+      fileName: 'current.pdf',
+      fileSize: 200,
+      status: 'effective',
+      deletedAt: null,
+    });
+    prisma.documentVersion.findFirst.mockResolvedValue({
+      version: new Prisma.Decimal('1.0'),
+      filePath: 'documents/old.pdf',
+      fileName: 'old.pdf',
+      fileSize: 100,
+    });
+    prisma.documentVersion.create.mockResolvedValue({});
+    prisma.document.update.mockResolvedValue({ id: 'doc1', version: new Prisma.Decimal('1.3') });
+    operationLog.log.mockResolvedValue({});
+
+    await service.rollbackVersion('doc1', '1.0', '恢复到已批准版本', 'u1');
+
+    expect(prisma.documentVersion.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        documentId: 'doc1',
+        version: new Prisma.Decimal('1.2'),
+        filePath: 'documents/current.pdf',
+        fileName: 'current.pdf',
+      }),
+    });
+    expect(operationLog.log).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'rollback_version',
+      details: expect.objectContaining({
+        fromVersion: '1.2',
+        targetVersion: '1.0',
+        reason: '恢复到已批准版本',
+      }),
+    }));
+  });
+
+  it('rejects rollback for archived documents', async () => {
+    prisma.$transaction.mockImplementation(async (cb) => cb(prisma));
+    prisma.document.findUnique.mockResolvedValue({
+      id: 'doc1',
+      status: 'archived',
+      deletedAt: null,
+    });
+
+    await expect(service.rollbackVersion('doc1', '1.0', '恢复到已批准版本', 'u1')).rejects.toThrow();
   });
 });

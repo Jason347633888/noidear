@@ -283,7 +283,7 @@ describe('DocumentService', () => {
 
       await expect(
         service.archive('doc1', '测试', 'admin', 'admin')
-      ).rejects.toThrow('只有已发布文档可归档');
+      ).rejects.toThrow('只有已生效文档可操作');
     });
 
     it('应该拒绝非创建者非管理员归档', async () => {
@@ -428,7 +428,7 @@ describe('DocumentService', () => {
 
       await expect(
         service.obsolete('doc1', '测试', 'admin', 'admin')
-      ).rejects.toThrow('只有已发布文档可作废');
+      ).rejects.toThrow('只有已生效文档可操作');
     });
 
     it('应该拒绝非管理员作废', async () => {
@@ -460,7 +460,7 @@ describe('DocumentService', () => {
       jest.spyOn(service, 'findOne').mockResolvedValue(mockDocument as any);
       mockPrismaService.document.update.mockResolvedValue({
         ...mockDocument,
-        status: 'approved',
+        status: 'effective',
       });
       mockOperationLogService.log.mockResolvedValue(undefined);
       mockNotificationService.create.mockResolvedValue(undefined);
@@ -470,7 +470,7 @@ describe('DocumentService', () => {
       expect(mockPrismaService.document.update).toHaveBeenCalledWith({
         where: { id: 'doc1' },
         data: {
-          status: 'approved',
+          status: 'effective',
           archiveReason: null,
           archivedAt: null,
           archivedBy: null,

@@ -1,5 +1,6 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Response } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { StorageService } from '../../common/services';
@@ -1041,6 +1042,7 @@ export class DocumentService {
   async rollbackVersion(
     documentId: string,
     targetVersion: string,
+    reason: string,
     userId: string,
   ) {
     return this.prisma.$transaction(async (tx) => {
@@ -1052,6 +1054,13 @@ export class DocumentService {
         throw new BusinessException(
           ErrorCode.NOT_FOUND,
           '文档不存在或已被删除',
+        );
+      }
+
+      if (['archived', 'obsolete'].includes((document as any).status)) {
+        throw new BusinessException(
+          ErrorCode.CONFLICT,
+          `文档当前状态为 [${(document as any).status}]，不能回滚版本`,
         );
       }
 
@@ -1069,17 +1078,17 @@ export class DocumentService {
         );
       }
 
-      const currentVersion = (document as any).version;
-      const newVersion = new Prisma.Decimal(currentVersion).add(0.1);
+      const currentVersion = new Prisma.Decimal((document as any).version);
+      const newVersion = currentVersion.add(0.1);
 
       await tx.documentVersion.create({
         data: {
           id: this.snowflake.nextId(),
           documentId,
-          version: newVersion,
-          filePath: version.filePath,
-          fileName: version.fileName,
-          fileSize: version.fileSize,
+          version: currentVersion,
+          filePath: (document as any).filePath,
+          fileName: (document as any).fileName,
+          fileSize: Number((document as any).fileSize),
           creatorId: userId,
         },
       });
@@ -1101,17 +1110,70 @@ export class DocumentService {
         objectId: documentId,
         objectType: 'document',
         details: {
+          fromVersion: currentVersion.toFixed(1),
           targetVersion,
-          newVersion: newVersion.toString(),
+          newVersion: newVersion.toFixed(1),
+          reason,
           documentNumber: (document as any).number,
         },
       });
 
       return {
         success: true,
-        newVersion: newVersion.toString(),
+        newVersion: newVersion.toFixed(1),
         rolledBackFrom: targetVersion,
       };
     });
+  }
+
+  async getVersionPreview(documentId: string, version: string, userId: string, role: string) {
+    await this.findOne(documentId, userId, role);
+    const item = await this.prisma.documentVersion.findFirst({
+      where: { documentId, version: new Prisma.Decimal(version) },
+    });
+
+    if (!item) {
+      throw new BusinessException(ErrorCode.NOT_FOUND, `版本 ${version} 不存在`);
+    }
+
+    const lowerName = item.fileName.toLowerCase();
+    if (lowerName.endsWith('.pdf')) {
+      return {
+        type: 'pdf',
+        url: await this.storage.getSignedUrl(item.filePath, 900),
+        fileName: item.fileName,
+      };
+    }
+
+    return {
+      type: 'download',
+      url: `/api/v1/documents/${documentId}/versions/${version}/download`,
+      fileName: item.fileName,
+      message: '该历史版本暂不支持在线预览，请下载后查看',
+    };
+  }
+
+  async downloadVersion(
+    documentId: string,
+    version: string,
+    userId: string,
+    role: string,
+    res: Response,
+  ): Promise<void> {
+    await this.findOne(documentId, userId, role);
+    const item = await this.prisma.documentVersion.findFirst({
+      where: { documentId, version: new Prisma.Decimal(version) },
+    });
+
+    if (!item) {
+      throw new BusinessException(ErrorCode.NOT_FOUND, `版本 ${version} 不存在`);
+    }
+
+    const stream = await this.storage.getFileStream(item.filePath);
+    res.set({
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="${encodeURIComponent(item.fileName)}"`,
+    });
+    stream.pipe(res);
   }
 }

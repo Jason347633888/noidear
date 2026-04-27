@@ -35,7 +35,7 @@ import { DocumentHealthService } from './services/document-health.service';
 import { DocumentAuditChainService } from './services/document-audit-chain.service';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto, WorkbenchQueryDto, CreateReadRequirementDto, TrainingNeedActionDto, ImpactReviewCreateDto, ImpactItemUpdateDto, CoverageQueryDto, AuditChainQueryDto } from './dto';
 import { UpdateRecordFormLandingEntryDto } from './dto/document-control.dto';
-import { PublishDocumentDto } from './dto/document-lifecycle.dto';
+import { PublishDocumentDto, RollbackDocumentVersionDto } from './dto/document-lifecycle.dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionGuard } from '../../common/guards/permission.guard';
@@ -311,9 +311,31 @@ export class DocumentController {
   async rollbackVersion(
     @Param('id') id: string,
     @Param('targetVersion') targetVersion: string,
+    @Body() dto: RollbackDocumentVersionDto,
     @Req() req: any,
   ) {
-    return this.documentService.rollbackVersion(id, targetVersion, req.user.id);
+    return this.documentService.rollbackVersion(id, targetVersion, dto.reason, req.user.id);
+  }
+
+  @Get(':id/versions/:version/preview')
+  @ApiOperation({ summary: '获取历史版本预览信息' })
+  async getVersionPreview(
+    @Param('id') id: string,
+    @Param('version') version: string,
+    @Req() req: any,
+  ) {
+    return this.documentService.getVersionPreview(id, version, req.user.id, req.user.role);
+  }
+
+  @Get(':id/versions/:version/download')
+  @ApiOperation({ summary: '下载历史版本文件' })
+  async downloadVersion(
+    @Param('id') id: string,
+    @Param('version') version: string,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
+    return this.documentService.downloadVersion(id, version, req.user.id, req.user.role, res);
   }
 
   @Post(':id/deactivate')
