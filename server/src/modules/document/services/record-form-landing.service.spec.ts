@@ -116,6 +116,19 @@ describe('RecordFormLandingService', () => {
         status: 'active',
       });
     });
+
+    it('returns null targetTemplate when no template is linked', async () => {
+      prisma.recordFormLandingEntry.findMany.mockResolvedValue([{
+        sourceCode: 'GRSS-KF-JL-01',
+        targetTemplateId: null,
+        targetTemplate: null,
+      }]);
+
+      const service = makeService();
+      const result = await service.list({});
+
+      expect(result[0].landingEntry!.targetTemplate).toBeNull();
+    });
   });
 
   describe('get', () => {
@@ -133,6 +146,24 @@ describe('RecordFormLandingService', () => {
       const service = makeService();
       const result = await service.get('GRSS-KF-JL-01');
       expect(result.landingEntry).toEqual(mockEntry);
+    });
+
+    it('returns targetTemplate details for a single entry', async () => {
+      prisma.recordFormLandingEntry.findUnique.mockResolvedValue({
+        sourceCode: 'GRSS-KF-JL-01',
+        targetTemplateId: 'tmpl1',
+        targetTemplate: { id: 'tmpl1', code: 'TMP-01', name: '记录模板', status: 'active' },
+      });
+
+      const service = makeService();
+      const result = await service.get('GRSS-KF-JL-01');
+
+      expect(result.landingEntry!.targetTemplate).toEqual({
+        id: 'tmpl1',
+        code: 'TMP-01',
+        name: '记录模板',
+        status: 'active',
+      });
     });
   });
 
