@@ -1792,6 +1792,7 @@ enum TodoType {
   equipment_maintain // 设备维护任务
   inventory // 盘点任务
   change_request // 变更请求任务
+  document_renewal // 业务文件换版/续期任务
 }
 
 enum TodoStatus {
@@ -1848,6 +1849,7 @@ model TodoTask {
   @@index([userId, status])
   @@index([type, relatedId])
   @@index([status, dueDate])
+  @@unique([userId, type, relatedId])
   @@map("todo_tasks")
 }
 

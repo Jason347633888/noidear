@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { Cron } from '@nestjs/schedule'
 import { PrismaService } from '../../prisma/prisma.service'
 import { StorageService } from '../../common/services'
+import { DocumentExpiryService } from './services/document-expiry.service'
 
 /**
  * 文档模块定时任务服务
@@ -17,6 +18,7 @@ export class DocumentCronService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storageService: StorageService,
+    private readonly documentExpiryService: DocumentExpiryService,
   ) {}
 
   /**
@@ -76,6 +78,16 @@ export class DocumentCronService {
       this.logger.log(`文件预览缓存清理完成: 删除 ${deletedCount}/${staleObjects.length} 个超期文件`)
     } catch (error) {
       this.logger.error(`文件预览缓存清理失败: ${error.message}`, error.stack)
+    }
+  }
+
+  @Cron('0 2 * * *')
+  async scanDocumentExpiry(): Promise<void> {
+    try {
+      const result = await this.documentExpiryService.scanAndCreateTodos()
+      this.logger.log(`业务文件到期扫描完成: ${JSON.stringify(result)}`)
+    } catch (error) {
+      this.logger.error(`业务文件到期扫描失败: ${error.message}`, error.stack)
     }
   }
 }
