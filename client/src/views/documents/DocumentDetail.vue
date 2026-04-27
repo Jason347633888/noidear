@@ -111,6 +111,12 @@
         >
           恢复
         </el-button>
+        <el-button
+          type="primary"
+          @click="openEvidenceChain"
+        >
+          查看证据链
+        </el-button>
       </div>
     </el-card>
 
@@ -958,6 +964,17 @@ const handleRestore = async () => {
   } finally {
     restoring.value = false;
   }
+};
+
+const openEvidenceChain = () => {
+  if (!document.value?.id) return;
+  router.push({
+    path: '/documents/operations/audit-chain',
+    query: {
+      sourceType: 'document',
+      sourceId: document.value.id,
+    },
+  });
 };
 
 onMounted(() => {

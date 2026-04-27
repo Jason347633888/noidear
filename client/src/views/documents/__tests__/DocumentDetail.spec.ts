@@ -479,4 +479,22 @@ describe('DocumentDetail', () => {
 
     expect(c.find('.markdown-editor-stub').exists()).toBe(false);
   });
+
+  it('navigates to evidence chain explorer when 查看证据链 button is clicked', async () => {
+    const c = w();
+    await flushPromises();
+
+    const evidenceChainButton = c.findAll('button').find(button => button.text() === '查看证据链');
+    expect(evidenceChainButton).toBeDefined();
+
+    await evidenceChainButton!.trigger('click');
+
+    expect(mockPush).toHaveBeenCalledWith({
+      path: '/documents/operations/audit-chain',
+      query: {
+        sourceType: 'document',
+        sourceId: 'doc-1',
+      },
+    });
+  });
 });
