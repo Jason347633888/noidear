@@ -4,6 +4,31 @@ import request from './request';
 // Types
 // =========================================================================
 
+export interface ChangeEventRelation {
+  id: string;
+  targetType: string;
+  targetId?: string | null;
+  targetRoute?: string | null;
+  targetLabel: string;
+  relationType?: string | null;
+  impactLevel: string;
+  requiredAction?: string | null;
+  status: string;
+}
+
+export interface ChangeEventFormTask {
+  id: string;
+  changeEventId: string;
+  templateId: string;
+  sourceFormCode: string;
+  title: string;
+  status: 'pending' | 'filled' | 'approved';
+  required: boolean;
+  sortOrder: number;
+  template?: { id: string; code: string; name: string; status: string };
+  record?: { id: string; number: string; status: string; createdAt: string } | null;
+}
+
 export interface ChangeEvent {
   id: string;
   company_id: string;
@@ -16,6 +41,8 @@ export interface ChangeEvent {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  relations?: ChangeEventRelation[];
+  formTasks?: ChangeEventFormTask[];
 }
 
 export interface CreateChangeEventPayload {
@@ -81,6 +108,14 @@ const changeEventApi = {
 
   remove(id: string) {
     return request.delete<void>(`/change-events/${id}`);
+  },
+
+  getFormTasks(id: string) {
+    return request.get<ChangeEventFormTask[]>(`/change-events/${id}/form-tasks`);
+  },
+
+  fillFormTask(taskId: string, dataJson: Record<string, unknown>) {
+    return request.post<ChangeEventFormTask>(`/change-events/form-tasks/${taskId}/fill`, { dataJson });
   },
 };
 

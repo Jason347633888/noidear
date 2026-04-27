@@ -125,6 +125,31 @@
           </el-descriptions>
         </div>
 
+        <!-- 默认表单 -->
+        <div class="detail-section">
+          <div class="section-title">默认表单</div>
+          <div v-if="!currentEvent.formTasks?.length" class="empty-hint">当前变更类型没有默认表单</div>
+          <el-table v-else :data="currentEvent.formTasks" size="small" stripe>
+            <el-table-column prop="sourceFormCode" label="表单编号" width="150" />
+            <el-table-column prop="title" label="表单名称" min-width="180" show-overflow-tooltip />
+            <el-table-column label="状态" width="100">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 'filled' ? 'success' : 'warning'" effect="light" size="small">
+                  {{ row.status === 'filled' ? '已填写' : '待填写' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="记录" width="140">
+              <template #default="{ row }">
+                <el-button v-if="row.record" link type="primary" @click="router.push(`/records/${row.record.id}`)">
+                  {{ row.record.number }}
+                </el-button>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+
         <!-- 合规评估记录 -->
         <div class="detail-section">
           <div class="section-header">
@@ -398,6 +423,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
@@ -422,6 +448,8 @@ import changeApprovalApi, {
   getDecisionText,
   getDecisionType,
 } from '@/api/change-approval';
+
+const router = useRouter();
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -571,6 +599,12 @@ async function openDetailDialog(event: ChangeEvent) {
   verificationRecords.value = [];
   approvalRecords.value = [];
   detailDialogVisible.value = true;
+  try {
+    const full = await changeEventApi.getOne(event.id);
+    currentEvent.value = full as unknown as ChangeEvent;
+  } catch {
+    // keep existing event data on error
+  }
   await loadSubRecords(event.id);
 }
 
