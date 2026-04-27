@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
+import { nextTick } from 'vue';
 
 const mockGet = vi.fn();
 const mockPost = vi.fn();
 const mockDelete = vi.fn();
 const mockPush = vi.fn();
+const mockUpdateMarkdown = vi.fn();
 
 vi.mock('@/api/request', () => ({
   default: {
@@ -39,6 +41,12 @@ vi.mock('@/api/file-preview', () => ({
   },
 }));
 
+vi.mock('@/api/document-control', () => ({
+  documentControlApi: {
+    updateMarkdown: (...args: unknown[]) => mockUpdateMarkdown(...args),
+  },
+}));
+
 const stubs: Record<string, any> = {
   'el-page-header': { template: '<div><slot name="content" /></div>' },
   'el-card': { template: '<div><slot /><slot name="header" /></div>' },
@@ -46,7 +54,7 @@ const stubs: Record<string, any> = {
   'el-descriptions-item': { template: '<div><slot /></div>', props: ['label'] },
   'el-tag': { template: '<span><slot /></span>', props: ['type'] },
   'el-alert': { template: '<div />', props: ['title', 'type', 'closable'] },
-  'el-button': { template: '<button @click="$emit(\'click\')"><slot /></button>' , props: ['type', 'disabled', 'loading'] },
+  'el-button': { template: '<button @click="$emit(\'click\')"><slot /></button>' , props: ['type', 'disabled', 'loading'], emits: ['click'] },
   'el-icon': { template: '<span><slot /></span>' },
   'el-dialog': { template: '<div v-if="modelValue"><slot /><slot name="footer" /></div>', props: ['modelValue', 'title'] },
   'el-form': { template: '<form><slot /></form>', props: ['model', 'rules'] },
@@ -55,7 +63,10 @@ const stubs: Record<string, any> = {
   'el-table': { template: '<div><slot /></div>', props: ['data'] },
   'el-table-column': { template: '<div />', props: ['prop', 'label', 'width'] },
   'OfficePreview': { template: '<div class="stub-office-preview" />', props: ['filename', 'previewUrl'] },
-  'MarkdownEditor': { template: '<div class="markdown-editor-stub" />', props: ['modelValue'] },
+  'MarkdownEditor': {
+    template: '<textarea class="markdown-editor-stub" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+    props: ['modelValue'],
+  },
   'View': { template: '<span />' },
   'Download': { template: '<span />' },
   'Edit': { template: '<span />' },
@@ -88,6 +99,7 @@ describe('DocumentDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setActivePinia(createPinia());
+    mockUpdateMarkdown.mockResolvedValue({});
     mockGet.mockImplementation((url: string) => {
       if (url.includes('/versions')) return Promise.resolve([]);
       return Promise.resolve(mockDocument);
@@ -228,5 +240,34 @@ describe('DocumentDetail', () => {
     await flushPromises();
     expect(c.find('.markdown-viewer h1').text()).toBe('文档正文');
     expect(c.find('.markdown-viewer').text()).toContain('这是 Markdown 正文');
+  });
+
+  it('saves markdown edits for draft documents and refreshes detail', async () => {
+    const c = w();
+    await flushPromises();
+
+    await c.findAll('button').find(button => button.text() === '编辑正文')!.trigger('click');
+    await c.find('.markdown-editor-stub').setValue('更新后的正文');
+    await c.findAll('button').find(button => button.text() === '保存正文')!.trigger('click');
+    await flushPromises();
+
+    expect(mockUpdateMarkdown).toHaveBeenCalledWith('doc-1', { contentMd: '更新后的正文' });
+    expect(mockGet.mock.calls.filter(([url]) => url === '/documents/doc-1')).toHaveLength(2);
+  });
+
+  it('does not expose or keep markdown editor visible for non-editable statuses', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url.includes('/versions')) return Promise.resolve([]);
+      return Promise.resolve({ ...mockDocument, status: 'approved' });
+    });
+    const c = w();
+    await flushPromises();
+
+    expect(c.findAll('button').some(button => button.text() === '编辑正文')).toBe(false);
+
+    (c.vm as any).markdownEditing = true;
+    await nextTick();
+
+    expect(c.find('.markdown-editor-stub').exists()).toBe(false);
   });
 });

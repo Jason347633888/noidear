@@ -162,7 +162,7 @@
         </div>
       </template>
       <MarkdownEditor
-        v-if="markdownEditing"
+        v-if="markdownEditing && canEditMarkdown"
         v-model="markdownDraft"
       />
       <MarkdownViewer
@@ -375,9 +375,10 @@ const savingMarkdown = ref(false);
 // 权限判断
 const isCreator = computed(() => document.value?.creatorId === userStore.user?.id);
 const isAdmin = computed(() => userStore.user?.role === 'admin');
+const isDirectMarkdownEditableStatus = (status: string) => ['draft', 'rejected'].includes(status);
 const canEditMarkdown = computed(() => {
   if (!document.value) return false;
-  return ['draft', 'rejected'].includes(document.value.status);
+  return isDirectMarkdownEditableStatus(document.value.status);
 });
 
 // 归档/作废/恢复相关
@@ -475,6 +476,9 @@ const fetchData = async () => {
     const res = await request.get<Document>(`/documents/${route.params.id}`);
     document.value = res;
     markdownDraft.value = res.content_md || '';
+    if (!isDirectMarkdownEditableStatus(res.status)) {
+      markdownEditing.value = false;
+    }
   } catch (error) {
     ElMessage.error('获取文档详情失败');
   } finally {
@@ -525,6 +529,7 @@ const handleDownload = () => {
 };
 
 const startMarkdownEdit = () => {
+  if (!canEditMarkdown.value) return;
   markdownDraft.value = document.value?.content_md || '';
   markdownEditing.value = true;
 };
@@ -535,7 +540,7 @@ const cancelMarkdownEdit = () => {
 };
 
 const saveMarkdown = async () => {
-  if (!document.value?.id) {
+  if (!document.value?.id || !canEditMarkdown.value) {
     return;
   }
   savingMarkdown.value = true;
