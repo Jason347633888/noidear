@@ -594,6 +594,16 @@ archived -> effective
 
 ## 9. 分阶段实施
 
+阶段和 plan 文件对应关系：
+
+| 阶段 | Plan 文件 | 说明 |
+| --- | --- | --- |
+| 阶段零 | `docs/superpowers/plans/2026-04-27-document-management-usability-phase0-implementation.md` | 详细执行计划，可直接交给 agent 实施 |
+| 阶段一 | `docs/superpowers/plans/2026-04-27-document-governance-phase1-strong-links-plan.md` | 阶段计划，执行前再细化为代码级 implementation plan |
+| 阶段二 | `docs/superpowers/plans/2026-04-27-document-governance-phase2-change-mainline-plan.md` | 阶段计划，依赖阶段零和阶段一 |
+| 阶段三 | `docs/superpowers/plans/2026-04-27-document-governance-phase3-actionable-workbench-plan.md` | 阶段计划，依赖工作台入口和强引用稳定 |
+| 阶段四 | `docs/superpowers/plans/2026-04-27-document-governance-phase4-evidence-chain-plan.md` | 阶段计划，依赖前面阶段形成可追溯数据关系 |
+
 ### 阶段零：文档管理第一批可用性
 
 - 统一文档状态读写口径，兼容旧 `approved`。
