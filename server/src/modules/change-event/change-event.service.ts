@@ -1,4 +1,4 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
@@ -9,6 +9,8 @@ import { CreateVerificationDto } from './dto/create-verification.dto';
 
 @Injectable()
 export class ChangeEventService {
+  private readonly logger = new Logger(ChangeEventService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
@@ -19,10 +21,12 @@ export class ChangeEventService {
 
   async create(dto: CreateChangeEventDto, userId: string) {
     const year = new Date().getFullYear();
+
+    // Atomic: count + create ChangeEvent to ensure unique change_no
     const changeEvent = await this.prisma.$transaction(async (tx: any) => {
       const count = await tx.changeEvent.count();
       const change_no = `CE-${year}-${String(count + 1).padStart(4, '0')}`;
-      const created = await tx.changeEvent.create({
+      return tx.changeEvent.create({
         data: {
           company_id: '1',
           change_no,
@@ -34,11 +38,11 @@ export class ChangeEventService {
           status: dto.status ?? 'pending',
         },
       });
-
-      await this.relationService.createRelations(created.id, dto.relations ?? []);
-      await this.formTaskService.generateDefaultTasks(created.id, dto.change_type);
-      return created;
     });
+
+    // These run after the ChangeEvent is committed — they reference changeEvent.id
+    await this.relationService.createRelations(changeEvent.id, dto.relations ?? []);
+    await this.formTaskService.generateDefaultTasks(changeEvent.id, dto.change_type);
 
     try {
       await this.approvalEngine?.startApproval({
@@ -49,8 +53,8 @@ export class ChangeEventService {
         title: `变更事件审批：${changeEvent.change_no}`,
         createdById: userId,
       });
-    } catch {
-      // no approval definition = skip
+    } catch (error) {
+      this.logger.warn('Approval engine skipped (no definition or error)', error instanceof Error ? error.message : String(error));
     }
 
     return this.findOne(changeEvent.id);

@@ -1,8 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RecordService } from '../record/record.service';
-import { CreateRecordDto } from '../record/dto/create-record.dto';
 import { getDefaultFormCodesForChangeType } from './change-event-default-form-rules';
 
 @Injectable()
@@ -52,30 +50,27 @@ export class ChangeEventFormTaskService {
   }
 
   async fillTask(taskId: string, dataJson: object, userId: string) {
-    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const task = await tx.changeEventFormTask.findUnique({ where: { id: taskId } });
-      if (!task) throw new NotFoundException('变更表单任务不存在');
-      if (task.recordId) throw new ConflictException('变更表单任务已填写');
-      if (task.status !== 'pending') throw new BadRequestException('只有待填写任务可以填写');
+    const task = await this.prisma.changeEventFormTask.findUnique({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('变更表单任务不存在');
+    if (task.recordId) throw new ConflictException('变更表单任务已填写');
+    if (task.status !== 'pending') throw new BadRequestException('只有待填写任务可以填写');
 
-      const dto: CreateRecordDto = {
-        templateId: task.templateId,
-        dataJson,
-        usageType: 'change',
-        sourceType: 'change_event',
-        sourceId: task.changeEventId,
-        changeEventId: task.changeEventId,
-      };
-      const record = await this.recordService.create(dto, userId);
+    const record = await this.recordService.create({
+      templateId: task.templateId,
+      dataJson,
+      usageType: 'change' as const,
+      sourceType: 'change_event',
+      sourceId: task.changeEventId,
+      changeEventId: task.changeEventId,
+    }, userId);
 
-      return tx.changeEventFormTask.update({
-        where: { id: task.id },
-        data: { recordId: record.id, status: 'filled' },
-        include: {
-          template: { select: { id: true, code: true, name: true, status: true } },
-          record: { select: { id: true, number: true, status: true, createdAt: true } },
-        },
-      });
+    return this.prisma.changeEventFormTask.update({
+      where: { id: task.id },
+      data: { recordId: record.id, status: 'filled' },
+      include: {
+        template: { select: { id: true, code: true, name: true, status: true } },
+        record: { select: { id: true, number: true, status: true, createdAt: true } },
+      },
     });
   }
 }
