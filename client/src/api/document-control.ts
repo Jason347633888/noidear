@@ -39,6 +39,27 @@ export interface DocumentReference {
   sourceDoc?: { id: string; title: string; status: string } | null;
 }
 
+export type ReferenceHealthStatus = 'healthy' | 'dangling' | 'invalid' | 'conflict' | 'superseded';
+
+export interface DocumentReferenceHealthIssue {
+  sourceDocId: string;
+  sourceTitle: string;
+  referenceId: string;
+  label: string;
+  status: ReferenceHealthStatus;
+  reason: string;
+  targetDocId?: string;
+  targetTitle?: string;
+  supersededById?: string;
+  supersededByTitle?: string;
+  candidates?: Array<{ id: string; number?: string | null; title: string }>;
+}
+
+export interface DocumentReferenceHealthResult {
+  totals: Record<ReferenceHealthStatus | 'total', number>;
+  issues: DocumentReferenceHealthIssue[];
+}
+
 export interface DocumentListResponse {
   list: DocumentControlDocument[];
   total: number;
@@ -104,6 +125,14 @@ export const documentControlApi = {
 
   updateMarkdown(documentId: string, payload: { contentMd: string }) {
     return request.patch(`/documents/${documentId}/markdown`, payload);
+  },
+
+  getReferenceHealth(documentId: string) {
+    return request.get<DocumentReferenceHealthResult>(`/documents/${documentId}/reference-health`);
+  },
+
+  listReferenceHealthIssues() {
+    return request.get<DocumentReferenceHealthResult>('/documents/reference-health/issues');
   },
 
   getWorkbench(days = 30) {

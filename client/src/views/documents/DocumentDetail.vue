@@ -173,6 +173,35 @@
 
     <el-card class="reference-card" v-if="hasReferences">
       <template #header>引用关系</template>
+      <section v-if="referenceHealth" class="reference-section">
+        <h3>引用健康概览</h3>
+        <div class="reference-health-summary">
+          <el-tag>总引用 {{ referenceHealth.totals.total }}</el-tag>
+          <el-tag type="success">正常 {{ referenceHealth.totals.healthy }}</el-tag>
+          <el-tag type="warning">悬空 {{ referenceHealth.totals.dangling }}</el-tag>
+          <el-tag type="danger">无效 {{ referenceHealth.totals.invalid }}</el-tag>
+          <el-tag type="warning">冲突 {{ referenceHealth.totals.conflict }}</el-tag>
+          <el-tag type="warning">被替代 {{ referenceHealth.totals.superseded }}</el-tag>
+        </div>
+        <el-table v-if="referenceHealthIssues.length" :data="referenceHealthIssues" stripe>
+          <el-table-column prop="label" label="引用文本" />
+          <el-table-column label="问题">
+            <template #default="{ row }">
+              <el-tag :type="referenceHealthTagType(row.status)">
+                {{ referenceHealthStatusText(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="reason" label="原因" />
+          <el-table-column label="操作">
+            <template #default="{ row }">
+              <el-button text type="primary" @click="handleReferenceHealthIssue(row)">
+                {{ referenceHealthActionText(row.status) }}
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </section>
       <section v-if="outboundReferences.length" class="reference-section">
         <h3>引用了</h3>
         <el-table :data="outboundReferences" stripe>
@@ -336,7 +365,7 @@ import MarkdownEditor from '@/components/documents/MarkdownEditor.vue';
 import MarkdownViewer from '@/components/documents/MarkdownViewer.vue';
 import { useUserStore } from '@/stores/user';
 import filePreviewApi from '@/api/file-preview';
-import { documentControlApi } from '@/api/document-control';
+import { documentControlApi, type DocumentReferenceHealthIssue, type DocumentReferenceHealthResult, type ReferenceHealthStatus } from '@/api/document-control';
 
 interface VersionItem {
   id: string;
@@ -410,6 +439,7 @@ const previewUrl = ref('');
 const markdownEditing = ref(false);
 const markdownDraft = ref('');
 const savingMarkdown = ref(false);
+const referenceHealth = ref<DocumentReferenceHealthResult | null>(null);
 
 // 权限判断
 const isCreator = computed(() => document.value?.creatorId === userStore.user?.id);
@@ -434,7 +464,11 @@ const hasReferences = computed(() => (
   outboundReferences.value.length > 0 ||
   inboundReferences.value.length > 0 ||
   unresolvedWikilinks.value.length > 0 ||
-  conflictWikilinks.value.length > 0
+  conflictWikilinks.value.length > 0 ||
+  Boolean(referenceHealth.value?.totals.total)
+));
+const referenceHealthIssues = computed(() => (
+  referenceHealth.value?.issues.filter(issue => issue.status !== 'healthy') || []
 ));
 
 // 归档/作废/恢复相关
@@ -512,6 +546,34 @@ const conflictCandidateLabel = (ref: DocumentReference): string => {
     .join('、');
 };
 
+const referenceHealthStatusText = (status: ReferenceHealthStatus): string => {
+  const map: Record<ReferenceHealthStatus, string> = {
+    healthy: '正常',
+    dangling: '悬空',
+    invalid: '无效',
+    conflict: '冲突',
+    superseded: '被替代',
+  };
+  return map[status];
+};
+
+const referenceHealthTagType = (status: ReferenceHealthStatus): string => {
+  if (status === 'healthy') return 'success';
+  if (status === 'invalid') return 'danger';
+  return 'warning';
+};
+
+const referenceHealthActionText = (status: ReferenceHealthStatus): string => {
+  const map: Record<ReferenceHealthStatus, string> = {
+    healthy: '查看',
+    dangling: '定位引用',
+    invalid: '查看目标',
+    conflict: '处理冲突',
+    superseded: '查看新版',
+  };
+  return map[status];
+};
+
 const getStatusType = (status: string): string => {
   const map: Record<string, string> = {
     draft: 'info',
@@ -560,6 +622,15 @@ const fetchVersionHistory = async () => {
     versionHistory.value = res.versions || [];
   } catch (error) {
     // 版本历史获取失败不影响主流程
+  }
+};
+
+const fetchReferenceHealth = async () => {
+  if (!route.params.id) return;
+  try {
+    referenceHealth.value = await documentControlApi.getReferenceHealth(String(route.params.id));
+  } catch (error) {
+    referenceHealth.value = null;
   }
 };
 
@@ -617,10 +688,33 @@ const saveMarkdown = async () => {
     ElMessage.success('正文保存成功');
     markdownEditing.value = false;
     await fetchData();
+    await fetchReferenceHealth();
   } catch (error) {
     ElMessage.error('正文保存失败');
   } finally {
     savingMarkdown.value = false;
+  }
+};
+
+const handleReferenceHealthIssue = (issue: DocumentReferenceHealthIssue) => {
+  if (issue.status === 'dangling') {
+    ElMessage.warning(`请在正文中定位并修正引用: ${issue.label}`);
+    return;
+  }
+  if (issue.status === 'conflict') {
+    ElMessage.warning('请在冲突候选中选择正确受控文件后更新引用');
+    return;
+  }
+  if (issue.status === 'superseded' && issue.supersededById) {
+    ElMessage.warning('目标已被新版本替代，请更新引用');
+    router.push(`/documents/${issue.supersededById}`);
+    return;
+  }
+  if (issue.targetDocId) {
+    if (issue.status === 'invalid') {
+      ElMessage.warning('目标文件已不可作为当前依据');
+    }
+    router.push(`/documents/${issue.targetDocId}`);
   }
 };
 
@@ -768,6 +862,7 @@ const handleRestore = async () => {
 onMounted(() => {
   fetchData();
   fetchVersionHistory();
+  fetchReferenceHealth();
 });
 </script>
 
@@ -817,6 +912,17 @@ onMounted(() => {
 
 .reference-card {
   margin-top: 16px;
+}
+
+.reference-section {
+  margin-top: 12px;
+}
+
+.reference-health-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .preview-dialog-body {

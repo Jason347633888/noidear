@@ -33,6 +33,7 @@ import { DocumentAuditCoverageService } from './services/document-audit-coverage
 import { DocumentImpactService } from './services/document-impact.service';
 import { DocumentHealthService } from './services/document-health.service';
 import { DocumentAuditChainService } from './services/document-audit-chain.service';
+import { DocumentReferenceHealthService } from './services/document-reference-health.service';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto, WorkbenchQueryDto, CreateReadRequirementDto, TrainingNeedActionDto, ImpactReviewCreateDto, ImpactItemUpdateDto, CoverageQueryDto, AuditChainQueryDto, UpdateMarkdownDto } from './dto';
 import { UpdateRecordFormLandingEntryDto } from './dto/document-control.dto';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
@@ -68,6 +69,7 @@ export class DocumentController {
     private readonly impactService: DocumentImpactService,
     private readonly healthService: DocumentHealthService,
     private readonly auditChainService: DocumentAuditChainService,
+    private readonly referenceHealthService: DocumentReferenceHealthService,
   ) {}
 
   @Post('upload')
@@ -268,6 +270,12 @@ export class DocumentController {
     return this.auditChainService.getChain(dto.sourceType, dto.sourceId, dto.maxDepth ?? 4);
   }
 
+  @Get('reference-health/issues')
+  @ApiOperation({ summary: '查询文档引用问题清单' })
+  getReferenceHealthIssues() {
+    return this.referenceHealthService.listIssues();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: '查询文档详情' })
   async findOne(@Param('id') id: string, @Req() req: any) {
@@ -287,6 +295,12 @@ export class DocumentController {
     }
 
     return document;
+  }
+
+  @Get(':id/reference-health')
+  @ApiOperation({ summary: '查询单个文档引用健康度' })
+  getDocumentReferenceHealth(@Param('id') id: string) {
+    return this.referenceHealthService.getDocumentHealth(id);
   }
 
   @Get(':id/versions')

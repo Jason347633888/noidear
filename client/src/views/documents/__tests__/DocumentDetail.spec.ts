@@ -8,6 +8,7 @@ const mockPost = vi.fn();
 const mockDelete = vi.fn();
 const mockPush = vi.fn();
 const mockUpdateMarkdown = vi.fn();
+const mockGetReferenceHealth = vi.fn();
 
 vi.mock('@/api/request', () => ({
   default: {
@@ -23,7 +24,7 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('element-plus', () => ({
-  ElMessage: { success: vi.fn(), error: vi.fn() },
+  ElMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
   ElMessageBox: { confirm: vi.fn() },
 }));
 
@@ -44,6 +45,7 @@ vi.mock('@/api/file-preview', () => ({
 vi.mock('@/api/document-control', () => ({
   documentControlApi: {
     updateMarkdown: (...args: unknown[]) => mockUpdateMarkdown(...args),
+    getReferenceHealth: (...args: unknown[]) => mockGetReferenceHealth(...args),
   },
 }));
 
@@ -100,6 +102,12 @@ describe('DocumentDetail', () => {
     vi.clearAllMocks();
     setActivePinia(createPinia());
     mockUpdateMarkdown.mockResolvedValue({});
+    mockGetReferenceHealth.mockResolvedValue({
+      totals: { total: 1, healthy: 1, dangling: 0, invalid: 0, conflict: 0, superseded: 0 },
+      issues: [
+        { sourceDocId: 'doc-1', sourceTitle: '测试文档', referenceId: 'ref1', label: '研发流程', status: 'healthy', reason: '目标文件可作为当前引用依据。', targetDocId: 'doc-2', targetTitle: '研发流程' },
+      ],
+    });
     mockGet.mockImplementation((url: string) => {
       if (url.includes('/versions')) return Promise.resolve([]);
       return Promise.resolve(mockDocument);
@@ -236,6 +244,14 @@ describe('DocumentDetail', () => {
   });
 
   it('classifies wikilink references for detail sections', async () => {
+    mockGetReferenceHealth.mockResolvedValue({
+      totals: { total: 3, healthy: 1, dangling: 1, invalid: 0, conflict: 1, superseded: 0 },
+      issues: [
+        { sourceDocId: 'doc-1', sourceTitle: '测试文档', referenceId: 'resolved', label: '程序文件', status: 'healthy', reason: '目标文件可作为当前引用依据。', targetDocId: 'doc-2', targetTitle: '程序文件' },
+        { sourceDocId: 'doc-1', sourceTitle: '测试文档', referenceId: 'unresolved', label: '不存在文件', status: 'dangling', reason: '引用文本未匹配到受控文件。' },
+        { sourceDocId: 'doc-1', sourceTitle: '测试文档', referenceId: 'conflict', label: '重复文件', status: 'conflict', reason: '引用文本匹配到多个候选文件，需要文控人员确认目标。' },
+      ],
+    });
     mockGet.mockImplementation((url: string) => {
       if (url.includes('/versions')) return Promise.resolve([]);
       return Promise.resolve({
@@ -262,6 +278,8 @@ describe('DocumentDetail', () => {
     expect(c.text()).toContain('被引用');
     expect(c.text()).toContain('未解析引用');
     expect(c.text()).toContain('冲突引用');
+    expect(c.text()).toContain('引用健康概览');
+    expect((c.vm as any).referenceHealthIssues.map((issue: any) => issue.status)).toEqual(['dangling', 'conflict']);
   });
 
   it('renders markdown body when document has content_md', async () => {
@@ -282,6 +300,26 @@ describe('DocumentDetail', () => {
 
     expect(mockUpdateMarkdown).toHaveBeenCalledWith('doc-1', { contentMd: '更新后的正文' });
     expect(mockGet.mock.calls.filter(([url]) => url === '/documents/doc-1')).toHaveLength(2);
+    expect(mockGetReferenceHealth).toHaveBeenCalledWith('doc-1');
+  });
+
+  it('routes reference health actions to replacement or target documents', async () => {
+    const c = w();
+    await flushPromises();
+
+    (c.vm as any).handleReferenceHealthIssue({
+      status: 'superseded',
+      label: '旧版文件',
+      supersededById: 'doc-new',
+    });
+    expect(mockPush).toHaveBeenCalledWith('/documents/doc-new');
+
+    (c.vm as any).handleReferenceHealthIssue({
+      status: 'invalid',
+      label: '失效文件',
+      targetDocId: 'doc-old',
+    });
+    expect(mockPush).toHaveBeenCalledWith('/documents/doc-old');
   });
 
   it('does not expose or keep markdown editor visible for non-editable statuses', async () => {
