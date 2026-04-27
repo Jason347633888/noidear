@@ -60,4 +60,19 @@ describe('DocumentControlWorkbenchService', () => {
     expect(result.counts.missingLandingTargets).toBe(0);
     expect(result.counts.missingMetadata).toBe(0);
   });
+
+  it('exposes stable issue type contract values', async () => {
+    const dto = await import('../dto/document-control.dto');
+    expect(dto.WORKBENCH_ISSUE_TYPES).toEqual([
+      'pendingReview',
+      'dueForReview',
+      'expiringExternalFiles',
+      'obsoleteReferences',
+      'brokenReferences',
+      'missingLandingTargets',
+      'missingMetadata',
+      'trainingNeeds',
+      'openImpactItems',
+    ]);
+  });
 });
