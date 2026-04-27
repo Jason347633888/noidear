@@ -307,6 +307,8 @@ export class DocumentController {
   }
 
   @Post(':id/versions/:targetVersion/rollback')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:control_manage')
   @ApiOperation({ summary: '回滚到指定版本' })
   async rollbackVersion(
     @Param('id') id: string,

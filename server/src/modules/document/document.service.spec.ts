@@ -7,6 +7,7 @@ import { StorageService } from '../../common/services/storage.service';
 import { NotificationService } from '../notification/notification.service';
 import { OperationLogService } from '../operation-log/operation-log.service';
 import { DocumentControlMetadataService } from './services/document-control-metadata.service';
+import { FilePreviewService } from './services';
 import { EFFECTIVE_COMPAT_STATUSES } from './constants/document-control.constants';
 
 describe('DocumentService document control metadata', () => {
@@ -28,6 +29,7 @@ describe('DocumentService document control metadata', () => {
     $queryRaw: jest.fn(),
   };
   const storage = { uploadFile: jest.fn() };
+  const filePreview = { assertFileAccess: jest.fn() };
   const notification = { create: jest.fn() };
   const operationLog = { log: jest.fn() };
   const eventEmitter = { emit: jest.fn() };
@@ -45,6 +47,7 @@ describe('DocumentService document control metadata', () => {
         { provide: NotificationService, useValue: notification },
         { provide: OperationLogService, useValue: operationLog },
         { provide: EventEmitter2, useValue: eventEmitter },
+        { provide: FilePreviewService, useValue: filePreview },
       ],
     }).compile();
     service = module.get(DocumentService);
@@ -105,6 +108,7 @@ describe('document status compatibility', () => {
     $queryRaw: jest.fn(),
   };
   const storage = { uploadFile: jest.fn() };
+  const filePreview = { assertFileAccess: jest.fn() };
   const notification = { create: jest.fn() };
   const operationLog = { log: jest.fn() };
   const eventEmitter = { emit: jest.fn() };
@@ -122,6 +126,7 @@ describe('document status compatibility', () => {
         { provide: NotificationService, useValue: notification },
         { provide: OperationLogService, useValue: operationLog },
         { provide: EventEmitter2, useValue: eventEmitter },
+        { provide: FilePreviewService, useValue: filePreview },
       ],
     }).compile();
     service = module.get(DocumentService);
@@ -199,6 +204,7 @@ describe('document version operations', () => {
     document: {
       findUnique: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     documentVersion: {
       findFirst: jest.fn(),
@@ -206,7 +212,8 @@ describe('document version operations', () => {
     },
     $transaction: jest.fn(),
   };
-  const storage = { uploadFile: jest.fn() };
+  const storage = { uploadFile: jest.fn(), getSignedUrl: jest.fn(), getFileStream: jest.fn() };
+  const filePreview = { assertFileAccess: jest.fn() };
   const notification = { create: jest.fn() };
   const operationLog = { log: jest.fn() };
   const eventEmitter = { emit: jest.fn() };
@@ -224,6 +231,7 @@ describe('document version operations', () => {
         { provide: NotificationService, useValue: notification },
         { provide: OperationLogService, useValue: operationLog },
         { provide: EventEmitter2, useValue: eventEmitter },
+        { provide: FilePreviewService, useValue: filePreview },
       ],
     }).compile();
     service = module.get(DocumentService);
@@ -247,7 +255,7 @@ describe('document version operations', () => {
       fileSize: 100,
     });
     prisma.documentVersion.create.mockResolvedValue({});
-    prisma.document.update.mockResolvedValue({ id: 'doc1', version: new Prisma.Decimal('1.3') });
+    prisma.document.updateMany.mockResolvedValue({ count: 1 });
     operationLog.log.mockResolvedValue({});
 
     await service.rollbackVersion('doc1', '1.0', '恢复到已批准版本', 'u1');
@@ -270,6 +278,35 @@ describe('document version operations', () => {
     }));
   });
 
+  it('rejects rollback when the document version changed concurrently', async () => {
+    prisma.$transaction.mockImplementation(async (cb) => cb(prisma));
+    prisma.document.findUnique.mockResolvedValue({
+      id: 'doc1',
+      version: new Prisma.Decimal('1.2'),
+      filePath: 'documents/current.pdf',
+      fileName: 'current.pdf',
+      fileSize: 200,
+      status: 'effective',
+      deletedAt: null,
+    });
+    prisma.documentVersion.findFirst.mockResolvedValue({
+      version: new Prisma.Decimal('1.0'),
+      filePath: 'documents/old.pdf',
+      fileName: 'old.pdf',
+      fileSize: 100,
+    });
+    prisma.documentVersion.create.mockResolvedValue({});
+    prisma.document.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(service.rollbackVersion('doc1', '1.0', '恢复到已批准版本', 'u1')).rejects.toThrow();
+    expect(operationLog.log).not.toHaveBeenCalled();
+  });
+
+  it('rejects rollback when the reason is blank', async () => {
+    await expect(service.rollbackVersion('doc1', '1.0', '   ', 'u1')).rejects.toThrow();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it('rejects rollback for archived documents', async () => {
     prisma.$transaction.mockImplementation(async (cb) => cb(prisma));
     prisma.document.findUnique.mockResolvedValue({
@@ -279,5 +316,73 @@ describe('document version operations', () => {
     });
 
     await expect(service.rollbackVersion('doc1', '1.0', '恢复到已批准版本', 'u1')).rejects.toThrow();
+  });
+
+  it('uses file preview permissions for historical pdf preview', async () => {
+    prisma.document.findUnique.mockResolvedValue({
+      id: 'doc1',
+      status: 'effective',
+      creatorId: 'other',
+      deletedAt: null,
+    });
+    prisma.documentVersion.findFirst.mockResolvedValue({
+      version: new Prisma.Decimal('1.0'),
+      filePath: 'documents/old.pdf',
+      fileName: 'old.pdf',
+      fileSize: 100,
+    });
+    filePreview.assertFileAccess.mockResolvedValue(undefined);
+    storage.getSignedUrl.mockResolvedValue('https://signed/old.pdf');
+
+    await expect(service.getVersionPreview('doc1', '1.0', 'u1', 'user')).resolves.toEqual({
+      type: 'pdf',
+      url: 'https://signed/old.pdf',
+      fileName: 'old.pdf',
+    });
+    expect(filePreview.assertFileAccess).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'doc1',
+      status: 'effective',
+    }), 'u1', 'user');
+  });
+
+  it('rejects invalid historical version params', async () => {
+    prisma.document.findUnique.mockResolvedValue({
+      id: 'doc1',
+      status: 'effective',
+      creatorId: 'other',
+      deletedAt: null,
+    });
+    filePreview.assertFileAccess.mockResolvedValue(undefined);
+
+    await expect(service.getVersionPreview('doc1', 'not-a-version', 'u1', 'user')).rejects.toThrow();
+    expect(prisma.documentVersion.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('sets RFC-friendly headers when downloading a historical version', async () => {
+    const stream = { pipe: jest.fn() };
+    const res = { set: jest.fn() };
+    prisma.document.findUnique.mockResolvedValue({
+      id: 'doc1',
+      status: 'effective',
+      creatorId: 'other',
+      deletedAt: null,
+    });
+    prisma.documentVersion.findFirst.mockResolvedValue({
+      version: new Prisma.Decimal('1.0'),
+      filePath: 'documents/old.pdf',
+      fileName: '旧版本.pdf',
+      fileSize: 123,
+    });
+    filePreview.assertFileAccess.mockResolvedValue(undefined);
+    storage.getFileStream.mockResolvedValue(stream);
+
+    await service.downloadVersion('doc1', '1.0', 'u1', 'user', res as any);
+
+    expect(res.set).toHaveBeenCalledWith({
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="___.pdf"; filename*=UTF-8''${encodeURIComponent('旧版本.pdf')}`,
+      'Content-Length': '123',
+    });
+    expect(stream.pipe).toHaveBeenCalledWith(res);
   });
 });

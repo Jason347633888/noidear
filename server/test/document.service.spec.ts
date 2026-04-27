@@ -7,6 +7,7 @@ import { OperationLogService } from '../src/modules/operation-log/operation-log.
 import { BusinessException } from '../src/common/exceptions/business.exception';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DocumentControlMetadataService } from '../src/modules/document/services/document-control-metadata.service';
+import { FilePreviewService } from '../src/modules/document/services';
 
 describe('DocumentService', () => {
   let service: DocumentService;
@@ -62,6 +63,9 @@ describe('DocumentService', () => {
   const mockOperationLogService = {
     log: jest.fn(),
   };
+  const mockFilePreviewService = {
+    assertFileAccess: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -72,6 +76,7 @@ describe('DocumentService', () => {
         { provide: StorageService, useValue: mockStorageService },
         { provide: NotificationService, useValue: mockNotificationService },
         { provide: OperationLogService, useValue: mockOperationLogService },
+        { provide: FilePreviewService, useValue: mockFilePreviewService },
         { provide: 'SnowflakeService', useValue: mockSnowflake },
         { provide: EventEmitter2, useValue: { emit: jest.fn(), emitAsync: jest.fn(), on: jest.fn() } },
       ],

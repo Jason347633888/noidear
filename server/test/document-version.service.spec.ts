@@ -5,6 +5,7 @@ import { StorageService } from '../src/common/services';
 import { NotificationService } from '../src/modules/notification/notification.service';
 import { OperationLogService } from '../src/modules/operation-log/operation-log.service';
 import { DocumentControlMetadataService } from '../src/modules/document/services/document-control-metadata.service';
+import { FilePreviewService } from '../src/modules/document/services';
 import { BusinessException, ErrorCode } from '../src/common/exceptions/business.exception';
 import { Decimal } from '@prisma/client/runtime/library';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -18,6 +19,7 @@ describe('DocumentService - Version Management', () => {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     documentVersion: {
       findMany: jest.fn(),
@@ -57,6 +59,7 @@ describe('DocumentService - Version Management', () => {
         { provide: NotificationService, useValue: mockNotificationService },
         { provide: OperationLogService, useValue: mockOperationLogService },
         { provide: DocumentControlMetadataService, useValue: { normalize: jest.fn((value) => value ?? {}) } },
+        { provide: FilePreviewService, useValue: { assertFileAccess: jest.fn() } },
         { provide: EventEmitter2, useValue: { emit: jest.fn(), emitAsync: jest.fn(), on: jest.fn() } },
       ],
     }).compile();
@@ -274,7 +277,7 @@ describe('DocumentService - Version Management', () => {
       mockPrismaService.document.findUnique.mockResolvedValue(document);
       mockPrismaService.documentVersion.findFirst.mockResolvedValue(targetVersion);
       mockPrismaService.documentVersion.create.mockResolvedValue({});
-      mockPrismaService.document.update.mockResolvedValue({ ...document, version: new Decimal('2.1') });
+      mockPrismaService.document.updateMany.mockResolvedValue({ count: 1 });
       mockOperationLogService.log.mockResolvedValue(undefined);
 
       const result = await service.rollbackVersion(documentId, '1.0', reason, userId);
@@ -292,8 +295,8 @@ describe('DocumentService - Version Management', () => {
           creatorId: userId,
         }),
       });
-      expect(mockPrismaService.document.update).toHaveBeenCalledWith({
-        where: { id: documentId },
+      expect(mockPrismaService.document.updateMany).toHaveBeenCalledWith({
+        where: { id: documentId, version: new Decimal('2.0') },
         data: {
           version: new Decimal('2.1'),
           filePath: '/path/v1.pdf',
@@ -314,6 +317,46 @@ describe('DocumentService - Version Management', () => {
           reason,
         }),
       }));
+    });
+
+    it('should reject stale rollback when document version changed', async () => {
+      const targetVersion = {
+        id: 'v1',
+        version: new Decimal('1.0'),
+        filePath: '/path/v1.pdf',
+        fileName: 'doc_v1.pdf',
+        fileSize: 1024,
+      };
+      const document = {
+        id: documentId,
+        version: new Decimal('2.0'),
+        filePath: '/path/current.pdf',
+        fileName: 'doc_current.pdf',
+        fileSize: 2048,
+        status: 'effective',
+        deletedAt: null,
+      };
+
+      mockPrismaService.document.findUnique.mockResolvedValue(document);
+      mockPrismaService.documentVersion.findFirst.mockResolvedValue(targetVersion);
+      mockPrismaService.documentVersion.create.mockResolvedValue({});
+      mockPrismaService.document.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.rollbackVersion(documentId, '1.0', reason, userId),
+      ).rejects.toThrow(
+        new BusinessException(ErrorCode.CONFLICT, '文档版本已变化，请刷新后重试'),
+      );
+      expect(mockOperationLogService.log).not.toHaveBeenCalled();
+    });
+
+    it('should reject blank rollback reason before starting transaction', async () => {
+      await expect(
+        service.rollbackVersion(documentId, '1.0', '   ', userId),
+      ).rejects.toThrow(
+        new BusinessException(ErrorCode.VALIDATION_ERROR, '回滚原因不能为空'),
+      );
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
     });
   });
 });

@@ -150,7 +150,7 @@ export class FilePreviewService {
     }
 
     // 权限检查
-    await this.checkDownloadPermission(document, userId, role);
+    await this.assertFileAccess(document, userId, role);
 
     // 获取文件流
     const stream = await this.storage.getFileStream(document.filePath);
@@ -183,7 +183,7 @@ export class FilePreviewService {
     }
 
     // 权限检查
-    await this.checkDownloadPermission(document, userId, role);
+    await this.assertFileAccess(document, userId, role);
 
     // 根据文件类型返回不同的预览方式
     const fileType = this.getFileType(document.fileType);
@@ -209,6 +209,14 @@ export class FilePreviewService {
   /**
    * 检查下载权限
    */
+  async assertFileAccess(
+    document: any,
+    userId: string,
+    role: string,
+  ): Promise<void> {
+    return this.checkDownloadPermission(document, userId, role);
+  }
+
   private async checkDownloadPermission(
     document: any,
     userId: string,

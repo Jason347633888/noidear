@@ -10,6 +10,7 @@ import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto } from './dto';
 import { NotificationService } from '../notification/notification.service';
 import { OperationLogService } from '../operation-log/operation-log.service';
 import { DocumentControlMetadataService } from './services/document-control-metadata.service';
+import { FilePreviewService } from './services';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 import {
   CANONICAL_DOCUMENT_STATUS,
@@ -28,6 +29,7 @@ export class DocumentService {
     private readonly operationLog: OperationLogService,
     private readonly eventEmitter: EventEmitter2,
     private readonly metadataService: DocumentControlMetadataService,
+    private readonly filePreviewService: FilePreviewService,
     @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {
     this.snowflake = new Snowflake(1, 1);
@@ -953,6 +955,8 @@ export class DocumentService {
     v2: string,
     userId: string,
   ) {
+    const version1Decimal = this.parseVersionParam(v1);
+    const version2Decimal = this.parseVersionParam(v2);
     const document = await this.prisma.document.findUnique({
       where: { id: documentId, deletedAt: null },
     });
@@ -967,7 +971,7 @@ export class DocumentService {
     const version1 = await this.prisma.documentVersion.findFirst({
       where: {
         documentId,
-        version: new Prisma.Decimal(v1),
+        version: version1Decimal,
       },
       include: {
         creator: {
@@ -986,7 +990,7 @@ export class DocumentService {
     const version2 = await this.prisma.documentVersion.findFirst({
       where: {
         documentId,
-        version: new Prisma.Decimal(v2),
+        version: version2Decimal,
       },
       include: {
         creator: {
@@ -1045,6 +1049,12 @@ export class DocumentService {
     reason: string,
     userId: string,
   ) {
+    if (!reason?.trim()) {
+      throw new BusinessException(ErrorCode.VALIDATION_ERROR, '回滚原因不能为空');
+    }
+
+    const targetVersionDecimal = this.parseVersionParam(targetVersion);
+
     return this.prisma.$transaction(async (tx) => {
       const document = await tx.document.findUnique({
         where: { id: documentId, deletedAt: null },
@@ -1067,7 +1077,7 @@ export class DocumentService {
       const version = await tx.documentVersion.findFirst({
         where: {
           documentId,
-          version: new Prisma.Decimal(targetVersion),
+          version: targetVersionDecimal,
         },
       });
 
@@ -1093,8 +1103,8 @@ export class DocumentService {
         },
       });
 
-      await tx.document.update({
-        where: { id: documentId },
+      const updated = await tx.document.updateMany({
+        where: { id: documentId, version: currentVersion },
         data: {
           version: newVersion,
           filePath: version.filePath,
@@ -1102,6 +1112,10 @@ export class DocumentService {
           fileSize: version.fileSize,
         },
       });
+
+      if (updated.count !== 1) {
+        throw new BusinessException(ErrorCode.CONFLICT, '文档版本已变化，请刷新后重试');
+      }
 
       await this.operationLog.log({
         userId,
@@ -1127,9 +1141,18 @@ export class DocumentService {
   }
 
   async getVersionPreview(documentId: string, version: string, userId: string, role: string) {
-    await this.findOne(documentId, userId, role);
+    const document = await this.prisma.document.findUnique({
+      where: { id: documentId, deletedAt: null },
+    });
+
+    if (!document) {
+      throw new BusinessException(ErrorCode.NOT_FOUND, '文档不存在');
+    }
+
+    await this.filePreviewService.assertFileAccess(document, userId, role);
+    const versionDecimal = this.parseVersionParam(version);
     const item = await this.prisma.documentVersion.findFirst({
-      where: { documentId, version: new Prisma.Decimal(version) },
+      where: { documentId, version: versionDecimal },
     });
 
     if (!item) {
@@ -1160,9 +1183,18 @@ export class DocumentService {
     role: string,
     res: Response,
   ): Promise<void> {
-    await this.findOne(documentId, userId, role);
+    const document = await this.prisma.document.findUnique({
+      where: { id: documentId, deletedAt: null },
+    });
+
+    if (!document) {
+      throw new BusinessException(ErrorCode.NOT_FOUND, '文档不存在');
+    }
+
+    await this.filePreviewService.assertFileAccess(document, userId, role);
+    const versionDecimal = this.parseVersionParam(version);
     const item = await this.prisma.documentVersion.findFirst({
-      where: { documentId, version: new Prisma.Decimal(version) },
+      where: { documentId, version: versionDecimal },
     });
 
     if (!item) {
@@ -1170,10 +1202,27 @@ export class DocumentService {
     }
 
     const stream = await this.storage.getFileStream(item.filePath);
-    res.set({
+    const headers: Record<string, string> = {
       'Content-Type': 'application/octet-stream',
-      'Content-Disposition': `attachment; filename="${encodeURIComponent(item.fileName)}"`,
-    });
+      'Content-Disposition': this.buildDownloadContentDisposition(item.fileName),
+    };
+    if (item.fileSize !== null && item.fileSize !== undefined) {
+      headers['Content-Length'] = String(item.fileSize);
+    }
+    res.set(headers);
     stream.pipe(res);
+  }
+
+  private parseVersionParam(version: string): Prisma.Decimal {
+    try {
+      return new Prisma.Decimal(version);
+    } catch {
+      throw new BusinessException(ErrorCode.VALIDATION_ERROR, `版本参数无效: ${version}`);
+    }
+  }
+
+  private buildDownloadContentDisposition(fileName: string): string {
+    const fallback = fileName.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_') || 'download';
+    return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
   }
 }
