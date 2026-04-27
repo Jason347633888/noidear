@@ -140,7 +140,7 @@
       </el-descriptions>
     </el-card>
 
-    <el-card class="markdown-card" v-if="document && document.content_md != null">
+    <el-card ref="markdownCardRef" class="markdown-card" v-if="document && document.content_md != null">
       <template #header>
         <div class="card-header">
           <span>Markdown 正文</span>
@@ -161,6 +161,13 @@
           </div>
         </div>
       </template>
+      <el-alert
+        v-if="activeReferenceLabel"
+        type="warning"
+        :title="`当前定位引用: [[${activeReferenceLabel}]]`"
+        :closable="false"
+        style="margin-bottom: 12px"
+      />
       <MarkdownEditor
         v-if="markdownEditing && canEditMarkdown"
         v-model="markdownDraft"
@@ -193,6 +200,30 @@
             </template>
           </el-table-column>
           <el-table-column prop="reason" label="原因" />
+          <el-table-column label="候选/替代">
+            <template #default="{ row }">
+              <template v-if="row.status === 'conflict' && expandedConflictReferenceId === row.referenceId">
+                <el-button
+                  v-for="candidate in row.candidates || []"
+                  :key="candidate.id"
+                  text
+                  type="primary"
+                  @click="router.push(`/documents/${candidate.id}`)"
+                >
+                  {{ candidate.number || candidate.title }}
+                </el-button>
+              </template>
+              <el-button
+                v-else-if="row.status === 'superseded' && row.supersededById"
+                text
+                type="primary"
+                @click="router.push(`/documents/${row.supersededById}`)"
+              >
+                {{ row.supersededByTitle || '新版文件' }}
+              </el-button>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
           <el-table-column label="操作">
             <template #default="{ row }">
               <el-button text type="primary" @click="handleReferenceHealthIssue(row)">
@@ -440,6 +471,9 @@ const markdownEditing = ref(false);
 const markdownDraft = ref('');
 const savingMarkdown = ref(false);
 const referenceHealth = ref<DocumentReferenceHealthResult | null>(null);
+const activeReferenceLabel = ref('');
+const expandedConflictReferenceId = ref('');
+const markdownCardRef = ref<{ $el?: HTMLElement } | null>(null);
 
 // 权限判断
 const isCreator = computed(() => document.value?.creatorId === userStore.user?.id);
@@ -698,11 +732,17 @@ const saveMarkdown = async () => {
 
 const handleReferenceHealthIssue = (issue: DocumentReferenceHealthIssue) => {
   if (issue.status === 'dangling') {
-    ElMessage.warning(`请在正文中定位并修正引用: ${issue.label}`);
+    activeReferenceLabel.value = issue.label;
+    if (canEditMarkdown.value) {
+      startMarkdownEdit();
+    }
+    markdownCardRef.value?.$el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    ElMessage.warning(`已定位到正文引用: [[${issue.label}]]`);
     return;
   }
   if (issue.status === 'conflict') {
-    ElMessage.warning('请在冲突候选中选择正确受控文件后更新引用');
+    expandedConflictReferenceId.value = issue.referenceId;
+    ElMessage.warning('已展开候选文件，请选择正确目标后更新引用');
     return;
   }
   if (issue.status === 'superseded' && issue.supersededById) {

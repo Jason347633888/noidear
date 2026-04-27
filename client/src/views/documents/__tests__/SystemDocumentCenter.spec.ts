@@ -23,6 +23,7 @@ describe('SystemDocumentCenter', () => {
       issues: [
         {
           sourceDocId: 'doc-1',
+          sourceNumber: 'SRC-001',
           sourceTitle: '来源文件',
           referenceId: 'ref-1',
           label: '缺失文件',
@@ -65,6 +66,7 @@ describe('SystemDocumentCenter', () => {
     expect(wrapper.find('[data-name="referenceIssues"]').attributes('data-lazy')).toBe('true');
     expect(mockListReferenceHealthIssues).toHaveBeenCalled();
     expect((wrapper.vm as any).referenceIssues).toHaveLength(1);
+    expect((wrapper.vm as any).referenceIssues[0].sourceNumber).toBe('SRC-001');
   });
 
   it('routes reference issue actions to the document detail page', async () => {

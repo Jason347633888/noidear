@@ -5,6 +5,7 @@ export type ReferenceHealthStatus = 'healthy' | 'dangling' | 'invalid' | 'confli
 
 export interface DocumentReferenceHealthIssue {
   sourceDocId: string;
+  sourceNumber?: string | null;
   sourceTitle: string;
   referenceId: string;
   label: string;
@@ -54,6 +55,7 @@ type ReferenceWithDocs = {
 
 @Injectable()
 export class DocumentReferenceHealthService {
+  private readonly currentBasisStatuses = new Set(['approved', 'effective']);
   private readonly invalidStatuses = new Set([
     'archived',
     'archive',
@@ -146,11 +148,18 @@ export class DocumentReferenceHealthService {
     }
 
     const targetDoc = reference.targetDoc;
-    if (targetDoc.deletedAt || targetDoc.archivedAt || targetDoc.obsoletedAt || this.invalidStatuses.has(targetDoc.status)) {
+    const targetStatus = targetDoc.status.toLowerCase();
+    if (
+      targetDoc.deletedAt ||
+      targetDoc.archivedAt ||
+      targetDoc.obsoletedAt ||
+      this.invalidStatuses.has(targetStatus) ||
+      !this.currentBasisStatuses.has(targetStatus)
+    ) {
       return {
         ...base,
         status: 'invalid',
-        reason: '目标文件已删除、归档、作废或停用，不能作为当前依据。',
+        reason: '目标文件已删除、归档、作废、停用或尚未生效，不能作为当前依据。',
         targetDocId: targetDoc.id,
         targetTitle: targetDoc.title,
       };
@@ -180,6 +189,7 @@ export class DocumentReferenceHealthService {
   private toBaseIssue(reference: ReferenceWithDocs): Omit<DocumentReferenceHealthIssue, 'status' | 'reason'> {
     return {
       sourceDocId: reference.sourceDocId,
+      sourceNumber: reference.sourceDoc?.number,
       sourceTitle: reference.sourceDoc?.title || reference.sourceDoc?.number || reference.sourceDocId,
       referenceId: reference.id,
       label: reference.targetLabel || reference.targetRoute || reference.targetId || '-',

@@ -12,7 +12,7 @@
           <el-table :data="referenceIssues" stripe>
             <el-table-column label="来源文件">
               <template #default="{ row }">
-                {{ row.sourceTitle }}
+                {{ [row.sourceNumber, row.sourceTitle].filter(Boolean).join(' ') }}
               </template>
             </el-table-column>
             <el-table-column prop="label" label="引用文本" />

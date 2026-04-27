@@ -51,6 +51,7 @@ describe('DocumentReferenceHealthService', () => {
     expect(result.totals).toMatchObject({ total: 1, dangling: 1, healthy: 0 });
     expect(result.issues[0]).toMatchObject({
       status: 'dangling',
+      sourceNumber: 'SRC-001',
       label: '不存在文件',
       reason: '引用文本未匹配到受控文件。',
     });
@@ -81,6 +82,9 @@ describe('DocumentReferenceHealthService', () => {
     ['inactive status', { status: 'inactive' }],
     ['obsolete status', { status: 'obsolete' }],
     ['archived status', { status: 'archived' }],
+    ['draft status', { status: 'draft' }],
+    ['pending status', { status: 'pending' }],
+    ['rejected status', { status: 'rejected' }],
   ])('returns invalid for %s', async (_caseName, targetPatch) => {
     prisma.documentReference.findMany.mockResolvedValueOnce([
       { ...baseReference, targetDoc: { ...baseReference.targetDoc, ...targetPatch } },
@@ -92,7 +96,7 @@ describe('DocumentReferenceHealthService', () => {
     expect(result.issues[0]).toMatchObject({
       status: 'invalid',
       targetDocId: 'target-1',
-      reason: '目标文件已删除、归档、作废或停用，不能作为当前依据。',
+      reason: '目标文件已删除、归档、作废、停用或尚未生效，不能作为当前依据。',
     });
   });
 

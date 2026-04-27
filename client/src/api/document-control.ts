@@ -43,6 +43,7 @@ export type ReferenceHealthStatus = 'healthy' | 'dangling' | 'invalid' | 'confli
 
 export interface DocumentReferenceHealthIssue {
   sourceDocId: string;
+  sourceNumber?: string | null;
   sourceTitle: string;
   referenceId: string;
   label: string;

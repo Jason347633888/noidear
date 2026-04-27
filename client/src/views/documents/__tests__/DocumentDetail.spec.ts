@@ -249,7 +249,7 @@ describe('DocumentDetail', () => {
       issues: [
         { sourceDocId: 'doc-1', sourceTitle: '测试文档', referenceId: 'resolved', label: '程序文件', status: 'healthy', reason: '目标文件可作为当前引用依据。', targetDocId: 'doc-2', targetTitle: '程序文件' },
         { sourceDocId: 'doc-1', sourceTitle: '测试文档', referenceId: 'unresolved', label: '不存在文件', status: 'dangling', reason: '引用文本未匹配到受控文件。' },
-        { sourceDocId: 'doc-1', sourceTitle: '测试文档', referenceId: 'conflict', label: '重复文件', status: 'conflict', reason: '引用文本匹配到多个候选文件，需要文控人员确认目标。' },
+        { sourceDocId: 'doc-1', sourceTitle: '测试文档', referenceId: 'conflict', label: '重复文件', status: 'conflict', reason: '引用文本匹配到多个候选文件，需要文控人员确认目标。', candidates: [{ id: 'doc-3', title: '重复文件' }] },
       ],
     });
     mockGet.mockImplementation((url: string) => {
@@ -304,8 +304,26 @@ describe('DocumentDetail', () => {
   });
 
   it('routes reference health actions to replacement or target documents', async () => {
+    const { ElMessage } = await import('element-plus');
     const c = w();
     await flushPromises();
+
+    (c.vm as any).handleReferenceHealthIssue({
+      status: 'dangling',
+      referenceId: 'dangling',
+      label: '缺失文件',
+    });
+    expect((c.vm as any).activeReferenceLabel).toBe('缺失文件');
+    expect((c.vm as any).markdownEditing).toBe(true);
+    expect(ElMessage.warning).toHaveBeenCalledWith('已定位到正文引用: [[缺失文件]]');
+
+    (c.vm as any).handleReferenceHealthIssue({
+      status: 'conflict',
+      referenceId: 'conflict',
+      label: '重复文件',
+    });
+    expect((c.vm as any).expandedConflictReferenceId).toBe('conflict');
+    expect(ElMessage.warning).toHaveBeenCalledWith('已展开候选文件，请选择正确目标后更新引用');
 
     (c.vm as any).handleReferenceHealthIssue({
       status: 'superseded',

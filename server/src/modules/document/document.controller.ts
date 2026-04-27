@@ -271,6 +271,8 @@ export class DocumentController {
   }
 
   @Get('reference-health/issues')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:control_manage')
   @ApiOperation({ summary: '查询文档引用问题清单' })
   getReferenceHealthIssues() {
     return this.referenceHealthService.listIssues();
@@ -299,7 +301,19 @@ export class DocumentController {
 
   @Get(':id/reference-health')
   @ApiOperation({ summary: '查询单个文档引用健康度' })
-  getDocumentReferenceHealth(@Param('id') id: string) {
+  async getDocumentReferenceHealth(@Param('id') id: string, @Req() req: any) {
+    const document = await this.documentService.findOne(id, req.user.id, req.user.role);
+    const canAccess = await this.departmentPermissionService.canAccessDepartmentResource(
+      req.user.id,
+      document.departmentId,
+      'view',
+      'document',
+    );
+
+    if (!canAccess) {
+      throw new ForbiddenException('无权访问该部门的文档');
+    }
+
     return this.referenceHealthService.getDocumentHealth(id);
   }
 
