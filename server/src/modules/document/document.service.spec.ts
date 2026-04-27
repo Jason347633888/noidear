@@ -567,9 +567,7 @@ describe('document owner strong references', () => {
 
   let service: DocumentService;
 
-  beforeEach(async () => {
-    jest.clearAllMocks();
-    prisma.$transaction.mockImplementation(async (callback) => callback(prisma));
+  beforeAll(async () => {
     const module = await Test.createTestingModule({
       providers: [
         DocumentService,
@@ -584,8 +582,11 @@ describe('document owner strong references', () => {
       ],
     }).compile();
     service = module.get(DocumentService);
-    prisma.user.findUnique.mockReset();
-    prisma.department.findUnique = jest.fn();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    prisma.$transaction.mockImplementation(async (callback) => callback(prisma));
   });
 
   it('rejects a missing ownerDepartmentId during document create', async () => {
@@ -606,9 +607,7 @@ describe('document owner strong references', () => {
       .mockResolvedValueOnce({ id: 'owner1', deletedAt: null });
     prisma.department.findUnique.mockResolvedValue({ id: 'dep-owner', deletedAt: null });
     prisma.document.findFirst.mockResolvedValue(null);
-    prisma.$transaction.mockImplementation(async (cb) => cb(prisma));
     prisma.pendingNumber.findFirst.mockResolvedValue(null);
-    prisma.department.findUnique.mockResolvedValueOnce({ id: 'dep-owner', deletedAt: null });
     prisma.$queryRaw.mockResolvedValue([{ id: 'rule1', sequence: 1 }]);
     prisma.numberRule.update.mockResolvedValue({});
     storage.uploadFile.mockResolvedValue({ path: 'documents/sop.pdf' });
@@ -628,5 +627,33 @@ describe('document owner strong references', () => {
         owner_department: '品质部',
       }),
     });
+  });
+
+  it('rejects a missing ownerUserId during document create', async () => {
+    prisma.user.findUnique
+      .mockResolvedValueOnce({ id: 'u1', departmentId: 'dep1' })  // creator lookup
+      .mockResolvedValueOnce(null);                                 // ownerUserId lookup
+    prisma.department.findUnique.mockResolvedValue({ id: 'dep-owner', deletedAt: null });
+
+    await expect(service.create({
+      level: 2,
+      title: 'SOP',
+      control: { ownerDepartmentId: 'dep-owner', ownerUserId: 'missing-user' },
+    } as any, { originalname: 'sop.pdf', size: 10, mimetype: 'application/pdf' } as any, 'u1'))
+      .rejects.toThrow('负责人不存在');
+  });
+
+  it('rejects a missing ownerDepartmentId during document update', async () => {
+    prisma.document.findUnique.mockResolvedValue({
+      id: 'doc1', creatorId: 'u1', status: 'draft', level: 2,
+      version: 1, filePath: '/f', fileName: 'f.pdf', fileSize: 100, fileType: 'application/pdf',
+      deletedAt: null,
+    });
+    prisma.department.findUnique.mockResolvedValue(null);
+
+    await expect(service.update('doc1', {
+      control: { ownerDepartmentId: 'bad-dep' },
+    } as any, undefined, 'u1'))
+      .rejects.toThrow('负责部门不存在');
   });
 });
