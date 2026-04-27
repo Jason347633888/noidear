@@ -160,9 +160,10 @@ const validateForm = async (): Promise<boolean> => {
 };
 
 const handleSaveDraft = async () => {
-  if (!(await validateForm())) return;
+  if (uploading.value) return;
   uploading.value = true;
   try {
+    if (!(await validateForm())) return;
     await uploadDocument();
     ElMessage.success('草稿已保存');
     router.push('/documents');
@@ -172,9 +173,10 @@ const handleSaveDraft = async () => {
 };
 
 const handleSubmitApproval = async () => {
-  if (!(await validateForm())) return;
+  if (uploading.value) return;
   uploading.value = true;
   try {
+    if (!(await validateForm())) return;
     const doc = await uploadDocument();
     await request.post(`/documents/${doc.id}/submit`);
     ElMessage.success('文档已提交审批');

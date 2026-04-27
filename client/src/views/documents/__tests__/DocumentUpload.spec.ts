@@ -81,6 +81,25 @@ describe('DocumentUpload', () => {
     expect(mockPost).toHaveBeenCalledTimes(1);
   });
 
+  it('does not start a second upload while saving draft is in progress', async () => {
+    let resolveUpload: (value: { id: string }) => void = () => {};
+    mockPost.mockReturnValueOnce(new Promise((resolve) => {
+      resolveUpload = resolve;
+    }));
+    const wrapper = mount(DocumentUpload, mountOptions);
+    await setRequiredTitleAndFile(wrapper);
+
+    await wrapper.find('[data-test="save-draft"]').trigger('click');
+    await wrapper.find('[data-test="save-draft"]').trigger('click');
+    await flushPromises();
+
+    expect(mockPost).toHaveBeenCalledWith('/documents/upload', expect.any(FormData), expect.any(Object));
+    expect(mockPost).toHaveBeenCalledTimes(1);
+
+    resolveUpload({ id: 'doc1' });
+    await flushPromises();
+  });
+
   it('submits approval after upload when clicking submit approval', async () => {
     mockPost.mockResolvedValueOnce({ id: 'doc1' }).mockResolvedValueOnce({ id: 'doc1', status: 'pending' });
     const wrapper = mount(DocumentUpload, mountOptions);
