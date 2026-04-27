@@ -539,3 +539,94 @@ describe('document version operations', () => {
     expect(stream.pipe).toHaveBeenCalledWith(res);
   });
 });
+
+describe('document owner strong references', () => {
+  const prisma = {
+    user: { findUnique: jest.fn() },
+    document: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+      update: jest.fn(),
+    },
+    approval: { findFirst: jest.fn(), update: jest.fn() },
+    department: { findUnique: jest.fn() },
+    pendingNumber: { findFirst: jest.fn() },
+    numberRule: { create: jest.fn(), update: jest.fn() },
+    $transaction: jest.fn(),
+    $queryRaw: jest.fn(),
+  };
+  const storage = { uploadFile: jest.fn() };
+  const filePreview = { assertFileAccess: jest.fn() };
+  const markdownWikilinkService = { syncDocumentWikilinks: jest.fn() };
+  const notification = { create: jest.fn() };
+  const operationLog = { log: jest.fn() };
+  const eventEmitter = { emit: jest.fn() };
+
+  let service: DocumentService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    prisma.$transaction.mockImplementation(async (callback) => callback(prisma));
+    const module = await Test.createTestingModule({
+      providers: [
+        DocumentService,
+        DocumentControlMetadataService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: StorageService, useValue: storage },
+        { provide: NotificationService, useValue: notification },
+        { provide: OperationLogService, useValue: operationLog },
+        { provide: EventEmitter2, useValue: eventEmitter },
+        { provide: FilePreviewService, useValue: filePreview },
+        { provide: MarkdownWikilinkService, useValue: markdownWikilinkService },
+      ],
+    }).compile();
+    service = module.get(DocumentService);
+    prisma.user.findUnique.mockReset();
+    prisma.department.findUnique = jest.fn();
+  });
+
+  it('rejects a missing ownerDepartmentId during document create', async () => {
+    prisma.user.findUnique.mockResolvedValue({ id: 'u1', departmentId: 'dep1' });
+    prisma.department.findUnique.mockResolvedValue(null);
+
+    await expect(service.create({
+      level: 2,
+      title: 'SOP',
+      control: { ownerDepartmentId: 'missing-dep' },
+    } as any, { originalname: 'sop.pdf', size: 10, mimetype: 'application/pdf' } as any, 'u1'))
+      .rejects.toThrow('负责部门不存在');
+  });
+
+  it('writes ownerDepartmentId and ownerUserId when both targets exist', async () => {
+    prisma.user.findUnique
+      .mockResolvedValueOnce({ id: 'u1', departmentId: 'dep1' })
+      .mockResolvedValueOnce({ id: 'owner1', deletedAt: null });
+    prisma.department.findUnique.mockResolvedValue({ id: 'dep-owner', deletedAt: null });
+    prisma.document.findFirst.mockResolvedValue(null);
+    prisma.$transaction.mockImplementation(async (cb) => cb(prisma));
+    prisma.pendingNumber.findFirst.mockResolvedValue(null);
+    prisma.department.findUnique.mockResolvedValueOnce({ id: 'dep-owner', deletedAt: null });
+    prisma.$queryRaw.mockResolvedValue([{ id: 'rule1', sequence: 1 }]);
+    prisma.numberRule.update.mockResolvedValue({});
+    storage.uploadFile.mockResolvedValue({ path: 'documents/sop.pdf' });
+    prisma.document.create.mockResolvedValue({ id: 'doc1', ownerDepartmentId: 'dep-owner', ownerUserId: 'owner1' });
+    operationLog.log.mockResolvedValue({});
+
+    await service.create({
+      level: 2,
+      title: 'SOP',
+      control: { ownerDepartmentId: 'dep-owner', ownerUserId: 'owner1', ownerDepartment: '品质部' },
+    } as any, { originalname: 'sop.pdf', size: 10, mimetype: 'application/pdf' } as any, 'u1');
+
+    expect(prisma.document.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        ownerDepartmentId: 'dep-owner',
+        ownerUserId: 'owner1',
+        owner_department: '品质部',
+      }),
+    });
+  });
+});

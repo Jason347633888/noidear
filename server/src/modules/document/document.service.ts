@@ -123,9 +123,11 @@ export class DocumentService {
       );
     }
 
+    const controlData = this.metadataService.normalize(dto.control);
+    await this.validateOwnerReferences(controlData as Record<string, unknown>);
+
     const number = await this.generateDocumentNumber(dto.level, user.departmentId);
     const uploadResult = await this.storage.uploadFile(file, `documents/level${dto.level}`);
-    const controlData = this.metadataService.normalize(dto.control);
 
     const result = await this.prisma.document.create({
       data: {
@@ -298,6 +300,7 @@ export class DocumentService {
     }
 
     const controlData = dto.control ? this.metadataService.normalize(dto.control) : {};
+    await this.validateOwnerReferences(controlData as Record<string, unknown>);
 
     if (file) {
       await this.prisma.documentVersion.create({
@@ -1270,6 +1273,33 @@ export class DocumentService {
     }
     res.set(headers);
     stream.pipe(res);
+  }
+
+  private async validateOwnerReferences(controlData: Record<string, unknown>) {
+    const ownerDepartmentId = typeof controlData.ownerDepartmentId === 'string'
+      ? controlData.ownerDepartmentId
+      : undefined;
+    const ownerUserId = typeof controlData.ownerUserId === 'string'
+      ? controlData.ownerUserId
+      : undefined;
+
+    if (ownerDepartmentId) {
+      const department = await this.prisma.department.findUnique({
+        where: { id: ownerDepartmentId, deletedAt: null },
+      });
+      if (!department) {
+        throw new BusinessException(ErrorCode.NOT_FOUND, '负责部门不存在');
+      }
+    }
+
+    if (ownerUserId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: ownerUserId, deletedAt: null },
+      });
+      if (!user) {
+        throw new BusinessException(ErrorCode.NOT_FOUND, '负责人不存在');
+      }
+    }
   }
 
   private parseVersionParam(version: string): Prisma.Decimal {
