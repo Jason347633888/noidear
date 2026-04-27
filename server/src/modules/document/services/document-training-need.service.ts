@@ -64,6 +64,7 @@ export class DocumentTrainingNeedService {
 
     const need = await this.prisma.documentTrainingNeed.findUnique({ where: { id } });
     if (!need) throw new NotFoundException('培训需求不存在');
+    if (need.status === 'dismissed') throw new ConflictException('已驳回的培训需求不能关联培训项目');
 
     const project = await this.prisma.trainingProject.findUnique({
       where: { id: linkedTrainingProjectId },

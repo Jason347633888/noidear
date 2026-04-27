@@ -61,7 +61,7 @@ describe('DocumentTrainingNeedService', () => {
       await expect(service.link('need1', 'missing-project')).rejects.toThrow('培训项目不存在');
     });
 
-    it('links only to an existing training project and includes project data in list', async () => {
+    it('links to an existing training project and updates status', async () => {
       prisma.documentTrainingNeed.findUnique.mockResolvedValue({ id: 'need1', status: 'accepted' });
       prisma.trainingProject.findUnique.mockResolvedValue({ id: 'project1', title: '换版培训', status: 'planned' });
       prisma.documentTrainingNeed.update.mockResolvedValue({
@@ -76,6 +76,12 @@ describe('DocumentTrainingNeedService', () => {
         where: { id: 'need1' },
         data: { status: 'linked', linkedTrainingProjectId: 'project1' },
       });
+    });
+
+    it('rejects linking a dismissed training need', async () => {
+      prisma.documentTrainingNeed.findUnique.mockResolvedValue({ id: 'need1', status: 'dismissed' });
+
+      await expect(service.link('need1', 'project1')).rejects.toThrow(ConflictException);
     });
   });
 });
