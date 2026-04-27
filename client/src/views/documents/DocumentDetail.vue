@@ -168,6 +168,13 @@
         <el-table-column prop="createdAt" label="操作时间" width="180">
           <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
         </el-table-column>
+        <el-table-column label="操作" width="260" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="handlePreviewVersion(row)">预览版本</el-button>
+            <el-button link type="primary" @click="handleDownloadVersion(row)">下载版本</el-button>
+            <el-button link type="warning" @click="handleRollbackVersion(row)">回滚</el-button>
+          </template>
+        </el-table-column>
       </el-table>
     </el-card>
 
@@ -272,12 +279,13 @@ import request from '@/api/request';
 import OfficePreview from '@/components/OfficePreview.vue';
 import { useUserStore } from '@/stores/user';
 import filePreviewApi from '@/api/file-preview';
+import { documentManagementApi } from '@/api/document-management';
 
 interface VersionItem {
   id: string;
   version: number;
   fileName: string;
-  fileSize: string;
+  fileSize: string | number;
   createdAt: string;
   creator: { name: string } | null;
 }
@@ -441,7 +449,7 @@ const fetchData = async () => {
 
 const fetchVersionHistory = async () => {
   try {
-    const res = await request.get<{ versions: VersionItem[] }>(`/documents/${route.params.id}/versions`);
+    const res = await documentManagementApi.getVersions(String(route.params.id));
     versionHistory.value = res.versions || [];
   } catch (error) {
     // 版本历史获取失败不影响主流程
@@ -479,6 +487,39 @@ const handleDownload = () => {
     return;
   }
   window.open(`/api/v1/documents/${document.value.id}/download`, '_blank');
+};
+
+const handleDownloadVersion = (row: VersionItem) => {
+  if (!document.value?.id) return;
+  window.open(documentManagementApi.versionDownloadUrl(document.value.id, row.version), '_blank');
+};
+
+const handlePreviewVersion = async (row: VersionItem) => {
+  if (!document.value?.id) return;
+  showPreview.value = true;
+  previewLoading.value = true;
+  try {
+    const res = await request.get<{ url?: string }>(
+      `/documents/${document.value.id}/versions/${row.version}/preview`,
+    );
+    previewUrl.value = res.url || documentManagementApi.versionDownloadUrl(document.value.id, row.version);
+  } finally {
+    previewLoading.value = false;
+  }
+};
+
+const handleRollbackVersion = async (row: VersionItem) => {
+  if (!document.value?.id) return;
+  const result = await ElMessageBox.prompt(`请输入回滚到 v${row.version} 的原因`, '回滚版本', {
+    inputType: 'textarea',
+    inputValidator: (val) => Boolean(val && val.trim().length >= 5),
+    inputErrorMessage: '回滚原因至少 5 个字符',
+  }) as unknown as { value: string };
+  const { value } = result;
+  await documentManagementApi.rollbackVersion(document.value.id, row.version, value);
+  ElMessage.success('版本回滚成功');
+  await fetchData();
+  await fetchVersionHistory();
 };
 
 const handleSubmit = async () => {

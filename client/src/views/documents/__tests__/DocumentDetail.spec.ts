@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
+import { defineComponent, h, provide, inject, type PropType } from 'vue';
 
 const mockGet = vi.fn();
 const mockPost = vi.fn();
@@ -22,7 +23,7 @@ vi.mock('vue-router', () => ({
 
 vi.mock('element-plus', () => ({
   ElMessage: { success: vi.fn(), error: vi.fn() },
-  ElMessageBox: { confirm: vi.fn() },
+  ElMessageBox: { confirm: vi.fn(), prompt: vi.fn() },
 }));
 
 vi.mock('@/stores/user', () => ({
@@ -52,8 +53,23 @@ const stubs: Record<string, any> = {
   'el-form': { template: '<form><slot /></form>', props: ['model', 'rules'] },
   'el-form-item': { template: '<div><slot /></div>', props: ['label', 'prop'] },
   'el-input': { template: '<input />', props: ['modelValue', 'type', 'rows'] },
-  'el-table': { template: '<div><slot /></div>', props: ['data'] },
-  'el-table-column': { template: '<div />', props: ['prop', 'label', 'width'] },
+  'el-table': defineComponent({
+    props: { data: { type: Array as PropType<unknown[]>, default: () => [] } },
+    setup(props, { slots }) {
+      provide('tableRows', props.data);
+      return () => h('div', slots.default?.());
+    },
+  }),
+  'el-table-column': defineComponent({
+    props: ['prop', 'label', 'width', 'minWidth', 'fixed'],
+    setup(props, { slots }) {
+      const rows = inject<unknown[]>('tableRows', []);
+      return () => h('div', [
+        h('span', props.label),
+        ...rows.map((row) => h('div', slots.default?.({ row }))),
+      ]);
+    },
+  }),
   'OfficePreview': { template: '<div class="stub-office-preview" />', props: ['filename', 'previewUrl'] },
 'View': { template: '<span />' },
   'Download': { template: '<span />' },
@@ -79,6 +95,11 @@ const mockDocument = {
   ],
   targetReferences: [],
 };
+
+const makeDocument = (overrides: Partial<typeof mockDocument> = {}) => ({
+  ...mockDocument,
+  ...overrides,
+});
 
 const w = () => mount(DocumentDetail, { global: { stubs } });
 
@@ -219,5 +240,32 @@ describe('DocumentDetail', () => {
     await flushPromises();
     expect((c.vm as any).document.document_type).toBe('PROCEDURE');
     expect((c.vm as any).document.sourceReferences).toHaveLength(1);
+  });
+
+  it('shows version action buttons for historical versions', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url.endsWith('/versions')) {
+        return Promise.resolve({
+          versions: [
+            {
+              id: 'v1',
+              version: 1.0,
+              fileName: 'old.pdf',
+              fileSize: '100',
+              createdAt: '2026-01-01',
+              creator: { name: 'Admin' },
+            },
+          ],
+        });
+      }
+      return Promise.resolve(makeDocument({ status: 'effective', version: 1.1 }));
+    });
+
+    const wrapper = w();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('下载版本');
+    expect(wrapper.text()).toContain('预览版本');
+    expect(wrapper.text()).toContain('回滚');
   });
 });
