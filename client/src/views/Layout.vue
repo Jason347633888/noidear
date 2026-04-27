@@ -140,26 +140,14 @@ const menuItems = [
   { path: '/dashboard', title: '工作台', icon: HomeFilled },
   { path: '/my-todos', title: '我的待办', icon: Bell, badge: true },
   {
-    title: '文档管理',
-    icon: Files,
-    children: [
-      { path: '/documents', title: '文档列表', icon: Document },
-      { path: '/templates', title: '模板管理', icon: Grid },
-    ],
-  },
-  {
     title: '文控中心',
     icon: DataAnalysis,
     children: [
       { path: '/documents/control/library', title: '体系文件库', icon: Files },
+      { path: '/documents', title: '文档台账', icon: Document },
+      { path: '/templates', title: '模板管理', icon: Grid },
       { path: '/documents/control/record-form-index', title: '记录表单索引', icon: List },
       { path: '/documents/control/workbench', title: '文控工作台', icon: Monitor },
-    ],
-  },
-  {
-    title: '文控运营',
-    icon: Connection,
-    children: [
       { path: '/documents/operations/read-confirmations', title: '阅读确认', icon: List },
       { path: '/documents/operations/training-needs', title: '培训需求', icon: UserFilled },
       { path: '/documents/operations/health', title: '文控健康度', icon: DataAnalysis },

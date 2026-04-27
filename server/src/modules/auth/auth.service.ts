@@ -18,6 +18,7 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDTO) {
+    const lockoutDisabled = this.configService.get('AUTH_LOCKOUT_DISABLED') === 'true';
     const user = await this.prisma.user.findUnique({
       where: { username: dto.username },
     });
@@ -30,13 +31,15 @@ export class AuthService {
       throw new UnauthorizedException('账号已被禁用');
     }
 
-    if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
+    if (!lockoutDisabled && user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
       throw new UnauthorizedException('账号已被锁定');
     }
 
     const isValid = await bcrypt.compare(dto.password, user.password);
     if (!isValid) {
-      await this.handleFailedLogin(user.id);
+      if (!lockoutDisabled) {
+        await this.handleFailedLogin(user.id);
+      }
       throw new UnauthorizedException('用户名或密码错误');
     }
 

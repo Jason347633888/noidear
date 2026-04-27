@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { PrismaModule } from './prisma/prisma.module';
@@ -91,12 +89,6 @@ import { UnifiedApprovalModule } from './modules/unified-approval/unified-approv
       isGlobal: true,
       envFilePath: '.env'
     }),
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000, // 1 分钟时间窗口
-        limit: 1000, // 测试环境：每分钟最多 1000 次请求
-      },
-    ]),
     ScheduleModule.forRoot(),
     EventEmitterModule.forRoot(),
     PrismaModule,
@@ -179,11 +171,6 @@ import { UnifiedApprovalModule } from './modules/unified-approval/unified-approv
     TaskModule,
     UnifiedApprovalModule,
   ],
-  providers: [
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
-  ],
+  providers: [],
 })
 export class AppModule {}
