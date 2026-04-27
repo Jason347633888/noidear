@@ -651,7 +651,7 @@ export class DocumentService {
   async archive(id: string, reason: string, userId: string, role: string) {
     const document = await this.findOne(id, userId, role);
 
-    // 状态校验：只有已发布的文档可以归档
+    // 状态校验：只有已生效的文档可以归档
     if (!isEffectiveCompatible(document.status)) {
       throw new BusinessException(
         ErrorCode.CONFLICT,
@@ -705,7 +705,7 @@ export class DocumentService {
   async obsolete(id: string, reason: string, userId: string, role: string) {
     const document = await this.findOne(id, userId, role);
 
-    // 状态校验：只有已发布的文档可以作废
+    // 状态校验：只有已生效的文档可以作废
     if (!isEffectiveCompatible(document.status)) {
       throw new BusinessException(
         ErrorCode.CONFLICT,

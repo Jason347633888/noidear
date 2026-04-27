@@ -8,6 +8,7 @@ import * as fs from 'fs/promises';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { StorageService } from '../../../common/services';
 import { BusinessException, ErrorCode } from '../../../common/exceptions/business.exception';
+import { isEffectiveCompatible } from '../constants/document-control.constants';
 
 export interface PreviewResult {
   type: 'pdf' | 'word' | 'excel' | 'unknown';
@@ -218,8 +219,8 @@ export class FilePreviewService {
       return;
     }
 
-    // 已发布的文档所有人都可以下载
-    if (document.status === 'approved') {
+    // 已生效的文档所有人都可以下载
+    if (isEffectiveCompatible(document.status)) {
       return;
     }
 

@@ -83,6 +83,21 @@ describe('FilePreviewService', () => {
       expect(mockStream.pipe).toHaveBeenCalledWith(mockRes);
     });
 
+    it('普通用户可以下载已生效文档', async () => {
+      const effectiveDoc = { ...mockDocument, status: 'effective', creatorId: 'other' };
+      const mockStream = { pipe: jest.fn() };
+      const mockRes = {
+        set: jest.fn(),
+      } as unknown as Response;
+
+      jest.spyOn(prisma.document, 'findUnique').mockResolvedValue(effectiveDoc as any);
+      jest.spyOn(storage, 'getFileStream').mockResolvedValue(mockStream as any);
+
+      await service.downloadFile('1', 'user1', 'user', mockRes);
+
+      expect(storage.getFileStream).toHaveBeenCalledWith('documents/level1/test.pdf');
+    });
+
     it('当文档不存在时应该抛出异常', async () => {
       jest.spyOn(prisma.document, 'findUnique').mockResolvedValue(null);
 
@@ -200,11 +215,12 @@ describe('FilePreviewService', () => {
       ).resolves.toBeDefined();
     });
 
-    it('普通用户可以预览已发布的文档', async () => {
-      jest.spyOn(prisma.document, 'findUnique').mockResolvedValue(mockDocument as any);
+    it('普通用户可以预览已生效文档', async () => {
+      const effectiveDoc = { ...mockDocument, status: 'effective', creatorId: 'other' };
+      jest.spyOn(prisma.document, 'findUnique').mockResolvedValue(effectiveDoc as any);
 
       await expect(
-        service.getPreviewUrl('1', 'user2', 'user'),
+        service.getPreviewUrl('1', 'user1', 'user'),
       ).resolves.toBeDefined();
     });
   });

@@ -40,7 +40,7 @@ export type CanonicalDocumentStatus =
 export const EFFECTIVE_COMPAT_STATUSES = ['effective', 'approved'] as const;
 
 export function isEffectiveCompatible(status: string | null | undefined): boolean {
-  return status === 'effective' || status === 'approved';
+  return status ? (EFFECTIVE_COMPAT_STATUSES as readonly string[]).includes(status) : false;
 }
 
 export function toDisplayStatus(status: string | null | undefined): string {

@@ -31,6 +31,7 @@ import { ModelLandingModule } from '../model-landing/model-landing.module';
 import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
 import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
 import type { ApprovalCallbackContext } from '../unified-approval/types';
+import { CANONICAL_DOCUMENT_STATUS } from './constants/document-control.constants';
 
 @Module({
   imports: [ConfigModule, PrismaModule, NotificationModule, OperationLogModule, ExportModule, DepartmentPermissionModule, StatisticsModule, UserPermissionModule, SearchModule, ModelLandingModule, UnifiedApprovalModule],
@@ -47,7 +48,11 @@ export class DocumentModule implements OnModuleInit {
       async ({ tx, resourceId, actorId }: ApprovalCallbackContext) => {
         await (tx as any).document.update({
           where: { id: resourceId },
-          data: { status: 'approved', approverId: actorId, approvedAt: new Date() },
+          data: {
+            status: CANONICAL_DOCUMENT_STATUS.EFFECTIVE,
+            approverId: actorId,
+            approvedAt: new Date(),
+          },
         });
       },
     );
