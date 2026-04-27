@@ -67,6 +67,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/documents/DocumentControlWorkbench.vue'),
         meta: { title: '文控工作台' },
       },
+      {
+        path: 'documents/control/workbench/issues',
+        name: 'DocumentControlIssueList',
+        component: () => import('@/views/documents/DocumentControlIssueList.vue'),
+        meta: { title: '文控问题明细' },
+      },
       // 文控运营中心
       {
         path: 'documents/operations/read-confirmations',
