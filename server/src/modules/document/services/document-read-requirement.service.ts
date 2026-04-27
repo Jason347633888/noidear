@@ -13,6 +13,8 @@ export class DocumentReadRequirementService {
       throw new BadRequestException('Unsupported read requirement scopeType');
     }
 
+    await this.validateScopeTarget(dto.scopeType, dto.scopeId);
+
     const existing = await this.prisma.documentReadRequirement.findFirst({
       where: { documentId, scopeType: dto.scopeType, scopeId: dto.scopeId, status: 'active' },
     });
@@ -28,6 +30,28 @@ export class DocumentReadRequirementService {
         reason: dto.reason,
       },
     });
+  }
+
+  private async validateScopeTarget(scopeType: string, scopeId: string) {
+    if (scopeType === 'user') {
+      const user = await this.prisma.user.findUnique({ where: { id: scopeId, deletedAt: null } });
+      if (!user) throw new NotFoundException('阅读范围用户不存在');
+      return;
+    }
+
+    if (scopeType === 'department') {
+      const department = await this.prisma.department.findUnique({ where: { id: scopeId, deletedAt: null } });
+      if (!department) throw new NotFoundException('阅读范围部门不存在');
+      return;
+    }
+
+    if (scopeType === 'role') {
+      const role = await this.prisma.role.findUnique({ where: { id: scopeId, deletedAt: null } });
+      if (!role) throw new NotFoundException('阅读范围角色不存在');
+      return;
+    }
+
+    throw new BadRequestException('Unsupported read requirement scopeType');
   }
 
   async getStatus(documentId: string) {
