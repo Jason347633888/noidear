@@ -63,4 +63,9 @@ export class DocumentQueryDto {
   @Max(365)
   @IsOptional()
   dueWithinDays?: number;
+
+  @ApiPropertyOptional({ description: '文控问题过滤' })
+  @IsString()
+  @IsOptional()
+  issue?: string;
 }

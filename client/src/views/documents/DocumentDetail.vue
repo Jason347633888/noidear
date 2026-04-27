@@ -85,21 +85,21 @@
         </el-button>
         <el-button
           type="warning"
-          v-if="document.status === 'approved'"
+          v-if="isEffectiveDocument(document.status)"
           @click="handleDeactivate"
         >
           停用文档
         </el-button>
         <el-button
           type="warning"
-          v-if="document.status === 'approved' && (isCreator || isAdmin)"
+          v-if="isEffectiveDocument(document.status) && (isCreator || isAdmin)"
           @click="showArchiveDialog"
         >
           归档
         </el-button>
         <el-button
           type="danger"
-          v-if="document.status === 'approved' && isAdmin"
+          v-if="isEffectiveDocument(document.status) && isAdmin"
           @click="showObsoleteDialog"
         >
           作废
@@ -290,6 +290,13 @@
         <el-table-column prop="createdAt" label="操作时间" width="180">
           <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
         </el-table-column>
+        <el-table-column label="操作" width="260" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="handlePreviewVersion(row)">预览版本</el-button>
+            <el-button link type="primary" @click="handleDownloadVersion(row)">下载版本</el-button>
+            <el-button link type="warning" @click="handleRollbackVersion(row)">回滚</el-button>
+          </template>
+        </el-table-column>
       </el-table>
     </el-card>
 
@@ -396,13 +403,14 @@ import MarkdownEditor from '@/components/documents/MarkdownEditor.vue';
 import MarkdownViewer from '@/components/documents/MarkdownViewer.vue';
 import { useUserStore } from '@/stores/user';
 import filePreviewApi from '@/api/file-preview';
+import { documentManagementApi } from '@/api/document-management';
 import { documentControlApi, type DocumentReferenceHealthIssue, type DocumentReferenceHealthResult, type ReferenceHealthStatus } from '@/api/document-control';
 
 interface VersionItem {
   id: string;
   version: number;
   fileName: string;
-  fileSize: string;
+  fileSize: string | number;
   createdAt: string;
   creator: { name: string } | null;
 }
@@ -567,6 +575,7 @@ const formatDate = (date: string): string => {
 };
 
 const formatControlDate = (value: string): string => new Date(value).toLocaleDateString('zh-CN');
+const isEffectiveDocument = (status: string): boolean => status === 'effective' || status === 'approved';
 
 const referenceTargetLabel = (ref: DocumentReference): string => (
   ref.targetDoc?.title || ref.targetLabel || ref.targetRoute || ref.targetId || '-'
@@ -613,6 +622,7 @@ const getStatusType = (status: string): string => {
     draft: 'info',
     pending: 'warning',
     approved: 'success',
+    effective: 'success',
     rejected: 'danger',
     inactive: 'info',
     archived: 'warning',
@@ -626,6 +636,7 @@ const getStatusText = (status: string): string => {
     draft: '草稿',
     pending: '待审批',
     approved: '已发布',
+    effective: '已发布',
     rejected: '已驳回',
     inactive: '已停用',
     archived: '已归档',
@@ -652,7 +663,7 @@ const fetchData = async () => {
 
 const fetchVersionHistory = async () => {
   try {
-    const res = await request.get<{ versions: VersionItem[] }>(`/documents/${route.params.id}/versions`);
+    const res = await documentManagementApi.getVersions(String(route.params.id));
     versionHistory.value = res.versions || [];
   } catch (error) {
     // 版本历史获取失败不影响主流程
@@ -699,6 +710,42 @@ const handleDownload = () => {
     return;
   }
   window.open(`/api/v1/documents/${document.value.id}/download`, '_blank');
+};
+
+const handleDownloadVersion = (row: VersionItem) => {
+  if (!document.value?.id) return;
+  window.open(documentManagementApi.versionDownloadUrl(document.value.id, row.version), '_blank');
+};
+
+const handlePreviewVersion = async (row: VersionItem) => {
+  if (!document.value?.id) return;
+  showPreview.value = true;
+  previewLoading.value = true;
+  const fallbackUrl = documentManagementApi.versionDownloadUrl(document.value.id, row.version);
+  try {
+    const res = await request.get<{ url?: string }>(
+      `/documents/${document.value.id}/versions/${row.version}/preview`,
+    );
+    previewUrl.value = res.url || fallbackUrl;
+  } catch {
+    previewUrl.value = fallbackUrl;
+  } finally {
+    previewLoading.value = false;
+  }
+};
+
+const handleRollbackVersion = async (row: VersionItem) => {
+  if (!document.value?.id) return;
+  const result = await ElMessageBox.prompt(`请输入回滚到 v${row.version} 的原因`, '回滚版本', {
+    inputType: 'textarea',
+    inputValidator: (val) => Boolean(val && val.trim().length >= 5),
+    inputErrorMessage: '回滚原因至少 5 个字符',
+  }) as unknown as { value: string };
+  const { value } = result;
+  await documentManagementApi.rollbackVersion(document.value.id, row.version, value);
+  ElMessage.success('版本回滚成功');
+  await fetchData();
+  await fetchVersionHistory();
 };
 
 const startMarkdownEdit = () => {

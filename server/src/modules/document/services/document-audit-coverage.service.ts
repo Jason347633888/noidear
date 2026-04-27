@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { EFFECTIVE_COMPAT_STATUSES } from '../constants/document-control.constants';
 
 @Injectable()
 export class DocumentAuditCoverageService {
@@ -7,7 +8,7 @@ export class DocumentAuditCoverageService {
 
   async getCoverage(periodStart: Date, periodEnd: Date) {
     const documents = await this.prisma.document.findMany({
-      where: { deletedAt: null, status: 'effective', document_type: { in: ['PROCEDURE', 'WORK_INSTRUCTION'] } },
+      where: { deletedAt: null, status: { in: [...EFFECTIVE_COMPAT_STATUSES] }, document_type: { in: ['PROCEDURE', 'WORK_INSTRUCTION'] } },
     });
     const reviews = await this.prisma.documentCoverageReview.findMany({
       where: { periodStart: { gte: periodStart }, periodEnd: { lte: periodEnd } },

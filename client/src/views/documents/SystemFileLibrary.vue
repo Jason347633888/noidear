@@ -66,10 +66,11 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { documentControlApi, type DocumentControlDocument } from '@/api/document-control';
 
+const route = useRoute();
 const router = useRouter();
 const loading = ref(false);
 const documents = ref<DocumentControlDocument[]>([]);
@@ -101,6 +102,8 @@ const filters = reactive({
   documentType: '',
   status: '',
   keyword: '',
+  dueWithinDays: undefined as number | undefined,
+  issue: '',
 });
 
 const typeLabel = (type?: string) => documentTypes.find((item) => item.value === type)?.label || '-';
@@ -136,6 +139,8 @@ const fetchDocuments = async () => {
       documentType: filters.documentType || undefined,
       status: filters.status || undefined,
       keyword: filters.keyword || undefined,
+      dueWithinDays: filters.dueWithinDays,
+      issue: filters.issue || undefined,
       page: pagination.page,
       limit: pagination.limit,
     });
@@ -153,7 +158,19 @@ const fetchDocuments = async () => {
   }
 };
 
-onMounted(fetchDocuments);
+onMounted(() => {
+  if (route.query.issue === 'expiringExternalFiles') {
+    filters.documentType = 'EXTERNAL_FILE';
+  }
+  if (route.query.issue === 'dueForReview') {
+    filters.status = 'effective';
+    filters.dueWithinDays = 30;
+  }
+  if (route.query.issue === 'missingMetadata') {
+    filters.issue = 'missingMetadata';
+  }
+  fetchDocuments();
+});
 </script>
 
 <style scoped>

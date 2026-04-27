@@ -4,6 +4,9 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { StorageService } from '../src/common/services';
 import { NotificationService } from '../src/modules/notification/notification.service';
 import { OperationLogService } from '../src/modules/operation-log/operation-log.service';
+import { DocumentControlMetadataService } from '../src/modules/document/services/document-control-metadata.service';
+import { FilePreviewService } from '../src/modules/document/services';
+import { MarkdownWikilinkService } from '../src/modules/document/services/markdown-wikilink.service';
 import { BusinessException, ErrorCode } from '../src/common/exceptions/business.exception';
 import { Decimal } from '@prisma/client/runtime/library';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -17,6 +20,7 @@ describe('DocumentService - Version Management', () => {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     documentVersion: {
       findMany: jest.fn(),
@@ -55,6 +59,9 @@ describe('DocumentService - Version Management', () => {
         { provide: StorageService, useValue: mockStorageService },
         { provide: NotificationService, useValue: mockNotificationService },
         { provide: OperationLogService, useValue: mockOperationLogService },
+        { provide: DocumentControlMetadataService, useValue: { normalize: jest.fn((value) => value ?? {}) } },
+        { provide: FilePreviewService, useValue: { assertFileAccess: jest.fn() } },
+        { provide: MarkdownWikilinkService, useValue: { syncDocumentWikilinks: jest.fn() } },
         { provide: EventEmitter2, useValue: { emit: jest.fn(), emitAsync: jest.fn(), on: jest.fn() } },
       ],
     }).compile();
@@ -221,12 +228,13 @@ describe('DocumentService - Version Management', () => {
   describe('rollbackVersion', () => {
     const documentId = 'doc-123';
     const userId = 'user-456';
+    const reason = '恢复到已批准版本';
 
     it('should throw error if document does not exist', async () => {
       mockPrismaService.document.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.rollbackVersion(documentId, '1.0', userId)
+        service.rollbackVersion(documentId, '1.0', reason, userId)
       ).rejects.toThrow(
         new BusinessException(ErrorCode.NOT_FOUND, '文档不存在或已被删除')
       );
@@ -240,7 +248,7 @@ describe('DocumentService - Version Management', () => {
       mockPrismaService.documentVersion.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.rollbackVersion(documentId, '1.0', userId)
+        service.rollbackVersion(documentId, '1.0', reason, userId)
       ).rejects.toThrow(
         new BusinessException(ErrorCode.NOT_FOUND, '版本 1.0 不存在')
       );
@@ -260,21 +268,99 @@ describe('DocumentService - Version Management', () => {
       const document = {
         id: documentId,
         version: new Decimal('2.0'),
+        filePath: '/path/current.docx',
+        fileName: 'doc_current.docx',
+        fileSize: 2048,
+        fileType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        status: 'effective',
+        number: 'DOC-001',
         deletedAt: null,
       };
 
       mockPrismaService.document.findUnique.mockResolvedValue(document);
       mockPrismaService.documentVersion.findFirst.mockResolvedValue(targetVersion);
-      mockPrismaService.documentVersion.update.mockResolvedValue({
-        ...targetVersion,
-        version: new Decimal('2.1'),
-      });
+      mockPrismaService.documentVersion.create.mockResolvedValue({});
+      mockPrismaService.document.updateMany.mockResolvedValue({ count: 1 });
+      mockOperationLogService.log.mockResolvedValue(undefined);
 
-      const result = await service.rollbackVersion(documentId, '1.0', userId);
+      const result = await service.rollbackVersion(documentId, '1.0', reason, userId);
 
       expect(result.success).toBe(true);
       expect(result.newVersion).toBe('2.1');
       expect(result.rolledBackFrom).toBe('1.0');
+      expect(mockPrismaService.documentVersion.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          documentId,
+          version: new Decimal('2.0'),
+          filePath: '/path/current.docx',
+          fileName: 'doc_current.docx',
+          fileSize: 2048,
+          creatorId: userId,
+        }),
+      });
+      expect(mockPrismaService.document.updateMany).toHaveBeenCalledWith({
+        where: { id: documentId, version: new Decimal('2.0') },
+        data: {
+          version: new Decimal('2.1'),
+          filePath: '/path/v1.pdf',
+          fileName: 'doc_v1.pdf',
+          fileSize: 1024,
+          fileType: 'application/pdf',
+        },
+      });
+      expect(mockOperationLogService.log).toHaveBeenCalledWith(expect.objectContaining({
+        userId,
+        action: 'rollback_version',
+        module: 'document',
+        objectId: documentId,
+        objectType: 'document',
+        details: expect.objectContaining({
+          fromVersion: '2.0',
+          targetVersion: '1.0',
+          newVersion: '2.1',
+          reason,
+        }),
+      }));
+    });
+
+    it('should reject stale rollback when document version changed', async () => {
+      const targetVersion = {
+        id: 'v1',
+        version: new Decimal('1.0'),
+        filePath: '/path/v1.pdf',
+        fileName: 'doc_v1.pdf',
+        fileSize: 1024,
+      };
+      const document = {
+        id: documentId,
+        version: new Decimal('2.0'),
+        filePath: '/path/current.pdf',
+        fileName: 'doc_current.pdf',
+        fileSize: 2048,
+        status: 'effective',
+        deletedAt: null,
+      };
+
+      mockPrismaService.document.findUnique.mockResolvedValue(document);
+      mockPrismaService.documentVersion.findFirst.mockResolvedValue(targetVersion);
+      mockPrismaService.documentVersion.create.mockResolvedValue({});
+      mockPrismaService.document.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.rollbackVersion(documentId, '1.0', reason, userId),
+      ).rejects.toThrow(
+        new BusinessException(ErrorCode.CONFLICT, '文档版本已变化，请刷新后重试'),
+      );
+      expect(mockOperationLogService.log).not.toHaveBeenCalled();
+    });
+
+    it('should reject blank rollback reason before starting transaction', async () => {
+      await expect(
+        service.rollbackVersion(documentId, '1.0', '   ', userId),
+      ).rejects.toThrow(
+        new BusinessException(ErrorCode.VALIDATION_ERROR, '回滚原因不能为空'),
+      );
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
     });
   });
 });

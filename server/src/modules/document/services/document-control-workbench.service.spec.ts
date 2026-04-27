@@ -1,4 +1,5 @@
 import { DocumentControlWorkbenchService } from './document-control-workbench.service';
+import { EFFECTIVE_COMPAT_STATUSES } from '../constants/document-control.constants';
 
 describe('DocumentControlWorkbenchService', () => {
   const prisma = {
@@ -35,6 +36,16 @@ describe('DocumentControlWorkbenchService', () => {
     expect(result.counts.brokenReferences).toBe(1);
     expect(result.counts.missingLandingTargets).toBe(1);
     expect(result.counts.missingMetadata).toBe(1);
+    expect(prisma.document.findMany).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      where: expect.objectContaining({
+        status: { in: EFFECTIVE_COMPAT_STATUSES },
+      }),
+    }));
+    expect(prisma.document.findMany).toHaveBeenNthCalledWith(3, expect.objectContaining({
+      where: expect.objectContaining({
+        status: { in: EFFECTIVE_COMPAT_STATUSES },
+      }),
+    }));
   });
 
   it('returns zero counts when all queues are empty', async () => {

@@ -49,6 +49,22 @@ export class RecordFormLandingService {
     const form = this.modelLanding.getFormByCode(code);
     if (!form) throw new NotFoundException(`Unknown source form: ${code}`);
 
+    if (dto.targetTemplateId) {
+      const template = await this.prisma.recordTemplate.findFirst({
+        where: { id: dto.targetTemplateId, deletedAt: null },
+      });
+      if (!template) throw new NotFoundException(`记录模板不存在: ${dto.targetTemplateId}`);
+    }
+
+    if (dto.relatedDocIds?.length) {
+      const count = await this.prisma.document.count({
+        where: { id: { in: dto.relatedDocIds }, deletedAt: null },
+      });
+      if (count !== dto.relatedDocIds.length) {
+        throw new NotFoundException('相关文件不存在或已删除');
+      }
+    }
+
     return this.prisma.recordFormLandingEntry.upsert({
       where: { sourceCode: code },
       update: {

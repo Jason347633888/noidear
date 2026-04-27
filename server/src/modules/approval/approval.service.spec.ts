@@ -75,7 +75,8 @@ describe('ApprovalService', () => {
 
       const result = await service.getPendingApprovals(approverId);
 
-      expect(result).toHaveLength(1);
+      expect(result.legacy).toHaveLength(1);
+      expect(result.unified).toHaveLength(0);
       expect(mockPrisma.approval.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { approverId, status: 'pending' } }),
       );
@@ -86,7 +87,8 @@ describe('ApprovalService', () => {
 
       const result = await service.getPendingApprovals('user-no-approvals');
 
-      expect(result).toHaveLength(0);
+      expect(result.legacy).toHaveLength(0);
+      expect(result.unified).toHaveLength(0);
     });
   });
 
@@ -148,7 +150,7 @@ describe('ApprovalService', () => {
       mockPrisma.approval.findUnique.mockResolvedValue(mockApproval);
       mockPrisma.document.findUnique.mockResolvedValue(mockDocument);
       mockPrisma.approval.update.mockResolvedValue({ ...mockApproval, status: 'approved' });
-      mockPrisma.document.update.mockResolvedValue({ ...mockDocument, status: 'approved' });
+      mockPrisma.document.update.mockResolvedValue({ ...mockDocument, status: 'effective' });
 
       const result = await service.approveUnified(approvalId, approverId, 'approved', '审批通过');
 
@@ -157,7 +159,7 @@ describe('ApprovalService', () => {
         expect.objectContaining({ where: { id: approvalId }, data: expect.objectContaining({ status: 'approved' }) }),
       );
       expect(mockPrisma.document.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: documentId }, data: expect.objectContaining({ status: 'approved' }) }),
+        expect.objectContaining({ where: { id: documentId }, data: expect.objectContaining({ status: 'effective' }) }),
       );
       expect(mockNotificationService.create).toHaveBeenCalledWith(
         expect.objectContaining({ userId: 'creator-001', type: 'approval_approved' }),
@@ -252,7 +254,7 @@ describe('ApprovalService', () => {
       mockPrisma.user.findUnique.mockResolvedValue(mockAdmin);
       mockPrisma.document.findUnique.mockResolvedValue(mockDocument);
       mockPrisma.approval.update.mockResolvedValue({ ...mockApproval, status: 'approved' });
-      mockPrisma.document.update.mockResolvedValue({ ...mockDocument, status: 'approved' });
+      mockPrisma.document.update.mockResolvedValue({ ...mockDocument, status: 'effective' });
 
       const result = await service.approveUnified('app-1', 'admin-user', 'approved', '管理员审批');
 
@@ -325,11 +327,14 @@ describe('ApprovalService', () => {
       mockPrisma.approval.update.mockResolvedValue({ ...mockApproval, status: 'approved' });
       mockPrisma.approval.count.mockResolvedValue(0);
       mockPrisma.document.findUnique.mockResolvedValue(mockDocument);
-      mockPrisma.document.update.mockResolvedValue({ ...mockDocument, status: 'approved' });
+      mockPrisma.document.update.mockResolvedValue({ ...mockDocument, status: 'effective' });
 
       const result = await service.approveCountersign(approvalId, approverId, 'approved', '同意');
 
       expect(result).toBeDefined();
+      expect(mockPrisma.document.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: documentId }, data: expect.objectContaining({ status: 'effective' }) }),
+      );
     });
 
     it('应该在会签中任一人驳回时终止整个流程', async () => {
@@ -387,11 +392,14 @@ describe('ApprovalService', () => {
       mockPrisma.approval.update.mockResolvedValue({ ...mockApproval, status: 'approved' });
       mockPrisma.approval.findFirst.mockResolvedValue(null);
       mockPrisma.document.findUnique.mockResolvedValue(mockDocument);
-      mockPrisma.document.update.mockResolvedValue({ ...mockDocument, status: 'approved' });
+      mockPrisma.document.update.mockResolvedValue({ ...mockDocument, status: 'effective' });
 
       const result = await service.approveSequential(approvalId, approverId, 'approved', '同意');
 
       expect(result).toBeDefined();
+      expect(mockPrisma.document.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: documentId }, data: expect.objectContaining({ status: 'effective' }) }),
+      );
     });
 
     it('应该在顺签中驳回时终止整个流程', async () => {

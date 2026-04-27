@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { nextTick } from 'vue';
+import { defineComponent, h, provide, inject, nextTick, type PropType } from 'vue';
 
 const mockGet = vi.fn();
 const mockPost = vi.fn();
@@ -25,7 +25,7 @@ vi.mock('vue-router', () => ({
 
 vi.mock('element-plus', () => ({
   ElMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
-  ElMessageBox: { confirm: vi.fn() },
+  ElMessageBox: { confirm: vi.fn(), prompt: vi.fn() },
 }));
 
 vi.mock('@/stores/user', () => ({
@@ -62,8 +62,23 @@ const stubs: Record<string, any> = {
   'el-form': { template: '<form><slot /></form>', props: ['model', 'rules'] },
   'el-form-item': { template: '<div><slot /></div>', props: ['label', 'prop'] },
   'el-input': { template: '<input />', props: ['modelValue', 'type', 'rows'] },
-  'el-table': { template: '<div><slot /></div>', props: ['data'] },
-  'el-table-column': { template: '<div />', props: ['prop', 'label', 'width'] },
+  'el-table': defineComponent({
+    props: { data: { type: Array as PropType<unknown[]>, default: () => [] } },
+    setup(props, { slots }) {
+      provide('tableRows', props.data);
+      return () => h('div', slots.default?.());
+    },
+  }),
+  'el-table-column': defineComponent({
+    props: ['prop', 'label', 'width', 'minWidth', 'fixed'],
+    setup(props, { slots }) {
+      const rows = inject<unknown[]>('tableRows', []);
+      return () => h('div', [
+        h('span', props.label),
+        ...rows.map((row) => h('div', slots.default?.({ row }))),
+      ]);
+    },
+  }),
   'OfficePreview': { template: '<div class="stub-office-preview" />', props: ['filename', 'previewUrl'] },
   'MarkdownEditor': {
     template: '<textarea class="markdown-editor-stub" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
@@ -94,6 +109,11 @@ const mockDocument = {
   ],
   targetReferences: [],
 };
+
+const makeDocument = (overrides: Partial<typeof mockDocument> = {}) => ({
+  ...mockDocument,
+  ...overrides,
+});
 
 const w = () => mount(DocumentDetail, { global: { stubs } });
 
@@ -169,6 +189,7 @@ describe('DocumentDetail', () => {
     const c = w();
     await flushPromises();
     expect((c.vm as any).getStatusType('approved')).toBe('success');
+    expect((c.vm as any).getStatusType('effective')).toBe('success');
   });
 
   it('getStatusText returns correct text', async () => {
@@ -177,7 +198,22 @@ describe('DocumentDetail', () => {
     expect((c.vm as any).getStatusText('draft')).toBe('草稿');
     expect((c.vm as any).getStatusText('pending')).toBe('待审批');
     expect((c.vm as any).getStatusText('approved')).toBe('已发布');
+    expect((c.vm as any).getStatusText('effective')).toBe('已发布');
     expect((c.vm as any).getStatusText('rejected')).toBe('已驳回');
+  });
+
+  it('shows lifecycle actions for effective documents', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url.includes('/versions')) return Promise.resolve({ versions: [] });
+      return Promise.resolve(makeDocument({ status: 'effective' }));
+    });
+
+    const wrapper = w();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('停用文档');
+    expect(wrapper.text()).toContain('归档');
+    expect(wrapper.text()).toContain('作废');
   });
 
   it('isCreator is true when user is document creator', async () => {
@@ -241,6 +277,65 @@ describe('DocumentDetail', () => {
     await flushPromises();
     expect((c.vm as any).document.document_type).toBe('PROCEDURE');
     expect((c.vm as any).document.sourceReferences).toHaveLength(1);
+  });
+
+  it('shows version action buttons for historical versions', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url.endsWith('/versions')) {
+        return Promise.resolve({
+          versions: [
+            {
+              id: 'v1',
+              version: 1.0,
+              fileName: 'old.pdf',
+              fileSize: '100',
+              createdAt: '2026-01-01',
+              creator: { name: 'Admin' },
+            },
+          ],
+        });
+      }
+      return Promise.resolve(makeDocument({ status: 'effective', version: 1.1 }));
+    });
+
+    const wrapper = w();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('下载版本');
+    expect(wrapper.text()).toContain('预览版本');
+    expect(wrapper.text()).toContain('回滚');
+  });
+
+  it('falls back to version download URL when version preview request fails', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url.endsWith('/versions/1/preview')) {
+        return Promise.reject(new Error('Preview failed'));
+      }
+      if (url.endsWith('/versions')) {
+        return Promise.resolve({
+          versions: [
+            {
+              id: 'v1',
+              version: 1,
+              fileName: 'old.pdf',
+              fileSize: '100',
+              createdAt: '2026-01-01',
+              creator: { name: 'Admin' },
+            },
+          ],
+        });
+      }
+      return Promise.resolve(makeDocument({ status: 'effective', version: 1.1 }));
+    });
+
+    const wrapper = w();
+    await flushPromises();
+
+    await expect((wrapper.vm as any).handlePreviewVersion({ version: 1 })).resolves.toBeUndefined();
+
+    expect((wrapper.vm as any).showPreview).toBe(true);
+    expect((wrapper.vm as any).previewUrl).toBe('/api/v1/documents/doc-1/versions/1/download');
+    expect((wrapper.vm as any).previewLoading).toBe(false);
   });
 
   it('classifies wikilink references for detail sections', async () => {

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationService } from '../notification/notification.service';
 import { BusinessException, ErrorCode } from '../../common/exceptions/business.exception';
+import { CANONICAL_DOCUMENT_STATUS } from '../document/constants/document-control.constants';
 
 @Injectable()
 export class ApprovalService {
@@ -289,7 +290,10 @@ export class ApprovalService {
   private async finalizeDocumentApproval(tx: any, documentId: string) {
     const doc = await tx.document.findUnique({ where: { id: documentId } });
     if (!doc) return;
-    await tx.document.update({ where: { id: documentId }, data: { status: 'approved', approvedAt: new Date() } });
+    await tx.document.update({
+      where: { id: documentId },
+      data: { status: CANONICAL_DOCUMENT_STATUS.EFFECTIVE, approvedAt: new Date() },
+    });
     await this.sendDocumentApprovalNotification(doc.creatorId, doc.id, doc.title);
   }
 
@@ -380,7 +384,7 @@ export class ApprovalService {
 
     await tx.document.update({
       where: { id: document.id },
-      data: { status: 'approved', approvedAt: new Date() },
+      data: { status: CANONICAL_DOCUMENT_STATUS.EFFECTIVE, approvedAt: new Date() },
     });
 
     await this.sendDocumentApprovalNotification(document.creatorId, document.id, document.title);

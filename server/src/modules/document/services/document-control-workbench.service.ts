@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { EFFECTIVE_COMPAT_STATUSES } from '../constants/document-control.constants';
 
 @Injectable()
 export class DocumentControlWorkbenchService {
@@ -25,7 +26,7 @@ export class DocumentControlWorkbenchService {
         take: 100,
       }),
       this.prisma.document.findMany({
-        where: { deletedAt: null, status: 'effective', review_due_date: { lte: deadline } },
+        where: { deletedAt: null, status: { in: [...EFFECTIVE_COMPAT_STATUSES] }, review_due_date: { lte: deadline } },
         orderBy: { review_due_date: 'asc' },
         take: 100,
       }),
@@ -34,7 +35,7 @@ export class DocumentControlWorkbenchService {
           deletedAt: null,
           document_type: 'EXTERNAL_FILE',
           external_expires_at: { lte: deadline },
-          status: { in: ['effective', 'approved'] },
+          status: { in: [...EFFECTIVE_COMPAT_STATUSES] },
         },
         orderBy: { external_expires_at: 'asc' },
         take: 100,

@@ -8,6 +8,7 @@ import * as fs from 'fs/promises';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { StorageService } from '../../../common/services';
 import { BusinessException, ErrorCode } from '../../../common/exceptions/business.exception';
+import { isEffectiveCompatible } from '../constants/document-control.constants';
 
 export interface PreviewResult {
   type: 'pdf' | 'word' | 'excel' | 'markdown' | 'unknown';
@@ -149,7 +150,7 @@ export class FilePreviewService {
     }
 
     // 权限检查
-    await this.checkDownloadPermission(document, userId, role);
+    await this.assertFileAccess(document, userId, role);
 
     // 获取文件流
     const stream = await this.storage.getFileStream(document.filePath);
@@ -182,7 +183,7 @@ export class FilePreviewService {
     }
 
     // 权限检查
-    await this.checkDownloadPermission(document, userId, role);
+    await this.assertFileAccess(document, userId, role);
 
     // 根据文件类型返回不同的预览方式
     const fileType = this.getFileType(document.fileType, document.fileName);
@@ -216,6 +217,14 @@ export class FilePreviewService {
   /**
    * 检查下载权限
    */
+  async assertFileAccess(
+    document: any,
+    userId: string,
+    role: string,
+  ): Promise<void> {
+    return this.checkDownloadPermission(document, userId, role);
+  }
+
   private async checkDownloadPermission(
     document: any,
     userId: string,
@@ -226,8 +235,8 @@ export class FilePreviewService {
       return;
     }
 
-    // 已发布的文档所有人都可以下载
-    if (document.status === 'approved') {
+    // 已生效的文档所有人都可以下载
+    if (isEffectiveCompatible(document.status)) {
       return;
     }
 

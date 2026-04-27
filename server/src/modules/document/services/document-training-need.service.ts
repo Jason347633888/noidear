@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { isEffectiveCompatible } from '../constants/document-control.constants';
 
 @Injectable()
 export class DocumentTrainingNeedService {
@@ -18,7 +19,7 @@ export class DocumentTrainingNeedService {
     return this.prisma.documentTrainingNeed.create({
       data: {
         documentId,
-        triggerType: document.status === 'effective' ? 'revised_document' : 'manual',
+        triggerType: isEffectiveCompatible(document.status) ? 'revised_document' : 'manual',
         targetDepartment,
         reason: `文件 ${document.title} 已发布或变更，需要评估培训需求`,
         createdBy: actorId,

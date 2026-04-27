@@ -8,6 +8,12 @@ describe('RecordFormLandingService', () => {
       findUnique: jest.fn(),
       upsert: jest.fn(),
     },
+    recordTemplate: {
+      findFirst: jest.fn(),
+    },
+    document: {
+      count: jest.fn(),
+    },
   };
 
   const modelLanding = {
@@ -35,6 +41,8 @@ describe('RecordFormLandingService', () => {
     modelLanding.getFormByCode.mockReturnValue(mockForm);
     prisma.recordFormLandingEntry.findMany.mockResolvedValue([]);
     prisma.recordFormLandingEntry.findUnique.mockResolvedValue(null);
+    prisma.recordTemplate.findFirst.mockResolvedValue(null);
+    prisma.document.count.mockResolvedValue(0);
   });
 
   function makeService() {
@@ -141,6 +149,46 @@ describe('RecordFormLandingService', () => {
       modelLanding.getFormByCode.mockReturnValue(null);
       const service = makeService();
       await expect(service.upsertTarget('UNKNOWN', {})).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects missing target template ids', async () => {
+      modelLanding.getFormByCode.mockReturnValue({ code: 'F1', formName: '表单1' });
+      prisma.recordTemplate.findFirst.mockResolvedValue(null);
+
+      const service = makeService();
+      await expect(
+        service.upsertTarget('F1', {
+          targetTemplateId: 'tpl-missing',
+          targetRoute: '/records',
+        } as any),
+      ).rejects.toThrow('记录模板不存在');
+    });
+
+    it('rejects soft-deleted target template ids', async () => {
+      modelLanding.getFormByCode.mockReturnValue({ code: 'F1', formName: '表单1' });
+      prisma.recordTemplate.findFirst.mockResolvedValue(null);
+
+      const service = makeService();
+      await expect(
+        service.upsertTarget('F1', {
+          targetTemplateId: 'tpl-deleted',
+          targetRoute: '/records',
+        } as any),
+      ).rejects.toThrow('记录模板不存在');
+    });
+
+    it('rejects related document ids that do not exist', async () => {
+      modelLanding.getFormByCode.mockReturnValue({ code: 'F1', formName: '表单1' });
+      prisma.recordTemplate.findFirst.mockResolvedValue({ id: 'tpl1' });
+      prisma.document.count.mockResolvedValue(1);
+
+      const service = makeService();
+      await expect(
+        service.upsertTarget('F1', {
+          targetTemplateId: 'tpl1',
+          relatedDocIds: ['doc1', 'doc2'],
+        } as any),
+      ).rejects.toThrow('相关文件不存在');
     });
   });
 });
