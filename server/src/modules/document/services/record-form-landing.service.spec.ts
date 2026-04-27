@@ -93,6 +93,29 @@ describe('RecordFormLandingService', () => {
       const result = await service.list({});
       expect(result[0].landingEntry).toEqual(mockEntry);
     });
+
+    it('returns targetTemplate details for landing entries', async () => {
+      modelLanding.listGroups.mockReturnValue([{ id: 'grp1' }]);
+      modelLanding.getGroup.mockReturnValue({
+        id: 'grp1',
+        forms: [{ code: 'GRSS-PZ-JL-01', formName: '记录表', department: 'PZ', templateGroupId: 'g1' }],
+      });
+      prisma.recordFormLandingEntry.findMany.mockResolvedValue([{
+        sourceCode: 'GRSS-PZ-JL-01',
+        targetTemplateId: 'tmpl1',
+        targetTemplate: { id: 'tmpl1', code: 'TMP-01', name: '记录模板', status: 'active' },
+      }]);
+
+      const service = makeService();
+      const result = await service.list({});
+
+      expect(result[0].landingEntry!.targetTemplate).toEqual({
+        id: 'tmpl1',
+        code: 'TMP-01',
+        name: '记录模板',
+        status: 'active',
+      });
+    });
   });
 
   describe('get', () => {
