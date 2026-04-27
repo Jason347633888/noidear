@@ -118,8 +118,8 @@ const changeEventApi = {
     return request.get<ChangeEventFormTask[]>(`/change-events/${id}/form-tasks`);
   },
 
-  fillFormTask(taskId: string, dataJson: Record<string, unknown>) {
-    return request.post<ChangeEventFormTask>(`/change-events/form-tasks/${taskId}/fill`, { dataJson });
+  fillFormTask(taskId: string, payload: { dataJson?: Record<string, unknown>; existingRecordId?: string }) {
+    return request.post<ChangeEventFormTask>(`/change-events/form-tasks/${taskId}/fill`, payload);
   },
 };
 

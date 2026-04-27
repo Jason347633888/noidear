@@ -167,7 +167,7 @@ const handleSubmit = async () => {
     const record: any = await newRecordApi.create(buildCreatePayload());
     currentRecordId.value = record.id;
     if (changeEventTaskId.value) {
-      await changeEventApi.fillFormTask(changeEventTaskId.value, { ...formData });
+      await changeEventApi.fillFormTask(changeEventTaskId.value, { existingRecordId: record.id });
     }
     await submitRecord();
   } catch {

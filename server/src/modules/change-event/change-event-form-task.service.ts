@@ -51,24 +51,30 @@ export class ChangeEventFormTaskService {
     });
   }
 
-  async fillTask(taskId: string, dataJson: object, userId: string) {
+  async fillTask(taskId: string, dataJson: object, userId: string, existingRecordId?: string) {
     const task = await this.prisma.changeEventFormTask.findUnique({ where: { id: taskId } });
     if (!task) throw new NotFoundException('变更表单任务不存在');
     if (task.recordId) throw new ConflictException('变更表单任务已填写');
     if (task.status !== 'pending') throw new BadRequestException('只有待填写任务可以填写');
 
-    const record = await this.recordService.create({
-      templateId: task.templateId,
-      dataJson,
-      usageType: 'change' as const,
-      sourceType: 'change_event',
-      sourceId: task.changeEventId,
-      changeEventId: task.changeEventId,
-    }, userId);
+    let recordId: string;
+    if (existingRecordId) {
+      recordId = existingRecordId;
+    } else {
+      const record = await this.recordService.create({
+        templateId: task.templateId,
+        dataJson,
+        usageType: 'change' as const,
+        sourceType: 'change_event',
+        sourceId: task.changeEventId,
+        changeEventId: task.changeEventId,
+      }, userId);
+      recordId = record.id;
+    }
 
     return this.prisma.changeEventFormTask.update({
       where: { id: task.id },
-      data: { recordId: record.id, status: 'filled' },
+      data: { recordId, status: 'filled' },
       include: {
         template: { select: { id: true, code: true, name: true, status: true } },
         record: { select: { id: true, number: true, status: true, createdAt: true } },

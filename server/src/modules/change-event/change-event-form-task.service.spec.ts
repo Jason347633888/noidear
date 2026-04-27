@@ -90,4 +90,27 @@ describe('ChangeEventFormTaskService', () => {
 
     await expect(service.fillTask('task1', {}, 'user1')).rejects.toThrow(BadRequestException);
   });
+
+  it('links existing record to task without creating a new one', async () => {
+    prisma.changeEventFormTask.findUnique.mockResolvedValue({
+      id: 'task1',
+      recordId: null,
+      status: 'pending',
+      changeEventId: 'change1',
+      templateId: 'tpl1',
+    });
+    prisma.changeEventFormTask.update.mockResolvedValue({
+      id: 'task1',
+      recordId: 'existing-record-1',
+      status: 'filled',
+    });
+
+    const service = new ChangeEventFormTaskService(prisma as any, recordService as any);
+    await service.fillTask('task1', {}, 'user1', 'existing-record-1');
+
+    expect(recordService.create).not.toHaveBeenCalled();
+    expect(prisma.changeEventFormTask.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ recordId: 'existing-record-1', status: 'filled' }),
+    }));
+  });
 });
