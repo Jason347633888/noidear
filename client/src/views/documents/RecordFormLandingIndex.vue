@@ -18,7 +18,36 @@
           <el-tag v-else type="warning">待补齐入口</el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="操作" width="120" fixed="right">
+        <template #default="{ row }">
+          <el-button :data-test="`edit-landing-${row.code}`" link type="primary" @click="openEdit(row)">维护</el-button>
+        </template>
+      </el-table-column>
     </el-table>
+
+    <el-dialog v-model="editVisible" title="维护表单入口" width="640px">
+      <el-form label-width="120px">
+        <el-form-item label="目标模块">
+          <el-input v-model="editForm.targetModule" />
+        </el-form-item>
+        <el-form-item label="目标模型">
+          <el-input v-model="editForm.targetModel" />
+        </el-form-item>
+        <el-form-item label="目标路由">
+          <el-input data-test="target-route-input" v-model="editForm.targetRoute" />
+        </el-form-item>
+        <el-form-item label="模板 ID">
+          <el-input v-model="editForm.targetTemplateId" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="editForm.notes" type="textarea" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editVisible = false">取消</el-button>
+        <el-button data-test="save-landing" type="primary" @click="saveEdit">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -32,6 +61,17 @@ const router = useRouter();
 const keyword = ref('');
 const loading = ref(false);
 const rows = ref<RecordFormLandingEntry[]>([]);
+const editVisible = ref(false);
+const editingCode = ref('');
+const editForm = ref({
+  targetModule: '',
+  targetModel: '',
+  targetRoute: '',
+  targetTemplateId: '',
+  landingStrategy: 'route',
+  relatedDocIds: [] as string[],
+  notes: '',
+});
 
 const fetchRows = async () => {
   loading.value = true;
@@ -49,6 +89,27 @@ const fetchRows = async () => {
 const openRoute = (route: string) => {
   if (!route.startsWith('/')) return;
   router.push(route);
+};
+
+const openEdit = (row: RecordFormLandingEntry) => {
+  editingCode.value = row.code;
+  editForm.value = {
+    targetModule: row.landingEntry?.targetModule || '',
+    targetModel: row.landingEntry?.targetModel || '',
+    targetRoute: row.landingEntry?.targetRoute || '',
+    targetTemplateId: row.landingEntry?.targetTemplateId || '',
+    landingStrategy: row.landingEntry?.landingStrategy || 'route',
+    relatedDocIds: row.landingEntry?.relatedDocIds || [],
+    notes: row.landingEntry?.notes || '',
+  };
+  editVisible.value = true;
+};
+
+const saveEdit = async () => {
+  await documentControlApi.updateRecordFormIndex(editingCode.value, editForm.value);
+  ElMessage.success('表单入口已保存');
+  editVisible.value = false;
+  await fetchRows();
 };
 
 onMounted(fetchRows);
