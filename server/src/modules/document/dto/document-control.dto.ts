@@ -1,4 +1,4 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -188,7 +188,7 @@ export const WORKBENCH_ISSUE_TYPES = [
 export type WorkbenchIssueType = typeof WORKBENCH_ISSUE_TYPES[number];
 
 export class WorkbenchIssueQueryDto {
-  @ApiPropertyOptional({ enum: WORKBENCH_ISSUE_TYPES })
+  @ApiProperty({ enum: WORKBENCH_ISSUE_TYPES })
   @IsIn(WORKBENCH_ISSUE_TYPES)
   type!: WorkbenchIssueType;
 
