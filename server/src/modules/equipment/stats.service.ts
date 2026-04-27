@@ -55,7 +55,7 @@ export class StatsService {
       });
 
       const results = await Promise.all(
-        equipment.map(async (eq) => {
+        equipment.map(async (eq: { id: string; code: string; name: string }) => {
           const faultCount = await this.prisma.equipmentFault.count({
             where: { equipmentId: eq.id, deletedAt: null },
           });

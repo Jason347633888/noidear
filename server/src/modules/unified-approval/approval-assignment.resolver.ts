@@ -34,7 +34,7 @@ export class ApprovalAssignmentResolver {
       });
       return {
         assignment,
-        assigneeUserIds: users.map((u) => u.id),
+        assigneeUserIds: users.map((u: { id: string }) => u.id),
         assigneeRoleCode: assignment.roleCode,
         claimMode: 'CLAIMABLE',
       };
@@ -55,7 +55,7 @@ export class ApprovalAssignmentResolver {
       });
       return {
         assignment,
-        assigneeUserIds: users.map((u) => u.id),
+        assigneeUserIds: users.map((u: { id: string }) => u.id),
         assigneeDepartmentId: department.id,
         claimMode: 'CLAIMABLE',
       };
@@ -76,7 +76,7 @@ export class ApprovalAssignmentResolver {
       });
       return {
         assignment,
-        assigneeUserIds: users.map((u) => u.id),
+        assigneeUserIds: users.map((u: { id: string }) => u.id),
         assigneePermissionCode: assignment.permissionCode,
         claimMode: 'CLAIMABLE',
       };
