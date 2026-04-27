@@ -1,3 +1,4 @@
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { getDefaultFormCodesForChangeType } from './change-event-default-form-rules';
 import { ChangeEventFormTaskService } from './change-event-form-task.service';
 
@@ -36,6 +37,7 @@ describe('ChangeEventFormTaskService', () => {
     recordTemplate: { findMany: jest.fn() },
     changeEventFormTask: { createMany: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
     record: { create: jest.fn() },
+    $transaction: jest.fn().mockImplementation(async (fn) => fn(prisma)),
   };
   const recordService = { create: jest.fn() };
 
@@ -66,5 +68,26 @@ describe('ChangeEventFormTaskService', () => {
       skipDuplicates: true,
     });
     expect(result).toHaveLength(1);
+  });
+
+  it('throws NotFoundException when task does not exist', async () => {
+    prisma.changeEventFormTask.findUnique.mockResolvedValue(null);
+    const service = new ChangeEventFormTaskService(prisma as any, recordService as any);
+
+    await expect(service.fillTask('missing-task', {}, 'user1')).rejects.toThrow(NotFoundException);
+  });
+
+  it('throws ConflictException when task is already filled', async () => {
+    prisma.changeEventFormTask.findUnique.mockResolvedValue({ id: 'task1', recordId: 'existing-record', status: 'filled', changeEventId: 'change1', templateId: 'tpl1' });
+    const service = new ChangeEventFormTaskService(prisma as any, recordService as any);
+
+    await expect(service.fillTask('task1', {}, 'user1')).rejects.toThrow(ConflictException);
+  });
+
+  it('throws BadRequestException when task status is not pending', async () => {
+    prisma.changeEventFormTask.findUnique.mockResolvedValue({ id: 'task1', recordId: null, status: 'approved', changeEventId: 'change1', templateId: 'tpl1' });
+    const service = new ChangeEventFormTaskService(prisma as any, recordService as any);
+
+    await expect(service.fillTask('task1', {}, 'user1')).rejects.toThrow(BadRequestException);
   });
 });
