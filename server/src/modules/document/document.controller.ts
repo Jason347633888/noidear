@@ -33,7 +33,7 @@ import { DocumentAuditCoverageService } from './services/document-audit-coverage
 import { DocumentImpactService } from './services/document-impact.service';
 import { DocumentHealthService } from './services/document-health.service';
 import { DocumentAuditChainService } from './services/document-audit-chain.service';
-import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto, WorkbenchQueryDto, CreateReadRequirementDto, TrainingNeedActionDto, ImpactReviewCreateDto, ImpactItemUpdateDto, CoverageQueryDto, AuditChainQueryDto } from './dto';
+import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto, WorkbenchQueryDto, CreateReadRequirementDto, TrainingNeedActionDto, ImpactReviewCreateDto, ImpactItemUpdateDto, CoverageQueryDto, AuditChainQueryDto, UpdateMarkdownDto } from './dto';
 import { UpdateRecordFormLandingEntryDto } from './dto/document-control.dto';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
@@ -371,7 +371,7 @@ export class DocumentController {
 
   @Patch(':id/markdown')
   @ApiOperation({ summary: '更新 Markdown 正文' })
-  updateMarkdown(@Param('id') id: string, @Body() dto: { contentMd: string }, @Req() req: any) {
+  updateMarkdown(@Param('id') id: string, @Body() dto: UpdateMarkdownDto, @Req() req: any) {
     return this.documentService.updateMarkdown(id, req.user.id, req.user.role, dto);
   }
 

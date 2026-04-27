@@ -96,7 +96,44 @@ describe('DocumentService document control metadata', () => {
         where: { id: 'doc1' },
         data: { content_md: '# 新内容' },
       });
+      expect(eventEmitter.emit).toHaveBeenCalledWith('document.updated', { documentId: 'doc1' });
       expect(result).toEqual({ id: 'doc1', content_md: '# 新内容' });
+    });
+
+    it('updates markdown content for the document creator', async () => {
+      prisma.document.findUnique.mockResolvedValue({ id: 'doc1', creatorId: 'u1', status: 'rejected' });
+      prisma.document.update.mockResolvedValue({ id: 'doc1', content_md: '# 创建者更新' });
+
+      const result = await service.updateMarkdown('doc1', 'u1', 'user', { contentMd: '# 创建者更新' });
+
+      expect(prisma.document.update).toHaveBeenCalledWith({
+        where: { id: 'doc1' },
+        data: { content_md: '# 创建者更新' },
+      });
+      expect(eventEmitter.emit).toHaveBeenCalledWith('document.updated', { documentId: 'doc1' });
+      expect(result).toEqual({ id: 'doc1', content_md: '# 创建者更新' });
+    });
+
+    it('rejects missing markdown content', async () => {
+      await expect(
+        service.updateMarkdown('doc1', 'u1', 'admin', {} as any),
+      ).rejects.toMatchObject({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: 'contentMd 必须是字符串',
+      });
+      expect(prisma.document.findUnique).not.toHaveBeenCalled();
+      expect(prisma.document.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects non-string markdown content', async () => {
+      await expect(
+        service.updateMarkdown('doc1', 'u1', 'admin', { contentMd: 123 } as any),
+      ).rejects.toMatchObject({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: 'contentMd 必须是字符串',
+      });
+      expect(prisma.document.findUnique).not.toHaveBeenCalled();
+      expect(prisma.document.update).not.toHaveBeenCalled();
     });
 
     it('throws not found when document is missing', async () => {

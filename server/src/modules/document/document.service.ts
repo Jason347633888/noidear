@@ -5,7 +5,7 @@ import { Prisma } from '@prisma/client';
 import { StorageService } from '../../common/services';
 import { Snowflake, convertBigIntToNumber } from '../../common/utils';
 import { BusinessException, ErrorCode } from '../../common/exceptions/business.exception';
-import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto } from './dto';
+import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, UpdateMarkdownDto } from './dto';
 import { NotificationService } from '../notification/notification.service';
 import { OperationLogService } from '../operation-log/operation-log.service';
 import { DocumentControlMetadataService } from './services/document-control-metadata.service';
@@ -309,7 +309,11 @@ export class DocumentService {
     return convertBigIntToNumber(result);
   }
 
-  async updateMarkdown(id: string, userId: string, role: string, dto: { contentMd: string }) {
+  async updateMarkdown(id: string, userId: string, role: string, dto: UpdateMarkdownDto) {
+    if (!dto || typeof dto.contentMd !== 'string') {
+      throw new BusinessException(ErrorCode.VALIDATION_ERROR, 'contentMd 必须是字符串');
+    }
+
     const document = await this.prisma.document.findUnique({
       where: { id, deletedAt: null },
     });
@@ -331,6 +335,7 @@ export class DocumentService {
       data: { content_md: dto.contentMd },
     });
 
+    this.eventEmitter.emit('document.updated', { documentId: id });
     return convertBigIntToNumber(result);
   }
 
