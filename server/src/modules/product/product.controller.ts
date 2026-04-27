@@ -1,7 +1,21 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { ProductReportDocumentDto } from './dto/product-report-document.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('products')
@@ -19,9 +33,37 @@ export class ProductController {
     return this.service.findOne(id);
   }
 
+  @Get(':id/reports')
+  getReports(@Param('id') id: string) {
+    return this.service.getReports(id);
+  }
+
   @Post()
   create(@Body() dto: CreateProductDto) {
     return this.service.create(dto);
+  }
+
+  @Post(':id/reports')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadReport(
+    @Param('id') id: string,
+    @Body() dto: ProductReportDocumentDto,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any,
+  ) {
+    return this.service.uploadReport(id, dto, file, req.user?.id ?? 'system');
+  }
+
+  @Post(':id/reports/:linkId/replace')
+  @UseInterceptors(FileInterceptor('file'))
+  replaceReport(
+    @Param('id') id: string,
+    @Param('linkId') linkId: string,
+    @Body() dto: ProductReportDocumentDto,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any,
+  ) {
+    return this.service.replaceReport(id, linkId, dto, file, req.user?.id ?? 'system');
   }
 
   @Patch(':id')

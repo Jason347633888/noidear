@@ -33,7 +33,8 @@ import { DocumentAuditCoverageService } from './services/document-audit-coverage
 import { DocumentImpactService } from './services/document-impact.service';
 import { DocumentHealthService } from './services/document-health.service';
 import { DocumentAuditChainService } from './services/document-audit-chain.service';
-import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto, WorkbenchQueryDto, CreateReadRequirementDto, TrainingNeedActionDto, ImpactReviewCreateDto, ImpactItemUpdateDto, CoverageQueryDto, AuditChainQueryDto } from './dto';
+import { DocumentReferenceHealthService } from './services/document-reference-health.service';
+import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto, WorkbenchQueryDto, CreateReadRequirementDto, TrainingNeedActionDto, ImpactReviewCreateDto, ImpactItemUpdateDto, CoverageQueryDto, AuditChainQueryDto, UpdateMarkdownDto } from './dto';
 import { UpdateRecordFormLandingEntryDto } from './dto/document-control.dto';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
@@ -68,6 +69,7 @@ export class DocumentController {
     private readonly impactService: DocumentImpactService,
     private readonly healthService: DocumentHealthService,
     private readonly auditChainService: DocumentAuditChainService,
+    private readonly referenceHealthService: DocumentReferenceHealthService,
   ) {}
 
   @Post('upload')
@@ -268,6 +270,14 @@ export class DocumentController {
     return this.auditChainService.getChain(dto.sourceType, dto.sourceId, dto.maxDepth ?? 4);
   }
 
+  @Get('reference-health/issues')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:control_manage')
+  @ApiOperation({ summary: '查询文档引用问题清单' })
+  getReferenceHealthIssues() {
+    return this.referenceHealthService.listIssues();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: '查询文档详情' })
   async findOne(@Param('id') id: string, @Req() req: any) {
@@ -287,6 +297,24 @@ export class DocumentController {
     }
 
     return document;
+  }
+
+  @Get(':id/reference-health')
+  @ApiOperation({ summary: '查询单个文档引用健康度' })
+  async getDocumentReferenceHealth(@Param('id') id: string, @Req() req: any) {
+    const document = await this.documentService.findOne(id, req.user.id, req.user.role);
+    const canAccess = await this.departmentPermissionService.canAccessDepartmentResource(
+      req.user.id,
+      document.departmentId,
+      'view',
+      'document',
+    );
+
+    if (!canAccess) {
+      throw new ForbiddenException('无权访问该部门的文档');
+    }
+
+    return this.referenceHealthService.getDocumentHealth(id);
   }
 
   @Get(':id/versions')
@@ -367,6 +395,12 @@ export class DocumentController {
     @Req() req: any,
   ) {
     return this.documentService.update(id, dto, file, req.user.id);
+  }
+
+  @Patch(':id/markdown')
+  @ApiOperation({ summary: '更新 Markdown 正文' })
+  updateMarkdown(@Param('id') id: string, @Body() dto: UpdateMarkdownDto, @Req() req: any) {
+    return this.documentService.updateMarkdown(id, req.user.id, req.user.role, dto);
   }
 
   @Delete(':id')

@@ -55,6 +55,14 @@ describe('TodoService', () => {
       expect(result.items[0].actionRoute).toBeNull();
     });
 
+    it('sets actionRoute for document renewal todos', async () => {
+      mockPrisma.todoTask.findMany.mockResolvedValue([makeTodo({ type: 'document_renewal', relatedId: 'link1' })]);
+      mockPrisma.todoTask.count.mockResolvedValue(1);
+
+      const result = await service.findAll('user1', { status: 'all', type: 'all', page: 1, limit: 20 });
+      expect(result.items[0].actionRoute).toBe('/documents/business-links/link1');
+    });
+
     it('sets hasMore true when more pages exist', async () => {
       mockPrisma.todoTask.findMany.mockResolvedValue(new Array(5).fill(makeTodo()));
       mockPrisma.todoTask.count.mockResolvedValue(10);
@@ -79,6 +87,7 @@ describe('TodoService', () => {
       expect(result.byType['training_attend']).toBe(3);
       expect(result.byType['approval']).toBe(1);
       expect(result.byType['equipment_maintain']).toBe(0);
+      expect(result.byType['document_renewal']).toBe(0);
     });
   });
 

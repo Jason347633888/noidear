@@ -144,6 +144,43 @@ describe('FilePreviewService', () => {
       });
     });
 
+    it('returns a live preview url for pdf documents', async () => {
+      jest.spyOn(prisma.document, 'findUnique').mockResolvedValue({
+        ...mockDocument,
+        id: 'doc1',
+        fileType: 'application/pdf',
+        filePath: 'documents/test.pdf',
+        fileName: 'test.pdf',
+        status: 'approved',
+      } as any);
+      jest.spyOn(storage, 'getSignedUrl').mockResolvedValue('https://preview.local/test.pdf');
+
+      const result = await service.getPreviewUrl('doc1', 'user1', 'admin');
+
+      expect(result).toEqual({
+        type: 'pdf',
+        url: 'https://preview.local/test.pdf',
+        fileName: 'test.pdf',
+      });
+    });
+
+    it('returns system body preview metadata for Markdown documents', async () => {
+      jest.spyOn(prisma.document, 'findUnique').mockResolvedValue({
+        ...mockDocument,
+        fileName: 'procedure.md',
+        fileType: 'text/markdown',
+      } as any);
+
+      const result = await service.getPreviewUrl('1', 'user1', 'user');
+
+      expect(result).toEqual({
+        type: 'markdown',
+        fileName: 'procedure.md',
+        message: 'Markdown 文件使用系统正文预览',
+      });
+      expect(storage.getSignedUrl).not.toHaveBeenCalled();
+    });
+
     it('应该为 Word 返回下载提示', async () => {
       const wordDoc = {
         ...mockDocument,

@@ -27,12 +27,15 @@ check_exists "$AGENTS_FILE"
 check_exists "$GUIDE_FILE"
 check_exists "$MODEL_FILE"
 
-check_contains "$AGENTS_FILE" 'Mandatory Reading Order'
+check_contains "$AGENTS_FILE" 'root entry point'
+check_contains "$AGENTS_FILE" '## Mandatory Reading Order'
 check_contains "$AGENTS_FILE" 'docs/AGENT_GUIDE.md'
-check_contains "$AGENTS_FILE" 'MASTER_DATA_AND_TRACEABILITY_MODEL.md'
+check_contains "$AGENTS_FILE" '## Food-Safety Hard Gate'
+check_contains "$AGENTS_FILE" 'docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md'
+check_contains "$AGENTS_FILE" 'This document must stay short'
 
 check_contains "$GUIDE_FILE" '## 1\. 文档优先级'
-check_contains "$GUIDE_FILE" '## 2\. Mandatory Reading'
+check_contains "$GUIDE_FILE" '## 2\. Hard Gates'
 check_contains "$GUIDE_FILE" '## 3\. Task Triggers'
 check_contains "$GUIDE_FILE" '## 4\. Behavior Constraints'
 check_contains "$GUIDE_FILE" '## 5\. Conflict Handling'

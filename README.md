@@ -14,7 +14,7 @@
 
 一个完整的企业文档管理与配方填报系统，支持三级文档管理、四级模板配方、任务派发与填报、配方偏离检测与统计分析、二级审批流程、数据导出与文件预览、**灵活工作流引擎**等功能。
 
-**项目状态** _(最后更新: 2026-04-24，详见 [docs/complete-audit-report.md](docs/complete-audit-report.md))_:
+**项目状态** _(最后更新: 2026-04-27，详见 [docs/complete-audit-report.md](docs/complete-audit-report.md))_:
 - ✅ 全部 22 个功能模块（TASK-001~402）已开发，总体完成度 **85.6%**（154/180 任务）
 - ✅ MVP 模块 01~10：核心业务功能全部交付
 - ✅ 高级模块 14~22：培训/内审/移动端/监控/高级功能全部交付
@@ -26,7 +26,7 @@
 - ✅ **Vault SaaS Browser Alignment 完成**（2026-04-23）：283张表单对齐，31个缺失映射 + 3个编号不匹配修复
 - ✅ **oh-my-opencode 智能体框架集成**（Kimi K2.6 + GPT-5.4）
 - ✅ **E2E 测试框架优化**（Playwright 全局登录缓存，解决429限流问题）
-- ✅ **Agent 入仓协议层**（2026-04-24）：AGENTS.md 精简为根入口文档，AGENT_GUIDE.md 升级为操作协议中心（文档优先级 + 强制阅读 + Task Triggers + 行为约束 + 冲突处理），新增 validate-agent-onboarding-docs.sh 验证脚本
+- ✅ **Agent 入口与权威链对齐**（2026-04-27）：AGENTS.md 回归短根入口，CLAUDE.md 保持薄代理，AGENT_GUIDE.md 承载项目特有补充协议，MASTER_DATA_AND_TRACEABILITY_MODEL.md 作为食品安全 hard gate，validate-agent-onboarding-docs.sh 同步更新
 - ✅ **Model Landing 层**（2026-04-24）：283 张表单 / 59 个执行组冻结为可查询 TypeScript 运行时 artifact，NestJS ModelLandingModule 提供 REST 查询接口，freeze-guard 测试 + verify 脚本确保 artifact 与冻结 spec 对齐
 - ⚠️ 残留：`RoleFineGrainedPermission` 中间表、`RecordTemplate.workflowConfig` 等 Schema 字段待补全
 - ⚠️ 前端 E2E 测试（Playwright）：30 个 spec 文件，覆盖率约 45%
@@ -250,8 +250,11 @@ npm run test:cov
 | [DESIGN.md](docs/DESIGN.md) | 技术设计文档（v10.7，113条业务规则 + P1技术债务完整方案） |
 | [complete-audit-report.md](docs/complete-audit-report.md) | **完整功能审计报告（2026-02-22，第三次更新，85.6% 完成）** |
 | [INTERACTION_DESIGN.md](docs/INTERACTION_DESIGN.md) | 前端交互设计规范（v1.1） |
-| [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | 项目结构详解（v6.0，完整重写） |
-| [CLAUDE.md](CLAUDE.md) | AI 开发指南（v5.2） |
+| [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | 项目结构详解（v6.5，补齐 Agent 入口与文档权威链） |
+| [AGENTS.md](AGENTS.md) | Agent 根入口文档（短入口） |
+| [CLAUDE.md](CLAUDE.md) | Claude 入口代理 |
+| [AGENT_GUIDE.md](docs/AGENT_GUIDE.md) | 项目特有补充协议（运行时 / MCP / 测试 / 追溯） |
+| [MASTER_DATA_AND_TRACEABILITY_MODEL.md](docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md) | 食品安全主数据与追溯权威模型 |
 | [SECURITY.md](SECURITY.md) | 安全说明 |
 
 ---

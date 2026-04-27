@@ -29,6 +29,20 @@ export interface IncomingInspection {
   };
 }
 
+export interface InspectionReportDocument {
+  id: string;
+  documentId: string;
+  reportType: string;
+  reportName: string;
+  fileName: string;
+  fileType: string;
+  reportNo?: string;
+  testedAt?: string;
+  conclusion?: string;
+  expiresAt?: string;
+  status: 'valid' | 'expiring_soon' | 'expired';
+}
+
 export interface CreateInspectionPayload {
   material_batch_id: string;
   overall_result: string;
@@ -74,6 +88,18 @@ const incomingInspectionApi = {
 
   getByBatch(batchId: string) {
     return request.get<IncomingInspection[]>(`/incoming-inspections/batch/${batchId}`);
+  },
+
+  getReports(id: string) {
+    return request.get<InspectionReportDocument[]>(`/incoming-inspections/${id}/reports`);
+  },
+
+  uploadReport(id: string, formData: FormData) {
+    return request.post(`/incoming-inspections/${id}/reports`, formData);
+  },
+
+  replaceReport(id: string, linkId: string, formData: FormData) {
+    return request.post(`/incoming-inspections/${id}/reports/${linkId}/replace`, formData);
   },
 };
 

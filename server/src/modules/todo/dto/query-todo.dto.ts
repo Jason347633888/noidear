@@ -6,6 +6,7 @@ const STATUS_VALUES = ['all', 'pending', 'completed'] as const;
 const TYPE_VALUES = [
   'all', 'training_attend', 'training_organize', 'approval',
   'audit_rectification', 'equipment_maintain', 'inventory', 'change_request',
+  'document_renewal',
 ] as const;
 
 export type TodoStatusFilter = typeof STATUS_VALUES[number];

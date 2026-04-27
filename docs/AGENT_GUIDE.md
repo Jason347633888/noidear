@@ -1,6 +1,6 @@
 # Agent 操作指南
 
-> 本文档是 `noidear` 的 agent 操作协议中心。所有 agent 在进入实现、改 schema、改接口、改行为前，必须先读完本文件要求的前置文档和硬规则。
+> 本文档是 `noidear` 的项目特有补充协议中心。`AGENTS.md` 只负责根入口、阅读顺序和食品安全 hard gate；本文件承接运行时权威链、追溯协议、MCP/API/测试操作。
 
 ## 1. 文档优先级
 
@@ -9,16 +9,15 @@
 3. `/Users/jiashenglin/Desktop/mybrain/SaaS产品构思`
 4. `server/src/prisma/schema.prisma`
 
-## 2. Mandatory Reading
+## 2. Hard Gates
 
-所有 agent 必须先读：
+以下任务必须继续读取 `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md`：
 
-1. `AGENTS.md`
-2. `docs/AGENT_GUIDE.md`
-
-如果任务涉及食品安全、283 张表单、主数据、批次、追溯、召回、仓储/制造/品质跨模块关系，必须继续读：
-
-3. `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md`
+- 食品安全 SaaS
+- 283 张源表单
+- 主数据、批次、追溯、召回
+- 仓储 / 制造 / 品质 / 质检 / 研发跨模块关系
+- 决定 `RecordTemplate/Record` 和独立业务表如何取舍
 
 ## 3. Task Triggers
 

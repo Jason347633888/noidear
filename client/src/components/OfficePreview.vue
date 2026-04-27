@@ -9,13 +9,8 @@
       <el-empty v-else description="无法生成预览链接" />
     </div>
     <div v-else-if="fileType === 'office'" class="preview-wrapper">
-      <div v-if="isMobile" class="mobile-hint">
-        <el-alert title="移动端暂不支持在线预览" type="info" :closable="false" show-icon />
-        <el-button type="primary" style="margin-top: 16px" @click="handleDownload">下载文件</el-button>
-      </div>
-      <iframe v-else-if="officeViewerUrl" :src="officeViewerUrl" class="preview-iframe" frameborder="0" />
-      <div v-else class="download-hint">
-        <el-alert title="该文件格式暂不支持在线预览" type="info" :closable="false" show-icon />
+      <div class="download-hint">
+        <el-alert title="Office 文件暂按附件管理，请下载查看" type="info" :closable="false" show-icon />
         <el-button type="primary" style="margin-top: 16px" @click="handleDownload">下载文件</el-button>
       </div>
     </div>
@@ -56,11 +51,6 @@ const fileType = computed(() => {
   if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) return 'office';
   if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) return 'image';
   return 'other';
-});
-
-const officeViewerUrl = computed(() => {
-  if (!props.previewUrl || fileType.value !== 'office') return '';
-  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(props.previewUrl)}`;
 });
 
 const handleDownload = () => { emit('download'); };

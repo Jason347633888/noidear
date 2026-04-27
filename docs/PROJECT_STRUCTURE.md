@@ -1,17 +1,17 @@
 # 项目结构导航
 
-> 文档版本: 6.2
-> 最后更新: 2026-04-24
+> 文档版本: 6.5
+> 最后更新: 2026-04-27
 > 用途: AI Agent 快速定位文件 + 项目结构参考
 > 项目状态: 全部 22 个功能模块已开发，总体完成度 **85.6%**（154/180 任务）
-> 最新进展: Agent 入仓协议层完成（AGENTS.md + AGENT_GUIDE.md 协议化），Model Landing 层完成（283张表单/59组 冻结为可查询 TypeScript artifact）
+> 最新进展: Agent 入口与权威链完成对齐（AGENTS.md 短根入口 + AGENT_GUIDE.md 补充协议 + MASTER_DATA hard gate），Model Landing 层完成（283张表单/59组 冻结为可查询 TypeScript artifact）
 
 ---
 
 ## 目录
 
 1. [项目概览](#一项目概览)
-2. [.claude AI约束配置](#二claude-ai约束配置)
+2. [Agent 规则入口与工具配置](#二agent-规则入口与工具配置)
 3. [目录结构](#三目录结构)
 4. [后端模块映射](#四后端模块映射)
 5. [前端页面映射](#五前端页面映射)
@@ -66,22 +66,26 @@
 
 ---
 
-## 二、.claude AI约束配置
+## 二、Agent 规则入口与工具配置
 
 ### 2.1 目录结构
 
 ```
-.claude/
-├── rules/
-│   ├── constraints.mdc     # AI 约束清单（最高优先级）
-│   ├── tech-stack.mdc      # 技术选型规范
-│   ├── ui-standards.mdc    # UI 设计标准
-│   ├── api-spec.mdc        # API 设计规范
-│   ├── database.mdc        # 数据库规范
-│   └── git-flow.mdc        # Git 提交规范
+AGENTS.md                                     # 根入口文档：只负责阅读顺序与 hard gate
+CLAUDE.md                                     # Claude 代理入口：指向 AGENTS.md
+docs/AGENT_GUIDE.md                           # 项目特有补充协议：运行时 / MCP / 测试 / 追溯
+docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md    # 食品安全主数据与追溯权威模型
+.claude/                                      # Claude 本地工具配置（非项目规则事实源）
 ```
 
-### 2.2 核心约束速查
+### 2.2 权威链速查
+
+1. `AGENTS.md`：所有 agent 的根入口，只保留阅读顺序、食品安全 hard gate、补充协议路由。
+2. `docs/AGENT_GUIDE.md`：项目特有补充协议，负责运行时权威链、MCP/API/测试操作、追溯协议。
+3. `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md`：食品安全领域 hard gate；涉及 283 张表单、主数据、批次、追溯、召回时必须继续阅读。
+4. `.claude/`：本地 Claude 工具配置目录，不是项目规则事实源。
+
+### 2.3 核心约束速查
 
 **禁止的行为**：
 ```
@@ -140,13 +144,16 @@ noidear/
 │   └── package.json
 ├── docs/                           # 文档目录
 │   ├── DESIGN.md                   # 需求设计文档（v10.7，113 条业务规则）
-│   ├── PROJECT_STRUCTURE.md        # 本文件（v6.0）
+│   ├── PROJECT_STRUCTURE.md        # 本文件（v6.5）
+│   ├── AGENT_GUIDE.md              # 项目特有补充协议
+│   ├── MASTER_DATA_AND_TRACEABILITY_MODEL.md # 食品安全主数据与追溯权威模型
 │   ├── complete-audit-report.md    # 功能审计报告（2026-02-22，第三次更新）
 │   ├── INTERACTION_DESIGN.md       # 前端交互设计规范（v1.1）
 │   ├── task_modules/               # 各功能模块任务详情
 │   └── design_modules/             # 各功能模块设计文档
 ├── docker-compose.yml              # Docker Compose 配置
-├── CLAUDE.md                       # AI 开发指南（v5.1）
+├── AGENTS.md                       # Agent 根入口文档（短入口）
+├── CLAUDE.md                       # Claude 入口代理
 └── README.md                       # 项目说明
 ```
 
@@ -460,10 +467,13 @@ server/src/modules/workflow/workflow-task.service.ts (分配步骤任务)
 | 需求设计 | `docs/DESIGN.md` | v10.7 | 113 条业务规则 + P1 技术债务方案 |
 | 功能审计 | `docs/complete-audit-report.md` | 第三次更新 | 22模块任务级精确核查，85.6% 完成 |
 | 交互设计 | `docs/INTERACTION_DESIGN.md` | v1.1 | 7 大模块完整交互规范 |
-| 项目结构 | `docs/PROJECT_STRUCTURE.md` | v6.1（本文件） | 文件导航 + 模块映射 |
-| AI 指南 | `CLAUDE.md` | v5.1 | AI Agent 开发约束 + 编码预防清单 |
+| 项目结构 | `docs/PROJECT_STRUCTURE.md` | v6.5（本文件） | 文件导航 + 模块映射 + Agent 权威链入口 |
+| Agent 根入口 | `AGENTS.md` | — | 短入口；定义阅读顺序、食品安全 hard gate、补充协议路由 |
+| Claude 入口代理 | `CLAUDE.md` | — | 指向 AGENTS.md 的薄代理 |
+| 项目特有补充协议 | `docs/AGENT_GUIDE.md` | — | 运行时权威链、食品安全硬门槛、MCP/API/测试操作 |
+| 主数据与追溯权威模型 | `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md` | — | 283 张表单、主数据、批次、追溯、召回的统一业务数据口径 |
 | README | `README.md` | v4.1 | 快速开始、功能概览 |
-| Agent 入仓验证脚本 | `scripts/validate-agent-onboarding-docs.sh` | — | 校验 AGENTS.md / AGENT_GUIDE.md / CLAUDE.md 三文档完整性 |
+| Agent 入仓验证脚本 | `scripts/validate-agent-onboarding-docs.sh` | — | 校验 AGENTS.md / AGENT_GUIDE.md / MASTER_DATA 的入口关系 |
 | Model Landing 生成器 | `server/scripts/generate-model-landing-artifacts.ts` | — | 从 CSV 源生成 283张表单/59组 TypeScript artifact |
 | Model Landing 验证器 | `server/scripts/verify-model-landing-artifacts.ts` | — | 校验 artifact 与冻结 spec 对齐 |
 | Model Landing Artifact | `server/src/modules/model-landing/generated/model-landing.generated.ts` | — | 生成的 283张表单 / 59执行组可查询 TypeScript artifact |
@@ -561,8 +571,8 @@ server/src/modules/workflow/workflow-task.service.ts (分配步骤任务)
 
 ---
 
-**文档版本**: 6.4
-**最后更新**: 2026-04-26
+**文档版本**: 6.5
+**最后更新**: 2026-04-27
 **变更内容**:
 - 完整重写（原 v5.0 描述的是计划结构而非实际结构）
 - 更新目录结构以反映实际已实现的 40 个后端模块、97 个前端 Vue 组件、33 个 API 文件
@@ -577,3 +587,4 @@ server/src/modules/workflow/workflow-task.service.ts (分配步骤任务)
 - v6.1 更新：同步最新项目状态（Vault对齐完成、oh-my-opencode集成、E2E优化）
 - v6.2 更新：新增 ModelLandingModule（283张表单/59执行组 artifact），新增 Agent 入仓协议层相关脚本和文档，更新后端模块映射表和文档索引
 - v6.4 更新：文控中心落地 — 后端新增文控元数据/文档引用/生命周期/记录表单落地/文控工作台服务；前端新增 SystemFileLibrary、RecordFormLandingIndex、DocumentControlWorkbench 页面，DocumentDetail 扩展文控元数据与引用面板
+- v6.5 更新：Agent 文档权威链对齐 — AGENTS.md 回归短根入口，CLAUDE.md 维持薄代理，AGENT_GUIDE.md / MASTER_DATA_AND_TRACEABILITY_MODEL.md 明确为补充协议与食品安全 hard gate，文档索引与版本元数据同步更新

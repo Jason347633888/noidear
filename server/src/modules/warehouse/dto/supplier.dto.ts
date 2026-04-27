@@ -86,3 +86,31 @@ export class CreateQualificationDto {
   @IsOptional()
   attachmentPath?: string;
 }
+
+export class SupplierControlledDocumentDto {
+  @IsString()
+  @IsNotEmpty()
+  documentKind: string;
+
+  @IsString()
+  @IsNotEmpty()
+  docName: string;
+
+  @IsString()
+  @IsOptional()
+  docNo?: string;
+
+  @IsString()
+  @IsOptional()
+  issuedBy?: string;
+
+  @Type(() => Date)
+  @IsDate()
+  @IsOptional()
+  issuedAt?: Date;
+
+  @Type(() => Date)
+  @IsDate()
+  @IsOptional()
+  expiresAt?: Date;
+}

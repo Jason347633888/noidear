@@ -13,7 +13,7 @@
             <span class="card-count">共 {{ list.length }} 条记录</span>
           </div>
           <div class="header-actions">
-            <el-button type="primary" @click="$router.push('/process')">
+            <el-button type="primary" @click="router.push('/process')">
               <el-icon><Plus /></el-icon>发起新产品研发
             </el-button>
           </div>
@@ -44,9 +44,10 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="140" fixed="right">
+        <el-table-column label="操作" width="210" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openEditDialog(row)">编辑</el-button>
+            <el-button link type="primary" @click="openReports(row)">外检报告</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -106,6 +107,43 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="reportsVisible" :title="`${currentReportProduct?.name || ''} 外检报告`" width="860px">
+      <el-table :data="productReports" v-loading="reportsLoading" stripe>
+        <el-table-column prop="reportName" label="报告类型" min-width="150" />
+        <el-table-column prop="reportNo" label="报告编号" width="150" />
+        <el-table-column label="检测日期" width="140">
+          <template #default="{ row }">{{ row.testedAt ? formatDate(row.testedAt) : '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="conclusion" label="结论" width="110" />
+        <el-table-column label="有效期" width="140">
+          <template #default="{ row }">{{ row.expiresAt ? formatDate(row.expiresAt) : '-' }}</template>
+        </el-table-column>
+        <el-table-column label="状态" width="110">
+          <template #default="{ row }">
+            <el-tag :type="reportStatusType(row.status)" size="small">
+              {{ reportStatusText(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="140">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="previewReport(row)">预览</el-button>
+            <el-button link type="primary" @click="prepareReplaceReport(row)">换版</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="reportsVisible = false">关闭</el-button>
+      </template>
+      <input
+        ref="replaceReportInputRef"
+        class="hidden-file-input"
+        type="file"
+        accept="application/pdf"
+        @change="handleReplaceReportFileChange"
+      />
+    </el-dialog>
   </div>
 </template>
 
@@ -118,15 +156,23 @@ import type { FormInstance, FormRules } from 'element-plus';
 import {
   productApi,
   type Product,
+  type ProductReportDocument,
   getProductStatusText,
   getProductStatusType,
 } from '@/api/product';
+import filePreviewApi from '@/api/file-preview';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
 const router = useRouter();
 const list = ref<Product[]>([]);
 const loading = ref(false);
+const reportsVisible = ref(false);
+const reportsLoading = ref(false);
+const currentReportProduct = ref<Product | null>(null);
+const productReports = ref<ProductReportDocument[]>([]);
+const replaceReportTarget = ref<ProductReportDocument | null>(null);
+const replaceReportInputRef = ref<HTMLInputElement>();
 
 // ── Dialog ────────────────────────────────────────────────────────────────────
 
@@ -224,6 +270,81 @@ async function handleDelete(row: Product) {
   }
 }
 
+async function openReports(row: Product) {
+  currentReportProduct.value = row;
+  reportsVisible.value = true;
+  reportsLoading.value = true;
+  try {
+    productReports.value = await productApi.getReports(row.id);
+  } catch {
+    ElMessage.error('加载产品外检报告失败');
+  } finally {
+    reportsLoading.value = false;
+  }
+}
+
+async function previewReport(row: ProductReportDocument) {
+  try {
+    const preview = await filePreviewApi.getPreviewInfo(row.documentId);
+    if (preview.url) {
+      window.open(preview.url, '_blank');
+      return;
+    }
+    ElMessage.info(preview.message || '该文件暂不支持在线预览');
+  } catch {
+    ElMessage.error('获取预览失败');
+  }
+}
+
+function prepareReplaceReport(row: ProductReportDocument) {
+  replaceReportTarget.value = row;
+  replaceReportInputRef.value?.click();
+}
+
+async function handleReplaceReportFileChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  const product = currentReportProduct.value;
+  const target = replaceReportTarget.value;
+  input.value = '';
+  if (!file || !product || !target) return;
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('reportName', target.reportName);
+  if (target.reportNo) formData.append('reportNo', target.reportNo);
+  if (target.testedAt) formData.append('testedAt', target.testedAt);
+  if (target.conclusion) formData.append('conclusion', target.conclusion);
+  if (target.expiresAt) formData.append('expiresAt', target.expiresAt);
+
+  reportsLoading.value = true;
+  try {
+    await productApi.replaceReport(product.id, target.id, formData);
+    ElMessage.success('换版成功');
+    productReports.value = await productApi.getReports(product.id);
+  } catch {
+    ElMessage.error('换版失败');
+  } finally {
+    reportsLoading.value = false;
+    replaceReportTarget.value = null;
+  }
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString('zh-CN');
+}
+
+function reportStatusText(status: ProductReportDocument['status']) {
+  const map = { valid: '有效', expiring_soon: '即将到期', expired: '已过期' };
+  return map[status] || status;
+}
+
+function reportStatusType(status: ProductReportDocument['status']) {
+  if (status === 'valid') return 'success';
+  if (status === 'expired') return 'danger';
+  return 'warning';
+}
+
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 onMounted(() => {
@@ -285,5 +406,9 @@ onMounted(() => {
   display: flex;
   align-items: center;
   width: 100%;
+}
+
+.hidden-file-input {
+  display: none;
 }
 </style>

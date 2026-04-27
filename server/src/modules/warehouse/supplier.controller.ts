@@ -8,16 +8,26 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { PermissionGuard } from '../../common/guards/permission.guard';
+import { CheckPermission } from '../../common/decorators/permission.decorator';
 import { SupplierService } from './supplier.service';
 import {
   CreateSupplierDto,
   UpdateSupplierDto,
   QuerySupplierDto,
   CreateQualificationDto,
+  SupplierControlledDocumentDto,
 } from './dto/supplier.dto';
 
 @Controller('warehouse/suppliers')
+@UseGuards(JwtAuthGuard)
 export class SupplierController {
   constructor(private readonly supplierService: SupplierService) {}
 
@@ -59,5 +69,38 @@ export class SupplierController {
   @Get(':id/qualifications')
   getQualifications(@Param('id') id: string) {
     return this.supplierService.getQualifications(id);
+  }
+
+  @Post(':id/documents')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:control_manage')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadDocument(
+    @Param('id') id: string,
+    @Body() dto: SupplierControlledDocumentDto,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any,
+  ) {
+    return this.supplierService.uploadControlledDocument(id, dto, file, req.user?.id ?? 'system');
+  }
+
+  @Get(':id/documents')
+  getDocuments(@Param('id') id: string) {
+    return this.supplierService.getControlledDocuments(id);
+  }
+
+  @Post(':id/documents/:linkId/replace')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:control_manage')
+  @UseInterceptors(FileInterceptor('file'))
+  replaceDocument(
+    @Param('id') id: string,
+    @Param('linkId') linkId: string,
+    @Body() dto: SupplierControlledDocumentDto,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any,
+  ) {
+    return this.supplierService.replaceControlledDocument(id, linkId, dto, file, req.user?.id ?? 'system');
   }
 }

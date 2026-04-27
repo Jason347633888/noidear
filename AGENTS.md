@@ -10,7 +10,7 @@ Every agent must read these documents in order before analysis, implementation, 
 
 ## Food-Safety Hard Gate
 
-If the task involves any of the following, the agent must read this document **before any implementation or schema decisions**:
+If the task involves any of the following, the agent must read this document before any implementation or schema decisions:
 
 `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md`
 
