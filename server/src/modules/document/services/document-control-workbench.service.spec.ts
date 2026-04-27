@@ -25,26 +25,30 @@ describe('DocumentControlWorkbenchService', () => {
   });
 
   it('returns queue counts for all workbench sections', async () => {
-    prisma.document.findMany
-      .mockResolvedValueOnce([{ id: 'pending' }])
-      .mockResolvedValueOnce([{ id: 'due' }])
-      .mockResolvedValueOnce([{ id: 'external' }])
-      .mockResolvedValueOnce([{ id: 'missing' }]);
-    prisma.documentReference.findMany
-      .mockResolvedValueOnce([{ id: 'obsolete-ref' }])
-      .mockResolvedValueOnce([{ id: 'broken-ref' }]);
-    prisma.recordFormLandingEntry.findMany.mockResolvedValueOnce([{ id: 'landing-gap' }]);
+    prisma.document.count
+      .mockResolvedValueOnce(1)  // pendingReview
+      .mockResolvedValueOnce(2)  // dueForReview
+      .mockResolvedValueOnce(3)  // expiringExternalFiles
+      .mockResolvedValueOnce(4)  // missingMetadata
+    prisma.documentReference.count
+      .mockResolvedValueOnce(5)  // obsoleteReferences
+      .mockResolvedValueOnce(6); // brokenReferences
+    prisma.recordFormLandingEntry.count.mockResolvedValueOnce(7);
+    prisma.documentTrainingNeed.count.mockResolvedValueOnce(8);
+    prisma.documentImpactItem.count.mockResolvedValueOnce(9);
 
     const service = new DocumentControlWorkbenchService(prisma as any);
     const result = await service.getWorkbench(30);
 
     expect(result.counts.pendingReview).toBe(1);
-    expect(result.counts.dueForReview).toBe(1);
-    expect(result.counts.expiringExternalFiles).toBe(1);
-    expect(result.counts.obsoleteReferences).toBe(1);
-    expect(result.counts.brokenReferences).toBe(1);
-    expect(result.counts.missingLandingTargets).toBe(1);
-    expect(result.counts.missingMetadata).toBe(1);
+    expect(result.counts.dueForReview).toBe(2);
+    expect(result.counts.expiringExternalFiles).toBe(3);
+    expect(result.counts.missingMetadata).toBe(4);
+    expect(result.counts.obsoleteReferences).toBe(5);
+    expect(result.counts.brokenReferences).toBe(6);
+    expect(result.counts.missingLandingTargets).toBe(7);
+    expect(result.counts.trainingNeeds).toBe(8);
+    expect(result.counts.openImpactItems).toBe(9);
     expect(prisma.document.findMany).toHaveBeenNthCalledWith(2, expect.objectContaining({
       where: expect.objectContaining({
         status: { in: EFFECTIVE_COMPAT_STATUSES },

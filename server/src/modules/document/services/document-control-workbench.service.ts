@@ -35,6 +35,16 @@ export class DocumentControlWorkbenchService {
   async getWorkbench(days = 30) {
     const deadline = this.getDeadline(days);
 
+    const pendingReviewWhere = { deletedAt: null, status: { in: ['pending_review', 'pending'] } };
+    const dueForReviewWhere = { deletedAt: null, status: { in: [...EFFECTIVE_COMPAT_STATUSES] }, review_due_date: { lte: deadline } };
+    const expiringWhere = { deletedAt: null, document_type: 'EXTERNAL_FILE', external_expires_at: { lte: deadline }, status: { in: [...EFFECTIVE_COMPAT_STATUSES] } };
+    const obsoleteRefWhere = { targetDoc: { status: { in: ['obsolete', 'archived', 'superseded'] } } };
+    const brokenRefWhere = { targetType: { in: ['record_template', 'record_list', 'business_module', 'business_object'] }, targetRoute: null };
+    const missingLandingWhere = { OR: [{ targetRoute: null }, { targetModule: null }] };
+    const missingMetaWhere = { deletedAt: null, OR: [{ document_type: null }, { source_folder: null }, { review_due_date: null }] };
+    const trainingWhere = { status: { in: ['suggested', 'open', 'pending'] } };
+    const impactWhere = { status: { in: ['open', 'pending'] } };
+
     const [
       pendingReview,
       dueForReview,
@@ -45,29 +55,21 @@ export class DocumentControlWorkbenchService {
       missingMetadata,
       trainingNeeds,
       openImpactItems,
+      pendingReviewCount,
+      dueForReviewCount,
+      expiringCount,
+      obsoleteRefCount,
+      brokenRefCount,
+      missingLandingCount,
+      missingMetaCount,
+      trainingCount,
+      impactCount,
     ] = await Promise.all([
-      this.prisma.document.findMany({
-        where: { deletedAt: null, status: { in: ['pending_review', 'pending'] } },
-        orderBy: { updatedAt: 'desc' },
-        take: 100,
-      }),
-      this.prisma.document.findMany({
-        where: { deletedAt: null, status: { in: [...EFFECTIVE_COMPAT_STATUSES] }, review_due_date: { lte: deadline } },
-        orderBy: { review_due_date: 'asc' },
-        take: 100,
-      }),
-      this.prisma.document.findMany({
-        where: {
-          deletedAt: null,
-          document_type: 'EXTERNAL_FILE',
-          external_expires_at: { lte: deadline },
-          status: { in: [...EFFECTIVE_COMPAT_STATUSES] },
-        },
-        orderBy: { external_expires_at: 'asc' },
-        take: 100,
-      }),
+      this.prisma.document.findMany({ where: pendingReviewWhere, orderBy: { updatedAt: 'desc' }, take: 100 }),
+      this.prisma.document.findMany({ where: dueForReviewWhere, orderBy: { review_due_date: 'asc' }, take: 100 }),
+      this.prisma.document.findMany({ where: expiringWhere, orderBy: { external_expires_at: 'asc' }, take: 100 }),
       this.prisma.documentReference.findMany({
-        where: { targetDoc: { status: { in: ['obsolete', 'archived', 'superseded'] } } },
+        where: obsoleteRefWhere,
         include: {
           sourceDoc: { select: { id: true, title: true, status: true } },
           targetDoc: { select: { id: true, title: true, status: true } },
@@ -75,40 +77,23 @@ export class DocumentControlWorkbenchService {
         take: 100,
       }),
       this.prisma.documentReference.findMany({
-        where: {
-          targetType: { in: ['record_template', 'record_list', 'business_module', 'business_object'] },
-          targetRoute: null,
-        },
+        where: brokenRefWhere,
         include: { sourceDoc: { select: { id: true, title: true, status: true } } },
         take: 100,
       }),
-      this.prisma.recordFormLandingEntry.findMany({
-        where: { OR: [{ targetRoute: null }, { targetModule: null }] },
-        orderBy: { updatedAt: 'desc' },
-        take: 100,
-      }),
-      this.prisma.document.findMany({
-        where: {
-          deletedAt: null,
-          OR: [
-            { document_type: null },
-            { source_folder: null },
-            { review_due_date: null },
-          ],
-        },
-        orderBy: { updatedAt: 'desc' },
-        take: 100,
-      }),
-      this.prisma.documentTrainingNeed.findMany({
-        where: { status: { in: ['suggested', 'open', 'pending'] } },
-        orderBy: { updatedAt: 'desc' },
-        take: 100,
-      }),
-      this.prisma.documentImpactItem.findMany({
-        where: { status: { in: ['open', 'pending'] } },
-        orderBy: { updatedAt: 'desc' },
-        take: 100,
-      }),
+      this.prisma.recordFormLandingEntry.findMany({ where: missingLandingWhere, orderBy: { updatedAt: 'desc' }, take: 100 }),
+      this.prisma.document.findMany({ where: missingMetaWhere, orderBy: { updatedAt: 'desc' }, take: 100 }),
+      this.prisma.documentTrainingNeed.findMany({ where: trainingWhere, orderBy: { updatedAt: 'desc' }, take: 100 }),
+      this.prisma.documentImpactItem.findMany({ where: impactWhere, orderBy: { updatedAt: 'desc' }, take: 100 }),
+      this.prisma.document.count({ where: pendingReviewWhere }),
+      this.prisma.document.count({ where: dueForReviewWhere }),
+      this.prisma.document.count({ where: expiringWhere }),
+      this.prisma.documentReference.count({ where: obsoleteRefWhere }),
+      this.prisma.documentReference.count({ where: brokenRefWhere }),
+      this.prisma.recordFormLandingEntry.count({ where: missingLandingWhere }),
+      this.prisma.document.count({ where: missingMetaWhere }),
+      this.prisma.documentTrainingNeed.count({ where: trainingWhere }),
+      this.prisma.documentImpactItem.count({ where: impactWhere }),
     ]);
 
     return {
@@ -122,15 +107,15 @@ export class DocumentControlWorkbenchService {
       trainingNeeds,
       openImpactItems,
       counts: {
-        pendingReview: pendingReview.length,
-        dueForReview: dueForReview.length,
-        expiringExternalFiles: expiringExternalFiles.length,
-        obsoleteReferences: obsoleteReferences.length,
-        brokenReferences: brokenReferences.length,
-        missingLandingTargets: missingLandingTargets.length,
-        missingMetadata: missingMetadata.length,
-        trainingNeeds: trainingNeeds.length,
-        openImpactItems: openImpactItems.length,
+        pendingReview: pendingReviewCount,
+        dueForReview: dueForReviewCount,
+        expiringExternalFiles: expiringCount,
+        obsoleteReferences: obsoleteRefCount,
+        brokenReferences: brokenRefCount,
+        missingLandingTargets: missingLandingCount,
+        missingMetadata: missingMetaCount,
+        trainingNeeds: trainingCount,
+        openImpactItems: impactCount,
       },
     };
   }
