@@ -6,6 +6,7 @@ import { StorageService } from '../../common/services/storage.service';
 import { NotificationService } from '../notification/notification.service';
 import { OperationLogService } from '../operation-log/operation-log.service';
 import { DocumentControlMetadataService } from './services/document-control-metadata.service';
+import { EFFECTIVE_COMPAT_STATUSES } from './constants/document-control.constants';
 
 describe('DocumentService document control metadata', () => {
   const prisma = {
@@ -86,7 +87,7 @@ describe('DocumentService document control metadata', () => {
 
 describe('document status compatibility', () => {
   const prisma = {
-    user: { findUnique: jest.fn() },
+    user: { findUnique: jest.fn(), findMany: jest.fn() },
     document: {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
@@ -169,6 +170,25 @@ describe('document status compatibility', () => {
     expect(prisma.document.update).toHaveBeenCalledWith({
       where: { id: 'doc1' },
       data: expect.objectContaining({ status: 'effective' }),
+    });
+  });
+
+  it('treats approved list filter as effective-compatible', async () => {
+    prisma.document.findMany.mockResolvedValue([{ id: 'doc1', creatorId: null, approverId: null }]);
+    prisma.document.count.mockResolvedValue(1);
+    prisma.user.findMany.mockResolvedValue([]);
+
+    await service.findAll({ status: 'approved' } as any, 'admin1', 'admin');
+
+    expect(prisma.document.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        status: { in: EFFECTIVE_COMPAT_STATUSES },
+      }),
+    }));
+    expect(prisma.document.count).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        status: { in: EFFECTIVE_COMPAT_STATUSES },
+      }),
     });
   });
 });

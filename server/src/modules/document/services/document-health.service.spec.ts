@@ -1,4 +1,5 @@
 import { DocumentHealthService } from './document-health.service';
+import { EFFECTIVE_COMPAT_STATUSES } from '../constants/document-control.constants';
 
 describe('DocumentHealthService', () => {
   it('returns transparent health counts', async () => {
@@ -18,5 +19,10 @@ describe('DocumentHealthService', () => {
       openTrainingNeeds: 5,
       openImpactItems: 6,
     }));
+    expect(prisma.document.count).toHaveBeenNthCalledWith(2, {
+      where: expect.objectContaining({
+        status: { in: EFFECTIVE_COMPAT_STATUSES },
+      }),
+    });
   });
 });

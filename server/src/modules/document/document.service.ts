@@ -12,6 +12,7 @@ import { DocumentControlMetadataService } from './services/document-control-meta
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 import {
   CANONICAL_DOCUMENT_STATUS,
+  EFFECTIVE_COMPAT_STATUSES,
   isEffectiveCompatible,
 } from './constants/document-control.constants';
 
@@ -179,7 +180,9 @@ export class DocumentService {
     }
 
     if (status) {
-      where.status = status;
+      where.status = status === 'approved'
+        ? { in: [...EFFECTIVE_COMPAT_STATUSES] }
+        : status;
     }
 
     if (documentType) where.document_type = documentType;

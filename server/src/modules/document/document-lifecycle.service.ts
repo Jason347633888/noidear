@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
+import { EFFECTIVE_COMPAT_STATUSES } from './constants/document-control.constants';
 
 @Injectable()
 export class DocumentLifecycleService {
@@ -15,7 +16,7 @@ export class DocumentLifecycleService {
       where: {
         id: { not: id },
         deletedAt: null,
-        status: 'effective',
+        status: { in: [...EFFECTIVE_COMPAT_STATUSES] },
         OR: [
           { lineage_key: lineageKey },
           { number: doc.number },
@@ -60,7 +61,7 @@ export class DocumentLifecycleService {
     deadline.setDate(deadline.getDate() + days);
     return this.prisma.document.findMany({
       where: {
-        status: 'effective',
+        status: { in: [...EFFECTIVE_COMPAT_STATUSES] },
         review_due_date: { lte: deadline },
       },
       orderBy: { review_due_date: 'asc' },
