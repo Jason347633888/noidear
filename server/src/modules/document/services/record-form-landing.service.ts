@@ -50,8 +50,8 @@ export class RecordFormLandingService {
     if (!form) throw new NotFoundException(`Unknown source form: ${code}`);
 
     if (dto.targetTemplateId) {
-      const template = await this.prisma.recordTemplate.findUnique({
-        where: { id: dto.targetTemplateId },
+      const template = await this.prisma.recordTemplate.findFirst({
+        where: { id: dto.targetTemplateId, deletedAt: null },
       });
       if (!template) throw new NotFoundException(`记录模板不存在: ${dto.targetTemplateId}`);
     }

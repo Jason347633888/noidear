@@ -9,7 +9,7 @@ describe('RecordFormLandingService', () => {
       upsert: jest.fn(),
     },
     recordTemplate: {
-      findUnique: jest.fn(),
+      findFirst: jest.fn(),
     },
     document: {
       count: jest.fn(),
@@ -41,7 +41,7 @@ describe('RecordFormLandingService', () => {
     modelLanding.getFormByCode.mockReturnValue(mockForm);
     prisma.recordFormLandingEntry.findMany.mockResolvedValue([]);
     prisma.recordFormLandingEntry.findUnique.mockResolvedValue(null);
-    prisma.recordTemplate.findUnique.mockResolvedValue(null);
+    prisma.recordTemplate.findFirst.mockResolvedValue(null);
     prisma.document.count.mockResolvedValue(0);
   });
 
@@ -153,7 +153,7 @@ describe('RecordFormLandingService', () => {
 
     it('rejects missing target template ids', async () => {
       modelLanding.getFormByCode.mockReturnValue({ code: 'F1', formName: '表单1' });
-      prisma.recordTemplate.findUnique.mockResolvedValue(null);
+      prisma.recordTemplate.findFirst.mockResolvedValue(null);
 
       const service = makeService();
       await expect(
@@ -164,9 +164,22 @@ describe('RecordFormLandingService', () => {
       ).rejects.toThrow('记录模板不存在');
     });
 
+    it('rejects soft-deleted target template ids', async () => {
+      modelLanding.getFormByCode.mockReturnValue({ code: 'F1', formName: '表单1' });
+      prisma.recordTemplate.findFirst.mockResolvedValue(null);
+
+      const service = makeService();
+      await expect(
+        service.upsertTarget('F1', {
+          targetTemplateId: 'tpl-deleted',
+          targetRoute: '/records',
+        } as any),
+      ).rejects.toThrow('记录模板不存在');
+    });
+
     it('rejects related document ids that do not exist', async () => {
       modelLanding.getFormByCode.mockReturnValue({ code: 'F1', formName: '表单1' });
-      prisma.recordTemplate.findUnique.mockResolvedValue({ id: 'tpl1' });
+      prisma.recordTemplate.findFirst.mockResolvedValue({ id: 'tpl1' });
       prisma.document.count.mockResolvedValue(1);
 
       const service = makeService();
