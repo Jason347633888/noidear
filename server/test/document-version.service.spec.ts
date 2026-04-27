@@ -266,9 +266,10 @@ describe('DocumentService - Version Management', () => {
       const document = {
         id: documentId,
         version: new Decimal('2.0'),
-        filePath: '/path/current.pdf',
-        fileName: 'doc_current.pdf',
+        filePath: '/path/current.docx',
+        fileName: 'doc_current.docx',
         fileSize: 2048,
+        fileType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         status: 'effective',
         number: 'DOC-001',
         deletedAt: null,
@@ -289,8 +290,8 @@ describe('DocumentService - Version Management', () => {
         data: expect.objectContaining({
           documentId,
           version: new Decimal('2.0'),
-          filePath: '/path/current.pdf',
-          fileName: 'doc_current.pdf',
+          filePath: '/path/current.docx',
+          fileName: 'doc_current.docx',
           fileSize: 2048,
           creatorId: userId,
         }),
@@ -302,6 +303,7 @@ describe('DocumentService - Version Management', () => {
           filePath: '/path/v1.pdf',
           fileName: 'doc_v1.pdf',
           fileSize: 1024,
+          fileType: 'application/pdf',
         },
       });
       expect(mockOperationLogService.log).toHaveBeenCalledWith(expect.objectContaining({

@@ -260,9 +260,10 @@ describe('document version operations', () => {
     prisma.document.findUnique.mockResolvedValue({
       id: 'doc1',
       version: new Prisma.Decimal('1.2'),
-      filePath: 'documents/current.pdf',
-      fileName: 'current.pdf',
+      filePath: 'documents/current.docx',
+      fileName: 'current.docx',
       fileSize: 200,
+      fileType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       status: 'effective',
       deletedAt: null,
     });
@@ -282,8 +283,17 @@ describe('document version operations', () => {
       data: expect.objectContaining({
         documentId: 'doc1',
         version: new Prisma.Decimal('1.2'),
-        filePath: 'documents/current.pdf',
-        fileName: 'current.pdf',
+        filePath: 'documents/current.docx',
+        fileName: 'current.docx',
+      }),
+    });
+    expect(prisma.document.updateMany).toHaveBeenCalledWith({
+      where: { id: 'doc1', version: new Prisma.Decimal('1.2') },
+      data: expect.objectContaining({
+        filePath: 'documents/old.pdf',
+        fileName: 'old.pdf',
+        fileSize: 100,
+        fileType: 'application/pdf',
       }),
     });
     expect(operationLog.log).toHaveBeenCalledWith(expect.objectContaining({
@@ -397,7 +407,7 @@ describe('document version operations', () => {
     await service.downloadVersion('doc1', '1.0', 'u1', 'user', res as any);
 
     expect(res.set).toHaveBeenCalledWith({
-      'Content-Type': 'application/octet-stream',
+      'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="___.pdf"; filename*=UTF-8''${encodeURIComponent('旧版本.pdf')}`,
       'Content-Length': '123',
     });

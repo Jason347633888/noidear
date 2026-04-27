@@ -1107,6 +1107,10 @@ export class DocumentService {
 
       const currentVersion = new Prisma.Decimal((document as any).version);
       const newVersion = currentVersion.add(0.1);
+      const rollbackFileType = this.inferFileTypeFromHistoricalFile(
+        version.fileName,
+        version.filePath,
+      );
 
       await tx.documentVersion.create({
         data: {
@@ -1127,6 +1131,7 @@ export class DocumentService {
           filePath: version.filePath,
           fileName: version.fileName,
           fileSize: version.fileSize,
+          fileType: rollbackFileType,
         },
       });
 
@@ -1176,8 +1181,8 @@ export class DocumentService {
       throw new BusinessException(ErrorCode.NOT_FOUND, `版本 ${version} 不存在`);
     }
 
-    const lowerName = item.fileName.toLowerCase();
-    if (lowerName.endsWith('.pdf')) {
+    const fileType = this.inferFileTypeFromHistoricalFile(item.fileName, item.filePath);
+    if (fileType === 'application/pdf') {
       return {
         type: 'pdf',
         url: await this.storage.getSignedUrl(item.filePath, 900),
@@ -1220,7 +1225,7 @@ export class DocumentService {
 
     const stream = await this.storage.getFileStream(item.filePath);
     const headers: Record<string, string> = {
-      'Content-Type': 'application/octet-stream',
+      'Content-Type': this.inferFileTypeFromHistoricalFile(item.fileName, item.filePath),
       'Content-Disposition': this.buildDownloadContentDisposition(item.fileName),
     };
     if (item.fileSize !== null && item.fileSize !== undefined) {
@@ -1241,5 +1246,26 @@ export class DocumentService {
   private buildDownloadContentDisposition(fileName: string): string {
     const fallback = fileName.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_') || 'download';
     return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+  }
+
+  private inferFileTypeFromHistoricalFile(fileName: string, filePath?: string | null): string {
+    const extension = [fileName, filePath ?? '']
+      .map((source) => source.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1])
+      .find(Boolean);
+
+    switch (extension) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'doc':
+        return 'application/msword';
+      case 'xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'xls':
+        return 'application/vnd.ms-excel';
+      default:
+        return 'application/octet-stream';
+    }
   }
 }
