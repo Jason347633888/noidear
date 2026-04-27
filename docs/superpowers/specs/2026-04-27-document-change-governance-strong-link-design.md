@@ -21,7 +21,7 @@
 1. 统一文档状态口径，避免 `approved` 与 `effective` 混用。
 2. 把文控字段中的关键弱引用收紧为强关系或显式校验关系。
 3. 以 `ChangeEvent` 作为统一变更主事件，承接文档、产品、配方、工艺、HACCP、设备、供应商等变更。
-4. 将现有多张“评审/验证/审批”表单归位为 `ChangeEvent` 的子环节，而不是并行孤立流程。
+4. 复用现有 `RecordTemplate` 表单模板，通过 `Record` 的填写用途区分初次确认、变更验证和周期复评，避免复制表单模板。
 5. 让文控工作台从“数量看板”升级为“问题池 + 修复入口”。
 6. 逐步形成合规证据链：文件 -> 表单 -> 记录 -> 审批 -> 审核 -> 整改。
 
@@ -30,6 +30,7 @@
 本阶段不做以下事情：
 
 - 不删除现有业务表单。
+- 不复制“初次验证表”“变更验证表”“周期复评表”等平行模板。
 - 不把所有评审表单合并成一张大表。
 - 不重写审批平台。
 - 不重构全部食品安全追溯链。
@@ -128,17 +129,88 @@
 - 车间布局变更 HACCP 风险评估确认、验证记录
 - 小批量生产变更验证确认表
 
-这些表单不应被删除，但应归位到统一的 `ChangeEvent` 主线下。
+这些表单不应被删除，也不应按“初次/变更/周期”复制模板。它们应继续作为现有 `RecordTemplate` 表单模板使用；每次填写生成 `Record`，由 `Record.usageType` 标记本次填写用途。
+
+关键边界：
+
+- 初次验证、初次确认、初次建立基线不是变更，不创建 `ChangeEvent`。
+- 变更触发的验证、评审、确认才进入 `ChangeEvent`。
+- 周期复评或定期验证可以复用同一张表单模板，但不强制进入 `ChangeEvent`。
+- `ChangeEvent` 负责串联变更闭环，不接管所有验证场景。
 
 ## 5. 目标业务模型
 
-### 5.1 统一变更主线
+### 5.1 表单模板与填写记录
 
-所有变更先进入 `ChangeEvent`：
+`RecordTemplate` 指当前系统中已经上传、导入或维护的记录表单模板，例如：
+
+- 产品验证记录表
+- 工艺流程图确认记录
+- 工艺、配料变更、复称、评估、验证记录
+- 危害控制计划确认、验证记录
+- 小批量生产变更验证确认表
+
+`RecordTemplate` 是空白表单模板；`Record` 是基于模板填写出来的一次实际记录。同一张模板可以在不同业务场景下重复使用。
+
+建议为 `Record` 增加填写用途字段：
+
+```text
+Record
+  -> templateId
+  -> usageType: initial | change | periodic
+  -> sourceType
+  -> sourceId
+  -> changeEventId?
+```
+
+用途定义：
+
+- `initial`：初次验证、初次确认、初次建立基线。
+- `change`：变更触发的验证、评审、确认。
+- `periodic`：周期复评、定期验证、年度确认。
+
+第一版不引入 `revalidation`、`abnormal` 等更细场景，避免让用户重新判断过多分类。
+
+### 5.2 三类入口
+
+同一张表单模板通过不同入口生成 `Record`：
+
+```text
+入口 1：初次建立
+  -> 选择或创建业务对象
+  -> 系统带出对应 RecordTemplate
+  -> 填写 Record
+  -> usageType = initial
+  -> changeEventId = null
+
+入口 2：变更流程
+  -> 创建 ChangeEvent
+  -> 选择 changeType
+  -> 系统带出对应 RecordTemplate
+  -> 填写 Record
+  -> usageType = change
+  -> changeEventId = 当前 ChangeEvent
+
+入口 3：周期复评
+  -> 周期任务或复评入口
+  -> 系统带出对应 RecordTemplate
+  -> 填写 Record
+  -> usageType = periodic
+  -> changeEventId = null
+```
+
+`ChangeEvent` 只是第二类入口，不是所有验证记录的总入口。
+
+### 5.3 统一变更主线
+
+所有真实变更先进入 `ChangeEvent`：
 
 ```text
 ChangeEvent
   -> ChangeImpactAssessment
+  -> ChangeEventFormTask
+      -> RecordTemplate
+      -> Record(usageType=change)
   -> DocumentImpactReview
   -> ChangeComplianceRecord
   -> ChangeVerificationRecord
@@ -155,9 +227,9 @@ ChangeEvent
   -> RelatedBatches
 ```
 
-`ChangeEvent` 是统一主事件，子记录负责不同专业环节。
+`ChangeEvent` 是统一主事件，子记录负责不同专业环节。原有表单模板不被吞并；变更流程只负责按变更类型自动带出需要填写的模板，并把填写后的 `Record` 挂回本次变更。
 
-### 5.2 变更类型
+### 5.4 变更类型
 
 第一版支持以下变更类型：
 
@@ -171,10 +243,13 @@ ChangeEvent
 - `haccp`：食品安全计划、危害分析、控制措施变更
 - `other`：其他变更
 
-### 5.3 子环节职责
+### 5.5 子环节职责
 
 `ChangeImpactAssessment`：
 统一影响范围清单，记录哪些对象受影响、影响等级、建议动作。
+
+`ChangeEventFormTask`：
+记录本次变更默认需要填写哪些表单模板，以及每张表单对应的填写状态。它是“变更类型 -> 默认带出哪些表”的结果，不是用户额外维护的业务模块。
 
 `DocumentImpactReview`：
 只处理文控影响，例如引用文件、记录表单入口、阅读确认、培训需求、文档复审。
@@ -183,7 +258,7 @@ ChangeEvent
 处理食品安全、法规、HACCP、PRP、过敏原、召回、追溯等合规影响。
 
 `ChangeVerificationRecord`：
-记录验证计划、验证方法、验证结果和验证结论。
+记录变更层面的验证摘要、验证结论和放行判断。详细填写内容优先落在对应 `RecordTemplate -> Record` 上，避免和原有验证表单重复录入。
 
 `ChangeApproval`：
 记录最终审批、放行、驳回或补充验证要求。
@@ -206,6 +281,14 @@ ChangeEvent
 - `targetTemplateId` 关联 `RecordTemplate.id`。
 - 长期新增 `RecordFormLandingDocument` 代替 `relatedDocIds String[]`。
 
+`Record`：
+
+- 新增 `usageType String?`，第一版允许值为 `initial`、`change`、`periodic`。
+- 新增 `sourceType String?`，记录本次填写来源对象类型，例如 `product`、`recipe`、`process_step`、`document`、`supplier`、`haccp_plan`。
+- 新增 `sourceId String?`，记录本次填写来源对象 ID。
+- 新增 `changeEventId String?`，仅 `usageType=change` 时关联 `ChangeEvent.id`。
+- 保留现有 `entity_links Json?`，用于兼容历史或多对象弱引用；新增结构化字段用于主链查询。
+
 `DocumentTrainingNeed`：
 
 - `linkedTrainingProjectId` 关联 `TrainingProject.id`。
@@ -224,6 +307,17 @@ ChangeEvent
 
 - 暂不拆表。
 - 创建和更新时对 `scopeType/scopeId` 做服务层校验。
+
+新增 `ChangeEventFormTask`：
+
+- `changeEventId` 关联 `ChangeEvent.id`。
+- `templateId` 关联 `RecordTemplate.id`。
+- `recordId` 可选关联 `Record.id`。
+- `status` 第一版使用 `pending`、`filled`、`approved`。
+- `required` 标记这张表是否为当前变更类型默认必填。
+- `sortOrder` 控制显示顺序。
+
+第一版不做“不适用并写原因”、不做附件上传、不做关联已有记录。用户在变更流程里填写出来的 `Record` 才挂到当前 `ChangeEventFormTask`。
 
 ### 6.2 推荐新增关联表
 
@@ -251,6 +345,8 @@ ChangeEventRelation
 
 已知 `targetType` 应通过服务层校验，未知或外部系统目标允许保存快照，但要标记为弱引用。
 
+`ChangeEventRelation` 只用于关联变更影响对象，不替代表单填写记录。表单填写仍由 `ChangeEventFormTask -> RecordTemplate -> Record` 表达。
+
 ## 7. 页面与流程设计
 
 ### 7.1 文控中心菜单
@@ -274,16 +370,54 @@ ChangeEventRelation
 新增或改造 `变更管理 -> 新建变更`，页面分为：
 
 - 基本信息
-- 影响范围
-- 文控影响
-- 食品安全/HACCP 评审
-- 验证计划
+- 默认表单
 - 审批放行
 - 证据链
 
-不同变更类型只显示相关页签。
+用户操作流程：
 
-### 7.3 文控工作台升级
+1. 新建变更。
+2. 选择变更类型。
+3. 系统根据变更类型自动生成 `ChangeEventFormTask`。
+4. 页面直接显示本次需要填写的表单列表。
+5. 用户逐张填写表单，生成 `Record(usageType=change)`。
+6. 表单完成后提交审批。
+
+页面不暴露“变更场景模板”概念，也不要求用户手工挑选一堆评审节点。
+
+第一版表单任务状态只保留：
+
+- `pending`：未填写。
+- `filled`：已填写。
+- `approved`：已审批或已确认。
+
+不提供以下操作：
+
+- 标记不适用并填写原因。
+- 上传附件。
+- 关联已有记录。
+
+如果某类变更确实需要食品安全、HACCP、文控、验证等评审，应该体现在默认带出的表单模板中，而不是让用户重新判断该走哪些环节。
+
+### 7.3 初次建立与周期复评入口
+
+初次验证和周期复评不从 `变更管理` 进入。
+
+初次建立入口：
+
+- 新建产品、新建配方、新建工艺步骤、新建 HACCP 控制点、新建文件或首次发布前确认时，系统带出对应表单模板。
+- 填写后生成 `Record(usageType=initial)`。
+- 该记录作为初始基线证据。
+
+周期复评入口：
+
+- 周期任务、年度复评或定期验证入口带出对应表单模板。
+- 填写后生成 `Record(usageType=periodic)`。
+- 该记录作为周期性确认或复评证据。
+
+这两个入口可以复用同一张 `RecordTemplate`，但不创建 `ChangeEvent`。
+
+### 7.4 文控工作台升级
 
 文控工作台不只显示数量，而要显示问题明细和处理动作：
 
@@ -303,6 +437,7 @@ ChangeEventRelation
 3. `DocumentReadRequirement`：找到需要重新阅读的人群。
 4. `DocumentTrainingNeed`：生成或更新培训需求。
 5. `ChangeEventRelation`：汇总产品、配方、工艺、设备、供应商、批次等业务对象。
+6. `ChangeEventFormTask`：找到本次变更需要填写的表单模板和已生成记录。
 
 后续增强：
 
@@ -330,14 +465,19 @@ ChangeEventRelation
 
 ### 阶段二：统一变更主线
 
+- 为 `Record` 增加 `usageType/sourceType/sourceId/changeEventId`。
 - 新增 `ChangeEventRelation`。
+- 新增 `ChangeEventFormTask`。
 - `DocumentImpactReview` 支持关联 `ChangeEvent`。
 - 文档变更、产品变更、配方变更、工艺变更统一创建 `ChangeEvent`。
-- 现有变更评审、验证、审批表单挂到 `ChangeEvent` 下。
+- 变更类型自动带出对应 `RecordTemplate`。
+- 填写后生成 `Record(usageType=change)` 并挂到 `ChangeEventFormTask`。
 
 验收标准：
 
-- 一个变更事件能看到影响范围、文控影响、验证记录、审批记录。
+- 一个变更事件能看到影响范围、默认表单、已填写记录、文控影响、审批记录。
+- 同一张表单模板可以同时用于初次验证、变更验证和周期复评。
+- 初次验证和周期复评不会被错误要求创建 `ChangeEvent`。
 - 文控影响评审不再孤立存在。
 
 ### 阶段三：工作台可处理化
@@ -386,17 +526,29 @@ ChangeEventRelation
 
 处理方式：
 
-- 变更类型决定必填环节。
-- 小变更可以只走文控影响和审批。
-- 涉及食品安全、HACCP、配方、工艺、供应商时才强制合规评审和验证。
+- 变更类型只决定默认带出哪些表单模板。
+- 第一版不做不适用、附件、关联已有记录等重操作。
+- 小变更可以只带出少量表单并进入审批。
+- 涉及食品安全、HACCP、配方、工艺、供应商时，通过默认表单包带出对应评审和验证表。
+
+### 10.4 表单模板概念混淆
+
+处理方式：
+
+- 产品文案使用“记录表单”或“表单模板”，避免在页面上暴露 `RecordTemplate` 技术名。
+- 明确 `RecordTemplate` 是已经上传或导入的空白表单模板。
+- 明确 `Record` 是某一次填写后的记录。
+- 明确 `usageType` 只标记这次填写用途，不改变表单模板本身。
 
 ## 11. 待用户确认
 
 推荐第一批实现顺序：
 
 1. 阶段一强引用收紧。
-2. 阶段二中只先覆盖 `document`、`record_form`、`recipe`、`process` 四类变更。
+2. 阶段二中先补 `Record.usageType/sourceType/sourceId/changeEventId` 与 `ChangeEventFormTask`。
 3. 阶段三工作台明细化。
 4. 阶段四证据链。
 
-暂不建议第一批覆盖所有变更类型，否则范围过大。
+第一版 `usageType` 只支持 `initial`、`change`、`periodic`。
+
+变更类型第一批建议只覆盖 `document`、`record_form`、`recipe`、`process`，暂不建议第一批覆盖所有变更类型，否则范围过大。
