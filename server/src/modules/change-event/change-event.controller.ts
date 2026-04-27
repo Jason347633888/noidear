@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request, BadRequestException } from '@nestjs/common';
 import { ChangeEventService } from './change-event.service';
 import { ChangeEventFormTaskService } from './change-event-form-task.service';
 import { CreateChangeEventDto } from './dto/create-change-event.dto';
@@ -37,7 +37,9 @@ export class ChangeEventController {
     @Body('dataJson') dataJson: object,
     @Request() req: { user: { id?: string; userId?: string } },
   ) {
-    return this.formTaskService.fillTask(taskId, dataJson ?? {}, req.user.id ?? req.user.userId!);
+    const userId = req.user.id ?? req.user.userId;
+    if (!userId) throw new BadRequestException('Unable to resolve userId from token');
+    return this.formTaskService.fillTask(taskId, dataJson ?? {}, userId);
   }
 
   @Get(':id')
