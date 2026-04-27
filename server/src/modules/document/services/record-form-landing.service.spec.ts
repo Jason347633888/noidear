@@ -199,6 +199,24 @@ describe('RecordFormLandingService', () => {
       );
     });
 
+    it('normalizes blank targetTemplateId to null before upsert', async () => {
+      prisma.recordFormLandingEntry.upsert.mockResolvedValue({});
+      const service = makeService();
+      await service.upsertTarget('GRSS-KF-JL-01', {
+        targetModule: 'process',
+        targetRoute: '/process',
+        targetTemplateId: '   ',
+      });
+
+      expect(prisma.recordTemplate.findFirst).not.toHaveBeenCalled();
+      expect(prisma.recordFormLandingEntry.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({ targetTemplateId: null }),
+          update: expect.objectContaining({ targetTemplateId: null }),
+        }),
+      );
+    });
+
     it('throws NotFoundException when modelLanding returns null', async () => {
       modelLanding.getFormByCode.mockReturnValue(null);
       const service = makeService();

@@ -54,12 +54,13 @@ export class RecordFormLandingService {
   async upsertTarget(code: string, dto: UpdateRecordFormLandingEntryDto) {
     const form = this.modelLanding.getFormByCode(code);
     if (!form) throw new NotFoundException(`Unknown source form: ${code}`);
+    const targetTemplateId = dto.targetTemplateId?.trim() || null;
 
-    if (dto.targetTemplateId) {
+    if (targetTemplateId) {
       const template = await this.prisma.recordTemplate.findFirst({
-        where: { id: dto.targetTemplateId, deletedAt: null },
+        where: { id: targetTemplateId, deletedAt: null },
       });
-      if (!template) throw new NotFoundException(`记录模板不存在: ${dto.targetTemplateId}`);
+      if (!template) throw new NotFoundException(`记录模板不存在: ${targetTemplateId}`);
     }
 
     if (dto.relatedDocIds?.length) {
@@ -77,7 +78,7 @@ export class RecordFormLandingService {
         targetModule: dto.targetModule,
         targetModel: dto.targetModel,
         targetRoute: dto.targetRoute,
-        targetTemplateId: dto.targetTemplateId,
+        targetTemplateId,
         landingStrategy: dto.landingStrategy,
         relatedDocIds: dto.relatedDocIds ?? [],
         notes: dto.notes,
@@ -87,7 +88,7 @@ export class RecordFormLandingService {
         targetModule: dto.targetModule,
         targetModel: dto.targetModel,
         targetRoute: dto.targetRoute,
-        targetTemplateId: dto.targetTemplateId,
+        targetTemplateId,
         landingStrategy: dto.landingStrategy,
         relatedDocIds: dto.relatedDocIds ?? [],
         notes: dto.notes,
