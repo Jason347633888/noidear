@@ -19,6 +19,7 @@ export class DocumentImpactService {
         sourceType: dto.sourceType,
         sourceId: dto.sourceId,
         title: dto.title,
+        changeEventId: dto.changeEventId ?? (dto.sourceType === 'change_event' ? dto.sourceId : null),
         items: {
           create: [
             ...references.map((ref: any) => ({
