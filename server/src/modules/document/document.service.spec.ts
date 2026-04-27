@@ -6,6 +6,7 @@ import { StorageService } from '../../common/services/storage.service';
 import { NotificationService } from '../notification/notification.service';
 import { OperationLogService } from '../operation-log/operation-log.service';
 import { DocumentControlMetadataService } from './services/document-control-metadata.service';
+import { MarkdownWikilinkService } from './services/markdown-wikilink.service';
 import { ErrorCode } from '../../common/exceptions/business.exception';
 
 describe('DocumentService document control metadata', () => {
@@ -28,6 +29,7 @@ describe('DocumentService document control metadata', () => {
   const storage = { uploadFile: jest.fn() };
   const operationLog = { log: jest.fn() };
   const eventEmitter = { emit: jest.fn() };
+  const markdownWikilinkService = { syncDocumentWikilinks: jest.fn() };
 
   let service: DocumentService;
 
@@ -42,6 +44,7 @@ describe('DocumentService document control metadata', () => {
         { provide: NotificationService, useValue: { create: jest.fn() } },
         { provide: OperationLogService, useValue: operationLog },
         { provide: EventEmitter2, useValue: eventEmitter },
+        { provide: MarkdownWikilinkService, useValue: markdownWikilinkService },
       ],
     }).compile();
     service = module.get(DocumentService);
@@ -86,6 +89,7 @@ describe('DocumentService document control metadata', () => {
     it('updates markdown content for an admin', async () => {
       prisma.document.findUnique.mockResolvedValue({ id: 'doc1', creatorId: 'creator1', status: 'draft' });
       prisma.document.update.mockResolvedValue({ id: 'doc1', content_md: '# 新内容' });
+      markdownWikilinkService.syncDocumentWikilinks.mockResolvedValue(undefined);
 
       const result = await service.updateMarkdown('doc1', 'u1', 'admin', { contentMd: '# 新内容' });
 
@@ -96,6 +100,13 @@ describe('DocumentService document control metadata', () => {
         where: { id: 'doc1' },
         data: { content_md: '# 新内容' },
       });
+      expect(markdownWikilinkService.syncDocumentWikilinks).toHaveBeenCalledWith('doc1', '# 新内容');
+      expect(prisma.document.update.mock.invocationCallOrder[0]).toBeLessThan(
+        markdownWikilinkService.syncDocumentWikilinks.mock.invocationCallOrder[0],
+      );
+      expect(markdownWikilinkService.syncDocumentWikilinks.mock.invocationCallOrder[0]).toBeLessThan(
+        eventEmitter.emit.mock.invocationCallOrder[0],
+      );
       expect(eventEmitter.emit).toHaveBeenCalledWith('document.updated', { documentId: 'doc1' });
       expect(result).toEqual({ id: 'doc1', content_md: '# 新内容' });
     });
@@ -103,6 +114,7 @@ describe('DocumentService document control metadata', () => {
     it('updates markdown content for the document creator', async () => {
       prisma.document.findUnique.mockResolvedValue({ id: 'doc1', creatorId: 'u1', status: 'rejected' });
       prisma.document.update.mockResolvedValue({ id: 'doc1', content_md: '# 创建者更新' });
+      markdownWikilinkService.syncDocumentWikilinks.mockResolvedValue(undefined);
 
       const result = await service.updateMarkdown('doc1', 'u1', 'user', { contentMd: '# 创建者更新' });
 
@@ -110,6 +122,7 @@ describe('DocumentService document control metadata', () => {
         where: { id: 'doc1' },
         data: { content_md: '# 创建者更新' },
       });
+      expect(markdownWikilinkService.syncDocumentWikilinks).toHaveBeenCalledWith('doc1', '# 创建者更新');
       expect(eventEmitter.emit).toHaveBeenCalledWith('document.updated', { documentId: 'doc1' });
       expect(result).toEqual({ id: 'doc1', content_md: '# 创建者更新' });
     });

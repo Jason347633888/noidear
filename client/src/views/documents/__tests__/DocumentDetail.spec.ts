@@ -235,6 +235,35 @@ describe('DocumentDetail', () => {
     expect((c.vm as any).document.sourceReferences).toHaveLength(1);
   });
 
+  it('classifies wikilink references for detail sections', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url.includes('/versions')) return Promise.resolve([]);
+      return Promise.resolve({
+        ...mockDocument,
+        sourceReferences: [
+          { id: 'resolved', relationType: 'WIKILINK', targetType: 'document', targetLabel: '程序文件', targetDoc: { id: 'doc-2', title: '程序文件', status: 'draft' } },
+          { id: 'unresolved', relationType: 'WIKILINK', targetType: 'unresolved_document', targetLabel: '不存在文件' },
+          { id: 'conflict', relationType: 'WIKILINK', targetType: 'conflict_document', targetLabel: '重复文件', snapshot: { candidates: [{ id: 'doc-3', title: '重复文件' }] } },
+        ],
+        targetReferences: [
+          { id: 'incoming', relationType: 'WIKILINK', sourceDoc: { id: 'doc-4', title: '上游文件', status: 'draft' } },
+        ],
+      });
+    });
+
+    const c = w();
+    await flushPromises();
+
+    expect((c.vm as any).outboundReferences.map((ref: any) => ref.id)).toEqual(['resolved']);
+    expect((c.vm as any).unresolvedWikilinks.map((ref: any) => ref.id)).toEqual(['unresolved']);
+    expect((c.vm as any).conflictWikilinks.map((ref: any) => ref.id)).toEqual(['conflict']);
+    expect((c.vm as any).inboundReferences.map((ref: any) => ref.id)).toEqual(['incoming']);
+    expect(c.text()).toContain('引用了');
+    expect(c.text()).toContain('被引用');
+    expect(c.text()).toContain('未解析引用');
+    expect(c.text()).toContain('冲突引用');
+  });
+
   it('renders markdown body when document has content_md', async () => {
     const c = w();
     await flushPromises();

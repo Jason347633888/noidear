@@ -9,6 +9,7 @@ import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, UpdateMarkdownD
 import { NotificationService } from '../notification/notification.service';
 import { OperationLogService } from '../operation-log/operation-log.service';
 import { DocumentControlMetadataService } from './services/document-control-metadata.service';
+import { MarkdownWikilinkService } from './services/markdown-wikilink.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 
 @Injectable()
@@ -22,6 +23,7 @@ export class DocumentService {
     private readonly operationLog: OperationLogService,
     private readonly eventEmitter: EventEmitter2,
     private readonly metadataService: DocumentControlMetadataService,
+    private readonly markdownWikilinkService: MarkdownWikilinkService,
     @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {
     this.snowflake = new Snowflake(1, 1);
@@ -335,6 +337,7 @@ export class DocumentService {
       data: { content_md: dto.contentMd },
     });
 
+    await this.markdownWikilinkService.syncDocumentWikilinks(id, dto.contentMd);
     this.eventEmitter.emit('document.updated', { documentId: id });
     return convertBigIntToNumber(result);
   }

@@ -171,16 +171,47 @@
       />
     </el-card>
 
-    <el-card class="reference-card" v-if="document?.sourceReferences?.length || document?.targetReferences?.length">
+    <el-card class="reference-card" v-if="hasReferences">
       <template #header>引用关系</template>
-      <el-table :data="document.sourceReferences || []" stripe>
-        <el-table-column prop="relationType" label="关系" width="150" />
-        <el-table-column label="目标">
-          <template #default="{ row }">
-            {{ row.targetDoc?.title || row.targetLabel || row.targetRoute || row.targetId }}
-          </template>
-        </el-table-column>
-      </el-table>
+      <section v-if="outboundReferences.length" class="reference-section">
+        <h3>引用了</h3>
+        <el-table :data="outboundReferences" stripe>
+          <el-table-column prop="relationType" label="关系" width="150" />
+          <el-table-column label="目标">
+            <template #default="{ row }">
+              {{ referenceTargetLabel(row) }}
+            </template>
+          </el-table-column>
+        </el-table>
+      </section>
+      <section v-if="inboundReferences.length" class="reference-section">
+        <h3>被引用</h3>
+        <el-table :data="inboundReferences" stripe>
+          <el-table-column prop="relationType" label="关系" width="150" />
+          <el-table-column label="来源">
+            <template #default="{ row }">
+              {{ row.sourceDoc?.title || row.targetLabel || row.sourceDocId || '-' }}
+            </template>
+          </el-table-column>
+        </el-table>
+      </section>
+      <section v-if="unresolvedWikilinks.length" class="reference-section">
+        <h3>未解析引用</h3>
+        <el-table :data="unresolvedWikilinks" stripe>
+          <el-table-column prop="targetLabel" label="标签" />
+        </el-table>
+      </section>
+      <section v-if="conflictWikilinks.length" class="reference-section">
+        <h3>冲突引用</h3>
+        <el-table :data="conflictWikilinks" stripe>
+          <el-table-column prop="targetLabel" label="标签" />
+          <el-table-column label="候选">
+            <template #default="{ row }">
+              {{ conflictCandidateLabel(row) }}
+            </template>
+          </el-table-column>
+        </el-table>
+      </section>
     </el-card>
 
     <el-card class="version-card" v-if="versionHistory.length">
@@ -323,6 +354,21 @@ interface Approval {
   createdAt: string;
 }
 
+interface DocumentReference {
+  id: string;
+  sourceDocId?: string;
+  relationType: string;
+  targetType?: string;
+  targetLabel?: string;
+  targetRoute?: string;
+  targetId?: string;
+  targetDoc?: { id: string; title: string; status: string } | null;
+  sourceDoc?: { id: string; title: string; status: string } | null;
+  snapshot?: {
+    candidates?: Array<{ id: string; title?: string | null; number?: string | null; doc_code?: string | null }>;
+  } | null;
+}
+
 interface Document {
   id: string;
   number: string;
@@ -348,15 +394,8 @@ interface Document {
   source_folder?: string;
   owner_department?: string;
   review_due_date?: string;
-  sourceReferences?: Array<{
-    id: string;
-    relationType: string;
-    targetLabel?: string;
-    targetRoute?: string;
-    targetId?: string;
-    targetDoc?: { id: string; title: string; status: string } | null;
-  }>;
-  targetReferences?: unknown[];
+  sourceReferences?: DocumentReference[];
+  targetReferences?: DocumentReference[];
 }
 
 const route = useRoute();
@@ -380,6 +419,23 @@ const canEditMarkdown = computed(() => {
   if (!document.value) return false;
   return isDirectMarkdownEditableStatus(document.value.status);
 });
+const sourceReferences = computed(() => document.value?.sourceReferences || []);
+const inboundReferences = computed(() => document.value?.targetReferences || []);
+const unresolvedWikilinks = computed(() => sourceReferences.value.filter(
+  ref => ref.relationType === 'WIKILINK' && ref.targetType === 'unresolved_document',
+));
+const conflictWikilinks = computed(() => sourceReferences.value.filter(
+  ref => ref.relationType === 'WIKILINK' && ref.targetType === 'conflict_document',
+));
+const outboundReferences = computed(() => sourceReferences.value.filter(
+  ref => !(ref.relationType === 'WIKILINK' && ['unresolved_document', 'conflict_document'].includes(ref.targetType || '')),
+));
+const hasReferences = computed(() => (
+  outboundReferences.value.length > 0 ||
+  inboundReferences.value.length > 0 ||
+  unresolvedWikilinks.value.length > 0 ||
+  conflictWikilinks.value.length > 0
+));
 
 // 归档/作废/恢复相关
 const archiveDialogVisible = ref(false);
@@ -443,6 +499,18 @@ const formatDate = (date: string): string => {
 };
 
 const formatControlDate = (value: string): string => new Date(value).toLocaleDateString('zh-CN');
+
+const referenceTargetLabel = (ref: DocumentReference): string => (
+  ref.targetDoc?.title || ref.targetLabel || ref.targetRoute || ref.targetId || '-'
+);
+
+const conflictCandidateLabel = (ref: DocumentReference): string => {
+  const candidates = ref.snapshot?.candidates || [];
+  if (!candidates.length) return '-';
+  return candidates
+    .map(candidate => candidate.title || candidate.number || candidate.doc_code || candidate.id)
+    .join('、');
+};
 
 const getStatusType = (status: string): string => {
   const map: Record<string, string> = {
