@@ -498,11 +498,14 @@ const handlePreviewVersion = async (row: VersionItem) => {
   if (!document.value?.id) return;
   showPreview.value = true;
   previewLoading.value = true;
+  const fallbackUrl = documentManagementApi.versionDownloadUrl(document.value.id, row.version);
   try {
     const res = await request.get<{ url?: string }>(
       `/documents/${document.value.id}/versions/${row.version}/preview`,
     );
-    previewUrl.value = res.url || documentManagementApi.versionDownloadUrl(document.value.id, row.version);
+    previewUrl.value = res.url || fallbackUrl;
+  } catch {
+    previewUrl.value = fallbackUrl;
   } finally {
     previewLoading.value = false;
   }

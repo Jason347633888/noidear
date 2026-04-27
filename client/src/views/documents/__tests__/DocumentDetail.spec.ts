@@ -268,4 +268,36 @@ describe('DocumentDetail', () => {
     expect(wrapper.text()).toContain('预览版本');
     expect(wrapper.text()).toContain('回滚');
   });
+
+  it('falls back to version download URL when version preview request fails', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url.endsWith('/versions/1/preview')) {
+        return Promise.reject(new Error('Preview failed'));
+      }
+      if (url.endsWith('/versions')) {
+        return Promise.resolve({
+          versions: [
+            {
+              id: 'v1',
+              version: 1,
+              fileName: 'old.pdf',
+              fileSize: '100',
+              createdAt: '2026-01-01',
+              creator: { name: 'Admin' },
+            },
+          ],
+        });
+      }
+      return Promise.resolve(makeDocument({ status: 'effective', version: 1.1 }));
+    });
+
+    const wrapper = w();
+    await flushPromises();
+
+    await expect((wrapper.vm as any).handlePreviewVersion({ version: 1 })).resolves.toBeUndefined();
+
+    expect((wrapper.vm as any).showPreview).toBe(true);
+    expect((wrapper.vm as any).previewUrl).toBe('/api/v1/documents/doc-1/versions/1/download');
+    expect((wrapper.vm as any).previewLoading).toBe(false);
+  });
 });
