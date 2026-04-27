@@ -2,6 +2,7 @@ import { Module, OnModuleInit } from '@nestjs/common';
 import { ChangeEventController } from './change-event.controller';
 import { ChangeEventService } from './change-event.service';
 import { ChangeEventFormTaskService } from './change-event-form-task.service';
+import { ChangeEventRelationService } from './change-event-relation.service';
 import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
 import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
 import { RecordModule } from '../record/record.module';
@@ -9,8 +10,8 @@ import { RecordModule } from '../record/record.module';
 @Module({
   imports: [UnifiedApprovalModule, RecordModule],
   controllers: [ChangeEventController],
-  providers: [ChangeEventService, ChangeEventFormTaskService],
-  exports: [ChangeEventService, ChangeEventFormTaskService],
+  providers: [ChangeEventService, ChangeEventFormTaskService, ChangeEventRelationService],
+  exports: [ChangeEventService, ChangeEventFormTaskService, ChangeEventRelationService],
 })
 export class ChangeEventModule implements OnModuleInit {
   constructor(private readonly callbacks: ApprovalCallbackRegistry) {}
