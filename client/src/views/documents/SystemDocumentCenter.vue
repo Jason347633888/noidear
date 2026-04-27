@@ -4,7 +4,7 @@
       <el-tab-pane label="文件库" name="library">
         <SystemFileLibrary />
       </el-tab-pane>
-      <el-tab-pane label="台账" name="ledger">
+      <el-tab-pane label="台账" name="ledger" lazy>
         <Level1List />
       </el-tab-pane>
     </el-tabs>
