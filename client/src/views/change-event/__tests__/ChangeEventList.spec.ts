@@ -10,6 +10,8 @@ vi.mock('@/api/change-event', () => ({
     create: vi.fn(),
     updateStatus: vi.fn(),
     remove: vi.fn(),
+    getFormTasks: vi.fn().mockResolvedValue([]),
+    fillFormTask: vi.fn().mockResolvedValue({}),
   },
   getChangeTypeText: (type: string) => type,
   getStatusText: (status: string) => status,

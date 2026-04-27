@@ -134,8 +134,8 @@
             <el-table-column prop="title" label="表单名称" min-width="180" show-overflow-tooltip />
             <el-table-column label="状态" width="100">
               <template #default="{ row }">
-                <el-tag :type="row.status === 'filled' ? 'success' : 'warning'" effect="light" size="small">
-                  {{ row.status === 'filled' ? '已填写' : '待填写' }}
+                <el-tag :type="taskStatusMap[row.status]?.type ?? 'warning'" effect="light" size="small">
+                  {{ taskStatusMap[row.status]?.label ?? row.status }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -450,6 +450,14 @@ import changeApprovalApi, {
 } from '@/api/change-approval';
 
 const router = useRouter();
+
+// ── Form task status map ──────────────────────────────────────────────────────
+
+const taskStatusMap: Record<string, { label: string; type: string }> = {
+  filled: { label: '已填写', type: 'success' },
+  approved: { label: '已审批', type: 'success' },
+  pending: { label: '待填写', type: 'warning' },
+};
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
