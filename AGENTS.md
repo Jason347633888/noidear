@@ -2,6 +2,10 @@
 
 This file is the root entry point for any agent working in `noidear`.
 
+## Response Language
+
+All agent replies to the user must be written in Chinese.
+
 ## Mandatory Reading Order
 
 Every agent must read these documents in order before analysis, implementation, schema decisions, or behavior changes:
@@ -29,9 +33,10 @@ Trigger topics include:
 ## Root Entry Responsibility
 
 This document must stay short.
-It only does three things:
+It only does four things:
 
 - identify itself as the root entry point
+- enforce Chinese replies to the user
 - enforce the reading order
 - route agents into `docs/AGENT_GUIDE.md`
 
