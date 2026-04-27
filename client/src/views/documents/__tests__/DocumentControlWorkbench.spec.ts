@@ -27,7 +27,7 @@ const stubs = {
 import DocumentControlWorkbench from '../DocumentControlWorkbench.vue';
 import { useRouter } from 'vue-router';
 
-const mountOptions = { global: { stubs } };
+const mountOptions = { global: { stubs, directives: { loading: {} } } };
 
 describe('DocumentControlWorkbench', () => {
   beforeEach(() => {
@@ -68,6 +68,30 @@ describe('DocumentControlWorkbench', () => {
     await wrapper.find('[data-test="workbench-card-missingMetadata"]').trigger('click');
 
     expect(routerPush).toHaveBeenCalledWith({
+      path: '/documents/control/library',
+      query: { issue: 'missingMetadata' },
+    });
+  });
+
+  it('exposes keyboard semantics for workbench cards', async () => {
+    mockWorkbench.mockResolvedValue({ counts: { missingMetadata: 3 }, missingMetadata: [] });
+
+    const wrapper = mount(DocumentControlWorkbench, mountOptions);
+    await flushPromises();
+    const card = wrapper.find('[data-test="workbench-card-missingMetadata"]');
+
+    expect(card.attributes('role')).toBe('button');
+    expect(card.attributes('tabindex')).toBe('0');
+
+    await card.trigger('keydown.enter');
+    await card.trigger('keydown.space');
+
+    expect(routerPush).toHaveBeenCalledTimes(2);
+    expect(routerPush).toHaveBeenNthCalledWith(1, {
+      path: '/documents/control/library',
+      query: { issue: 'missingMetadata' },
+    });
+    expect(routerPush).toHaveBeenNthCalledWith(2, {
       path: '/documents/control/library',
       query: { issue: 'missingMetadata' },
     });

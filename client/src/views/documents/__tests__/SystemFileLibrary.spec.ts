@@ -3,6 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 
 const mockListDocuments = vi.fn();
 const mockPush = vi.fn();
+let mockRoute = { query: {} as Record<string, string> };
 
 vi.mock('@/api/document-control', () => ({
   documentControlApi: {
@@ -11,6 +12,7 @@ vi.mock('@/api/document-control', () => ({
 }));
 
 vi.mock('vue-router', () => ({
+  useRoute: () => mockRoute,
   useRouter: () => ({ push: mockPush }),
 }));
 
@@ -31,34 +33,55 @@ const stubs = {
 
 import SystemFileLibrary from '../SystemFileLibrary.vue';
 
+const mountOptions = { global: { stubs, directives: { loading: {} } } };
+
 describe('SystemFileLibrary', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRoute = { query: {} };
     mockListDocuments.mockResolvedValue({ list: [], total: 0, page: 1, limit: 50 });
   });
 
   it('loads documents on mount', async () => {
-    mount(SystemFileLibrary, { global: { stubs } });
+    mount(SystemFileLibrary, mountOptions);
     await flushPromises();
     expect(mockListDocuments).toHaveBeenCalled();
   });
 
+  it('initializes external-file filter from route issue before fetching', async () => {
+    mockRoute = { query: { issue: 'expiringExternalFiles' } };
+
+    mount(SystemFileLibrary, mountOptions);
+    await flushPromises();
+
+    expect(mockListDocuments).toHaveBeenCalledWith(expect.objectContaining({ documentType: 'EXTERNAL_FILE' }));
+  });
+
+  it('initializes due-for-review status filter from route issue before fetching', async () => {
+    mockRoute = { query: { issue: 'dueForReview' } };
+
+    mount(SystemFileLibrary, mountOptions);
+    await flushPromises();
+
+    expect(mockListDocuments).toHaveBeenCalledWith(expect.objectContaining({ status: 'effective' }));
+  });
+
   it('filters by selected source folder', async () => {
-    const wrapper = mount(SystemFileLibrary, { global: { stubs } });
+    const wrapper = mount(SystemFileLibrary, mountOptions);
     await flushPromises();
     await (wrapper.vm as any).selectFolder('02');
     expect(mockListDocuments).toHaveBeenLastCalledWith(expect.objectContaining({ sourceFolder: '02', page: 1, limit: 50 }));
   });
 
   it('loads the selected page', async () => {
-    const wrapper = mount(SystemFileLibrary, { global: { stubs } });
+    const wrapper = mount(SystemFileLibrary, mountOptions);
     await flushPromises();
     await (wrapper.vm as any).handlePageChange(2);
     expect(mockListDocuments).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2, limit: 50 }));
   });
 
   it('resets to the first page when page size changes', async () => {
-    const wrapper = mount(SystemFileLibrary, { global: { stubs } });
+    const wrapper = mount(SystemFileLibrary, mountOptions);
     await flushPromises();
     await (wrapper.vm as any).handlePageChange(2);
     await (wrapper.vm as any).handlePageSizeChange(100);
@@ -83,7 +106,7 @@ describe('SystemFileLibrary', () => {
       limit: 50,
     });
 
-    const wrapper = mount(SystemFileLibrary, { global: { stubs } });
+    const wrapper = mount(SystemFileLibrary, mountOptions);
     await flushPromises();
 
     expect(wrapper.text()).toContain('质量手册');

@@ -6,7 +6,11 @@
         :key="card.key"
         :data-test="`workbench-card-${card.key}`"
         class="action-card"
+        role="button"
+        tabindex="0"
         @click="openCard(card)"
+        @keydown.enter.prevent="openCard(card)"
+        @keydown.space.prevent="openCard(card)"
       >
         <template #header>
           <span>{{ card.title }}</span>
