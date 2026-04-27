@@ -6,7 +6,9 @@ export const PRODUCT_RND_ONLY_FORM_CODES = new Set([
   'GRSS-KF-JL-01', // 产品开发评审记录：固定挂产品研发流程 Step 4
 ]);
 
-export const CHANGE_EVENT_DEFAULT_FORM_CODES: Record<string, string[]> = {
+export type ChangeType = 'document' | 'record_form' | 'recipe' | 'process' | 'equipment' | 'supplier' | 'haccp' | 'product' | 'other';
+
+export const CHANGE_EVENT_DEFAULT_FORM_CODES: Record<ChangeType, string[]> = {
   document: [],
   record_form: [],
   recipe: [
@@ -31,7 +33,7 @@ export const CHANGE_EVENT_DEFAULT_FORM_CODES: Record<string, string[]> = {
 };
 
 export function getDefaultFormCodesForChangeType(changeType: string): string[] {
-  const codes = CHANGE_EVENT_DEFAULT_FORM_CODES[changeType] ?? [];
+  const codes = CHANGE_EVENT_DEFAULT_FORM_CODES[changeType as ChangeType] ?? [];
   return codes.filter(
     (code) => !RETIRED_CHANGE_FORM_CODES.has(code) && !PRODUCT_RND_ONLY_FORM_CODES.has(code),
   );
