@@ -377,7 +377,7 @@ const isCreator = computed(() => document.value?.creatorId === userStore.user?.i
 const isAdmin = computed(() => userStore.user?.role === 'admin');
 const canEditMarkdown = computed(() => {
   if (!document.value) return false;
-  return ['draft', 'rejected'].includes(document.value.status) || isCreator.value || isAdmin.value;
+  return ['draft', 'rejected'].includes(document.value.status);
 });
 
 // 归档/作废/恢复相关

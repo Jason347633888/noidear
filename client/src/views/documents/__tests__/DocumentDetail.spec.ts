@@ -55,7 +55,7 @@ const stubs: Record<string, any> = {
   'el-table': { template: '<div><slot /></div>', props: ['data'] },
   'el-table-column': { template: '<div />', props: ['prop', 'label', 'width'] },
   'OfficePreview': { template: '<div class="stub-office-preview" />', props: ['filename', 'previewUrl'] },
-  'MarkdownViewer': { template: '<div class="markdown-viewer-stub">{{ content }}</div>', props: ['content'] },
+  'MarkdownEditor': { template: '<div class="markdown-editor-stub" />', props: ['modelValue'] },
   'View': { template: '<span />' },
   'Download': { template: '<span />' },
   'Edit': { template: '<span />' },
@@ -226,6 +226,7 @@ describe('DocumentDetail', () => {
   it('renders markdown body when document has content_md', async () => {
     const c = w();
     await flushPromises();
-    expect(c.find('.markdown-viewer-stub').text()).toContain('这是 Markdown 正文');
+    expect(c.find('.markdown-viewer h1').text()).toBe('文档正文');
+    expect(c.find('.markdown-viewer').text()).toContain('这是 Markdown 正文');
   });
 });
