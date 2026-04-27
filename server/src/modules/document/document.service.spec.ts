@@ -35,6 +35,7 @@ describe('DocumentService document control metadata', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    prisma.$transaction.mockImplementation(async (callback) => callback(prisma));
     const module = await Test.createTestingModule({
       providers: [
         DocumentService,
@@ -100,7 +101,10 @@ describe('DocumentService document control metadata', () => {
         where: { id: 'doc1' },
         data: { content_md: '# 新内容' },
       });
-      expect(markdownWikilinkService.syncDocumentWikilinks).toHaveBeenCalledWith('doc1', '# 新内容');
+      expect(markdownWikilinkService.syncDocumentWikilinks).toHaveBeenCalledWith('doc1', '# 新内容', prisma);
+      expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+        isolationLevel: 'Serializable',
+      });
       expect(prisma.document.update.mock.invocationCallOrder[0]).toBeLessThan(
         markdownWikilinkService.syncDocumentWikilinks.mock.invocationCallOrder[0],
       );
@@ -122,9 +126,21 @@ describe('DocumentService document control metadata', () => {
         where: { id: 'doc1' },
         data: { content_md: '# 创建者更新' },
       });
-      expect(markdownWikilinkService.syncDocumentWikilinks).toHaveBeenCalledWith('doc1', '# 创建者更新');
+      expect(markdownWikilinkService.syncDocumentWikilinks).toHaveBeenCalledWith('doc1', '# 创建者更新', prisma);
       expect(eventEmitter.emit).toHaveBeenCalledWith('document.updated', { documentId: 'doc1' });
       expect(result).toEqual({ id: 'doc1', content_md: '# 创建者更新' });
+    });
+
+    it('does not emit document update when wikilink sync fails', async () => {
+      prisma.document.findUnique.mockResolvedValue({ id: 'doc1', creatorId: 'creator1', status: 'draft' });
+      prisma.document.update.mockResolvedValue({ id: 'doc1', content_md: '# 新内容' });
+      markdownWikilinkService.syncDocumentWikilinks.mockRejectedValue(new Error('sync failed'));
+
+      await expect(
+        service.updateMarkdown('doc1', 'u1', 'admin', { contentMd: '# 新内容' }),
+      ).rejects.toThrow('sync failed');
+
+      expect(eventEmitter.emit).not.toHaveBeenCalledWith('document.updated', { documentId: 'doc1' });
     });
 
     it('rejects missing markdown content', async () => {

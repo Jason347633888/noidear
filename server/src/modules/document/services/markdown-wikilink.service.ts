@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 
+type WikilinkPrismaClient = Pick<PrismaService, 'document' | 'documentReference'>;
+
 @Injectable()
 export class MarkdownWikilinkService {
   constructor(private readonly prisma: PrismaService) {}
@@ -12,16 +14,17 @@ export class MarkdownWikilinkService {
     return Array.from(new Set(labels));
   }
 
-  async syncDocumentWikilinks(sourceDocId: string, content: string) {
+  async syncDocumentWikilinks(sourceDocId: string, content: string, client: WikilinkPrismaClient = this.prisma) {
     const labels = this.extractWikilinks(content);
 
-    await this.prisma.documentReference.deleteMany({
+    await client.documentReference.deleteMany({
       where: { sourceDocId, relationType: 'WIKILINK' },
     });
 
     for (const label of labels) {
-      const targets = await this.prisma.document.findMany({
+      const targets = await client.document.findMany({
         where: {
+          id: { not: sourceDocId },
           deletedAt: null,
           OR: [
             { number: label },
@@ -37,7 +40,7 @@ export class MarkdownWikilinkService {
 
       if (targets.length === 1) {
         const target = targets[0];
-        await this.prisma.documentReference.create({
+        await client.documentReference.create({
           data: {
             sourceDocId,
             targetDocId: target.id,
@@ -52,7 +55,7 @@ export class MarkdownWikilinkService {
         continue;
       }
 
-      await this.prisma.documentReference.create({
+      await client.documentReference.create({
         data: {
           sourceDocId,
           targetDocId: null,

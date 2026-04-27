@@ -39,6 +39,11 @@ describe('MarkdownWikilinkService', () => {
         sectionId: 'wikilink:原辅料验收标准',
       }),
     });
+    expect(prisma.document.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        id: { not: 'source1' },
+      }),
+    }));
   });
 
   it('creates an unresolved reference when no document matches', async () => {
@@ -93,5 +98,25 @@ describe('MarkdownWikilinkService', () => {
     expect(prisma.documentReference.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
       prisma.documentReference.create.mock.invocationCallOrder[0],
     );
+  });
+
+  it('does not create a self-reference when wikilink matches the source document only', async () => {
+    prisma.document.findMany.mockResolvedValueOnce([]);
+
+    await service.syncDocumentWikilinks('source1', '见 [[DOC-001]]');
+
+    expect(prisma.document.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: { not: 'source1' } }),
+    }));
+    expect(prisma.documentReference.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        sourceDocId: 'source1',
+        targetDocId: null,
+        targetType: 'unresolved_document',
+        targetId: null,
+        targetLabel: 'DOC-001',
+        relationType: 'WIKILINK',
+      }),
+    });
   });
 });

@@ -316,28 +316,32 @@ export class DocumentService {
       throw new BusinessException(ErrorCode.VALIDATION_ERROR, 'contentMd 必须是字符串');
     }
 
-    const document = await this.prisma.document.findUnique({
-      where: { id, deletedAt: null },
-    });
+    const result = await this.prisma.$transaction(async (tx) => {
+      const document = await tx.document.findUnique({
+        where: { id, deletedAt: null },
+      });
 
-    if (!document) {
-      throw new BusinessException(ErrorCode.NOT_FOUND, '文档不存在');
-    }
+      if (!document) {
+        throw new BusinessException(ErrorCode.NOT_FOUND, '文档不存在');
+      }
 
-    if (role !== 'admin' && document.creatorId !== userId) {
-      throw new BusinessException(ErrorCode.FORBIDDEN, '无权编辑该文档');
-    }
+      if (role !== 'admin' && document.creatorId !== userId) {
+        throw new BusinessException(ErrorCode.FORBIDDEN, '无权编辑该文档');
+      }
 
-    if (document.status !== 'draft' && document.status !== 'rejected') {
-      throw new BusinessException(ErrorCode.CONFLICT, '仅草稿或驳回文档可直接编辑正文');
-    }
+      if (document.status !== 'draft' && document.status !== 'rejected') {
+        throw new BusinessException(ErrorCode.CONFLICT, '仅草稿或驳回文档可直接编辑正文');
+      }
 
-    const result = await this.prisma.document.update({
-      where: { id },
-      data: { content_md: dto.contentMd },
-    });
+      const updated = await tx.document.update({
+        where: { id },
+        data: { content_md: dto.contentMd },
+      });
 
-    await this.markdownWikilinkService.syncDocumentWikilinks(id, dto.contentMd);
+      await this.markdownWikilinkService.syncDocumentWikilinks(id, dto.contentMd, tx);
+      return updated;
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
     this.eventEmitter.emit('document.updated', { documentId: id });
     return convertBigIntToNumber(result);
   }
