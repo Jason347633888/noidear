@@ -23,9 +23,10 @@ const stubs = {
   'el-select': { template: '<select><slot /></select>', props: ['modelValue'] },
   'el-option': { template: '<option />' },
   'el-button': { template: '<button @click="$emit(\'click\')"><slot /></button>' },
-  'el-table': { template: '<div><slot /></div>', props: ['data'] },
+  'el-table': { template: '<div><slot />{{ data.map((item) => item.title).join(",") }}</div>', props: ['data'] },
   'el-table-column': { template: '<div />' },
   'el-tag': { template: '<span><slot /></span>' },
+  'el-pagination': { template: '<div />', props: ['currentPage', 'pageSize', 'pageSizes', 'total', 'layout'] },
 };
 
 import SystemFileLibrary from '../SystemFileLibrary.vue';
@@ -46,6 +47,46 @@ describe('SystemFileLibrary', () => {
     const wrapper = mount(SystemFileLibrary, { global: { stubs } });
     await flushPromises();
     await (wrapper.vm as any).selectFolder('02');
-    expect(mockListDocuments).toHaveBeenLastCalledWith(expect.objectContaining({ sourceFolder: '02' }));
+    expect(mockListDocuments).toHaveBeenLastCalledWith(expect.objectContaining({ sourceFolder: '02', page: 1, limit: 50 }));
+  });
+
+  it('loads the selected page', async () => {
+    const wrapper = mount(SystemFileLibrary, { global: { stubs } });
+    await flushPromises();
+    await (wrapper.vm as any).handlePageChange(2);
+    expect(mockListDocuments).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2, limit: 50 }));
+  });
+
+  it('resets to the first page when page size changes', async () => {
+    const wrapper = mount(SystemFileLibrary, { global: { stubs } });
+    await flushPromises();
+    await (wrapper.vm as any).handlePageChange(2);
+    await (wrapper.vm as any).handlePageSizeChange(100);
+    expect(mockListDocuments).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, limit: 100 }));
+  });
+
+  it('excludes record form index documents from the system library', async () => {
+    mockListDocuments.mockResolvedValue({
+      list: [
+        { id: 'doc-1', number: 'QM-001', title: '质量手册', status: 'effective', document_type: 'MANUAL', source_folder: '01' },
+        {
+          id: 'doc-2',
+          number: 'JL-001',
+          title: '记录表单索引',
+          status: 'effective',
+          document_type: 'RECORD_FORM_INDEX',
+          source_folder: '04',
+        },
+      ],
+      total: 2,
+      page: 1,
+      limit: 50,
+    });
+
+    const wrapper = mount(SystemFileLibrary, { global: { stubs } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('质量手册');
+    expect(wrapper.text()).not.toContain('记录表单索引');
   });
 });
