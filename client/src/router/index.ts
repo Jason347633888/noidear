@@ -29,7 +29,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'documents',
         name: 'Documents',
-        component: () => import('@/views/documents/Level1List.vue'),
+        component: () => import('@/views/documents/SystemDocumentCenter.vue'),
         meta: { title: '文档管理' },
       },
       { path: 'documents/level1', redirect: '/documents' },
@@ -53,9 +53,7 @@ const routes: RouteRecordRaw[] = [
       // 文控中心
       {
         path: 'documents/control/library',
-        name: 'SystemFileLibrary',
-        component: () => import('@/views/documents/SystemFileLibrary.vue'),
-        meta: { title: '体系文件库' },
+        redirect: '/documents',
       },
       {
         path: 'documents/control/record-form-index',
