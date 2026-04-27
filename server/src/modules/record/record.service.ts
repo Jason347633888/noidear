@@ -65,6 +65,10 @@ export class RecordService {
         createdBy: userId,
         retentionUntil,
         offlineFilled: createDto.offlineFilled ?? false,
+        usageType: createDto.usageType ?? null,
+        sourceType: createDto.sourceType ?? null,
+        sourceId: createDto.sourceId ?? null,
+        changeEventId: createDto.changeEventId ?? null,
         ...batchAssociation,
       },
     });
@@ -118,6 +122,14 @@ export class RecordService {
 
     if (keyword) {
       where.number = { contains: keyword };
+    }
+
+    if (query.usageType) {
+      where.usageType = query.usageType;
+    }
+
+    if (query.changeEventId) {
+      where.changeEventId = query.changeEventId;
     }
 
     const [data, total] = await Promise.all([

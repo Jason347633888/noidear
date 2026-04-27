@@ -168,6 +168,42 @@ describe('RecordService', () => {
         }),
       );
     });
+
+    it('creates a change record with usage and source fields', async () => {
+      prisma.recordTemplate.findUnique.mockResolvedValue({
+        id: 'tpl1',
+        code: 'GRSS-PZ-JL-07',
+        fieldsJson: { fields: [] },
+        retentionYears: 5,
+        batchLinkEnabled: false,
+      });
+      prisma.record.create.mockResolvedValue({
+        id: 'record1',
+        templateId: 'tpl1',
+        usageType: 'change',
+        sourceType: 'change_event',
+        sourceId: 'change1',
+        changeEventId: 'change1',
+      });
+
+      await service.create({
+        templateId: 'tpl1',
+        dataJson: {},
+        usageType: 'change',
+        sourceType: 'change_event',
+        sourceId: 'change1',
+        changeEventId: 'change1',
+      } as any, 'user1');
+
+      expect(prisma.record.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          usageType: 'change',
+          sourceType: 'change_event',
+          sourceId: 'change1',
+          changeEventId: 'change1',
+        }),
+      });
+    });
   });
 
   describe('findAll', () => {

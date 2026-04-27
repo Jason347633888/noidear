@@ -32,4 +32,12 @@ export class QueryRecordDto {
   @IsOptional()
   @IsString()
   keyword?: string;
+
+  @IsOptional()
+  @IsString()
+  usageType?: string;
+
+  @IsOptional()
+  @IsString()
+  changeEventId?: string;
 }
