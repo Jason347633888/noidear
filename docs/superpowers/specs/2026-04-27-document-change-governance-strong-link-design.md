@@ -140,7 +140,7 @@
 - 变更触发的验证、评审、确认才进入 `ChangeEvent`。
 - 周期复评或定期验证可以复用同一张表单模板，但不强制进入 `ChangeEvent`。
 - `ChangeEvent` 负责串联变更闭环，不接管所有验证场景。
-- `产品开发评审记录` 属于产品研发和产品重大变更的评审环节，不属于所有变更都默认带出的通用表单。
+- `产品开发评审记录` 属于产品研发流程评审，不属于通用变更流程默认表单。
 
 ## 5. 目标业务模型
 
@@ -208,9 +208,9 @@ Record
 
 `ChangeEvent` 只是第二类入口，不是所有验证记录的总入口。
 
-### 5.3 产品开发评审适用规则
+### 5.3 产品研发评审边界
 
-`产品开发评审记录` 对应 `GRSS-KF-JL-01`，本质是产品研发和产品重大变更的阶段评审表，不是简单只属于产品研发流程，也不是所有变更都默认带出的通用表。
+`产品开发评审记录` 对应 `GRSS-KF-JL-01`，应直接挂在产品研发流程 `ProcessInstance` 下，而不是挂到通用 `ChangeEvent` 下。
 
 当前产品研发 7 步流程已经有明确位置：
 
@@ -228,32 +228,8 @@ Step 7: 产品验证记录 (JL-07)
 
 - 新产品首次开发时，`产品开发评审记录` 由产品研发流程 Step 4 生成 `Record(usageType=initial)`。
 - 产品开发流程中的 Step 4 多部门评审结果决定是否进入标签、规程、配方工艺和最终验证阶段。
-- 后续产品发生重大变更时，先创建 `ChangeEvent`，再按适用规则带出 `产品开发评审记录`，生成 `Record(usageType=change)`。
-- 后续仅配方比例、工艺参数、设备、供应商或文件变更时，不默认带出 `产品开发评审记录`，除非影响产品定位、规格、标签、配方设计、食品安全特性或客户要求。
-
-建议第一版把 `产品开发评审记录` 配置为条件带出：
-
-```text
-入口：产品研发流程
-  -> 固定 Step 4 带出
-  -> usageType = initial
-  -> sourceType = process_instance
-  -> sourceId = ProcessInstance.id
-
-入口：ChangeEvent(changeType=product)
-  -> 默认带出
-  -> usageType = change
-  -> sourceType = change_event
-  -> sourceId = ChangeEvent.id
-
-入口：ChangeEvent(changeType=recipe/process/haccp)
-  -> 仅当影响产品设计结论、规格、标签、配方设计、食品安全特性或客户要求时带出
-  -> usageType = change
-  -> sourceType = change_event
-  -> sourceId = ChangeEvent.id
-```
-
-这样既保留它作为“评审的一环”，又避免小的工艺或文件变更把产品开发评审也强行带出来。
+- 后续产品、配方、工艺发生真实变更时，才创建 `ChangeEvent`。
+- 通用变更流程不默认带出 `产品开发评审记录`，除非未来明确存在“产品研发流程外的产品复审”场景。
 
 `产品更改申请表` 对应 `GRSS-KF-JL-03`，后续不再作为独立表单使用：
 
@@ -549,16 +525,14 @@ ChangeEventRelation
 - 变更类型自动带出对应 `RecordTemplate`。
 - 填写后生成 `Record(usageType=change)` 并挂到 `ChangeEventFormTask`。
 - 从变更默认表单中移除 `产品更改申请表`。
-- `产品开发评审记录` 改为按适用规则带出：产品研发流程 Step 4 固定带出，产品重大变更默认带出，配方/工艺/HACCP 变更仅在影响产品设计结论时带出。
+- 保持 `产品开发评审记录` 只在产品研发流程 Step 4 中使用，不进入通用变更默认表单。
 
 验收标准：
 
 - 一个变更事件能看到影响范围、默认表单、已填写记录、文控影响、审批记录。
 - 同一张表单模板可以同时用于初次验证、变更验证和周期复评。
 - 初次验证和周期复评不会被错误要求创建 `ChangeEvent`。
-- 产品研发流程 Step 4 能看到 `产品开发评审记录`。
-- 产品重大变更会带出 `产品开发评审记录`。
-- 非产品重大变更不会无条件带出 `产品开发评审记录`。
+- 产品研发流程 Step 4 能看到 `产品开发评审记录`，新建变更时不会默认带出它。
 - 新建变更时不会再出现 `产品更改申请表`。
 - 文控影响评审不再孤立存在。
 
@@ -622,17 +596,13 @@ ChangeEventRelation
 - 明确 `Record` 是某一次填写后的记录。
 - 明确 `usageType` 只标记这次填写用途，不改变表单模板本身。
 
-### 10.5 产品开发评审带出规则过粗
+### 10.5 产品研发评审被误放进变更流程
 
 处理方式：
 
-- `产品开发评审记录` 不按“是否包含 ChangeEvent 标签”粗暴带出。
-- 记录表单索引中保留它和产品研发流程、产品、工艺、检验等实体的关联。
-- 表单带出规则同时看 `entryType` 和 `changeType`：
-  - `entryType=product_development` 时固定带出。
-  - `entryType=change_event` 且 `changeType=product` 时默认带出。
-  - `entryType=change_event` 且 `changeType=recipe/process/haccp` 时，只有影响产品设计结论、规格、标签、配方设计、食品安全特性或客户要求才带出。
-- 小的文档、表单入口、设备维护、供应商资料变更不带出该表。
+- `产品开发评审记录` 只挂产品研发 `ProcessInstance`。
+- 记录表单索引中将它的主要入口指向 `/process` 或研发流程详情，而不是 `/change-events`。
+- model landing 仍可保留它和 `Product`、`ProcessStep`、`Inspection` 等实体的关联，但不要因为包含 `ChangeEvent` 标签就把它放入变更默认表单包。
 
 ### 10.6 重复申请表残留
 
@@ -648,7 +618,7 @@ ChangeEventRelation
 
 1. 阶段一强引用收紧。
 2. 阶段二中先补 `Record.usageType/sourceType/sourceId/changeEventId` 与 `ChangeEventFormTask`。
-3. 清理变更默认表单包：移除 `产品更改申请表`，为 `产品开发评审记录` 增加条件带出规则。
+3. 清理变更默认表单包：移除 `产品更改申请表`，排除 `产品开发评审记录`。
 4. 阶段三工作台明细化。
 5. 阶段四证据链。
 
