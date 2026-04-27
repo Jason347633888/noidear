@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 
 const stubs: Record<string, any> = {
-  'el-alert': { template: '<div class="el-alert" />', props: ['title', 'type', 'closable'] },
+  'el-alert': { template: '<div class="el-alert">{{ title }}</div>', props: ['title', 'type', 'closable'] },
   'el-button': { template: '<button @click="$emit(\'click\')"><slot /></button>' , props: ['type'] },
   'el-empty': { template: '<div class="el-empty" />', props: ['description'] },
   'el-image': {
@@ -85,25 +85,11 @@ describe('OfficePreview', () => {
     expect((c.vm as any).fileType).toBe('other');
   });
 
-  it('officeViewerUrl contains Microsoft Office Online Viewer URL', async () => {
-    const previewUrl = 'https://example.com/report.docx?token=abc';
-    const c = w({ filename: 'report.docx', previewUrl });
+  it('shows attachment fallback for Office files', async () => {
+    const c = w({ filename: 'report.docx', previewUrl: 'https://example.com/report.docx?token=abc' });
     await flushPromises();
-    const viewerUrl = (c.vm as any).officeViewerUrl;
-    expect(viewerUrl).toContain('view.officeapps.live.com');
-    expect(viewerUrl).toContain(encodeURIComponent(previewUrl));
-  });
-
-  it('officeViewerUrl is empty for non-office files', async () => {
-    const c = w({ filename: 'document.pdf', previewUrl: 'https://example.com/doc.pdf' });
-    await flushPromises();
-    expect((c.vm as any).officeViewerUrl).toBe('');
-  });
-
-  it('officeViewerUrl is empty when previewUrl is empty', async () => {
-    const c = w({ filename: 'report.docx', previewUrl: '' });
-    await flushPromises();
-    expect((c.vm as any).officeViewerUrl).toBe('');
+    expect(c.find('iframe').exists()).toBe(false);
+    expect(c.text()).toContain('Office 文件暂按附件管理，请下载查看');
   });
 
   it('emits download event when download button is clicked', async () => {
