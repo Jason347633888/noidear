@@ -369,6 +369,12 @@ export class DocumentController {
     return this.documentService.update(id, dto, file, req.user.id);
   }
 
+  @Patch(':id/markdown')
+  @ApiOperation({ summary: '更新 Markdown 正文' })
+  updateMarkdown(@Param('id') id: string, @Body() dto: { contentMd: string }, @Req() req: any) {
+    return this.documentService.updateMarkdown(id, req.user.id, req.user.role, dto);
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: '删除文档' })
   async remove(@Param('id') id: string, @Req() req: any) {

@@ -309,6 +309,31 @@ export class DocumentService {
     return convertBigIntToNumber(result);
   }
 
+  async updateMarkdown(id: string, userId: string, role: string, dto: { contentMd: string }) {
+    const document = await this.prisma.document.findUnique({
+      where: { id, deletedAt: null },
+    });
+
+    if (!document) {
+      throw new BusinessException(ErrorCode.NOT_FOUND, '文档不存在');
+    }
+
+    if (role !== 'admin' && document.creatorId !== userId) {
+      throw new BusinessException(ErrorCode.FORBIDDEN, '无权编辑该文档');
+    }
+
+    if (document.status !== 'draft' && document.status !== 'rejected') {
+      throw new BusinessException(ErrorCode.CONFLICT, '仅草稿或驳回文档可直接编辑正文');
+    }
+
+    const result = await this.prisma.document.update({
+      where: { id },
+      data: { content_md: dto.contentMd },
+    });
+
+    return convertBigIntToNumber(result);
+  }
+
   async remove(id: string, userId: string) {
     const document = await this.findOne(id, userId, 'user');
 

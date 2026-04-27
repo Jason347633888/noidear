@@ -6,11 +6,19 @@ import { StorageService } from '../../common/services/storage.service';
 import { NotificationService } from '../notification/notification.service';
 import { OperationLogService } from '../operation-log/operation-log.service';
 import { DocumentControlMetadataService } from './services/document-control-metadata.service';
+import { ErrorCode } from '../../common/exceptions/business.exception';
 
 describe('DocumentService document control metadata', () => {
   const prisma = {
     user: { findUnique: jest.fn() },
-    document: { findFirst: jest.fn(), create: jest.fn(), findMany: jest.fn(), count: jest.fn() },
+    document: {
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+    },
     department: { findUnique: jest.fn() },
     pendingNumber: { findFirst: jest.fn() },
     numberRule: { create: jest.fn(), update: jest.fn() },
@@ -72,5 +80,59 @@ describe('DocumentService document control metadata', () => {
         departmentId: 'd1',
       }),
     }));
+  });
+
+  describe('updateMarkdown', () => {
+    it('updates markdown content for an admin', async () => {
+      prisma.document.findUnique.mockResolvedValue({ id: 'doc1', creatorId: 'creator1', status: 'draft' });
+      prisma.document.update.mockResolvedValue({ id: 'doc1', content_md: '# 新内容' });
+
+      const result = await service.updateMarkdown('doc1', 'u1', 'admin', { contentMd: '# 新内容' });
+
+      expect(prisma.document.findUnique).toHaveBeenCalledWith({
+        where: { id: 'doc1', deletedAt: null },
+      });
+      expect(prisma.document.update).toHaveBeenCalledWith({
+        where: { id: 'doc1' },
+        data: { content_md: '# 新内容' },
+      });
+      expect(result).toEqual({ id: 'doc1', content_md: '# 新内容' });
+    });
+
+    it('throws not found when document is missing', async () => {
+      prisma.document.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.updateMarkdown('missing', 'u1', 'admin', { contentMd: '# 新内容' }),
+      ).rejects.toMatchObject({
+        code: ErrorCode.NOT_FOUND,
+        message: '文档不存在',
+      });
+      expect(prisma.document.update).not.toHaveBeenCalled();
+    });
+
+    it('forbids non-admin users from editing another creator document', async () => {
+      prisma.document.findUnique.mockResolvedValue({ id: 'doc1', creatorId: 'creator1', status: 'draft' });
+
+      const update = service.updateMarkdown('doc1', 'u1', 'user', { contentMd: '# 新内容' });
+
+      await expect(update).rejects.toMatchObject({
+        code: ErrorCode.FORBIDDEN,
+        message: '无权编辑该文档',
+      });
+      expect(prisma.document.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects direct markdown edits for approved documents', async () => {
+      prisma.document.findUnique.mockResolvedValue({ id: 'doc1', creatorId: 'u1', status: 'approved' });
+
+      await expect(
+        service.updateMarkdown('doc1', 'u1', 'user', { contentMd: '# 新内容' }),
+      ).rejects.toMatchObject({
+        code: ErrorCode.CONFLICT,
+        message: '仅草稿或驳回文档可直接编辑正文',
+      });
+      expect(prisma.document.update).not.toHaveBeenCalled();
+    });
   });
 });
