@@ -92,4 +92,20 @@ const status = 'ok';
     expect(wrapper.find('.callout-title').text()).toContain('自定义提示');
     expect(wrapper.find('.callout-content').text()).toContain('正文');
   });
+
+  it('does not transform wikilinks inside inline code or fenced code blocks', () => {
+    const wrapper = mountMarkdown(`使用 \`[[inline-ref]]\` 语法。
+
+\`\`\`
+[[fenced-ref|别名]]
+\`\`\`
+
+正常 [[真实链接|显示名]] 应渲染。`);
+
+    const wikilinks = wrapper.findAll('.wikilink');
+    expect(wikilinks).toHaveLength(1);
+    expect(wikilinks[0].text()).toBe('显示名');
+    expect(wrapper.find('p code').text()).toContain('[[inline-ref]]');
+    expect(wrapper.find('pre code').text()).toContain('[[fenced-ref|别名]]');
+  });
 });
