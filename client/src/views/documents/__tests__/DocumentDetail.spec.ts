@@ -55,7 +55,8 @@ const stubs: Record<string, any> = {
   'el-table': { template: '<div><slot /></div>', props: ['data'] },
   'el-table-column': { template: '<div />', props: ['prop', 'label', 'width'] },
   'OfficePreview': { template: '<div class="stub-office-preview" />', props: ['filename', 'previewUrl'] },
-'View': { template: '<span />' },
+  'MarkdownViewer': { template: '<div class="markdown-viewer-stub">{{ content }}</div>', props: ['content'] },
+  'View': { template: '<span />' },
   'Download': { template: '<span />' },
   'Edit': { template: '<span />' },
   'Delete': { template: '<span />' },
@@ -70,6 +71,7 @@ const mockDocument = {
   creatorId: 'user-1', creator: { name: '管理员' },
   approver: null, approvedAt: null,
   createdAt: '2026-01-15T10:00:00Z',
+  content_md: '# 文档正文\n\n这是 Markdown 正文',
   document_type: 'PROCEDURE',
   source_folder: '02',
   owner_department: '品质部',
@@ -219,5 +221,11 @@ describe('DocumentDetail', () => {
     await flushPromises();
     expect((c.vm as any).document.document_type).toBe('PROCEDURE');
     expect((c.vm as any).document.sourceReferences).toHaveLength(1);
+  });
+
+  it('renders markdown body when document has content_md', async () => {
+    const c = w();
+    await flushPromises();
+    expect(c.find('.markdown-viewer-stub').text()).toContain('这是 Markdown 正文');
   });
 });

@@ -140,6 +140,37 @@
       </el-descriptions>
     </el-card>
 
+    <el-card class="markdown-card" v-if="document && document.content_md != null">
+      <template #header>
+        <div class="card-header">
+          <span>Markdown 正文</span>
+          <div v-if="canEditMarkdown" class="header-actions">
+            <el-button
+              v-if="!markdownEditing"
+              type="primary"
+              @click="startMarkdownEdit"
+            >
+              编辑正文
+            </el-button>
+            <template v-else>
+              <el-button @click="cancelMarkdownEdit">取消</el-button>
+              <el-button type="primary" :loading="savingMarkdown" @click="saveMarkdown">
+                保存正文
+              </el-button>
+            </template>
+          </div>
+        </div>
+      </template>
+      <MarkdownEditor
+        v-if="markdownEditing"
+        v-model="markdownDraft"
+      />
+      <MarkdownViewer
+        v-else
+        :content="document.content_md"
+      />
+    </el-card>
+
     <el-card class="reference-card" v-if="document?.sourceReferences?.length || document?.targetReferences?.length">
       <template #header>引用关系</template>
       <el-table :data="document.sourceReferences || []" stripe>
@@ -270,8 +301,11 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download, View } from '@element-plus/icons-vue';
 import request from '@/api/request';
 import OfficePreview from '@/components/OfficePreview.vue';
+import MarkdownEditor from '@/components/documents/MarkdownEditor.vue';
+import MarkdownViewer from '@/components/documents/MarkdownViewer.vue';
 import { useUserStore } from '@/stores/user';
 import filePreviewApi from '@/api/file-preview';
+import { documentControlApi } from '@/api/document-control';
 
 interface VersionItem {
   id: string;
@@ -304,6 +338,7 @@ interface Document {
   approver: { name: string } | null;
   approvedAt: string | null;
   createdAt: string;
+  content_md?: string;
   approvals?: Approval[];
   archiveReason?: string | null;
   archivedAt?: string | null;
@@ -333,10 +368,17 @@ const versionHistory = ref<VersionItem[]>([]);
 const showPreview = ref(false);
 const previewLoading = ref(false);
 const previewUrl = ref('');
+const markdownEditing = ref(false);
+const markdownDraft = ref('');
+const savingMarkdown = ref(false);
 
 // 权限判断
 const isCreator = computed(() => document.value?.creatorId === userStore.user?.id);
 const isAdmin = computed(() => userStore.user?.role === 'admin');
+const canEditMarkdown = computed(() => {
+  if (!document.value) return false;
+  return ['draft', 'rejected'].includes(document.value.status) || isCreator.value || isAdmin.value;
+});
 
 // 归档/作废/恢复相关
 const archiveDialogVisible = ref(false);
@@ -432,6 +474,7 @@ const fetchData = async () => {
   try {
     const res = await request.get<Document>(`/documents/${route.params.id}`);
     document.value = res;
+    markdownDraft.value = res.content_md || '';
   } catch (error) {
     ElMessage.error('获取文档详情失败');
   } finally {
@@ -479,6 +522,33 @@ const handleDownload = () => {
     return;
   }
   window.open(`/api/v1/documents/${document.value.id}/download`, '_blank');
+};
+
+const startMarkdownEdit = () => {
+  markdownDraft.value = document.value?.content_md || '';
+  markdownEditing.value = true;
+};
+
+const cancelMarkdownEdit = () => {
+  markdownDraft.value = document.value?.content_md || '';
+  markdownEditing.value = false;
+};
+
+const saveMarkdown = async () => {
+  if (!document.value?.id) {
+    return;
+  }
+  savingMarkdown.value = true;
+  try {
+    await documentControlApi.updateMarkdown(document.value.id, { contentMd: markdownDraft.value });
+    ElMessage.success('正文保存成功');
+    markdownEditing.value = false;
+    await fetchData();
+  } catch (error) {
+    ElMessage.error('正文保存失败');
+  } finally {
+    savingMarkdown.value = false;
+  }
 };
 
 const handleSubmit = async () => {
@@ -654,6 +724,22 @@ onMounted(() => {
 
 .control-card {
   margin-top: 16px;
+}
+
+.markdown-card {
+  margin-top: 16px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .reference-card {

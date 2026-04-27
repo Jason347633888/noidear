@@ -102,6 +102,10 @@ export const documentControlApi = {
     return request.patch(`/documents/record-form-index/${code}`, payload);
   },
 
+  updateMarkdown(documentId: string, payload: { contentMd: string }) {
+    return request.patch(`/documents/${documentId}/markdown`, payload);
+  },
+
   getWorkbench(days = 30) {
     return request.get<WorkbenchResponse>('/documents/control/workbench', { params: { days } });
   },
