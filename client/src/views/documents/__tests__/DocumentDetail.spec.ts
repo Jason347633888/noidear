@@ -168,6 +168,7 @@ describe('DocumentDetail', () => {
     const c = w();
     await flushPromises();
     expect((c.vm as any).getStatusType('approved')).toBe('success');
+    expect((c.vm as any).getStatusType('effective')).toBe('success');
   });
 
   it('getStatusText returns correct text', async () => {
@@ -176,7 +177,22 @@ describe('DocumentDetail', () => {
     expect((c.vm as any).getStatusText('draft')).toBe('草稿');
     expect((c.vm as any).getStatusText('pending')).toBe('待审批');
     expect((c.vm as any).getStatusText('approved')).toBe('已发布');
+    expect((c.vm as any).getStatusText('effective')).toBe('已发布');
     expect((c.vm as any).getStatusText('rejected')).toBe('已驳回');
+  });
+
+  it('shows lifecycle actions for effective documents', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url.includes('/versions')) return Promise.resolve({ versions: [] });
+      return Promise.resolve(makeDocument({ status: 'effective' }));
+    });
+
+    const wrapper = w();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('停用文档');
+    expect(wrapper.text()).toContain('归档');
+    expect(wrapper.text()).toContain('作废');
   });
 
   it('isCreator is true when user is document creator', async () => {

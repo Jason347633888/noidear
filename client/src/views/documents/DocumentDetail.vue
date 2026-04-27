@@ -85,21 +85,21 @@
         </el-button>
         <el-button
           type="warning"
-          v-if="document.status === 'approved'"
+          v-if="isEffectiveDocument(document.status)"
           @click="handleDeactivate"
         >
           停用文档
         </el-button>
         <el-button
           type="warning"
-          v-if="document.status === 'approved' && (isCreator || isAdmin)"
+          v-if="isEffectiveDocument(document.status) && (isCreator || isAdmin)"
           @click="showArchiveDialog"
         >
           归档
         </el-button>
         <el-button
           type="danger"
-          v-if="document.status === 'approved' && isAdmin"
+          v-if="isEffectiveDocument(document.status) && isAdmin"
           @click="showObsoleteDialog"
         >
           作废
@@ -408,12 +408,14 @@ const formatDate = (date: string): string => {
 };
 
 const formatControlDate = (value: string): string => new Date(value).toLocaleDateString('zh-CN');
+const isEffectiveDocument = (status: string): boolean => status === 'effective' || status === 'approved';
 
 const getStatusType = (status: string): string => {
   const map: Record<string, string> = {
     draft: 'info',
     pending: 'warning',
     approved: 'success',
+    effective: 'success',
     rejected: 'danger',
     inactive: 'info',
     archived: 'warning',
@@ -427,6 +429,7 @@ const getStatusText = (status: string): string => {
     draft: '草稿',
     pending: '待审批',
     approved: '已发布',
+    effective: '已发布',
     rejected: '已驳回',
     inactive: '已停用',
     archived: '已归档',

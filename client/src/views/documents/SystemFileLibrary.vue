@@ -102,6 +102,8 @@ const filters = reactive({
   documentType: '',
   status: '',
   keyword: '',
+  dueWithinDays: undefined as number | undefined,
+  issue: '',
 });
 
 const typeLabel = (type?: string) => documentTypes.find((item) => item.value === type)?.label || '-';
@@ -137,6 +139,8 @@ const fetchDocuments = async () => {
       documentType: filters.documentType || undefined,
       status: filters.status || undefined,
       keyword: filters.keyword || undefined,
+      dueWithinDays: filters.dueWithinDays,
+      issue: filters.issue || undefined,
       page: pagination.page,
       limit: pagination.limit,
     });
@@ -160,6 +164,10 @@ onMounted(() => {
   }
   if (route.query.issue === 'dueForReview') {
     filters.status = 'effective';
+    filters.dueWithinDays = 30;
+  }
+  if (route.query.issue === 'missingMetadata') {
+    filters.issue = 'missingMetadata';
   }
   fetchDocuments();
 });

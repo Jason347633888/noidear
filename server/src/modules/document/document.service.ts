@@ -160,7 +160,7 @@ export class DocumentService {
   async findAll(query: DocumentQueryDto, userId: string, role: string) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
-    const { level, keyword, status, documentType, sourceFolder, ownerDepartment, tag, dueWithinDays } = query;
+    const { level, keyword, status, documentType, sourceFolder, ownerDepartment, tag, dueWithinDays, issue } = query;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { deletedAt: null };
@@ -197,6 +197,23 @@ export class DocumentService {
       const deadline = new Date();
       deadline.setDate(deadline.getDate() + dueWithinDays);
       where.review_due_date = { lte: deadline };
+    }
+
+    if (issue === 'missingMetadata') {
+      const missingMetadataFilter = [
+        { document_type: null },
+        { source_folder: null },
+        { review_due_date: null },
+      ];
+      if (where.OR) {
+        where.AND = [
+          { OR: where.OR },
+          { OR: missingMetadataFilter },
+        ];
+        delete where.OR;
+      } else {
+        where.OR = missingMetadataFilter;
+      }
     }
 
     const [list, total] = await Promise.all([

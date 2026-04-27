@@ -63,7 +63,19 @@ describe('SystemFileLibrary', () => {
     mount(SystemFileLibrary, mountOptions);
     await flushPromises();
 
-    expect(mockListDocuments).toHaveBeenCalledWith(expect.objectContaining({ status: 'effective' }));
+    expect(mockListDocuments).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'effective',
+      dueWithinDays: 30,
+    }));
+  });
+
+  it('initializes missing-metadata issue filter from route issue before fetching', async () => {
+    mockRoute = { query: { issue: 'missingMetadata' } };
+
+    mount(SystemFileLibrary, mountOptions);
+    await flushPromises();
+
+    expect(mockListDocuments).toHaveBeenCalledWith(expect.objectContaining({ issue: 'missingMetadata' }));
   });
 
   it('filters by selected source folder', async () => {

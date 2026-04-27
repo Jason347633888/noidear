@@ -197,6 +197,24 @@ describe('document status compatibility', () => {
       }),
     });
   });
+
+  it('filters missing metadata documents when requested', async () => {
+    prisma.document.findMany.mockResolvedValue([{ id: 'doc1', creatorId: null, approverId: null }]);
+    prisma.document.count.mockResolvedValue(1);
+    prisma.user.findMany.mockResolvedValue([]);
+
+    await service.findAll({ issue: 'missingMetadata' } as any, 'admin1', 'admin');
+
+    expect(prisma.document.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        OR: [
+          { document_type: null },
+          { source_folder: null },
+          { review_due_date: null },
+        ],
+      }),
+    }));
+  });
 });
 
 describe('document version operations', () => {
