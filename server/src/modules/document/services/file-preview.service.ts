@@ -10,7 +10,7 @@ import { StorageService } from '../../../common/services';
 import { BusinessException, ErrorCode } from '../../../common/exceptions/business.exception';
 
 export interface PreviewResult {
-  type: 'pdf' | 'word' | 'excel' | 'unknown';
+  type: 'pdf' | 'word' | 'excel' | 'markdown' | 'unknown';
   url?: string;
   fileName: string;
   message?: string;
@@ -185,7 +185,7 @@ export class FilePreviewService {
     await this.checkDownloadPermission(document, userId, role);
 
     // 根据文件类型返回不同的预览方式
-    const fileType = this.getFileType(document.fileType);
+    const fileType = this.getFileType(document.fileType, document.fileName);
 
     if (fileType === 'pdf') {
       // PDF 返回签名 URL，浏览器原生支持预览（有效期 15 分钟）
@@ -194,6 +194,14 @@ export class FilePreviewService {
         type: 'pdf',
         url,
         fileName: document.fileName,
+      };
+    }
+
+    if (fileType === 'markdown') {
+      return {
+        type: 'markdown',
+        fileName: document.fileName,
+        message: 'Markdown 文件使用系统正文预览',
       };
     }
 
@@ -266,9 +274,13 @@ export class FilePreviewService {
   /**
    * 判断文件类型
    */
-  private getFileType(mimeType: string): 'pdf' | 'word' | 'excel' | 'unknown' {
+  private getFileType(mimeType: string, fileName = ''): PreviewResult['type'] {
+    const lowerFileName = fileName.toLowerCase();
     if (mimeType.includes('pdf')) {
       return 'pdf';
+    }
+    if (mimeType.includes('markdown') || lowerFileName.endsWith('.md') || lowerFileName.endsWith('.markdown')) {
+      return 'markdown';
     }
     if (
       mimeType.includes('word') ||
