@@ -45,6 +45,18 @@ export interface Supplier {
   createdAt: string;
 }
 
+export interface SupplierControlledDocument {
+  id: string;
+  documentId: string;
+  documentKind: string;
+  documentTitle: string;
+  fileName: string;
+  fileType: string;
+  docNo?: string;
+  expiresAt?: string;
+  status: 'valid' | 'expiring_soon' | 'expired';
+}
+
 export interface Requisition {
   id: string;
   number: string;
@@ -166,6 +178,18 @@ export const supplierApi = {
   delete(id: string) {
     return request.delete(`/warehouse/suppliers/${id}`);
   },
+
+  getDocuments(id: string) {
+    return request.get<SupplierControlledDocument[]>(`/warehouse/suppliers/${id}/documents`);
+  },
+
+  uploadDocument(id: string, formData: FormData) {
+    return request.post(`/warehouse/suppliers/${id}/documents`, formData);
+  },
+
+  replaceDocument(id: string, linkId: string, formData: FormData) {
+    return request.post(`/warehouse/suppliers/${id}/documents/${linkId}/replace`, formData);
+  },
 };
 
 // =========================================================================
@@ -225,4 +249,3 @@ export const materialBalanceApi = {
     return request.get<MaterialBalance[]>('/warehouse/material-balance', { params });
   },
 };
-

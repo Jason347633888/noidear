@@ -40,6 +40,7 @@
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openForm(row)">编辑</el-button>
+            <el-button link type="primary" @click="openDocuments(row)">证照/报告</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -71,13 +72,48 @@
         <el-button type="primary" @click="handleFormSubmit" :loading="submitting">确定</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="documentsVisible" :title="`${currentDocumentSupplier?.name || ''} 证照/报告`" width="820px">
+      <el-table :data="supplierDocuments" v-loading="documentsLoading" stripe>
+        <el-table-column prop="documentKind" label="文件类型" width="150" />
+        <el-table-column prop="docNo" label="证书编号" width="150" />
+        <el-table-column label="有效期" width="140">
+          <template #default="{ row }">{{ row.expiresAt ? formatDate(row.expiresAt) : '-' }}</template>
+        </el-table-column>
+        <el-table-column label="状态" width="120">
+          <template #default="{ row }">
+            <el-tag :type="documentStatusType(row.status)" size="small">
+              {{ documentStatusText(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="fileName" label="文件" min-width="160" />
+        <el-table-column label="操作" width="150">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="previewDocument(row)">预览</el-button>
+            <el-button link type="primary" @click="prepareReplace(row)">换版</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="documentsVisible = false">关闭</el-button>
+      </template>
+      <input
+        ref="replaceFileInputRef"
+        class="hidden-file-input"
+        type="file"
+        accept="application/pdf"
+        @change="handleReplaceFileChange"
+      />
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
-import { supplierApi, type Supplier } from '@/api/warehouse';
+import { supplierApi, type Supplier, type SupplierControlledDocument } from '@/api/warehouse';
+import filePreviewApi from '@/api/file-preview';
 
 const loading = ref(false);
 const submitting = ref(false);
@@ -85,6 +121,12 @@ const formVisible = ref(false);
 const formRef = ref<FormInstance>();
 const tableData = ref<Supplier[]>([]);
 const currentItem = ref<Supplier | null>(null);
+const documentsVisible = ref(false);
+const documentsLoading = ref(false);
+const currentDocumentSupplier = ref<Supplier | null>(null);
+const supplierDocuments = ref<SupplierControlledDocument[]>([]);
+const replaceTarget = ref<SupplierControlledDocument | null>(null);
+const replaceFileInputRef = ref<HTMLInputElement>();
 const filterForm = reactive({ keyword: '' });
 const pagination = reactive({ page: 1, limit: 20, total: 0 });
 
@@ -140,6 +182,78 @@ const handleDelete = async (row: Supplier) => {
   } catch { /* user cancelled or error handled by interceptor */ }
 };
 
+const openDocuments = async (row: Supplier) => {
+  currentDocumentSupplier.value = row;
+  documentsVisible.value = true;
+  documentsLoading.value = true;
+  try {
+    supplierDocuments.value = await supplierApi.getDocuments(row.id);
+  } catch {
+    ElMessage.error('获取供应商证照失败');
+  } finally {
+    documentsLoading.value = false;
+  }
+};
+
+const previewDocument = async (row: SupplierControlledDocument) => {
+  try {
+    const preview = await filePreviewApi.getPreviewInfo(row.documentId);
+    if (preview.url) {
+      window.open(preview.url, '_blank');
+      return;
+    }
+    ElMessage.info(preview.message || '该文件暂不支持在线预览');
+  } catch {
+    ElMessage.error('获取预览失败');
+  }
+};
+
+const prepareReplace = (row: SupplierControlledDocument) => {
+  replaceTarget.value = row;
+  replaceFileInputRef.value?.click();
+};
+
+const handleReplaceFileChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  const supplier = currentDocumentSupplier.value;
+  const target = replaceTarget.value;
+  input.value = '';
+  if (!file || !supplier || !target) return;
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('documentKind', target.documentKind);
+  formData.append('docName', target.documentTitle || target.fileName);
+  if (target.docNo) formData.append('docNo', target.docNo);
+  if (target.expiresAt) formData.append('expiresAt', target.expiresAt);
+
+  documentsLoading.value = true;
+  try {
+    await supplierApi.replaceDocument(supplier.id, target.id, formData);
+    ElMessage.success('换版成功');
+    supplierDocuments.value = await supplierApi.getDocuments(supplier.id);
+  } catch {
+    ElMessage.error('换版失败');
+  } finally {
+    documentsLoading.value = false;
+    replaceTarget.value = null;
+  }
+};
+
+const formatDate = (value: string) => new Date(value).toLocaleDateString('zh-CN');
+
+const documentStatusText = (status: SupplierControlledDocument['status']) => {
+  const map = { valid: '有效', expiring_soon: '即将到期', expired: '已过期' };
+  return map[status] || status;
+};
+
+const documentStatusType = (status: SupplierControlledDocument['status']) => {
+  if (status === 'valid') return 'success';
+  if (status === 'expired') return 'danger';
+  return 'warning';
+};
+
 onMounted(fetchData);
 </script>
 
@@ -148,4 +262,5 @@ onMounted(fetchData);
 .table-card { margin-bottom: 16px; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; }
+.hidden-file-input { display: none; }
 </style>
