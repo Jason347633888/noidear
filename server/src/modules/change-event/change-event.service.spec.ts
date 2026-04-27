@@ -13,7 +13,7 @@ describe('ChangeEventService', () => {
   const eventEmitter = { emit: jest.fn() };
   const approvalEngine = { startApproval: jest.fn() };
   const formTasks = { generateDefaultTasks: jest.fn() };
-  const relations = { createRelations: jest.fn() };
+  const relations = { validateRelations: jest.fn(), createRelations: jest.fn() };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -21,6 +21,7 @@ describe('ChangeEventService', () => {
   });
 
   it('creates change event with relations and default form tasks', async () => {
+    relations.validateRelations.mockResolvedValue(undefined);
     prisma.changeEvent.count.mockResolvedValue(0);
     prisma.changeEvent.create.mockResolvedValue({
       id: 'change1',
@@ -54,9 +55,12 @@ describe('ChangeEventService', () => {
     } as any, 'user1');
 
     expect(result.id).toBe('change1');
-    expect(relations.createRelations).toHaveBeenCalledWith('change1', [
+    expect(relations.validateRelations).toHaveBeenCalledWith([
       { targetType: 'recipe', targetId: 'recipe1', targetLabel: '蛋液配方' },
     ]);
-    expect(formTasks.generateDefaultTasks).toHaveBeenCalledWith('change1', 'recipe');
+    expect(relations.createRelations).toHaveBeenCalledWith('change1', [
+      { targetType: 'recipe', targetId: 'recipe1', targetLabel: '蛋液配方' },
+    ], prisma);
+    expect(formTasks.generateDefaultTasks).toHaveBeenCalledWith('change1', 'recipe', prisma);
   });
 });

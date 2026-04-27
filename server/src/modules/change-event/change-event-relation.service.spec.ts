@@ -19,7 +19,7 @@ describe('ChangeEventRelationService', () => {
     prisma.document.findUnique.mockResolvedValue(null);
     const service = new ChangeEventRelationService(prisma as any);
 
-    await expect(service.createRelations('change1', [{
+    await expect(service.validateRelations([{
       targetType: 'document',
       targetId: 'missing-doc',
       targetLabel: '质量手册',
@@ -27,7 +27,6 @@ describe('ChangeEventRelationService', () => {
   });
 
   it('creates validated relation rows', async () => {
-    prisma.document.findUnique.mockResolvedValue({ id: 'doc1' });
     prisma.changeEventRelation.createMany.mockResolvedValue({ count: 1 });
     const service = new ChangeEventRelationService(prisma as any);
 

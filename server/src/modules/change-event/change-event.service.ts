@@ -1,4 +1,5 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
@@ -20,13 +21,16 @@ export class ChangeEventService {
   ) {}
 
   async create(dto: CreateChangeEventDto, userId: string) {
+    // Validate relations BEFORE the transaction (read-only checks)
+    await this.relationService.validateRelations(dto.relations ?? []);
+
     const year = new Date().getFullYear();
 
-    // Atomic: count + create ChangeEvent to ensure unique change_no
-    const changeEvent = await this.prisma.$transaction(async (tx: any) => {
+    // Atomic: ChangeEvent + relations + form tasks all in one transaction
+    const changeEvent = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const count = await tx.changeEvent.count();
       const change_no = `CE-${year}-${String(count + 1).padStart(4, '0')}`;
-      return tx.changeEvent.create({
+      const created = await tx.changeEvent.create({
         data: {
           company_id: '1',
           change_no,
@@ -38,11 +42,12 @@ export class ChangeEventService {
           status: dto.status ?? 'pending',
         },
       });
-    });
 
-    // These run after the ChangeEvent is committed — they reference changeEvent.id
-    await this.relationService.createRelations(changeEvent.id, dto.relations ?? []);
-    await this.formTaskService.generateDefaultTasks(changeEvent.id, dto.change_type);
+      await this.relationService.createRelations(created.id, dto.relations ?? [], tx);
+      await this.formTaskService.generateDefaultTasks(created.id, dto.change_type, tx);
+
+      return created;
+    });
 
     try {
       await this.approvalEngine?.startApproval({

@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RecordService } from '../record/record.service';
 import { getDefaultFormCodesForChangeType } from './change-event-default-form-rules';
@@ -10,11 +11,12 @@ export class ChangeEventFormTaskService {
     private readonly recordService: RecordService,
   ) {}
 
-  async generateDefaultTasks(changeEventId: string, changeType: string) {
+  async generateDefaultTasks(changeEventId: string, changeType: string, tx?: Prisma.TransactionClient) {
     const codes = getDefaultFormCodesForChangeType(changeType);
     if (codes.length === 0) return [];
 
-    const templates = await this.prisma.recordTemplate.findMany({
+    const db = tx ?? this.prisma;
+    const templates = await db.recordTemplate.findMany({
       where: { code: { in: codes }, deletedAt: null, status: { not: 'retired' } },
       select: { id: true, code: true, name: true },
     });
@@ -34,7 +36,7 @@ export class ChangeEventFormTaskService {
 
     if (data.length === 0) return [];
 
-    await this.prisma.changeEventFormTask.createMany({ data, skipDuplicates: true });
+    await db.changeEventFormTask.createMany({ data, skipDuplicates: true });
     return this.listForChange(changeEventId);
   }
 

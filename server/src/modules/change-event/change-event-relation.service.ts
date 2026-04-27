@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ChangeEventRelationDto } from './dto/create-change-event.dto';
 
@@ -6,14 +7,20 @@ import { ChangeEventRelationDto } from './dto/create-change-event.dto';
 export class ChangeEventRelationService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createRelations(changeEventId: string, relations: ChangeEventRelationDto[] = []) {
-    if (relations.length === 0) return { count: 0 };
-
+  async validateRelations(relations: ChangeEventRelationDto[]) {
     for (const relation of relations) {
       await this.assertTargetExists(relation);
     }
+  }
 
-    return this.prisma.changeEventRelation.createMany({
+  async createRelations(
+    changeEventId: string,
+    relations: ChangeEventRelationDto[] = [],
+    tx?: Prisma.TransactionClient,
+  ) {
+    if (relations.length === 0) return { count: 0 };
+    const db = tx ?? this.prisma;
+    return db.changeEventRelation.createMany({
       data: relations.map((relation) => ({
         changeEventId,
         targetType: relation.targetType,
