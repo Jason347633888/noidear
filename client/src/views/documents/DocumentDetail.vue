@@ -140,16 +140,138 @@
       </el-descriptions>
     </el-card>
 
-    <el-card class="reference-card" v-if="document?.sourceReferences?.length || document?.targetReferences?.length">
+    <el-card ref="markdownCardRef" class="markdown-card" v-if="document && document.content_md != null">
+      <template #header>
+        <div class="card-header">
+          <span>Markdown 正文</span>
+          <div v-if="canEditMarkdown" class="header-actions">
+            <el-button
+              v-if="!markdownEditing"
+              type="primary"
+              @click="startMarkdownEdit"
+            >
+              编辑正文
+            </el-button>
+            <template v-else>
+              <el-button @click="cancelMarkdownEdit">取消</el-button>
+              <el-button type="primary" :loading="savingMarkdown" @click="saveMarkdown">
+                保存正文
+              </el-button>
+            </template>
+          </div>
+        </div>
+      </template>
+      <el-alert
+        v-if="activeReferenceLabel"
+        type="warning"
+        :title="`当前定位引用: [[${activeReferenceLabel}]]`"
+        :closable="false"
+        style="margin-bottom: 12px"
+      />
+      <MarkdownEditor
+        v-if="markdownEditing && canEditMarkdown"
+        v-model="markdownDraft"
+      />
+      <MarkdownViewer
+        v-else
+        :content="document.content_md"
+      />
+    </el-card>
+
+    <el-card class="reference-card" v-if="hasReferences">
       <template #header>引用关系</template>
-      <el-table :data="document.sourceReferences || []" stripe>
-        <el-table-column prop="relationType" label="关系" width="150" />
-        <el-table-column label="目标">
-          <template #default="{ row }">
-            {{ row.targetDoc?.title || row.targetLabel || row.targetRoute || row.targetId }}
-          </template>
-        </el-table-column>
-      </el-table>
+      <section v-if="referenceHealth" class="reference-section">
+        <h3>引用健康概览</h3>
+        <div class="reference-health-summary">
+          <el-tag>总引用 {{ referenceHealth.totals.total }}</el-tag>
+          <el-tag type="success">正常 {{ referenceHealth.totals.healthy }}</el-tag>
+          <el-tag type="warning">悬空 {{ referenceHealth.totals.dangling }}</el-tag>
+          <el-tag type="danger">无效 {{ referenceHealth.totals.invalid }}</el-tag>
+          <el-tag type="warning">冲突 {{ referenceHealth.totals.conflict }}</el-tag>
+          <el-tag type="warning">被替代 {{ referenceHealth.totals.superseded }}</el-tag>
+        </div>
+        <el-table v-if="referenceHealthIssues.length" :data="referenceHealthIssues" stripe>
+          <el-table-column prop="label" label="引用文本" />
+          <el-table-column label="问题">
+            <template #default="{ row }">
+              <el-tag :type="referenceHealthTagType(row.status)">
+                {{ referenceHealthStatusText(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="reason" label="原因" />
+          <el-table-column label="候选/替代">
+            <template #default="{ row }">
+              <template v-if="row.status === 'conflict' && expandedConflictReferenceId === row.referenceId">
+                <el-button
+                  v-for="candidate in row.candidates || []"
+                  :key="candidate.id"
+                  text
+                  type="primary"
+                  @click="router.push(`/documents/${candidate.id}`)"
+                >
+                  {{ candidate.number || candidate.title }}
+                </el-button>
+              </template>
+              <el-button
+                v-else-if="row.status === 'superseded' && row.supersededById"
+                text
+                type="primary"
+                @click="router.push(`/documents/${row.supersededById}`)"
+              >
+                {{ row.supersededByTitle || '新版文件' }}
+              </el-button>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作">
+            <template #default="{ row }">
+              <el-button text type="primary" @click="handleReferenceHealthIssue(row)">
+                {{ referenceHealthActionText(row.status) }}
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </section>
+      <section v-if="outboundReferences.length" class="reference-section">
+        <h3>引用了</h3>
+        <el-table :data="outboundReferences" stripe>
+          <el-table-column prop="relationType" label="关系" width="150" />
+          <el-table-column label="目标">
+            <template #default="{ row }">
+              {{ referenceTargetLabel(row) }}
+            </template>
+          </el-table-column>
+        </el-table>
+      </section>
+      <section v-if="inboundReferences.length" class="reference-section">
+        <h3>被引用</h3>
+        <el-table :data="inboundReferences" stripe>
+          <el-table-column prop="relationType" label="关系" width="150" />
+          <el-table-column label="来源">
+            <template #default="{ row }">
+              {{ row.sourceDoc?.title || row.targetLabel || row.sourceDocId || '-' }}
+            </template>
+          </el-table-column>
+        </el-table>
+      </section>
+      <section v-if="unresolvedWikilinks.length" class="reference-section">
+        <h3>未解析引用</h3>
+        <el-table :data="unresolvedWikilinks" stripe>
+          <el-table-column prop="targetLabel" label="标签" />
+        </el-table>
+      </section>
+      <section v-if="conflictWikilinks.length" class="reference-section">
+        <h3>冲突引用</h3>
+        <el-table :data="conflictWikilinks" stripe>
+          <el-table-column prop="targetLabel" label="标签" />
+          <el-table-column label="候选">
+            <template #default="{ row }">
+              {{ conflictCandidateLabel(row) }}
+            </template>
+          </el-table-column>
+        </el-table>
+      </section>
     </el-card>
 
     <el-card class="version-card" v-if="versionHistory.length">
@@ -277,9 +399,12 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Download, View } from '@element-plus/icons-vue';
 import request from '@/api/request';
 import OfficePreview from '@/components/OfficePreview.vue';
+import MarkdownEditor from '@/components/documents/MarkdownEditor.vue';
+import MarkdownViewer from '@/components/documents/MarkdownViewer.vue';
 import { useUserStore } from '@/stores/user';
 import filePreviewApi from '@/api/file-preview';
 import { documentManagementApi } from '@/api/document-management';
+import { documentControlApi, type DocumentReferenceHealthIssue, type DocumentReferenceHealthResult, type ReferenceHealthStatus } from '@/api/document-control';
 
 interface VersionItem {
   id: string;
@@ -297,6 +422,21 @@ interface Approval {
   createdAt: string;
 }
 
+interface DocumentReference {
+  id: string;
+  sourceDocId?: string;
+  relationType: string;
+  targetType?: string;
+  targetLabel?: string;
+  targetRoute?: string;
+  targetId?: string;
+  targetDoc?: { id: string; title: string; status: string } | null;
+  sourceDoc?: { id: string; title: string; status: string } | null;
+  snapshot?: {
+    candidates?: Array<{ id: string; title?: string | null; number?: string | null; doc_code?: string | null }>;
+  } | null;
+}
+
 interface Document {
   id: string;
   number: string;
@@ -312,6 +452,7 @@ interface Document {
   approver: { name: string } | null;
   approvedAt: string | null;
   createdAt: string;
+  content_md?: string;
   approvals?: Approval[];
   archiveReason?: string | null;
   archivedAt?: string | null;
@@ -321,15 +462,8 @@ interface Document {
   source_folder?: string;
   owner_department?: string;
   review_due_date?: string;
-  sourceReferences?: Array<{
-    id: string;
-    relationType: string;
-    targetLabel?: string;
-    targetRoute?: string;
-    targetId?: string;
-    targetDoc?: { id: string; title: string; status: string } | null;
-  }>;
-  targetReferences?: unknown[];
+  sourceReferences?: DocumentReference[];
+  targetReferences?: DocumentReference[];
 }
 
 const route = useRoute();
@@ -341,10 +475,43 @@ const versionHistory = ref<VersionItem[]>([]);
 const showPreview = ref(false);
 const previewLoading = ref(false);
 const previewUrl = ref('');
+const markdownEditing = ref(false);
+const markdownDraft = ref('');
+const savingMarkdown = ref(false);
+const referenceHealth = ref<DocumentReferenceHealthResult | null>(null);
+const activeReferenceLabel = ref('');
+const expandedConflictReferenceId = ref('');
+const markdownCardRef = ref<{ $el?: HTMLElement } | null>(null);
 
 // 权限判断
 const isCreator = computed(() => document.value?.creatorId === userStore.user?.id);
 const isAdmin = computed(() => userStore.user?.role === 'admin');
+const isDirectMarkdownEditableStatus = (status: string) => ['draft', 'rejected'].includes(status);
+const canEditMarkdown = computed(() => {
+  if (!document.value) return false;
+  return isDirectMarkdownEditableStatus(document.value.status);
+});
+const sourceReferences = computed(() => document.value?.sourceReferences || []);
+const inboundReferences = computed(() => document.value?.targetReferences || []);
+const unresolvedWikilinks = computed(() => sourceReferences.value.filter(
+  ref => ref.relationType === 'WIKILINK' && ref.targetType === 'unresolved_document',
+));
+const conflictWikilinks = computed(() => sourceReferences.value.filter(
+  ref => ref.relationType === 'WIKILINK' && ref.targetType === 'conflict_document',
+));
+const outboundReferences = computed(() => sourceReferences.value.filter(
+  ref => !(ref.relationType === 'WIKILINK' && ['unresolved_document', 'conflict_document'].includes(ref.targetType || '')),
+));
+const hasReferences = computed(() => (
+  outboundReferences.value.length > 0 ||
+  inboundReferences.value.length > 0 ||
+  unresolvedWikilinks.value.length > 0 ||
+  conflictWikilinks.value.length > 0 ||
+  Boolean(referenceHealth.value?.totals.total)
+));
+const referenceHealthIssues = computed(() => (
+  referenceHealth.value?.issues.filter(issue => issue.status !== 'healthy') || []
+));
 
 // 归档/作废/恢复相关
 const archiveDialogVisible = ref(false);
@@ -410,6 +577,46 @@ const formatDate = (date: string): string => {
 const formatControlDate = (value: string): string => new Date(value).toLocaleDateString('zh-CN');
 const isEffectiveDocument = (status: string): boolean => status === 'effective' || status === 'approved';
 
+const referenceTargetLabel = (ref: DocumentReference): string => (
+  ref.targetDoc?.title || ref.targetLabel || ref.targetRoute || ref.targetId || '-'
+);
+
+const conflictCandidateLabel = (ref: DocumentReference): string => {
+  const candidates = ref.snapshot?.candidates || [];
+  if (!candidates.length) return '-';
+  return candidates
+    .map(candidate => candidate.title || candidate.number || candidate.doc_code || candidate.id)
+    .join('、');
+};
+
+const referenceHealthStatusText = (status: ReferenceHealthStatus): string => {
+  const map: Record<ReferenceHealthStatus, string> = {
+    healthy: '正常',
+    dangling: '悬空',
+    invalid: '无效',
+    conflict: '冲突',
+    superseded: '被替代',
+  };
+  return map[status];
+};
+
+const referenceHealthTagType = (status: ReferenceHealthStatus): string => {
+  if (status === 'healthy') return 'success';
+  if (status === 'invalid') return 'danger';
+  return 'warning';
+};
+
+const referenceHealthActionText = (status: ReferenceHealthStatus): string => {
+  const map: Record<ReferenceHealthStatus, string> = {
+    healthy: '查看',
+    dangling: '定位引用',
+    invalid: '查看目标',
+    conflict: '处理冲突',
+    superseded: '查看新版',
+  };
+  return map[status];
+};
+
 const getStatusType = (status: string): string => {
   const map: Record<string, string> = {
     draft: 'info',
@@ -443,6 +650,10 @@ const fetchData = async () => {
   try {
     const res = await request.get<Document>(`/documents/${route.params.id}`);
     document.value = res;
+    markdownDraft.value = res.content_md || '';
+    if (!isDirectMarkdownEditableStatus(res.status)) {
+      markdownEditing.value = false;
+    }
   } catch (error) {
     ElMessage.error('获取文档详情失败');
   } finally {
@@ -456,6 +667,15 @@ const fetchVersionHistory = async () => {
     versionHistory.value = res.versions || [];
   } catch (error) {
     // 版本历史获取失败不影响主流程
+  }
+};
+
+const fetchReferenceHealth = async () => {
+  if (!route.params.id) return;
+  try {
+    referenceHealth.value = await documentControlApi.getReferenceHealth(String(route.params.id));
+  } catch (error) {
+    referenceHealth.value = null;
   }
 };
 
@@ -526,6 +746,63 @@ const handleRollbackVersion = async (row: VersionItem) => {
   ElMessage.success('版本回滚成功');
   await fetchData();
   await fetchVersionHistory();
+};
+
+const startMarkdownEdit = () => {
+  if (!canEditMarkdown.value) return;
+  markdownDraft.value = document.value?.content_md || '';
+  markdownEditing.value = true;
+};
+
+const cancelMarkdownEdit = () => {
+  markdownDraft.value = document.value?.content_md || '';
+  markdownEditing.value = false;
+};
+
+const saveMarkdown = async () => {
+  if (!document.value?.id || !canEditMarkdown.value) {
+    return;
+  }
+  savingMarkdown.value = true;
+  try {
+    await documentControlApi.updateMarkdown(document.value.id, { contentMd: markdownDraft.value });
+    ElMessage.success('正文保存成功');
+    markdownEditing.value = false;
+    await fetchData();
+    await fetchReferenceHealth();
+  } catch (error) {
+    ElMessage.error('正文保存失败');
+  } finally {
+    savingMarkdown.value = false;
+  }
+};
+
+const handleReferenceHealthIssue = (issue: DocumentReferenceHealthIssue) => {
+  if (issue.status === 'dangling') {
+    activeReferenceLabel.value = issue.label;
+    if (canEditMarkdown.value) {
+      startMarkdownEdit();
+    }
+    markdownCardRef.value?.$el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    ElMessage.warning(`已定位到正文引用: [[${issue.label}]]`);
+    return;
+  }
+  if (issue.status === 'conflict') {
+    expandedConflictReferenceId.value = issue.referenceId;
+    ElMessage.warning('已展开候选文件，请选择正确目标后更新引用');
+    return;
+  }
+  if (issue.status === 'superseded' && issue.supersededById) {
+    ElMessage.warning('目标已被新版本替代，请更新引用');
+    router.push(`/documents/${issue.supersededById}`);
+    return;
+  }
+  if (issue.targetDocId) {
+    if (issue.status === 'invalid') {
+      ElMessage.warning('目标文件已不可作为当前依据');
+    }
+    router.push(`/documents/${issue.targetDocId}`);
+  }
 };
 
 const handleSubmit = async () => {
@@ -672,6 +949,7 @@ const handleRestore = async () => {
 onMounted(() => {
   fetchData();
   fetchVersionHistory();
+  fetchReferenceHealth();
 });
 </script>
 
@@ -703,8 +981,35 @@ onMounted(() => {
   margin-top: 16px;
 }
 
+.markdown-card {
+  margin-top: 16px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .reference-card {
   margin-top: 16px;
+}
+
+.reference-section {
+  margin-top: 12px;
+}
+
+.reference-health-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .preview-dialog-body {

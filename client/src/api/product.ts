@@ -14,6 +14,20 @@ export interface Product {
   status: string;
 }
 
+export interface ProductReportDocument {
+  id: string;
+  documentId: string;
+  reportType: string;
+  reportName: string;
+  fileName: string;
+  fileType: string;
+  reportNo?: string;
+  testedAt?: string;
+  conclusion?: string;
+  expiresAt?: string;
+  status: 'valid' | 'expiring_soon' | 'expired';
+}
+
 export interface CreateProductPayload {
   code: string;
   name: string;
@@ -68,5 +82,17 @@ export const productApi = {
 
   remove(id: string) {
     return request.delete(`/products/${id}`);
+  },
+
+  getReports(id: string) {
+    return request.get<ProductReportDocument[]>(`/products/${id}/reports`);
+  },
+
+  uploadReport(id: string, formData: FormData) {
+    return request.post(`/products/${id}/reports`, formData);
+  },
+
+  replaceReport(id: string, linkId: string, formData: FormData) {
+    return request.post(`/products/${id}/reports/${linkId}/replace`, formData);
   },
 };

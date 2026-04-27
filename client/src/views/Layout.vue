@@ -143,8 +143,7 @@ const menuItems = [
     title: '文控中心',
     icon: DataAnalysis,
     children: [
-      { path: '/documents/control/library', title: '体系文件库', icon: Files },
-      { path: '/documents', title: '文档台账', icon: Document },
+      { path: '/documents', title: '体系文件中心', icon: Files },
       { path: '/templates', title: '模板管理', icon: Grid },
       { path: '/documents/control/record-form-index', title: '记录表单索引', icon: List },
       { path: '/documents/control/workbench', title: '文控工作台', icon: Monitor },

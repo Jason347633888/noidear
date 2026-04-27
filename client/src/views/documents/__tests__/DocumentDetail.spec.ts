@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { defineComponent, h, provide, inject, type PropType } from 'vue';
+import { defineComponent, h, provide, inject, nextTick, type PropType } from 'vue';
 
 const mockGet = vi.fn();
 const mockPost = vi.fn();
 const mockDelete = vi.fn();
 const mockPush = vi.fn();
+const mockUpdateMarkdown = vi.fn();
+const mockGetReferenceHealth = vi.fn();
 
 vi.mock('@/api/request', () => ({
   default: {
@@ -22,7 +24,7 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('element-plus', () => ({
-  ElMessage: { success: vi.fn(), error: vi.fn() },
+  ElMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
   ElMessageBox: { confirm: vi.fn(), prompt: vi.fn() },
 }));
 
@@ -40,6 +42,13 @@ vi.mock('@/api/file-preview', () => ({
   },
 }));
 
+vi.mock('@/api/document-control', () => ({
+  documentControlApi: {
+    updateMarkdown: (...args: unknown[]) => mockUpdateMarkdown(...args),
+    getReferenceHealth: (...args: unknown[]) => mockGetReferenceHealth(...args),
+  },
+}));
+
 const stubs: Record<string, any> = {
   'el-page-header': { template: '<div><slot name="content" /></div>' },
   'el-card': { template: '<div><slot /><slot name="header" /></div>' },
@@ -47,7 +56,7 @@ const stubs: Record<string, any> = {
   'el-descriptions-item': { template: '<div><slot /></div>', props: ['label'] },
   'el-tag': { template: '<span><slot /></span>', props: ['type'] },
   'el-alert': { template: '<div />', props: ['title', 'type', 'closable'] },
-  'el-button': { template: '<button @click="$emit(\'click\')"><slot /></button>' , props: ['type', 'disabled', 'loading'] },
+  'el-button': { template: '<button @click="$emit(\'click\')"><slot /></button>' , props: ['type', 'disabled', 'loading'], emits: ['click'] },
   'el-icon': { template: '<span><slot /></span>' },
   'el-dialog': { template: '<div v-if="modelValue"><slot /><slot name="footer" /></div>', props: ['modelValue', 'title'] },
   'el-form': { template: '<form><slot /></form>', props: ['model', 'rules'] },
@@ -71,7 +80,11 @@ const stubs: Record<string, any> = {
     },
   }),
   'OfficePreview': { template: '<div class="stub-office-preview" />', props: ['filename', 'previewUrl'] },
-'View': { template: '<span />' },
+  'MarkdownEditor': {
+    template: '<textarea class="markdown-editor-stub" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+    props: ['modelValue'],
+  },
+  'View': { template: '<span />' },
   'Download': { template: '<span />' },
   'Edit': { template: '<span />' },
   'Delete': { template: '<span />' },
@@ -86,6 +99,7 @@ const mockDocument = {
   creatorId: 'user-1', creator: { name: '管理员' },
   approver: null, approvedAt: null,
   createdAt: '2026-01-15T10:00:00Z',
+  content_md: '# 文档正文\n\n这是 Markdown 正文',
   document_type: 'PROCEDURE',
   source_folder: '02',
   owner_department: '品质部',
@@ -107,6 +121,13 @@ describe('DocumentDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setActivePinia(createPinia());
+    mockUpdateMarkdown.mockResolvedValue({});
+    mockGetReferenceHealth.mockResolvedValue({
+      totals: { total: 1, healthy: 1, dangling: 0, invalid: 0, conflict: 0, superseded: 0 },
+      issues: [
+        { sourceDocId: 'doc-1', sourceTitle: '测试文档', referenceId: 'ref1', label: '研发流程', status: 'healthy', reason: '目标文件可作为当前引用依据。', targetDocId: 'doc-2', targetTitle: '研发流程' },
+      ],
+    });
     mockGet.mockImplementation((url: string) => {
       if (url.includes('/versions')) return Promise.resolve([]);
       return Promise.resolve(mockDocument);
@@ -315,5 +336,118 @@ describe('DocumentDetail', () => {
     expect((wrapper.vm as any).showPreview).toBe(true);
     expect((wrapper.vm as any).previewUrl).toBe('/api/v1/documents/doc-1/versions/1/download');
     expect((wrapper.vm as any).previewLoading).toBe(false);
+  });
+
+  it('classifies wikilink references for detail sections', async () => {
+    mockGetReferenceHealth.mockResolvedValue({
+      totals: { total: 3, healthy: 1, dangling: 1, invalid: 0, conflict: 1, superseded: 0 },
+      issues: [
+        { sourceDocId: 'doc-1', sourceTitle: '测试文档', referenceId: 'resolved', label: '程序文件', status: 'healthy', reason: '目标文件可作为当前引用依据。', targetDocId: 'doc-2', targetTitle: '程序文件' },
+        { sourceDocId: 'doc-1', sourceTitle: '测试文档', referenceId: 'unresolved', label: '不存在文件', status: 'dangling', reason: '引用文本未匹配到受控文件。' },
+        { sourceDocId: 'doc-1', sourceTitle: '测试文档', referenceId: 'conflict', label: '重复文件', status: 'conflict', reason: '引用文本匹配到多个候选文件，需要文控人员确认目标。', candidates: [{ id: 'doc-3', title: '重复文件' }] },
+      ],
+    });
+    mockGet.mockImplementation((url: string) => {
+      if (url.includes('/versions')) return Promise.resolve([]);
+      return Promise.resolve({
+        ...mockDocument,
+        sourceReferences: [
+          { id: 'resolved', relationType: 'WIKILINK', targetType: 'document', targetLabel: '程序文件', targetDoc: { id: 'doc-2', title: '程序文件', status: 'draft' } },
+          { id: 'unresolved', relationType: 'WIKILINK', targetType: 'unresolved_document', targetLabel: '不存在文件' },
+          { id: 'conflict', relationType: 'WIKILINK', targetType: 'conflict_document', targetLabel: '重复文件', snapshot: { candidates: [{ id: 'doc-3', title: '重复文件' }] } },
+        ],
+        targetReferences: [
+          { id: 'incoming', relationType: 'WIKILINK', sourceDoc: { id: 'doc-4', title: '上游文件', status: 'draft' } },
+        ],
+      });
+    });
+
+    const c = w();
+    await flushPromises();
+
+    expect((c.vm as any).outboundReferences.map((ref: any) => ref.id)).toEqual(['resolved']);
+    expect((c.vm as any).unresolvedWikilinks.map((ref: any) => ref.id)).toEqual(['unresolved']);
+    expect((c.vm as any).conflictWikilinks.map((ref: any) => ref.id)).toEqual(['conflict']);
+    expect((c.vm as any).inboundReferences.map((ref: any) => ref.id)).toEqual(['incoming']);
+    expect(c.text()).toContain('引用了');
+    expect(c.text()).toContain('被引用');
+    expect(c.text()).toContain('未解析引用');
+    expect(c.text()).toContain('冲突引用');
+    expect(c.text()).toContain('引用健康概览');
+    expect((c.vm as any).referenceHealthIssues.map((issue: any) => issue.status)).toEqual(['dangling', 'conflict']);
+  });
+
+  it('renders markdown body when document has content_md', async () => {
+    const c = w();
+    await flushPromises();
+    expect(c.find('.markdown-viewer h1').text()).toBe('文档正文');
+    expect(c.find('.markdown-viewer').text()).toContain('这是 Markdown 正文');
+  });
+
+  it('saves markdown edits for draft documents and refreshes detail', async () => {
+    const c = w();
+    await flushPromises();
+
+    await c.findAll('button').find(button => button.text() === '编辑正文')!.trigger('click');
+    await c.find('.markdown-editor-stub').setValue('更新后的正文');
+    await c.findAll('button').find(button => button.text() === '保存正文')!.trigger('click');
+    await flushPromises();
+
+    expect(mockUpdateMarkdown).toHaveBeenCalledWith('doc-1', { contentMd: '更新后的正文' });
+    expect(mockGet.mock.calls.filter(([url]) => url === '/documents/doc-1')).toHaveLength(2);
+    expect(mockGetReferenceHealth).toHaveBeenCalledWith('doc-1');
+  });
+
+  it('routes reference health actions to replacement or target documents', async () => {
+    const { ElMessage } = await import('element-plus');
+    const c = w();
+    await flushPromises();
+
+    (c.vm as any).handleReferenceHealthIssue({
+      status: 'dangling',
+      referenceId: 'dangling',
+      label: '缺失文件',
+    });
+    expect((c.vm as any).activeReferenceLabel).toBe('缺失文件');
+    expect((c.vm as any).markdownEditing).toBe(true);
+    expect(ElMessage.warning).toHaveBeenCalledWith('已定位到正文引用: [[缺失文件]]');
+
+    (c.vm as any).handleReferenceHealthIssue({
+      status: 'conflict',
+      referenceId: 'conflict',
+      label: '重复文件',
+    });
+    expect((c.vm as any).expandedConflictReferenceId).toBe('conflict');
+    expect(ElMessage.warning).toHaveBeenCalledWith('已展开候选文件，请选择正确目标后更新引用');
+
+    (c.vm as any).handleReferenceHealthIssue({
+      status: 'superseded',
+      label: '旧版文件',
+      supersededById: 'doc-new',
+    });
+    expect(mockPush).toHaveBeenCalledWith('/documents/doc-new');
+
+    (c.vm as any).handleReferenceHealthIssue({
+      status: 'invalid',
+      label: '失效文件',
+      targetDocId: 'doc-old',
+    });
+    expect(mockPush).toHaveBeenCalledWith('/documents/doc-old');
+  });
+
+  it('does not expose or keep markdown editor visible for non-editable statuses', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url.includes('/versions')) return Promise.resolve([]);
+      return Promise.resolve({ ...mockDocument, status: 'approved' });
+    });
+    const c = w();
+    await flushPromises();
+
+    expect(c.findAll('button').some(button => button.text() === '编辑正文')).toBe(false);
+
+    (c.vm as any).markdownEditing = true;
+    await nextTick();
+
+    expect(c.find('.markdown-editor-stub').exists()).toBe(false);
   });
 });

@@ -8,6 +8,7 @@ import { BusinessException } from '../src/common/exceptions/business.exception';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DocumentControlMetadataService } from '../src/modules/document/services/document-control-metadata.service';
 import { FilePreviewService } from '../src/modules/document/services';
+import { MarkdownWikilinkService } from '../src/modules/document/services/markdown-wikilink.service';
 
 describe('DocumentService', () => {
   let service: DocumentService;
@@ -67,6 +68,10 @@ describe('DocumentService', () => {
     assertFileAccess: jest.fn(),
   };
 
+  const mockMarkdownWikilinkService = {
+    syncDocumentWikilinks: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -77,6 +82,7 @@ describe('DocumentService', () => {
         { provide: NotificationService, useValue: mockNotificationService },
         { provide: OperationLogService, useValue: mockOperationLogService },
         { provide: FilePreviewService, useValue: mockFilePreviewService },
+        { provide: MarkdownWikilinkService, useValue: mockMarkdownWikilinkService },
         { provide: 'SnowflakeService', useValue: mockSnowflake },
         { provide: EventEmitter2, useValue: { emit: jest.fn(), emitAsync: jest.fn(), on: jest.fn() } },
       ],

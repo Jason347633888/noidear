@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SupplierService } from './supplier.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { StorageService } from '../../common/services';
+import { BusinessDocumentLinkService } from '../document/services/business-document-link.service';
 import * as dayjs from 'dayjs';
 
 describe('SupplierService', () => {
@@ -27,6 +29,31 @@ describe('SupplierService', () => {
               findMany: jest.fn(),
               update: jest.fn(),
             },
+            document: {
+              create: jest.fn(),
+            },
+            supplierDocument: {
+              findFirst: jest.fn(),
+              create: jest.fn(),
+              update: jest.fn(),
+            },
+            businessDocumentLink: {
+              findFirst: jest.fn(),
+              update: jest.fn(),
+            },
+          },
+        },
+        {
+          provide: StorageService,
+          useValue: {
+            uploadFile: jest.fn(),
+            getSignedUrl: jest.fn(),
+          },
+        },
+        {
+          provide: BusinessDocumentLinkService,
+          useValue: {
+            link: jest.fn(),
           },
         },
       ],
@@ -348,6 +375,150 @@ describe('SupplierService', () => {
 
       // Assert
       expect(result).toEqual(mockQualifications);
+    });
+  });
+
+  describe('uploadControlledDocument', () => {
+    it('creates Document, SupplierDocument, BusinessDocumentLink, and preview info for a business license', async () => {
+      const storage = (service as any).storageService;
+      const businessDocumentLinkService = (service as any).businessDocumentLinkService;
+      const file = {
+        originalname: 'license.pdf',
+        mimetype: 'application/pdf',
+        size: 2048,
+        buffer: Buffer.from('pdf'),
+      } as Express.Multer.File;
+      const expiresAt = new Date('2027-01-01');
+
+      jest.spyOn(prisma.supplier, 'findUnique').mockResolvedValue({
+        id: 'supplier-001',
+        name: '供应商A',
+        deletedAt: null,
+      } as any);
+      storage.uploadFile.mockResolvedValue({
+        path: 'supplier-documents/license.pdf',
+        url: '/documents/supplier-documents/license.pdf',
+        filename: 'license.pdf',
+        size: 2048,
+        mimetype: 'application/pdf',
+      });
+      storage.getSignedUrl.mockResolvedValue('https://preview.local/license.pdf');
+      (prisma.document.create as jest.Mock).mockResolvedValue({
+        id: 'doc-001',
+        title: '营业执照',
+        fileName: 'license.pdf',
+        fileType: 'application/pdf',
+      });
+      (prisma.supplierDocument.findFirst as jest.Mock).mockResolvedValue(null);
+      (prisma.supplierDocument.create as jest.Mock).mockResolvedValue({ id: 1 });
+      businessDocumentLinkService.link.mockResolvedValue({ id: 'link-001' });
+
+      const result = await service.uploadControlledDocument('supplier-001', {
+        documentKind: 'business_license',
+        docName: '营业执照',
+        docNo: 'BL-001',
+        expiresAt,
+      }, file, 'user-1');
+
+      expect(prisma.document.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          title: '营业执照',
+          filePath: 'supplier-documents/license.pdf',
+          fileName: 'license.pdf',
+          fileType: 'application/pdf',
+          creatorId: 'user-1',
+          document_type: 'EXTERNAL_FILE',
+          external_expires_at: expiresAt,
+        }),
+      });
+      expect(prisma.supplierDocument.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          supplier_id: 'supplier-001',
+          doc_type: 'business_license',
+          doc_name: '营业执照',
+          doc_no: 'BL-001',
+          expires_at: expiresAt,
+          file_url: 'supplier-documents/license.pdf',
+        }),
+      });
+      expect(businessDocumentLinkService.link).toHaveBeenCalledWith(expect.objectContaining({
+        documentId: 'doc-001',
+        businessType: 'supplier',
+        businessId: 'supplier-001',
+        documentKind: 'business_license',
+        expiresAt,
+        status: 'valid',
+      }));
+      expect(result.preview).toEqual({
+        type: 'pdf',
+        url: 'https://preview.local/license.pdf',
+        fileName: 'license.pdf',
+      });
+    });
+  });
+
+  describe('replaceControlledDocument', () => {
+    it('creates a new Document and updates the existing BusinessDocumentLink', async () => {
+      const storage = (service as any).storageService;
+      const file = {
+        originalname: 'license-v2.pdf',
+        mimetype: 'application/pdf',
+        size: 4096,
+        buffer: Buffer.from('pdf-v2'),
+      } as Express.Multer.File;
+      const expiresAt = new Date('2028-01-01');
+
+      jest.spyOn(prisma.supplier, 'findUnique').mockResolvedValue({
+        id: 'supplier-001',
+        name: '供应商A',
+        deletedAt: null,
+      } as any);
+      storage.uploadFile.mockResolvedValue({
+        path: 'supplier-documents/license-v2.pdf',
+        url: '/documents/supplier-documents/license-v2.pdf',
+        filename: 'license-v2.pdf',
+        size: 4096,
+        mimetype: 'application/pdf',
+      });
+      storage.getSignedUrl.mockResolvedValue('https://preview.local/license-v2.pdf');
+      (prisma.businessDocumentLink.findFirst as jest.Mock).mockResolvedValue({ id: 'link-001' });
+      (prisma.document.create as jest.Mock).mockResolvedValue({
+        id: 'doc-002',
+        title: '营业执照',
+        fileName: 'license-v2.pdf',
+        fileType: 'application/pdf',
+      });
+      (prisma.supplierDocument.findFirst as jest.Mock).mockResolvedValue({ id: 1 });
+      (prisma.supplierDocument.update as jest.Mock).mockResolvedValue({ id: 1 });
+      (prisma.businessDocumentLink.update as jest.Mock).mockResolvedValue({
+        id: 'link-001',
+        documentId: 'doc-002',
+      });
+
+      const result = await service.replaceControlledDocument('supplier-001', 'link-001', {
+        documentKind: 'business_license',
+        docName: '营业执照',
+        docNo: 'BL-001',
+        expiresAt,
+      }, file, 'user-1');
+
+      expect(prisma.businessDocumentLink.findFirst).toHaveBeenCalledWith({
+        where: { id: 'link-001', businessType: 'supplier', businessId: 'supplier-001' },
+      });
+      expect(prisma.businessDocumentLink.update).toHaveBeenCalledWith({
+        where: { id: 'link-001' },
+        data: expect.objectContaining({
+          documentId: 'doc-002',
+          documentKind: 'business_license',
+          expiresAt,
+          status: 'valid',
+        }),
+      });
+      expect(result.preview).toEqual({
+        type: 'pdf',
+        url: 'https://preview.local/license-v2.pdf',
+        fileName: 'license-v2.pdf',
+      });
     });
   });
 });

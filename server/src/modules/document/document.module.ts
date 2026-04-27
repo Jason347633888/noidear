@@ -26,6 +26,10 @@ import { DocumentAuditCoverageService } from './services/document-audit-coverage
 import { DocumentImpactService } from './services/document-impact.service';
 import { DocumentHealthService } from './services/document-health.service';
 import { DocumentAuditChainService } from './services/document-audit-chain.service';
+import { MarkdownWikilinkService } from './services/markdown-wikilink.service';
+import { DocumentReferenceHealthService } from './services/document-reference-health.service';
+import { BusinessDocumentLinkService } from './services/business-document-link.service';
+import { DocumentExpiryService } from './services/document-expiry.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { ModelLandingModule } from '../model-landing/model-landing.module';
 import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
@@ -36,8 +40,8 @@ import { CANONICAL_DOCUMENT_STATUS } from './constants/document-control.constant
 @Module({
   imports: [ConfigModule, PrismaModule, NotificationModule, OperationLogModule, ExportModule, DepartmentPermissionModule, StatisticsModule, UserPermissionModule, SearchModule, ModelLandingModule, UnifiedApprovalModule],
   controllers: [DocumentController],
-  providers: [DocumentService, DocumentCronService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, DocumentControlWorkbenchService, RecordFormLandingService, DocumentReadRequirementService, DocumentTrainingNeedService, DocumentAuditCoverageService, DocumentImpactService, DocumentHealthService, DocumentAuditChainService, FilePreviewService, StorageService, StatisticsCacheInterceptor, PermissionGuard, DocumentsListener],
-  exports: [DocumentService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService],
+  providers: [DocumentService, DocumentCronService, DocumentReferenceService, MarkdownWikilinkService, DocumentReferenceHealthService, BusinessDocumentLinkService, DocumentExpiryService, DocumentLifecycleService, DocumentControlMetadataService, DocumentControlWorkbenchService, RecordFormLandingService, DocumentReadRequirementService, DocumentTrainingNeedService, DocumentAuditCoverageService, DocumentImpactService, DocumentHealthService, DocumentAuditChainService, FilePreviewService, StorageService, StatisticsCacheInterceptor, PermissionGuard, DocumentsListener],
+  exports: [DocumentService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, BusinessDocumentLinkService, DocumentExpiryService],
 })
 export class DocumentModule implements OnModuleInit {
   constructor(private readonly callbackRegistry: ApprovalCallbackRegistry) {}

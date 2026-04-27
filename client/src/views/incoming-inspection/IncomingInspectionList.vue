@@ -67,6 +67,11 @@
             {{ row.notes || '-' }}
           </template>
         </el-table-column>
+        <el-table-column label="操作" width="120" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="openReports(row)">报告</el-button>
+          </template>
+        </el-table-column>
       </el-table>
     </el-card>
 
@@ -160,6 +165,43 @@
         <el-button type="primary" :loading="submitting" @click="handleCreate">确认新建</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="reportsVisible" title="来料检验报告" width="860px">
+      <el-table :data="inspectionReports" v-loading="reportsLoading" stripe>
+        <el-table-column prop="reportName" label="报告类型" min-width="150" />
+        <el-table-column prop="reportNo" label="报告编号" width="150" />
+        <el-table-column label="检测日期" width="140">
+          <template #default="{ row }">{{ row.testedAt ? formatDate(row.testedAt) : '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="conclusion" label="结论" width="110" />
+        <el-table-column label="有效期" width="140">
+          <template #default="{ row }">{{ row.expiresAt ? formatDate(row.expiresAt) : '-' }}</template>
+        </el-table-column>
+        <el-table-column label="状态" width="110">
+          <template #default="{ row }">
+            <el-tag :type="reportStatusType(row.status)" size="small">
+              {{ reportStatusText(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="140">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="previewReport(row)">预览</el-button>
+            <el-button link type="primary" @click="prepareReplaceReport(row)">换版</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="reportsVisible = false">关闭</el-button>
+      </template>
+      <input
+        ref="replaceReportInputRef"
+        class="hidden-file-input"
+        type="file"
+        accept="application/pdf"
+        @change="handleReplaceReportFileChange"
+      />
+    </el-dialog>
   </div>
 </template>
 
@@ -171,14 +213,22 @@ import type { FormInstance, FormRules } from 'element-plus';
 import incomingInspectionApi, {
   type IncomingInspection,
   type InspectionResult,
+  type InspectionReportDocument,
   getOverallResultText,
   getOverallResultTagType,
 } from '@/api/incoming-inspection';
+import filePreviewApi from '@/api/file-preview';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
 const list = ref<IncomingInspection[]>([]);
 const loading = ref(false);
+const reportsVisible = ref(false);
+const reportsLoading = ref(false);
+const currentReportInspection = ref<IncomingInspection | null>(null);
+const inspectionReports = ref<InspectionReportDocument[]>([]);
+const replaceReportTarget = ref<InspectionReportDocument | null>(null);
+const replaceReportInputRef = ref<HTMLInputElement>();
 
 // ── Create dialog ─────────────────────────────────────────────────────────────
 
@@ -289,6 +339,77 @@ async function handleCreate() {
   }
 }
 
+async function openReports(row: IncomingInspection) {
+  currentReportInspection.value = row;
+  reportsVisible.value = true;
+  reportsLoading.value = true;
+  try {
+    inspectionReports.value = await incomingInspectionApi.getReports(row.id);
+  } catch {
+    ElMessage.error('加载来料检验报告失败');
+  } finally {
+    reportsLoading.value = false;
+  }
+}
+
+async function previewReport(row: InspectionReportDocument) {
+  try {
+    const preview = await filePreviewApi.getPreviewInfo(row.documentId);
+    if (preview.url) {
+      window.open(preview.url, '_blank');
+      return;
+    }
+    ElMessage.info(preview.message || '该文件暂不支持在线预览');
+  } catch {
+    ElMessage.error('获取预览失败');
+  }
+}
+
+function prepareReplaceReport(row: InspectionReportDocument) {
+  replaceReportTarget.value = row;
+  replaceReportInputRef.value?.click();
+}
+
+async function handleReplaceReportFileChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  const inspection = currentReportInspection.value;
+  const target = replaceReportTarget.value;
+  input.value = '';
+  if (!file || !inspection || !target) return;
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('reportName', target.reportName);
+  if (target.reportNo) formData.append('reportNo', target.reportNo);
+  if (target.testedAt) formData.append('testedAt', target.testedAt);
+  if (target.conclusion) formData.append('conclusion', target.conclusion);
+  if (target.expiresAt) formData.append('expiresAt', target.expiresAt);
+
+  reportsLoading.value = true;
+  try {
+    await incomingInspectionApi.replaceReport(inspection.id, target.id, formData);
+    ElMessage.success('换版成功');
+    inspectionReports.value = await incomingInspectionApi.getReports(inspection.id);
+  } catch {
+    ElMessage.error('换版失败');
+  } finally {
+    reportsLoading.value = false;
+    replaceReportTarget.value = null;
+  }
+}
+
+function reportStatusText(status: InspectionReportDocument['status']) {
+  const map = { valid: '有效', expiring_soon: '即将到期', expired: '已过期' };
+  return map[status] || status;
+}
+
+function reportStatusType(status: InspectionReportDocument['status']) {
+  if (status === 'valid') return 'success';
+  if (status === 'expired') return 'danger';
+  return 'warning';
+}
+
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 onMounted(() => {
@@ -351,5 +472,9 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
+}
+
+.hidden-file-input {
+  display: none;
 }
 </style>

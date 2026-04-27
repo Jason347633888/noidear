@@ -6,6 +6,7 @@ import { NotificationService } from '../src/modules/notification/notification.se
 import { OperationLogService } from '../src/modules/operation-log/operation-log.service';
 import { DocumentControlMetadataService } from '../src/modules/document/services/document-control-metadata.service';
 import { FilePreviewService } from '../src/modules/document/services';
+import { MarkdownWikilinkService } from '../src/modules/document/services/markdown-wikilink.service';
 import { BusinessException, ErrorCode } from '../src/common/exceptions/business.exception';
 import { Decimal } from '@prisma/client/runtime/library';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -60,6 +61,7 @@ describe('DocumentService - Version Management', () => {
         { provide: OperationLogService, useValue: mockOperationLogService },
         { provide: DocumentControlMetadataService, useValue: { normalize: jest.fn((value) => value ?? {}) } },
         { provide: FilePreviewService, useValue: { assertFileAccess: jest.fn() } },
+        { provide: MarkdownWikilinkService, useValue: { syncDocumentWikilinks: jest.fn() } },
         { provide: EventEmitter2, useValue: { emit: jest.fn(), emitAsync: jest.fn(), on: jest.fn() } },
       ],
     }).compile();

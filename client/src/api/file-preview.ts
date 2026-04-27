@@ -9,7 +9,7 @@ import request from './request';
  */
 
 export interface PreviewResult {
-  type: 'pdf' | 'word' | 'excel' | 'unknown';
+  type: 'pdf' | 'word' | 'excel' | 'markdown' | 'unknown';
   url?: string;
   fileName: string;
   message?: string;
