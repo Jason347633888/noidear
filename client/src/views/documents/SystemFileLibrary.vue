@@ -66,10 +66,11 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { documentControlApi, type DocumentControlDocument } from '@/api/document-control';
 
+const route = useRoute();
 const router = useRouter();
 const loading = ref(false);
 const documents = ref<DocumentControlDocument[]>([]);
@@ -153,7 +154,15 @@ const fetchDocuments = async () => {
   }
 };
 
-onMounted(fetchDocuments);
+onMounted(() => {
+  if (route.query.issue === 'expiringExternalFiles') {
+    filters.documentType = 'EXTERNAL_FILE';
+  }
+  if (route.query.issue === 'dueForReview') {
+    filters.status = 'effective';
+  }
+  fetchDocuments();
+});
 </script>
 
 <style scoped>

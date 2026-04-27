@@ -2,11 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 
 const mockWorkbench = vi.fn();
+const routerPush = vi.fn();
 
 vi.mock('@/api/document-control', () => ({
   documentControlApi: {
     getWorkbench: (...args: unknown[]) => mockWorkbench(...args),
   },
+}));
+
+vi.mock('vue-router', () => ({
+  useRouter: vi.fn(),
 }));
 
 vi.mock('element-plus', () => ({
@@ -20,10 +25,14 @@ const stubs = {
 };
 
 import DocumentControlWorkbench from '../DocumentControlWorkbench.vue';
+import { useRouter } from 'vue-router';
+
+const mountOptions = { global: { stubs } };
 
 describe('DocumentControlWorkbench', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useRouter).mockReturnValue({ push: routerPush } as any);
     mockWorkbench.mockResolvedValue({
       counts: { pendingReview: 1, dueForReview: 2 },
       dueForReview: [],
@@ -31,14 +40,14 @@ describe('DocumentControlWorkbench', () => {
   });
 
   it('loads workbench queues on mount', async () => {
-    const wrapper = mount(DocumentControlWorkbench, { global: { stubs } });
+    const wrapper = mount(DocumentControlWorkbench, mountOptions);
     await flushPromises();
     expect(mockWorkbench).toHaveBeenCalledWith(30);
     expect((wrapper.vm as any).workbench.counts.pendingReview).toBe(1);
   });
 
   it('renders queue cards with correct titles', async () => {
-    const wrapper = mount(DocumentControlWorkbench, { global: { stubs } });
+    const wrapper = mount(DocumentControlWorkbench, mountOptions);
     await flushPromises();
     const titles = ['待审核', '即将复审', '外来文件到期', '作废仍被引用', '入口失效', '表单入口缺失', '元数据缺失'];
     expect((wrapper.vm as any).cards.map((card: any) => card.title)).toEqual(titles);
@@ -46,8 +55,21 @@ describe('DocumentControlWorkbench', () => {
 
   it('displays zero counts when workbench data is missing', async () => {
     mockWorkbench.mockResolvedValue(null);
-    const wrapper = mount(DocumentControlWorkbench, { global: { stubs } });
+    const wrapper = mount(DocumentControlWorkbench, mountOptions);
     await flushPromises();
     expect((wrapper.vm as any).workbench).toBeNull();
+  });
+
+  it('routes to filtered pages when clicking workbench cards', async () => {
+    mockWorkbench.mockResolvedValue({ counts: { missingMetadata: 3 }, missingMetadata: [] });
+
+    const wrapper = mount(DocumentControlWorkbench, mountOptions);
+    await flushPromises();
+    await wrapper.find('[data-test="workbench-card-missingMetadata"]').trigger('click');
+
+    expect(routerPush).toHaveBeenCalledWith({
+      path: '/documents/control/library',
+      query: { issue: 'missingMetadata' },
+    });
   });
 });
