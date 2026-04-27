@@ -89,6 +89,38 @@ describe('RecordFormLandingIndex', () => {
     expect(mockList).toHaveBeenCalledWith({ keyword: 'test-code' });
   });
 
+  it('shows backend error message when save fails', async () => {
+    const { ElMessage } = await import('element-plus');
+    mockList.mockResolvedValue([{
+      code: 'GRSS-KF-JL-01',
+      formName: '记录表',
+      department: 'KF',
+      templateGroupId: 'g1',
+      entities: [],
+      chain: '',
+      basis: '',
+      landingEntry: null,
+    }]);
+
+    const wrapper = mount(RecordFormLandingIndex, mountOptions);
+    await flushPromises();
+
+    // open edit dialog for the first row
+    (wrapper.vm as any).openEdit({ code: 'GRSS-KF-JL-01', landingEntry: null });
+    await flushPromises();
+
+    // make save fail with a backend error
+    mockPatch.mockRejectedValueOnce({
+      response: { data: { message: '模板不存在' } },
+      message: 'Request failed',
+    });
+
+    await (wrapper.vm as any).saveEdit();
+    await flushPromises();
+
+    expect(ElMessage.error).toHaveBeenCalledWith('模板不存在');
+  });
+
   it('opens edit dialog and saves landing entry', async () => {
     mockList.mockResolvedValue([
       {

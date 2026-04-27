@@ -462,6 +462,7 @@ interface Document {
   document_type?: string;
   source_folder?: string;
   owner_department?: string;
+  owner_user_id?: string | null;
   ownerDepartmentId?: string | null;
   ownerUserId?: string | null;
   ownerDepartment?: { id: string; name: string } | null;
