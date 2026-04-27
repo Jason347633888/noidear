@@ -319,6 +319,7 @@ model Document {
   readRequirements   DocumentReadRequirement[]
   trainingNeeds      DocumentTrainingNeed[]
   coverageReviews    DocumentCoverageReview[]
+  businessLinks       BusinessDocumentLink[]
 
   @@index([lineage_key])
   @@index([approvalInstanceId])
@@ -2359,6 +2360,29 @@ model DocumentReference {
   @@index([targetType, targetId])
   @@index([relationType])
   @@map("document_references")
+}
+
+model BusinessDocumentLink {
+  id           String   @id @default(cuid())
+  documentId   String
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  businessType String
+  businessId   String
+  documentKind String
+  required     Boolean  @default(false)
+  issuedAt     DateTime?
+  expiresAt    DateTime?
+  warningDays  Int      @default(30)
+  status       String   @default("valid")
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([businessType, businessId, documentKind, documentId])
+  @@index([businessType, businessId])
+  @@index([expiresAt])
+  @@index([status])
+  @@map("business_document_links")
 }
 
 model RecordFormLandingEntry {
