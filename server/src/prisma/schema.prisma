@@ -3031,7 +3031,7 @@ model ChangeEvent {
   id            String                     @id @default(cuid())
   company_id    String
   change_no     String
-  change_type   String                     // 'recipe'|'process'|'equipment'|'supplier'|'other'
+  change_type   String                     // 'recipe'|'process'|'equipment'|'supplier'|'document'|'record_form'|'other'
   description   String
   reason        String
   applied_by    String?
@@ -3442,10 +3442,9 @@ model DocumentImpactReview {
   reviewedAt    DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  items         DocumentImpactItem[]
-
   changeEventId String?
   changeEvent   ChangeEvent? @relation(fields: [changeEventId], references: [id], onDelete: SetNull)
+  items         DocumentImpactItem[]
 
   @@index([sourceType, sourceId])
   @@index([status])
