@@ -103,6 +103,41 @@ export interface WorkbenchResponse {
   counts: Record<string, number>;
 }
 
+export type WorkbenchIssueType =
+  | 'pendingReview'
+  | 'dueForReview'
+  | 'expiringExternalFiles'
+  | 'obsoleteReferences'
+  | 'brokenReferences'
+  | 'missingLandingTargets'
+  | 'missingMetadata'
+  | 'trainingNeeds'
+  | 'openImpactItems';
+
+export interface WorkbenchIssueItem {
+  id: string;
+  issueType: WorkbenchIssueType;
+  severity: 'low' | 'medium' | 'high';
+  title: string;
+  description: string;
+  sourceType: string;
+  sourceId: string;
+  sourceLabel: string;
+  sourceRoute: string;
+  actionLabel: string;
+  actionRoute: string;
+  detectedAt: string | null;
+}
+
+export interface WorkbenchIssueListResponse {
+  type: WorkbenchIssueType;
+  items: WorkbenchIssueItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export const documentControlApi = {
   listDocuments(params?: Record<string, unknown>) {
     return request.get<DocumentListResponse>('/documents', { params });
@@ -142,5 +177,9 @@ export const documentControlApi = {
 
   getWorkbench(days = 30) {
     return request.get<WorkbenchResponse>('/documents/control/workbench', { params: { days } });
+  },
+
+  listWorkbenchIssues(params: { type: WorkbenchIssueType; page?: number; limit?: number; days?: number }) {
+    return request.get<WorkbenchIssueListResponse>('/documents/control/workbench/issues', { params });
   },
 };

@@ -1,4 +1,4 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -171,4 +171,63 @@ export class WorkbenchQueryDto {
   @IsOptional()
   @Type(() => Number)
   days?: number = 30;
+}
+
+export const WORKBENCH_ISSUE_TYPES = [
+  'pendingReview',
+  'dueForReview',
+  'expiringExternalFiles',
+  'obsoleteReferences',
+  'brokenReferences',
+  'missingLandingTargets',
+  'missingMetadata',
+  'trainingNeeds',
+  'openImpactItems',
+] as const;
+
+export type WorkbenchIssueType = typeof WORKBENCH_ISSUE_TYPES[number];
+
+export class WorkbenchIssueQueryDto {
+  @ApiProperty({ enum: WORKBENCH_ISSUE_TYPES })
+  @IsIn(WORKBENCH_ISSUE_TYPES)
+  type!: WorkbenchIssueType;
+
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  limit?: number = 20;
+
+  @ApiPropertyOptional({ default: 30 })
+  @IsOptional()
+  @Type(() => Number)
+  days?: number = 30;
+}
+
+export interface WorkbenchIssueItem {
+  id: string;
+  issueType: WorkbenchIssueType;
+  severity: 'low' | 'medium' | 'high';
+  title: string;
+  description: string;
+  sourceType: string;
+  sourceId: string;
+  sourceLabel: string;
+  sourceRoute: string;
+  actionLabel: string;
+  actionRoute: string;
+  detectedAt: Date | string | null;
+}
+
+export interface WorkbenchIssueListResponse {
+  type: WorkbenchIssueType;
+  items: WorkbenchIssueItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }

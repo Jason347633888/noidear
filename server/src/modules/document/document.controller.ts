@@ -34,7 +34,7 @@ import { DocumentImpactService } from './services/document-impact.service';
 import { DocumentHealthService } from './services/document-health.service';
 import { DocumentAuditChainService } from './services/document-audit-chain.service';
 import { DocumentReferenceHealthService } from './services/document-reference-health.service';
-import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto, WorkbenchQueryDto, CreateReadRequirementDto, TrainingNeedActionDto, ImpactReviewCreateDto, ImpactItemUpdateDto, CoverageQueryDto, AuditChainQueryDto, UpdateMarkdownDto } from './dto';
+import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto, WorkbenchQueryDto, WorkbenchIssueQueryDto, CreateReadRequirementDto, TrainingNeedActionDto, ImpactReviewCreateDto, ImpactItemUpdateDto, CoverageQueryDto, AuditChainQueryDto, UpdateMarkdownDto } from './dto';
 import { UpdateRecordFormLandingEntryDto } from './dto/document-control.dto';
 import { PublishDocumentDto, RollbackDocumentVersionDto } from './dto/document-lifecycle.dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
@@ -140,6 +140,12 @@ export class DocumentController {
   @ApiOperation({ summary: '查询即将到期复审的文件' })
   getDueSoon(@Query('days') days?: string) {
     return this.lifecycleSvc.getDueSoon(days ? parseInt(days, 10) : 30);
+  }
+
+  @Get('control/workbench/issues')
+  @ApiOperation({ summary: '文控工作台问题明细' })
+  getControlWorkbenchIssues(@Query() query: WorkbenchIssueQueryDto) {
+    return this.workbenchService.listIssues(query);
   }
 
   @Get('control/workbench')

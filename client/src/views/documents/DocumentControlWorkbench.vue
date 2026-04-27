@@ -16,6 +16,9 @@
           <span>{{ card.title }}</span>
         </template>
         <strong class="count">{{ workbench?.counts?.[card.key] ?? 0 }}</strong>
+        <span class="severity" :class="`severity-${card.severity}`">
+          {{ card.severity === 'high' ? '需优先处理' : '待处理' }}
+        </span>
       </el-card>
     </div>
 
@@ -41,16 +44,21 @@ const loading = ref(false);
 const workbench = ref<WorkbenchResponse | null>(null);
 
 const cards = computed(() => [
-  { key: 'pendingReview', title: '待审核', route: { path: '/documents', query: { status: 'pending' } } },
-  { key: 'dueForReview', title: '即将复审', route: { path: '/documents/control/library', query: { issue: 'dueForReview' } } },
-  { key: 'expiringExternalFiles', title: '外来文件到期', route: { path: '/documents/control/library', query: { issue: 'expiringExternalFiles' } } },
-  { key: 'obsoleteReferences', title: '作废仍被引用', route: { path: '/documents/operations/impact', query: { issue: 'obsoleteReferences' } } },
-  { key: 'brokenReferences', title: '入口失效', route: { path: '/documents/control/record-form-index', query: { issue: 'brokenReferences' } } },
-  { key: 'missingLandingTargets', title: '表单入口缺失', route: { path: '/documents/control/record-form-index', query: { issue: 'missingLandingTargets' } } },
-  { key: 'missingMetadata', title: '元数据缺失', route: { path: '/documents/control/library', query: { issue: 'missingMetadata' } } },
+  { key: 'pendingReview', title: '待审核', severity: 'medium' },
+  { key: 'dueForReview', title: '即将复审', severity: 'medium' },
+  { key: 'expiringExternalFiles', title: '外来文件到期', severity: 'high' },
+  { key: 'obsoleteReferences', title: '作废仍被引用', severity: 'high' },
+  { key: 'brokenReferences', title: '入口失效', severity: 'medium' },
+  { key: 'missingLandingTargets', title: '表单入口缺失', severity: 'high' },
+  { key: 'missingMetadata', title: '元数据缺失', severity: 'medium' },
+  { key: 'trainingNeeds', title: '培训需求未处理', severity: 'medium' },
+  { key: 'openImpactItems', title: '影响项未关闭', severity: 'medium' },
 ]);
 
-const openCard = (card: { route: any }) => router.push(card.route);
+const openCard = (card: { key: string }) => router.push({
+  path: '/documents/control/workbench/issues',
+  query: { type: card.key },
+});
 
 const fetchWorkbench = async () => {
   loading.value = true;
@@ -81,5 +89,16 @@ onMounted(fetchWorkbench);
 }
 .queue-card {
   margin-top: 12px;
+}
+.severity {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+}
+.severity-high {
+  color: #c45656;
+}
+.severity-medium {
+  color: #e6a23c;
 }
 </style>
