@@ -151,7 +151,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { ArrowLeft, Plus, Delete } from '@element-plus/icons-vue';
-import { recipeApi, type Recipe, type RecipeLine } from '@/api/recipe';
+import { recipeApi, type Recipe } from '@/api/recipe';
 import { productApi, type Product } from '@/api/product';
 
 const route = useRoute();
