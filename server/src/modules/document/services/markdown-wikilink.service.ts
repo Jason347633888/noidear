@@ -21,7 +21,16 @@ export class MarkdownWikilinkService {
       where: { sourceDocId, relationType: 'WIKILINK' },
     });
 
+    const sourceDocument = await client.document.findUnique({
+      where: { id: sourceDocId },
+      select: { id: true, title: true, number: true, doc_code: true },
+    });
+
     for (const label of labels) {
+      if (this.matchesDocumentLabel(sourceDocument, label)) {
+        continue;
+      }
+
       const targets = await client.document.findMany({
         where: {
           id: { not: sourceDocId },
@@ -69,5 +78,13 @@ export class MarkdownWikilinkService {
         },
       });
     }
+  }
+
+  private matchesDocumentLabel(
+    document: { title?: string | null; number?: string | null; doc_code?: string | null } | null,
+    label: string,
+  ): boolean {
+    if (!document) return false;
+    return [document.number, document.title, document.doc_code].some((value) => value === label);
   }
 }
