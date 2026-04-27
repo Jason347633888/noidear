@@ -49,7 +49,17 @@ describe('DocumentControlWorkbench', () => {
   it('renders queue cards with correct titles', async () => {
     const wrapper = mount(DocumentControlWorkbench, mountOptions);
     await flushPromises();
-    const titles = ['待审核', '即将复审', '外来文件到期', '作废仍被引用', '入口失效', '表单入口缺失', '元数据缺失'];
+    const titles = [
+      '待审核',
+      '即将复审',
+      '外来文件到期',
+      '作废仍被引用',
+      '入口失效',
+      '表单入口缺失',
+      '元数据缺失',
+      '培训需求未处理',
+      '影响项未关闭',
+    ];
     expect((wrapper.vm as any).cards.map((card: any) => card.title)).toEqual(titles);
   });
 
@@ -68,8 +78,8 @@ describe('DocumentControlWorkbench', () => {
     await wrapper.find('[data-test="workbench-card-missingMetadata"]').trigger('click');
 
     expect(routerPush).toHaveBeenCalledWith({
-      path: '/documents/control/library',
-      query: { issue: 'missingMetadata' },
+      path: '/documents/control/workbench/issues',
+      query: { type: 'missingMetadata' },
     });
   });
 
@@ -88,12 +98,12 @@ describe('DocumentControlWorkbench', () => {
 
     expect(routerPush).toHaveBeenCalledTimes(2);
     expect(routerPush).toHaveBeenNthCalledWith(1, {
-      path: '/documents/control/library',
-      query: { issue: 'missingMetadata' },
+      path: '/documents/control/workbench/issues',
+      query: { type: 'missingMetadata' },
     });
     expect(routerPush).toHaveBeenNthCalledWith(2, {
-      path: '/documents/control/library',
-      query: { issue: 'missingMetadata' },
+      path: '/documents/control/workbench/issues',
+      query: { type: 'missingMetadata' },
     });
   });
 });
