@@ -120,7 +120,7 @@ export class ApprovalService {
         orderBy: { createdAt: 'desc' },
         take: 100,
       });
-      unifiedTasks = tasks.map((task) => ({ source: 'unified' as const, task }));
+      unifiedTasks = tasks.map((task: any) => ({ source: 'unified' as const, task }));
     } catch {
       // approvalTask 表在旧部署中可能不存在，静默跳过
     }
@@ -196,7 +196,7 @@ export class ApprovalService {
       throw new BusinessException(ErrorCode.VALIDATION_ERROR, '仅支持文档审批');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       const document = await this.findDocumentForApprovalInTx(tx, approval.documentId!);
       this.validateDocumentStatus(document);
 
@@ -216,7 +216,7 @@ export class ApprovalService {
     const groupId = crypto.randomUUID();
     const chainId = crypto.randomUUID();
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       const approvals: any[] = [];
 
       for (const approverId of approverIds) {
@@ -263,7 +263,7 @@ export class ApprovalService {
     action: string,
     commentOrReason?: string,
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       if (action === 'rejected') {
         const updatedApproval = await this.updateApprovalStatus(tx, approval.id, 'rejected', undefined, commentOrReason);
         await tx.approval.updateMany({
@@ -306,7 +306,7 @@ export class ApprovalService {
     const groupId = crypto.randomUUID();
     const chainId = crypto.randomUUID();
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       const approvals: any[] = [];
 
       for (let i = 0; i < approverIds.length; i++) {
@@ -453,7 +453,7 @@ export class ApprovalService {
     action: string,
     commentOrReason?: string,
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       if (action === 'rejected') {
         const updatedApproval = await this.updateApprovalStatus(tx, approval.id, 'rejected', undefined, commentOrReason);
         await tx.approval.updateMany({

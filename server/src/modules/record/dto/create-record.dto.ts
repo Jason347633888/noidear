@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsObject, IsOptional, IsBoolean, IsDateString } from 'class-validator';
+import { IsString, IsNotEmpty, IsObject, IsOptional, IsBoolean, IsDateString, IsIn } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateRecordDto {
@@ -16,4 +16,25 @@ export class CreateRecordDto {
   @IsOptional()
   @IsBoolean()
   offlineFilled?: boolean;
+
+  @ApiPropertyOptional({ description: '填写用途', enum: ['initial', 'change', 'periodic'] })
+  @IsOptional()
+  @IsIn(['initial', 'change', 'periodic'])
+  @IsString()
+  usageType?: string;
+
+  @ApiPropertyOptional({ description: '来源对象类型', example: 'change_event' })
+  @IsOptional()
+  @IsString()
+  sourceType?: string;
+
+  @ApiPropertyOptional({ description: '来源对象ID', example: 'clxxxxxxxxxxxxx' })
+  @IsOptional()
+  @IsString()
+  sourceId?: string;
+
+  @ApiPropertyOptional({ description: '关联变更事件ID', example: 'clxxxxxxxxxxxxx' })
+  @IsOptional()
+  @IsString()
+  changeEventId?: string;
 }

@@ -19,7 +19,7 @@ export class WorkflowInstanceService {
   async create(createDto: CreateWorkflowInstanceDto, initiatorId: string) {
     const template = await this.validateTemplate(createDto.templateId);
 
-    return await this.prisma.$transaction(async (prisma) => {
+    return await this.prisma.$transaction(async (prisma: any) => {
       const instance = await this.createInstance(prisma, createDto, template.id, initiatorId);
       await this.createFirstTask(prisma, instance, template, initiatorId);
       return instance;
@@ -149,7 +149,7 @@ export class WorkflowInstanceService {
 
     let avgProcessingTimeHours = 0;
     if (completedInstances.length > 0) {
-      const totalMs = completedInstances.reduce((sum, inst) => {
+      const totalMs = completedInstances.reduce((sum: number, inst: { createdAt: Date; updatedAt: Date }) => {
         return sum + (inst.updatedAt.getTime() - inst.createdAt.getTime());
       }, 0);
       avgProcessingTimeHours = Math.round(totalMs / completedInstances.length / 3600000 * 10) / 10;

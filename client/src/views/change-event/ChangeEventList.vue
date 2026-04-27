@@ -74,6 +74,10 @@
             <el-option label="工艺变更" value="process" />
             <el-option label="供应商变更" value="supplier" />
             <el-option label="设备变更" value="equipment" />
+            <el-option label="文件变更" value="document" />
+            <el-option label="记录表单变更" value="record_form" />
+            <el-option label="产品变更" value="product" />
+            <el-option label="HACCP变更" value="haccp" />
             <el-option label="其他" value="other" />
           </el-select>
         </el-form-item>
@@ -123,6 +127,34 @@
             </el-descriptions-item>
             <el-descriptions-item label="创建时间">{{ formatDate(currentEvent.created_at) }}</el-descriptions-item>
           </el-descriptions>
+        </div>
+
+        <!-- 默认表单 -->
+        <div class="detail-section">
+          <div class="section-title">默认表单</div>
+          <div v-if="!currentEvent.formTasks?.length" class="empty-hint">当前变更类型没有默认表单</div>
+          <el-table v-else :data="currentEvent.formTasks" size="small" stripe>
+            <el-table-column prop="sourceFormCode" label="表单编号" width="150" />
+            <el-table-column prop="title" label="表单名称" min-width="180" show-overflow-tooltip />
+            <el-table-column label="状态" width="100">
+              <template #default="{ row }">
+                <el-tag :type="taskStatusMap[row.status]?.type ?? 'warning'" effect="light" size="small">
+                  {{ taskStatusMap[row.status]?.label ?? row.status }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="140">
+              <template #default="{ row }">
+                <el-button v-if="row.record" link type="primary" @click="router.push(`/records/${row.record.id}`)">
+                  {{ row.record.number }}
+                </el-button>
+                <el-button v-else-if="row.status === 'pending'" link type="warning" @click="goFillTask(row)">
+                  去填写
+                </el-button>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
+          </el-table>
         </div>
 
         <!-- 合规评估记录 -->
@@ -398,6 +430,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
@@ -422,6 +455,16 @@ import changeApprovalApi, {
   getDecisionText,
   getDecisionType,
 } from '@/api/change-approval';
+
+const router = useRouter();
+
+// ── Form task status map ──────────────────────────────────────────────────────
+
+const taskStatusMap: Record<string, { label: string; type: string }> = {
+  filled: { label: '已填写', type: 'success' },
+  approved: { label: '已审批', type: 'success' },
+  pending: { label: '待填写', type: 'warning' },
+};
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -502,6 +545,13 @@ function formatDate(dateStr: string | null): string {
   });
 }
 
+function goFillTask(task: { id: string; templateId: string; changeEventId: string }) {
+  router.push({
+    path: `/records/fill/${task.templateId}`,
+    query: { changeEventTaskId: task.id, changeEventId: task.changeEventId },
+  });
+}
+
 // ── Data loading ──────────────────────────────────────────────────────────────
 
 async function loadList() {
@@ -571,6 +621,12 @@ async function openDetailDialog(event: ChangeEvent) {
   verificationRecords.value = [];
   approvalRecords.value = [];
   detailDialogVisible.value = true;
+  try {
+    const full = await changeEventApi.getOne(event.id);
+    currentEvent.value = full as unknown as ChangeEvent;
+  } catch {
+    // keep existing event data on error
+  }
   await loadSubRecords(event.id);
 }
 

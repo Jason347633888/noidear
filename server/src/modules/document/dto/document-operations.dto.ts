@@ -39,6 +39,10 @@ export class ImpactReviewCreateDto {
 
   @IsString()
   title!: string;
+
+  @IsOptional()
+  @IsString()
+  changeEventId?: string;
 }
 
 export class ImpactItemUpdateDto {

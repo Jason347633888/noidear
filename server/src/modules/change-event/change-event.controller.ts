@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request, BadRequestException } from '@nestjs/common';
 import { ChangeEventService } from './change-event.service';
+import { ChangeEventFormTaskService } from './change-event-form-task.service';
 import { CreateChangeEventDto } from './dto/create-change-event.dto';
 import { CreateVerificationDto } from './dto/create-verification.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -7,7 +8,10 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @Controller('change-events')
 @UseGuards(JwtAuthGuard)
 export class ChangeEventController {
-  constructor(private service: ChangeEventService) {}
+  constructor(
+    private service: ChangeEventService,
+    private formTaskService: ChangeEventFormTaskService,
+  ) {}
 
   @Post()
   create(
@@ -20,6 +24,22 @@ export class ChangeEventController {
   @Get()
   findAll() {
     return this.service.findAll();
+  }
+
+  @Get(':id/form-tasks')
+  findFormTasks(@Param('id') id: string) {
+    return this.formTaskService.listForChange(id);
+  }
+
+  @Post('form-tasks/:taskId/fill')
+  fillFormTask(
+    @Param('taskId') taskId: string,
+    @Body() body: { dataJson?: object; existingRecordId?: string },
+    @Request() req: { user: { id?: string; userId?: string } },
+  ) {
+    const userId = req.user.id ?? req.user.userId;
+    if (!userId) throw new BadRequestException('Unable to resolve userId from token');
+    return this.formTaskService.fillTask(taskId, body.dataJson ?? {}, userId, body.existingRecordId);
   }
 
   @Get(':id')

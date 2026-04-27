@@ -35,4 +35,29 @@ describe('DocumentImpactService', () => {
       }),
     }));
   });
+
+  it('links impact review to change event when provided', async () => {
+    const prisma = {
+      documentReference: { findMany: jest.fn().mockResolvedValue([]) },
+      recordFormLandingEntry: { findMany: jest.fn().mockResolvedValue([]) },
+      documentImpactReview: { create: jest.fn().mockResolvedValue({ id: 'review1', changeEventId: 'change1', items: [] }) },
+      documentImpactItem: { findUnique: jest.fn(), update: jest.fn() },
+    };
+    const service = new DocumentImpactService(prisma as any);
+
+    await service.createReview({
+      sourceType: 'change_event',
+      sourceId: 'change1',
+      changeEventId: 'change1',
+      title: '变更影响评审',
+    } as any);
+
+    expect(prisma.documentImpactReview.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        sourceType: 'change_event',
+        sourceId: 'change1',
+        changeEventId: 'change1',
+      }),
+    }));
+  });
 });

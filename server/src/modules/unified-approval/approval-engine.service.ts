@@ -96,7 +96,7 @@ export class ApprovalEngineService {
   }
 
   private async completeTask(taskId: string, actorId: string, status: 'APPROVED' | 'REJECTED', comment: string) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       const task = await tx.approvalTask.findUnique({
         where: { id: taskId },
         include: { instance: { include: { definition: true } } },
