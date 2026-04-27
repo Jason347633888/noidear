@@ -148,6 +148,18 @@ export class DocumentReferenceHealthService {
     }
 
     const targetDoc = reference.targetDoc;
+    if (targetDoc.superseded_by_id || targetDoc.superseded_by) {
+      return {
+        ...base,
+        status: 'superseded',
+        reason: '目标文件已被新版本替代，需要更新引用。',
+        targetDocId: targetDoc.id,
+        targetTitle: targetDoc.title,
+        supersededById: targetDoc.superseded_by?.id || targetDoc.superseded_by_id || undefined,
+        supersededByTitle: targetDoc.superseded_by?.title,
+      };
+    }
+
     const targetStatus = targetDoc.status.toLowerCase();
     if (
       targetDoc.deletedAt ||
@@ -162,18 +174,6 @@ export class DocumentReferenceHealthService {
         reason: '目标文件已删除、归档、作废、停用或尚未生效，不能作为当前依据。',
         targetDocId: targetDoc.id,
         targetTitle: targetDoc.title,
-      };
-    }
-
-    if (targetDoc.superseded_by_id || targetDoc.superseded_by) {
-      return {
-        ...base,
-        status: 'superseded',
-        reason: '目标文件已被新版本替代，需要更新引用。',
-        targetDocId: targetDoc.id,
-        targetTitle: targetDoc.title,
-        supersededById: targetDoc.superseded_by?.id || targetDoc.superseded_by_id || undefined,
-        supersededByTitle: targetDoc.superseded_by?.title,
       };
     }
 

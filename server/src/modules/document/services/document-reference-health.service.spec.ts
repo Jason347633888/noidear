@@ -106,6 +106,7 @@ describe('DocumentReferenceHealthService', () => {
         ...baseReference,
         targetDoc: {
           ...baseReference.targetDoc,
+          status: 'superseded',
           superseded_by_id: 'target-2',
           superseded_by: { id: 'target-2', title: '目标文件新版' },
         },
