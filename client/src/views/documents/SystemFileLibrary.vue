@@ -15,7 +15,7 @@
 
     <main class="library-main">
       <div class="toolbar">
-        <el-input v-model="filters.keyword" placeholder="搜索编号、标题、正文" clearable @keyup.enter="fetchDocuments" />
+        <el-input v-model="filters.keyword" placeholder="搜索编号、标题、正文" clearable @keyup.enter="searchDocuments" />
         <el-select v-model="filters.documentType" clearable placeholder="文件类型">
           <el-option v-for="type in documentTypes" :key="type.value" :value="type.value" :label="type.label" />
         </el-select>
@@ -26,7 +26,7 @@
           <el-option value="archived" label="归档" />
           <el-option value="obsolete" label="作废" />
         </el-select>
-        <el-button type="primary" @click="fetchDocuments">搜索</el-button>
+        <el-button type="primary" @click="searchDocuments">搜索</el-button>
       </div>
 
       <el-table :data="documents" v-loading="loading" stripe>
@@ -48,6 +48,18 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.limit"
+          :page-sizes="[20, 50, 100]"
+          :total="pagination.total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handlePageSizeChange"
+          @current-change="handlePageChange"
+        />
+      </div>
     </main>
   </div>
 </template>
@@ -61,12 +73,16 @@ import { documentControlApi, type DocumentControlDocument } from '@/api/document
 const router = useRouter();
 const loading = ref(false);
 const documents = ref<DocumentControlDocument[]>([]);
+const pagination = reactive({
+  page: 1,
+  limit: 50,
+  total: 0,
+});
 
 const folders = [
   { value: '01', label: '管理手册' },
   { value: '02', label: '程序文件' },
   { value: '03', label: '作业指导书' },
-  { value: '04', label: '记录表单索引' },
   { value: '05', label: '公司文件' },
   { value: '06', label: '外来文件' },
 ];
@@ -75,10 +91,10 @@ const documentTypes = [
   { value: 'MANUAL', label: '管理手册' },
   { value: 'PROCEDURE', label: '程序文件' },
   { value: 'WORK_INSTRUCTION', label: '作业指导书' },
-  { value: 'RECORD_FORM_INDEX', label: '记录表单索引' },
   { value: 'COMPANY_FILE', label: '公司文件' },
   { value: 'EXTERNAL_FILE', label: '外来文件' },
 ];
+const systemLibraryDocumentTypes = new Set(documentTypes.map((item) => item.value));
 
 const filters = reactive({
   sourceFolder: '',
@@ -92,6 +108,23 @@ const formatDate = (value?: string) => value ? new Date(value).toLocaleDateStrin
 
 const selectFolder = (folder: string) => {
   filters.sourceFolder = folder;
+  pagination.page = 1;
+  fetchDocuments();
+};
+
+const searchDocuments = () => {
+  pagination.page = 1;
+  fetchDocuments();
+};
+
+const handlePageChange = (page: number) => {
+  pagination.page = page;
+  fetchDocuments();
+};
+
+const handlePageSizeChange = (limit: number) => {
+  pagination.limit = limit;
+  pagination.page = 1;
   fetchDocuments();
 };
 
@@ -103,9 +136,16 @@ const fetchDocuments = async () => {
       documentType: filters.documentType || undefined,
       status: filters.status || undefined,
       keyword: filters.keyword || undefined,
-      limit: 50,
+      page: pagination.page,
+      limit: pagination.limit,
     });
-    documents.value = res.list;
+    documents.value = res.list.filter(
+      (document) =>
+        document.source_folder !== '04' &&
+        document.document_type !== 'RECORD_FORM_INDEX' &&
+        (!document.document_type || systemLibraryDocumentTypes.has(document.document_type)),
+    );
+    pagination.total = res.total;
   } catch {
     ElMessage.error('获取体系文件失败');
   } finally {
@@ -158,5 +198,11 @@ onMounted(fetchDocuments);
   grid-template-columns: minmax(240px, 1fr) 180px 150px auto;
   gap: 10px;
   margin-bottom: 12px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
 }
 </style>

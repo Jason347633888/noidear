@@ -18,6 +18,7 @@
     "prisma:seed-dev": "ts-node src/prisma/seed-dev.ts",
     "prisma:reset": "prisma db push --force-reset --schema=src/prisma/schema.prisma && npm run prisma:seed",
     "seed:templates": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/seed-templates.ts",
+    "documents:import-vault": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/import-vault-system-documents.ts",
     "model-landing:generate": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/generate-model-landing-artifacts.ts",
     "model-landing:verify": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/verify-model-landing-artifacts.ts",
     "traceability:test": "jest traceability-query.service.spec.ts traceability-balance.service.spec.ts traceability-linkage.service.spec.ts traceability-export.service.spec.ts --runInBand",
