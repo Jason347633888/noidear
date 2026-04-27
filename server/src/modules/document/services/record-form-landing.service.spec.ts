@@ -93,6 +93,42 @@ describe('RecordFormLandingService', () => {
       const result = await service.list({});
       expect(result[0].landingEntry).toEqual(mockEntry);
     });
+
+    it('returns targetTemplate details for landing entries', async () => {
+      modelLanding.listGroups.mockReturnValue([{ id: 'grp1' }]);
+      modelLanding.getGroup.mockReturnValue({
+        id: 'grp1',
+        forms: [{ code: 'GRSS-PZ-JL-01', formName: '记录表', department: 'PZ', templateGroupId: 'g1' }],
+      });
+      prisma.recordFormLandingEntry.findMany.mockResolvedValue([{
+        sourceCode: 'GRSS-PZ-JL-01',
+        targetTemplateId: 'tmpl1',
+        targetTemplate: { id: 'tmpl1', code: 'TMP-01', name: '记录模板', status: 'active' },
+      }]);
+
+      const service = makeService();
+      const result = await service.list({});
+
+      expect(result[0].landingEntry!.targetTemplate).toEqual({
+        id: 'tmpl1',
+        code: 'TMP-01',
+        name: '记录模板',
+        status: 'active',
+      });
+    });
+
+    it('returns null targetTemplate when no template is linked', async () => {
+      prisma.recordFormLandingEntry.findMany.mockResolvedValue([{
+        sourceCode: 'GRSS-KF-JL-01',
+        targetTemplateId: null,
+        targetTemplate: null,
+      }]);
+
+      const service = makeService();
+      const result = await service.list({});
+
+      expect(result[0].landingEntry!.targetTemplate).toBeNull();
+    });
   });
 
   describe('get', () => {
@@ -110,6 +146,24 @@ describe('RecordFormLandingService', () => {
       const service = makeService();
       const result = await service.get('GRSS-KF-JL-01');
       expect(result.landingEntry).toEqual(mockEntry);
+    });
+
+    it('returns targetTemplate details for a single entry', async () => {
+      prisma.recordFormLandingEntry.findUnique.mockResolvedValue({
+        sourceCode: 'GRSS-KF-JL-01',
+        targetTemplateId: 'tmpl1',
+        targetTemplate: { id: 'tmpl1', code: 'TMP-01', name: '记录模板', status: 'active' },
+      });
+
+      const service = makeService();
+      const result = await service.get('GRSS-KF-JL-01');
+
+      expect(result.landingEntry!.targetTemplate).toEqual({
+        id: 'tmpl1',
+        code: 'TMP-01',
+        name: '记录模板',
+        status: 'active',
+      });
     });
   });
 
@@ -141,6 +195,24 @@ describe('RecordFormLandingService', () => {
         expect.objectContaining({
           create: expect.objectContaining({ relatedDocIds: [] }),
           update: expect.objectContaining({ relatedDocIds: [] }),
+        }),
+      );
+    });
+
+    it('normalizes blank targetTemplateId to null before upsert', async () => {
+      prisma.recordFormLandingEntry.upsert.mockResolvedValue({});
+      const service = makeService();
+      await service.upsertTarget('GRSS-KF-JL-01', {
+        targetModule: 'process',
+        targetRoute: '/process',
+        targetTemplateId: '   ',
+      });
+
+      expect(prisma.recordTemplate.findFirst).not.toHaveBeenCalled();
+      expect(prisma.recordFormLandingEntry.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({ targetTemplateId: null }),
+          update: expect.objectContaining({ targetTemplateId: null }),
         }),
       );
     });

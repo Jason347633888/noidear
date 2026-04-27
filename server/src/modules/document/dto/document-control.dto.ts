@@ -36,6 +36,11 @@ export class DocumentControlMetadataDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  ownerDepartmentId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   ownerUserId?: string;
 
   @ApiPropertyOptional({ type: [String] })

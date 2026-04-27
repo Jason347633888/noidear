@@ -28,6 +28,9 @@ export class RecordFormLandingService {
 
     const overrides = await this.prisma.recordFormLandingEntry.findMany({
       where: { sourceCode: { in: filtered.map((form) => form.code) } },
+      include: {
+        targetTemplate: { select: { id: true, code: true, name: true, status: true } },
+      },
     });
     const overrideMap = new Map(overrides.map((entry) => [entry.sourceCode, entry]));
 
@@ -41,6 +44,9 @@ export class RecordFormLandingService {
     const form = this.modelLanding.getFormByCode(code);
     const entry = await this.prisma.recordFormLandingEntry.findUnique({
       where: { sourceCode: code },
+      include: {
+        targetTemplate: { select: { id: true, code: true, name: true, status: true } },
+      },
     });
     return { ...form, landingEntry: entry };
   }
@@ -48,12 +54,13 @@ export class RecordFormLandingService {
   async upsertTarget(code: string, dto: UpdateRecordFormLandingEntryDto) {
     const form = this.modelLanding.getFormByCode(code);
     if (!form) throw new NotFoundException(`Unknown source form: ${code}`);
+    const targetTemplateId = dto.targetTemplateId?.trim() || null;
 
-    if (dto.targetTemplateId) {
+    if (targetTemplateId) {
       const template = await this.prisma.recordTemplate.findFirst({
-        where: { id: dto.targetTemplateId, deletedAt: null },
+        where: { id: targetTemplateId, deletedAt: null },
       });
-      if (!template) throw new NotFoundException(`记录模板不存在: ${dto.targetTemplateId}`);
+      if (!template) throw new NotFoundException(`记录模板不存在: ${targetTemplateId}`);
     }
 
     if (dto.relatedDocIds?.length) {
@@ -71,7 +78,7 @@ export class RecordFormLandingService {
         targetModule: dto.targetModule,
         targetModel: dto.targetModel,
         targetRoute: dto.targetRoute,
-        targetTemplateId: dto.targetTemplateId,
+        targetTemplateId,
         landingStrategy: dto.landingStrategy,
         relatedDocIds: dto.relatedDocIds ?? [],
         notes: dto.notes,
@@ -81,7 +88,7 @@ export class RecordFormLandingService {
         targetModule: dto.targetModule,
         targetModel: dto.targetModel,
         targetRoute: dto.targetRoute,
-        targetTemplateId: dto.targetTemplateId,
+        targetTemplateId,
         landingStrategy: dto.landingStrategy,
         relatedDocIds: dto.relatedDocIds ?? [],
         notes: dto.notes,

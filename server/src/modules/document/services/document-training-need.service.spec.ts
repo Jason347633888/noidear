@@ -5,6 +5,7 @@ describe('DocumentTrainingNeedService', () => {
   const prisma = {
     document: { findUnique: jest.fn() },
     documentTrainingNeed: { findFirst: jest.fn(), create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+    trainingProject: { findUnique: jest.fn() },
   };
   let service: DocumentTrainingNeedService;
 
@@ -50,5 +51,37 @@ describe('DocumentTrainingNeedService', () => {
 
   it('requires reason when dismissing', async () => {
     await expect(service.dismiss('need1')).rejects.toThrow(BadRequestException);
+  });
+
+  describe('link', () => {
+    it('rejects a missing linkedTrainingProjectId', async () => {
+      prisma.documentTrainingNeed.findUnique.mockResolvedValue({ id: 'need1', status: 'accepted' });
+      prisma.trainingProject.findUnique.mockResolvedValue(null);
+
+      await expect(service.link('need1', 'missing-project')).rejects.toThrow('培训项目不存在');
+    });
+
+    it('links to an existing training project and updates status', async () => {
+      prisma.documentTrainingNeed.findUnique.mockResolvedValue({ id: 'need1', status: 'accepted' });
+      prisma.trainingProject.findUnique.mockResolvedValue({ id: 'project1', title: '换版培训', status: 'planned' });
+      prisma.documentTrainingNeed.update.mockResolvedValue({
+        id: 'need1',
+        status: 'linked',
+        linkedTrainingProjectId: 'project1',
+      });
+
+      await service.link('need1', 'project1');
+
+      expect(prisma.documentTrainingNeed.update).toHaveBeenCalledWith({
+        where: { id: 'need1' },
+        data: { status: 'linked', linkedTrainingProjectId: 'project1' },
+      });
+    });
+
+    it('rejects linking a dismissed training need', async () => {
+      prisma.documentTrainingNeed.findUnique.mockResolvedValue({ id: 'need1', status: 'dismissed' });
+
+      await expect(service.link('need1', 'project1')).rejects.toThrow(ConflictException);
+    });
   });
 });

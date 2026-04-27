@@ -179,6 +179,8 @@ model User {
   delegationsFrom         DelegationLog[]          @relation("DelegationFrom")
   delegationsTo           DelegationLog[]          @relation("DelegationTo")
 
+  ownedDocuments Document[] @relation("DocumentOwnerUser")
+
   @@map("users")
 }
 
@@ -203,6 +205,7 @@ model Department {
   workflowTemplates    WorkflowTemplate[]    @relation("WorkflowTemplateDepartment")
   departmentPermissions DepartmentPermission[]
   documents            Document[]            @relation("DocumentDepartment")
+  ownedDocuments       Document[]            @relation("DocumentOwnerDepartment")
   recordTaskAssignments RecordTaskAssignment[] @relation("RecordTaskDepartment")
 
   // Task Flow relations
@@ -298,6 +301,10 @@ model Document {
   source_folder      String?   // 01 | 02 | 03 | 04 | 05 | 06
   owner_department   String?
   owner_user_id      String?
+  ownerDepartmentId  String?
+  ownerDepartment    Department? @relation("DocumentOwnerDepartment", fields: [ownerDepartmentId], references: [id], onDelete: SetNull)
+  ownerUserId        String?
+  ownerUser          User?       @relation("DocumentOwnerUser", fields: [ownerUserId], references: [id], onDelete: SetNull)
   tags               String[]  @default([])
   metadata           Json?
   external_source    String?
@@ -323,6 +330,8 @@ model Document {
 
   @@index([lineage_key])
   @@index([approvalInstanceId])
+  @@index([ownerDepartmentId])
+  @@index([ownerUserId])
   @@map("documents")
 }
 
@@ -740,6 +749,7 @@ model RecordTemplate {
   records              Record[]
   taskAssignments      RecordTaskAssignment[]
   tasks                Task[]
+  landingEntries       RecordFormLandingEntry[]
 
   @@index([code])
   @@index([status])
@@ -1894,9 +1904,10 @@ model TrainingProject {
   completedAt   DateTime?
 
   // 反向关系
-  questions       TrainingQuestion[]
-  learningRecords LearningRecord[]
-  archive         TrainingArchive?
+  questions              TrainingQuestion[]
+  learningRecords        LearningRecord[]
+  archive                TrainingArchive?
+  documentTrainingNeeds  DocumentTrainingNeed[]
 
   @@index([planId])
   @@index([department])
@@ -2394,6 +2405,7 @@ model RecordFormLandingEntry {
   targetModel     String?
   targetRoute     String?
   targetTemplateId String?
+  targetTemplate   RecordTemplate? @relation(fields: [targetTemplateId], references: [id], onDelete: SetNull)
   landingStrategy String?
   relatedDocIds   String[] @default([])
   notes           String?
@@ -2403,6 +2415,7 @@ model RecordFormLandingEntry {
   @@index([targetModule])
   @@index([targetModel])
   @@index([landingStrategy])
+  @@index([targetTemplateId])
   @@map("record_form_landing_entries")
 }
 
@@ -3344,6 +3357,7 @@ model DocumentTrainingNeed {
   reason                  String
   status                  String   @default("suggested")
   linkedTrainingProjectId String?
+  linkedTrainingProject   TrainingProject? @relation(fields: [linkedTrainingProjectId], references: [id], onDelete: SetNull)
   dismissedReason         String?
   createdBy               String?
   createdAt               DateTime @default(now())
@@ -3352,6 +3366,7 @@ model DocumentTrainingNeed {
   @@index([documentId])
   @@index([status])
   @@index([targetDepartment])
+  @@index([linkedTrainingProjectId])
   @@map("document_training_needs")
 }
 

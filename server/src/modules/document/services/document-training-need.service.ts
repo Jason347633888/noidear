@@ -34,7 +34,10 @@ export class DocumentTrainingNeedService {
     }
     return this.prisma.documentTrainingNeed.findMany({
       where: status ? { status } : {},
-      include: { document: { select: { id: true, title: true, number: true, status: true } } },
+      include: {
+        document: { select: { id: true, title: true, number: true, status: true } },
+        linkedTrainingProject: { select: { id: true, title: true, status: true, scheduledDate: true } },
+      },
       orderBy: { updatedAt: 'desc' },
     });
   }
@@ -58,8 +61,17 @@ export class DocumentTrainingNeedService {
 
   async link(id: string, linkedTrainingProjectId?: string) {
     if (!linkedTrainingProjectId) throw new BadRequestException('linkedTrainingProjectId is required');
+
     const need = await this.prisma.documentTrainingNeed.findUnique({ where: { id } });
     if (!need) throw new NotFoundException('培训需求不存在');
+    if (need.status === 'dismissed') throw new ConflictException('已驳回的培训需求不能关联培训项目');
+
+    const project = await this.prisma.trainingProject.findUnique({
+      where: { id: linkedTrainingProjectId },
+      select: { id: true, title: true, status: true },
+    });
+    if (!project) throw new NotFoundException('培训项目不存在');
+
     return this.prisma.documentTrainingNeed.update({
       where: { id },
       data: { status: 'linked', linkedTrainingProjectId },

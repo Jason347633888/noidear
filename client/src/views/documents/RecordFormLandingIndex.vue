@@ -106,10 +106,14 @@ const openEdit = (row: RecordFormLandingEntry) => {
 };
 
 const saveEdit = async () => {
-  await documentControlApi.updateRecordFormIndex(editingCode.value, editForm.value);
-  ElMessage.success('表单入口已保存');
-  editVisible.value = false;
-  await fetchRows();
+  try {
+    await documentControlApi.updateRecordFormIndex(editingCode.value, editForm.value);
+    ElMessage.success('表单入口已保存');
+    editVisible.value = false;
+    await fetchRows();
+  } catch (error: any) {
+    ElMessage.error(error?.response?.data?.message || error?.message || '保存落地入口失败');
+  }
 };
 
 onMounted(fetchRows);
