@@ -64,8 +64,17 @@
         </el-form-item>
 
         <el-form-item class="form-actions">
-          <el-button type="primary" @click="handleSubmit" :loading="uploading" class="submit-btn">
-            {{ uploading ? '上传中...' : '提交审批' }}
+          <el-button data-test="save-draft" @click="handleSaveDraft" :loading="uploading" class="draft-btn">
+            保存草稿
+          </el-button>
+          <el-button
+            data-test="submit-approval"
+            type="primary"
+            @click="handleSubmitApproval"
+            :loading="uploading"
+            class="submit-btn"
+          >
+            提交审批
           </el-button>
           <el-button @click="$router.back()" class="cancel-btn">取消</el-button>
         </el-form-item>
@@ -131,23 +140,48 @@ const handleFileChange = (uploadFile: UploadFile) => {
 const handleExceed = () => ElMessage.warning('最多只能上传 1 个文件');
 const handleRemove = () => { formData.file = null; uploadRef.value?.clearFiles(); };
 
-const handleSubmit = async () => {
-  if (!formRef.value) return;
-  await formRef.value.validate(async (valid) => {
-    if (!valid) return;
-    if (!formData.file) { ElMessage.error('请上传文件'); return; }
-    uploading.value = true;
-    try {
-      const form = new FormData();
-      form.append('level', String(level.value));
-      form.append('title', formData.title);
-      form.append('file', formData.file);
-      await request.post('/documents/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
-      ElMessage.success('上传成功，文档已提交审批');
-      router.push(`/documents/level${level.value}`);
-    } catch { ElMessage.error('上传失败'); }
-    finally { uploading.value = false; }
-  });
+const uploadDocument = async (): Promise<{ id: string }> => {
+  const form = new FormData();
+  form.append('level', String(level.value));
+  form.append('title', formData.title);
+  form.append('file', formData.file as File);
+  return request.post<{ id: string }>('/documents/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+};
+
+const validateForm = async (): Promise<boolean> => {
+  if (!formRef.value) return false;
+  const valid = await formRef.value.validate().catch(() => false);
+  if (!valid) return false;
+  if (!formData.file) {
+    ElMessage.error('请上传文件');
+    return false;
+  }
+  return true;
+};
+
+const handleSaveDraft = async () => {
+  if (!(await validateForm())) return;
+  uploading.value = true;
+  try {
+    await uploadDocument();
+    ElMessage.success('草稿已保存');
+    router.push('/documents');
+  } finally {
+    uploading.value = false;
+  }
+};
+
+const handleSubmitApproval = async () => {
+  if (!(await validateForm())) return;
+  uploading.value = true;
+  try {
+    const doc = await uploadDocument();
+    await request.post(`/documents/${doc.id}/submit`);
+    ElMessage.success('文档已提交审批');
+    router.push('/documents');
+  } finally {
+    uploading.value = false;
+  }
 };
 
 onMounted(() => {
