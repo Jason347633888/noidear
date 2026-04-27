@@ -29,6 +29,20 @@ describe('DocumentTrainingNeedService', () => {
     expect(result.id).toBe('need1');
   });
 
+  it('treats legacy approved document as revised-document trigger', async () => {
+    prisma.document.findUnique.mockResolvedValue({ id: 'doc1', title: 'SOP', status: 'approved', owner_department: '品质部' });
+    prisma.documentTrainingNeed.findFirst.mockResolvedValue(null);
+    prisma.documentTrainingNeed.create.mockResolvedValue({ id: 'need1' });
+
+    await service.suggestForDocument('doc1', 'admin');
+
+    expect(prisma.documentTrainingNeed.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        triggerType: 'revised_document',
+      }),
+    });
+  });
+
   it('rejects accepting dismissed need', async () => {
     prisma.documentTrainingNeed.findUnique.mockResolvedValue({ id: 'need1', status: 'dismissed' });
     await expect(service.accept('need1')).rejects.toThrow(ConflictException);

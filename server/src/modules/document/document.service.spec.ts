@@ -173,12 +173,12 @@ describe('document status compatibility', () => {
     });
   });
 
-  it('treats approved list filter as effective-compatible', async () => {
+  it.each(['approved', 'effective'])('treats %s list filter as effective-compatible', async (status) => {
     prisma.document.findMany.mockResolvedValue([{ id: 'doc1', creatorId: null, approverId: null }]);
     prisma.document.count.mockResolvedValue(1);
     prisma.user.findMany.mockResolvedValue([]);
 
-    await service.findAll({ status: 'approved' } as any, 'admin1', 'admin');
+    await service.findAll({ status } as any, 'admin1', 'admin');
 
     expect(prisma.document.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({

@@ -180,7 +180,7 @@ export class DocumentService {
     }
 
     if (status) {
-      where.status = status === 'approved'
+      where.status = (EFFECTIVE_COMPAT_STATUSES as readonly string[]).includes(status)
         ? { in: [...EFFECTIVE_COMPAT_STATUSES] }
         : status;
     }

@@ -53,7 +53,7 @@ describe('Approval Integration Tests', () => {
       mockPrisma.approval.findUnique.mockResolvedValue(mockApproval);
       mockPrisma.document.findUnique.mockResolvedValue(mockDocument);
       mockPrisma.approval.update.mockResolvedValue({ ...mockApproval, status: 'approved' });
-      mockPrisma.document.update.mockResolvedValue({ ...mockDocument, status: 'approved' });
+      mockPrisma.document.update.mockResolvedValue({ ...mockDocument, status: 'effective' });
 
       const result = await approvalService.approveUnified(approvalId, approverId, 'approved', '审批通过');
 
@@ -62,7 +62,7 @@ describe('Approval Integration Tests', () => {
         expect.objectContaining({ where: { id: approvalId }, data: expect.objectContaining({ status: 'approved' }) }),
       );
       expect(mockPrisma.document.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: documentId }, data: expect.objectContaining({ status: 'approved' }) }),
+        expect.objectContaining({ where: { id: documentId }, data: expect.objectContaining({ status: 'effective' }) }),
       );
       expect(mockNotificationService.create).toHaveBeenCalledWith(
         expect.objectContaining({ userId: 'creator-001', type: 'approval_approved' }),
@@ -157,7 +157,8 @@ describe('Approval Integration Tests', () => {
       ]);
 
       const result = await approvalService.getPendingApprovals(approverId);
-      expect(result).toHaveLength(1);
+      expect(result.legacy).toHaveLength(1);
+      expect(result.unified).toHaveLength(0);
     });
 
     it('应该返回审批详情', async () => {
