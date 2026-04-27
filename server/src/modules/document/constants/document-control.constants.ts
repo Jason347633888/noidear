@@ -25,6 +25,28 @@ export const DOCUMENT_CONTROL_STATUSES = [
   'inactive',
 ] as const;
 
+export const CANONICAL_DOCUMENT_STATUS = {
+  DRAFT: 'draft',
+  PENDING: 'pending',
+  REJECTED: 'rejected',
+  EFFECTIVE: 'effective',
+  ARCHIVED: 'archived',
+  OBSOLETE: 'obsolete',
+} as const;
+
+export type CanonicalDocumentStatus =
+  typeof CANONICAL_DOCUMENT_STATUS[keyof typeof CANONICAL_DOCUMENT_STATUS];
+
+export const EFFECTIVE_COMPAT_STATUSES = ['effective', 'approved'] as const;
+
+export function isEffectiveCompatible(status: string | null | undefined): boolean {
+  return status === 'effective' || status === 'approved';
+}
+
+export function toDisplayStatus(status: string | null | undefined): string {
+  return status === 'approved' ? 'effective' : (status || '');
+}
+
 export const REFERENCE_TARGET_TYPES = [
   'document',
   'record_template',

@@ -10,6 +10,10 @@ import { NotificationService } from '../notification/notification.service';
 import { OperationLogService } from '../operation-log/operation-log.service';
 import { DocumentControlMetadataService } from './services/document-control-metadata.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
+import {
+  CANONICAL_DOCUMENT_STATUS,
+  isEffectiveCompatible,
+} from './constants/document-control.constants';
 
 @Injectable()
 export class DocumentService {
@@ -319,7 +323,7 @@ export class DocumentService {
       );
     }
 
-    if (document.status === 'approved') {
+    if (isEffectiveCompatible(document.status)) {
       throw new BusinessException(
         ErrorCode.CONFLICT,
         `已发布的文档 [${document.number}] 不能删除，请先停用`,
@@ -560,7 +564,9 @@ export class DocumentService {
     const result = await this.prisma.document.update({
       where: { id },
       data: {
-        status: status === 'approved' ? 'approved' : 'rejected',
+        status: status === 'approved'
+          ? CANONICAL_DOCUMENT_STATUS.EFFECTIVE
+          : CANONICAL_DOCUMENT_STATUS.REJECTED,
         approverId,
         approvedAt: new Date(),
       },
@@ -627,10 +633,10 @@ export class DocumentService {
       );
     }
 
-    if (document.status !== 'approved') {
+    if (!isEffectiveCompatible(document.status)) {
       throw new BusinessException(
         ErrorCode.CONFLICT,
-        `只能停用已发布的文档，文档 [${document.number}] 当前状态：${document.status}`,
+        `文档 [${document.number}] 当前状态为 [${document.status}]，只有已生效文档可操作`,
       );
     }
 
@@ -646,10 +652,10 @@ export class DocumentService {
     const document = await this.findOne(id, userId, role);
 
     // 状态校验：只有已发布的文档可以归档
-    if (document.status !== 'approved') {
+    if (!isEffectiveCompatible(document.status)) {
       throw new BusinessException(
         ErrorCode.CONFLICT,
-        `文档 [${document.number}] 当前状态为 [${document.status}]，只有已发布文档可归档`,
+        `文档 [${document.number}] 当前状态为 [${document.status}]，只有已生效文档可操作`,
       );
     }
 
@@ -700,10 +706,10 @@ export class DocumentService {
     const document = await this.findOne(id, userId, role);
 
     // 状态校验：只有已发布的文档可以作废
-    if (document.status !== 'approved') {
+    if (!isEffectiveCompatible(document.status)) {
       throw new BusinessException(
         ErrorCode.CONFLICT,
-        `文档 [${document.number}] 当前状态为 [${document.status}]，只有已发布文档可作废`,
+        `文档 [${document.number}] 当前状态为 [${document.status}]，只有已生效文档可操作`,
       );
     }
 
@@ -774,7 +780,7 @@ export class DocumentService {
     const result = await this.prisma.document.update({
       where: { id },
       data: {
-        status: 'approved',
+        status: CANONICAL_DOCUMENT_STATUS.EFFECTIVE,
         archiveReason: null,
         archivedAt: null,
         archivedBy: null,

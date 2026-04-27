@@ -10,7 +10,15 @@ import { DocumentControlMetadataService } from './services/document-control-meta
 describe('DocumentService document control metadata', () => {
   const prisma = {
     user: { findUnique: jest.fn() },
-    document: { findFirst: jest.fn(), create: jest.fn(), findMany: jest.fn(), count: jest.fn() },
+    document: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+      update: jest.fn(),
+    },
+    approval: { findFirst: jest.fn(), update: jest.fn() },
     department: { findUnique: jest.fn() },
     pendingNumber: { findFirst: jest.fn() },
     numberRule: { create: jest.fn(), update: jest.fn() },
@@ -18,6 +26,7 @@ describe('DocumentService document control metadata', () => {
     $queryRaw: jest.fn(),
   };
   const storage = { uploadFile: jest.fn() };
+  const notification = { create: jest.fn() };
   const operationLog = { log: jest.fn() };
   const eventEmitter = { emit: jest.fn() };
 
@@ -31,7 +40,7 @@ describe('DocumentService document control metadata', () => {
         DocumentControlMetadataService,
         { provide: PrismaService, useValue: prisma },
         { provide: StorageService, useValue: storage },
-        { provide: NotificationService, useValue: { create: jest.fn() } },
+        { provide: NotificationService, useValue: notification },
         { provide: OperationLogService, useValue: operationLog },
         { provide: EventEmitter2, useValue: eventEmitter },
       ],
@@ -72,5 +81,94 @@ describe('DocumentService document control metadata', () => {
         departmentId: 'd1',
       }),
     }));
+  });
+});
+
+describe('document status compatibility', () => {
+  const prisma = {
+    user: { findUnique: jest.fn() },
+    document: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+      update: jest.fn(),
+    },
+    approval: { findFirst: jest.fn(), update: jest.fn() },
+    department: { findUnique: jest.fn() },
+    pendingNumber: { findFirst: jest.fn() },
+    numberRule: { create: jest.fn(), update: jest.fn() },
+    $transaction: jest.fn(),
+    $queryRaw: jest.fn(),
+  };
+  const storage = { uploadFile: jest.fn() };
+  const notification = { create: jest.fn() };
+  const operationLog = { log: jest.fn() };
+  const eventEmitter = { emit: jest.fn() };
+
+  let service: DocumentService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    const module = await Test.createTestingModule({
+      providers: [
+        DocumentService,
+        DocumentControlMetadataService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: StorageService, useValue: storage },
+        { provide: NotificationService, useValue: notification },
+        { provide: OperationLogService, useValue: operationLog },
+        { provide: EventEmitter2, useValue: eventEmitter },
+      ],
+    }).compile();
+    service = module.get(DocumentService);
+  });
+
+  it('allows approved documents wherever effective documents are allowed', async () => {
+    prisma.document.findUnique.mockResolvedValue({
+      id: 'doc1',
+      number: 'DOC-001',
+      title: 'SOP',
+      status: 'approved',
+      creatorId: 'u1',
+      deletedAt: null,
+    });
+    prisma.document.update.mockResolvedValue({ id: 'doc1', status: 'archived' });
+    notification.create.mockResolvedValue({});
+    operationLog.log.mockResolvedValue({});
+
+    await service.archive('doc1', '归档原因满足十个字符', 'u1', 'admin');
+
+    expect(prisma.document.update).toHaveBeenCalledWith({
+      where: { id: 'doc1' },
+      data: expect.objectContaining({ status: 'archived' }),
+    });
+  });
+
+  it('writes effective when approving a document', async () => {
+    prisma.document.findUnique.mockResolvedValue({
+      id: 'doc1',
+      number: 'DOC-001',
+      title: 'SOP',
+      status: 'pending',
+      creatorId: 'creator1',
+      deletedAt: null,
+    });
+    prisma.approval.findFirst.mockResolvedValue({ id: 'ap1', approverId: 'admin1', status: 'pending' });
+    prisma.user.findUnique
+      .mockResolvedValueOnce({ id: 'admin1', role: 'admin' })
+      .mockResolvedValueOnce({ id: 'creator1', role: 'user' });
+    prisma.approval.update.mockResolvedValue({ id: 'ap1', status: 'approved' });
+    prisma.document.update.mockResolvedValue({ id: 'doc1', status: 'effective' });
+    notification.create.mockResolvedValue({});
+    operationLog.log.mockResolvedValue({});
+
+    await service.approve('doc1', 'approved', undefined, 'admin1');
+
+    expect(prisma.document.update).toHaveBeenCalledWith({
+      where: { id: 'doc1' },
+      data: expect.objectContaining({ status: 'effective' }),
+    });
   });
 });
