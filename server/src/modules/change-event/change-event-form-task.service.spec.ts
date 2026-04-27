@@ -36,7 +36,7 @@ describe('ChangeEventFormTaskService', () => {
   const prisma = {
     recordTemplate: { findMany: jest.fn() },
     changeEventFormTask: { createMany: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
-    record: { create: jest.fn() },
+    record: { create: jest.fn(), findUnique: jest.fn() },
     $transaction: jest.fn().mockImplementation(async (fn) => fn(prisma)),
   };
   const recordService = { create: jest.fn() };
@@ -99,6 +99,12 @@ describe('ChangeEventFormTaskService', () => {
       changeEventId: 'change1',
       templateId: 'tpl1',
     });
+    prisma.record.findUnique.mockResolvedValue({
+      id: 'existing-record-1',
+      templateId: 'tpl1',
+      changeEventId: 'change1',
+      deletedAt: null,
+    });
     prisma.changeEventFormTask.update.mockResolvedValue({
       id: 'task1',
       recordId: 'existing-record-1',
@@ -112,5 +118,28 @@ describe('ChangeEventFormTaskService', () => {
     expect(prisma.changeEventFormTask.update).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ recordId: 'existing-record-1', status: 'filled' }),
     }));
+  });
+
+  it('throws NotFoundException when existingRecordId does not exist', async () => {
+    prisma.changeEventFormTask.findUnique.mockResolvedValue({
+      id: 'task1', recordId: null, status: 'pending', changeEventId: 'change1', templateId: 'tpl1',
+    });
+    prisma.record.findUnique.mockResolvedValue(null);
+    const service = new ChangeEventFormTaskService(prisma as any, recordService as any);
+
+    await expect(service.fillTask('task1', {}, 'user1', 'bad-record')).rejects.toThrow(NotFoundException);
+    expect(recordService.create).not.toHaveBeenCalled();
+  });
+
+  it('throws BadRequestException when existingRecord templateId does not match task', async () => {
+    prisma.changeEventFormTask.findUnique.mockResolvedValue({
+      id: 'task1', recordId: null, status: 'pending', changeEventId: 'change1', templateId: 'tpl1',
+    });
+    prisma.record.findUnique.mockResolvedValue({
+      id: 'record-wrong', templateId: 'tpl-other', changeEventId: 'change1', deletedAt: null,
+    });
+    const service = new ChangeEventFormTaskService(prisma as any, recordService as any);
+
+    await expect(service.fillTask('task1', {}, 'user1', 'record-wrong')).rejects.toThrow(BadRequestException);
   });
 });
