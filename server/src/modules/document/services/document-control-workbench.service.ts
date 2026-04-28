@@ -44,6 +44,12 @@ export class DocumentControlWorkbenchService {
     const missingMetaWhere = { deletedAt: null, OR: [{ document_type: null }, { source_folder: null }, { review_due_date: null }] };
     const trainingWhere = { status: { in: ['suggested', 'open', 'pending'] } };
     const impactWhere = { status: { in: ['open', 'pending'] } };
+    const unconfirmedLandingWhere = { confirmationStatus: { in: ['unconfirmed', 'suggested'] } };
+    const partialFieldCoverageWhere = { fieldCoverageStatus: { in: ['partial', 'missing'] } };
+    const unimplementedRecordRefWhere = {
+      targetType: 'record_form_landing',
+      snapshot: { path: ['landingStatus'], equals: 'unimplemented' },
+    };
 
     const [
       pendingReview,
@@ -64,6 +70,9 @@ export class DocumentControlWorkbenchService {
       missingMetaCount,
       trainingCount,
       impactCount,
+      unconfirmedLandingCount,
+      partialFieldCoverageCount,
+      unimplementedRecordRefCount,
     ] = await Promise.all([
       this.prisma.document.findMany({ where: pendingReviewWhere, orderBy: { updatedAt: 'desc' }, take: 100 }),
       this.prisma.document.findMany({ where: dueForReviewWhere, orderBy: { review_due_date: 'asc' }, take: 100 }),
@@ -94,6 +103,9 @@ export class DocumentControlWorkbenchService {
       this.prisma.document.count({ where: missingMetaWhere }),
       this.prisma.documentTrainingNeed.count({ where: trainingWhere }),
       this.prisma.documentImpactItem.count({ where: impactWhere }),
+      this.prisma.recordFormLandingEntry.count({ where: unconfirmedLandingWhere }),
+      this.prisma.recordFormLandingEntry.count({ where: partialFieldCoverageWhere }),
+      this.prisma.documentReference.count({ where: unimplementedRecordRefWhere }),
     ]);
 
     return {
@@ -116,6 +128,9 @@ export class DocumentControlWorkbenchService {
         missingMetadata: missingMetaCount,
         trainingNeeds: trainingCount,
         openImpactItems: impactCount,
+        unconfirmedLandingTargets: unconfirmedLandingCount,
+        partialFieldCoverage: partialFieldCoverageCount,
+        unimplementedRecordReferences: unimplementedRecordRefCount,
       },
     };
   }
