@@ -340,6 +340,65 @@ export class DocumentService {
     return convertBigIntToNumber(result);
   }
 
+  async createRevisionDraft(id: string, userId: string) {
+    const current = await this.prisma.document.findFirst({ where: { id, deletedAt: null } });
+    if (!current) throw new BusinessException(ErrorCode.NOT_FOUND, '文件不存在');
+    if (!isEffectiveCompatible((current as any).status)) {
+      throw new BusinessException(ErrorCode.VALIDATION_ERROR, '只有已发布文件可以发起修订');
+    }
+
+    const latest = await this.prisma.document.findFirst({
+      where: {
+        deletedAt: null,
+        OR: [
+          { id },
+          { revisionOfId: id },
+          { lineage_key: (current as any).lineage_key ?? (current as any).number },
+        ],
+      },
+      orderBy: { versionNo: 'desc' },
+    });
+
+    const nextVersionNo = ((latest as any)?.versionNo ?? (current as any).versionNo ?? 1) + 1;
+    return this.prisma.document.create({
+      data: {
+        id: this.snowflake.nextId(),
+        level: (current as any).level,
+        number: (current as any).number,
+        title: (current as any).title,
+        filePath: (current as any).filePath,
+        fileName: (current as any).fileName,
+        fileSize: (current as any).fileSize,
+        fileType: (current as any).fileType,
+        version: nextVersionNo,
+        versionNo: nextVersionNo,
+        status: 'draft',
+        revisionOfId: current.id,
+        revisionStatus: 'revision_draft',
+        creatorId: userId,
+        departmentId: (current as any).departmentId,
+        content: (current as any).content as any,
+        document_type: (current as any).document_type,
+        source_folder: (current as any).source_folder,
+        owner_department: (current as any).owner_department,
+        owner_user_id: (current as any).owner_user_id,
+        ownerDepartmentId: (current as any).ownerDepartmentId,
+        ownerUserId: (current as any).ownerUserId,
+        tags: (current as any).tags ?? [],
+        metadata: (current as any).metadata as any,
+        lineage_key: (current as any).lineage_key ?? (current as any).number,
+        review_due_date: (current as any).review_due_date,
+        content_md: (current as any).content_md,
+      } as any,
+    });
+  }
+
+  private assertEditableDraft(document: { status: string; revisionStatus?: string | null }) {
+    if (!['draft', 'rejected'].includes(document.status)) {
+      throw new BusinessException(ErrorCode.VALIDATION_ERROR, '已发布文件不能原地编辑，请先发起修订');
+    }
+  }
+
   async remove(id: string, userId: string) {
     const document = await this.findOne(id, userId, 'user');
 

@@ -591,4 +591,12 @@ export class DocumentController {
   confirmRead(@Param('id') id: string, @Req() req: any) {
     return this.lifecycleSvc.confirmRead(id, req.user?.id ?? 'system');
   }
+
+  @Post(':id/revisions')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:revise')
+  @ApiOperation({ summary: '发起文件修订草稿' })
+  createRevision(@Param('id') id: string, @Req() req: any) {
+    return this.documentService.createRevisionDraft(id, req.user.id);
+  }
 }

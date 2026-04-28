@@ -189,4 +189,8 @@ export const documentControlApi = {
   getEvidenceChain(params: EvidenceChainQuery) {
     return request.get<EvidenceChainResult>('/documents/control/evidence-chain', { params });
   },
+
+  createRevision(documentId: string) {
+    return request.post<DocumentControlDocument>(`/documents/${documentId}/revisions`);
+  },
 };

@@ -544,6 +544,89 @@ describe('document version operations', () => {
   });
 });
 
+describe('document revision draft', () => {
+  const prisma = {
+    user: { findUnique: jest.fn() },
+    document: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+      update: jest.fn(),
+    },
+    approval: { findFirst: jest.fn(), update: jest.fn() },
+    department: { findUnique: jest.fn() },
+    pendingNumber: { findFirst: jest.fn() },
+    numberRule: { create: jest.fn(), update: jest.fn() },
+    $transaction: jest.fn(),
+    $queryRaw: jest.fn(),
+  };
+  const storage = { uploadFile: jest.fn() };
+  const filePreview = { assertFileAccess: jest.fn() };
+  const markdownWikilinkService = { syncDocumentWikilinks: jest.fn() };
+  const notification = { create: jest.fn() };
+  const operationLog = { log: jest.fn() };
+  const eventEmitter = { emit: jest.fn() };
+
+  let service: DocumentService;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    prisma.$transaction.mockImplementation(async (callback) => callback(prisma));
+    const module = await Test.createTestingModule({
+      providers: [
+        DocumentService,
+        DocumentControlMetadataService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: StorageService, useValue: storage },
+        { provide: NotificationService, useValue: notification },
+        { provide: OperationLogService, useValue: operationLog },
+        { provide: EventEmitter2, useValue: eventEmitter },
+        { provide: FilePreviewService, useValue: filePreview },
+        { provide: MarkdownWikilinkService, useValue: markdownWikilinkService },
+        { provide: NumberRuleService, useValue: { generate: jest.fn().mockResolvedValue('2-PZ-001') } },
+      ],
+    }).compile();
+    service = module.get(DocumentService);
+  });
+
+  it('creates a revision draft instead of editing an effective document in place', async () => {
+    prisma.document.findFirst.mockResolvedValue({
+      id: 'doc-v1',
+      number: 'GRSS-PZ-ZD-08',
+      title: '原物料及产品放行制度',
+      level: 3,
+      versionNo: 1,
+      version: '1.0',
+      status: 'effective',
+      filePath: 'documents/v1.md',
+      fileName: '原物料及产品放行制度.md',
+      fileSize: 4900,
+      fileType: 'text/markdown',
+      creatorId: 'user-1',
+      departmentId: 'dept-pz',
+      document_type: 'WORK_INSTRUCTION',
+      source_folder: '03',
+      lineage_key: 'GRSS-PZ-ZD-08',
+    });
+    prisma.document.create.mockResolvedValue({ id: 'doc-v2', versionNo: 2, status: 'draft', revisionOfId: 'doc-v1' });
+
+    const result = await service.createRevisionDraft('doc-v1', 'user-2');
+
+    expect(prisma.document.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        number: 'GRSS-PZ-ZD-08',
+        versionNo: 2,
+        status: 'draft',
+        revisionOfId: 'doc-v1',
+        revisionStatus: 'revision_draft',
+      }),
+    }));
+    expect(result.id).toBe('doc-v2');
+  });
+});
+
 describe('document owner strong references', () => {
   const prisma = {
     user: { findUnique: jest.fn() },
