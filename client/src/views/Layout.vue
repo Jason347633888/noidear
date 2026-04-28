@@ -152,7 +152,6 @@ const menuItems = [
       { path: '/documents/operations/health', title: '文控健康度', icon: DataAnalysis },
       { path: '/documents/operations/audit-coverage', title: '审核覆盖', icon: CircleCheck },
       { path: '/documents/operations/impact', title: '影响分析', icon: Connection },
-      { path: '/documents/operations/audit-chain', title: '审核链路', icon: Monitor },
     ],
   },
   {
