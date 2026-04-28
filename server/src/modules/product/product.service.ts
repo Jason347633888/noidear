@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services';
 import { Snowflake } from '../../common/utils';
@@ -7,6 +7,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductReportDocumentDto } from './dto/product-report-document.dto';
 import { ProductCodeGeneratorService } from './product-code-generator.service';
+import { CreateLegacyProductDto } from './dto/create-legacy-product.dto';
 
 @Injectable()
 export class ProductService {
@@ -49,6 +50,79 @@ export class ProductService {
         company_id: '1',
         source: dto.source ?? 'manual_admin',
       },
+    });
+  }
+
+  async createLegacy(dto: CreateLegacyProductDto) {
+    if (!dto.lines.length) {
+      throw new BadRequestException('历史产品建档至少需要一条配方明细');
+    }
+
+    const materialIds = dto.lines.map((line) => line.material_id);
+    if (new Set(materialIds).size !== materialIds.length) {
+      throw new BadRequestException('同一配方中同一物料只能出现一次');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const code = await this.productCodeGenerator.generate('1');
+      const enrichedLines: Array<typeof dto.lines[0] & { area_name_snapshot: string }> = [];
+
+      for (const line of dto.lines) {
+        const material = await tx.material.findFirst({
+          where: { id: line.material_id, deletedAt: null, status: 'active' },
+        });
+        if (!material) {
+          throw new BadRequestException(`物料不存在或已停用：${line.material_id}`);
+        }
+
+        const area = await tx.workshopArea.findUnique({
+          where: { id: line.area_id },
+        });
+        if (!area || area.status !== 'active' || area.deleted_at) {
+          throw new BadRequestException(`配料区域不存在或已停用：${line.area_id}`);
+        }
+
+        enrichedLines.push({
+          ...line,
+          area_name_snapshot: area.name,
+        });
+      }
+
+      const product = await tx.product.create({
+        data: {
+          company_id: '1',
+          code,
+          name: dto.name,
+          status: 'active',
+          source: 'legacy_import',
+        },
+      });
+
+      const recipe = await tx.recipe.create({
+        data: {
+          company_id: '1',
+          product_id: product.id,
+          version: 1,
+          version_note: '历史产品建档',
+          status: 'active',
+          approved_at: new Date(),
+        },
+      });
+
+      await tx.recipeLine.createMany({
+        data: enrichedLines.map((line) => ({
+          recipe_id: recipe.id,
+          material_id: line.material_id,
+          qty_per_batch: line.qty_per_batch,
+          unit: line.unit,
+          is_critical: line.is_critical ?? false,
+          notes: line.notes ?? null,
+          area_id: line.area_id,
+          area_name_snapshot: line.area_name_snapshot,
+        })),
+      });
+
+      return { product, recipe };
     });
   }
 
