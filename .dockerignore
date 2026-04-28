@@ -1,0 +1,12 @@
+node_modules
+client/node_modules
+server/node_modules
+mobile
+miniprogram
+tools
+packages
+*.md
+.git
+.gitignore
+coverage
+dist
