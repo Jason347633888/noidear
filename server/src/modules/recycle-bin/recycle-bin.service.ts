@@ -353,25 +353,33 @@ export class RecycleBinService {
   }
 
   private async recyclePendingNumber(doc: any) {
-    await this.prisma.pendingNumber.upsert({
+    const existing = await this.prisma.pendingNumber.findFirst({
       where: {
-        level_departmentId_number: {
-          level: doc.level,
-          departmentId: doc.creator.departmentId,
-          number: doc.number,
-        },
-      },
-      update: {
-        deletedAt: new Date(),
-      },
-      create: {
-        id: this.snowflake.nextId(),
-        number: doc.number,
+        scope: 'document',
         level: doc.level,
         departmentId: doc.creator.departmentId,
-        deletedAt: new Date(),
+        sourceFolder: null,
+        number: doc.number,
       },
     });
+
+    if (existing) {
+      await this.prisma.pendingNumber.update({
+        where: { id: existing.id },
+        data: { deletedAt: new Date() },
+      });
+    } else {
+      await this.prisma.pendingNumber.create({
+        data: {
+          id: this.snowflake.nextId(),
+          scope: 'document',
+          number: doc.number,
+          level: doc.level,
+          departmentId: doc.creator.departmentId,
+          deletedAt: new Date(),
+        },
+      });
+    }
   }
 
   private async permanentDeleteRecordTemplate(id: string): Promise<void> {
