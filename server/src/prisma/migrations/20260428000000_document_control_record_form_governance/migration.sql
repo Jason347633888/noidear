@@ -59,11 +59,22 @@ CREATE INDEX IF NOT EXISTS "record_form_landing_entries_field_coverage_status_id
 CREATE INDEX IF NOT EXISTS "record_form_landing_entries_target_template_id_idx" ON "record_form_landing_entries"("target_template_id");
 
 -- Drop old unique constraint on number_rules (if it exists)
-ALTER TABLE "number_rules" DROP CONSTRAINT IF EXISTS "number_rules_level_department_id_key";
+ALTER TABLE "number_rules" DROP CONSTRAINT IF EXISTS "number_rules_level_departmentId_key";
 -- Create new unique constraint
 CREATE UNIQUE INDEX IF NOT EXISTS "number_rules_scope_level_department_id_source_folder_key" ON "number_rules"("scope", "level", "department_id", "source_folder");
 
 -- Drop old unique constraint on pending_numbers (if it exists)
-ALTER TABLE "pending_numbers" DROP CONSTRAINT IF EXISTS "pending_numbers_level_department_id_number_key";
+ALTER TABLE "pending_numbers" DROP CONSTRAINT IF EXISTS "pending_numbers_level_departmentId_number_key";
 -- Create new unique constraint
 CREATE UNIQUE INDEX IF NOT EXISTS "pending_numbers_scope_level_department_id_source_folder_number_key" ON "pending_numbers"("scope", "level", "department_id", "source_folder", "number");
+
+ALTER TABLE "documents" ADD CONSTRAINT "documents_revisionOfId_fkey"
+  FOREIGN KEY ("revision_of_id") REFERENCES "documents"("id")
+  ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "record_templates" ADD CONSTRAINT "record_templates_supersedesId_fkey"
+  FOREIGN KEY ("supersedes_id") REFERENCES "record_templates"("id")
+  ON DELETE SET NULL ON UPDATE CASCADE;
+
+CREATE INDEX IF NOT EXISTS "documents_revision_of_id_idx" ON "documents"("revision_of_id");
+CREATE INDEX IF NOT EXISTS "documents_revision_status_idx" ON "documents"("revision_status");

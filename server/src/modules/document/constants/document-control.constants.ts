@@ -96,6 +96,11 @@ export const FIELD_COVERAGE_STATUSES = [
   'not_required',
 ] as const;
 
+export type LandingStrategy = typeof LANDING_STRATEGIES[number];
+export type LandingStatus = typeof LANDING_STATUSES[number];
+export type LandingConfirmationStatus = typeof LANDING_CONFIRMATION_STATUSES[number];
+export type FieldCoverageStatus = typeof FIELD_COVERAGE_STATUSES[number];
+
 export const DOCUMENT_RELATION_TYPES = [
   'IMPLEMENTS',
   'REQUIRES_RECORD',

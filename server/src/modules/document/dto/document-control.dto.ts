@@ -5,10 +5,12 @@ import {
   IsArray,
   IsDateString,
   IsIn,
+  IsInt,
   IsObject,
   IsOptional,
   IsString,
   MaxLength,
+  Min,
 } from 'class-validator';
 import {
   DOCUMENT_RELATION_TYPES,
@@ -240,6 +242,8 @@ export class UpsertNumberRuleDto {
   @IsIn(NUMBER_RULE_SCOPES)
   scope!: string;
 
+  @IsInt()
+  @Min(1)
   @Type(() => Number)
   level!: number;
 
