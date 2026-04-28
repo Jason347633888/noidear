@@ -1,22 +1,27 @@
 # ---- Stage 1: Build ----
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# 先單獨複製 package 文件，利用 Docker layer cache
-# 只有 package.json 改變時才重新 npm install
 COPY package.json package-lock.json ./
-RUN npm ci --legacy-peer-deps
+COPY client/package.json ./client/package.json
+COPY server/package.json ./server/package.json
+COPY mobile/package.json ./mobile/package.json
+COPY miniprogram/package.json ./miniprogram/package.json
+COPY packages/types/package.json ./packages/types/package.json
+COPY tools/noidear-mcp/package.json ./tools/noidear-mcp/package.json
+RUN npm ci
 
-# 再複製源碼並構建
-COPY . .
+COPY packages/types ./packages/types
+COPY client ./client
+WORKDIR /app/client
 RUN npm run build
 
 # ---- Stage 2: Runtime ----
 FROM nginx:alpine
 
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/client/dist /usr/share/nginx/html
+COPY client/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
