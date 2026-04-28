@@ -512,6 +512,81 @@ describe('DocumentDetail', () => {
     expect(ElMessage.warning).toHaveBeenCalledWith('引用存在多个候选，请选择正确目标。');
   });
 
+  it('shows alias dangling wikilink as wikilink-dangling and handles click', async () => {
+    const { ElMessage } = await import('element-plus');
+    mockGetReferenceHealth.mockResolvedValue({
+      totals: { total: 1, healthy: 0, dangling: 1, invalid: 0, conflict: 0, superseded: 0 },
+      issues: [
+        { sourceDocId: 'doc-1', sourceTitle: '测试文档', referenceId: 'ref-alias-dangling', label: '显示名', status: 'dangling', reason: '引用文本未匹配到受控文件。' },
+      ],
+    });
+    mockGet.mockImplementation((url: string) => {
+      if (url.includes('/versions')) return Promise.resolve([]);
+      return Promise.resolve(makeDocument({
+        content_md: '见 [[缺失编号|显示名]]',
+        sourceReferences: [
+          {
+            id: 'ref-alias-dangling',
+            sourceDocId: 'doc-1',
+            relationType: 'WIKILINK',
+            targetType: 'unresolved_document',
+            targetLabel: '显示名',
+            wikilinkTarget: '缺失编号',
+            sectionId: 'wikilink:缺失编号',
+          },
+        ],
+      }));
+    });
+
+    const wrapper = w();
+    await flushPromises();
+
+    expect(wrapper.find('.wikilink').classes()).toContain('wikilink-dangling');
+
+    await wrapper.find('.wikilink').trigger('click');
+
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(ElMessage.warning).toHaveBeenCalledWith('引用未解析，请在引用关系中处理。');
+  });
+
+  it('shows alias conflict wikilink as wikilink-conflict and handles click', async () => {
+    const { ElMessage } = await import('element-plus');
+    mockGetReferenceHealth.mockResolvedValue({
+      totals: { total: 1, healthy: 0, dangling: 0, invalid: 0, conflict: 1, superseded: 0 },
+      issues: [
+        { sourceDocId: 'doc-1', sourceTitle: '测试文档', referenceId: 'ref-alias-conflict', label: '显示名', status: 'conflict', reason: '引用文本匹配到多个候选文件。', candidates: [{ id: 'doc-x', title: '冲突文件A' }] },
+      ],
+    });
+    mockGet.mockImplementation((url: string) => {
+      if (url.includes('/versions')) return Promise.resolve([]);
+      return Promise.resolve(makeDocument({
+        content_md: '见 [[冲突编号|显示名]]',
+        sourceReferences: [
+          {
+            id: 'ref-alias-conflict',
+            sourceDocId: 'doc-1',
+            relationType: 'WIKILINK',
+            targetType: 'conflict_document',
+            targetLabel: '显示名',
+            wikilinkTarget: '冲突编号',
+            sectionId: 'wikilink:冲突编号',
+          },
+        ],
+      }));
+    });
+
+    const wrapper = w();
+    await flushPromises();
+
+    expect(wrapper.find('.wikilink').classes()).toContain('wikilink-conflict');
+
+    await wrapper.find('.wikilink').trigger('click');
+
+    expect(mockPush).not.toHaveBeenCalled();
+    expect((wrapper.vm as any).expandedConflictReferenceId).toBe('ref-alias-conflict');
+    expect(ElMessage.warning).toHaveBeenCalledWith('引用存在多个候选，请选择正确目标。');
+  });
+
   it('passes resolved dangling and conflict wikilink status to MarkdownViewer', async () => {
     mockGetReferenceHealth.mockResolvedValue({
       totals: { total: 3, healthy: 1, dangling: 1, invalid: 0, conflict: 1, superseded: 0 },

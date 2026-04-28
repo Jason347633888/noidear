@@ -818,9 +818,12 @@ const wikilinkStatusByTarget = computed(() => {
     const target = wikilinkReferenceTarget(ref);
     if (target) statusMap[target] = 'resolved';
   }
-  for (const issue of referenceHealthIssues.value) {
-    if (issue.status === 'dangling') statusMap[issue.label] = 'dangling';
-    if (issue.status === 'conflict') statusMap[issue.label] = 'conflict';
+  for (const ref of sourceReferences.value) {
+    if (ref.relationType !== 'WIKILINK') continue;
+    const target = wikilinkReferenceTarget(ref);
+    if (!target) continue;
+    if (ref.targetType === 'unresolved_document') statusMap[target] = 'dangling';
+    if (ref.targetType === 'conflict_document') statusMap[target] = 'conflict';
   }
 
   return statusMap;
@@ -851,20 +854,28 @@ const handleMarkdownWikilinkClick = (target: string) => {
     return;
   }
 
-  const dangling = referenceHealthIssues.value.find(
-    (issue) => issue.status === 'dangling' && issue.label === normalizedTarget,
+  const danglingRef = sourceReferences.value.find(
+    (ref) => ref.relationType === 'WIKILINK' &&
+             ref.targetType === 'unresolved_document' &&
+             wikilinkReferenceTarget(ref) === normalizedTarget,
   );
-  if (dangling) {
-    handleReferenceHealthIssue(dangling);
+  if (danglingRef) {
+    const issue = referenceHealthIssues.value.find((i) => i.referenceId === danglingRef.id);
+    if (issue) handleReferenceHealthIssue(issue);
+    else activeReferenceLabel.value = normalizedTarget;
     ElMessage.warning('引用未解析，请在引用关系中处理。');
     return;
   }
 
-  const conflict = referenceHealthIssues.value.find(
-    (issue) => issue.status === 'conflict' && issue.label === normalizedTarget,
+  const conflictRef = sourceReferences.value.find(
+    (ref) => ref.relationType === 'WIKILINK' &&
+             ref.targetType === 'conflict_document' &&
+             wikilinkReferenceTarget(ref) === normalizedTarget,
   );
-  if (conflict) {
-    handleReferenceHealthIssue(conflict);
+  if (conflictRef) {
+    const issue = referenceHealthIssues.value.find((i) => i.referenceId === conflictRef.id);
+    if (issue) handleReferenceHealthIssue(issue);
+    else expandedConflictReferenceId.value = conflictRef.id;
     ElMessage.warning('引用存在多个候选，请选择正确目标。');
     return;
   }
