@@ -113,6 +113,9 @@ export type WorkbenchIssueType =
   | 'obsoleteReferences'
   | 'brokenReferences'
   | 'missingLandingTargets'
+  | 'unconfirmedLandingTargets'
+  | 'partialFieldCoverage'
+  | 'unimplementedRecordReferences'
   | 'missingMetadata'
   | 'trainingNeeds'
   | 'openImpactItems';

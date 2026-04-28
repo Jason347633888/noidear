@@ -212,6 +212,42 @@ export class DocumentControlWorkbenchService {
       return { total, rows };
     }
 
+    if (type === 'unconfirmedLandingTargets') {
+      const where = { confirmationStatus: { in: ['unconfirmed', 'suggested'] } };
+      const [total, rows] = await Promise.all([
+        this.prisma.recordFormLandingEntry.count({ where }),
+        this.prisma.recordFormLandingEntry.findMany({ where, orderBy: { updatedAt: 'desc' }, skip, take }),
+      ]);
+      return { total, rows };
+    }
+
+    if (type === 'partialFieldCoverage') {
+      const where = { fieldCoverageStatus: { in: ['partial', 'missing'] } };
+      const [total, rows] = await Promise.all([
+        this.prisma.recordFormLandingEntry.count({ where }),
+        this.prisma.recordFormLandingEntry.findMany({ where, orderBy: { updatedAt: 'desc' }, skip, take }),
+      ]);
+      return { total, rows };
+    }
+
+    if (type === 'unimplementedRecordReferences') {
+      const where = {
+        targetType: 'record_form_landing',
+        snapshot: { path: ['landingStatus'], equals: 'unimplemented' },
+      };
+      const [total, rows] = await Promise.all([
+        this.prisma.documentReference.count({ where }),
+        this.prisma.documentReference.findMany({
+          where,
+          include: { sourceDoc: { select: { id: true, title: true, number: true } } },
+          orderBy: { updatedAt: 'desc' },
+          skip,
+          take,
+        }),
+      ]);
+      return { total, rows };
+    }
+
     if (type === 'missingMetadata') {
       const where = {
         deletedAt: null,
@@ -272,6 +308,61 @@ export class DocumentControlWorkbenchService {
         sourceRoute: `/documents/control/record-form-index?code=${encodeURIComponent(code)}`,
         actionLabel: '维护表单入口',
         actionRoute: `/documents/control/record-form-index?issue=missingLandingTargets&code=${encodeURIComponent(code)}`,
+        detectedAt: row.updatedAt ?? row.createdAt ?? null,
+      };
+    }
+
+    if (type === 'unconfirmedLandingTargets') {
+      const code = row.sourceCode;
+      return {
+        id: row.id,
+        issueType: type,
+        severity: 'medium' as const,
+        title: `${code} 落地关系未确认`,
+        description: '系统已有落地建议或手工入口，但尚未由管理员确认。',
+        sourceType: 'record_form_landing',
+        sourceId: code,
+        sourceLabel: code,
+        sourceRoute: `/documents/control/record-form-index?code=${encodeURIComponent(code)}`,
+        actionLabel: '确认落地关系',
+        actionRoute: `/documents/control/record-form-index?code=${encodeURIComponent(code)}&action=confirm`,
+        detectedAt: row.updatedAt ?? row.createdAt ?? null,
+      };
+    }
+
+    if (type === 'partialFieldCoverage') {
+      const code = row.sourceCode;
+      return {
+        id: row.id,
+        issueType: type,
+        severity: 'medium' as const,
+        title: `${code} 字段覆盖不完整`,
+        description: '源表单字段与业务入口或动态模板字段存在差异，需要确认处理方式。',
+        sourceType: 'record_form_landing',
+        sourceId: code,
+        sourceLabel: code,
+        sourceRoute: `/documents/control/record-form-index?code=${encodeURIComponent(code)}`,
+        actionLabel: '查看字段覆盖',
+        actionRoute: `/documents/control/record-form-index?code=${encodeURIComponent(code)}&section=fieldCoverage`,
+        detectedAt: row.updatedAt ?? row.createdAt ?? null,
+      };
+    }
+
+    if (type === 'unimplementedRecordReferences') {
+      const sourceDocId = row.sourceDocId ?? row.sourceDoc?.id;
+      const label = row.targetLabel ?? row.targetId ?? '未命名引用';
+      return {
+        id: row.id,
+        issueType: type,
+        severity: 'medium' as const,
+        title: `${row.sourceDoc?.title ?? '来源文件'} 引用表单未落地`,
+        description: `引用的记录表单落地目标 ${label} 尚未实现落地配置。`,
+        sourceType: 'document_reference',
+        sourceId: sourceDocId,
+        sourceLabel: row.sourceDoc?.title ?? sourceDocId,
+        sourceRoute: `/documents/${sourceDocId}`,
+        actionLabel: '查看引用',
+        actionRoute: `/documents/${sourceDocId}?section=references&issue=${type}`,
         detectedAt: row.updatedAt ?? row.createdAt ?? null,
       };
     }

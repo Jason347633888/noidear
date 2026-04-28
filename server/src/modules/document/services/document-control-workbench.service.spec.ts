@@ -83,6 +83,9 @@ describe('DocumentControlWorkbenchService', () => {
       'obsoleteReferences',
       'brokenReferences',
       'missingLandingTargets',
+      'unconfirmedLandingTargets',
+      'partialFieldCoverage',
+      'unimplementedRecordReferences',
       'missingMetadata',
       'trainingNeeds',
       'openImpactItems',
@@ -140,6 +143,26 @@ describe('DocumentControlWorkbenchService', () => {
       sourceType: 'record_form_landing',
       sourceId: 'GRSS-PZ-JL-01',
       actionRoute: '/documents/control/record-form-index?issue=missingLandingTargets&code=GRSS-PZ-JL-01',
+    }));
+  });
+
+  it('lists unconfirmed record form landing targets', async () => {
+    prisma.recordFormLandingEntry.count.mockResolvedValue(1);
+    prisma.recordFormLandingEntry.findMany.mockResolvedValue([{
+      id: 'landing-1',
+      sourceCode: 'GRSS-PZ-JL-01',
+      confirmationStatus: 'suggested',
+      landingStatus: 'dynamic_form',
+      updatedAt: new Date('2026-04-28T00:00:00Z'),
+    }]);
+    const service = new DocumentControlWorkbenchService(prisma as any);
+
+    const result = await service.listIssues({ type: 'unconfirmedLandingTargets', page: 1, limit: 20 });
+
+    expect(result.items[0]).toEqual(expect.objectContaining({
+      issueType: 'unconfirmedLandingTargets',
+      sourceType: 'record_form_landing',
+      actionLabel: '确认落地关系',
     }));
   });
 
