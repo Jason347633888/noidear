@@ -269,7 +269,7 @@ export class RecordTemplateService {
    * 验证模板编号唯一性（BR-211）
    */
   private async validateUniqueCode(code: string) {
-    const existing = await this.prisma.recordTemplate.findUnique({
+    const existing = await this.prisma.recordTemplate.findFirst({
       where: { code },
     });
 

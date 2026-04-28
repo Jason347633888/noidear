@@ -166,7 +166,7 @@ export class ImportService {
   }
 
   private async checkDuplicate(number: string): Promise<boolean> {
-    const existing = await this.prisma.document.findUnique({ where: { number } });
+    const existing = await this.prisma.document.findFirst({ where: { number, deletedAt: null } });
     return !!existing;
   }
 
