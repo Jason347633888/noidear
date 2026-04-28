@@ -458,3 +458,13 @@ git diff --check
 - 无未定义的包管理器切换。
 - Node、ECharts、Docker、workspace、lockfile 的决策互相一致。
 - 方案可回滚，迁移提交可独立 revert。
+
+## 实施状态
+
+- 已新增根级 npm workspace 入口。
+- 已固定 Node 20 默认版本口径。
+- 已将 `echarts` 降到 `^5.6.0`，与 `echarts-wordcloud@^2.1.0` 匹配。
+- 已迁移为根级 `package-lock.json`。
+- 已删除子项目 lockfile。
+- 已将 server/client Docker build context 适配为仓库根目录。
+- 已通过根级安装、server/client 构建和 Docker build 验证。

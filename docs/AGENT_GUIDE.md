@@ -131,6 +131,32 @@ discover()
 discover({ module: 'process' })
 ```
 
+## 依赖与 Node 版本
+
+本项目使用根级 npm workspaces。进入任意 worktree 后，优先在仓库根目录执行：
+
+```bash
+nvm use
+npm ci
+```
+
+项目默认 Node 版本为 `.nvmrc` 中的 `20`。不要使用 Node 25 安装后端依赖；`bcrypt` 在该版本下可能无法安装。
+
+常用根命令：
+
+```bash
+npm run build:server
+npm run build:client
+npm run verify
+```
+
+如只处理单个子项目：
+
+```bash
+npm ci --workspace server --include-workspace-root=false
+npm ci --workspace client --include-workspace-root=false
+```
+
 ## 常用操作最短路径
 
 ### 走一遍研发流程（9步）
