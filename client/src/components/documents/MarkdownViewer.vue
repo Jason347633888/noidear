@@ -1,14 +1,31 @@
 <template>
-  <article class="markdown-viewer" v-html="html" />
+  <article class="markdown-viewer" v-html="html" @click="handleClick" />
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { renderMarkdown } from './markdown-renderer';
+import { renderMarkdown, type WikilinkStatus } from './markdown-renderer';
 
-const props = defineProps<{ content: string }>();
+const props = defineProps<{
+  content: string;
+  wikilinkStatusByTarget?: Record<string, WikilinkStatus>;
+}>();
 
-const html = computed(() => renderMarkdown(props.content));
+const emit = defineEmits<{
+  (event: 'wikilink-click', target: string): void;
+}>();
+
+const html = computed(() => renderMarkdown(props.content, {
+  wikilinkStatusByTarget: props.wikilinkStatusByTarget,
+}));
+
+const handleClick = (event: MouseEvent) => {
+  const target = event.target as HTMLElement | null;
+  const link = target?.closest?.('.wikilink') as HTMLElement | null;
+  const wikilinkTarget = link?.dataset?.target;
+  if (!wikilinkTarget) return;
+  emit('wikilink-click', wikilinkTarget);
+};
 </script>
 
 <style scoped>
@@ -184,10 +201,32 @@ const html = computed(() => renderMarkdown(props.content));
 }
 
 .markdown-viewer :deep(.wikilink) {
-  background: #eef6ff;
   border-radius: 4px;
-  color: #1677d2;
+  cursor: pointer;
   font-weight: 600;
   padding: 0 3px;
+}
+
+.markdown-viewer :deep(.wikilink-resolved) {
+  background: #eef6ff;
+  color: #1677d2;
+}
+
+.markdown-viewer :deep(.wikilink-dangling) {
+  background: #fff2f0;
+  color: #cf1322;
+  text-decoration: underline dotted;
+}
+
+.markdown-viewer :deep(.wikilink-conflict) {
+  background: #fff7e6;
+  color: #ad6800;
+  text-decoration: underline wavy;
+}
+
+.markdown-viewer :deep(.wikilink-unknown) {
+  background: #f5f7fa;
+  color: #606266;
+  text-decoration: underline dotted;
 }
 </style>

@@ -108,4 +108,39 @@ const status = 'ok';
     expect(wrapper.find('p code').text()).toContain('[[inline-ref]]');
     expect(wrapper.find('pre code').text()).toContain('[[fenced-ref|别名]]');
   });
+
+  it('emits wikilink-click with the data target when a wikilink is clicked', async () => {
+    const wrapper = mountMarkdown('参考 [[GRSS-CX-01|文件控制程序]]');
+
+    await wrapper.find('.wikilink').trigger('click');
+
+    expect(wrapper.emitted('wikilink-click')).toEqual([['GRSS-CX-01']]);
+  });
+
+  it('does not emit wikilink-click when plain text is clicked', async () => {
+    const wrapper = mountMarkdown('这里只是普通正文');
+
+    await wrapper.find('.markdown-viewer').trigger('click');
+
+    expect(wrapper.emitted('wikilink-click')).toBeUndefined();
+  });
+
+  it('applies wikilink status classes by target', () => {
+    const wrapper = mount(MarkdownViewer, {
+      props: {
+        content: '[[正常文件]] [[缺失文件]] [[重复文件]] [[未知文件]]',
+        wikilinkStatusByTarget: {
+          正常文件: 'resolved',
+          缺失文件: 'dangling',
+          重复文件: 'conflict',
+        },
+      },
+    });
+
+    const links = wrapper.findAll('.wikilink');
+    expect(links[0].classes()).toContain('wikilink-resolved');
+    expect(links[1].classes()).toContain('wikilink-dangling');
+    expect(links[2].classes()).toContain('wikilink-conflict');
+    expect(links[3].classes()).toContain('wikilink-unknown');
+  });
 });

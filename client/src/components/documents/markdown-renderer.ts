@@ -9,6 +9,12 @@ const markdown = new MarkdownIt({
 
 const CALLOUT_TYPES = new Set(['note', 'info', 'tip', 'warning', 'danger']);
 
+export type WikilinkStatus = 'resolved' | 'dangling' | 'conflict' | 'unknown';
+
+export interface RenderMarkdownOptions {
+  wikilinkStatusByTarget?: Record<string, WikilinkStatus>;
+}
+
 const escapeAttribute = (value: string) =>
   value
     .replace(/&/g, '&amp;')
@@ -51,7 +57,7 @@ const enhanceTaskLists = (html: string) =>
       '<li class="task-list-item"><p><input class="task-list-item-checkbox" type="checkbox" checked disabled> ',
     );
 
-const enhanceWikilinks = (html: string) => {
+const enhanceWikilinks = (html: string, options: RenderMarkdownOptions = {}) => {
   const codeBlocks: string[] = [];
   const guarded = html.replace(/<code[^>]*>[\s\S]*?<\/code>/g, (match) => {
     codeBlocks.push(match);
@@ -63,7 +69,8 @@ const enhanceWikilinks = (html: string) => {
     (_match, rawTarget: string, rawLabel?: string) => {
       const target = rawTarget.trim();
       const label = (rawLabel || rawTarget).trim();
-      return `<span class="wikilink" data-target="${escapeAttribute(target)}">${label}</span>`;
+      const status = options.wikilinkStatusByTarget?.[target] || 'unknown';
+      return `<span class="wikilink wikilink-${escapeAttribute(status)}" data-target="${escapeAttribute(target)}">${label}</span>`;
     },
   );
 
@@ -89,9 +96,9 @@ const enhanceCallouts = (html: string) =>
     },
   );
 
-export const renderMarkdown = (content: string) => {
+export const renderMarkdown = (content: string, options: RenderMarkdownOptions = {}) => {
   const withoutFrontmatter = stripFrontmatter(content);
   const rendered = markdown.render(withoutFrontmatter);
 
-  return enhanceWikilinks(enhanceTaskLists(enhanceCallouts(rendered)));
+  return enhanceWikilinks(enhanceTaskLists(enhanceCallouts(rendered)), options);
 };
