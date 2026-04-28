@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 
-type WikilinkPrismaClient = Pick<PrismaService, 'document' | 'documentReference'>;
+type WikilinkPrismaClient = Pick<PrismaService, 'document' | 'documentReference' | 'recordFormLandingEntry'>;
 
 @Injectable()
 export class MarkdownWikilinkService {
@@ -51,6 +51,54 @@ export class MarkdownWikilinkService {
       });
 
       const sectionId = `wikilink:${target}`;
+
+      const formCode = this.extractSourceFormCode(target);
+      if (formCode) {
+        const entries = await client.recordFormLandingEntry.findMany({
+          where: { sourceCode: formCode },
+          take: 10,
+        });
+
+        if (entries.length === 1) {
+          const entry = entries[0];
+          await client.documentReference.create({
+            data: {
+              sourceDocId,
+              targetDocId: null,
+              targetType: 'record_form_landing',
+              targetId: entry.sourceCode,
+              targetRoute: (entry as any).primaryRoute || (entry as any).targetRoute,
+              targetLabel: displayLabel || target,
+              relationType: 'WIKILINK',
+              sectionId,
+              wikilinkTarget: target,
+              snapshot: {
+                landingStatus: (entry as any).landingStatus,
+                confirmationStatus: (entry as any).confirmationStatus,
+                targetTemplateId: (entry as any).targetTemplateId,
+              },
+              syncedAt: new Date(),
+            },
+          });
+          continue;
+        }
+
+        await client.documentReference.create({
+          data: {
+            sourceDocId,
+            targetDocId: null,
+            targetType: entries.length > 1 ? 'conflict_record_form' : 'unresolved_record_form',
+            targetId: formCode,
+            targetLabel: displayLabel || target,
+            relationType: 'WIKILINK',
+            sectionId,
+            wikilinkTarget: target,
+            snapshot: entries.length > 1 ? { candidates: entries } : undefined,
+            syncedAt: new Date(),
+          },
+        });
+        continue;
+      }
 
       if (targets.length === 1) {
         const resolvedTarget = targets[0];
@@ -103,6 +151,11 @@ export class MarkdownWikilinkService {
     }
 
     return entries;
+  }
+
+  private extractSourceFormCode(target: string): string | null {
+    const match = target.match(/(GRSS-[A-Z]{2}-JL-\d+)/);
+    return match?.[1] ?? null;
   }
 
   private matchesDocumentLabel(

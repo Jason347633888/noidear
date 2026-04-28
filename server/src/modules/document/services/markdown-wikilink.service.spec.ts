@@ -4,6 +4,7 @@ describe('MarkdownWikilinkService', () => {
   const prisma = {
     document: { findMany: jest.fn(), findUnique: jest.fn() },
     documentReference: { deleteMany: jest.fn(), create: jest.fn() },
+    recordFormLandingEntry: { findMany: jest.fn() },
   };
   let service: MarkdownWikilinkService;
 
@@ -12,6 +13,7 @@ describe('MarkdownWikilinkService', () => {
     prisma.document.findUnique.mockResolvedValue({ id: 'source1', title: '当前文件', number: 'DOC-001', doc_code: null });
     prisma.documentReference.deleteMany.mockResolvedValue({ count: 0 });
     prisma.documentReference.create.mockResolvedValue({ id: 'ref1' });
+    prisma.recordFormLandingEntry.findMany.mockResolvedValue([]);
     service = new MarkdownWikilinkService(prisma as any);
   });
 
@@ -128,6 +130,27 @@ describe('MarkdownWikilinkService', () => {
         wikilinkTarget: 'GRSS-CX-01',
       }),
     });
+  });
+
+  it('resolves source form wikilinks to record form landing entries', async () => {
+    prisma.document.findUnique.mockResolvedValue({ id: 'doc-1', title: '程序文件', number: 'QP-001' });
+    prisma.document.findMany.mockResolvedValue([]);
+    prisma.recordFormLandingEntry.findMany.mockResolvedValue([{
+      id: 'landing-1',
+      sourceCode: 'GRSS-ZZ-JL-43',
+      landingStatus: 'dynamic_form',
+      targetRoute: '/records/fill/tpl-1',
+    }]);
+
+    await service.syncDocumentWikilinks('doc-1', '生产过程应填写 [[GRSS-ZZ-JL-43 玻璃及硬塑制品检查表]]');
+
+    expect(prisma.documentReference.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        targetType: 'record_form_landing',
+        targetId: 'GRSS-ZZ-JL-43',
+        targetRoute: '/records/fill/tpl-1',
+      }),
+    }));
   });
 
   it('skips self-references when wikilink matches the source document', async () => {

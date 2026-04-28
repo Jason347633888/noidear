@@ -72,6 +72,7 @@ const referenceIssueStatusText = (status: ReferenceHealthStatus): string => {
   const map: Record<ReferenceHealthStatus, string> = {
     healthy: '正常',
     dangling: '悬空',
+    unimplemented: '未落地',
     invalid: '无效',
     conflict: '冲突',
     superseded: '被替代',

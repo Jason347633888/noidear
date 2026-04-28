@@ -46,7 +46,7 @@ export interface DocumentReference {
   sourceDoc?: { id: string; title: string; status: string; number?: string | null; doc_code?: string | null } | null;
 }
 
-export type ReferenceHealthStatus = 'healthy' | 'dangling' | 'invalid' | 'conflict' | 'superseded';
+export type ReferenceHealthStatus = 'healthy' | 'dangling' | 'unimplemented' | 'invalid' | 'conflict' | 'superseded';
 
 export interface DocumentReferenceHealthIssue {
   sourceDocId: string;
