@@ -6,6 +6,7 @@ import {
   Body,
   Param,
   Query,
+  Req,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -87,5 +88,26 @@ export class RecordTemplateController {
   @ApiResponse({ status: 200, description: '查询成功' })
   getVersionHistory(@Param('code') code: string) {
     return this.templateService.getVersionHistory(code);
+  }
+
+  @Put(':id/fields')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '更新草稿模板字段' })
+  updateFields(@Param('id') id: string, @Body() body: { fields: Array<Record<string, unknown>> }) {
+    return this.templateService.updateFields(id, body.fields);
+  }
+
+  @Post(':id/revisions')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: '发起模板改版草稿' })
+  createRevision(@Param('id') id: string, @Body() updateDto: UpdateRecordTemplateDto) {
+    return this.templateService.createRevision(id, updateDto);
+  }
+
+  @Post(':id/activate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '启用模板版本' })
+  activateRevision(@Param('id') id: string, @Req() req: any) {
+    return this.templateService.activateRevision(id, req.user.id);
   }
 }

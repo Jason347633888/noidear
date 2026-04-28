@@ -11,11 +11,14 @@ describe('RecordTemplateService', () => {
     recordTemplate: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       count: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
       delete: jest.fn(),
     },
+    $transaction: jest.fn(),
   };
 
   const mockTemplate = {
@@ -208,6 +211,54 @@ describe('RecordTemplateService', () => {
       mockPrismaService.recordTemplate.findUnique.mockResolvedValue(null);
 
       await expect(service.archive('invalid_id')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('createRevision', () => {
+    it('does not create code-v2 when creating a template revision', async () => {
+      mockPrismaService.recordTemplate.findUnique.mockResolvedValue({
+        id: 'tpl-v1',
+        code: 'GRSS-PZ-JL-01',
+        baseCode: 'GRSS-PZ-JL-01',
+        templateFamilyId: 'GRSS-PZ-JL-01',
+        version: 1,
+        fieldsJson: { fields: [{ name: 'date', label: '日期', type: 'date' }] },
+        status: 'active',
+        versionStatus: 'active',
+      });
+      mockPrismaService.recordTemplate.findFirst.mockResolvedValue(null);
+      mockPrismaService.recordTemplate.create.mockResolvedValue({
+        id: 'tpl-v2',
+        code: 'GRSS-PZ-JL-01',
+        version: 2,
+        versionStatus: 'draft',
+      });
+
+      const result = await service.createRevision('tpl-v1', {
+        fieldsJson: { fields: [{ name: 'date', label: '日期', type: 'date' }] },
+      } as any);
+
+      expect(prisma.recordTemplate.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          code: 'GRSS-PZ-JL-01',
+          version: 2,
+          versionStatus: 'draft',
+          supersedesId: 'tpl-v1',
+        }),
+      }));
+      expect(result.version).toBe(2);
+    });
+
+    it('rejects field updates on active templates', async () => {
+      mockPrismaService.recordTemplate.findUnique.mockResolvedValue({
+        id: 'tpl-v1',
+        status: 'active',
+        versionStatus: 'active',
+        fieldsJson: { fields: [] },
+      });
+
+      await expect(service.updateFields('tpl-v1', [{ name: 'x', label: 'X', type: 'text' }]))
+        .rejects.toThrow('已启用模板不能原地修改字段');
     });
   });
 });

@@ -160,6 +160,88 @@ export class RecordTemplateService {
   }
 
   /**
+   * 更新草稿模板字段（已启用模板禁止原地修改）
+   */
+  async updateFields(id: string, fields: Array<Record<string, unknown>>) {
+    const template = await this.findOne(id);
+    if (template.status === 'active' || (template as any).versionStatus === 'active') {
+      throw new BadRequestException('已启用模板不能原地修改字段，请发起模板改版');
+    }
+    const fieldsJson = { fields };
+    this.validateFieldsJson(fieldsJson);
+    return this.prisma.recordTemplate.update({
+      where: { id },
+      data: { fieldsJson: fieldsJson as any },
+    });
+  }
+
+  /**
+   * 发起模板改版草稿（版本 +1，code 保持不变，不追加 -vN 后缀）
+   */
+  async createRevision(id: string, updateDto: UpdateRecordTemplateDto) {
+    const existing = await this.findOne(id);
+    if (updateDto.fieldsJson) {
+      this.validateFieldsJson(updateDto.fieldsJson);
+    }
+
+    const baseCode = (existing as any).baseCode || existing.code.replace(/-v\d+$/, '');
+    const templateFamilyId = (existing as any).templateFamilyId || baseCode;
+    const latest = await this.prisma.recordTemplate.findFirst({
+      where: { templateFamilyId },
+      orderBy: { version: 'desc' },
+    });
+    const nextVersion = (latest?.version ?? existing.version) + 1;
+
+    return this.prisma.recordTemplate.create({
+      data: {
+        code: baseCode,
+        baseCode,
+        templateFamilyId,
+        name: updateDto.name || existing.name,
+        fieldsJson: updateDto.fieldsJson || existing.fieldsJson,
+        retentionYears: updateDto.retentionYears || existing.retentionYears,
+        description: updateDto.description || existing.description,
+        approvalRequired: updateDto.approvalRequired ?? (existing as any).approvalRequired ?? false,
+        workflowConfig: updateDto.workflowConfig ?? (existing as any).workflowConfig,
+        version: nextVersion,
+        versionStatus: 'draft',
+        status: 'draft',
+        supersedesId: existing.id,
+      } as any,
+    });
+  }
+
+  /**
+   * 启用模板版本（将同族旧版本退役）
+   */
+  async activateRevision(id: string, userId: string) {
+    const template = await this.findOne(id);
+    if ((template as any).versionStatus !== 'draft') {
+      throw new BadRequestException('只有草稿模板版本可以启用');
+    }
+    return this.prisma.$transaction(async (tx) => {
+      await tx.recordTemplate.updateMany({
+        where: {
+          templateFamilyId: (template as any).templateFamilyId || (template as any).baseCode || template.code,
+          id: { not: id },
+          status: 'active',
+        },
+        data: { status: 'retired', versionStatus: 'retired', retiredAt: new Date() } as any,
+      });
+      return tx.recordTemplate.update({
+        where: { id },
+        data: {
+          status: 'active',
+          versionStatus: 'active',
+          effectiveAt: new Date(),
+          approvedAt: new Date(),
+          approvedBy: userId,
+        } as any,
+      });
+    });
+  }
+
+  /**
    * P1-17: 查询模板版本历史
    */
   async getVersionHistory(code: string) {
