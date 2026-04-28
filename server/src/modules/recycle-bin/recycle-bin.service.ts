@@ -358,7 +358,7 @@ export class RecycleBinService {
         scope: 'document',
         level: doc.level,
         departmentId: doc.creator.departmentId,
-        sourceFolder: null,
+        sourceFolder: '',
         number: doc.number,
       },
     });
@@ -376,6 +376,7 @@ export class RecycleBinService {
           number: doc.number,
           level: doc.level,
           departmentId: doc.creator.departmentId,
+          sourceFolder: '',
           deletedAt: new Date(),
         },
       });

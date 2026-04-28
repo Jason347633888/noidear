@@ -225,7 +225,7 @@ model NumberRule {
 
   // Document control governance fields
   scope           String  @default("document")
-  sourceFolder    String?
+  sourceFolder    String  @default("")
   prefix          String?
   categoryCode    String?
   format          String?
@@ -253,7 +253,7 @@ model PendingNumber {
 
   // Document control governance fields
   scope        String  @default("document")
-  sourceFolder String?
+  sourceFolder String  @default("")
 
   @@unique([scope, level, departmentId, sourceFolder, number])
   @@map("pending_numbers")
@@ -262,7 +262,7 @@ model PendingNumber {
 model Document {
   id         String    @id
   level      Int
-  number     String    @unique
+  number     String
   title      String
   filePath   String
   fileName   String
@@ -355,6 +355,7 @@ model Document {
   revisions      Document[] @relation("DocumentRevisions")
   revisionStatus String     @default("current")
 
+  @@index([number])
   @@index([lineage_key])
   @@index([approvalInstanceId])
   @@index([ownerDepartmentId])
@@ -750,7 +751,7 @@ model WorkflowTask {
 // 动态表单引擎: 记录模板表
 model RecordTemplate {
   id             String    @id @default(cuid())
-  code           String    @unique
+  code           String
   name           String
   fieldsJson     Json
   version        Int       @default(1)
@@ -793,6 +794,7 @@ model RecordTemplate {
   approvedBy       String?
   approvedAt       DateTime?
 
+  @@unique([templateFamilyId, version])
   @@index([code])
   @@index([status])
   @@index([baseCode])

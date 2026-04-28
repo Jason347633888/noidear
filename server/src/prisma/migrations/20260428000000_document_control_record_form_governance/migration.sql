@@ -59,12 +59,12 @@ CREATE INDEX IF NOT EXISTS "record_form_landing_entries_field_coverage_status_id
 CREATE INDEX IF NOT EXISTS "record_form_landing_entries_target_template_id_idx" ON "record_form_landing_entries"("target_template_id");
 
 -- Drop old unique constraint on number_rules (if it exists)
-ALTER TABLE "number_rules" DROP CONSTRAINT IF EXISTS "number_rules_level_departmentId_key";
+DROP INDEX IF EXISTS "number_rules_level_departmentId_key";
 -- Create new unique constraint
 CREATE UNIQUE INDEX IF NOT EXISTS "number_rules_scope_level_department_id_source_folder_key" ON "number_rules"("scope", "level", "department_id", "source_folder");
 
 -- Drop old unique constraint on pending_numbers (if it exists)
-ALTER TABLE "pending_numbers" DROP CONSTRAINT IF EXISTS "pending_numbers_level_departmentId_number_key";
+DROP INDEX IF EXISTS "pending_numbers_level_departmentId_number_key";
 -- Create new unique constraint
 CREATE UNIQUE INDEX IF NOT EXISTS "pending_numbers_scope_level_department_id_source_folder_number_key" ON "pending_numbers"("scope", "level", "department_id", "source_folder", "number");
 
@@ -78,3 +78,20 @@ ALTER TABLE "record_templates" ADD CONSTRAINT "record_templates_supersedesId_fke
 
 CREATE INDEX IF NOT EXISTS "documents_revision_of_id_idx" ON "documents"("revision_of_id");
 CREATE INDEX IF NOT EXISTS "documents_revision_status_idx" ON "documents"("revision_status");
+
+-- Remove unique constraint on documents.number to allow revision drafts sharing same number
+DROP INDEX IF EXISTS "documents_number_key";
+CREATE INDEX IF NOT EXISTS "documents_number_idx" ON "documents"("number");
+
+-- Remove unique constraint on record_templates.code to allow versioning
+DROP INDEX IF EXISTS "record_templates_code_key";
+-- Ensure templateFamilyId + version is unique within a template family
+CREATE UNIQUE INDEX IF NOT EXISTS "record_templates_template_family_id_version_key" ON "record_templates"("template_family_id", "version");
+
+-- Normalize NULL sourceFolder to empty string for reliable unique index behavior
+UPDATE "number_rules" SET "source_folder" = '' WHERE "source_folder" IS NULL;
+UPDATE "pending_numbers" SET "source_folder" = '' WHERE "source_folder" IS NULL;
+ALTER TABLE "number_rules" ALTER COLUMN "source_folder" SET NOT NULL;
+ALTER TABLE "number_rules" ALTER COLUMN "source_folder" SET DEFAULT '';
+ALTER TABLE "pending_numbers" ALTER COLUMN "source_folder" SET NOT NULL;
+ALTER TABLE "pending_numbers" ALTER COLUMN "source_folder" SET DEFAULT '';

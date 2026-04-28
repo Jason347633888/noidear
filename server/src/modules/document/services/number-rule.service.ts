@@ -7,7 +7,7 @@ export interface GenerateNumberInput {
   scope: 'document' | 'record_template';
   level: number;
   departmentId: string;
-  sourceFolder?: string | null;
+  sourceFolder?: string;
   fallbackCategoryCode?: string | null;
 }
 
@@ -24,7 +24,7 @@ export class NumberRuleService {
           scope: input.scope,
           level: input.level,
           departmentId: input.departmentId,
-          sourceFolder: input.sourceFolder ?? null,
+          sourceFolder: input.sourceFolder ?? '',
         },
         orderBy: { deletedAt: 'asc' },
       });
@@ -51,7 +51,7 @@ export class NumberRuleService {
         WHERE scope = ${input.scope}
           AND level = ${input.level}
           AND department_id = ${input.departmentId}
-          AND (source_folder IS NOT DISTINCT FROM ${input.sourceFolder ?? null})
+          AND source_folder = ${input.sourceFolder ?? ''}
           AND is_active = true
         FOR UPDATE
       `;
@@ -64,7 +64,7 @@ export class NumberRuleService {
             scope: input.scope,
             level: input.level,
             departmentId: input.departmentId,
-            sourceFolder: input.sourceFolder ?? null,
+            sourceFolder: input.sourceFolder ?? '',
             sequence: 0,
             categoryCode: input.fallbackCategoryCode ?? null,
           },
@@ -138,7 +138,7 @@ export class NumberRuleService {
           scope: dto.scope,
           level: dto.level,
           departmentId: dto.departmentId,
-          sourceFolder: (dto.sourceFolder ?? null) as string,
+          sourceFolder: dto.sourceFolder ?? '',
         },
       },
       update: {
@@ -155,7 +155,7 @@ export class NumberRuleService {
         scope: dto.scope,
         level: dto.level,
         departmentId: dto.departmentId,
-        sourceFolder: dto.sourceFolder ?? null,
+        sourceFolder: dto.sourceFolder ?? '',
         prefix: dto.prefix,
         categoryCode: dto.categoryCode,
         format: dto.format,

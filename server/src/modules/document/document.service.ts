@@ -44,7 +44,7 @@ export class DocumentService {
       scope: 'document',
       level,
       departmentId,
-      sourceFolder: sourceFolder ?? null,
+      sourceFolder: sourceFolder ?? undefined,
       fallbackCategoryCode: this.categoryCodeForSourceFolder(sourceFolder),
     });
   }
