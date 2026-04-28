@@ -1,9 +1,9 @@
 import { IsString, IsOptional, IsNumber, IsNotEmpty, IsIn, IsPositive } from 'class-validator';
 
 export class CreateProductDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  code: string;
+  code?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -30,4 +30,9 @@ export class CreateProductDto {
   @IsString()
   @IsIn(['active', 'inactive', 'discontinued'])
   status?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['rd_process', 'legacy_import', 'manual_admin'])
+  source?: string;
 }

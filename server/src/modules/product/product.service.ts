@@ -6,6 +6,7 @@ import { BusinessDocumentLinkService } from '../document/services/business-docum
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductReportDocumentDto } from './dto/product-report-document.dto';
+import { ProductCodeGeneratorService } from './product-code-generator.service';
 
 @Injectable()
 export class ProductService {
@@ -15,6 +16,7 @@ export class ProductService {
     private prisma: PrismaService,
     private readonly storageService: StorageService,
     private readonly businessDocumentLinkService: BusinessDocumentLinkService,
+    private readonly productCodeGenerator: ProductCodeGeneratorService,
   ) {}
 
   async findAll() {
@@ -38,10 +40,14 @@ export class ProductService {
   }
 
   async create(dto: CreateProductDto) {
+    const code = dto.code ?? (await this.productCodeGenerator.generate('1'));
+    const { code: _ignoredCode, ...rest } = dto;
     return this.prisma.product.create({
       data: {
-        ...dto,
+        ...rest,
+        code,
         company_id: '1',
+        source: dto.source ?? 'manual_admin',
       },
     });
   }
