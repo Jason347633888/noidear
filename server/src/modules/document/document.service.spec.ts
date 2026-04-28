@@ -204,8 +204,8 @@ describe('DocumentService document control metadata', () => {
       await expect(
         service.updateMarkdown('doc1', 'u1', 'user', { contentMd: '# 新内容' }),
       ).rejects.toMatchObject({
-        code: ErrorCode.CONFLICT,
-        message: '仅草稿或驳回文档可直接编辑正文',
+        code: ErrorCode.VALIDATION_ERROR,
+        message: '已发布文件不能原地编辑，请先发起修订',
       });
       expect(prisma.document.update).not.toHaveBeenCalled();
     });
@@ -592,7 +592,7 @@ describe('document revision draft', () => {
   });
 
   it('creates a revision draft instead of editing an effective document in place', async () => {
-    prisma.document.findFirst.mockResolvedValue({
+    const currentDoc = {
       id: 'doc-v1',
       number: 'GRSS-PZ-ZD-08',
       title: '原物料及产品放行制度',
@@ -609,7 +609,11 @@ describe('document revision draft', () => {
       document_type: 'WORK_INSTRUCTION',
       source_folder: '03',
       lineage_key: 'GRSS-PZ-ZD-08',
-    });
+    };
+    prisma.document.findFirst
+      .mockResolvedValueOnce(currentDoc)  // findFirst for current doc
+      .mockResolvedValueOnce(null)        // findFirst for existingDraft check
+      .mockResolvedValueOnce(currentDoc); // findFirst for latest version
     prisma.document.create.mockResolvedValue({ id: 'doc-v2', versionNo: 2, status: 'draft', revisionOfId: 'doc-v1' });
 
     const result = await service.createRevisionDraft('doc-v1', 'user-2');

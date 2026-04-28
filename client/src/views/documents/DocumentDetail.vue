@@ -17,7 +17,7 @@
             {{ getStatusText(document.status) }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="版本号">v{{ document.version }}</el-descriptions-item>
+        <el-descriptions-item label="版本号">{{ displayVersion }}</el-descriptions-item>
         <el-descriptions-item label="文件名">{{ document.fileName }}</el-descriptions-item>
         <el-descriptions-item label="文件大小">{{ formatSize(Number(document.fileSize)) }}</el-descriptions-item>
         <el-descriptions-item label="创建人">{{ document.creator?.name || '-' }}</el-descriptions-item>
@@ -147,7 +147,7 @@
       <template #header>文控信息</template>
       <el-descriptions :column="2" border>
         <el-descriptions-item label="文件类型">{{ document.document_type || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="来源分类">{{ document.source_folder || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="来源分类">{{ fileCategory }}</el-descriptions-item>
         <el-descriptions-item label="负责部门">{{ ownerDepartmentLabel }}</el-descriptions-item>
         <el-descriptions-item label="负责人">{{ ownerUserLabel }}</el-descriptions-item>
         <el-descriptions-item label="复审日期">{{ document.review_due_date ? formatControlDate(document.review_due_date) : '-' }}</el-descriptions-item>
@@ -534,7 +534,7 @@ const canCreateRevision = computed(() => ['effective', 'approved'].includes(docu
 
 async function createRevision() {
   const res = await documentControlApi.createRevision(route.params.id as string);
-  router.push(`/documents/${(res as any).id}`);
+  router.push(`/documents/${res.id}`);
 }
 
 // 权限判断

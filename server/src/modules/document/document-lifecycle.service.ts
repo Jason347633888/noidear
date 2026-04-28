@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
 import { EFFECTIVE_COMPAT_STATUSES } from './constants/document-control.constants';
@@ -24,25 +24,30 @@ export class DocumentLifecycleService {
       },
     });
 
-    const published = await this.prisma.document.update({
-      where: { id },
-      data: {
-        status: 'effective',
-        effective_date: dto.effective_date ? new Date(dto.effective_date) : new Date(),
-        ...(dto.review_due_date ? { review_due_date: new Date(dto.review_due_date) } : {}),
-      },
-    });
-
-    if (currentEffective) {
-      await this.prisma.document.update({
-        where: { id: currentEffective.id },
+    const published = await this.prisma.$transaction(async (tx) => {
+      const newPublished = await tx.document.update({
+        where: { id },
         data: {
-          status: 'superseded',
-          revisionStatus: 'superseded',
-          superseded_by_id: id,
-        } as any,
+          status: 'effective',
+          revisionStatus: 'current',
+          effective_date: dto.effective_date ? new Date(dto.effective_date) : new Date(),
+          ...(dto.review_due_date ? { review_due_date: new Date(dto.review_due_date) } : {}),
+        },
       });
-    }
+
+      if (currentEffective) {
+        await tx.document.update({
+          where: { id: currentEffective.id },
+          data: {
+            status: 'superseded',
+            revisionStatus: 'superseded',
+            superseded_by_id: id,
+          } as any,
+        });
+      }
+
+      return newPublished;
+    });
 
     return published;
   }

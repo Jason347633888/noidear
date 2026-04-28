@@ -18,10 +18,12 @@ describe('DocumentLifecycleService', () => {
       upsert: jest.fn(),
       findMany: jest.fn(),
     },
+    $transaction: jest.fn(),
   };
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockPrisma.$transaction.mockImplementation(async (callback) => callback(mockPrisma));
     const module = await Test.createTestingModule({
       providers: [
         DocumentLifecycleService,

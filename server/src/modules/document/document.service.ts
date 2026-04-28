@@ -323,9 +323,7 @@ export class DocumentService {
         throw new BusinessException(ErrorCode.FORBIDDEN, '无权编辑该文档');
       }
 
-      if (document.status !== 'draft' && document.status !== 'rejected') {
-        throw new BusinessException(ErrorCode.CONFLICT, '仅草稿或驳回文档可直接编辑正文');
-      }
+      this.assertEditableDraft(document);
 
       const updated = await tx.document.update({
         where: { id },
@@ -345,6 +343,17 @@ export class DocumentService {
     if (!current) throw new BusinessException(ErrorCode.NOT_FOUND, '文件不存在');
     if (!isEffectiveCompatible((current as any).status)) {
       throw new BusinessException(ErrorCode.VALIDATION_ERROR, '只有已发布文件可以发起修订');
+    }
+
+    const existingDraft = await this.prisma.document.findFirst({
+      where: {
+        revisionOfId: id,
+        status: { in: ['draft', 'pending', 'rejected'] },
+        deletedAt: null,
+      },
+    });
+    if (existingDraft) {
+      throw new BusinessException(ErrorCode.CONFLICT, '已存在进行中的修订草稿');
     }
 
     const latest = await this.prisma.document.findFirst({
