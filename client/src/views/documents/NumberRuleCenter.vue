@@ -79,8 +79,13 @@ const form = reactive({
 });
 
 async function loadRules() {
-  const res = await documentControlApi.listNumberRules();
-  rules.value = (res as any).data ?? res;
+  try {
+    const res = await documentControlApi.listNumberRules();
+    rules.value = (res as any).data ?? res;
+  } catch (error) {
+    console.error('Failed to load number rules:', error);
+    ElMessage.error('加载编号规则失败');
+  }
 }
 
 function openCreate() {
@@ -88,16 +93,26 @@ function openCreate() {
 }
 
 async function save() {
-  await documentControlApi.upsertNumberRule({ ...form });
-  ElMessage.success('编号规则已保存');
-  dialogVisible.value = false;
-  await loadRules();
+  try {
+    await documentControlApi.upsertNumberRule({ ...form });
+    ElMessage.success('编号规则已保存');
+    dialogVisible.value = false;
+    await loadRules();
+  } catch (error) {
+    console.error('Failed to save number rule:', error);
+    ElMessage.error('保存编号规则失败');
+  }
 }
 
 async function deactivate(row: any) {
-  await documentControlApi.deactivateNumberRule(row.id);
-  ElMessage.success('编号规则已停用');
-  await loadRules();
+  try {
+    await documentControlApi.deactivateNumberRule(row.id);
+    ElMessage.success('编号规则已停用');
+    await loadRules();
+  } catch (error) {
+    console.error('Failed to deactivate number rule:', error);
+    ElMessage.error('停用编号规则失败');
+  }
 }
 
 onMounted(loadRules);
