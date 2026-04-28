@@ -37,11 +37,11 @@ import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { documentControlApi } from '@/api/document-control';
 import EvidenceChainGraph from '@/components/document/EvidenceChainGraph.vue';
-import type { EvidenceChainResult } from '@noidear/types';
+import type { EvidenceChainResult, EvidenceSourceType } from '@noidear/types';
 
 const route = useRoute();
 
-const sourceType = ref<string>((route.query.sourceType as string) || 'document');
+const sourceType = ref<EvidenceSourceType>((route.query.sourceType as EvidenceSourceType) || 'document');
 const sourceId = ref<string>((route.query.sourceId as string) || '');
 const maxDepth = ref<number>(Number(route.query.maxDepth) || 4);
 const chain = ref<EvidenceChainResult | null>(null);
@@ -61,7 +61,7 @@ const load = async () => {
       sourceId: sourceId.value,
       maxDepth: maxDepth.value,
     });
-    chain.value = result.data;
+    chain.value = result;
   } catch (err) {
     error.value = '获取证据链失败';
   } finally {

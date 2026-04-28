@@ -260,7 +260,7 @@ export class DocumentEvidenceChainService {
             nodeId: templateNodeId,
             type: 'record_template',
             label: template.name ?? template.id,
-            route: `/records/templates/${template.id}`,
+            route: null,
             depth: 2,
           });
           builder.addEdge({
@@ -507,7 +507,7 @@ export class DocumentEvidenceChainService {
       nodeId: rootNodeId,
       type: 'change_event',
       label: event.description ?? changeEventId,
-      route: `/change-events/${changeEventId}`,
+      route: null,
       depth: 0,
     });
 
@@ -667,7 +667,7 @@ export class DocumentEvidenceChainService {
       nodeId: rootNodeId,
       type: 'record_template',
       label: template.name ?? templateId,
-      route: `/records/templates/${templateId}`,
+      route: null,
       depth: 0,
     });
     const records = (await this.prisma.record.findMany({ where: { templateId } })) as unknown as RecordRow[];
@@ -696,7 +696,14 @@ export class DocumentEvidenceChainService {
     builder: EvidenceChainBuilder,
     recordId: string,
   ): Promise<void> {
-    const rec = await this.prisma.record.findUnique({ where: { id: recordId } });
+    type RecordRow = {
+      id: string;
+      number?: string | null;
+      templateId?: string | null;
+      changeEventId?: string | null;
+      approvalInstanceId?: string | null;
+    };
+    const rec = (await this.prisma.record.findUnique({ where: { id: recordId } })) as unknown as RecordRow | null;
     if (!rec) throw new NotFoundException(`Record ${recordId} not found`);
     const rootNodeId = `record:${recordId}`;
     builder.setRoot({
@@ -707,6 +714,36 @@ export class DocumentEvidenceChainService {
       route: `/records/${recordId}`,
       depth: 0,
     });
+
+    if (rec.templateId) {
+      type TemplateRow = { id: string; name?: string | null };
+      const template = (await this.prisma.recordTemplate.findUnique({
+        where: { id: rec.templateId },
+      })) as unknown as TemplateRow | null;
+      if (template) {
+        const tmplNodeId = `record_template:${template.id}`;
+        builder.addNode({ id: template.id, nodeId: tmplNodeId, type: 'record_template', label: template.name ?? template.id, route: null, depth: 1 });
+        builder.addEdge({ id: `${rootNodeId}->${tmplNodeId}`, source: rootNodeId, target: tmplNodeId, relationType: 'from_template', strength: 'strong', label: '所属模板' });
+      }
+    }
+
+    if (rec.changeEventId) {
+      type ChangeEventRow = { id: string; title?: string | null };
+      const event = (await this.prisma.changeEvent.findUnique({
+        where: { id: rec.changeEventId },
+      })) as unknown as ChangeEventRow | null;
+      if (event) {
+        const evtNodeId = `change_event:${event.id}`;
+        builder.addNode({ id: event.id, nodeId: evtNodeId, type: 'change_event', label: event.title ?? event.id, route: null, depth: 1 });
+        builder.addEdge({ id: `${rootNodeId}->${evtNodeId}`, source: rootNodeId, target: evtNodeId, relationType: 'triggered_by', strength: 'validated', label: '关联变更事件' });
+      }
+    }
+
+    if (rec.approvalInstanceId) {
+      const instNodeId = `approval_instance:${rec.approvalInstanceId}`;
+      builder.addNode({ id: rec.approvalInstanceId, nodeId: instNodeId, type: 'approval_instance', label: '审批实例', depth: 1 });
+      builder.addEdge({ id: `${rootNodeId}->${instNodeId}`, source: rootNodeId, target: instNodeId, relationType: 'has_approval', strength: 'validated', label: '审批' });
+    }
   }
 
   private async expandAuditFindingRoot(
@@ -751,9 +788,16 @@ export class DocumentEvidenceChainService {
     builder: EvidenceChainBuilder,
     correctiveActionId: string,
   ): Promise<void> {
-    const action = await this.prisma.correctiveAction.findUnique({
+    type CorrectiveActionRow = {
+      id: string;
+      description?: string | null;
+      trigger_type?: string | null;
+      trigger_id?: string | null;
+      approvalInstanceId?: string | null;
+    };
+    const action = (await this.prisma.correctiveAction.findUnique({
       where: { id: correctiveActionId },
-    });
+    })) as unknown as CorrectiveActionRow | null;
     if (!action) throw new NotFoundException(`CorrectiveAction ${correctiveActionId} not found`);
     const rootNodeId = `corrective_action:${correctiveActionId}`;
     builder.setRoot({
@@ -763,5 +807,35 @@ export class DocumentEvidenceChainService {
       label: action.description ?? correctiveActionId,
       depth: 0,
     });
+
+    if (action.trigger_type === 'internal_audit' && action.trigger_id) {
+      type AuditFindingRow = { id: string; description?: string | null };
+      const finding = (await this.prisma.auditFinding.findUnique({
+        where: { id: action.trigger_id },
+      })) as unknown as AuditFindingRow | null;
+      if (finding) {
+        const findingNodeId = `audit_finding:${finding.id}`;
+        builder.addNode({ id: finding.id, nodeId: findingNodeId, type: 'audit_finding', label: finding.description ?? finding.id, depth: 1 });
+        builder.addEdge({ id: `${rootNodeId}->${findingNodeId}`, source: rootNodeId, target: findingNodeId, relationType: 'triggered_by', strength: 'strong', label: '来源内审问题' });
+      } else {
+        builder.addWarning({ id: `warn-finding-${action.trigger_id}`, severity: 'warning', message: `关联内审问题 ${action.trigger_id} 不存在`, sourceNodeId: rootNodeId, targetId: action.trigger_id });
+      }
+    }
+
+    if (action.approvalInstanceId) {
+      const instNodeId = `approval_instance:${action.approvalInstanceId}`;
+      builder.addNode({ id: action.approvalInstanceId, nodeId: instNodeId, type: 'approval_instance', label: '审批实例', depth: 1 });
+      builder.addEdge({ id: `${rootNodeId}->${instNodeId}`, source: rootNodeId, target: instNodeId, relationType: 'has_approval', strength: 'validated', label: '审批' });
+    }
+
+    type VerificationRow = { id: string; result?: string | null };
+    const verifications = (await this.prisma.verificationRecord.findMany({
+      where: { corrective_action_id: correctiveActionId },
+    })) as unknown as VerificationRow[];
+    for (const v of verifications) {
+      const vNodeId = `verification_record:${v.id}`;
+      builder.addNode({ id: v.id, nodeId: vNodeId, type: 'verification_record', label: `验证记录 ${v.result ?? ''}`.trim(), depth: 1 });
+      builder.addEdge({ id: `${rootNodeId}->${vNodeId}`, source: rootNodeId, target: vNodeId, relationType: 'has_verification', strength: 'validated', label: '验证记录' });
+    }
   }
 }

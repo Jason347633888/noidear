@@ -21,6 +21,8 @@
           :key="node.nodeId"
           class="evidence-node"
           :data-routable="node.route ? 'true' : undefined"
+          :style="node.route ? { cursor: 'pointer' } : {}"
+          @click="node.route ? router.push(node.route) : undefined"
         >
           <span class="evidence-node-label">{{ node.label }}</span>
           <span class="evidence-node-type">{{ node.type }}</span>
@@ -40,7 +42,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import type { EvidenceChainResult, EvidenceNode } from '@noidear/types'
+
+const router = useRouter()
 
 const props = defineProps<{
   chain: EvidenceChainResult | null
