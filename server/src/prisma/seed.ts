@@ -744,7 +744,7 @@ async function main() {
     await prisma.workshopArea.upsert({
       where: { company_id_code: { company_id: '1', code: area.code } },
       update: { name: area.name, sort_order: area.sort_order, status: 'active' },
-      create: { company_id: '1', code: area.code, name: area.name, sort_order: area.sort_order },
+      create: { company_id: '1', code: area.code, name: area.name, sort_order: area.sort_order, status: 'active' },
     });
   }
 
