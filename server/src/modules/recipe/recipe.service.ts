@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 
@@ -37,9 +37,27 @@ export class RecipeService {
     // Destructure known-schema fields; `name` and `is_allergen` are spec-only
     // and not yet present in the DB schema — exclude them from Prisma calls.
     const { product_id, version_note, lines } = dto;
+
+    // Validate area_id for each line and collect area name snapshots
+    const areaSnapshots: Record<string, string> = {};
+    for (const line of lines) {
+      if (!areaSnapshots[line.area_id]) {
+        const area = await this.prisma.workshopArea.findFirst({
+          where: { id: line.area_id, company_id: '1', status: 'active', deleted_at: null },
+        });
+        if (!area) {
+          throw new BadRequestException(`配料区域不存在或已停用：${line.area_id}`);
+        }
+        areaSnapshots[line.area_id] = area.name;
+      }
+    }
+
     const schemaLines = lines.map(
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      ({ is_allergen: _ia, ...rest }) => rest,
+      ({ is_allergen: _ia, ...rest }) => ({
+        ...rest,
+        area_name_snapshot: areaSnapshots[rest.area_id],
+      }),
     );
 
     // Archive all existing active recipes for this product

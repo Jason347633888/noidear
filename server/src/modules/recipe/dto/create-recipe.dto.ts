@@ -27,6 +27,10 @@ export class RecipeLineDto {
   @IsBoolean()
   is_critical?: boolean;
 
+  @IsString()
+  @IsNotEmpty()
+  area_id: string;
+
   @IsOptional()
   @IsString()
   notes?: string;
