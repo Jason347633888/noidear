@@ -38,7 +38,7 @@ import { DocumentEvidenceChainService } from './services/document-evidence-chain
 import { DocumentReferenceHealthService } from './services/document-reference-health.service';
 import { NumberRuleService } from './services/number-rule.service';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto, WorkbenchQueryDto, WorkbenchIssueQueryDto, CreateReadRequirementDto, TrainingNeedActionDto, ImpactReviewCreateDto, ImpactItemUpdateDto, CoverageQueryDto, AuditChainQueryDto, UpdateMarkdownDto } from './dto';
-import { UpdateRecordFormLandingEntryDto, UpsertNumberRuleDto } from './dto/document-control.dto';
+import { ConfirmRecordFormLandingDto, UpdateRecordFormLandingEntryDto, UpsertNumberRuleDto } from './dto/document-control.dto';
 import { PublishDocumentDto, RollbackDocumentVersionDto } from './dto/document-lifecycle.dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -188,6 +188,26 @@ export class DocumentController {
     @Body() dto: UpdateRecordFormLandingEntryDto,
   ) {
     return this.recordFormLandingService.upsertTarget(code, dto);
+  }
+
+  @Get('record-form-index/:code/suggestion')
+  @ApiOperation({ summary: '获取源表单落地建议' })
+  getRecordFormLandingSuggestion(@Param('code') code: string) {
+    return this.recordFormLandingService.suggest(code);
+  }
+
+  @Post('record-form-index/:code/confirm')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('record_form:landing_manage')
+  @ApiOperation({ summary: '确认源表单落地关系' })
+  confirmRecordFormLanding(@Param('code') code: string, @Body() dto: ConfirmRecordFormLandingDto, @Req() req: any) {
+    return this.recordFormLandingService.confirm(code, dto, req.user.id);
+  }
+
+  @Get('record-form-index/:code/field-coverage')
+  @ApiOperation({ summary: '查询源表单字段覆盖差异' })
+  getRecordFormFieldCoverage(@Param('code') code: string) {
+    return this.recordFormLandingService.getFieldCoverage(code);
   }
 
   // =============================

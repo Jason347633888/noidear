@@ -166,6 +166,18 @@ export const documentControlApi = {
     return request.patch(`/documents/record-form-index/${code}`, payload);
   },
 
+  getRecordFormLandingSuggestion(code: string) {
+    return request.get(`/documents/record-form-index/${code}/suggestion`);
+  },
+
+  confirmRecordFormLanding(code: string, payload: Record<string, unknown>) {
+    return request.post(`/documents/record-form-index/${code}/confirm`, payload);
+  },
+
+  getRecordFormFieldCoverage(code: string) {
+    return request.get(`/documents/record-form-index/${code}/field-coverage`);
+  },
+
   updateMarkdown(documentId: string, payload: { contentMd: string }) {
     return request.patch(`/documents/${documentId}/markdown`, payload);
   },

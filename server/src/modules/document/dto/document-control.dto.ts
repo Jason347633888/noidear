@@ -298,4 +298,9 @@ export class ConfirmRecordFormLandingDto extends UpdateRecordFormLandingEntryDto
   @IsOptional()
   @IsObject()
   fieldCoverageSummary?: Record<string, unknown>;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  primaryRoute?: string;
 }
