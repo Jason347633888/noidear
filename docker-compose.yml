@@ -139,8 +139,8 @@ services:
   # 后端 NestJS 服务
   server:
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: server/Dockerfile
     container_name: noidear-server
     restart: unless-stopped
     ports:
@@ -172,8 +172,8 @@ services:
   # 前端 Vue 3 服务（nginx 静态托管 + API 反向代理）
   client:
     build:
-      context: ./client
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: client/Dockerfile
     container_name: noidear-client
     restart: unless-stopped
     ports:

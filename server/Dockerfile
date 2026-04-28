@@ -5,13 +5,13 @@ RUN apk add --no-cache openssl
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --legacy-peer-deps
+COPY package.json package-lock.json ./
+COPY server/package.json ./server/package.json
+RUN npm ci --workspace server --include-workspace-root=false
 
-COPY src/prisma ./src/prisma
+COPY server ./server
+WORKDIR /app/server
 RUN npx prisma generate --schema=src/prisma/schema.prisma
-
-COPY . .
 RUN npm run build
 
 # ---- Stage 2: Runtime ----
@@ -21,13 +21,15 @@ RUN apk add --no-cache openssl
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --only=production --legacy-peer-deps
+COPY package.json package-lock.json ./
+COPY server/package.json ./server/package.json
+RUN npm ci --workspace server --include-workspace-root=false --omit=dev
 
-COPY src/prisma ./src/prisma
+COPY server/src/prisma ./server/src/prisma
+WORKDIR /app/server
 RUN npx prisma generate --schema=src/prisma/schema.prisma
 
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/server/dist ./dist
 
 ENV NODE_ENV=production
 
