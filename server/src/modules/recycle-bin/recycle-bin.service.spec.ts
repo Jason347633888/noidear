@@ -58,6 +58,8 @@ describe('RecycleBinService', () => {
             pendingNumber: {
               create: jest.fn(),
               upsert: jest.fn(),
+              findFirst: jest.fn(),
+              update: jest.fn(),
             },
           },
         },
@@ -231,7 +233,8 @@ describe('RecycleBinService', () => {
 
       jest.spyOn(prisma.document, 'findUnique').mockResolvedValue(mockDocument as any);
       jest.spyOn(prisma.document, 'delete').mockResolvedValue({} as any);
-      jest.spyOn(prisma.pendingNumber, 'upsert').mockResolvedValue({} as any);
+      jest.spyOn(prisma.pendingNumber, 'findFirst').mockResolvedValue(null);
+      jest.spyOn(prisma.pendingNumber, 'create').mockResolvedValue({} as any);
 
       await service.permanentDelete('document', '1', 'user123', 'admin');
 
@@ -319,6 +322,7 @@ describe('RecycleBinService', () => {
 
       jest.spyOn(prisma.document, 'findUnique').mockResolvedValue(mockDocument as any);
       jest.spyOn(prisma.document, 'delete').mockResolvedValue({} as any);
+      jest.spyOn(prisma.pendingNumber, 'findFirst').mockResolvedValue(null);
       jest.spyOn(prisma.pendingNumber, 'create').mockResolvedValue({} as any);
 
       await service.batchPermanentDelete('document', ids, 'user123', 'admin');
