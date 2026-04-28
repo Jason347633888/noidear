@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Snowflake } from '../../../common/utils';
+import { UpsertNumberRuleDto } from '../dto/document-control.dto';
 
 export interface GenerateNumberInput {
   scope: 'document' | 'record_template';
@@ -112,21 +113,24 @@ export class NumberRuleService {
       throw new BadRequestException('序号位数必须在 1 到 8 之间');
     }
     const sequence = String(input.sequence).padStart(input.sequencePadding, '0');
-    return input.format
+    const escapedSep = input.separator.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let result = input.format
       .replaceAll('{prefix}', input.prefix)
       .replaceAll('{level}', String(input.level))
       .replaceAll('{departmentCode}', input.departmentCode)
       .replaceAll('{categoryCode}', input.categoryCode)
-      .replaceAll('{sequence}', sequence)
-      .replaceAll('--', input.separator)
-      .replace(new RegExp(`${input.separator}$`), '');
+      .replaceAll('{sequence}', sequence);
+    result = result.replace(new RegExp(`(${escapedSep}){2,}`, 'g'), input.separator);
+    result = result.replace(new RegExp(`^${escapedSep}`), '');
+    result = result.replace(new RegExp(`${escapedSep}$`), '');
+    return result;
   }
 
   async list() {
     return this.prisma.numberRule.findMany({ orderBy: { createdAt: 'asc' } });
   }
 
-  async upsert(dto: any) {
+  async upsert(dto: UpsertNumberRuleDto) {
     const id = this.snowflake.nextId();
     return this.prisma.numberRule.upsert({
       where: {
@@ -134,7 +138,7 @@ export class NumberRuleService {
           scope: dto.scope,
           level: dto.level,
           departmentId: dto.departmentId,
-          sourceFolder: dto.sourceFolder ?? null,
+          sourceFolder: (dto.sourceFolder ?? null) as string,
         },
       },
       update: {

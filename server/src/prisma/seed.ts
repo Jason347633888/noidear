@@ -110,6 +110,15 @@ async function main() {
       status: 'active',
       description: '可维护文控中心治理数据、记录表单落地入口、阅读要求、培训需求和影响评审',
     },
+    {
+      id: 'perm_014',
+      code: 'document:number_rule_manage',
+      name: '文件编号规则管理',
+      category: 'document',
+      scope: 'cross_department',
+      status: 'active',
+      description: '可配置和管理文件编号规则，包括格式、序号位数和分隔符设置',
+    },
     // 记录权限
     {
       id: 'perm_006',
