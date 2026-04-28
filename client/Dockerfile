@@ -5,7 +5,12 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 COPY client/package.json ./client/package.json
-RUN npm ci --workspace client --include-workspace-root=false
+COPY server/package.json ./server/package.json
+COPY mobile/package.json ./mobile/package.json
+COPY miniprogram/package.json ./miniprogram/package.json
+COPY packages/types/package.json ./packages/types/package.json
+COPY tools/noidear-mcp/package.json ./tools/noidear-mcp/package.json
+RUN npm ci --workspace client --workspace packages/types --include-workspace-root=false
 
 COPY client ./client
 WORKDIR /app/client

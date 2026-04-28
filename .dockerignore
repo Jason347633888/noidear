@@ -4,7 +4,7 @@ server/node_modules
 mobile
 miniprogram
 tools
-packages
+packages/*/node_modules
 *.md
 .git
 .gitignore

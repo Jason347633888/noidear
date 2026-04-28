@@ -6,7 +6,12 @@ RUN apk add --no-cache openssl
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY client/package.json ./client/package.json
 COPY server/package.json ./server/package.json
+COPY mobile/package.json ./mobile/package.json
+COPY miniprogram/package.json ./miniprogram/package.json
+COPY packages/types/package.json ./packages/types/package.json
+COPY tools/noidear-mcp/package.json ./tools/noidear-mcp/package.json
 RUN npm ci --workspace server --include-workspace-root=false
 
 COPY server ./server
@@ -22,7 +27,12 @@ RUN apk add --no-cache openssl
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY client/package.json ./client/package.json
 COPY server/package.json ./server/package.json
+COPY mobile/package.json ./mobile/package.json
+COPY miniprogram/package.json ./miniprogram/package.json
+COPY packages/types/package.json ./packages/types/package.json
+COPY tools/noidear-mcp/package.json ./tools/noidear-mcp/package.json
 RUN npm ci --workspace server --include-workspace-root=false --omit=dev
 
 COPY server/src/prisma ./server/src/prisma
