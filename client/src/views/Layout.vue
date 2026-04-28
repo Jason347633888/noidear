@@ -146,6 +146,7 @@ const menuItems = [
       { path: '/documents', title: '体系文件中心', icon: Files },
       { path: '/templates', title: '模板管理', icon: Grid },
       { path: '/documents/control/record-form-index', title: '记录表单索引', icon: List },
+      { path: '/documents/control/number-rules', title: '编号规则', icon: List },
       { path: '/documents/control/workbench', title: '文控工作台', icon: Monitor },
       { path: '/documents/operations/read-confirmations', title: '阅读确认', icon: List },
       { path: '/documents/operations/training-needs', title: '培训需求', icon: UserFilled },

@@ -62,6 +62,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '记录表单索引' },
       },
       {
+        path: 'documents/control/number-rules',
+        name: 'DocumentNumberRules',
+        component: () => import('@/views/documents/NumberRuleCenter.vue'),
+        meta: { title: '编号规则', requiresAuth: true },
+      },
+      {
         path: 'documents/control/workbench',
         name: 'DocumentControlWorkbench',
         component: () => import('@/views/documents/DocumentControlWorkbench.vue'),

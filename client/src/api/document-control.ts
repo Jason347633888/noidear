@@ -205,4 +205,16 @@ export const documentControlApi = {
   createRevision(documentId: string) {
     return request.post<DocumentControlDocument>(`/documents/${documentId}/revisions`);
   },
+
+  listNumberRules() {
+    return request.get('/documents/number-rules');
+  },
+
+  upsertNumberRule(payload: Record<string, unknown>) {
+    return request.post('/documents/number-rules', payload);
+  },
+
+  deactivateNumberRule(id: string) {
+    return request.post(`/documents/number-rules/${id}/deactivate`);
+  },
 };
