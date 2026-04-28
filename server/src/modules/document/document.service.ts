@@ -10,6 +10,7 @@ import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, UpdateMarkdownD
 import { NotificationService } from '../notification/notification.service';
 import { OperationLogService } from '../operation-log/operation-log.service';
 import { DocumentControlMetadataService } from './services/document-control-metadata.service';
+import { NumberRuleService } from './services/number-rule.service';
 import { FilePreviewService } from './services';
 import { MarkdownWikilinkService } from './services/markdown-wikilink.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
@@ -32,69 +33,32 @@ export class DocumentService {
     private readonly metadataService: DocumentControlMetadataService,
     private readonly filePreviewService: FilePreviewService,
     private readonly markdownWikilinkService: MarkdownWikilinkService,
+    private readonly numberRuleService: NumberRuleService,
     @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {
     this.snowflake = new Snowflake(1, 1);
   }
 
-  async generateDocumentNumber(level: number, departmentId: string): Promise<string> {
-    return this.prisma.$transaction(async (tx) => {
-      // BR-008: 优先使用待补齐编号
-      const pendingNumber = await tx.pendingNumber.findFirst({
-        where: { level, departmentId },
-        orderBy: { deletedAt: 'asc' }, // 先删除的先补齐
-      });
-
-      if (pendingNumber) {
-        // 使用待补齐编号并删除记录
-        await tx.pendingNumber.delete({
-          where: { id: pendingNumber.id },
-        });
-        return pendingNumber.number;
-      }
-
-      // 没有待补齐编号，生成新编号（原逻辑）
-      // 查询部门获取部门代码
-      const department = await tx.department.findUnique({
-        where: { id: departmentId },
-      });
-
-      if (!department) {
-        throw new BusinessException(ErrorCode.NOT_FOUND, '部门不存在');
-      }
-
-      // 使用 SELECT FOR UPDATE 锁定行，防止并发冲突
-      const rules = await tx.$queryRaw<Array<{ id: string; sequence: number }>>`
-        SELECT id, sequence FROM number_rules
-        WHERE level = ${level} AND department_id = ${departmentId}
-        FOR UPDATE
-      `;
-
-      let rule = rules[0];
-      if (!rule) {
-        // 创建新规则
-        rule = await tx.numberRule.create({
-          data: {
-            id: this.snowflake.nextId(),
-            level,
-            departmentId,
-            sequence: 0,
-          },
-        });
-      }
-
-      const newSequence = rule.sequence + 1;
-
-      // 更新序号
-      await tx.numberRule.update({
-        where: { id: rule.id },
-        data: { sequence: newSequence },
-      });
-
-      const seqStr = String(newSequence).padStart(3, '0');
-      // 格式: {级别}-{部门代码}-{序号} 如 1-HR-001
-      return `${level}-${department.code}-${seqStr}`;
+  async generateDocumentNumber(level: number, departmentId: string, sourceFolder?: string | null): Promise<string> {
+    return this.numberRuleService.generate({
+      scope: 'document',
+      level,
+      departmentId,
+      sourceFolder: sourceFolder ?? null,
+      fallbackCategoryCode: this.categoryCodeForSourceFolder(sourceFolder),
     });
+  }
+
+  private categoryCodeForSourceFolder(sourceFolder?: string | null) {
+    const map: Record<string, string> = {
+      '01': 'SC',
+      '02': 'CX',
+      '03': 'ZD',
+      '04': 'JL',
+      '05': 'GS',
+      '06': 'WL',
+    };
+    return sourceFolder ? map[sourceFolder] : undefined;
   }
 
   async create(dto: CreateDocumentDto, file: Express.Multer.File, userId: string) {
@@ -126,7 +90,7 @@ export class DocumentService {
     const controlData = this.metadataService.normalize(dto.control);
     await this.validateOwnerReferences(controlData as Record<string, unknown>);
 
-    const number = await this.generateDocumentNumber(dto.level, user.departmentId);
+    const number = await this.generateDocumentNumber(dto.level, user.departmentId, controlData.source_folder as string | null | undefined);
     const uploadResult = await this.storage.uploadFile(file, `documents/level${dto.level}`);
 
     const result = await this.prisma.document.create({

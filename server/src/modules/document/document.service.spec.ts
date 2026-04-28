@@ -10,6 +10,7 @@ import { DocumentControlMetadataService } from './services/document-control-meta
 import { FilePreviewService } from './services';
 import { EFFECTIVE_COMPAT_STATUSES } from './constants/document-control.constants';
 import { MarkdownWikilinkService } from './services/markdown-wikilink.service';
+import { NumberRuleService } from './services/number-rule.service';
 import { ErrorCode } from '../../common/exceptions/business.exception';
 
 describe('DocumentService document control metadata', () => {
@@ -53,6 +54,7 @@ describe('DocumentService document control metadata', () => {
         { provide: EventEmitter2, useValue: eventEmitter },
         { provide: FilePreviewService, useValue: filePreview },
         { provide: MarkdownWikilinkService, useValue: markdownWikilinkService },
+        { provide: NumberRuleService, useValue: { generate: jest.fn().mockResolvedValue('2-PZ-001') } },
       ],
     }).compile();
     service = module.get(DocumentService);
@@ -250,6 +252,7 @@ describe('document status compatibility', () => {
         { provide: EventEmitter2, useValue: eventEmitter },
         { provide: FilePreviewService, useValue: filePreview },
         { provide: MarkdownWikilinkService, useValue: markdownWikilinkService },
+        { provide: NumberRuleService, useValue: { generate: jest.fn().mockResolvedValue('2-PZ-001') } },
       ],
     }).compile();
     service = module.get(DocumentService);
@@ -375,6 +378,7 @@ describe('document version operations', () => {
         { provide: EventEmitter2, useValue: eventEmitter },
         { provide: FilePreviewService, useValue: filePreview },
         { provide: MarkdownWikilinkService, useValue: markdownWikilinkService },
+        { provide: NumberRuleService, useValue: { generate: jest.fn().mockResolvedValue('2-PZ-001') } },
       ],
     }).compile();
     service = module.get(DocumentService);
@@ -579,6 +583,7 @@ describe('document owner strong references', () => {
         { provide: EventEmitter2, useValue: eventEmitter },
         { provide: FilePreviewService, useValue: filePreview },
         { provide: MarkdownWikilinkService, useValue: markdownWikilinkService },
+        { provide: NumberRuleService, useValue: { generate: jest.fn().mockResolvedValue('2-PZ-001') } },
       ],
     }).compile();
     service = module.get(DocumentService);
