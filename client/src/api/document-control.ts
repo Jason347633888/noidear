@@ -1,4 +1,5 @@
 import request from './request';
+import type { EvidenceChainQuery, EvidenceChainResult } from '@noidear/types';
 
 export type DocumentType =
   | 'MANUAL'
@@ -181,5 +182,9 @@ export const documentControlApi = {
 
   listWorkbenchIssues(params: { type: WorkbenchIssueType; page?: number; limit?: number; days?: number }) {
     return request.get<WorkbenchIssueListResponse>('/documents/control/workbench/issues', { params });
+  },
+
+  getEvidenceChain(params: EvidenceChainQuery) {
+    return request.get<EvidenceChainResult>('/documents/control/evidence-chain', { params });
   },
 };

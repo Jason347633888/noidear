@@ -16,6 +16,7 @@ import {
   FileTypeValidator,
   Req,
   Res,
+  BadRequestException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -33,6 +34,7 @@ import { DocumentAuditCoverageService } from './services/document-audit-coverage
 import { DocumentImpactService } from './services/document-impact.service';
 import { DocumentHealthService } from './services/document-health.service';
 import { DocumentAuditChainService } from './services/document-audit-chain.service';
+import { DocumentEvidenceChainService } from './services/document-evidence-chain.service';
 import { DocumentReferenceHealthService } from './services/document-reference-health.service';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto, WorkbenchQueryDto, WorkbenchIssueQueryDto, CreateReadRequirementDto, TrainingNeedActionDto, ImpactReviewCreateDto, ImpactItemUpdateDto, CoverageQueryDto, AuditChainQueryDto, UpdateMarkdownDto } from './dto';
 import { UpdateRecordFormLandingEntryDto } from './dto/document-control.dto';
@@ -69,6 +71,7 @@ export class DocumentController {
     private readonly impactService: DocumentImpactService,
     private readonly healthService: DocumentHealthService,
     private readonly auditChainService: DocumentAuditChainService,
+    private readonly evidenceChainService: DocumentEvidenceChainService,
     private readonly referenceHealthService: DocumentReferenceHealthService,
   ) {}
 
@@ -274,6 +277,27 @@ export class DocumentController {
   @ApiOperation({ summary: '查询审计链' })
   getAuditChain(@Query() dto: AuditChainQueryDto) {
     return this.auditChainService.getChain(dto.sourceType, dto.sourceId, dto.maxDepth ?? 4);
+  }
+
+  @Get('control/evidence-chain')
+  @ApiOperation({ summary: '证据链查询' })
+  getEvidenceChain(
+    @Query('sourceType') sourceType: string,
+    @Query('sourceId') sourceId: string,
+    @Query('maxDepth') maxDepth?: string,
+  ): Promise<any> {
+    if (!sourceType || !sourceId) {
+      throw new BadRequestException('sourceType and sourceId are required');
+    }
+    const validTypes = ['document', 'record_template', 'record', 'change_event', 'audit_finding', 'corrective_action'];
+    if (!validTypes.includes(sourceType)) {
+      throw new BadRequestException(`Unsupported sourceType: ${sourceType}`);
+    }
+    return this.evidenceChainService.getChain({
+      sourceType: sourceType as any,
+      sourceId,
+      maxDepth: maxDepth ? Number(maxDepth) : undefined,
+    });
   }
 
   @Get('reference-health/issues')
