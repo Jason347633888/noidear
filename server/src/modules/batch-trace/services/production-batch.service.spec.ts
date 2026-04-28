@@ -4,26 +4,34 @@ import { ProductionBatchService } from './production-batch.service';
 import { BatchNumberGeneratorService } from './batch-number-generator.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
+const mockPrisma = {
+  product: {
+    findFirst: jest.fn(),
+  },
+  recipe: {
+    findFirst: jest.fn(),
+  },
+  productionBatch: {
+    create: jest.fn(),
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    update: jest.fn(),
+    count: jest.fn(),
+  },
+};
+
 describe('ProductionBatchService', () => {
   let service: ProductionBatchService;
-  let prisma: PrismaService;
   let batchNumberGenerator: BatchNumberGeneratorService;
 
   beforeEach(async () => {
+    jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProductionBatchService,
         {
           provide: PrismaService,
-          useValue: {
-            productionBatch: {
-              create: jest.fn(),
-              findMany: jest.fn(),
-              findUnique: jest.fn(),
-              update: jest.fn(),
-              count: jest.fn(),
-            },
-          },
+          useValue: mockPrisma,
         },
         {
           provide: BatchNumberGeneratorService,
@@ -35,37 +43,65 @@ describe('ProductionBatchService', () => {
     }).compile();
 
     service = module.get<ProductionBatchService>(ProductionBatchService);
-    prisma = module.get<PrismaService>(PrismaService);
     batchNumberGenerator = module.get<BatchNumberGeneratorService>(BatchNumberGeneratorService);
-  });
-
-  afterEach(() => {
-    jest.clearAllMocks();
   });
 
   describe('create', () => {
     it('should create production batch with auto-generated batch number', async () => {
-      const createDto = {
-        productName: '蛋糕',
-        plannedQuantity: 100,
-        productionDate: new Date('2026-02-15'),
-      };
-
       jest.spyOn(batchNumberGenerator, 'generateBatchNumber').mockResolvedValue('PROD-20260215-001');
+      mockPrisma.product.findFirst.mockResolvedValue({ id: 'p1', name: '蛋糕', status: 'active' });
+      mockPrisma.recipe.findFirst.mockResolvedValue({ id: 'r1', version: 1, status: 'active', product_id: 'p1' });
 
       const mockBatch = {
         id: 'batch-001',
         batchNumber: 'PROD-20260215-001',
-        ...createDto,
+        productId: 'p1',
+        recipeId: 'r1',
+        productName: '蛋糕',
+        recipeName: 'v1',
+        plannedQuantity: 100,
+        productionDate: new Date('2026-02-15'),
         status: 'pending',
       };
 
-      jest.spyOn(prisma.productionBatch, 'create').mockResolvedValue(mockBatch as any);
+      mockPrisma.productionBatch.create.mockResolvedValue(mockBatch);
 
-      const result = await service.create(createDto);
+      const result = await service.create({
+        productId: 'p1',
+        recipeId: 'r1',
+        plannedQuantity: 100,
+        productionDate: new Date('2026-02-15'),
+      });
 
       expect(result.batchNumber).toBe('PROD-20260215-001');
       expect(batchNumberGenerator.generateBatchNumber).toHaveBeenCalledWith('production');
+    });
+
+    it('创建生产批次时根据产品和配方写入快照', async () => {
+      jest.spyOn(batchNumberGenerator, 'generateBatchNumber').mockResolvedValue('PROD-20260429-001');
+      mockPrisma.product.findFirst.mockResolvedValue({ id: 'p1', name: '老产品A', code: 'CP-000001', status: 'active' });
+      mockPrisma.recipe.findFirst.mockResolvedValue({ id: 'r1', version: 1, status: 'active', product_id: 'p1' });
+      mockPrisma.productionBatch.create.mockResolvedValue({ id: 'pb1' });
+
+      await service.create({
+        productId: 'p1',
+        recipeId: 'r1',
+        plannedQuantity: 100,
+        productionDate: new Date('2026-04-29T00:00:00.000Z'),
+      });
+
+      expect(mockPrisma.productionBatch.create).toHaveBeenCalledWith({
+        data: {
+          batchNumber: 'PROD-20260429-001',
+          productId: 'p1',
+          recipeId: 'r1',
+          productName: '老产品A',
+          recipeName: 'v1',
+          plannedQuantity: 100,
+          productionDate: new Date('2026-04-29T00:00:00.000Z'),
+          status: 'pending',
+        },
+      });
     });
   });
 
@@ -81,8 +117,8 @@ describe('ProductionBatchService', () => {
         },
       ];
 
-      jest.spyOn(prisma.productionBatch, 'findMany').mockResolvedValue(mockBatches as any);
-      jest.spyOn(prisma.productionBatch, 'count').mockResolvedValue(1);
+      mockPrisma.productionBatch.findMany.mockResolvedValue(mockBatches);
+      mockPrisma.productionBatch.count.mockResolvedValue(1);
 
       const result = await service.findAll(query);
 
@@ -101,12 +137,12 @@ describe('ProductionBatchService', () => {
         status: 'completed',
       };
 
-      jest.spyOn(prisma.productionBatch, 'findMany').mockResolvedValue([]);
-      jest.spyOn(prisma.productionBatch, 'count').mockResolvedValue(0);
+      mockPrisma.productionBatch.findMany.mockResolvedValue([]);
+      mockPrisma.productionBatch.count.mockResolvedValue(0);
 
       await service.findAll(query);
 
-      expect(prisma.productionBatch.findMany).toHaveBeenCalledWith({
+      expect(mockPrisma.productionBatch.findMany).toHaveBeenCalledWith({
         where: {
           deletedAt: null,
           status: 'completed',
@@ -126,7 +162,7 @@ describe('ProductionBatchService', () => {
         deletedAt: null,
       };
 
-      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockBatch as any);
+      mockPrisma.productionBatch.findUnique.mockResolvedValue(mockBatch);
 
       const result = await service.findOne('batch-001');
 
@@ -134,7 +170,7 @@ describe('ProductionBatchService', () => {
     });
 
     it('should throw NotFoundException if not found', async () => {
-      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(null);
+      mockPrisma.productionBatch.findUnique.mockResolvedValue(null);
 
       await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);
     });
@@ -151,11 +187,11 @@ describe('ProductionBatchService', () => {
         deletedAt: null,
       };
 
-      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockBatch as any);
-      jest.spyOn(prisma.productionBatch, 'update').mockResolvedValue({
+      mockPrisma.productionBatch.findUnique.mockResolvedValue(mockBatch);
+      mockPrisma.productionBatch.update.mockResolvedValue({
         ...mockBatch,
         ...updateDto,
-      } as any);
+      });
 
       const result = await service.update('batch-001', updateDto);
 
@@ -172,7 +208,7 @@ describe('ProductionBatchService', () => {
         deletedAt: null,
       };
 
-      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockBatch as any);
+      mockPrisma.productionBatch.findUnique.mockResolvedValue(mockBatch);
 
       await expect(service.update('batch-001', updateDto as any)).rejects.toThrow(
         BadRequestException,

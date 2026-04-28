@@ -10,6 +10,8 @@ describe('ProductionRunService', () => {
 
   const mockPrisma = {
     shiftInstance: { findFirst: jest.fn() },
+    product: { findFirst: jest.fn() },
+    recipe: { findFirst: jest.fn() },
     productionRun: {
       create: jest.fn(),
       findMany: jest.fn(),
@@ -34,24 +36,57 @@ describe('ProductionRunService', () => {
     it('should throw NotFoundException when shift not found', async () => {
       mockPrisma.shiftInstance.findFirst.mockResolvedValue(null);
       await expect(
-        service.create({ shift_instance_id: 'x', production_line: '1', product_id: 'p1' }),
+        service.create({ shift_instance_id: 'x', production_line: '1', product_id: 'p1', recipe_id: 'r1' }),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException when shift is closed', async () => {
       mockPrisma.shiftInstance.findFirst.mockResolvedValue({ id: 's1', status: 'closed' });
       await expect(
-        service.create({ shift_instance_id: 's1', production_line: '1', product_id: 'p1' }),
+        service.create({ shift_instance_id: 's1', production_line: '1', product_id: 'p1', recipe_id: 'r1' }),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should create run for open shift', async () => {
-      mockPrisma.shiftInstance.findFirst.mockResolvedValue({ id: 's1', status: 'open' });
+      mockPrisma.shiftInstance.findFirst.mockResolvedValue({ id: 's1', status: 'open', company_id: '1' });
+      mockPrisma.product.findFirst.mockResolvedValue({ id: 'p1', status: 'active' });
+      mockPrisma.recipe.findFirst.mockResolvedValue({ id: 'r1', product_id: 'p1', status: 'active' });
       mockPrisma.productionRun.create.mockResolvedValue({ id: 'r1', status: 'active' });
       const result = await service.create({
-        shift_instance_id: 's1', production_line: '1', product_id: 'p1',
+        shift_instance_id: 's1', production_line: '1', product_id: 'p1', recipe_id: 'r1',
       });
       expect(result.status).toBe('active');
+    });
+
+    it('开工时要求 active 产品和匹配的 active 配方', async () => {
+      mockPrisma.shiftInstance.findFirst.mockResolvedValue({ id: 's1', status: 'open', company_id: '1' });
+      mockPrisma.product.findFirst.mockResolvedValue({ id: 'p1', status: 'active' });
+      mockPrisma.recipe.findFirst.mockResolvedValue({ id: 'r1', product_id: 'p1', status: 'active' });
+      mockPrisma.productionRun.create.mockResolvedValue({ id: 'run-1' });
+
+      await service.create({
+        shift_instance_id: 's1',
+        production_line: '1号线',
+        product_id: 'p1',
+        recipe_id: 'r1',
+      });
+
+      expect(mockPrisma.recipe.findFirst).toHaveBeenCalledWith({
+        where: { id: 'r1', product_id: 'p1', company_id: '1', status: 'active' },
+      });
+    });
+
+    it('没有 active 配方时拒绝开工', async () => {
+      mockPrisma.shiftInstance.findFirst.mockResolvedValue({ id: 's1', status: 'open', company_id: '1' });
+      mockPrisma.product.findFirst.mockResolvedValue({ id: 'p1', status: 'active' });
+      mockPrisma.recipe.findFirst.mockResolvedValue(null);
+
+      await expect(service.create({
+        shift_instance_id: 's1',
+        production_line: '1号线',
+        product_id: 'p1',
+        recipe_id: 'r1',
+      })).rejects.toThrow('配方不存在、未激活或不属于该产品');
     });
   });
 
