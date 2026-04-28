@@ -40,8 +40,10 @@ export interface DocumentReference {
   targetRoute?: string | null;
   targetLabel?: string | null;
   relationType: string;
-  targetDoc?: { id: string; title: string; status: string } | null;
-  sourceDoc?: { id: string; title: string; status: string } | null;
+  sectionId?: string | null;
+  wikilinkTarget?: string | null;
+  targetDoc?: { id: string; title: string; status: string; number?: string | null; doc_code?: string | null } | null;
+  sourceDoc?: { id: string; title: string; status: string; number?: string | null; doc_code?: string | null } | null;
 }
 
 export type ReferenceHealthStatus = 'healthy' | 'dangling' | 'invalid' | 'conflict' | 'superseded';

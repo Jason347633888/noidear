@@ -9,14 +9,14 @@ describe('MarkdownWikilinkService', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
-    prisma.document.findUnique.mockResolvedValue({ id: 'source1', title: '当前文件', number: 'DOC-001', doc_code: 'GRSS-CX-01' });
+    prisma.document.findUnique.mockResolvedValue({ id: 'source1', title: '当前文件', number: 'DOC-001', doc_code: null });
     prisma.documentReference.deleteMany.mockResolvedValue({ count: 0 });
     prisma.documentReference.create.mockResolvedValue({ id: 'ref1' });
     service = new MarkdownWikilinkService(prisma as any);
   });
 
-  it('extracts unique trimmed non-empty wikilink labels', () => {
-    expect(service.extractWikilinks('引用 [[GRSS-CX-01]]、[[ 原辅料验收标准 ]]、[[]]、[[GRSS-CX-01]]')).toEqual([
+  it('extracts unique trimmed wikilink targets without alias display labels', () => {
+    expect(service.extractWikilinks('引用 [[GRSS-CX-01|文件控制程序]]、[[ 原辅料验收标准 ]]、[[]]、[[GRSS-CX-01|重复显示]]')).toEqual([
       'GRSS-CX-01',
       '原辅料验收标准',
     ]);
@@ -38,6 +38,7 @@ describe('MarkdownWikilinkService', () => {
         targetLabel: '原辅料验收标准',
         relationType: 'WIKILINK',
         sectionId: 'wikilink:原辅料验收标准',
+        wikilinkTarget: '原辅料验收标准',
       }),
     });
     expect(prisma.document.findMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -61,6 +62,7 @@ describe('MarkdownWikilinkService', () => {
         targetLabel: '不存在的文件',
         relationType: 'WIKILINK',
         sectionId: 'wikilink:不存在的文件',
+        wikilinkTarget: '不存在的文件',
       }),
     });
   });
@@ -84,6 +86,7 @@ describe('MarkdownWikilinkService', () => {
         relationType: 'WIKILINK',
         sectionId: 'wikilink:原辅料验收标准',
         snapshot: { candidates },
+        wikilinkTarget: '原辅料验收标准',
       }),
     });
   });
@@ -99,6 +102,32 @@ describe('MarkdownWikilinkService', () => {
     expect(prisma.documentReference.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
       prisma.documentReference.create.mock.invocationCallOrder[0],
     );
+  });
+
+  it('stores the alias target as wikilinkTarget and not the display label', async () => {
+    prisma.document.findMany.mockResolvedValueOnce([
+      { id: 'target1', title: '文件控制程序', number: 'GRSS-CX-01', doc_code: null },
+    ]);
+
+    await service.syncDocumentWikilinks('source1', '见 [[GRSS-CX-01|文件控制程序]]');
+
+    expect(prisma.document.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        OR: [
+          { number: 'GRSS-CX-01' },
+          { title: 'GRSS-CX-01' },
+          { doc_code: 'GRSS-CX-01' },
+        ],
+      }),
+    }));
+    expect(prisma.documentReference.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        targetDocId: 'target1',
+        targetLabel: '文件控制程序',
+        sectionId: 'wikilink:GRSS-CX-01',
+        wikilinkTarget: 'GRSS-CX-01',
+      }),
+    });
   });
 
   it('skips self-references when wikilink matches the source document', async () => {

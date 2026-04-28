@@ -8,14 +8,19 @@ export class MarkdownWikilinkService {
   constructor(private readonly prisma: PrismaService) {}
 
   extractWikilinks(content: string): string[] {
-    const labels = Array.from(content.matchAll(/\[\[([^\]]+)\]\]/g))
-      .map((match) => match[1].trim())
-      .filter(Boolean);
-    return Array.from(new Set(labels));
+    const targets = Array.from(content.matchAll(/\[\[([^\]]+)\]\]/g))
+      .map((match) => this.extractTarget(match[1]))
+      .filter((target): target is string => Boolean(target));
+    return Array.from(new Set(targets));
+  }
+
+  private extractTarget(raw: string): string | null {
+    const target = raw.split('|')[0]?.trim();
+    return target || null;
   }
 
   async syncDocumentWikilinks(sourceDocId: string, content: string, client: WikilinkPrismaClient = this.prisma) {
-    const labels = this.extractWikilinks(content);
+    const wikilinkEntries = this.parseWikilinks(content);
 
     await client.documentReference.deleteMany({
       where: { sourceDocId, relationType: 'WIKILINK' },
@@ -26,8 +31,8 @@ export class MarkdownWikilinkService {
       select: { id: true, title: true, number: true, doc_code: true },
     });
 
-    for (const label of labels) {
-      if (this.matchesDocumentLabel(sourceDocument, label)) {
+    for (const { target, displayLabel } of wikilinkEntries) {
+      if (this.matchesDocumentLabel(sourceDocument, target)) {
         continue;
       }
 
@@ -36,28 +41,29 @@ export class MarkdownWikilinkService {
           id: { not: sourceDocId },
           deletedAt: null,
           OR: [
-            { number: label },
-            { title: label },
-            { doc_code: label },
+            { number: target },
+            { title: target },
+            { doc_code: target },
           ],
         },
         select: { id: true, title: true, number: true, doc_code: true },
         take: 10,
       });
 
-      const sectionId = `wikilink:${label}`;
+      const sectionId = `wikilink:${target}`;
 
       if (targets.length === 1) {
-        const target = targets[0];
+        const resolvedTarget = targets[0];
         await client.documentReference.create({
           data: {
             sourceDocId,
-            targetDocId: target.id,
+            targetDocId: resolvedTarget.id,
             targetType: 'document',
-            targetId: target.id,
-            targetLabel: target.title || target.number || label,
+            targetId: resolvedTarget.id,
+            targetLabel: displayLabel || resolvedTarget.title || resolvedTarget.number || target,
             relationType: 'WIKILINK',
             sectionId,
+            wikilinkTarget: target,
             syncedAt: new Date(),
           },
         });
@@ -70,14 +76,33 @@ export class MarkdownWikilinkService {
           targetDocId: null,
           targetType: targets.length > 1 ? 'conflict_document' : 'unresolved_document',
           targetId: null,
-          targetLabel: label,
+          targetLabel: displayLabel || target,
           relationType: 'WIKILINK',
           sectionId,
+          wikilinkTarget: target,
           snapshot: targets.length > 1 ? { candidates: targets } : undefined,
           syncedAt: new Date(),
         },
       });
     }
+  }
+
+  private parseWikilinks(content: string): Array<{ target: string; displayLabel: string | null }> {
+    const seen = new Set<string>();
+    const entries: Array<{ target: string; displayLabel: string | null }> = [];
+
+    for (const match of content.matchAll(/\[\[([^\]]+)\]\]/g)) {
+      const raw = match[1];
+      const parts = raw.split('|');
+      const target = parts[0]?.trim();
+      if (!target) continue;
+      if (seen.has(target)) continue;
+      seen.add(target);
+      const displayLabel = parts[1]?.trim() || null;
+      entries.push({ target, displayLabel });
+    }
+
+    return entries;
   }
 
   private matchesDocumentLabel(
