@@ -2372,17 +2372,19 @@ model DocumentReference {
   targetLabel String?
   relationType String @default("RELATED_TO")
 
-  sectionId   String?
-  snapshot    Json?
-  syncedAt    DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  sectionId      String?
+  wikilinkTarget String?
+  snapshot       Json?
+  syncedAt       DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@unique([sourceDocId, targetType, targetId, targetRoute, sectionId])
   @@index([sourceDocId])
   @@index([targetDocId])
   @@index([targetType, targetId])
   @@index([relationType])
+  @@index([wikilinkTarget])
   @@map("document_references")
 }
 
