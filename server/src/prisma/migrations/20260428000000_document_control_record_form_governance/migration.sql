@@ -55,3 +55,15 @@ CREATE INDEX IF NOT EXISTS "record_templates_version_status_idx" ON "record_temp
 CREATE INDEX IF NOT EXISTS "record_form_landing_entries_landing_status_idx" ON "record_form_landing_entries"("landing_status");
 CREATE INDEX IF NOT EXISTS "record_form_landing_entries_confirmation_status_idx" ON "record_form_landing_entries"("confirmation_status");
 CREATE INDEX IF NOT EXISTS "record_form_landing_entries_field_coverage_status_idx" ON "record_form_landing_entries"("field_coverage_status");
+
+CREATE INDEX IF NOT EXISTS "record_form_landing_entries_target_template_id_idx" ON "record_form_landing_entries"("target_template_id");
+
+-- Drop old unique constraint on number_rules (if it exists)
+ALTER TABLE "number_rules" DROP CONSTRAINT IF EXISTS "number_rules_level_department_id_key";
+-- Create new unique constraint
+CREATE UNIQUE INDEX IF NOT EXISTS "number_rules_scope_level_department_id_source_folder_key" ON "number_rules"("scope", "level", "department_id", "source_folder");
+
+-- Drop old unique constraint on pending_numbers (if it exists)
+ALTER TABLE "pending_numbers" DROP CONSTRAINT IF EXISTS "pending_numbers_level_department_id_number_key";
+-- Create new unique constraint
+CREATE UNIQUE INDEX IF NOT EXISTS "pending_numbers_scope_level_department_id_source_folder_number_key" ON "pending_numbers"("scope", "level", "department_id", "source_folder", "number");
