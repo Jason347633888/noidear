@@ -1,0 +1,30 @@
+{
+  "name": "noidear",
+  "version": "1.0.0",
+  "private": true,
+  "description": "noidear food safety and quality management platform",
+  "workspaces": [
+    "client",
+    "server",
+    "mobile",
+    "miniprogram",
+    "packages/types",
+    "tools/noidear-mcp"
+  ],
+  "engines": {
+    "node": ">=20 <23",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "install:all": "npm install",
+    "build:client": "npm run build -w client",
+    "build:server": "npm run build -w server",
+    "build:mcp": "npm run build -w tools/noidear-mcp",
+    "typecheck:types": "npm run typecheck -w packages/types",
+    "test:client": "npm run test -w client",
+    "test:server": "npm run test -w server",
+    "prisma:generate": "npm run prisma:generate -w server",
+    "verify": "npm run build:server && npm run build:client",
+    "verify:full": "npm run typecheck:types && npm run build:mcp && npm run build:server && npm run build:client"
+  }
+}
