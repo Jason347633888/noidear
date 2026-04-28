@@ -49,15 +49,52 @@ export function toDisplayStatus(status: string | null | undefined): string {
 
 export const REFERENCE_TARGET_TYPES = [
   'document',
+  'unresolved_document',
+  'conflict_document',
+  'record_form_landing',
+  'unresolved_record_form',
+  'conflict_record_form',
   'record_template',
-  'record_list',
   'business_module',
   'business_object',
-  'external_file',
-  'company_file',
 ] as const;
 
 export type ReferenceTargetType = (typeof REFERENCE_TARGET_TYPES)[number];
+
+export const NUMBER_RULE_SCOPES = ['document', 'record_template'] as const;
+export type NumberRuleScope = typeof NUMBER_RULE_SCOPES[number];
+
+export const LANDING_STRATEGIES = [
+  'business_module',
+  'dynamic_form',
+  'partial',
+  'unimplemented',
+  'not_suitable',
+] as const;
+
+export const LANDING_STATUSES = [
+  'business_module',
+  'dynamic_form',
+  'partial',
+  'unimplemented',
+  'not_suitable',
+  'conflict',
+] as const;
+
+export const LANDING_CONFIRMATION_STATUSES = [
+  'unconfirmed',
+  'suggested',
+  'confirmed',
+  'rejected',
+] as const;
+
+export const FIELD_COVERAGE_STATUSES = [
+  'unknown',
+  'covered',
+  'partial',
+  'missing',
+  'not_required',
+] as const;
 
 export const DOCUMENT_RELATION_TYPES = [
   'IMPLEMENTS',

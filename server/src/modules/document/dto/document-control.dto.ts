@@ -13,6 +13,10 @@ import {
 import {
   DOCUMENT_RELATION_TYPES,
   DOCUMENT_TYPES,
+  FIELD_COVERAGE_STATUSES,
+  LANDING_CONFIRMATION_STATUSES,
+  LANDING_STATUSES,
+  NUMBER_RULE_SCOPES,
   REFERENCE_TARGET_TYPES,
   SOURCE_FOLDERS,
 } from '../constants/document-control.constants';
@@ -230,4 +234,64 @@ export interface WorkbenchIssueListResponse {
   page: number;
   limit: number;
   totalPages: number;
+}
+
+export class UpsertNumberRuleDto {
+  @IsIn(NUMBER_RULE_SCOPES)
+  scope!: string;
+
+  @Type(() => Number)
+  level!: number;
+
+  @IsString()
+  departmentId!: string;
+
+  @IsOptional()
+  @IsString()
+  sourceFolder?: string;
+
+  @IsOptional()
+  @IsString()
+  prefix?: string;
+
+  @IsOptional()
+  @IsString()
+  categoryCode?: string;
+
+  @IsOptional()
+  @IsString()
+  format?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  sequencePadding?: number;
+
+  @IsOptional()
+  @IsString()
+  separator?: string;
+
+  @IsOptional()
+  @IsString()
+  resetPolicy?: string;
+}
+
+export class ConfirmRecordFormLandingDto extends UpdateRecordFormLandingEntryDto {
+  @IsIn(LANDING_STATUSES)
+  landingStatus!: string;
+
+  @IsOptional()
+  @IsIn(LANDING_CONFIRMATION_STATUSES)
+  confirmationStatus?: string;
+
+  @IsOptional()
+  @IsString()
+  confidence?: string;
+
+  @IsOptional()
+  @IsIn(FIELD_COVERAGE_STATUSES)
+  fieldCoverageStatus?: string;
+
+  @IsOptional()
+  @IsObject()
+  fieldCoverageSummary?: Record<string, unknown>;
 }
