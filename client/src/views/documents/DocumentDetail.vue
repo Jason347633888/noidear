@@ -182,6 +182,8 @@
       <MarkdownViewer
         v-else
         :content="document.content_md"
+        :wikilink-status-by-target="wikilinkStatusByTarget"
+        @wikilink-click="handleMarkdownWikilinkClick"
       />
     </el-card>
 
@@ -434,11 +436,14 @@ interface DocumentReference {
   sourceDocId?: string;
   relationType: string;
   targetType?: string;
+  targetDocId?: string | null;
   targetLabel?: string;
   targetRoute?: string;
   targetId?: string;
-  targetDoc?: { id: string; title: string; status: string } | null;
-  sourceDoc?: { id: string; title: string; status: string } | null;
+  sectionId?: string | null;
+  wikilinkTarget?: string | null;
+  targetDoc?: { id: string; title: string; status: string; number?: string | null; doc_code?: string | null } | null;
+  sourceDoc?: { id: string; title: string; status: string; number?: string | null; doc_code?: string | null } | null;
   snapshot?: {
     candidates?: Array<{ id: string; title?: string | null; number?: string | null; doc_code?: string | null }>;
   } | null;
@@ -795,6 +800,76 @@ const saveMarkdown = async () => {
   } finally {
     savingMarkdown.value = false;
   }
+};
+
+const wikilinkLegacyTarget = (ref: DocumentReference): string | null => (
+  ref.sectionId?.startsWith('wikilink:') ? ref.sectionId.slice('wikilink:'.length) : null
+);
+
+const wikilinkReferenceTarget = (ref: DocumentReference): string | null => (
+  ref.wikilinkTarget || wikilinkLegacyTarget(ref) || ref.targetLabel || null
+);
+
+const wikilinkStatusByTarget = computed(() => {
+  const statusMap: Record<string, 'resolved' | 'dangling' | 'conflict' | 'unknown'> = {};
+
+  for (const ref of outboundReferences.value) {
+    if (ref.relationType !== 'WIKILINK' || !ref.targetDocId) continue;
+    const target = wikilinkReferenceTarget(ref);
+    if (target) statusMap[target] = 'resolved';
+  }
+  for (const issue of referenceHealthIssues.value) {
+    if (issue.status === 'dangling') statusMap[issue.label] = 'dangling';
+    if (issue.status === 'conflict') statusMap[issue.label] = 'conflict';
+  }
+
+  return statusMap;
+});
+
+const findResolvedWikilinkReference = (target: string): DocumentReference | undefined => (
+  outboundReferences.value.find((ref) =>
+    ref.relationType === 'WIKILINK' &&
+    Boolean(ref.targetDocId) &&
+    (
+      ref.wikilinkTarget === target ||
+      ref.sectionId === `wikilink:${target}` ||
+      ref.targetLabel === target ||
+      ref.targetDoc?.number === target ||
+      ref.targetDoc?.doc_code === target ||
+      ref.targetDoc?.title === target
+    ),
+  )
+);
+
+const handleMarkdownWikilinkClick = (target: string) => {
+  const normalizedTarget = target.trim();
+  if (!normalizedTarget) return;
+
+  const resolved = findResolvedWikilinkReference(normalizedTarget);
+  if (resolved?.targetDocId) {
+    router.push(`/documents/${resolved.targetDocId}`);
+    return;
+  }
+
+  const dangling = referenceHealthIssues.value.find(
+    (issue) => issue.status === 'dangling' && issue.label === normalizedTarget,
+  );
+  if (dangling) {
+    handleReferenceHealthIssue(dangling);
+    ElMessage.warning('引用未解析，请在引用关系中处理。');
+    return;
+  }
+
+  const conflict = referenceHealthIssues.value.find(
+    (issue) => issue.status === 'conflict' && issue.label === normalizedTarget,
+  );
+  if (conflict) {
+    handleReferenceHealthIssue(conflict);
+    ElMessage.warning('引用存在多个候选，请选择正确目标。');
+    return;
+  }
+
+  ElMessage.warning('未找到该引用的解析结果，请保存正文后刷新引用关系。');
 };
 
 const handleReferenceHealthIssue = (issue: DocumentReferenceHealthIssue) => {
