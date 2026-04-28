@@ -108,6 +108,38 @@ Step7 审批后激活 Product
 - 配方明细没有区域归属。
 - 生产执行还不能按配方区域拆分配料单。
 
+### 2.5 现有可复用对象复核
+
+本设计不允许因为新闭环再造一套平行字段。实现前必须先复用下表已有对象；只有“缺口字段”才新增。
+
+| 设计模块 | 现有可复用位置 | 不重复新增 | 允许新增或改造 |
+| --- | --- | --- | --- |
+| 产品档案 | `Product.id/code/name/status`、`ProductService`、`ProductList.vue` | 不建 `HistoricalProduct`、`LegacyProduct`、`ProductArchive` | `Product.source` 可新增，用于区分 `rd_process / legacy_import / manual_admin` |
+| 产品编号 | `Product.code`、`SystemConfig` 的配置式编号思路、`BatchNumberGeneratorService` 的生成器模式 | 不建第二个“产品编号字段” | 新增 `ProductCodeGeneratorService`，编号规则从 `SystemConfig` 读取，例如 `product.code.format` |
+| 新产品研发路径 | `ProcessInstance.productId/productName`、研发审批回调里创建 `Product/Recipe/RecipeLine` | 不建“研发产品表” | 把研发路径创建产品的编号生成改为同一套产品编号服务 |
+| 历史产品建档 | `Product + Recipe + RecipeLine` | 不建“历史产品建档表”承载产品事实 | 新增一个建档事务 API，但落表仍是 `Product/Recipe/RecipeLine` |
+| 配方 | `Recipe.product_id`、`Recipe.version/status`、`RecipeLine.material_id/qty_per_batch/unit/is_critical/notes` | 不新增 `Formula/FormulaLine` | 只在 `RecipeLine` 上补区域归属字段 |
+| 物料选择 | `Material.id/materialCode/name/unit/categoryId`、仓库物料 API | 不在配方行、包装材料用量、废弃物记录里手填物料事实源 | 需要引用物料时存 `material_id` 或 `material_batch_id`，名称和编码只做快照 |
+| 配料区域 | 现有 `MaterialRequisition.targetZone`、`StagingAreaStock.location`、`StagingAreaTransfer.fromZone/toZone`、`WORKSHOP_ZONES` | 不再继续散落写死 `筛粉间/称油间/小料房` 字符串 | 新增公司级 `WorkshopArea` 是对现有区域概念正规化；现有区域字符串逐步迁移为 `areaId + areaNameSnapshot` |
+| 生产开工 | `ProductionRun.product_id`、`ProductionRun.recipe_id`、`OpenRunDialog.vue` | 不在 `ProductionRun` 另存产品名称事实源 | `recipe_id` 改业务必填，并校验 active 产品和 active 配方 |
+| 生产批次 | `ProductionBatch.productId/recipeId/productName/recipeName`、`production_run_id`、`ProductionBatchService` | 不新增另一张“产品生产批次表” | 将 `productName/recipeName` 明确为快照；`productId/recipeId` 改业务必填 |
+| 区域配料单 | `RecipeLine`、`BatchMaterialUsage`、`StagingAreaStock` | 不建独立投料事实源替代 `BatchMaterialUsage` | 可新增区域配料单状态表，但最终投料事实必须汇总到 `BatchMaterialUsage` |
+| 投料记录 | `BatchMaterialUsage.productionBatchId/materialBatchId/quantity` | 不新建 `IngredientUsage` 平行表；`IngredientUsage` 只作为业务名 | `BatchMaterialUsage` 补 `recipeLineId/areaId/areaNameSnapshot` |
+| 成品批次 | `FinishedGoodsBatch.productionBatchId` | 不在成品批次重复保存产品字段 | 通过 `ProductionBatch` 追到产品，需要报表展示时生成快照 |
+| 发货 | `DeliveryNote.production_batch_id` | 不给发货单直接新增 `productId` | 当前 `customer_name` 是客户快照；若客户主数据完善后再补 `customer_id` |
+| 投诉 | `CustomerComplaint.production_batch_id` | 不给投诉单直接新增 `productId` | 页面从手填批次改为批次选择；当前 `customer_name` 是客户快照，后续可接 `ExternalParty` 客户主数据 |
+| 过程/CCP/金检/返工 | `production_batch_id` 已在 `CCPRecord`、`ProcessMonitorRecord`、`MetalDetectionLog`、`ReworkRecord` 中存在 | 不重复加 `productId` | 前端把手填生产批次 ID 改为批次选择器 |
+| 动态记录表单 | `RecordTemplate.batchLinkEnabled/batchLinkType/batchLinkField`、`Record.productionBatchId/finishedGoodsBatchId` | 不把动态表单里的产品名当主数据事实源 | 模板字段可显示名称，但批次关联必须落到已有批次外键 |
+| 供应商资质/产品外检 PDF | `SupplierDocument`、`SupplierQualification`、`BusinessDocumentLink`、`ProductService.uploadReport()` | 不纳入本次产品建档模块，也不在产品档案里重复证照字段 | 保持在供应商、检验、产品报告附件场景里维护有效期和替换 |
+| 部门/人员 | `Department`、`User` | 不新增 `Employee` 平行用户表 | 表单里操作人/审核人应优先用 `User.id`，名称只做展示或快照 |
+
+结论：
+
+- 本设计的主线是“补齐现有模型缺口”，不是新建一套产品、配方、生产、投料模型。
+- 新增字段只允许出现在现有事实源上，例如 `Product.source`、`RecipeLine.areaId`、`BatchMaterialUsage.recipeLineId`。
+- 如果一个模块已经能通过 `production_batch_id` 或 `finishedGoodsBatchId` 追到产品，就不能为了方便再直接加 `productId`。
+- 如果当前只是页面手填，但 schema 已有外键，应优先修页面和 DTO，不优先改 schema。
+
 ## 3. 核心设计原则
 
 ### 3.1 产品档案是主数据事实源
@@ -170,6 +202,15 @@ Product.code：系统生成产品编号，用户可见、可搜索、可打印
 Product.name：产品名称，可修改
 Product.status：active / inactive / discontinued
 Product.source：rd_process / legacy_import / manual_admin
+```
+
+实现要求：
+
+```text
+Product.code 仍使用现有字段，不新增 productNo / productNumber。
+编号生成服务复用 batch number 的生成器思路，但独立成 ProductCodeGeneratorService。
+编号规则配置复用 SystemConfig，不另建孤立编号规则表。
+NumberRule / PendingNumber 当前绑定文件级别和部门编号，不直接挪作产品编号事实源。
 ```
 
 产品名称允许修改，但历史业务记录必须保留当时的产品名称快照。
@@ -305,6 +346,14 @@ RecipeLine.areaNameSnapshot
 
 即在某一个配方版本里，这条物料由哪个区域配。
 
+`WorkshopArea` 是对现有 `targetZone/location/fromZone/toZone` 字符串的正规化，不是另一套区域语义。迁移完成后：
+
+```text
+RecipeLine.areaId -> WorkshopArea.id
+RecipeLine.areaNameSnapshot -> 当时区域名称快照
+StagingAreaStock.location / StagingAreaTransfer.fromZone/toZone -> 可保留为快照或逐步补 areaId
+```
+
 ### 5.3 暂定一条物料只属于一个区域
 
 当前阶段暂定：
@@ -432,6 +481,8 @@ recipeLineId
 
 用于追溯每条投料来自哪个配料区域和哪条配方明细。
 
+这里的投料记录仍然是现有 `BatchMaterialUsage`。不新增平行的 `IngredientUsage` 数据表；`IngredientUsage` 只作为业务标准名。
+
 ### 6.4 区域完成规则
 
 生产批次进入后续放行或汇总前，应检查：
@@ -474,6 +525,11 @@ recipeLineId
 | 投诉 | `production_batch_id` | 已有 | 页面改为选择生产批次，不能手填批次号 |
 | CCP/过程/金检/返工 | `production_batch_id` | 已有 | 页面改为批次选择器 |
 | 来料检验 | `material_batch_id` | 已有 | 属于原料链，不直接挂产品 |
+| 包材用量 | 应引用 `material_id/material_batch_id` + `production_batch_id` | 当前手填 `material_name/material_code` | 物料事实源改为 Material/MaterialBatch，名称编码保留为快照 |
+| 废料统计 | `production_batch_id`，必要时引用 `material_batch_id` | 当前手填批次号、操作人、部分物料信息 | 批次和人员改选择器；不要直接补 `productId` |
+| 客户/运输方 | `ExternalParty` 可承接 customer/carrier/waste_collector | 当前 `customer_name/transporter_name` 多为快照 | 先把现有字段定义为快照，后续补 `external_party_id` 类外键 |
+| 人员字段 | `User.id` | 多个页面手填 `operator_id/inspector_id/verifier_id` | 改用户选择器；不要新增 Employee 平行表 |
+| 位置/区域 | 暂无通用 `Location` 模型；已有部门、设备位置、暂存区位置字符串 | 不把 `WorkshopArea` 当全系统 Location | 配料区域先做 `WorkshopArea`，设备/清洁/环境位置后续再决定是否收敛为通用位置主数据 |
 
 ### 7.3 历史快照规则
 
