@@ -902,6 +902,7 @@ model Material {
   shelf_life_days Int?
 
   batches MaterialBatch[]
+  packagingMaterialUsages PackagingMaterialUsage[]
 
   @@index([materialCode])
   @@index([categoryId])
@@ -3334,6 +3335,8 @@ model PackagingMaterialUsage {
   id                  String    @id @default(cuid())
   company_id          String
   production_batch_id String?
+  material_id         String?
+  material            Material? @relation(fields: [material_id], references: [id], onDelete: SetNull)
   material_name       String
   material_code       String?
   used_weight         Decimal?
@@ -3344,6 +3347,8 @@ model PackagingMaterialUsage {
   notes               String?
   created_at          DateTime  @default(now())
   deleted_at          DateTime?
+
+  @@index([material_id])
 }
 
 model ShiftInstance {
