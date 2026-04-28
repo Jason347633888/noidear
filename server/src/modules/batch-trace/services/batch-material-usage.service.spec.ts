@@ -21,6 +21,12 @@ describe('BatchMaterialUsageService', () => {
             productionBatch: {
               findUnique: jest.fn(),
             },
+            recipeLine: {
+              findFirst: jest.fn(),
+            },
+            materialBatch: {
+              findUnique: jest.fn(),
+            },
           },
         },
       ],
@@ -39,23 +45,90 @@ describe('BatchMaterialUsageService', () => {
       const createDto = {
         productionBatchId: 'prod-001',
         materialBatchId: 'mat-001',
+        recipeLineId: 'line-001',
         quantity: 50,
       };
 
       const mockUsage = {
         id: 'usage-001',
         ...createDto,
+        area_id: 'area-001',
+        areaNameSnapshot: '筛粉间',
         usedAt: new Date(),
       };
 
+      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue({
+        id: 'prod-001',
+        recipeId: 'recipe-001',
+      } as any);
+      jest.spyOn(prisma.recipeLine, 'findFirst').mockResolvedValue({
+        id: 'line-001',
+        recipe_id: 'recipe-001',
+        material_id: 'mat-raw-001',
+        area_id: 'area-001',
+        area_name_snapshot: '筛粉间',
+      } as any);
+      jest.spyOn(prisma.materialBatch, 'findUnique').mockResolvedValue({
+        id: 'mat-001',
+        materialId: 'mat-raw-001',
+      } as any);
       jest.spyOn(prisma.batchMaterialUsage, 'create').mockResolvedValue(mockUsage as any);
 
       const result = await service.create(createDto);
 
       expect(result).toEqual(mockUsage);
       expect(prisma.batchMaterialUsage.create).toHaveBeenCalledWith({
-        data: createDto,
+        data: {
+          productionBatchId: 'prod-001',
+          materialBatchId: 'mat-001',
+          recipeLineId: 'line-001',
+          area_id: 'area-001',
+          areaNameSnapshot: '筛粉间',
+          quantity: 50,
+        },
       });
+    });
+  });
+
+  it('投料时从 recipeLine 写入区域快照', async () => {
+    const prisma: any = {
+      productionBatch: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'pb1', recipeId: 'r1' }),
+      },
+      recipeLine: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'line1',
+          recipe_id: 'r1',
+          material_id: 'mat1',
+          area_id: 'area1',
+          area_name_snapshot: '筛粉间',
+        }),
+      },
+      materialBatch: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'mb1', materialId: 'mat1' }),
+      },
+      batchMaterialUsage: {
+        create: jest.fn().mockResolvedValue({ id: 'usage1' }),
+      },
+    };
+    const service = new BatchMaterialUsageService(prisma);
+
+    await service.create({
+      productionBatchId: 'pb1',
+      materialBatchId: 'mb1',
+      recipeLineId: 'line1',
+      quantity: 10,
+    });
+
+    expect(prisma.batchMaterialUsage.create).toHaveBeenCalledWith({
+      data: {
+        productionBatchId: 'pb1',
+        materialBatchId: 'mb1',
+        recipeLineId: 'line1',
+        area_id: 'area1',
+        areaNameSnapshot: '筛粉间',
+        quantity: 10,
+      },
     });
   });
 
