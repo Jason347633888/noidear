@@ -1,9 +1,9 @@
 node_modules
 client/node_modules
 server/node_modules
-mobile
-miniprogram
-tools
+mobile/node_modules
+miniprogram/node_modules
+tools/*/node_modules
 packages/*/node_modules
 *.md
 .git

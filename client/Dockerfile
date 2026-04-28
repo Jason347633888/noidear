@@ -10,8 +10,9 @@ COPY mobile/package.json ./mobile/package.json
 COPY miniprogram/package.json ./miniprogram/package.json
 COPY packages/types/package.json ./packages/types/package.json
 COPY tools/noidear-mcp/package.json ./tools/noidear-mcp/package.json
-RUN npm ci --workspace client --workspace packages/types --include-workspace-root=false
+RUN npm ci
 
+COPY packages/types ./packages/types
 COPY client ./client
 WORKDIR /app/client
 RUN npm run build
