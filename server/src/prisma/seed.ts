@@ -119,6 +119,15 @@ async function main() {
       status: 'active',
       description: '可配置和管理文件编号规则，包括格式、序号位数和分隔符设置',
     },
+    {
+      id: 'perm_015',
+      code: 'record_form:landing_manage',
+      name: '记录表单落地管理',
+      category: 'record_form',
+      scope: 'cross_department',
+      status: 'active',
+      description: '可确认和管理源表单落地关系，包括落地策略和字段覆盖配置',
+    },
     // 记录权限
     {
       id: 'perm_006',

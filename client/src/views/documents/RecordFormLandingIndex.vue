@@ -35,12 +35,20 @@
           <span v-else>-</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="120" fixed="right">
+      <el-table-column label="操作" width="200" fixed="right">
         <template #default="{ row }">
           <el-button :data-test="`edit-landing-${row.code}`" link type="primary" @click="openEdit(row)">维护</el-button>
+          <el-button link type="primary" @click="loadSuggestion(row)">查看建议</el-button>
         </template>
       </el-table-column>
     </el-table>
+
+    <el-card v-if="activeSuggestion" class="suggestion-card" style="margin-top: 16px">
+      <p>落地建议：{{ activeSuggestion.landingStatus }} ({{ activeSuggestion.confidence }})</p>
+      <p>目标入口：{{ activeSuggestion.targetRoute || '-' }}</p>
+      <el-button type="primary" @click="confirmSuggestion">确认此建议</el-button>
+      <el-button @click="activeSuggestion = null">关闭</el-button>
+    </el-card>
 
     <el-dialog v-model="editVisible" title="维护表单入口" width="640px">
       <el-form label-width="120px">

@@ -107,7 +107,6 @@ export class RecordFormLandingService {
     return {
       sourceCode: code,
       landingStatus,
-      landingStrategy: landingStatus,
       confirmationStatus: 'suggested',
       confidence: targetRoute ? 'high' : 'low',
       targetModule: (form as any).primaryEntity || null,
@@ -126,11 +125,11 @@ export class RecordFormLandingService {
 
   async getFieldCoverage(code: string) {
     const form = this.modelLanding.getFormByCode(code);
+    if (!form) throw new NotFoundException(`Unknown source form: ${code}`);
     const entry = await this.prisma.recordFormLandingEntry.findUnique({
       where: { sourceCode: code },
       include: { targetTemplate: true },
     });
-    if (!form) throw new NotFoundException(`Unknown source form: ${code}`);
 
     const sourceFields = ((form as any).fields ?? []).map((field: any) => String(field.name || field.label));
     const templateFields = ((entry?.targetTemplate?.fieldsJson as any)?.fields ?? []).map((field: any) => String(field.name || field.label));

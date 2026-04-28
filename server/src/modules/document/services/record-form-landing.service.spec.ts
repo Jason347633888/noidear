@@ -287,6 +287,21 @@ describe('RecordFormLandingService', () => {
       }));
     });
 
+    it('returns early when source form landing is already confirmed', async () => {
+      modelLanding.getFormByCode.mockReturnValue({ code: 'GRSS-PZ-JL-01', formName: '检查表' });
+      prisma.recordFormLandingEntry.findUnique.mockResolvedValue({
+        sourceCode: 'GRSS-PZ-JL-01',
+        confirmationStatus: 'confirmed',
+        landingStatus: 'business_module',
+      });
+
+      const service = makeService();
+      const result = await service.suggest('GRSS-PZ-JL-01');
+
+      expect(result.confirmationStatus).toBe('confirmed');
+      expect(result.landingStatus).toBe('business_module');
+    });
+
     it('confirms landing and stores governance fields', async () => {
       modelLanding.getFormByCode.mockReturnValue({ code: 'GRSS-PZ-JL-01', formName: '检查表' });
       prisma.recordFormLandingEntry.upsert.mockResolvedValue({
@@ -311,6 +326,27 @@ describe('RecordFormLandingService', () => {
         }),
       }));
       expect(result.confirmationStatus).toBe('confirmed');
+    });
+  });
+
+  describe('getFieldCoverage', () => {
+    it('returns covered status when all source form fields are in template', async () => {
+      modelLanding.getFormByCode.mockReturnValue({
+        code: 'GRSS-PZ-JL-01',
+        fields: [{ name: 'date', label: '日期' }, { name: 'operator', label: '操作人' }],
+      });
+      prisma.recordFormLandingEntry.findUnique.mockResolvedValue({
+        sourceCode: 'GRSS-PZ-JL-01',
+        targetTemplate: {
+          fieldsJson: { fields: [{ name: 'date', label: '日期' }, { name: 'operator', label: '操作人' }] },
+        },
+      });
+
+      const service = makeService();
+      const result = await service.getFieldCoverage('GRSS-PZ-JL-01');
+
+      expect(result.status).toBe('covered');
+      expect(result.missingFields).toHaveLength(0);
     });
   });
 });

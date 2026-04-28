@@ -173,23 +173,6 @@ export class DocumentController {
     return this.recordFormLandingService.list({ keyword, department, templateGroupId });
   }
 
-  @Get('record-form-index/:code')
-  @ApiOperation({ summary: '查询单张源表单落地信息' })
-  getRecordFormIndexEntry(@Param('code') code: string) {
-    return this.recordFormLandingService.get(code);
-  }
-
-  @Patch('record-form-index/:code')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:control_manage')
-  @ApiOperation({ summary: '维护源表单目标入口' })
-  updateRecordFormIndexEntry(
-    @Param('code') code: string,
-    @Body() dto: UpdateRecordFormLandingEntryDto,
-  ) {
-    return this.recordFormLandingService.upsertTarget(code, dto);
-  }
-
   @Get('record-form-index/:code/suggestion')
   @ApiOperation({ summary: '获取源表单落地建议' })
   getRecordFormLandingSuggestion(@Param('code') code: string) {
@@ -208,6 +191,23 @@ export class DocumentController {
   @ApiOperation({ summary: '查询源表单字段覆盖差异' })
   getRecordFormFieldCoverage(@Param('code') code: string) {
     return this.recordFormLandingService.getFieldCoverage(code);
+  }
+
+  @Get('record-form-index/:code')
+  @ApiOperation({ summary: '查询单张源表单落地信息' })
+  getRecordFormIndexEntry(@Param('code') code: string) {
+    return this.recordFormLandingService.get(code);
+  }
+
+  @Patch('record-form-index/:code')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:control_manage')
+  @ApiOperation({ summary: '维护源表单目标入口' })
+  updateRecordFormIndexEntry(
+    @Param('code') code: string,
+    @Body() dto: UpdateRecordFormLandingEntryDto,
+  ) {
+    return this.recordFormLandingService.upsertTarget(code, dto);
   }
 
   // =============================
