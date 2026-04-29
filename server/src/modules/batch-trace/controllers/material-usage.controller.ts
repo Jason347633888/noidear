@@ -33,8 +33,8 @@ export class MaterialUsageController {
   @Get()
   @ApiOperation({ summary: '查询生产批次使用的原料' })
   @ApiResponse({ status: 200, description: '查询成功' })
-  findByProductionBatch(@Query('productionBatchId') productionBatchId: string) {
-    return this.service.findByProductionBatch(productionBatchId);
+  findByProductionBatch(@Query() query: QueryMaterialUsageDto) {
+    return this.service.findByProductionBatch(query.productionBatchId);
   }
 
   @Delete(':id')
