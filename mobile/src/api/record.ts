@@ -32,7 +32,7 @@ export interface RecordListParams {
 export async function fetchTemplates(keyword = ''): Promise<RecordTemplateItem[]> {
   const result = await get<unknown>('/record-templates', {
     page: 1,
-    pageSize: 1000,
+    limit: 1000,
     status: 'active',
     keyword,
   })
@@ -42,9 +42,13 @@ export async function fetchTemplates(keyword = ''): Promise<RecordTemplateItem[]
 export async function fetchRecordList(
   params: RecordListParams = {},
 ): Promise<PaginatedResult<RecordListItem>> {
+  const { pageSize, ...rest } = params
+  const query: Record<string, unknown> = { ...rest }
+  if (pageSize !== undefined) query.limit = pageSize
+
   const result = await get<PaginatedResult<RecordListItem> | { data: RecordListItem[]; total: number; page: number; limit: number }>(
     '/records',
-    params as Record<string, unknown>,
+    query,
   )
 
   if ('data' in result && Array.isArray(result.data)) {

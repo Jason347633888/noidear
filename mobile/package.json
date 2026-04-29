@@ -40,6 +40,7 @@
     "lint:fix": "eslint --ext .js,.ts,.vue src --fix",
     "format": "prettier --write \"src/**/*.{js,ts,vue,json,css,scss}\"",
     "type-check": "vue-tsc --noEmit",
+    "test": "vitest run",
     "test:e2e": "uni-automator --config e2e/jest.config.js"
   },
   "dependencies": {
