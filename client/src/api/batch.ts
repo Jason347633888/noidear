@@ -87,16 +87,16 @@ export const productionBatchApi = {
 // =========================================================================
 
 export const materialUsageApi = {
-  getByBatch(batchId: string) {
-    return request.get<MaterialUsage[]>(`/batch-trace/production-batches/${batchId}/material-usage`);
+  getByBatch(productionBatchId: string) {
+    return request.get<MaterialUsage[]>('/batch-trace/material-usage', { params: { productionBatchId } });
   },
 
-  addUsage(batchId: string, payload: { materialId: string; materialBatchId: string; quantity: number }) {
-    return request.post<MaterialUsage>(`/batch-trace/production-batches/${batchId}/material-usage`, payload);
+  addUsage(payload: { productionBatchId: string; materialBatchId: string; recipeLineId: string; quantity: number }) {
+    return request.post<MaterialUsage>('/batch-trace/material-usage', payload);
   },
 
-  removeUsage(batchId: string, usageId: string) {
-    return request.delete(`/batch-trace/production-batches/${batchId}/material-usage/${usageId}`);
+  removeUsage(usageId: string) {
+    return request.delete(`/batch-trace/material-usage/${usageId}`);
   },
 };
 

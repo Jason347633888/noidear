@@ -172,6 +172,10 @@ const handleReset = () => { filterForm.keyword = ''; filterForm.status = ''; han
 const handleCreate = async () => {
   if (!createFormRef.value) return;
   try { await createFormRef.value.validate(); } catch { return; }
+  if (!createForm.recipeId) {
+    ElMessage.warning('请选择配方版本');
+    return;
+  }
   creating.value = true;
   try {
     await productionBatchApi.create({

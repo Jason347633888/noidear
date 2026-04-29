@@ -26,6 +26,7 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue';
+import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { ProductionRunApi } from '@/api/production-run';
 import ProductRecipeSelect from '@/components/master-data/ProductRecipeSelect.vue';
@@ -58,13 +59,17 @@ function onProductRecipeChange(value: { productId: string; recipeId: string }) {
 async function submit() {
   const valid = await formRef.value?.validate().catch(() => false);
   if (!valid) return;
+  if (!form.recipe_id) {
+    ElMessage.warning('请选择配方版本');
+    return;
+  }
   loading.value = true;
   try {
     await ProductionRunApi.create({
       shift_instance_id: props.shiftInstanceId,
       production_line: form.production_line,
       product_id: form.product_id,
-      recipe_id: form.recipe_id || undefined,
+      recipe_id: form.recipe_id,
     });
     emit('update:modelValue', false);
     emit('created');

@@ -17,6 +17,9 @@ describe('MaterialUsageService', () => {
             productionBatch: {
               findUnique: jest.fn(),
             },
+            recipeLine: {
+              findFirst: jest.fn(),
+            },
             materialBatch: {
               findUnique: jest.fn(),
               update: jest.fn(),
@@ -42,14 +45,17 @@ describe('MaterialUsageService', () => {
       const dto = {
         productionBatchId: 'prod-1',
         materialBatchId: 'mat-1',
+        recipeLineId: 'line-1',
         quantity: 10,
       };
 
-      const mockProductionBatch = { id: 'prod-1', batchNumber: 'PROD-001' };
-      const mockMaterialBatch = { id: 'mat-1', quantity: 50 };
+      const mockProductionBatch = { id: 'prod-1', batchNumber: 'PROD-001', recipeId: 'recipe-1' };
+      const mockRecipeLine = { id: 'line-1', recipe_id: 'recipe-1', material_id: 'mat-id-1', area_id: 'area-1', area_name_snapshot: '搅料间' };
+      const mockMaterialBatch = { id: 'mat-1', materialId: 'mat-id-1', quantity: 50 };
       const mockUsage = { id: 'usage-1', ...dto };
 
       jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockProductionBatch as any);
+      jest.spyOn(prisma.recipeLine, 'findFirst').mockResolvedValue(mockRecipeLine as any);
       jest.spyOn(prisma.materialBatch, 'findUnique').mockResolvedValue(mockMaterialBatch as any);
       jest.spyOn(prisma.batchMaterialUsage, 'create').mockResolvedValue(mockUsage as any);
       jest.spyOn(prisma.materialBatch, 'update').mockResolvedValue({} as any);
@@ -58,7 +64,14 @@ describe('MaterialUsageService', () => {
 
       expect(result).toEqual(mockUsage);
       expect(prisma.batchMaterialUsage.create).toHaveBeenCalledWith({
-        data: dto,
+        data: {
+          productionBatchId: dto.productionBatchId,
+          materialBatchId: dto.materialBatchId,
+          recipeLineId: dto.recipeLineId,
+          area_id: mockRecipeLine.area_id,
+          areaNameSnapshot: mockRecipeLine.area_name_snapshot,
+          quantity: dto.quantity,
+        },
       });
       expect(prisma.materialBatch.update).toHaveBeenCalledWith({
         where: { id: dto.materialBatchId },
@@ -70,6 +83,7 @@ describe('MaterialUsageService', () => {
       const dto = {
         productionBatchId: 'prod-1',
         materialBatchId: 'mat-1',
+        recipeLineId: 'line-1',
         quantity: 10,
       };
 
@@ -78,32 +92,84 @@ describe('MaterialUsageService', () => {
       await expect(service.create(dto)).rejects.toThrow(NotFoundException);
     });
 
+    it('should throw BadRequestException if production batch has no recipe', async () => {
+      const dto = {
+        productionBatchId: 'prod-1',
+        materialBatchId: 'mat-1',
+        recipeLineId: 'line-1',
+        quantity: 10,
+      };
+
+      const mockProductionBatch = { id: 'prod-1', batchNumber: 'PROD-001', recipeId: null };
+      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockProductionBatch as any);
+
+      await expect(service.create(dto)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if recipe line not found or does not belong to recipe', async () => {
+      const dto = {
+        productionBatchId: 'prod-1',
+        materialBatchId: 'mat-1',
+        recipeLineId: 'line-1',
+        quantity: 10,
+      };
+
+      const mockProductionBatch = { id: 'prod-1', batchNumber: 'PROD-001', recipeId: 'recipe-1' };
+      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockProductionBatch as any);
+      jest.spyOn(prisma.recipeLine, 'findFirst').mockResolvedValue(null);
+
+      await expect(service.create(dto)).rejects.toThrow(BadRequestException);
+    });
+
     it('should throw NotFoundException if material batch not found', async () => {
       const dto = {
         productionBatchId: 'prod-1',
         materialBatchId: 'mat-1',
+        recipeLineId: 'line-1',
         quantity: 10,
       };
 
-      const mockProductionBatch = { id: 'prod-1', batchNumber: 'PROD-001' };
-
+      const mockProductionBatch = { id: 'prod-1', batchNumber: 'PROD-001', recipeId: 'recipe-1' };
+      const mockRecipeLine = { id: 'line-1', recipe_id: 'recipe-1', material_id: 'mat-id-1', area_id: null, area_name_snapshot: null };
       jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockProductionBatch as any);
+      jest.spyOn(prisma.recipeLine, 'findFirst').mockResolvedValue(mockRecipeLine as any);
       jest.spyOn(prisma.materialBatch, 'findUnique').mockResolvedValue(null);
 
       await expect(service.create(dto)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw BadRequestException if material does not match recipe line', async () => {
+      const dto = {
+        productionBatchId: 'prod-1',
+        materialBatchId: 'mat-1',
+        recipeLineId: 'line-1',
+        quantity: 10,
+      };
+
+      const mockProductionBatch = { id: 'prod-1', batchNumber: 'PROD-001', recipeId: 'recipe-1' };
+      const mockRecipeLine = { id: 'line-1', recipe_id: 'recipe-1', material_id: 'mat-id-1', area_id: null, area_name_snapshot: null };
+      const mockMaterialBatch = { id: 'mat-1', materialId: 'different-material', quantity: 50 };
+      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockProductionBatch as any);
+      jest.spyOn(prisma.recipeLine, 'findFirst').mockResolvedValue(mockRecipeLine as any);
+      jest.spyOn(prisma.materialBatch, 'findUnique').mockResolvedValue(mockMaterialBatch as any);
+
+      await expect(service.create(dto)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException if insufficient stock', async () => {
       const dto = {
         productionBatchId: 'prod-1',
         materialBatchId: 'mat-1',
+        recipeLineId: 'line-1',
         quantity: 100,
       };
 
-      const mockProductionBatch = { id: 'prod-1', batchNumber: 'PROD-001' };
-      const mockMaterialBatch = { id: 'mat-1', quantity: 50 };
+      const mockProductionBatch = { id: 'prod-1', batchNumber: 'PROD-001', recipeId: 'recipe-1' };
+      const mockRecipeLine = { id: 'line-1', recipe_id: 'recipe-1', material_id: 'mat-id-1', area_id: null, area_name_snapshot: null };
+      const mockMaterialBatch = { id: 'mat-1', materialId: 'mat-id-1', quantity: 50 };
 
       jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockProductionBatch as any);
+      jest.spyOn(prisma.recipeLine, 'findFirst').mockResolvedValue(mockRecipeLine as any);
       jest.spyOn(prisma.materialBatch, 'findUnique').mockResolvedValue(mockMaterialBatch as any);
 
       await expect(service.create(dto)).rejects.toThrow(BadRequestException);
