@@ -4,9 +4,9 @@
 
 仓库当前同时存在 `miniprogram/` 和 `mobile/` 两套 uni-app 相关目录。`miniprogram/` 是早期微信小程序壳，页面少、配置占位、接口前缀与后端不一致，已经不适合作为后续移动端主线。`mobile/` 功能更完整，包含待办、记录、日历、设备、拍照、签名等现场使用能力，应作为唯一现场终端代码入口。
 
-车间可能存在不允许使用个人手机的管理要求，因此本设计不把 `mobile/` 定义为“微信小程序”，而定义为“现场终端应用”。现场终端可运行在固定工位浏览器、工业平板、工业 Android PDA 或微信小程序等载体上。本阶段明确不要求离线能力，优先采用在线 H5 工位模式，便携终端也优先通过浏览器访问 H5。
+车间可能存在不允许使用个人手机的管理要求，因此本设计不把 `mobile/` 定义为“微信小程序”，而定义为“现场终端应用”。现场终端可运行在固定工位浏览器、工业平板或工业 Android PDA 等载体上。本阶段明确不要求离线能力，优先采用在线 H5 工位模式，便携终端也优先通过浏览器访问 H5。
 
-登录方案经过讨论后收敛为账号密码登录，不接入微信手机号快捷登录，不新增手机号字段，也不通过 `wechat_openid` 识别用户。这样系统只维护一套账号体系，管理员不需要额外维护手机号或微信绑定关系。
+登录方案经过讨论后收敛为账号密码登录，不接入微信手机号快捷登录，不新增手机号字段，也不通过 `wechat_openid` 识别用户。微信小程序登录和微信订阅消息也不再作为当前系统能力保留。这样系统只维护一套账号体系，管理员不需要额外维护手机号或微信绑定关系。
 
 ## 目标
 
@@ -15,16 +15,17 @@
 3. 让 `mobile/` 的 API 地址配置符合后端 `/api/v1` 前缀和服务器部署方式。
 4. 验证移动端登录保存的 token/user 字段与后端 `/auth/login` 返回结构一致。
 5. 明确车间禁用个人手机时的在线现场终端策略。
+6. 移除微信小程序登录、微信订阅消息和 `wechat_openid` / `WechatMessage` 相关模型依赖。
 
 ## 非目标
 
 1. 不新增 `users.phone` 字段。
 2. 不实现微信手机号快捷登录。
 3. 不新增短信验证码登录。
-4. 不在本次删除后端 `WechatModule` 或 `/auth/wechat/miniprogram`。微信订阅消息或历史微信接口是否保留，后续单独评估。
-5. 不重做 `mobile/` 其他业务页面。
-6. 不实现离线缓存、离线提交或断网同步能力。
-7. 不在本次采购或绑定具体硬件型号。
+4. 不重做 `mobile/` 其他业务页面。
+5. 不实现离线缓存、离线提交或断网同步能力。
+6. 不在本次采购或绑定具体硬件型号。
+7. 不设计免密登录、工牌扫码/NFC + PIN 登录或关键操作二次确认。
 
 ## 方案
 
@@ -79,19 +80,28 @@ http://localhost:3000/api/v1
 VITE_API_BASE_URL=https://api.example.com/api/v1
 ```
 
-微信小程序真机或线上运行时，请求域名还必须在微信小程序后台配置为合法 request 域名。构建产物会固化当次构建读取到的 `VITE_API_BASE_URL`，所以上线构建不能依赖 `localhost` 兜底值。
+当前主方案是 H5 工位模式。构建产物会固化当次构建读取到的 `VITE_API_BASE_URL`，所以上线构建不能依赖 `localhost` 兜底值。
 
 建议补充或更新 `mobile/.env.example`，说明本地和生产的 `VITE_API_BASE_URL` 写法。
 
-### 4. 后端微信相关边界
+### 4. 微信能力清理
 
-后端已有 `WechatModule`、微信订阅消息服务和 `/auth/wechat/miniprogram`。本次不把它们接入 `mobile` 登录，也不在本次删除它们。
+后端已有 `WechatModule`、微信订阅消息服务和 `/auth/wechat/miniprogram`。由于当前方案明确不做微信小程序、不做微信登录、不做微信订阅消息，本次应清理这些能力，避免系统继续暴露未闭环入口。
 
-原因：
+清理范围：
 
-- 本次目标是收敛移动端登录入口，不是清理所有微信能力。
-- `WechatModule` 可能还服务于订阅消息等独立能力。
-- 删除微信后端接口需要额外确认调用方、迁移和历史数据，不应混入本次移动端入口清理。
+- 移除 `AuthController` 中的 `/auth/wechat/miniprogram`。
+- 移除 `AuthService.wechatMiniProgramLogin` 和 `WechatLoginDto`。
+- 移除 `server/src/modules/wechat/` 模块、控制器、服务、DTO 和相关单测。
+- 从 `AppModule` 移除 `WechatModule`。
+- 从 Prisma schema 移除 `User.wechat_openid` 和 `WechatMessage`。
+- 新增 Prisma 迁移，删除 `users.wechat_openid` 字段、相关唯一索引以及 `wechat_messages` 表。迁移应容忍 `wechat_messages` 表在某些环境中不存在，因为当前迁移目录中没有创建该表的迁移记录。
+- 清理 `WECHAT_APP_ID`、`WECHAT_APP_SECRET`、`WECHAT_TPL_*` 等仅服务小程序登录/订阅消息的环境变量说明。
+
+边界说明：
+
+- `client/src/views/login/SsoLogin.vue` 中的企业微信 SSO、监控告警中名为 `wechat` 的通知渠道，语义上更接近企业微信/第三方渠道，不等同于本次删除的微信小程序登录和订阅消息。实现阶段应按实际调用关系确认是否仍被使用，不做机械误删。
+- `notifyChannels` 中历史字符串 `wechat` 不在本次强制迁移数据；如需统一通知渠道命名，后续另行设计。
 
 ### 5. 车间终端策略
 
@@ -129,18 +139,19 @@ VITE_API_BASE_URL=https://api.example.com/api/v1
 1. 根 `package.json` 不再包含 `miniprogram` workspace。
 2. `package-lock.json` 不再包含 `noidear-miniprogram` workspace。
 3. Dockerfile 不再复制 `miniprogram/package.json`。
-4. `mobile` 能执行微信小程序构建：
+4. `mobile` 能执行 H5 构建：
 
 ```bash
-npm run build:mp-weixin -w mobile
+npm run build:h5 -w mobile
 ```
 
 5. 后端账号密码登录相关测试通过。
 6. `mobile` 登录后保存的 token/user 字段与后端 `/auth/login` 返回结构一致。
 7. `mobile` 本地默认 API 地址包含 `/api/v1`。
 8. 生产部署说明或 `.env.example` 明确要求配置 `VITE_API_BASE_URL=https://真实域名/api/v1`。
-9. 设计和实施说明明确 `mobile/` 是现场终端应用，禁用个人手机时优先使用在线 H5 工位模式。
-10. 本次提交不包含 `.env`、测试报告、coverage、dist 等本地未跟踪产物。
+9. `server/src/modules/wechat/`、`/auth/wechat/miniprogram`、`WechatLoginDto`、`User.wechat_openid`、`WechatMessage` 不再存在于当前运行代码和 Prisma schema 中。
+10. 设计和实施说明明确 `mobile/` 是现场终端应用，禁用个人手机时优先使用在线 H5 工位模式。
+11. 本次提交不包含 `.env`、测试报告、coverage、dist 等本地未跟踪产物。
 
 ## 风险与处理
 
@@ -158,11 +169,13 @@ npm run build:mp-weixin -w mobile
 
 ### 风险：车间禁用个人手机导致小程序不可用
 
-处理：不把微信小程序作为车间唯一载体。`mobile/` 优先支持在线 H5 工位模式，可运行在公司受管控的固定终端或工业 PDA 浏览器中。现场无离线要求时，不引入 App 离线队列。
+处理：不把微信小程序作为车间载体。`mobile/` 优先支持在线 H5 工位模式，可运行在公司受管控的固定终端或工业 PDA 浏览器中。现场无离线要求时，不引入 App 离线队列。
+
+### 风险：误删企业微信或其他通知渠道
+
+处理：本次清理对象是微信小程序登录和微信订阅消息模块。企业微信 SSO、监控告警里的渠道字符串是否仍有效，需要按调用链确认；不因名称包含 `wechat` 就直接删除。
 
 ## 后续可选工作
 
-1. 单独评估是否废弃 `/auth/wechat/miniprogram`。
-2. 单独评估微信订阅消息是否仍需要 `wechat_openid`。
-3. 如果未来确实需要免密登录，再重新设计手机号、微信授权、账号绑定和审计边界。
-4. 如果未来需要更高效率的共享终端操作，再设计工牌扫码/NFC + PIN 登录或关键操作确认。
+1. 如果未来确实需要免密登录，再重新设计手机号、微信授权、账号绑定和审计边界。
+2. 如果未来需要更高效率的共享终端操作，再设计工牌扫码/NFC + PIN 登录或关键操作确认。
