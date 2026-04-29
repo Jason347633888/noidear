@@ -83,10 +83,10 @@ export const recipeApi = {
   },
 
   archive(id: string) {
-    return request.post(`/recipes/${id}/archive`);
+    return request.post<Recipe>(`/recipes/${id}/archive`);
   },
 
   remove(id: string) {
-    return request.post(`/recipes/${id}/archive`);
+    return request.post<Recipe>(`/recipes/${id}/archive`);
   },
 };
