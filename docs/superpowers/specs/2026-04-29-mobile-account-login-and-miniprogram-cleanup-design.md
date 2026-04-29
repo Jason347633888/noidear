@@ -149,6 +149,14 @@ VITE_API_BASE_URL=https://api.example.com/api/v1
 - 主数据：展示和选择时复用 `Product`、`Material`、`Supplier`、`Location`、`Equipment`、`ProductionBatch`、`MaterialBatch(MaterialLot)` 等已有主数据/批次数据。
 - 业务记录：第一阶段以通用记录为主；涉及批次、物料、设备、位置时必须保存对应主键 ID，不能只存文本名称或备注。
 
+数据统一原则：
+
+- H5 工位和 PC 端只是两个前端入口，必须调用同一套 `/api/v1` 后端接口，写入同一套 PostgreSQL 数据库。
+- H5 工位填写的通用记录必须进入 `Record`，使用同一套 `RecordTemplate`；PC 端应能按权限查询这些记录。
+- PC 端填写的通用记录也应进入同一套 `Record`；H5 工位记录查询页应能按权限查询这些记录。
+- 不允许为 H5 工位新增平行的 `mobile_records`、`station_records` 或独立模板表。
+- 可以记录来源上下文，例如 `source = h5_station`、`stationName`、`stationArea`、`deviceLabel`，但这些只用于审计和筛选，不改变记录主事实源。
+
 ## 数据流
 
 账号登录数据流如下：
@@ -198,7 +206,8 @@ npm run build:h5 -w mobile
 11. H5 工位 Phase 1 只包含账号登录、工位首页、我的待办、通用记录填写、模板查找与分组、记录查询和扫码输入。
 12. 通用记录入口默认展示全部 `active` 模板，不做业务白名单初筛；必须提供搜索、部门/来源分组和常用置顶。
 13. H5 工位 Phase 1 不包含异常上报、不合格/偏差/CAPA 快捷入口、离线能力、免密登录或深度业务工位流程。
-14. 本次提交不包含 `.env`、测试报告、coverage、dist 等本地未跟踪产物。
+14. H5 工位和 PC 端填写的通用记录汇总到同一套 `RecordTemplate / Record`，不得新增移动端专用记录事实表。
+15. 本次提交不包含 `.env`、测试报告、coverage、dist 等本地未跟踪产物。
 
 ## 风险与处理
 
