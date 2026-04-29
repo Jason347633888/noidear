@@ -1,29 +1,40 @@
 <template>
   <view class="create-page">
-    <!-- Offline banner -->
-    <view v-if="!offlineStore.isOnline" class="create-page__offline-banner">
-      <text class="create-page__offline-text">当前处于离线状态，提交后将自动同步</text>
-    </view>
-
     <!-- Template selector -->
     <view class="create-page__section">
       <text class="create-page__section-title">选择表单模板</text>
+
+      <input
+        v-model="keyword"
+        class="create-page__search"
+        placeholder="搜索编号、名称、部门或来源"
+        confirm-type="search"
+        @confirm="handleSearch"
+      />
+
       <view v-if="templatesLoading" class="create-page__loading">
         <text class="create-page__loading-text">加载中...</text>
       </view>
-      <view v-else-if="templates.length === 0" class="create-page__empty">
+      <view v-else-if="Object.keys(groupedTemplates).length === 0" class="create-page__empty">
         <text class="create-page__empty-text">暂无可用模板</text>
       </view>
       <view v-else class="create-page__template-list">
         <view
-          v-for="tpl in templates"
-          :key="tpl.id"
-          class="create-page__template-item"
-          :class="{ 'create-page__template-item--active': selectedTemplateId === tpl.id }"
-          @tap="selectTemplate(tpl)"
+          v-for="(items, group) in groupedTemplates"
+          :key="group"
+          class="create-page__group"
         >
-          <text class="create-page__template-name">{{ tpl.name }}</text>
-          <text class="create-page__template-code">{{ tpl.code }}</text>
+          <text class="create-page__group-title">{{ group }}</text>
+          <view
+            v-for="template in items"
+            :key="template.id"
+            class="create-page__template-item"
+            :class="{ 'create-page__template-item--active': selectedTemplate?.id === template.id }"
+            @tap="selectTemplate(template)"
+          >
+            <text class="create-page__template-name">{{ template.name }}</text>
+            <text class="create-page__template-code">{{ template.code }}</text>
+          </view>
         </view>
       </view>
     </view>
@@ -42,30 +53,53 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useOfflineStore } from '@/stores/offline'
+import { computed, ref, onMounted } from 'vue'
 import { fetchTemplates, submitRecord, type RecordTemplateItem } from '@/api/record'
-import type { SyncQueueItem } from '@/types'
+import { buildStationSource } from '@/utils/stationContext'
+import { sortTemplatesWithPinned } from '@/utils/recordTemplate'
 import DynamicForm from '@/components/DynamicForm.vue'
-import { generateClientId } from '@/utils/sync'
-
-const offlineStore = useOfflineStore()
 
 const templates = ref<RecordTemplateItem[]>([])
 const templatesLoading = ref(false)
-const selectedTemplateId = ref<string | null>(null)
+const keyword = ref('')
+const pinnedTemplateIds = ref<string[]>(uni.getStorageSync('station:pinnedTemplates') || [])
 const selectedTemplate = ref<RecordTemplateItem | null>(null)
+const formData = ref<Record<string, unknown>>({})
 const submitting = ref(false)
 
+const visibleTemplates = computed(() => {
+  const text = keyword.value.trim().toLowerCase()
+  const filtered = text
+    ? templates.value.filter((template) => {
+        return [
+          template.code,
+          template.name,
+          template.description,
+          template.sourceGroup,
+        ].some((value) => value.toLowerCase().includes(text))
+      })
+    : templates.value
+
+  return sortTemplatesWithPinned(filtered, pinnedTemplateIds.value)
+})
+
+const groupedTemplates = computed(() => {
+  return visibleTemplates.value.reduce<Record<string, RecordTemplateItem[]>>((groups, template) => {
+    const group = template.sourceGroup
+    groups[group] = groups[group] || []
+    groups[group].push(template)
+    return groups
+  }, {})
+})
+
 onMounted(() => {
-  offlineStore.initNetworkListener()
   loadTemplates()
 })
 
 async function loadTemplates(): Promise<void> {
   templatesLoading.value = true
   try {
-    templates.value = await fetchTemplates()
+    templates.value = await fetchTemplates(keyword.value)
   } catch {
     uni.showToast({ title: '加载模板失败', icon: 'none' })
   } finally {
@@ -73,72 +107,29 @@ async function loadTemplates(): Promise<void> {
   }
 }
 
-function selectTemplate(tpl: RecordTemplateItem): void {
-  selectedTemplateId.value = tpl.id
-  selectedTemplate.value = tpl
+async function handleSearch(): Promise<void> {
+  await loadTemplates()
 }
 
-function saveOfflineAndNavigate(
-  templateId: string,
-  data: Record<string, unknown>,
-  toastMsg: string,
-): void {
-  offlineStore.addToQueue({
-    type: 'form_submission',
-    data: { uuid: generateClientId(), formId: templateId, formData: data },
-  } as Omit<SyncQueueItem, 'id' | 'retries' | 'maxRetries' | 'createdAt'>)
-  uni.showToast({ title: toastMsg, icon: 'none', duration: 2500 })
-  setTimeout(() => uni.navigateBack(), 2000)
-}
-
-async function handleOfflineSubmit(
-  templateId: string,
-  data: Record<string, unknown>,
-): Promise<void> {
-  saveOfflineAndNavigate(templateId, data, '已离线保存，联网后自动同步')
-}
-
-function promptOfflineFallback(
-  templateId: string,
-  data: Record<string, unknown>,
-  errorMsg: string,
-): void {
-  uni.showModal({
-    title: '提交失败',
-    content: `${errorMsg}\n是否离线保存？`,
-    confirmText: '离线保存',
-    cancelText: '取消',
-    success: (res) => {
-      if (res.confirm) {
-        saveOfflineAndNavigate(templateId, data, '已离线保存')
-      }
-    },
-  })
-}
-
-async function handleOnlineSubmit(
-  templateId: string,
-  data: Record<string, unknown>,
-): Promise<void> {
-  await submitRecord(templateId, data)
-  uni.showToast({ title: '提交成功', icon: 'success' })
-  setTimeout(() => uni.navigateBack(), 1500)
+function selectTemplate(template: RecordTemplateItem): void {
+  selectedTemplate.value = template
+  formData.value = {}
 }
 
 async function handleFormSubmit(data: Record<string, unknown>): Promise<void> {
   if (submitting.value || !selectedTemplate.value) return
   submitting.value = true
-  const { id: templateId } = selectedTemplate.value
 
   try {
-    if (!offlineStore.isOnline) {
-      await handleOfflineSubmit(templateId, data)
-      return
-    }
-    await handleOnlineSubmit(templateId, data)
+    await submitRecord(selectedTemplate.value.id, {
+      ...data,
+      _source: buildStationSource(null),
+    })
+    uni.showToast({ title: '提交成功', icon: 'success' })
+    setTimeout(() => uni.navigateBack(), 1500)
   } catch (err) {
     const message = err instanceof Error ? err.message : '提交失败'
-    promptOfflineFallback(templateId, data, message)
+    uni.showToast({ title: message, icon: 'none' })
   } finally {
     submitting.value = false
   }
@@ -154,16 +145,6 @@ function handleSaveDraft(_data: Record<string, unknown>): void {
   padding-bottom: 40rpx;
 }
 
-.create-page__offline-banner {
-  background-color: #e6a23c;
-  padding: 16rpx 24rpx;
-}
-
-.create-page__offline-text {
-  font-size: 24rpx;
-  color: #fff;
-}
-
 .create-page__section {
   padding: 24rpx 20rpx 0;
 }
@@ -174,6 +155,18 @@ function handleSaveDraft(_data: Record<string, unknown>): void {
   color: #333;
   display: block;
   margin-bottom: 16rpx;
+}
+
+.create-page__search {
+  width: 100%;
+  height: 72rpx;
+  background-color: #f5f5f5;
+  border-radius: 36rpx;
+  padding: 0 28rpx;
+  font-size: 26rpx;
+  color: #333;
+  box-sizing: border-box;
+  margin-bottom: 20rpx;
 }
 
 .create-page__loading,
@@ -191,7 +184,21 @@ function handleSaveDraft(_data: Record<string, unknown>): void {
 .create-page__template-list {
   display: flex;
   flex-direction: column;
-  gap: 12rpx;
+  gap: 16rpx;
+}
+
+.create-page__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.create-page__group-title {
+  font-size: 24rpx;
+  color: #666;
+  font-weight: 600;
+  padding: 8rpx 4rpx 4rpx;
+  display: block;
 }
 
 .create-page__template-item {
