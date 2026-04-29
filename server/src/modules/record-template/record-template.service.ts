@@ -19,6 +19,8 @@ export class RecordTemplateService {
     return await this.prisma.recordTemplate.create({
       data: {
         code: createDto.code,
+        baseCode: createDto.code,
+        templateFamilyId: createDto.code,
         name: createDto.name,
         fieldsJson: createDto.fieldsJson,
         retentionYears: createDto.retentionYears || 5,
@@ -28,7 +30,7 @@ export class RecordTemplateService {
         batchLinkField: createDto.batchLinkField,
         approvalRequired: createDto.approvalRequired ?? false,
         workflowConfig: createDto.workflowConfig,
-      },
+      } as any,
     });
   }
 

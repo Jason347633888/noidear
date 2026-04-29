@@ -71,13 +71,13 @@ describe('RecordTemplateService', () => {
         description: '生产部门记录模板',
       };
 
-      mockPrismaService.recordTemplate.findUnique.mockResolvedValue(null);
+      mockPrismaService.recordTemplate.findFirst.mockResolvedValue(null);
       mockPrismaService.recordTemplate.create.mockResolvedValue(mockTemplate);
 
       const result = await service.create(createDto);
 
       expect(result).toEqual(mockTemplate);
-      expect(prisma.recordTemplate.findUnique).toHaveBeenCalledWith({
+      expect(prisma.recordTemplate.findFirst).toHaveBeenCalledWith({
         where: { code: createDto.code },
       });
       expect(prisma.recordTemplate.create).toHaveBeenCalled();
@@ -91,7 +91,7 @@ describe('RecordTemplateService', () => {
         retentionYears: 3,
       };
 
-      mockPrismaService.recordTemplate.findUnique.mockResolvedValue(mockTemplate);
+      mockPrismaService.recordTemplate.findFirst.mockResolvedValue(mockTemplate);
 
       await expect(service.create(createDto)).rejects.toThrow(ConflictException);
       await expect(service.create(createDto)).rejects.toThrow('模板编号 TEMP_001 已存在');
@@ -105,7 +105,7 @@ describe('RecordTemplateService', () => {
         retentionYears: 3,
       };
 
-      mockPrismaService.recordTemplate.findUnique.mockResolvedValue(null);
+      mockPrismaService.recordTemplate.findFirst.mockResolvedValue(null);
 
       await expect(service.create(createDto as any)).rejects.toThrow(BadRequestException);
     });
