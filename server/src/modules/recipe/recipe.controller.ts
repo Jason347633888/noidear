@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { RecipeService } from './recipe.service';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -29,6 +29,7 @@ export class RecipeController {
   }
 
   @Post(':id/archive')
+  @HttpCode(HttpStatus.OK)
   archive(@Param('id') id: string) {
     return this.service.archive(id);
   }

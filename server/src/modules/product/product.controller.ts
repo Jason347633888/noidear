@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -78,6 +80,7 @@ export class ProductController {
   }
 
   @Post(':id/archive')
+  @HttpCode(HttpStatus.OK)
   archive(@Param('id') id: string) {
     return this.service.archive(id);
   }
