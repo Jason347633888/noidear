@@ -1,4 +1,4 @@
-import { IsUUID, IsNumber, Min, IsString, IsNotEmpty } from 'class-validator';
+import { IsUUID, IsNumber, IsPositive, IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateMaterialUsageDto {
@@ -15,9 +15,9 @@ export class CreateMaterialUsageDto {
   @IsNotEmpty()
   recipeLineId: string;
 
-  @ApiProperty({ description: '使用数量', minimum: 0 })
+  @ApiProperty({ description: '使用数量', minimum: 0.0001 })
   @IsNumber()
-  @Min(0)
+  @IsPositive()
   quantity: number;
 }
 

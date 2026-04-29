@@ -56,13 +56,14 @@ import { reactive, ref, watch } from 'vue';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { productApi } from '@/api/product';
 import { workshopAreaApi, type WorkshopArea } from '@/api/workshop-area';
+import { materialApi, type Material } from '@/api/warehouse';
 
 const props = defineProps<{ modelValue: boolean }>();
 const emit = defineEmits<{ (e: 'update:modelValue', value: boolean): void; (e: 'created'): void }>();
 
 const formRef = ref<FormInstance>();
 const submitting = ref(false);
-const materials = ref<{ id: string; materialCode: string; name: string; unit?: string }[]>([]);
+const materials = ref<Material[]>([]);
 const areas = ref<WorkshopArea[]>([]);
 
 const form = reactive({
@@ -76,8 +77,12 @@ const rules: FormRules = {
 
 watch(() => props.modelValue, async (open) => {
   if (!open) return;
-  const areaList = await workshopAreaApi.getList();
+  const [areaList, materialRes] = await Promise.all([
+    workshopAreaApi.getList(),
+    materialApi.getList({ limit: 500 }),
+  ]);
   areas.value = (areaList as unknown as WorkshopArea[]) ?? [];
+  materials.value = (materialRes as any)?.data ?? (materialRes as any)?.list ?? [];
 });
 
 function addLine() {

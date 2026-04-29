@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services';
 import { Snowflake } from '../../common/utils';
@@ -63,8 +64,10 @@ export class ProductService {
       throw new BadRequestException('同一配方中同一物料只能出现一次');
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const code = await this.productCodeGenerator.generate('1');
+    const code = await this.productCodeGenerator.generate('1');
+
+    try {
+    return await this.prisma.$transaction(async (tx) => {
       const enrichedLines: Array<typeof dto.lines[0] & { area_name_snapshot: string }> = [];
 
       for (const line of dto.lines) {
@@ -124,6 +127,12 @@ export class ProductService {
 
       return { product, recipe };
     });
+    } catch (err) {
+      if (err instanceof PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new BadRequestException('产品编号冲突，请重试');
+      }
+      throw err;
+    }
   }
 
   async update(id: string, dto: UpdateProductDto) {
