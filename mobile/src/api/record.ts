@@ -11,14 +11,13 @@ export type RecordTemplateItem = NormalizedRecordTemplate
 export interface RecordListItem {
   id: string
   templateId: string
-  template?: { id: string; name: string; code?: string }
+  number: string
   status: string
   dataJson: Record<string, unknown>
-  filledById?: string
-  filledBy?: { id: string; username: string; name?: string }
-  filledAt?: string | null
+  createdBy: string
+  submittedAt: string | null
   createdAt: string
-  updatedAt?: string
+  updatedAt: string
 }
 
 export interface RecordListParams {
@@ -29,12 +28,11 @@ export interface RecordListParams {
   templateId?: string
 }
 
-export async function fetchTemplates(keyword = ''): Promise<RecordTemplateItem[]> {
+export async function fetchTemplates(): Promise<RecordTemplateItem[]> {
   const result = await get<unknown>('/record-templates', {
     page: 1,
     limit: 1000,
     status: 'active',
-    keyword,
   })
   return normalizeTemplatePage(result as Parameters<typeof normalizeTemplatePage>[0]).list
 }

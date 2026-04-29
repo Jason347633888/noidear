@@ -34,10 +34,10 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
 const statusLabel = computed(() => STATUS_MAP[props.item.status]?.label || '未知')
 const statusColor = computed(() => STATUS_MAP[props.item.status]?.color || '#909399')
 
-const typeLabel = computed(() => props.item.template?.code || props.item.templateId)
-const titleLabel = computed(() => props.item.template?.name || props.item.templateId)
-const submitterLabel = computed(() => props.item.filledBy?.name || props.item.filledBy?.username || '未知人员')
-const timeSource = computed(() => props.item.filledAt || props.item.createdAt)
+const typeLabel = computed(() => props.item.templateId)
+const titleLabel = computed(() => props.item.number)
+const submitterLabel = computed(() => props.item.createdBy)
+const timeSource = computed(() => props.item.submittedAt || props.item.createdAt)
 const formatTime = computed(() => dayjs(timeSource.value).format('MM-DD HH:mm'))
 </script>
 

@@ -7,6 +7,7 @@ type BackendTemplatePage = {
   page?: number
   limit?: number
   pageSize?: number
+  totalPages?: number
 }
 
 type TemplateLike = {

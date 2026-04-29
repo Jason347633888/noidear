@@ -99,7 +99,7 @@ onMounted(() => {
 async function loadTemplates(): Promise<void> {
   templatesLoading.value = true
   try {
-    templates.value = await fetchTemplates(keyword.value)
+    templates.value = await fetchTemplates()
   } catch {
     uni.showToast({ title: '加载模板失败', icon: 'none' })
   } finally {
@@ -107,8 +107,8 @@ async function loadTemplates(): Promise<void> {
   }
 }
 
-async function handleSearch(): Promise<void> {
-  await loadTemplates()
+function handleSearch(): void {
+  // visibleTemplates computed filters locally; no extra request needed
 }
 
 function selectTemplate(template: RecordTemplateItem): void {

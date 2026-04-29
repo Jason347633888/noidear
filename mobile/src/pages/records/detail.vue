@@ -11,10 +11,10 @@
     <view v-else-if="record" class="record-detail__content">
       <!-- Record info -->
       <view class="record-detail__info">
-        <text class="record-detail__title">{{ record.template?.name || record.templateId }}</text>
+        <text class="record-detail__title">{{ record.number }}</text>
         <view class="record-detail__meta">
-          <text class="record-detail__meta-item">{{ record.filledBy?.name || record.filledBy?.username || '未知人员' }}</text>
-          <text class="record-detail__meta-item">{{ record.filledAt ? formatDate(record.filledAt) : formatDate(record.createdAt) }}</text>
+          <text class="record-detail__meta-item">{{ record.createdBy }}</text>
+          <text class="record-detail__meta-item">{{ formatDate(record.submittedAt || record.createdAt) }}</text>
         </view>
         <view class="record-detail__status" :style="{ backgroundColor: statusColor }">
           <text class="record-detail__status-text">{{ statusLabel }}</text>
