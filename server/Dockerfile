@@ -33,7 +33,7 @@ COPY mobile/package.json ./mobile/package.json
 COPY miniprogram/package.json ./miniprogram/package.json
 COPY packages/types/package.json ./packages/types/package.json
 COPY tools/noidear-mcp/package.json ./tools/noidear-mcp/package.json
-RUN npm ci --workspace server --include-workspace-root=false --omit=dev
+COPY --from=builder /app/node_modules ./node_modules
 
 COPY server/src/prisma ./server/src/prisma
 WORKDIR /app/server
