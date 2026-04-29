@@ -1,10 +1,10 @@
-# Clean Reset And Single Product Validation Implementation Plan
+# Clean Reset And Real Product Validation Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a safe local/test-database reset workflow that preserves document-control data and equipment ledgers, then seeds one real product chain for manual validation.
+**Goal:** Build a safe local/test-database reset workflow that preserves document-control data and equipment ledgers, then imports one user-provided real product data package for manual validation.
 
-**Architecture:** Add two focused server scripts: one reset script that snapshots counts and clears only approved business-flow tables, and one seed script that creates the single-product validation chain. Keep all destructive execution behind explicit `--execute` plus `ALLOW_DATA_RESET=yes`, and verify preservation through unit tests before any database run.
+**Architecture:** Add a guarded reset script, a strict JSON import contract, a validation-only command, and an import command. The repo must not contain invented product seed data; the real product package is supplied by the user outside git and validated before database writes.
 
 **Tech Stack:** Node.js 20, TypeScript, Prisma Client, Jest, npm workspace scripts.
 
@@ -16,34 +16,40 @@
 
 **Files to create:**
 
-- `server/scripts/clean-reset-config.ts`  
-  Owns preserved delegate names, cleanable delegate names, delete order, snapshot labels, validation product constants.
+- `server/scripts/clean-reset-config.ts`
+  Owns preserved Prisma delegates, cleanable Prisma delegates, delete order, and import contract types.
 
-- `server/scripts/clean-reset-preserve-control-data.ts`  
+- `server/scripts/clean-reset-preserve-control-data.ts`
   CLI script for `snapshot`, `dry-run`, and guarded `execute` modes.
 
-- `server/scripts/seed-single-product-validation.ts`  
-  CLI script that seeds one real product chain for `香蕉蒸蛋糕（原味）`.
+- `server/scripts/validate-real-product-validation-data.ts`
+  CLI script that reads a user-provided JSON file and validates the single-product data package without writing to the database.
 
-- `server/scripts/__tests__/clean-reset-config.spec.ts`  
-  Static tests proving protected delegates are never included in cleanable delegates and delete order is valid.
+- `server/scripts/import-real-product-validation-data.ts`
+  CLI script that imports the already validated user-provided JSON file.
 
-- `server/scripts/__tests__/single-product-validation-data.spec.ts`  
-  Static tests proving validation seed data has the required product, materials, suppliers, material lots, recipe lines, production batch, and traceability bridge rows.
+- `server/scripts/__tests__/clean-reset-config.spec.ts`
+  Static safety tests for preserved delegates and delete order.
 
-- `docs/superpowers/runbooks/2026-04-29-clean-reset-and-single-product-validation-runbook.md`  
-  Human-run checklist for backup, dry-run, execute, seed, and manual smoke validation.
+- `server/scripts/__tests__/real-product-validation-data.spec.ts`
+  Contract tests for the JSON validation function using in-memory sample data.
+
+- `docs/superpowers/runbooks/2026-04-29-clean-reset-and-real-product-validation-runbook.md`
+  Human-run checklist for backup, dry-run, execute, data-file preparation, validation, import, and manual smoke testing.
+
+- `docs/superpowers/templates/real-product-validation-data.example.json`
+  Structure-only example with replacement values. It is not seed data and must not be imported as real business data.
 
 **Files to modify:**
 
 - `server/package.json`  
-  Add npm scripts for snapshot, dry-run, execute, and single-product seed.
+  Add npm scripts for snapshot, dry-run, execute, validate, and import.
 
 **Do not modify:**
 
 - `server/src/prisma/schema.prisma`
 - Any migration file
-- Existing seed scripts unless a compile error proves an import boundary must move
+- Existing seed scripts
 - Document upload directories or file storage
 
 ---
@@ -63,8 +69,9 @@ Create `server/scripts/__tests__/clean-reset-config.spec.ts`:
 import {
   CLEAN_RESET_DELETE_ORDER,
   CLEAN_RESET_PRESERVED_DELEGATES,
+  CLEAN_RESET_REQUIRED_ENV,
+  CLEAN_RESET_REQUIRED_ENV_VALUE,
   CLEAN_RESET_TARGET_DELEGATES,
-  SINGLE_PRODUCT_VALIDATION_DATA,
 } from '../clean-reset-config';
 
 describe('clean reset config', () => {
@@ -102,15 +109,9 @@ describe('clean reset config', () => {
     expect(order.indexOf('supplierQualification')).toBeLessThan(order.indexOf('supplier'));
   });
 
-  it('single product validation data uses one real product and enough materials', () => {
-    expect(SINGLE_PRODUCT_VALIDATION_DATA.product.name).toBe('香蕉蒸蛋糕（原味）');
-    expect(SINGLE_PRODUCT_VALIDATION_DATA.materials.length).toBeGreaterThanOrEqual(7);
-    expect(SINGLE_PRODUCT_VALIDATION_DATA.materialLots).toHaveLength(
-      SINGLE_PRODUCT_VALIDATION_DATA.materials.length,
-    );
-    expect(SINGLE_PRODUCT_VALIDATION_DATA.recipeLines).toHaveLength(
-      SINGLE_PRODUCT_VALIDATION_DATA.materials.length,
-    );
+  it('requires an explicit environment acknowledgement for destructive execution', () => {
+    expect(CLEAN_RESET_REQUIRED_ENV).toBe('ALLOW_DATA_RESET');
+    expect(CLEAN_RESET_REQUIRED_ENV_VALUE).toBe('yes');
   });
 });
 ```
@@ -263,66 +264,70 @@ export const CLEAN_RESET_SNAPSHOT_DELEGATES = [
 export const CLEAN_RESET_REQUIRED_ENV = 'ALLOW_DATA_RESET';
 export const CLEAN_RESET_REQUIRED_ENV_VALUE = 'yes';
 
-export const SINGLE_PRODUCT_VALIDATION_DATA = {
-  companyId: '1',
-  adminUserId: 'user_admin',
+export type RealProductValidationData = {
+  companyId: string;
   product: {
-    code: 'PROD-BANANA-CAKE-ORIGINAL',
-    name: '香蕉蒸蛋糕（原味）',
-    spec: '35g/枚，12枚/箱',
-    netWeight: '35.0000',
-    weightUnit: 'g',
-    shelfLifeDays: 30,
-    storageMethod: '常温阴凉干燥处保存',
-    consumptionMethod: '开袋即食',
-    standardCode: 'GB/T 20977',
-    labelAllergens: '含小麦、鸡蛋及其制品',
-    productType: '蒸蛋糕',
-  },
-  suppliers: [
-    { code: 'SUP-EGG-001', name: '示范鸡蛋供应商', contact: '王经理', phone: '13800000001' },
-    { code: 'SUP-FLOUR-001', name: '示范面粉供应商', contact: '李经理', phone: '13800000002' },
-    { code: 'SUP-SUGAR-001', name: '示范白砂糖供应商', contact: '陈经理', phone: '13800000003' },
-    { code: 'SUP-OIL-001', name: '示范食用油供应商', contact: '赵经理', phone: '13800000004' },
-    { code: 'SUP-BANANA-001', name: '示范香蕉原料供应商', contact: '刘经理', phone: '13800000005' },
-    { code: 'SUP-PACK-001', name: '示范包材供应商', contact: '周经理', phone: '13800000006' },
-  ],
-  materialCategory: { code: 'CAT-VALIDATION', name: '单产品实测物料' },
-  materials: [
-    { code: 'MAT-EGG-001', name: '鲜鸡蛋液', spec: '10kg/桶', unit: 'kg', supplierCode: 'SUP-EGG-001', shelfLifeDays: 7, allergen: true },
-    { code: 'MAT-FLOUR-001', name: '小麦粉', spec: '25kg/袋', unit: 'kg', supplierCode: 'SUP-FLOUR-001', shelfLifeDays: 180, allergen: true },
-    { code: 'MAT-SUGAR-001', name: '白砂糖', spec: '50kg/袋', unit: 'kg', supplierCode: 'SUP-SUGAR-001', shelfLifeDays: 365, allergen: false },
-    { code: 'MAT-OIL-001', name: '食用植物油', spec: '20kg/桶', unit: 'kg', supplierCode: 'SUP-OIL-001', shelfLifeDays: 365, allergen: false },
-    { code: 'MAT-BANANA-001', name: '香蕉浆', spec: '10kg/桶', unit: 'kg', supplierCode: 'SUP-BANANA-001', shelfLifeDays: 90, allergen: false },
-    { code: 'MAT-FILM-001', name: '蒸蛋糕包装膜', spec: '卷膜', unit: 'roll', supplierCode: 'SUP-PACK-001', shelfLifeDays: 730, allergen: false },
-    { code: 'MAT-OXY-001', name: '脱氧剂', spec: '1000包/袋', unit: 'bag', supplierCode: 'SUP-PACK-001', shelfLifeDays: 730, allergen: false },
-  ],
-  materialLots: [
-    { materialCode: 'MAT-EGG-001', batchNumber: 'ML-BANANA-20260429-EGG', supplierBatchNo: 'EGG-20260426-A', quantity: 120 },
-    { materialCode: 'MAT-FLOUR-001', batchNumber: 'ML-BANANA-20260429-FLOUR', supplierBatchNo: 'FL-20260420-A', quantity: 300 },
-    { materialCode: 'MAT-SUGAR-001', batchNumber: 'ML-BANANA-20260429-SUGAR', supplierBatchNo: 'SG-20260418-A', quantity: 200 },
-    { materialCode: 'MAT-OIL-001', batchNumber: 'ML-BANANA-20260429-OIL', supplierBatchNo: 'OIL-20260415-A', quantity: 100 },
-    { materialCode: 'MAT-BANANA-001', batchNumber: 'ML-BANANA-20260429-BANANA', supplierBatchNo: 'BN-20260425-A', quantity: 80 },
-    { materialCode: 'MAT-FILM-001', batchNumber: 'ML-BANANA-20260429-FILM', supplierBatchNo: 'PK-20260410-A', quantity: 10 },
-    { materialCode: 'MAT-OXY-001', batchNumber: 'ML-BANANA-20260429-OXY', supplierBatchNo: 'OXY-20260410-A', quantity: 5 },
-  ],
-  recipeLines: [
-    { materialCode: 'MAT-EGG-001', qtyPerBatch: '45.0000', unit: 'kg', critical: true },
-    { materialCode: 'MAT-FLOUR-001', qtyPerBatch: '38.0000', unit: 'kg', critical: true },
-    { materialCode: 'MAT-SUGAR-001', qtyPerBatch: '28.0000', unit: 'kg', critical: false },
-    { materialCode: 'MAT-OIL-001', qtyPerBatch: '12.0000', unit: 'kg', critical: false },
-    { materialCode: 'MAT-BANANA-001', qtyPerBatch: '18.0000', unit: 'kg', critical: true },
-    { materialCode: 'MAT-FILM-001', qtyPerBatch: '1.0000', unit: 'roll', critical: true },
-    { materialCode: 'MAT-OXY-001', qtyPerBatch: '1.0000', unit: 'bag', critical: true },
-  ],
+    code: string;
+    name: string;
+    spec?: string;
+    netWeight?: string;
+    weightUnit?: string;
+    shelfLifeDays?: number;
+    storageMethod?: string;
+    consumptionMethod?: string;
+    standardCode?: string;
+    labelAllergens?: string;
+    productType?: string;
+  };
+  suppliers: Array<{
+    code: string;
+    name: string;
+    contact?: string;
+    phone?: string;
+    address?: string;
+  }>;
+  materialCategory: {
+    code: string;
+    name: string;
+  };
+  materials: Array<{
+    code: string;
+    name: string;
+    spec?: string;
+    unit: string;
+    supplierCode: string;
+    shelfLifeDays?: number;
+    allergen?: boolean;
+    materialType?: 'raw' | 'auxiliary' | 'packaging';
+  }>;
+  materialLots: Array<{
+    materialCode: string;
+    batchNumber: string;
+    supplierBatchNo?: string;
+    productionDate: string;
+    expiryDate: string;
+    quantity: number;
+    warehouseLocation?: string;
+  }>;
+  recipe: {
+    version: number;
+    versionNote?: string;
+    lines: Array<{
+      materialCode: string;
+      qtyPerBatch: string;
+      unit: string;
+      critical?: boolean;
+    }>;
+  };
   productionBatch: {
-    batchNumber: 'PB-BANANA-20260429-001',
-    plannedQuantity: 1000,
-    actualQuantity: 960,
-    shift: '白班',
-    productionLine: '蒸蛋糕一线',
-  },
-} as const;
+    batchNumber: string;
+    plannedQuantity: number;
+    actualQuantity?: number;
+    productionDate: string;
+    shift?: string;
+    productionLine?: string;
+  };
+};
 ```
 
 - [ ] **Step 4: Run the config test**
@@ -346,43 +351,13 @@ git commit -m "test: define clean reset safety config"
 
 ---
 
-## Task 2: Add Snapshot And Guarded Reset Script
+## Task 2: Add Guarded Reset Script
 
 **Files:**
 
 - Create: `server/scripts/clean-reset-preserve-control-data.ts`
-- Modify: `server/scripts/__tests__/clean-reset-config.spec.ts`
 
-- [ ] **Step 1: Extend config tests with mode and guard expectations**
-
-Append to `server/scripts/__tests__/clean-reset-config.spec.ts`:
-
-```ts
-import {
-  CLEAN_RESET_REQUIRED_ENV,
-  CLEAN_RESET_REQUIRED_ENV_VALUE,
-} from '../clean-reset-config';
-
-describe('clean reset execution guard', () => {
-  it('requires an explicit environment acknowledgement for destructive execution', () => {
-    expect(CLEAN_RESET_REQUIRED_ENV).toBe('ALLOW_DATA_RESET');
-    expect(CLEAN_RESET_REQUIRED_ENV_VALUE).toBe('yes');
-  });
-});
-```
-
-- [ ] **Step 2: Run test to verify import fails until implementation exists**
-
-Run:
-
-```bash
-cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
-npm test -- clean-reset-config.spec.ts --runInBand
-```
-
-Expected: `PASS` if Task 1 already exported the guard constants. If it fails, add the constants exactly as shown in Task 1.
-
-- [ ] **Step 3: Create guarded reset script**
+- [ ] **Step 1: Create guarded reset script**
 
 Create `server/scripts/clean-reset-preserve-control-data.ts`:
 
@@ -427,7 +402,7 @@ async function countDelegates(delegateNames: readonly PrismaDelegateName[]) {
 }
 
 function printRows(title: string, rows: Array<{ delegate: string; count: number }>) {
-  console.log(`\\n${title}`);
+  console.log(`\n${title}`);
   console.table(rows);
 }
 
@@ -441,16 +416,16 @@ async function run() {
   printRows('Clean target delegates before reset', targetBefore);
 
   if (mode === 'snapshot') {
-    console.log('\\nSnapshot only. No data was deleted.');
+    console.log('\nSnapshot only. No data was deleted.');
     return;
   }
 
   if (mode === 'dry-run') {
-    console.log('\\nDry run delete order:');
+    console.log('\nDry run delete order:');
     CLEAN_RESET_DELETE_ORDER.forEach((delegateName, index) => {
       console.log(`${String(index + 1).padStart(2, '0')}. ${delegateName}`);
     });
-    console.log('\\nDry run only. No data was deleted.');
+    console.log('\nDry run only. No data was deleted.');
     return;
   }
 
@@ -460,7 +435,7 @@ async function run() {
     );
   }
 
-  console.log('\\nExecuting clean reset...');
+  console.log('\nExecuting clean reset...');
   for (const delegateName of CLEAN_RESET_DELETE_ORDER) {
     const result = await delegateFor(delegateName).deleteMany();
     console.log(`${delegateName}: deleted ${result.count}`);
@@ -482,7 +457,7 @@ async function run() {
     throw new Error('Clean reset changed preserved delegate counts');
   }
 
-  console.log('\\nClean reset completed. Preserved delegate counts are unchanged.');
+  console.log('\nClean reset completed. Preserved delegate counts are unchanged.');
 }
 
 run()
@@ -495,7 +470,7 @@ run()
   });
 ```
 
-- [ ] **Step 4: Type-check the script by running snapshot mode**
+- [ ] **Step 2: Run snapshot mode**
 
 Run:
 
@@ -504,13 +479,9 @@ cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
 npx ts-node --compiler-options '{"module":"commonjs"}' scripts/clean-reset-preserve-control-data.ts
 ```
 
-Expected:
+Expected: prints count tables and ends with `Snapshot only. No data was deleted.`
 
-- Prints preserved and clean target count tables.
-- Ends with `Snapshot only. No data was deleted.`
-- Does not delete anything.
-
-- [ ] **Step 5: Run dry-run mode**
+- [ ] **Step 3: Run dry-run mode**
 
 Run:
 
@@ -519,13 +490,9 @@ cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
 npx ts-node --compiler-options '{"module":"commonjs"}' scripts/clean-reset-preserve-control-data.ts --dry-run
 ```
 
-Expected:
+Expected: prints count tables, delete order, and `Dry run only. No data was deleted.`
 
-- Prints count tables.
-- Prints delete order.
-- Ends with `Dry run only. No data was deleted.`
-
-- [ ] **Step 6: Verify execute is blocked without environment acknowledgement**
+- [ ] **Step 4: Verify execute is blocked by default**
 
 Run:
 
@@ -534,123 +501,422 @@ cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
 npx ts-node --compiler-options '{"module":"commonjs"}' scripts/clean-reset-preserve-control-data.ts --execute
 ```
 
-Expected: command exits non-zero with:
+Expected: exits non-zero with `Refusing to delete data. Set ALLOW_DATA_RESET=yes and pass --execute.`
 
-```text
-Refusing to delete data. Set ALLOW_DATA_RESET=yes and pass --execute.
-```
-
-- [ ] **Step 7: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 cd /Users/jiashenglin/Desktop/好玩的项目/noidear
-git add server/scripts/clean-reset-preserve-control-data.ts server/scripts/__tests__/clean-reset-config.spec.ts
+git add server/scripts/clean-reset-preserve-control-data.ts
 git commit -m "feat: add guarded clean reset script"
 ```
 
 ---
 
-## Task 3: Add Single Product Validation Seed
+## Task 3: Add Real Product Data Validation
 
 **Files:**
 
-- Create: `server/scripts/seed-single-product-validation.ts`
-- Create: `server/scripts/__tests__/single-product-validation-data.spec.ts`
+- Create: `server/scripts/validate-real-product-validation-data.ts`
+- Create: `server/scripts/__tests__/real-product-validation-data.spec.ts`
+- Create: `docs/superpowers/templates/real-product-validation-data.example.json`
 
-- [ ] **Step 1: Write validation data tests**
+- [ ] **Step 1: Write validation tests**
 
-Create `server/scripts/__tests__/single-product-validation-data.spec.ts`:
+Create `server/scripts/__tests__/real-product-validation-data.spec.ts`:
 
 ```ts
-import { SINGLE_PRODUCT_VALIDATION_DATA } from '../clean-reset-config';
+import { validateRealProductValidationData } from '../validate-real-product-validation-data';
+import { RealProductValidationData } from '../clean-reset-config';
 
-describe('single product validation seed data', () => {
-  it('has one product with complete food-safety fields', () => {
-    const product = SINGLE_PRODUCT_VALIDATION_DATA.product;
+const validData: RealProductValidationData = {
+  companyId: '1',
+  product: {
+    code: 'REAL-PRODUCT-001',
+    name: '用户提供的真实产品',
+    spec: '真实规格',
+    shelfLifeDays: 30,
+  },
+  suppliers: [{ code: 'REAL-SUP-001', name: '真实供应商' }],
+  materialCategory: { code: 'REAL-CAT-001', name: '真实物料分类' },
+  materials: [
+    {
+      code: 'REAL-MAT-001',
+      name: '真实物料',
+      unit: 'kg',
+      supplierCode: 'REAL-SUP-001',
+      allergen: false,
+    },
+  ],
+  materialLots: [
+    {
+      materialCode: 'REAL-MAT-001',
+      batchNumber: 'REAL-LOT-001',
+      supplierBatchNo: 'SUP-LOT-001',
+      productionDate: '2026-04-01',
+      expiryDate: '2026-12-31',
+      quantity: 100,
+    },
+  ],
+  recipe: {
+    version: 1,
+    versionNote: '真实配方',
+    lines: [{ materialCode: 'REAL-MAT-001', qtyPerBatch: '10.0000', unit: 'kg', critical: true }],
+  },
+  productionBatch: {
+    batchNumber: 'REAL-PB-001',
+    plannedQuantity: 1000,
+    actualQuantity: 980,
+    productionDate: '2026-04-29',
+  },
+};
 
-    expect(product.code).toBe('PROD-BANANA-CAKE-ORIGINAL');
-    expect(product.name).toBe('香蕉蒸蛋糕（原味）');
-    expect(product.shelfLifeDays).toBe(30);
-    expect(product.standardCode).toBe('GB/T 20977');
-    expect(product.labelAllergens).toContain('小麦');
-    expect(product.labelAllergens).toContain('鸡蛋');
+describe('validateRealProductValidationData', () => {
+  it('accepts a complete single-product package', () => {
+    expect(validateRealProductValidationData(validData)).toEqual([]);
   });
 
-  it('maps every material to an existing supplier and material lot', () => {
-    const supplierCodes = new Set(SINGLE_PRODUCT_VALIDATION_DATA.suppliers.map((supplier) => supplier.code));
-    const materialCodes = new Set(SINGLE_PRODUCT_VALIDATION_DATA.materials.map((material) => material.code));
-    const lotMaterialCodes = new Set(SINGLE_PRODUCT_VALIDATION_DATA.materialLots.map((lot) => lot.materialCode));
+  it('rejects missing product identity', () => {
+    const data = { ...validData, product: { ...validData.product, code: '' } };
 
-    for (const material of SINGLE_PRODUCT_VALIDATION_DATA.materials) {
-      expect(supplierCodes.has(material.supplierCode)).toBe(true);
-      expect(lotMaterialCodes.has(material.code)).toBe(true);
-    }
-
-    for (const recipeLine of SINGLE_PRODUCT_VALIDATION_DATA.recipeLines) {
-      expect(materialCodes.has(recipeLine.materialCode)).toBe(true);
-    }
+    expect(validateRealProductValidationData(data)).toContain('product.code is required');
   });
 
-  it('uses stable batch numbers for manual traceability testing', () => {
-    expect(SINGLE_PRODUCT_VALIDATION_DATA.productionBatch.batchNumber).toBe('PB-BANANA-20260429-001');
-    expect(SINGLE_PRODUCT_VALIDATION_DATA.materialLots.map((lot) => lot.batchNumber)).toEqual([
-      'ML-BANANA-20260429-EGG',
-      'ML-BANANA-20260429-FLOUR',
-      'ML-BANANA-20260429-SUGAR',
-      'ML-BANANA-20260429-OIL',
-      'ML-BANANA-20260429-BANANA',
-      'ML-BANANA-20260429-FILM',
-      'ML-BANANA-20260429-OXY',
-    ]);
+  it('rejects material supplier references that do not exist', () => {
+    const data: RealProductValidationData = {
+      ...validData,
+      materials: [{ ...validData.materials[0], supplierCode: 'MISSING-SUP' }],
+    };
+
+    expect(validateRealProductValidationData(data)).toContain(
+      'materials[0].supplierCode references missing supplier: MISSING-SUP',
+    );
+  });
+
+  it('rejects material lots that reference missing materials', () => {
+    const data: RealProductValidationData = {
+      ...validData,
+      materialLots: [{ ...validData.materialLots[0], materialCode: 'MISSING-MAT' }],
+    };
+
+    expect(validateRealProductValidationData(data)).toContain(
+      'materialLots[0].materialCode references missing material: MISSING-MAT',
+    );
+  });
+
+  it('rejects recipe lines that reference missing materials', () => {
+    const data: RealProductValidationData = {
+      ...validData,
+      recipe: {
+        ...validData.recipe,
+        lines: [{ ...validData.recipe.lines[0], materialCode: 'MISSING-MAT' }],
+      },
+    };
+
+    expect(validateRealProductValidationData(data)).toContain(
+      'recipe.lines[0].materialCode references missing material: MISSING-MAT',
+    );
   });
 });
 ```
 
-- [ ] **Step 2: Run tests**
+- [ ] **Step 2: Run failing test**
 
 Run:
 
 ```bash
 cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
-npm test -- clean-reset-config.spec.ts single-product-validation-data.spec.ts --runInBand
+npm test -- real-product-validation-data.spec.ts --runInBand
+```
+
+Expected: `FAIL` because `validate-real-product-validation-data.ts` does not exist.
+
+- [ ] **Step 3: Create validation script**
+
+Create `server/scripts/validate-real-product-validation-data.ts`:
+
+```ts
+import { readFileSync } from 'node:fs';
+import { RealProductValidationData } from './clean-reset-config';
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isPositiveNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0;
+}
+
+function isValidDateString(value: unknown): boolean {
+  return isNonEmptyString(value) && !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`));
+}
+
+export function validateRealProductValidationData(input: unknown): string[] {
+  const errors: string[] = [];
+
+  if (!isObject(input)) return ['root must be an object'];
+  const data = input as RealProductValidationData;
+
+  if (!isNonEmptyString(data.companyId)) errors.push('companyId is required');
+  if (!isObject(data.product)) {
+    errors.push('product is required');
+  } else {
+    if (!isNonEmptyString(data.product.code)) errors.push('product.code is required');
+    if (!isNonEmptyString(data.product.name)) errors.push('product.name is required');
+  }
+
+  if (!Array.isArray(data.suppliers) || data.suppliers.length === 0) {
+    errors.push('suppliers must contain at least one supplier');
+  }
+  if (!Array.isArray(data.materials) || data.materials.length === 0) {
+    errors.push('materials must contain at least one material');
+  }
+  if (!Array.isArray(data.materialLots) || data.materialLots.length === 0) {
+    errors.push('materialLots must contain at least one material lot');
+  }
+  if (!isObject(data.recipe) || !Array.isArray(data.recipe.lines) || data.recipe.lines.length === 0) {
+    errors.push('recipe.lines must contain at least one recipe line');
+  }
+  if (!isObject(data.productionBatch)) {
+    errors.push('productionBatch is required');
+  }
+
+  const supplierCodes = new Set<string>();
+  data.suppliers?.forEach((supplier, index) => {
+    if (!isNonEmptyString(supplier.code)) errors.push(`suppliers[${index}].code is required`);
+    if (!isNonEmptyString(supplier.name)) errors.push(`suppliers[${index}].name is required`);
+    if (isNonEmptyString(supplier.code)) supplierCodes.add(supplier.code);
+  });
+
+  const materialCodes = new Set<string>();
+  data.materials?.forEach((material, index) => {
+    if (!isNonEmptyString(material.code)) errors.push(`materials[${index}].code is required`);
+    if (!isNonEmptyString(material.name)) errors.push(`materials[${index}].name is required`);
+    if (!isNonEmptyString(material.unit)) errors.push(`materials[${index}].unit is required`);
+    if (!isNonEmptyString(material.supplierCode)) {
+      errors.push(`materials[${index}].supplierCode is required`);
+    } else if (!supplierCodes.has(material.supplierCode)) {
+      errors.push(`materials[${index}].supplierCode references missing supplier: ${material.supplierCode}`);
+    }
+    if (isNonEmptyString(material.code)) materialCodes.add(material.code);
+  });
+
+  data.materialLots?.forEach((lot, index) => {
+    if (!isNonEmptyString(lot.materialCode)) {
+      errors.push(`materialLots[${index}].materialCode is required`);
+    } else if (!materialCodes.has(lot.materialCode)) {
+      errors.push(`materialLots[${index}].materialCode references missing material: ${lot.materialCode}`);
+    }
+    if (!isNonEmptyString(lot.batchNumber)) errors.push(`materialLots[${index}].batchNumber is required`);
+    if (!isValidDateString(lot.productionDate)) errors.push(`materialLots[${index}].productionDate must be YYYY-MM-DD`);
+    if (!isValidDateString(lot.expiryDate)) errors.push(`materialLots[${index}].expiryDate must be YYYY-MM-DD`);
+    if (!isPositiveNumber(lot.quantity)) errors.push(`materialLots[${index}].quantity must be positive`);
+  });
+
+  data.recipe?.lines?.forEach((line, index) => {
+    if (!isNonEmptyString(line.materialCode)) {
+      errors.push(`recipe.lines[${index}].materialCode is required`);
+    } else if (!materialCodes.has(line.materialCode)) {
+      errors.push(`recipe.lines[${index}].materialCode references missing material: ${line.materialCode}`);
+    }
+    if (!isNonEmptyString(line.qtyPerBatch)) errors.push(`recipe.lines[${index}].qtyPerBatch is required`);
+    if (!isNonEmptyString(line.unit)) errors.push(`recipe.lines[${index}].unit is required`);
+  });
+
+  if (data.productionBatch) {
+    if (!isNonEmptyString(data.productionBatch.batchNumber)) errors.push('productionBatch.batchNumber is required');
+    if (!isPositiveNumber(data.productionBatch.plannedQuantity)) errors.push('productionBatch.plannedQuantity must be positive');
+    if (!isValidDateString(data.productionBatch.productionDate)) errors.push('productionBatch.productionDate must be YYYY-MM-DD');
+  }
+
+  return errors;
+}
+
+export function readRealProductValidationData(filePath: string): RealProductValidationData {
+  return JSON.parse(readFileSync(filePath, 'utf8')) as RealProductValidationData;
+}
+
+if (require.main === module) {
+  const filePath = process.argv[2];
+  if (!filePath) {
+    console.error('Usage: ts-node scripts/validate-real-product-validation-data.ts <data-file.json>');
+    process.exit(1);
+  }
+
+  const data = readRealProductValidationData(filePath);
+  const errors = validateRealProductValidationData(data);
+
+  if (errors.length > 0) {
+    console.error('Real product validation data is invalid:');
+    for (const error of errors) console.error(`- ${error}`);
+    process.exit(1);
+  }
+
+  console.log('Real product validation data is valid.');
+}
+```
+
+- [ ] **Step 4: Create structure-only JSON example**
+
+Create `docs/superpowers/templates/real-product-validation-data.example.json`:
+
+```json
+{
+  "companyId": "1",
+  "product": {
+    "code": "请替换为真实产品编号",
+    "name": "请替换为真实产品名称",
+    "spec": "请替换为真实规格",
+    "netWeight": "0.0000",
+    "weightUnit": "g",
+    "shelfLifeDays": 0,
+    "storageMethod": "请替换为真实储存方式",
+    "consumptionMethod": "请替换为真实食用方式",
+    "standardCode": "请替换为真实执行标准",
+    "labelAllergens": "请替换为真实过敏原声明",
+    "productType": "请替换为真实产品类型"
+  },
+  "suppliers": [
+    {
+      "code": "请替换为真实供应商编号",
+      "name": "请替换为真实供应商名称",
+      "contact": "联系人",
+      "phone": "联系电话",
+      "address": "地址"
+    }
+  ],
+  "materialCategory": {
+    "code": "请替换为真实物料分类编号",
+    "name": "请替换为真实物料分类名称"
+  },
+  "materials": [
+    {
+      "code": "请替换为真实物料编号",
+      "name": "请替换为真实物料名称",
+      "spec": "请替换为真实规格",
+      "unit": "kg",
+      "supplierCode": "请替换为上方真实供应商编号",
+      "shelfLifeDays": 0,
+      "allergen": false,
+      "materialType": "raw"
+    }
+  ],
+  "materialLots": [
+    {
+      "materialCode": "请替换为上方真实物料编号",
+      "batchNumber": "请替换为系统物料批次号",
+      "supplierBatchNo": "请替换为供应商批号",
+      "productionDate": "2026-04-01",
+      "expiryDate": "2026-12-31",
+      "quantity": 1,
+      "warehouseLocation": "请替换为真实库位"
+    }
+  ],
+  "recipe": {
+    "version": 1,
+    "versionNote": "请替换为真实配方说明",
+    "lines": [
+      {
+        "materialCode": "请替换为上方真实物料编号",
+        "qtyPerBatch": "1.0000",
+        "unit": "kg",
+        "critical": true
+      }
+    ]
+  },
+  "productionBatch": {
+    "batchNumber": "请替换为真实生产批次号",
+    "plannedQuantity": 1,
+    "actualQuantity": 1,
+    "productionDate": "2026-04-29",
+    "shift": "请替换为真实班次",
+    "productionLine": "请替换为真实生产线"
+  }
+}
+```
+
+- [ ] **Step 5: Run validation tests**
+
+Run:
+
+```bash
+cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
+npm test -- real-product-validation-data.spec.ts --runInBand
 ```
 
 Expected: `PASS`.
 
-- [ ] **Step 3: Create seed script**
+- [ ] **Step 6: Validate the example file**
 
-Create `server/scripts/seed-single-product-validation.ts`:
+Run:
+
+```bash
+cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
+npx ts-node --compiler-options '{"module":"commonjs"}' scripts/validate-real-product-validation-data.ts ../docs/superpowers/templates/real-product-validation-data.example.json
+```
+
+Expected: `Real product validation data is valid.`
+
+- [ ] **Step 7: Commit**
+
+```bash
+cd /Users/jiashenglin/Desktop/好玩的项目/noidear
+git add server/scripts/validate-real-product-validation-data.ts server/scripts/__tests__/real-product-validation-data.spec.ts docs/superpowers/templates/real-product-validation-data.example.json
+git commit -m "feat: validate real product import data"
+```
+
+---
+
+## Task 4: Add Real Product Import Script
+
+**Files:**
+
+- Create: `server/scripts/import-real-product-validation-data.ts`
+
+- [ ] **Step 1: Create import script**
+
+Create `server/scripts/import-real-product-validation-data.ts`:
 
 ```ts
 import { PrismaClient } from '@prisma/client';
-import { SINGLE_PRODUCT_VALIDATION_DATA } from './clean-reset-config';
+import {
+  readRealProductValidationData,
+  validateRealProductValidationData,
+} from './validate-real-product-validation-data';
 
 const prisma = new PrismaClient();
-const data = SINGLE_PRODUCT_VALIDATION_DATA;
 
 function dateOnly(value: string) {
   return new Date(`${value}T00:00:00.000Z`);
 }
 
-async function ensureMaterialCategory() {
-  const existing = await prisma.materialCategory.findFirst({
+async function run() {
+  const filePath = process.argv[2];
+  if (!filePath) {
+    throw new Error('Usage: ts-node scripts/import-real-product-validation-data.ts <data-file.json>');
+  }
+
+  const data = readRealProductValidationData(filePath);
+  const errors = validateRealProductValidationData(data);
+  if (errors.length > 0) {
+    throw new Error(`Invalid real product validation data:\n${errors.map((error) => `- ${error}`).join('\n')}`);
+  }
+
+  const category = await prisma.materialCategory.upsert({
     where: { code: data.materialCategory.code },
-  });
-
-  if (existing) return existing;
-
-  return prisma.materialCategory.create({
-    data: {
+    update: { name: data.materialCategory.name },
+    create: {
       code: data.materialCategory.code,
       name: data.materialCategory.name,
-      description: '单产品真实实测专用分类',
+      description: '真实单产品实测导入',
     },
   });
-}
 
-async function seedSuppliers() {
   const suppliers = new Map<string, { id: string }>();
-
   for (const supplier of data.suppliers) {
     const created = await prisma.supplier.upsert({
       where: { supplierCode: supplier.code },
@@ -658,6 +924,7 @@ async function seedSuppliers() {
         name: supplier.name,
         contact: supplier.contact,
         phone: supplier.phone,
+        address: supplier.address,
         status: 'active',
         supplier_status: 'approved',
       },
@@ -666,6 +933,7 @@ async function seedSuppliers() {
         name: supplier.name,
         contact: supplier.contact,
         phone: supplier.phone,
+        address: supplier.address,
         status: 'active',
         supplier_status: 'approved',
       },
@@ -673,12 +941,7 @@ async function seedSuppliers() {
     suppliers.set(supplier.code, created);
   }
 
-  return suppliers;
-}
-
-async function seedMaterials(categoryId: string) {
   const materials = new Map<string, { id: string }>();
-
   for (const material of data.materials) {
     const created = await prisma.material.upsert({
       where: { materialCode: material.code },
@@ -686,10 +949,11 @@ async function seedMaterials(categoryId: string) {
         name: material.name,
         specification: material.spec,
         unit: material.unit,
-        categoryId,
+        categoryId: category.id,
         shelfLife: material.shelfLifeDays,
         shelf_life_days: material.shelfLifeDays,
-        is_allergen: material.allergen,
+        is_allergen: material.allergen ?? false,
+        material_type: material.materialType ?? 'raw',
         status: 'active',
       },
       create: {
@@ -697,34 +961,25 @@ async function seedMaterials(categoryId: string) {
         name: material.name,
         specification: material.spec,
         unit: material.unit,
-        categoryId,
+        categoryId: category.id,
         shelfLife: material.shelfLifeDays,
         shelf_life_days: material.shelfLifeDays,
-        is_allergen: material.allergen,
+        is_allergen: material.allergen ?? false,
         allergen_notes: material.allergen ? '标签需声明' : null,
+        material_type: material.materialType ?? 'raw',
         status: 'active',
       },
     });
     materials.set(material.code, created);
   }
 
-  return materials;
-}
-
-async function seedMaterialLots(
-  materials: Map<string, { id: string }>,
-  suppliers: Map<string, { id: string }>,
-) {
-  const lots = new Map<string, { id: string }>();
   const supplierByMaterialCode = new Map(data.materials.map((material) => [material.code, material.supplierCode]));
-
+  const materialLots = new Map<string, { id: string }>();
   for (const lot of data.materialLots) {
     const material = materials.get(lot.materialCode);
-    if (!material) throw new Error(`Missing material for lot: ${lot.materialCode}`);
-
     const supplierCode = supplierByMaterialCode.get(lot.materialCode);
     const supplier = supplierCode ? suppliers.get(supplierCode) : undefined;
-    if (!supplier) throw new Error(`Missing supplier for lot: ${lot.batchNumber}`);
+    if (!material || !supplier) throw new Error(`Broken lot relation: ${lot.batchNumber}`);
 
     const created = await prisma.materialBatch.upsert({
       where: { batchNumber: lot.batchNumber },
@@ -734,6 +989,7 @@ async function seedMaterialLots(
         supplierBatchNo: lot.supplierBatchNo,
         supplier_lot_no: lot.supplierBatchNo,
         quantity: lot.quantity,
+        warehouseLocation: lot.warehouseLocation,
         lot_status: 'in_stock',
         status: 'normal',
       },
@@ -743,21 +999,17 @@ async function seedMaterialLots(
         supplierId: supplier.id,
         supplierBatchNo: lot.supplierBatchNo,
         supplier_lot_no: lot.supplierBatchNo,
-        productionDate: dateOnly('2026-04-20'),
-        expiryDate: dateOnly('2026-12-31'),
+        productionDate: dateOnly(lot.productionDate),
+        expiryDate: dateOnly(lot.expiryDate),
         quantity: lot.quantity,
-        warehouseLocation: 'A-01',
+        warehouseLocation: lot.warehouseLocation,
         lot_status: 'in_stock',
         status: 'normal',
       },
     });
-    lots.set(lot.materialCode, created);
+    materialLots.set(lot.materialCode, created);
   }
 
-  return lots;
-}
-
-async function seedProductAndRecipe(materials: Map<string, { id: string }>) {
   const product = await prisma.product.upsert({
     where: { company_id_code: { company_id: data.companyId, code: data.product.code } },
     update: {
@@ -768,6 +1020,7 @@ async function seedProductAndRecipe(materials: Map<string, { id: string }>) {
       storage_method: data.product.storageMethod,
       consumption_method: data.product.consumptionMethod,
       label_allergens: data.product.labelAllergens,
+      product_type: data.product.productType,
       status: 'active',
     },
     create: {
@@ -784,25 +1037,30 @@ async function seedProductAndRecipe(materials: Map<string, { id: string }>) {
       label_allergens: data.product.labelAllergens,
       product_type: data.product.productType,
       status: 'active',
-      source: 'single_product_validation',
+      source: 'real_product_validation_import',
     },
   });
 
   const recipe = await prisma.recipe.upsert({
-    where: { company_id_product_id_version: { company_id: data.companyId, product_id: product.id, version: 1 } },
-    update: { status: 'active', version_note: '单产品实测初始配方' },
+    where: {
+      company_id_product_id_version: {
+        company_id: data.companyId,
+        product_id: product.id,
+        version: data.recipe.version,
+      },
+    },
+    update: { status: 'active', version_note: data.recipe.versionNote },
     create: {
       company_id: data.companyId,
       product_id: product.id,
-      version: 1,
-      version_note: '单产品实测初始配方',
+      version: data.recipe.version,
+      version_note: data.recipe.versionNote,
       status: 'active',
-      approved_by: data.adminUserId,
       approved_at: new Date(),
     },
   });
 
-  for (const line of data.recipeLines) {
+  for (const line of data.recipe.lines) {
     const material = materials.get(line.materialCode);
     if (!material) throw new Error(`Missing material for recipe line: ${line.materialCode}`);
 
@@ -811,33 +1069,25 @@ async function seedProductAndRecipe(materials: Map<string, { id: string }>) {
       update: {
         qty_per_batch: line.qtyPerBatch,
         unit: line.unit,
-        is_critical: line.critical,
+        is_critical: line.critical ?? false,
       },
       create: {
         recipe_id: recipe.id,
         material_id: material.id,
         qty_per_batch: line.qtyPerBatch,
         unit: line.unit,
-        is_critical: line.critical,
+        is_critical: line.critical ?? false,
       },
     });
   }
 
-  return { product, recipe };
-}
-
-async function seedProductionTraceability(
-  product: { id: string; name: string },
-  recipe: { id: string },
-  materialLots: Map<string, { id: string }>,
-) {
   const productionBatch = await prisma.productionBatch.upsert({
     where: { batchNumber: data.productionBatch.batchNumber },
     update: {
       productId: product.id,
       productName: product.name,
       recipeId: recipe.id,
-      recipeName: '香蕉蒸蛋糕（原味）V1',
+      recipeName: `${product.name} V${recipe.version}`,
       plannedQuantity: data.productionBatch.plannedQuantity,
       actualQuantity: data.productionBatch.actualQuantity,
       status: 'completed',
@@ -847,10 +1097,10 @@ async function seedProductionTraceability(
       productId: product.id,
       productName: product.name,
       recipeId: recipe.id,
-      recipeName: '香蕉蒸蛋糕（原味）V1',
+      recipeName: `${product.name} V${recipe.version}`,
       plannedQuantity: data.productionBatch.plannedQuantity,
       actualQuantity: data.productionBatch.actualQuantity,
-      productionDate: dateOnly('2026-04-29'),
+      productionDate: dateOnly(data.productionBatch.productionDate),
       status: 'completed',
       shift: data.productionBatch.shift,
       production_line: data.productionBatch.productionLine,
@@ -858,7 +1108,7 @@ async function seedProductionTraceability(
     },
   });
 
-  for (const line of data.recipeLines) {
+  for (const line of data.recipe.lines) {
     const lot = materialLots.get(line.materialCode);
     if (!lot) throw new Error(`Missing material lot for usage: ${line.materialCode}`);
 
@@ -869,9 +1119,7 @@ async function seedProductionTraceability(
           materialBatchId: lot.id,
         },
       },
-      update: {
-        quantity: Number(line.qtyPerBatch),
-      },
+      update: { quantity: Number(line.qtyPerBatch) },
       create: {
         productionBatchId: productionBatch.id,
         materialBatchId: lot.id,
@@ -881,20 +1129,9 @@ async function seedProductionTraceability(
     });
   }
 
-  return productionBatch;
-}
-
-async function run() {
-  const category = await ensureMaterialCategory();
-  const suppliers = await seedSuppliers();
-  const materials = await seedMaterials(category.id);
-  const materialLots = await seedMaterialLots(materials, suppliers);
-  const { product, recipe } = await seedProductAndRecipe(materials);
-  const productionBatch = await seedProductionTraceability(product, recipe, materialLots);
-
-  console.log('Single product validation data ready:');
+  console.log('Real product validation data imported:');
   console.table([
-    { label: 'product', value: data.product.code },
+    { label: 'product', value: `${product.code} ${product.name}` },
     { label: 'productionBatch', value: productionBatch.batchNumber },
     { label: 'materials', value: materials.size },
     { label: 'materialLots', value: materialLots.size },
@@ -911,53 +1148,140 @@ run()
   });
 ```
 
-- [ ] **Step 4: Run the seed script**
-
-Run after the clean reset is complete, not before:
-
-```bash
-cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
-npx ts-node --compiler-options '{"module":"commonjs"}' scripts/seed-single-product-validation.ts
-```
-
-Expected:
-
-- Prints `Single product validation data ready`.
-- Shows product `PROD-BANANA-CAKE-ORIGINAL`.
-- Shows production batch `PB-BANANA-20260429-001`.
-- Shows `materials: 7`.
-- Shows `materialLots: 7`.
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 2: Commit**
 
 ```bash
 cd /Users/jiashenglin/Desktop/好玩的项目/noidear
-git add server/scripts/seed-single-product-validation.ts server/scripts/__tests__/single-product-validation-data.spec.ts
-git commit -m "feat: seed single product validation chain"
+git add server/scripts/import-real-product-validation-data.ts
+git commit -m "feat: import real product validation data"
 ```
 
 ---
 
-## Task 4: Add Package Scripts
+## Task 5: Add Package Scripts And Runbook
 
 **Files:**
 
 - Modify: `server/package.json`
+- Create: `docs/superpowers/runbooks/2026-04-29-clean-reset-and-real-product-validation-runbook.md`
 
 - [ ] **Step 1: Add npm scripts**
 
-Modify the `scripts` block in `server/package.json` by adding:
+Modify the `scripts` block in `server/package.json` by adding these entries after `seed:templates`:
 
 ```json
 "clean-reset:snapshot": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/clean-reset-preserve-control-data.ts",
 "clean-reset:dry-run": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/clean-reset-preserve-control-data.ts --dry-run",
 "clean-reset:execute": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/clean-reset-preserve-control-data.ts --execute",
-"seed:single-product-validation": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/seed-single-product-validation.ts"
+"validate:real-product": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/validate-real-product-validation-data.ts",
+"import:real-product": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/import-real-product-validation-data.ts"
 ```
 
-Place them after the existing `seed:templates` script so all data scripts remain grouped.
+- [ ] **Step 2: Create runbook**
 
-- [ ] **Step 2: Validate JSON**
+Create `docs/superpowers/runbooks/2026-04-29-clean-reset-and-real-product-validation-runbook.md`:
+
+```md
+# 清库保留与真实单产品实测运行手册
+
+## 1. 真实数据来源
+
+系统不内置任何产品种子。真实产品数据由用户提供，保存为本地 JSON 文件，例如：
+
+```bash
+/Users/jiashenglin/Desktop/好玩的项目/noidear-local-data/real-product-validation-data.json
+```
+
+不要把真实业务数据 JSON 提交到 git。
+
+## 2. 数据文件模板
+
+结构参考：
+
+```bash
+/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/superpowers/templates/real-product-validation-data.example.json
+```
+
+模板里的中文示例值必须替换成真实数据。
+
+## 3. 清理前快照
+
+```bash
+cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
+npm run clean-reset:snapshot
+```
+
+确认以下数据会保留：
+
+- document
+- documentVersion
+- documentReference
+- recordTemplate
+- recordFormLandingEntry
+- equipment
+- measuringEquipment
+- user
+- department
+
+## 4. Dry Run
+
+```bash
+cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
+npm run clean-reset:dry-run
+```
+
+确认 delete order 中没有文控文档、记录模板、设备台账、账号权限相关 delegate。
+
+## 5. 执行清理
+
+只在确认备份完成后执行：
+
+```bash
+cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
+ALLOW_DATA_RESET=yes npm run clean-reset:execute
+```
+
+成功输出应包含：
+
+```text
+Clean reset completed. Preserved delegate counts are unchanged.
+```
+
+## 6. 校验真实产品数据
+
+```bash
+cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
+npm run validate:real-product -- /Users/jiashenglin/Desktop/好玩的项目/noidear-local-data/real-product-validation-data.json
+```
+
+成功输出：
+
+```text
+Real product validation data is valid.
+```
+
+## 7. 导入真实产品数据
+
+```bash
+cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
+npm run import:real-product -- /Users/jiashenglin/Desktop/好玩的项目/noidear-local-data/real-product-validation-data.json
+```
+
+## 8. 手工实测
+
+1. 登录系统。
+2. 打开文控中心，确认体系文件仍可查看。
+3. 打开设备台账，确认设备仍可查看。
+4. 打开产品主数据，确认用户提供的真实产品存在。
+5. 打开物料主数据，确认用户提供的真实物料存在。
+6. 打开物料批次，确认用户提供的真实物料批次存在。
+7. 打开生产批次，确认用户提供的真实生产批次存在。
+8. 打开追溯查询，以用户提供的真实生产批次查询。
+9. 确认追溯结果能看到物料批次和供应商。
+10. 打开文控工作台，确认文档和记录表单治理入口仍可用。
+```
+
+- [ ] **Step 3: Validate package JSON**
 
 Run:
 
@@ -966,168 +1290,14 @@ cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
 node -e "JSON.parse(require('fs').readFileSync('package.json', 'utf8')); console.log('package json ok')"
 ```
 
-Expected:
+Expected: `package json ok`
 
-```text
-package json ok
-```
-
-- [ ] **Step 3: Run script entrypoints in safe modes**
-
-Run:
-
-```bash
-cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
-npm run clean-reset:snapshot
-npm run clean-reset:dry-run
-```
-
-Expected:
-
-- Snapshot prints count tables and deletes nothing.
-- Dry-run prints count tables plus delete order and deletes nothing.
-
-- [ ] **Step 4: Verify destructive script remains blocked by default**
-
-Run:
-
-```bash
-cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
-npm run clean-reset:execute
-```
-
-Expected: command exits non-zero with:
-
-```text
-Refusing to delete data. Set ALLOW_DATA_RESET=yes and pass --execute.
-```
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 cd /Users/jiashenglin/Desktop/好玩的项目/noidear
-git add server/package.json
-git commit -m "chore: add clean reset npm scripts"
-```
-
----
-
-## Task 5: Add Operator Runbook
-
-**Files:**
-
-- Create: `docs/superpowers/runbooks/2026-04-29-clean-reset-and-single-product-validation-runbook.md`
-
-- [ ] **Step 1: Create the runbook**
-
-Create `docs/superpowers/runbooks/2026-04-29-clean-reset-and-single-product-validation-runbook.md`:
-
-```md
-# 清库保留与单产品实测运行手册
-
-## 1. 执行边界
-
-本手册只用于本地库或测试库。正式库必须先完成数据库备份和文件存储备份后再评估执行。
-
-清理必须保留：
-
-- 文控中心所有 Document、DocumentVersion、DocumentReference
-- 文控治理配置
-- RecordTemplate
-- RecordFormLandingEntry
-- Equipment
-- MeasuringEquipment
-- User、Department、Role、Permission、FineGrainedPermission
-
-## 2. 清理前检查
-
-```bash
-cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
-npm run clean-reset:snapshot
-```
-
-确认输出里以下 delegate 的 count 在清理前有记录：
-
-- document
-- documentVersion
-- documentReference
-- recordTemplate
-- recordFormLandingEntry
-- equipment
-- measuringEquipment
-- user
-- department
-
-## 3. Dry Run
-
-```bash
-cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
-npm run clean-reset:dry-run
-```
-
-确认 delete order 中没有以下 delegate：
-
-- document
-- documentVersion
-- documentReference
-- recordTemplate
-- recordFormLandingEntry
-- equipment
-- measuringEquipment
-- user
-- department
-
-## 4. 执行清理
-
-```bash
-cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
-ALLOW_DATA_RESET=yes npm run clean-reset:execute
-```
-
-执行完成后确认输出包含：
-
-```text
-Clean reset completed. Preserved delegate counts are unchanged.
-```
-
-## 5. 种入一个真实产品链路
-
-```bash
-cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
-npm run seed:single-product-validation
-```
-
-确认输出包含：
-
-- PROD-BANANA-CAKE-ORIGINAL
-- PB-BANANA-20260429-001
-- materials: 7
-- materialLots: 7
-
-## 6. 手工实测
-
-1. 登录系统。
-2. 打开文控中心，确认体系文件仍可查看。
-3. 打开设备台账，确认设备仍可查看。
-4. 打开产品主数据，确认存在“香蕉蒸蛋糕（原味）”。
-5. 打开物料主数据，确认 7 个关键物料存在。
-6. 打开物料批次，确认 7 个物料批次存在。
-7. 打开生产批次，确认 `PB-BANANA-20260429-001` 存在。
-8. 打开追溯查询，以生产批次 `PB-BANANA-20260429-001` 查询。
-9. 确认追溯结果能看到物料批次和供应商。
-10. 打开文控工作台，确认文档和记录表单治理入口仍可用。
-
-## 7. 回滚
-
-如果清理结果不符合预期，停止继续录入数据，从清理前数据库备份恢复。
-```
-
-- [ ] **Step 2: Commit**
-
-```bash
-cd /Users/jiashenglin/Desktop/好玩的项目/noidear
-git add docs/superpowers/runbooks/2026-04-29-clean-reset-and-single-product-validation-runbook.md
-git commit -m "docs: add clean reset validation runbook"
+git add server/package.json docs/superpowers/runbooks/2026-04-29-clean-reset-and-real-product-validation-runbook.md
+git commit -m "docs: add real product validation runbook"
 ```
 
 ---
@@ -1144,12 +1314,12 @@ Run:
 
 ```bash
 cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
-npm test -- clean-reset-config.spec.ts single-product-validation-data.spec.ts --runInBand
+npm test -- clean-reset-config.spec.ts real-product-validation-data.spec.ts --runInBand
 ```
 
 Expected: all tests pass.
 
-- [ ] **Step 2: Verify safe commands**
+- [ ] **Step 2: Verify safe reset commands**
 
 Run:
 
@@ -1164,7 +1334,7 @@ Expected:
 - Both commands exit `0`.
 - Neither command deletes data.
 
-- [ ] **Step 3: Verify destructive command is guarded**
+- [ ] **Step 3: Verify destructive script is blocked by default**
 
 Run:
 
@@ -1173,13 +1343,24 @@ cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
 npm run clean-reset:execute
 ```
 
-Expected: exits non-zero with the guard error:
+Expected: exits non-zero with:
 
 ```text
 Refusing to delete data. Set ALLOW_DATA_RESET=yes and pass --execute.
 ```
 
-- [ ] **Step 4: Run type/build check if dependencies are installed**
+- [ ] **Step 4: Verify data validator with template**
+
+Run:
+
+```bash
+cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
+npm run validate:real-product -- ../docs/superpowers/templates/real-product-validation-data.example.json
+```
+
+Expected: `Real product validation data is valid.`
+
+- [ ] **Step 5: Run build**
 
 Run:
 
@@ -1190,23 +1371,13 @@ npm run build
 
 Expected: build succeeds.
 
-If build fails because dependencies are missing, run from repo root:
-
-```bash
-cd /Users/jiashenglin/Desktop/好玩的项目/noidear
-npm ci
-cd server
-npm run build
-```
-
-- [ ] **Step 5: Review changed files**
+- [ ] **Step 6: Review changed files**
 
 Run:
 
 ```bash
 cd /Users/jiashenglin/Desktop/好玩的项目/noidear
 git status --short
-git diff --stat HEAD
 git diff --check
 ```
 
@@ -1214,18 +1385,6 @@ Expected:
 
 - Only intended files are changed.
 - `git diff --check` prints no whitespace errors.
-
-- [ ] **Step 6: Final commit if verification changed docs or scripts**
-
-If Task 6 causes any small documentation correction, commit it:
-
-```bash
-cd /Users/jiashenglin/Desktop/好玩的项目/noidear
-git add docs/superpowers/runbooks/2026-04-29-clean-reset-and-single-product-validation-runbook.md server/scripts server/package.json
-git commit -m "chore: verify clean reset workflow"
-```
-
-If there are no changes, skip this commit.
 
 ---
 
@@ -1238,26 +1397,18 @@ cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server
 ALLOW_DATA_RESET=yes npm run clean-reset:execute
 ```
 
-After actual cleanup and seed, the first manual test should use:
+Do not commit the user-provided real product JSON file. Keep it outside git, for example:
 
-- Product: `香蕉蒸蛋糕（原味）`
-- Product code: `PROD-BANANA-CAKE-ORIGINAL`
-- Production batch: `PB-BANANA-20260429-001`
-- Material lots:
-  - `ML-BANANA-20260429-EGG`
-  - `ML-BANANA-20260429-FLOUR`
-  - `ML-BANANA-20260429-SUGAR`
-  - `ML-BANANA-20260429-OIL`
-  - `ML-BANANA-20260429-BANANA`
-  - `ML-BANANA-20260429-FILM`
-  - `ML-BANANA-20260429-OXY`
+```bash
+/Users/jiashenglin/Desktop/好玩的项目/noidear-local-data/real-product-validation-data.json
+```
 
 ---
 
 ## Self-Review
 
-**Spec coverage:** The plan covers backup/snapshot behavior, preserved tables, clean target tables, guarded delete execution, single-product data, manual smoke validation, and rollback guidance.
+**Spec coverage:** The plan covers backup/snapshot behavior, preserved tables, clean target tables, guarded delete execution, user-provided product data, validation before import, manual smoke validation, and rollback guidance.
 
-**Placeholder scan:** The plan does not contain open placeholders. All scripts, tests, commands, expected outputs, and filenames are specified.
+**Placeholder scan:** The plan has no built-in product seed data and no open implementation placeholders. The JSON example uses explicit replacement text and is marked as a structure-only template, not a seed.
 
-**Type consistency:** Config exports are reused consistently by tests and scripts. The reset script uses Prisma delegate names from config. The single-product script uses the same validation data constants as the tests.
+**Type consistency:** `RealProductValidationData` is defined once in `clean-reset-config.ts` and reused by validation and import scripts.
