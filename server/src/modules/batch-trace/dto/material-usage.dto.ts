@@ -1,13 +1,15 @@
-import { IsUUID, IsNumber, IsPositive, IsString, IsNotEmpty } from 'class-validator';
+import { IsNumber, IsPositive, IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateMaterialUsageDto {
   @ApiProperty({ description: '生产批次ID' })
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   productionBatchId: string;
 
   @ApiProperty({ description: '原料批次ID' })
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   materialBatchId: string;
 
   @ApiProperty({ description: '配方明细ID' })
@@ -23,6 +25,7 @@ export class CreateMaterialUsageDto {
 
 export class QueryMaterialUsageDto {
   @ApiProperty({ description: '生产批次ID' })
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   productionBatchId: string;
 }

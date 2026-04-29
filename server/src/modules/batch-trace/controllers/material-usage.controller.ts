@@ -7,7 +7,6 @@ import {
   Param,
   Query,
   UseGuards,
-  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { MaterialUsageService } from '../services/material-usage.service';
@@ -34,7 +33,7 @@ export class MaterialUsageController {
   @Get()
   @ApiOperation({ summary: '查询生产批次使用的原料' })
   @ApiResponse({ status: 200, description: '查询成功' })
-  findByProductionBatch(@Query('productionBatchId', ParseUUIDPipe) productionBatchId: string) {
+  findByProductionBatch(@Query('productionBatchId') productionBatchId: string) {
     return this.service.findByProductionBatch(productionBatchId);
   }
 
@@ -42,7 +41,7 @@ export class MaterialUsageController {
   @ApiOperation({ summary: '删除批次物料关联' })
   @ApiResponse({ status: 200, description: '删除成功' })
   @ApiResponse({ status: 404, description: '关联记录不存在' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
+  remove(@Param('id') id: string) {
     return this.service.remove(id);
   }
 }
