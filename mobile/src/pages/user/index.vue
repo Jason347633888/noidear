@@ -6,7 +6,7 @@
         <text class="user-page__avatar-text">{{ avatarText }}</text>
       </view>
       <view class="user-page__info">
-        <text class="user-page__name">{{ userStore.userInfo?.realName || '未登录' }}</text>
+        <text class="user-page__name">{{ userStore.userInfo?.name || '未登录' }}</text>
         <text class="user-page__dept">{{ userStore.userInfo?.department || '' }}</text>
         <text class="user-page__position">{{ userStore.userInfo?.position || '' }}</text>
       </view>
@@ -122,7 +122,7 @@ const passwordForm = reactive({
 })
 
 const avatarText = computed(() => {
-  const name = userStore.userInfo?.realName || ''
+  const name = userStore.userInfo?.name || ''
   return name.charAt(0) || '?'
 })
 

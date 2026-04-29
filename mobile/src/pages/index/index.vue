@@ -7,7 +7,7 @@
           <text class="home-page__avatar-text">{{ avatarText }}</text>
         </view>
         <view class="home-page__user-info">
-          <text class="home-page__name">{{ userStore.userInfo?.realName || '未登录' }}</text>
+          <text class="home-page__name">{{ userStore.userInfo?.name || '未登录' }}</text>
           <text class="home-page__dept">{{ userStore.userInfo?.department || '' }}</text>
         </view>
       </view>
@@ -79,7 +79,7 @@ const todoStore = useTodoStore()
 const recentTodos = ref<TodoItem[]>([])
 
 const avatarText = computed(() => {
-  const name = userStore.userInfo?.realName || ''
+  const name = userStore.userInfo?.name || ''
   return name.charAt(0) || '?'
 })
 
