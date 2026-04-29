@@ -41,7 +41,7 @@ const recipes = ref<Recipe[]>([]);
 const localProductId = ref(props.productId ?? '');
 const localRecipeId = ref(props.recipeId ?? '');
 
-const activeRecipes = computed(() => recipes.value);
+const activeRecipes = computed(() => recipes.value.filter((r: any) => r.status === 'active'));
 
 watch(() => props.productId, (v) => { localProductId.value = v ?? ''; });
 watch(() => props.recipeId, (v) => { localRecipeId.value = v ?? ''; });

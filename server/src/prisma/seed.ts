@@ -346,12 +346,7 @@ async function main() {
 
   await prisma.systemConfig.upsert({
     where: { key: 'product.code.format' },
-    update: {
-      value: 'CP-{序号}',
-      valueType: 'text',
-      category: 'product',
-      description: '产品编号格式',
-    },
+    update: {},
     create: {
       key: 'product.code.format',
       value: 'CP-{序号}',

@@ -17,6 +17,16 @@ export class MaterialUsageService {
     if (!productionBatch) {
       throw new NotFoundException('生产批次不存在');
     }
+    if (!productionBatch.recipeId) {
+      throw new BadRequestException('生产批次未关联配方');
+    }
+
+    const recipeLine = await this.prisma.recipeLine.findFirst({
+      where: { id: dto.recipeLineId, recipe_id: productionBatch.recipeId },
+    });
+    if (!recipeLine) {
+      throw new BadRequestException('配方明细不存在或不属于该生产批次配方');
+    }
 
     const materialBatch = await this.prisma.materialBatch.findUnique({
       where: { id: dto.materialBatchId },
@@ -24,7 +34,9 @@ export class MaterialUsageService {
     if (!materialBatch) {
       throw new NotFoundException('原料批次不存在');
     }
-
+    if (materialBatch.materialId !== recipeLine.material_id) {
+      throw new BadRequestException('物料批次对应物料与配方明细不一致');
+    }
     if (materialBatch.quantity < dto.quantity) {
       throw new BadRequestException('原料批次库存不足');
     }
@@ -34,6 +46,9 @@ export class MaterialUsageService {
         data: {
           productionBatchId: dto.productionBatchId,
           materialBatchId: dto.materialBatchId,
+          recipeLineId: dto.recipeLineId,
+          area_id: recipeLine.area_id,
+          areaNameSnapshot: recipeLine.area_name_snapshot,
           quantity: dto.quantity,
         },
       });
