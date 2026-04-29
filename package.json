@@ -7,8 +7,6 @@
     "client",
     "server",
     "mobile",
-    "miniprogram",
-    "packages/types",
     "tools/noidear-mcp"
   ],
   "engines": {
