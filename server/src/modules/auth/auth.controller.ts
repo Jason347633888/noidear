@@ -15,13 +15,13 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('profile')
-  async getProfile(@Request() req) {
+  async getProfile(@Request() req: { user: { userId: string } }) {
     return req.user;
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('change-password')
-  async changePassword(@Request() req, @Body() dto: ChangePasswordDTO) {
+  async changePassword(@Request() req: { user: { userId: string } }, @Body() dto: ChangePasswordDTO) {
     return this.authService.changePassword(req.user.userId, dto);
   }
 }
