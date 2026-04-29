@@ -13,6 +13,7 @@
             <span class="card-count">共 {{ list.length }} 条记录</span>
           </div>
           <div class="header-actions">
+            <el-button @click="legacyDrawerVisible = true">历史产品建档</el-button>
             <el-button type="primary" @click="router.push('/process')">
               <el-icon><Plus /></el-icon>发起新产品研发
             </el-button>
@@ -43,6 +44,8 @@
       </el-table>
     </el-card>
 
+    <LegacyProductDrawer v-model="legacyDrawerVisible" @created="loadList" />
+
     <!-- 编辑产品对话框 -->
     <el-dialog
       v-model="dialogVisible"
@@ -57,7 +60,7 @@
         label-width="100px"
       >
         <el-form-item label="产品编号" prop="code">
-          <el-input v-model="form.code" placeholder="例如：PRD-001" />
+          <el-input v-model="form.code" disabled placeholder="例如：PRD-001" />
         </el-form-item>
         <el-form-item label="产品名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入产品名称" />
@@ -92,12 +95,14 @@ import {
   getProductStatusText,
   getProductStatusType,
 } from '@/api/product';
+import LegacyProductDrawer from './LegacyProductDrawer.vue';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
 const router = useRouter();
 const list = ref<Product[]>([]);
 const loading = ref(false);
+const legacyDrawerVisible = ref(false);
 
 // ── Dialog ────────────────────────────────────────────────────────────────────
 

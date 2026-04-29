@@ -10,6 +10,8 @@ export interface RecipeLine {
   qty_per_batch: number;
   unit: string;
   is_critical?: boolean;
+  area_id?: string;
+  area_name_snapshot?: string;
 }
 
 export interface Recipe {
@@ -29,6 +31,7 @@ export interface CreateRecipePayload {
     qty_per_batch: number;
     unit: string;
     is_critical?: boolean;
+    area_id: string;
   }>;
 }
 
