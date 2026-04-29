@@ -1,8 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { HttpService } from '@nestjs/axios';
-import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -37,17 +35,11 @@ describe('AuthService', () => {
       sign: jest.fn().mockReturnValue('mock-token'),
     };
 
-    const mockHttpService = { get: jest.fn() };
-    const mockConfigService = { get: jest.fn().mockReturnValue('mock-value') };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: JwtService, useValue: mockJwtService },
-        { provide: HttpService, useValue: mockHttpService },
-        { provide: ConfigService, useValue: mockConfigService },
-        { provide: 'AXIOS_INSTANCE_TOKEN', useValue: {} },
       ],
     }).compile();
 
@@ -187,5 +179,9 @@ describe('AuthService', () => {
         newPassword: 'newpassword',
       })).rejects.toThrow(new BadRequestException('旧密码错误'));
     });
+  });
+
+  it('does not expose wechat mini program login on AuthService', () => {
+    expect('wechatMiniProgramLogin' in service).toBe(false);
   });
 });
