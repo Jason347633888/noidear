@@ -26,5 +26,11 @@
     "prisma:generate": "npm run prisma:generate -w server",
     "verify": "npm run build:server && npm run build:client",
     "verify:full": "npm run typecheck:types && npm run build:mcp && npm run build:server && npm run build:client"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0"
   }
 }
