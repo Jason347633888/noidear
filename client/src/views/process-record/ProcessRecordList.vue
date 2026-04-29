@@ -13,14 +13,9 @@
             <span class="card-count">共 {{ list.length }} 条记录</span>
           </div>
           <div class="header-actions">
-            <el-input
-              v-model="filterBatchId"
-              placeholder="按生产批次 ID 查询"
-              clearable
-              style="width: 220px; margin-right: 12px"
-              @keyup.enter="loadList"
-              @clear="loadList"
-            />
+            <div style="width: 260px; margin-right: 12px">
+              <ProductionBatchSelect v-model="filterBatchId" @update:model-value="loadList" />
+            </div>
             <el-button type="primary" @click="openCreateDialog">
               <el-icon><Plus /></el-icon>新建记录
             </el-button>
@@ -59,8 +54,8 @@
     <!-- 新建对话框 -->
     <el-dialog v-model="createDialogVisible" title="新建过程参数记录" width="520px" :close-on-click-modal="false">
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="110px">
-        <el-form-item label="生产批次 ID" prop="production_batch_id">
-          <el-input v-model="createForm.production_batch_id" placeholder="请输入生产批次 ID" />
+        <el-form-item label="生产批次" prop="production_batch_id">
+          <ProductionBatchSelect v-model="createForm.production_batch_id" />
         </el-form-item>
         <el-form-item label="参数名称" prop="param_name">
           <el-input v-model="createForm.param_name" placeholder="例如：中心温度、pH值" />
@@ -108,6 +103,7 @@ import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import processRecordApi, { type ProcessRecord } from '@/api/process-record';
+import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelect.vue';
 
 // ── State ────────────────────────────────────────────────────────────────────
 

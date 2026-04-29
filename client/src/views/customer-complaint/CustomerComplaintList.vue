@@ -82,7 +82,7 @@
           <el-input v-model="createForm.complaint_type" placeholder="例如：质量问题、包装问题等" />
         </el-form-item>
         <el-form-item label="相关批次" prop="production_batch_id">
-          <el-input v-model="createForm.production_batch_id" placeholder="可选，填写生产批次号" />
+          <ProductionBatchSelect v-model="createForm.production_batch_id" />
         </el-form-item>
         <el-form-item label="投诉描述" prop="description">
           <el-input
@@ -132,6 +132,7 @@ import customerComplaintApi, {
   getComplaintStatusText,
   getComplaintStatusType,
 } from '@/api/customer-complaint';
+import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelect.vue';
 
 // ── State ────────────────────────────────────────────────────────────────────
 

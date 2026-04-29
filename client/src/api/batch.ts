@@ -7,16 +7,28 @@ import request from './request';
 export interface ProductionBatch {
   id: string;
   batchNumber: string;
+  productId?: string;
   productName: string;
   productCode: string;
+  recipeId?: string;
+  recipeName?: string;
   quantity: number;
+  plannedQuantity?: number;
   unit: string;
+  productionDate?: string;
   status: 'planned' | 'in_progress' | 'completed' | 'cancelled';
   startDate?: string;
   endDate?: string;
   createdAt: string;
   updatedAt: string;
   materialUsages?: MaterialUsage[];
+}
+
+export interface CreateProductionBatchPayload {
+  productId: string;
+  recipeId: string;
+  plannedQuantity: number;
+  productionDate: string;
 }
 
 export interface MaterialUsage {
@@ -57,7 +69,7 @@ export const productionBatchApi = {
     return request.get<ProductionBatch>(`/batch-trace/production-batches/${id}`);
   },
 
-  create(payload: Partial<ProductionBatch>) {
+  create(payload: Partial<ProductionBatch> | CreateProductionBatchPayload) {
     return request.post<ProductionBatch>('/batch-trace/production-batches', payload);
   },
 
