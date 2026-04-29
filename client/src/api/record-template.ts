@@ -55,4 +55,12 @@ export const recordTemplateApi = {
   updateFields(id: string, fields: RecordTemplateField[]) {
     return request.put<RecordTemplate>(`/record-templates/${id}/fields`, { fields });
   },
+
+  createRevision(id: string, payload: Partial<RecordTemplate>) {
+    return request.post<RecordTemplate>(`/record-templates/${id}/revisions`, payload);
+  },
+
+  activateRevision(id: string) {
+    return request.post<RecordTemplate>(`/record-templates/${id}/activate`);
+  },
 };

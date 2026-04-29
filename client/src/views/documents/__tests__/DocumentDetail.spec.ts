@@ -9,6 +9,7 @@ const mockDelete = vi.fn();
 const mockPush = vi.fn();
 const mockUpdateMarkdown = vi.fn();
 const mockGetReferenceHealth = vi.fn();
+const mockCreateRevision = vi.fn();
 
 vi.mock('@/api/request', () => ({
   default: {
@@ -46,6 +47,7 @@ vi.mock('@/api/document-control', () => ({
   documentControlApi: {
     updateMarkdown: (...args: unknown[]) => mockUpdateMarkdown(...args),
     getReferenceHealth: (...args: unknown[]) => mockGetReferenceHealth(...args),
+    createRevision: (...args: unknown[]) => mockCreateRevision(...args),
   },
 }));
 
@@ -728,5 +730,64 @@ describe('DocumentDetail', () => {
         sourceId: 'doc-1',
       },
     });
+  });
+
+  it('canEditDraft is true for draft and rejected status', async () => {
+    const c = w();
+    await flushPromises();
+    expect((c.vm as any).canEditDraft).toBe(true);
+  });
+
+  it('canCreateRevision is false for draft status', async () => {
+    const c = w();
+    await flushPromises();
+    expect((c.vm as any).canCreateRevision).toBe(false);
+  });
+
+  it('canCreateRevision is true for effective status', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url.includes('/versions')) return Promise.resolve({ versions: [] });
+      return Promise.resolve(makeDocument({ status: 'effective' }));
+    });
+    const c = w();
+    await flushPromises();
+    expect((c.vm as any).canCreateRevision).toBe(true);
+    expect((c.vm as any).canEditDraft).toBe(false);
+  });
+
+  it('shows 发起修订 button for effective documents', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url.includes('/versions')) return Promise.resolve({ versions: [] });
+      return Promise.resolve(makeDocument({ status: 'effective' }));
+    });
+    const c = w();
+    await flushPromises();
+    expect(c.findAll('button').some(btn => btn.text() === '发起修订')).toBe(true);
+    expect(c.findAll('button').some(btn => btn.text() === '编辑草稿')).toBe(false);
+  });
+
+  it('shows 编辑草稿 button for draft documents', async () => {
+    const c = w();
+    await flushPromises();
+    expect(c.findAll('button').some(btn => btn.text() === '编辑草稿')).toBe(true);
+    expect(c.findAll('button').some(btn => btn.text() === '发起修订')).toBe(false);
+  });
+
+  it('calls createRevision API and navigates to new draft on 发起修订 click', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url.includes('/versions')) return Promise.resolve({ versions: [] });
+      return Promise.resolve(makeDocument({ status: 'effective' }));
+    });
+    mockCreateRevision.mockResolvedValue({ id: 'doc-v2', status: 'draft' });
+
+    const c = w();
+    await flushPromises();
+
+    const revisionButton = c.findAll('button').find(btn => btn.text() === '发起修订');
+    await revisionButton!.trigger('click');
+    await flushPromises();
+
+    expect(mockCreateRevision).toHaveBeenCalledWith('doc-1');
+    expect(mockPush).toHaveBeenCalledWith('/documents/doc-v2');
   });
 });

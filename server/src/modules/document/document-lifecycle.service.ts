@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
 import { EFFECTIVE_COMPAT_STATUSES } from './constants/document-control.constants';
@@ -12,30 +12,44 @@ export class DocumentLifecycleService {
     if (!doc) throw new NotFoundException('文件不存在');
 
     const lineageKey = (doc as any).lineage_key ?? doc.number;
-    const effectiveCount = await this.prisma.document.count({
+    const currentEffective = await this.prisma.document.findFirst({
       where: {
         id: { not: id },
         deletedAt: null,
         status: { in: [...EFFECTIVE_COMPAT_STATUSES] },
         OR: [
-          { lineage_key: lineageKey },
+          { lineage_key: lineageKey } as any,
           { number: doc.number },
         ],
       },
     });
 
-    if (effectiveCount > 0) {
-      throw new ConflictException(`同一受控文件谱系已存在有效版本: ${lineageKey}`);
-    }
+    const published = await this.prisma.$transaction(async (tx) => {
+      const newPublished = await tx.document.update({
+        where: { id },
+        data: {
+          status: 'effective',
+          revisionStatus: 'current',
+          effective_date: dto.effective_date ? new Date(dto.effective_date) : new Date(),
+          ...(dto.review_due_date ? { review_due_date: new Date(dto.review_due_date) } : {}),
+        },
+      });
 
-    return this.prisma.document.update({
-      where: { id },
-      data: {
-        status: 'effective',
-        effective_date: dto.effective_date ? new Date(dto.effective_date) : new Date(),
-        ...(dto.review_due_date ? { review_due_date: new Date(dto.review_due_date) } : {}),
-      },
+      if (currentEffective) {
+        await tx.document.update({
+          where: { id: currentEffective.id },
+          data: {
+            status: 'superseded',
+            revisionStatus: 'superseded',
+            superseded_by_id: id,
+          } as any,
+        });
+      }
+
+      return newPublished;
     });
+
+    return published;
   }
 
   async supersede(oldId: string, newId: string) {

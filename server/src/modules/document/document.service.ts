@@ -10,6 +10,7 @@ import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, UpdateMarkdownD
 import { NotificationService } from '../notification/notification.service';
 import { OperationLogService } from '../operation-log/operation-log.service';
 import { DocumentControlMetadataService } from './services/document-control-metadata.service';
+import { NumberRuleService } from './services/number-rule.service';
 import { FilePreviewService } from './services';
 import { MarkdownWikilinkService } from './services/markdown-wikilink.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
@@ -32,69 +33,32 @@ export class DocumentService {
     private readonly metadataService: DocumentControlMetadataService,
     private readonly filePreviewService: FilePreviewService,
     private readonly markdownWikilinkService: MarkdownWikilinkService,
+    private readonly numberRuleService: NumberRuleService,
     @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {
     this.snowflake = new Snowflake(1, 1);
   }
 
-  async generateDocumentNumber(level: number, departmentId: string): Promise<string> {
-    return this.prisma.$transaction(async (tx) => {
-      // BR-008: 优先使用待补齐编号
-      const pendingNumber = await tx.pendingNumber.findFirst({
-        where: { level, departmentId },
-        orderBy: { deletedAt: 'asc' }, // 先删除的先补齐
-      });
-
-      if (pendingNumber) {
-        // 使用待补齐编号并删除记录
-        await tx.pendingNumber.delete({
-          where: { id: pendingNumber.id },
-        });
-        return pendingNumber.number;
-      }
-
-      // 没有待补齐编号，生成新编号（原逻辑）
-      // 查询部门获取部门代码
-      const department = await tx.department.findUnique({
-        where: { id: departmentId },
-      });
-
-      if (!department) {
-        throw new BusinessException(ErrorCode.NOT_FOUND, '部门不存在');
-      }
-
-      // 使用 SELECT FOR UPDATE 锁定行，防止并发冲突
-      const rules = await tx.$queryRaw<Array<{ id: string; sequence: number }>>`
-        SELECT id, sequence FROM number_rules
-        WHERE level = ${level} AND department_id = ${departmentId}
-        FOR UPDATE
-      `;
-
-      let rule = rules[0];
-      if (!rule) {
-        // 创建新规则
-        rule = await tx.numberRule.create({
-          data: {
-            id: this.snowflake.nextId(),
-            level,
-            departmentId,
-            sequence: 0,
-          },
-        });
-      }
-
-      const newSequence = rule.sequence + 1;
-
-      // 更新序号
-      await tx.numberRule.update({
-        where: { id: rule.id },
-        data: { sequence: newSequence },
-      });
-
-      const seqStr = String(newSequence).padStart(3, '0');
-      // 格式: {级别}-{部门代码}-{序号} 如 1-HR-001
-      return `${level}-${department.code}-${seqStr}`;
+  async generateDocumentNumber(level: number, departmentId: string, sourceFolder?: string | null): Promise<string> {
+    return this.numberRuleService.generate({
+      scope: 'document',
+      level,
+      departmentId,
+      sourceFolder: sourceFolder ?? undefined,
+      fallbackCategoryCode: this.categoryCodeForSourceFolder(sourceFolder),
     });
+  }
+
+  private categoryCodeForSourceFolder(sourceFolder?: string | null) {
+    const map: Record<string, string> = {
+      '01': 'SC',
+      '02': 'CX',
+      '03': 'ZD',
+      '04': 'JL',
+      '05': 'GS',
+      '06': 'WL',
+    };
+    return sourceFolder ? map[sourceFolder] : undefined;
   }
 
   async create(dto: CreateDocumentDto, file: Express.Multer.File, userId: string) {
@@ -126,7 +90,7 @@ export class DocumentService {
     const controlData = this.metadataService.normalize(dto.control);
     await this.validateOwnerReferences(controlData as Record<string, unknown>);
 
-    const number = await this.generateDocumentNumber(dto.level, user.departmentId);
+    const number = await this.generateDocumentNumber(dto.level, user.departmentId, controlData.source_folder as string | null | undefined);
     const uploadResult = await this.storage.uploadFile(file, `documents/level${dto.level}`);
 
     const result = await this.prisma.document.create({
@@ -359,9 +323,7 @@ export class DocumentService {
         throw new BusinessException(ErrorCode.FORBIDDEN, '无权编辑该文档');
       }
 
-      if (document.status !== 'draft' && document.status !== 'rejected') {
-        throw new BusinessException(ErrorCode.CONFLICT, '仅草稿或驳回文档可直接编辑正文');
-      }
+      this.assertEditableDraft(document);
 
       const updated = await tx.document.update({
         where: { id },
@@ -374,6 +336,76 @@ export class DocumentService {
 
     this.eventEmitter.emit('document.updated', { documentId: id });
     return convertBigIntToNumber(result);
+  }
+
+  async createRevisionDraft(id: string, userId: string) {
+    const current = await this.prisma.document.findFirst({ where: { id, deletedAt: null } });
+    if (!current) throw new BusinessException(ErrorCode.NOT_FOUND, '文件不存在');
+    if (!isEffectiveCompatible((current as any).status)) {
+      throw new BusinessException(ErrorCode.VALIDATION_ERROR, '只有已发布文件可以发起修订');
+    }
+
+    const existingDraft = await this.prisma.document.findFirst({
+      where: {
+        revisionOfId: id,
+        status: { in: ['draft', 'pending', 'rejected'] },
+        deletedAt: null,
+      },
+    });
+    if (existingDraft) {
+      throw new BusinessException(ErrorCode.CONFLICT, '已存在进行中的修订草稿');
+    }
+
+    const latest = await this.prisma.document.findFirst({
+      where: {
+        deletedAt: null,
+        OR: [
+          { id },
+          { revisionOfId: id },
+          { lineage_key: (current as any).lineage_key ?? (current as any).number },
+        ],
+      },
+      orderBy: { versionNo: 'desc' },
+    });
+
+    const nextVersionNo = ((latest as any)?.versionNo ?? (current as any).versionNo ?? 1) + 1;
+    return this.prisma.document.create({
+      data: {
+        id: this.snowflake.nextId(),
+        level: (current as any).level,
+        number: (current as any).number,
+        title: (current as any).title,
+        filePath: (current as any).filePath,
+        fileName: (current as any).fileName,
+        fileSize: (current as any).fileSize,
+        fileType: (current as any).fileType,
+        version: nextVersionNo,
+        versionNo: nextVersionNo,
+        status: 'draft',
+        revisionOfId: current.id,
+        revisionStatus: 'revision_draft',
+        creatorId: userId,
+        departmentId: (current as any).departmentId,
+        content: (current as any).content as any,
+        document_type: (current as any).document_type,
+        source_folder: (current as any).source_folder,
+        owner_department: (current as any).owner_department,
+        owner_user_id: (current as any).owner_user_id,
+        ownerDepartmentId: (current as any).ownerDepartmentId,
+        ownerUserId: (current as any).ownerUserId,
+        tags: (current as any).tags ?? [],
+        metadata: (current as any).metadata as any,
+        lineage_key: (current as any).lineage_key ?? (current as any).number,
+        review_due_date: (current as any).review_due_date,
+        content_md: (current as any).content_md,
+      } as any,
+    });
+  }
+
+  private assertEditableDraft(document: { status: string; revisionStatus?: string | null }) {
+    if (!['draft', 'rejected'].includes(document.status)) {
+      throw new BusinessException(ErrorCode.VALIDATION_ERROR, '已发布文件不能原地编辑，请先发起修订');
+    }
   }
 
   async remove(id: string, userId: string) {

@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { DocumentLifecycleService } from './document-lifecycle.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { EFFECTIVE_COMPAT_STATUSES } from './constants/document-control.constants';
 
 describe('DocumentLifecycleService', () => {
@@ -18,10 +18,12 @@ describe('DocumentLifecycleService', () => {
       upsert: jest.fn(),
       findMany: jest.fn(),
     },
+    $transaction: jest.fn(),
   };
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockPrisma.$transaction.mockImplementation(async (callback) => callback(mockPrisma));
     const module = await Test.createTestingModule({
       providers: [
         DocumentLifecycleService,
@@ -37,7 +39,9 @@ describe('DocumentLifecycleService', () => {
   });
 
   it('should set status to effective on publish', async () => {
-    mockPrisma.document.findFirst.mockResolvedValue({ id: 'd1', status: 'approved' });
+    mockPrisma.document.findFirst
+      .mockResolvedValueOnce({ id: 'd1', status: 'approved' })
+      .mockResolvedValueOnce(null);
     mockPrisma.document.update.mockResolvedValue({ id: 'd1', status: 'effective' });
     const result = await service.publish('d1', {});
     expect(result.status).toBe('effective');
@@ -63,42 +67,29 @@ describe('DocumentLifecycleService', () => {
     }));
   });
 
-  it('should reject publishing when another effective version exists in same lineage', async () => {
-    mockPrisma.document.findFirst.mockResolvedValue({
-      id: 'd1',
-      number: 'CX-01',
-      status: 'approved',
-      lineage_key: 'CX-01',
-    });
-    mockPrisma.document.count.mockResolvedValue(1);
-    await expect(service.publish('d1', {})).rejects.toThrow(ConflictException);
-  });
+  it('should supersede existing effective version when publishing a newer version in same lineage', async () => {
+    mockPrisma.document.findFirst
+      .mockResolvedValueOnce({ id: 'd2', number: 'CX-01', status: 'approved', lineage_key: 'CX-01' })
+      .mockResolvedValueOnce({ id: 'd1', number: 'CX-01', status: 'effective', lineage_key: 'CX-01' });
+    mockPrisma.document.update
+      .mockResolvedValueOnce({ id: 'd2', status: 'effective' })
+      .mockResolvedValueOnce({ id: 'd1', status: 'superseded', superseded_by_id: 'd2' });
 
-  it('should reject publishing when another legacy approved version exists in same lineage', async () => {
-    mockPrisma.document.findFirst.mockResolvedValue({
-      id: 'd1',
-      number: 'CX-01',
-      status: 'pending',
-      lineage_key: 'CX-01',
-    });
-    mockPrisma.document.count.mockResolvedValue(1);
+    const result = await service.publish('d2', {});
 
-    await expect(service.publish('d1', {})).rejects.toThrow(ConflictException);
-    expect(mockPrisma.document.count).toHaveBeenCalledWith({
-      where: expect.objectContaining({
-        status: { in: EFFECTIVE_COMPAT_STATUSES },
+    expect(result.status).toBe('effective');
+    expect(mockPrisma.document.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'd1' },
+        data: expect.objectContaining({ status: 'superseded', superseded_by_id: 'd2' }),
       }),
-    });
+    );
   });
 
   it('should allow publishing when no other effective version exists in lineage', async () => {
-    mockPrisma.document.findFirst.mockResolvedValue({
-      id: 'd1',
-      number: 'CX-01',
-      status: 'approved',
-      lineage_key: 'CX-01',
-    });
-    mockPrisma.document.count.mockResolvedValue(0);
+    mockPrisma.document.findFirst
+      .mockResolvedValueOnce({ id: 'd1', number: 'CX-01', status: 'approved', lineage_key: 'CX-01' })
+      .mockResolvedValueOnce(null);
     mockPrisma.document.update.mockResolvedValue({ id: 'd1', status: 'effective' });
     const result = await service.publish('d1', {});
     expect(result.status).toBe('effective');

@@ -17,7 +17,7 @@
             {{ getStatusText(document.status) }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="版本号">v{{ document.version }}</el-descriptions-item>
+        <el-descriptions-item label="版本号">{{ displayVersion }}</el-descriptions-item>
         <el-descriptions-item label="文件名">{{ document.fileName }}</el-descriptions-item>
         <el-descriptions-item label="文件大小">{{ formatSize(Number(document.fileSize)) }}</el-descriptions-item>
         <el-descriptions-item label="创建人">{{ document.creator?.name || '-' }}</el-descriptions-item>
@@ -71,10 +71,17 @@
         </el-button>
         <el-button
           type="primary"
-          v-if="document.status === 'draft' || document.status === 'rejected'"
+          v-if="canEditDraft"
           @click="$router.push(`/documents/${document.id}/edit`)"
         >
-          编辑文档
+          编辑草稿
+        </el-button>
+        <el-button
+          type="primary"
+          v-if="canCreateRevision"
+          @click="createRevision"
+        >
+          发起修订
         </el-button>
         <el-button
           type="danger"
@@ -140,7 +147,7 @@
       <template #header>文控信息</template>
       <el-descriptions :column="2" border>
         <el-descriptions-item label="文件类型">{{ document.document_type || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="来源分类">{{ document.source_folder || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="来源分类">{{ fileCategory }}</el-descriptions-item>
         <el-descriptions-item label="负责部门">{{ ownerDepartmentLabel }}</el-descriptions-item>
         <el-descriptions-item label="负责人">{{ ownerUserLabel }}</el-descriptions-item>
         <el-descriptions-item label="复审日期">{{ document.review_due_date ? formatControlDate(document.review_due_date) : '-' }}</el-descriptions-item>
@@ -459,6 +466,7 @@ interface Document {
   filePath: string;
   status: string;
   version: number;
+  versionNo?: number;
   creatorId: string;
   creator: { name: string } | null;
   approver: { name: string } | null;
@@ -471,7 +479,9 @@ interface Document {
   obsoleteReason?: string | null;
   obsoletedAt?: string | null;
   document_type?: string;
+  documentType?: string;
   source_folder?: string;
+  sourceFolder?: string;
   owner_department?: string;
   owner_user_id?: string | null;
   ownerDepartmentId?: string | null;
@@ -507,6 +517,25 @@ const ownerDepartmentLabel = computed(() =>
 const ownerUserLabel = computed(() =>
   document.value?.ownerUser?.name || document.value?.owner_user_id || '-',
 );
+
+const displayVersion = computed(() => {
+  const versionNo = Number(document.value?.versionNo || document.value?.version || 1);
+  return `V${Number.isFinite(versionNo) ? Math.trunc(versionNo) : 1}`;
+});
+
+const fileCategory = computed(() => {
+  const sourceFolder = document.value?.source_folder || document.value?.sourceFolder;
+  const typeName = documentTypeLabel(document.value?.document_type || document.value?.documentType);
+  return sourceFolder ? `${sourceFolder} ${typeName}` : typeName;
+});
+
+const canEditDraft = computed(() => ['draft', 'rejected'].includes(document.value?.status || ''));
+const canCreateRevision = computed(() => ['effective', 'approved'].includes(document.value?.status || ''));
+
+async function createRevision() {
+  const res = await documentControlApi.createRevision(route.params.id as string);
+  router.push(`/documents/${res.id}`);
+}
 
 // 权限判断
 const isCreator = computed(() => document.value?.creatorId === userStore.user?.id);
@@ -588,6 +617,18 @@ const latestRejection = computed(() => {
   const rejections = document.value.approvals.filter(a => a.status === 'rejected');
   return rejections.length > 0 ? rejections[0] : null;
 });
+
+const documentTypeLabel = (type?: string): string => {
+  const map: Record<string, string> = {
+    MANUAL: '质量手册',
+    PROCEDURE: '程序文件',
+    WORK_INSTRUCTION: '作业指导书',
+    RECORD_FORM_INDEX: '记录表单',
+    COMPANY_FILE: '公司文件',
+    EXTERNAL_FILE: '外来文件',
+  };
+  return type ? (map[type] || type) : '-';
+};
 
 const formatSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;

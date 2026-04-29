@@ -46,7 +46,7 @@ export interface DocumentReference {
   sourceDoc?: { id: string; title: string; status: string; number?: string | null; doc_code?: string | null } | null;
 }
 
-export type ReferenceHealthStatus = 'healthy' | 'dangling' | 'invalid' | 'conflict' | 'superseded';
+export type ReferenceHealthStatus = 'healthy' | 'dangling' | 'unimplemented' | 'invalid' | 'conflict' | 'superseded';
 
 export interface DocumentReferenceHealthIssue {
   sourceDocId: string;
@@ -113,6 +113,9 @@ export type WorkbenchIssueType =
   | 'obsoleteReferences'
   | 'brokenReferences'
   | 'missingLandingTargets'
+  | 'unconfirmedLandingTargets'
+  | 'partialFieldCoverage'
+  | 'unimplementedRecordReferences'
   | 'missingMetadata'
   | 'trainingNeeds'
   | 'openImpactItems';
@@ -166,6 +169,18 @@ export const documentControlApi = {
     return request.patch(`/documents/record-form-index/${code}`, payload);
   },
 
+  getRecordFormLandingSuggestion(code: string) {
+    return request.get(`/documents/record-form-index/${code}/suggestion`);
+  },
+
+  confirmRecordFormLanding(code: string, payload: Record<string, unknown>) {
+    return request.post(`/documents/record-form-index/${code}/confirm`, payload);
+  },
+
+  getRecordFormFieldCoverage(code: string) {
+    return request.get(`/documents/record-form-index/${code}/field-coverage`);
+  },
+
   updateMarkdown(documentId: string, payload: { contentMd: string }) {
     return request.patch(`/documents/${documentId}/markdown`, payload);
   },
@@ -188,5 +203,21 @@ export const documentControlApi = {
 
   getEvidenceChain(params: EvidenceChainQuery) {
     return request.get<EvidenceChainResult>('/documents/control/evidence-chain', { params });
+  },
+
+  createRevision(documentId: string) {
+    return request.post<DocumentControlDocument>(`/documents/${documentId}/revisions`);
+  },
+
+  listNumberRules() {
+    return request.get('/documents/number-rules');
+  },
+
+  upsertNumberRule(payload: Record<string, unknown>) {
+    return request.post('/documents/number-rules', payload);
+  },
+
+  deactivateNumberRule(id: string) {
+    return request.post(`/documents/number-rules/${id}/deactivate`);
   },
 };

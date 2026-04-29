@@ -10,20 +10,45 @@
       <el-table-column prop="formName" label="表单名" min-width="220" show-overflow-tooltip />
       <el-table-column prop="department" label="部门" width="120" />
       <el-table-column prop="chain" label="链路定位" width="130" />
-      <el-table-column label="目标入口" min-width="220">
+      <el-table-column label="落地方式" width="140">
         <template #default="{ row }">
-          <el-link v-if="row.landingEntry?.targetRoute" type="primary" @click="openRoute(row.landingEntry.targetRoute)">
-            {{ row.landingEntry.targetModule || row.landingEntry.targetRoute }}
-          </el-link>
-          <el-tag v-else type="warning">待补齐入口</el-tag>
+          <el-tag :type="landingTagType(row.landingEntry?.landingStatus)">
+            {{ landingStatusLabel(row.landingEntry?.landingStatus) }}
+          </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="120" fixed="right">
+      <el-table-column label="确认状态" width="120">
+        <template #default="{ row }">
+          {{ confirmationLabel(row.landingEntry?.confirmationStatus) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="字段覆盖" width="120">
+        <template #default="{ row }">
+          {{ fieldCoverageLabel(row.landingEntry?.fieldCoverageStatus) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="目标入口" min-width="220">
+        <template #default="{ row }">
+          <el-link v-if="row.landingEntry?.primaryRoute || row.landingEntry?.targetRoute" @click="openRoute(row.landingEntry.primaryRoute || row.landingEntry.targetRoute)">
+            {{ row.landingEntry.primaryRoute || row.landingEntry.targetRoute }}
+          </el-link>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="200" fixed="right">
         <template #default="{ row }">
           <el-button :data-test="`edit-landing-${row.code}`" link type="primary" @click="openEdit(row)">维护</el-button>
+          <el-button link type="primary" @click="loadSuggestion(row)">查看建议</el-button>
         </template>
       </el-table-column>
     </el-table>
+
+    <el-card v-if="activeSuggestion" class="suggestion-card" style="margin-top: 16px">
+      <p>落地建议：{{ activeSuggestion.landingStatus }} ({{ activeSuggestion.confidence }})</p>
+      <p>目标入口：{{ activeSuggestion.targetRoute || '-' }}</p>
+      <el-button type="primary" @click="confirmSuggestion">确认此建议</el-button>
+      <el-button @click="activeSuggestion = null">关闭</el-button>
+    </el-card>
 
     <el-dialog v-model="editVisible" title="维护表单入口" width="640px">
       <el-form label-width="120px">
@@ -56,6 +81,32 @@ import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { documentControlApi, type RecordFormLandingEntry } from '@/api/document-control';
+
+function landingStatusLabel(status?: string) {
+  const map: Record<string, string> = {
+    business_module: '业务模块', dynamic_form: '动态表单', partial: '部分落地',
+    unimplemented: '未落地', not_suitable: '不适用', conflict: '冲突',
+  };
+  return map[status || ''] || status || '-';
+}
+
+function landingTagType(status?: string): string {
+  const map: Record<string, string> = {
+    business_module: 'success', dynamic_form: 'success', partial: 'warning',
+    unimplemented: 'danger', not_suitable: 'info', conflict: 'danger',
+  };
+  return map[status || ''] || 'default';
+}
+
+function confirmationLabel(status?: string) {
+  const map: Record<string, string> = { unconfirmed: '未确认', suggested: '待确认', confirmed: '已确认', rejected: '已拒绝' };
+  return map[status || ''] || '-';
+}
+
+function fieldCoverageLabel(status?: string) {
+  const map: Record<string, string> = { unknown: '未知', covered: '完整', partial: '部分', missing: '缺失', not_required: '不需要' };
+  return map[status || ''] || '-';
+}
 
 const router = useRouter();
 const keyword = ref('');
@@ -115,6 +166,22 @@ const saveEdit = async () => {
     ElMessage.error(error?.response?.data?.message || error?.message || '保存落地入口失败');
   }
 };
+
+const activeSuggestion = ref<any>(null);
+
+async function loadSuggestion(row: any) {
+  const res = await documentControlApi.getRecordFormLandingSuggestion(row.code);
+  activeSuggestion.value = (res as any).data ?? res;
+}
+
+async function confirmSuggestion() {
+  if (!activeSuggestion.value?.sourceCode) return;
+  await documentControlApi.confirmRecordFormLanding(activeSuggestion.value.sourceCode, {
+    ...activeSuggestion.value,
+    confirmationStatus: 'confirmed',
+  });
+  await fetchRows();
+}
 
 onMounted(fetchRows);
 </script>

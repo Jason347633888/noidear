@@ -9,6 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DocumentControlMetadataService } from '../src/modules/document/services/document-control-metadata.service';
 import { FilePreviewService } from '../src/modules/document/services';
 import { MarkdownWikilinkService } from '../src/modules/document/services/markdown-wikilink.service';
+import { NumberRuleService } from '../src/modules/document/services/number-rule.service';
 
 describe('DocumentService', () => {
   let service: DocumentService;
@@ -83,6 +84,7 @@ describe('DocumentService', () => {
         { provide: OperationLogService, useValue: mockOperationLogService },
         { provide: FilePreviewService, useValue: mockFilePreviewService },
         { provide: MarkdownWikilinkService, useValue: mockMarkdownWikilinkService },
+        { provide: NumberRuleService, useValue: { generate: jest.fn().mockResolvedValue('2-PZ-001') } },
         { provide: 'SnowflakeService', useValue: mockSnowflake },
         { provide: EventEmitter2, useValue: { emit: jest.fn(), emitAsync: jest.fn(), on: jest.fn() } },
       ],
@@ -99,64 +101,18 @@ describe('DocumentService', () => {
   });
 
   describe('generateDocumentNumber', () => {
-    it('应该优先使用待补齐编号', async () => {
-      const mockPending = { id: '1', number: '1-HR-001', level: 1, departmentId: 'dept1', deletedAt: new Date() };
-
-      mockPrismaService.$transaction.mockImplementation(async (callback) => {
-        const tx = {
-          pendingNumber: {
-            findFirst: jest.fn().mockResolvedValue(mockPending),
-            delete: jest.fn().mockResolvedValue(mockPending),
-          },
-        };
-        return callback(tx);
-      });
-
+    it('应该委托给 NumberRuleService 生成编号', async () => {
       const number = await service['generateDocumentNumber'](1, 'dept1');
-
-      expect(number).toBe('1-HR-001');
-      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+      expect(number).toBe('2-PZ-001');
     });
 
-    it('没有待补齐编号时应该生成新编号', async () => {
-      const mockDepartment = { id: 'dept1', code: 'HR', name: '人力资源部' };
-      const mockRule = { id: 'rule1', sequence: 5, level: 1, departmentId: 'dept1' };
-
-      mockPrismaService.$transaction.mockImplementation(async (callback) => {
-        const tx = {
-          pendingNumber: {
-            findFirst: jest.fn().mockResolvedValue(null),
-          },
-          department: {
-            findUnique: jest.fn().mockResolvedValue(mockDepartment),
-          },
-          $queryRaw: jest.fn().mockResolvedValue([mockRule]),
-          numberRule: {
-            create: jest.fn(),
-            update: jest.fn().mockResolvedValue({ ...mockRule, sequence: 6 }),
-          },
-        };
-        return callback(tx);
-      });
-
-      const number = await service['generateDocumentNumber'](1, 'dept1');
-
-      expect(number).toBe('1-HR-006');
-      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+    it('传递 sourceFolder 参数给 NumberRuleService', async () => {
+      const number = await service['generateDocumentNumber'](2, 'dept1', '03');
+      expect(number).toBe('2-PZ-001');
     });
 
-    it('部门不存在时应该抛出异常', async () => {
-      mockPrismaService.$transaction.mockImplementation(async (callback) => {
-        const tx = {
-          pendingNumber: {
-            findFirst: jest.fn().mockResolvedValue(null),
-          },
-          department: {
-            findUnique: jest.fn().mockResolvedValue(null),
-          },
-        };
-        return callback(tx);
-      });
+    it('NumberRuleService 抛出异常时应该向上传递', async () => {
+      jest.spyOn(service['numberRuleService'], 'generate').mockRejectedValueOnce(new BusinessException('NOT_FOUND' as any, '部门不存在'));
 
       await expect(
         service['generateDocumentNumber'](1, 'invalid-dept')

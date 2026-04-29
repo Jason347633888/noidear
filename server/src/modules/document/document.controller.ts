@@ -36,8 +36,9 @@ import { DocumentHealthService } from './services/document-health.service';
 import { DocumentAuditChainService } from './services/document-audit-chain.service';
 import { DocumentEvidenceChainService } from './services/document-evidence-chain.service';
 import { DocumentReferenceHealthService } from './services/document-reference-health.service';
+import { NumberRuleService } from './services/number-rule.service';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto, WorkbenchQueryDto, WorkbenchIssueQueryDto, CreateReadRequirementDto, TrainingNeedActionDto, ImpactReviewCreateDto, ImpactItemUpdateDto, CoverageQueryDto, AuditChainQueryDto, UpdateMarkdownDto } from './dto';
-import { UpdateRecordFormLandingEntryDto } from './dto/document-control.dto';
+import { ConfirmRecordFormLandingDto, UpdateRecordFormLandingEntryDto, UpsertNumberRuleDto } from './dto/document-control.dto';
 import { PublishDocumentDto, RollbackDocumentVersionDto } from './dto/document-lifecycle.dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -73,6 +74,7 @@ export class DocumentController {
     private readonly auditChainService: DocumentAuditChainService,
     private readonly evidenceChainService: DocumentEvidenceChainService,
     private readonly referenceHealthService: DocumentReferenceHealthService,
+    private readonly numberRuleService: NumberRuleService,
   ) {}
 
   @Post('upload')
@@ -169,6 +171,26 @@ export class DocumentController {
     @Query('templateGroupId') templateGroupId?: string,
   ) {
     return this.recordFormLandingService.list({ keyword, department, templateGroupId });
+  }
+
+  @Get('record-form-index/:code/suggestion')
+  @ApiOperation({ summary: '获取源表单落地建议' })
+  getRecordFormLandingSuggestion(@Param('code') code: string) {
+    return this.recordFormLandingService.suggest(code);
+  }
+
+  @Post('record-form-index/:code/confirm')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('record_form:landing_manage')
+  @ApiOperation({ summary: '确认源表单落地关系' })
+  confirmRecordFormLanding(@Param('code') code: string, @Body() dto: ConfirmRecordFormLandingDto, @Req() req: any) {
+    return this.recordFormLandingService.confirm(code, dto, req.user.id);
+  }
+
+  @Get('record-form-index/:code/field-coverage')
+  @ApiOperation({ summary: '查询源表单字段覆盖差异' })
+  getRecordFormFieldCoverage(@Param('code') code: string) {
+    return this.recordFormLandingService.getFieldCoverage(code);
   }
 
   @Get('record-form-index/:code')
@@ -306,6 +328,34 @@ export class DocumentController {
   @ApiOperation({ summary: '查询文档引用问题清单' })
   getReferenceHealthIssues() {
     return this.referenceHealthService.listIssues();
+  }
+
+  // =============================
+  // Task 2: 文控编号规则管理
+  // =============================
+
+  @Get('number-rules')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:number_rule_manage')
+  @ApiOperation({ summary: '查询文控编号规则' })
+  listNumberRules() {
+    return this.numberRuleService.list();
+  }
+
+  @Post('number-rules')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:number_rule_manage')
+  @ApiOperation({ summary: '创建或更新文控编号规则' })
+  upsertNumberRule(@Body() dto: UpsertNumberRuleDto) {
+    return this.numberRuleService.upsert(dto);
+  }
+
+  @Post('number-rules/:id/deactivate')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:number_rule_manage')
+  @ApiOperation({ summary: '停用文控编号规则' })
+  deactivateNumberRule(@Param('id') id: string) {
+    return this.numberRuleService.deactivate(id);
   }
 
   @Get(':id')
@@ -560,5 +610,13 @@ export class DocumentController {
   @ApiOperation({ summary: '确认已阅读文件' })
   confirmRead(@Param('id') id: string, @Req() req: any) {
     return this.lifecycleSvc.confirmRead(id, req.user?.id ?? 'system');
+  }
+
+  @Post(':id/revisions')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('document:revise')
+  @ApiOperation({ summary: '发起文件修订草稿' })
+  createRevision(@Param('id') id: string, @Req() req: any) {
+    return this.documentService.createRevisionDraft(id, req.user.id);
   }
 }

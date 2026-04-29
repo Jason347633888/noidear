@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 
-export type ReferenceHealthStatus = 'healthy' | 'dangling' | 'invalid' | 'conflict' | 'superseded';
+export type ReferenceHealthStatus = 'healthy' | 'dangling' | 'unimplemented' | 'invalid' | 'conflict' | 'superseded';
 
 export interface DocumentReferenceHealthIssue {
   sourceDocId: string;
@@ -23,6 +23,7 @@ export interface DocumentReferenceHealthResult {
     total: number;
     healthy: number;
     dangling: number;
+    unimplemented: number;
     invalid: number;
     conflict: number;
     superseded: number;
@@ -86,7 +87,7 @@ export class DocumentReferenceHealthService {
       where: {
         ...where,
         OR: [
-          { targetType: { in: ['document', 'unresolved_document', 'conflict_document'] } },
+          { targetType: { in: ['document', 'unresolved_document', 'conflict_document', 'record_form_landing', 'unresolved_record_form', 'conflict_record_form'] } },
           { targetDocId: { not: null } },
         ],
       },
@@ -118,7 +119,7 @@ export class DocumentReferenceHealthService {
         acc[issue.status] += 1;
         return acc;
       },
-      { total: 0, healthy: 0, dangling: 0, invalid: 0, conflict: 0, superseded: 0 },
+      { total: 0, healthy: 0, dangling: 0, unimplemented: 0, invalid: 0, conflict: 0, superseded: 0 },
     );
 
     return {
@@ -129,6 +130,38 @@ export class DocumentReferenceHealthService {
 
   private evaluate(reference: ReferenceWithDocs): DocumentReferenceHealthIssue {
     const base = this.toBaseIssue(reference);
+
+    if (reference.targetType === 'conflict_record_form') {
+      return {
+        ...base,
+        status: 'conflict',
+        reason: '引用文本匹配到多个记录表单入口，需要文控人员确认目标。',
+        candidates: this.extractCandidates(reference.snapshot),
+      };
+    }
+
+    if (reference.targetType === 'unresolved_record_form') {
+      return {
+        ...base,
+        status: 'dangling',
+        reason: '引用文本未匹配到记录表单索引。',
+      };
+    }
+
+    if (reference.targetType === 'record_form_landing') {
+      const snapshot = this.isRecord(reference.snapshot) ? reference.snapshot : {};
+      const landingStatus = String(snapshot.landingStatus || '');
+      if (landingStatus === 'unimplemented') {
+        return { ...base, status: 'unimplemented', reason: '记录表单存在，但尚未确认业务入口或动态表单模板。' };
+      }
+      if (landingStatus === 'conflict') {
+        return { ...base, status: 'conflict', reason: '记录表单存在多个冲突入口，需要管理员确认。' };
+      }
+      if (['not_suitable', 'partial'].includes(landingStatus)) {
+        return { ...base, status: 'invalid', reason: '记录表单当前落地状态不能直接作为可填写入口。' };
+      }
+      return { ...base, status: 'healthy', reason: '记录表单已确认落地，可作为当前引用依据。' };
+    }
 
     if (reference.targetType === 'conflict_document') {
       return {

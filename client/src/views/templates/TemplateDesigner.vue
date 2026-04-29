@@ -52,7 +52,13 @@
               <span>表单设计区域</span>
               <div class="header-actions">
                 <el-button size="small" @click="previewVisible = true">预览</el-button>
-                <el-button size="small" type="primary" @click="handleSave" :loading="saving">保存</el-button>
+                <el-button
+                  v-if="isActiveTemplate"
+                  size="small"
+                  type="warning"
+                  @click="createRevision"
+                >发起改版</el-button>
+                <el-button size="small" type="primary" @click="handleSave" :loading="saving" :disabled="isActiveTemplate">保存</el-button>
               </div>
             </div>
           </template>
@@ -212,10 +218,15 @@ const selectedIndex = ref<number | null>(null);
 const formFields = reactive<FormField[]>([]);
 const previewData = reactive<Record<string, any>>({});
 const dropZoneRef = ref<HTMLElement | null>(null);
+const currentTemplate = ref<any>(null);
 let sortableInstance: Sortable | null = null;
 
 // 从路由参数获取模板 ID（支持 /record-templates/:id/designer 路由）
 const templateId = computed(() => (route.params.id as string) || '');
+
+const isActiveTemplate = computed(() =>
+  ['active'].includes(currentTemplate.value?.status || currentTemplate.value?.versionStatus || ''),
+);
 
 let fieldCounter = 0;
 
@@ -223,6 +234,7 @@ const loadExistingFields = async () => {
   if (!templateId.value) return;
   try {
     const tpl = await recordTemplateApi.getById(templateId.value);
+    currentTemplate.value = tpl;
     const fields = tpl.fieldsJson?.fields ?? [];
     formFields.splice(0, formFields.length, ...(fields as FormField[]));
     if (fields.length > 0) fieldCounter = fields.length;
@@ -326,6 +338,10 @@ const removeOption = (idx: number) => {
 };
 
 const handleSave = async () => {
+  if (isActiveTemplate.value) {
+    ElMessage.warning('已启用模板不能原地修改字段，请先发起改版');
+    return;
+  }
   const validation = validateTemplateFields([...formFields]);
   if (!validation.valid) {
     ElMessage.warning(validation.errors[0]);
@@ -343,6 +359,21 @@ const handleSave = async () => {
     ElMessage.error('保存失败，请稍后重试');
   } finally {
     saving.value = false;
+  }
+};
+
+const createRevision = async () => {
+  try {
+    const res = await recordTemplateApi.createRevision(templateId.value, {
+      fieldsJson: { fields: [...formFields] },
+    } as any);
+    ElMessage.success('改版草稿已创建');
+    const newId = (res as any).id ?? (res as any).data?.id;
+    if (newId) {
+      router.push(`/templates/${newId}/design`);
+    }
+  } catch {
+    ElMessage.error('发起改版失败，请稍后重试');
   }
 };
 

@@ -11,11 +11,14 @@ describe('RecordTemplateService', () => {
     recordTemplate: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       count: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
       delete: jest.fn(),
     },
+    $transaction: jest.fn(),
   };
 
   const mockTemplate = {
@@ -68,13 +71,13 @@ describe('RecordTemplateService', () => {
         description: '生产部门记录模板',
       };
 
-      mockPrismaService.recordTemplate.findUnique.mockResolvedValue(null);
+      mockPrismaService.recordTemplate.findFirst.mockResolvedValue(null);
       mockPrismaService.recordTemplate.create.mockResolvedValue(mockTemplate);
 
       const result = await service.create(createDto);
 
       expect(result).toEqual(mockTemplate);
-      expect(prisma.recordTemplate.findUnique).toHaveBeenCalledWith({
+      expect(prisma.recordTemplate.findFirst).toHaveBeenCalledWith({
         where: { code: createDto.code },
       });
       expect(prisma.recordTemplate.create).toHaveBeenCalled();
@@ -88,7 +91,7 @@ describe('RecordTemplateService', () => {
         retentionYears: 3,
       };
 
-      mockPrismaService.recordTemplate.findUnique.mockResolvedValue(mockTemplate);
+      mockPrismaService.recordTemplate.findFirst.mockResolvedValue(mockTemplate);
 
       await expect(service.create(createDto)).rejects.toThrow(ConflictException);
       await expect(service.create(createDto)).rejects.toThrow('模板编号 TEMP_001 已存在');
@@ -102,7 +105,7 @@ describe('RecordTemplateService', () => {
         retentionYears: 3,
       };
 
-      mockPrismaService.recordTemplate.findUnique.mockResolvedValue(null);
+      mockPrismaService.recordTemplate.findFirst.mockResolvedValue(null);
 
       await expect(service.create(createDto as any)).rejects.toThrow(BadRequestException);
     });
@@ -208,6 +211,114 @@ describe('RecordTemplateService', () => {
       mockPrismaService.recordTemplate.findUnique.mockResolvedValue(null);
 
       await expect(service.archive('invalid_id')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('createNewVersion', () => {
+    it('应拒绝草稿模板作为源版本', async () => {
+      mockPrismaService.recordTemplate.findUnique.mockResolvedValue({
+        ...mockTemplate,
+        status: 'draft',
+        versionStatus: 'draft',
+      });
+
+      await expect(service.createNewVersion('tpl_001', {}  as any))
+        .rejects.toThrow(BadRequestException);
+    });
+
+    it('应拒绝已退役模板作为源版本', async () => {
+      mockPrismaService.recordTemplate.findUnique.mockResolvedValue({
+        ...mockTemplate,
+        status: 'archived',
+        versionStatus: 'retired',
+      });
+
+      await expect(service.createNewVersion('tpl_001', {} as any))
+        .rejects.toThrow(BadRequestException);
+    });
+
+    it('应在事务内退役源版本并创建新 active 版本', async () => {
+      const activeTemplate = {
+        ...mockTemplate,
+        baseCode: 'TEMP_001',
+        templateFamilyId: 'TEMP_001',
+        versionStatus: 'active',
+      };
+      const newTemplate = { ...activeTemplate, id: 'tpl_002', version: 2 };
+
+      mockPrismaService.recordTemplate.findUnique.mockResolvedValue(activeTemplate);
+      mockPrismaService.$transaction.mockImplementation(async (fn: any) =>
+        fn(mockPrismaService),
+      );
+      mockPrismaService.recordTemplate.findFirst.mockResolvedValue(activeTemplate);
+      mockPrismaService.recordTemplate.update.mockResolvedValue({});
+      mockPrismaService.recordTemplate.create.mockResolvedValue(newTemplate);
+
+      const result = await service.createNewVersion('tpl_001', {});
+
+      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+      expect(prisma.recordTemplate.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'tpl_001' } }),
+      );
+      expect(prisma.recordTemplate.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            templateFamilyId: 'TEMP_001',
+            status: 'active',
+            versionStatus: 'active',
+            version: 2,
+          }),
+        }),
+      );
+      expect(result).toEqual(newTemplate);
+    });
+  });
+
+  describe('createRevision', () => {
+    it('does not create code-v2 when creating a template revision', async () => {
+      mockPrismaService.recordTemplate.findUnique.mockResolvedValue({
+        id: 'tpl-v1',
+        code: 'GRSS-PZ-JL-01',
+        baseCode: 'GRSS-PZ-JL-01',
+        templateFamilyId: 'GRSS-PZ-JL-01',
+        version: 1,
+        fieldsJson: { fields: [{ name: 'date', label: '日期', type: 'date' }] },
+        status: 'active',
+        versionStatus: 'active',
+      });
+      mockPrismaService.recordTemplate.findFirst.mockResolvedValue(null);
+      mockPrismaService.recordTemplate.create.mockResolvedValue({
+        id: 'tpl-v2',
+        code: 'GRSS-PZ-JL-01',
+        version: 2,
+        versionStatus: 'draft',
+      });
+
+      const result = await service.createRevision('tpl-v1', {
+        fieldsJson: { fields: [{ name: 'date', label: '日期', type: 'date' }] },
+      } as any);
+
+      expect(prisma.recordTemplate.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          code: 'GRSS-PZ-JL-01',
+          version: 2,
+          versionStatus: 'draft',
+          supersedesId: 'tpl-v1',
+        }),
+      }));
+      expect(result.version).toBe(2);
+    });
+
+    it('rejects field updates on active templates', async () => {
+      mockPrismaService.recordTemplate.findUnique.mockResolvedValue({
+        id: 'tpl-v1',
+        status: 'active',
+        versionStatus: 'active',
+        fieldsJson: { fields: [] },
+      });
+
+      await expect(service.updateFields('tpl-v1', [{ name: 'x', label: 'X', type: 'text' }]))
+        .rejects.toThrow('已启用模板不能原地修改字段');
     });
   });
 });

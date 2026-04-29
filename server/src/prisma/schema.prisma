@@ -223,7 +223,23 @@ model NumberRule {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  @@unique([level, departmentId])
+  // Document control governance fields
+  scope           String  @default("document")
+  sourceFolder    String  @default("")
+  prefix          String?
+  categoryCode    String?
+  format          String?
+  sequencePadding Int     @default(3)
+  separator       String  @default("-")
+  resetPolicy     String  @default("none")
+  isActive        Boolean @default(true)
+  lockedAfterUse  Boolean @default(true)
+  usedCount       Int     @default(0)
+
+  @@unique([scope, level, departmentId, sourceFolder])
+  @@index([scope])
+  @@index([sourceFolder])
+  @@index([isActive])
   @@map("number_rules")
 }
 
@@ -235,14 +251,18 @@ model PendingNumber {
   number       String
   deletedAt    DateTime   @default(now())
 
-  @@unique([level, departmentId, number])
+  // Document control governance fields
+  scope        String  @default("document")
+  sourceFolder String  @default("")
+
+  @@unique([scope, level, departmentId, sourceFolder, number])
   @@map("pending_numbers")
 }
 
 model Document {
   id         String    @id
   level      Int
-  number     String    @unique
+  number     String
   title      String
   filePath   String
   fileName   String
@@ -328,10 +348,20 @@ model Document {
   coverageReviews    DocumentCoverageReview[]
   businessLinks       BusinessDocumentLink[]
 
+  // Document control governance: revision tracking
+  versionNo      Int       @default(1)
+  revisionOfId   String?
+  revisionOf     Document?  @relation("DocumentRevisions", fields: [revisionOfId], references: [id], onDelete: SetNull)
+  revisions      Document[] @relation("DocumentRevisions")
+  revisionStatus String     @default("current")
+
+  @@index([number])
   @@index([lineage_key])
   @@index([approvalInstanceId])
   @@index([ownerDepartmentId])
   @@index([ownerUserId])
+  @@index([revisionOfId])
+  @@index([revisionStatus])
   @@map("documents")
 }
 
@@ -721,7 +751,7 @@ model WorkflowTask {
 // 动态表单引擎: 记录模板表
 model RecordTemplate {
   id             String    @id @default(cuid())
-  code           String    @unique
+  code           String
   name           String
   fieldsJson     Json
   version        Int       @default(1)
@@ -752,8 +782,24 @@ model RecordTemplate {
   landingEntries       RecordFormLandingEntry[]
   changeFormTasks      ChangeEventFormTask[]
 
+  // Document control governance: template versioning
+  templateFamilyId String?
+  baseCode         String?
+  versionStatus    String    @default("active")
+  supersedesId     String?
+  supersedes       RecordTemplate?  @relation("RecordTemplateVersions", fields: [supersedesId], references: [id], onDelete: SetNull)
+  supersededBy     RecordTemplate[] @relation("RecordTemplateVersions")
+  effectiveAt      DateTime?
+  retiredAt        DateTime?
+  approvedBy       String?
+  approvedAt       DateTime?
+
+  @@unique([templateFamilyId, version])
   @@index([code])
   @@index([status])
+  @@index([baseCode])
+  @@index([templateFamilyId])
+  @@index([versionStatus])
   @@map("record_templates")
 }
 
@@ -2433,10 +2479,24 @@ model RecordFormLandingEntry {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // Document control governance fields
+  landingStatus        String   @default("unimplemented")
+  confirmationStatus   String   @default("unconfirmed")
+  confidence           String?
+  confirmedBy          String?
+  confirmedAt          DateTime?
+  fieldCoverageStatus  String   @default("unknown")
+  fieldCoverageSummary Json?
+  primaryRoute         String?
+  sourceFormVersion    String?
+
   @@index([targetModule])
   @@index([targetModel])
   @@index([landingStrategy])
   @@index([targetTemplateId])
+  @@index([landingStatus])
+  @@index([confirmationStatus])
+  @@index([fieldCoverageStatus])
   @@map("record_form_landing_entries")
 }
 
