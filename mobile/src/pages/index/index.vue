@@ -7,12 +7,13 @@
           <text class="home-page__avatar-text">{{ avatarText }}</text>
         </view>
         <view class="home-page__user-info">
-          <text class="home-page__name">{{ userStore.userInfo?.realName || '未登录' }}</text>
+          <text class="home-page__name">{{ userStore.userInfo?.name || '未登录' }}</text>
           <text class="home-page__dept">{{ userStore.userInfo?.department || '' }}</text>
         </view>
       </view>
-      <view class="home-page__sync" v-if="offlineStore.pendingCount > 0">
-        <text class="home-page__sync-text">{{ offlineStore.pendingCount }}条待同步</text>
+      <view class="home-page__station-info">
+        <text class="home-page__user-name">{{ displayName }}</text>
+        <text class="home-page__station">{{ station.stationName }} / {{ station.stationArea }}</text>
       </view>
     </view>
 
@@ -67,19 +68,20 @@
 import { ref, computed } from 'vue'
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
-import { useOfflineStore } from '@/stores/offline'
 import { useTodoStore } from '@/stores/todo'
+import { normalizeStationContext } from '@/utils/stationContext'
 import type { TodoItem } from '@/types'
 import TodoCard from '@/components/TodoCard.vue'
 import EmptyState from '@/components/EmptyState.vue'
 
 const userStore = useUserStore()
-const offlineStore = useOfflineStore()
 const todoStore = useTodoStore()
 const recentTodos = ref<TodoItem[]>([])
+const station = computed(() => normalizeStationContext(null))
+const displayName = computed(() => userStore.userInfo?.name || userStore.userInfo?.username || '未登录')
 
 const avatarText = computed(() => {
-  const name = userStore.userInfo?.realName || ''
+  const name = userStore.userInfo?.name || ''
   return name.charAt(0) || '?'
 })
 

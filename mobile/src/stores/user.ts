@@ -47,7 +47,7 @@ export const useUserStore = defineStore('user', () => {
     oldPassword: string,
     newPassword: string,
   ): Promise<void> {
-    await post('/auth/password', {
+    await post('/auth/change-password', {
       oldPassword,
       newPassword,
     })

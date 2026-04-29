@@ -11,11 +11,10 @@
     <view v-else-if="record" class="record-detail__content">
       <!-- Record info -->
       <view class="record-detail__info">
-        <text class="record-detail__title">{{ record.title }}</text>
+        <text class="record-detail__title">{{ record.number }}</text>
         <view class="record-detail__meta">
-          <text class="record-detail__meta-item">{{ record.type }}</text>
-          <text class="record-detail__meta-item">{{ record.submitter }}</text>
-          <text class="record-detail__meta-item">{{ formatDate(record.submittedAt) }}</text>
+          <text class="record-detail__meta-item">{{ record.createdBy }}</text>
+          <text class="record-detail__meta-item">{{ formatDate(record.submittedAt || record.createdAt) }}</text>
         </view>
         <view class="record-detail__status" :style="{ backgroundColor: statusColor }">
           <text class="record-detail__status-text">{{ statusLabel }}</text>
@@ -27,14 +26,14 @@
         <DynamicForm
           :fields="formFields"
           :form-id="record.id"
-          :initial-data="record.data"
+          :initial-data="record.dataJson"
           :readonly="true"
         />
       </view>
 
       <!-- Raw data fallback -->
       <view v-else class="record-detail__raw">
-        <view v-for="(value, key) in record.data" :key="key" class="record-detail__field">
+        <view v-for="(value, key) in record.dataJson" :key="key" class="record-detail__field">
           <text class="record-detail__field-label">{{ key }}</text>
           <text class="record-detail__field-value">{{ String(value) }}</text>
         </view>
@@ -44,15 +43,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import dayjs from 'dayjs'
-import type { RecordItem, FormField } from '@/types'
-import { get } from '@/utils/request'
+import type { FormField } from '@/types'
+import { fetchRecordDetail, type RecordListItem } from '@/api/record'
 import DynamicForm from '@/components/DynamicForm.vue'
 import ErrorState from '@/components/ErrorState.vue'
 
-const record = ref<RecordItem | null>(null)
+const record = ref<RecordListItem | null>(null)
 const formFields = ref<FormField[]>([])
 const loading = ref(true)
 const error = ref('')
@@ -85,7 +84,7 @@ async function fetchDetail(): Promise<void> {
   loading.value = true
   error.value = ''
   try {
-    record.value = await get<RecordItem>(`/form-submissions/${recordId}`)
+    record.value = await fetchRecordDetail(recordId)
   } catch (err) {
     error.value = err instanceof Error ? err.message : '加载失败'
   } finally {

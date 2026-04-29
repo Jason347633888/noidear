@@ -13,9 +13,6 @@ export async function getProfile(): Promise<UserInfo> {
   return get<UserInfo>('/auth/profile')
 }
 
-export async function changePassword(
-  oldPassword: string,
-  newPassword: string,
-): Promise<void> {
-  await post('/auth/password', { oldPassword, newPassword })
+export async function changePassword(oldPassword: string, newPassword: string): Promise<void> {
+  await post('/auth/change-password', { oldPassword, newPassword })
 }

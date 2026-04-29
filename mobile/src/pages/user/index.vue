@@ -6,7 +6,7 @@
         <text class="user-page__avatar-text">{{ avatarText }}</text>
       </view>
       <view class="user-page__info">
-        <text class="user-page__name">{{ userStore.userInfo?.realName || '未登录' }}</text>
+        <text class="user-page__name">{{ userStore.userInfo?.name || '未登录' }}</text>
         <text class="user-page__dept">{{ userStore.userInfo?.department || '' }}</text>
         <text class="user-page__position">{{ userStore.userInfo?.position || '' }}</text>
       </view>
@@ -20,18 +20,6 @@
         :arrow="true"
         @tap="showPasswordDialog = true"
       />
-      <MenuItem
-        icon="&#x1F504;"
-        title="同步状态"
-        :arrow="true"
-        @tap="onSyncStatus"
-      >
-        <template #badge>
-          <view v-if="offlineStore.pendingCount > 0" class="user-page__menu-badge">
-            <text class="user-page__menu-badge-text">{{ offlineStore.pendingCount }}</text>
-          </view>
-        </template>
-      </MenuItem>
       <MenuItem
         icon="&#x2139;"
         title="关于我们"
@@ -106,11 +94,9 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { useOfflineStore } from '@/stores/offline'
 import MenuItem from '@/components/MenuItem.vue'
 
 const userStore = useUserStore()
-const offlineStore = useOfflineStore()
 
 const showPasswordDialog = ref(false)
 const showAbout = ref(false)
@@ -122,7 +108,7 @@ const passwordForm = reactive({
 })
 
 const avatarText = computed(() => {
-  const name = userStore.userInfo?.realName || ''
+  const name = userStore.userInfo?.name || ''
   return name.charAt(0) || '?'
 })
 
@@ -150,24 +136,6 @@ async function handleChangePassword(): Promise<void> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : '修改失败'
     uni.showToast({ title: msg, icon: 'none' })
-  }
-}
-
-function onSyncStatus(): void {
-  if (offlineStore.pendingCount > 0) {
-    uni.showModal({
-      title: '同步状态',
-      content: `待同步: ${offlineStore.pendingCount}条\n同步失败: ${offlineStore.failedItems.length}条`,
-      confirmText: '立即同步',
-      success: (res) => {
-        if (res.confirm) {
-          offlineStore.syncAll()
-          uni.showToast({ title: '开始同步', icon: 'none' })
-        }
-      },
-    })
-  } else {
-    uni.showToast({ title: '所有数据已同步', icon: 'success' })
   }
 }
 
@@ -240,18 +208,6 @@ function handleLogout(): void {
   border-radius: 16rpx;
   margin-bottom: 24rpx;
   overflow: hidden;
-}
-
-.user-page__menu-badge {
-  background-color: #f56c6c;
-  border-radius: 20rpx;
-  padding: 2rpx 12rpx;
-  margin-right: 12rpx;
-}
-
-.user-page__menu-badge-text {
-  font-size: 22rpx;
-  color: #fff;
 }
 
 .user-page__logout {

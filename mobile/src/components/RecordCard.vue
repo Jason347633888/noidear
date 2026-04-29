@@ -1,14 +1,14 @@
 <template>
   <view class="record-card" @tap="$emit('tap', item)">
     <view class="record-card__header">
-      <text class="record-card__type">{{ item.type }}</text>
+      <text class="record-card__type">{{ typeLabel }}</text>
       <view class="record-card__status" :style="{ backgroundColor: statusColor }">
         <text class="record-card__status-text">{{ statusLabel }}</text>
       </view>
     </view>
-    <text class="record-card__title">{{ item.title }}</text>
+    <text class="record-card__title">{{ titleLabel }}</text>
     <view class="record-card__footer">
-      <text class="record-card__submitter">{{ item.submitter }}</text>
+      <text class="record-card__submitter">{{ submitterLabel }}</text>
       <text class="record-card__time">{{ formatTime }}</text>
     </view>
   </view>
@@ -17,10 +17,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import dayjs from 'dayjs'
-import type { RecordItem } from '@/types'
+import type { RecordListItem } from '@/api/record'
 
 const props = defineProps<{
-  item: RecordItem
+  item: RecordListItem
 }>()
 
 defineEmits(['tap'])
@@ -34,7 +34,11 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
 const statusLabel = computed(() => STATUS_MAP[props.item.status]?.label || '未知')
 const statusColor = computed(() => STATUS_MAP[props.item.status]?.color || '#909399')
 
-const formatTime = computed(() => dayjs(props.item.submittedAt).format('MM-DD HH:mm'))
+const typeLabel = computed(() => props.item.templateId)
+const titleLabel = computed(() => props.item.number)
+const submitterLabel = computed(() => props.item.createdBy)
+const timeSource = computed(() => props.item.submittedAt || props.item.createdAt)
+const formatTime = computed(() => dayjs(timeSource.value).format('MM-DD HH:mm'))
 </script>
 
 <style scoped>

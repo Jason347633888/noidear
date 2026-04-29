@@ -60,13 +60,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
-import type { RecordItem, PaginatedResult } from '@/types'
-import { get } from '@/utils/request'
+import { fetchRecordList, type RecordListItem } from '@/api/record'
 import RecordCard from '@/components/RecordCard.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import LoadingMore from '@/components/LoadingMore.vue'
 
-const records = ref<RecordItem[]>([])
+const records = ref<RecordListItem[]>([])
 const loading = ref(false)
 const hasMore = ref(true)
 const page = ref(1)
@@ -100,11 +99,9 @@ async function fetchRecords(reset: boolean = false): Promise<void> {
       pageSize: 10,
     }
     if (keyword.value) params.keyword = keyword.value
-    if (typeValues[typeIndex.value]) params.type = typeValues[typeIndex.value]
     if (statusValues[statusIndex.value]) params.status = statusValues[statusIndex.value]
-    if (timeValues[timeIndex.value]) params.timeRange = timeValues[timeIndex.value]
 
-    const result = await get<PaginatedResult<RecordItem>>('/form-submissions', params)
+    const result = await fetchRecordList(params)
     if (reset) {
       records.value = result.list
     } else {
@@ -138,7 +135,7 @@ function onTimeChange(e: { detail: { value: number } }): void {
   fetchRecords(true)
 }
 
-function onRecordTap(item: RecordItem): void {
+function onRecordTap(item: RecordListItem): void {
   uni.navigateTo({ url: `/pages/records/detail?id=${item.id}` })
 }
 

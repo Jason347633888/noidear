@@ -1,8 +1,8 @@
 <template>
   <view class="login-page">
     <view class="login-page__header">
-      <text class="login-page__title">文档管理系统</text>
-      <text class="login-page__subtitle">移动端登录</text>
+      <text class="login-page__title">现场终端</text>
+      <text class="login-page__subtitle">使用系统账号登录</text>
     </view>
 
     <view class="login-page__form">

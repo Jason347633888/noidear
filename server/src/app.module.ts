@@ -29,7 +29,6 @@ import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { SystemConfigModule } from './modules/system-config/system-config.module';
 import { EquipmentModule } from './modules/equipment/equipment.module';
 import { MobileModule } from './modules/mobile/mobile.module';
-import { WechatModule } from './modules/wechat/wechat.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { MonitoringModule } from './modules/monitoring/monitoring.module';
 import { AlertModule } from './modules/alert/alert.module';
@@ -118,7 +117,6 @@ import { WorkshopAreaModule } from './modules/workshop-area/workshop-area.module
     SystemConfigModule,
     EquipmentModule,
     MobileModule,
-    WechatModule,
     AuditModule,
     MonitoringModule,
     AlertModule,

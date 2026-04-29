@@ -1,12 +1,12 @@
-/** User info */
+/** User info returned by backend /auth/login */
 export interface UserInfo {
   id: string
   username: string
-  realName: string
-  department: string
-  position: string
-  avatar: string
+  name: string
   role: string
+  department?: string
+  position?: string
+  avatar?: string
 }
 
 /** Login form */

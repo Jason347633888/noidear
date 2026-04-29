@@ -1,26 +1,23 @@
 /**
- * Record API module
- * Maps to backend /records and /record-templates endpoints
+ * Record API module.
+ * Uses backend /records and /record-templates; H5 and PC share the same data source.
  */
 import { get, post } from '@/utils/request'
 import type { FormField, PaginatedResult } from '@/types'
+import { normalizeTemplatePage, type NormalizedRecordTemplate } from '@/utils/recordTemplate'
 
-export interface RecordTemplateItem {
-  id: string
-  name: string
-  code: string
-  fields: FormField[]
-}
+export type RecordTemplateItem = NormalizedRecordTemplate
 
 export interface RecordListItem {
   id: string
-  number: string
   templateId: string
-  templateName: string
-  status: 'draft' | 'pending' | 'approved' | 'rejected'
+  number: string
+  status: string
+  dataJson: Record<string, unknown>
   createdBy: string
   submittedAt: string | null
   createdAt: string
+  updatedAt: string
 }
 
 export interface RecordListParams {
@@ -32,17 +29,36 @@ export interface RecordListParams {
 }
 
 export async function fetchTemplates(): Promise<RecordTemplateItem[]> {
-  const result = await get<PaginatedResult<RecordTemplateItem>>('/record-templates', {
+  const result = await get<unknown>('/record-templates', {
     page: 1,
-    pageSize: 100,
+    limit: 1000,
+    status: 'active',
   })
-  return result.list
+  return normalizeTemplatePage(result as Parameters<typeof normalizeTemplatePage>[0]).list
 }
 
 export async function fetchRecordList(
   params: RecordListParams = {},
 ): Promise<PaginatedResult<RecordListItem>> {
-  return get<PaginatedResult<RecordListItem>>('/records', params as Record<string, unknown>)
+  const { pageSize, ...rest } = params
+  const query: Record<string, unknown> = { ...rest }
+  if (pageSize !== undefined) query.limit = pageSize
+
+  const result = await get<PaginatedResult<RecordListItem> | { data: RecordListItem[]; total: number; page: number; limit: number }>(
+    '/records',
+    query,
+  )
+
+  if ('data' in result && Array.isArray(result.data)) {
+    return {
+      list: result.data,
+      total: result.total,
+      page: result.page,
+      pageSize: result.limit,
+    }
+  }
+
+  return result as PaginatedResult<RecordListItem>
 }
 
 export async function fetchRecordDetail(id: string): Promise<RecordListItem> {
@@ -52,6 +68,10 @@ export async function fetchRecordDetail(id: string): Promise<RecordListItem> {
 export async function submitRecord(
   templateId: string,
   dataJson: Record<string, unknown>,
-): Promise<void> {
-  await post('/records', { templateId, dataJson })
+): Promise<RecordListItem> {
+  return post<RecordListItem>('/records', {
+    templateId,
+    dataJson,
+    offlineFilled: false,
+  })
 }
