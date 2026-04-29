@@ -32,22 +32,29 @@ async function main() {
     };
 
     try {
-      await prisma.recordTemplate.upsert({
-        where: { code: t.code },
-        update: {
-          name: t.name,
-          fieldsJson,
-          retentionYears: t.retentionYears,
-        },
-        create: {
-          code: t.code,
-          name: t.name,
-          fieldsJson,
-          retentionYears: t.retentionYears,
-          description: `${t.department} — ${path.basename(t.rawPath)}`,
-          status: 'active',
-        },
+      const existing = await prisma.recordTemplate.findFirst({
+        where: { code: t.code, deletedAt: null },
+        orderBy: { version: 'desc' },
       });
+      if (existing) {
+        await prisma.recordTemplate.update({
+          where: { id: existing.id },
+          data: { name: t.name, fieldsJson, retentionYears: t.retentionYears },
+        });
+      } else {
+        await (prisma.recordTemplate as any).create({
+          data: {
+            code: t.code,
+            baseCode: t.code,
+            templateFamilyId: t.code,
+            name: t.name,
+            fieldsJson,
+            retentionYears: t.retentionYears,
+            description: `${t.department} — ${path.basename(t.rawPath)}`,
+            status: 'active',
+          },
+        });
+      }
       upserted++;
     } catch (err) {
       console.error(`跳过 ${t.code} (${t.name}):`, (err as Error).message);

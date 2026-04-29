@@ -138,17 +138,22 @@ export class RecordTemplateService {
       this.validateFieldsJson(updateDto.fieldsJson);
     }
 
-    // 归档当前版本
+    const baseCode = (existing as any).baseCode || existing.code.replace(/-v\d+$/, '');
+    const templateFamilyId = (existing as any).templateFamilyId || baseCode;
+    const newVersion = existing.version + 1;
+
+    // 退役当前版本，纳入版本族管理
     await this.prisma.recordTemplate.update({
       where: { id },
-      data: { status: 'archived' },
+      data: { status: 'archived', versionStatus: 'retired', retiredAt: new Date() } as any,
     });
 
-    // 创建新版本，继承 approvalRequired / workflowConfig
-    const newVersion = existing.version + 1;
     return await this.prisma.recordTemplate.create({
       data: {
-        code: existing.code + `-v${newVersion}`,
+        code: baseCode,
+        baseCode,
+        templateFamilyId,
+        supersedesId: id,
         name: updateDto.name || existing.name,
         fieldsJson: updateDto.fieldsJson || existing.fieldsJson,
         retentionYears: updateDto.retentionYears || existing.retentionYears,
@@ -157,7 +162,9 @@ export class RecordTemplateService {
         workflowConfig: updateDto.workflowConfig ?? (existing as any).workflowConfig,
         version: newVersion,
         status: 'active',
-      },
+        versionStatus: 'active',
+        effectiveAt: new Date(),
+      } as any,
     });
   }
 
