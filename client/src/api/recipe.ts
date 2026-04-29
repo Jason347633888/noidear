@@ -21,6 +21,13 @@ export interface Recipe {
   status: string;
   version_note?: string;
   lines: RecipeLine[];
+  product?: {
+    id: string;
+    name: string;
+    code: string;
+    status: string;
+    deleted_at?: string | null;
+  };
 }
 
 export interface CreateRecipePayload {
@@ -59,12 +66,12 @@ export function getRecipeStatusType(status: string): RecipeStatusType {
 // =========================================================================
 
 export const recipeApi = {
-  getList() {
-    return request.get<Recipe[]>('/recipes');
+  getList(archive = false) {
+    return request.get<Recipe[]>('/recipes', { params: { archive } });
   },
 
-  getByProduct(productId: string) {
-    return request.get<Recipe[]>(`/recipes/product/${productId}`);
+  getByProduct(productId: string, archive = false) {
+    return request.get<Recipe[]>(`/recipes/product/${productId}`, { params: { archive } });
   },
 
   getOne(id: string) {
@@ -75,7 +82,11 @@ export const recipeApi = {
     return request.post<Recipe>('/recipes', data);
   },
 
+  archive(id: string) {
+    return request.post(`/recipes/${id}/archive`);
+  },
+
   remove(id: string) {
-    return request.delete(`/recipes/${id}`);
+    return request.post(`/recipes/${id}/archive`);
   },
 };

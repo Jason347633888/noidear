@@ -13,6 +13,7 @@ export interface Product {
   weight_unit?: string;
   status: string;
   source?: 'rd_process' | 'legacy_import' | 'manual_admin';
+  deleted_at?: string | null;
 }
 
 export interface LegacyProductLinePayload {
@@ -95,8 +96,12 @@ export const productApi = {
     return request.patch<Product>(`/products/${id}`, data);
   },
 
+  archive(id: string) {
+    return request.post<Product>(`/products/${id}/archive`);
+  },
+
   remove(id: string) {
-    return request.delete(`/products/${id}`);
+    return request.post<Product>(`/products/${id}/archive`);
   },
 
   getReports(id: string) {
