@@ -95,7 +95,6 @@ model User {
   superior      User?       @relation("UserSuperior", fields: [superiorId], references: [id], onDelete: SetNull)
   subordinates  User[]      @relation("UserSuperior")
   status        String      @default("active")
-  wechat_openid  String?     @unique
   loginAttempts   Int         @default(0)
   firstFailedAt   DateTime?
   lockedUntil     DateTime?
@@ -1674,27 +1673,6 @@ model SyncSubmission {
   @@index([status])
   @@index([syncedAt])
   @@map("sync_submissions")
-}
-
-// TASK-356: 微信订阅消息表
-model WechatMessage {
-  id         String    @id @default(cuid())
-  type       String // todo_remind, expiry_warning, approval_notice
-  templateId String // 微信消息模板 ID
-  touser     String // 用户 openid
-  data       Json // 消息数据
-  status     String    @default("pending") // pending, sent, failed
-  retries    Int       @default(0)
-  sentAt     DateTime?
-  error      String? // 失败原因
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
-  @@index([touser])
-  @@index([status])
-  @@index([type])
-  @@index([createdAt])
-  @@map("wechat_messages")
 }
 
 // ========================================
