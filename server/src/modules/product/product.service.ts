@@ -148,6 +148,12 @@ export class ProductService {
     const archivedAt = new Date();
 
     return this.prisma.$transaction(async (tx) => {
+      const recipes = await tx.recipe.findMany({
+        where: { product_id: id, company_id: '1' },
+        select: { id: true },
+      });
+      const recipeIds = recipes.map((r: { id: string }) => r.id);
+
       const product = await tx.product.update({
         where: { id, company_id: '1' },
         data: { deleted_at: archivedAt },
@@ -159,7 +165,11 @@ export class ProductService {
       });
 
       await tx.processStep.updateMany({
-        where: { product_id: id, company_id: '1', deleted_at: null },
+        where: {
+          company_id: '1',
+          deleted_at: null,
+          OR: [{ product_id: id }, { recipe_id: { in: recipeIds } }],
+        },
         data: { deleted_at: archivedAt },
       });
 
