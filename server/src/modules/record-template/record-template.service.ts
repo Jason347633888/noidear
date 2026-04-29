@@ -140,31 +140,39 @@ export class RecordTemplateService {
 
     const baseCode = (existing as any).baseCode || existing.code.replace(/-v\d+$/, '');
     const templateFamilyId = (existing as any).templateFamilyId || baseCode;
-    const newVersion = existing.version + 1;
 
-    // 退役当前版本，纳入版本族管理
-    await this.prisma.recordTemplate.update({
-      where: { id },
-      data: { status: 'archived', versionStatus: 'retired', retiredAt: new Date() } as any,
-    });
+    return this.prisma.$transaction(async (tx) => {
+      // Compute next version from the family's current max to avoid conflicts
+      // with any draft created via createRevision() in the same family.
+      const latest = await tx.recordTemplate.findFirst({
+        where: { templateFamilyId },
+        orderBy: { version: 'desc' },
+      });
+      const nextVersion = (latest?.version ?? existing.version) + 1;
 
-    return await this.prisma.recordTemplate.create({
-      data: {
-        code: baseCode,
-        baseCode,
-        templateFamilyId,
-        supersedesId: id,
-        name: updateDto.name || existing.name,
-        fieldsJson: updateDto.fieldsJson || existing.fieldsJson,
-        retentionYears: updateDto.retentionYears || existing.retentionYears,
-        description: updateDto.description || existing.description,
-        approvalRequired: updateDto.approvalRequired ?? (existing as any).approvalRequired ?? false,
-        workflowConfig: updateDto.workflowConfig ?? (existing as any).workflowConfig,
-        version: newVersion,
-        status: 'active',
-        versionStatus: 'active',
-        effectiveAt: new Date(),
-      } as any,
+      await tx.recordTemplate.update({
+        where: { id },
+        data: { status: 'archived', versionStatus: 'retired', retiredAt: new Date() } as any,
+      });
+
+      return tx.recordTemplate.create({
+        data: {
+          code: baseCode,
+          baseCode,
+          templateFamilyId,
+          supersedesId: id,
+          name: updateDto.name || existing.name,
+          fieldsJson: updateDto.fieldsJson || existing.fieldsJson,
+          retentionYears: updateDto.retentionYears || existing.retentionYears,
+          description: updateDto.description || existing.description,
+          approvalRequired: updateDto.approvalRequired ?? (existing as any).approvalRequired ?? false,
+          workflowConfig: updateDto.workflowConfig ?? (existing as any).workflowConfig,
+          version: nextVersion,
+          status: 'active',
+          versionStatus: 'active',
+          effectiveAt: new Date(),
+        } as any,
+      });
     });
   }
 
