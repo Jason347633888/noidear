@@ -138,6 +138,10 @@ export class RecordTemplateService {
       this.validateFieldsJson(updateDto.fieldsJson);
     }
 
+    if (existing.status !== 'active') {
+      throw new BadRequestException('只有当前 active 版本才能通过此入口发起改版');
+    }
+
     const baseCode = (existing as any).baseCode || existing.code.replace(/-v\d+$/, '');
     const templateFamilyId = (existing as any).templateFamilyId || baseCode;
 

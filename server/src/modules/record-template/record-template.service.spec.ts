@@ -214,6 +214,66 @@ describe('RecordTemplateService', () => {
     });
   });
 
+  describe('createNewVersion', () => {
+    it('应拒绝草稿模板作为源版本', async () => {
+      mockPrismaService.recordTemplate.findUnique.mockResolvedValue({
+        ...mockTemplate,
+        status: 'draft',
+        versionStatus: 'draft',
+      });
+
+      await expect(service.createNewVersion('tpl_001', {}  as any))
+        .rejects.toThrow(BadRequestException);
+    });
+
+    it('应拒绝已退役模板作为源版本', async () => {
+      mockPrismaService.recordTemplate.findUnique.mockResolvedValue({
+        ...mockTemplate,
+        status: 'archived',
+        versionStatus: 'retired',
+      });
+
+      await expect(service.createNewVersion('tpl_001', {} as any))
+        .rejects.toThrow(BadRequestException);
+    });
+
+    it('应在事务内退役源版本并创建新 active 版本', async () => {
+      const activeTemplate = {
+        ...mockTemplate,
+        baseCode: 'TEMP_001',
+        templateFamilyId: 'TEMP_001',
+        versionStatus: 'active',
+      };
+      const newTemplate = { ...activeTemplate, id: 'tpl_002', version: 2 };
+
+      mockPrismaService.recordTemplate.findUnique.mockResolvedValue(activeTemplate);
+      mockPrismaService.$transaction.mockImplementation(async (fn: any) =>
+        fn(mockPrismaService),
+      );
+      mockPrismaService.recordTemplate.findFirst.mockResolvedValue(activeTemplate);
+      mockPrismaService.recordTemplate.update.mockResolvedValue({});
+      mockPrismaService.recordTemplate.create.mockResolvedValue(newTemplate);
+
+      const result = await service.createNewVersion('tpl_001', {});
+
+      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+      expect(prisma.recordTemplate.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'tpl_001' } }),
+      );
+      expect(prisma.recordTemplate.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            templateFamilyId: 'TEMP_001',
+            status: 'active',
+            versionStatus: 'active',
+            version: 2,
+          }),
+        }),
+      );
+      expect(result).toEqual(newTemplate);
+    });
+  });
+
   describe('createRevision', () => {
     it('does not create code-v2 when creating a template revision', async () => {
       mockPrismaService.recordTemplate.findUnique.mockResolvedValue({
