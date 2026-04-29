@@ -1,23 +1,16 @@
 <script setup lang="ts">
 import { onLaunch, onShow, onHide } from '@dcloudio/uni-app'
-import { useUserStore } from '@/stores/user'
-import { useOfflineStore } from '@/stores/offline'
 
 onLaunch(() => {
-  const userStore = useUserStore()
-  userStore.initFromStorage()
-
-  const offlineStore = useOfflineStore()
-  offlineStore.initNetworkListener()
+  console.log('现场终端启动')
 })
 
 onShow(() => {
-  const offlineStore = useOfflineStore()
-  offlineStore.checkNetworkAndSync()
+  console.log('现场终端显示')
 })
 
 onHide(() => {
-  // App hidden
+  console.log('现场终端隐藏')
 })
 </script>
 
