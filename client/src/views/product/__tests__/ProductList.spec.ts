@@ -63,7 +63,8 @@ describe('ProductList archive UX', () => {
     const wrapper = mountProductList();
     await flushPromises();
 
-    expect(wrapper.text()).toContain('归档');
+    expect(wrapper.findAll('button').some((b) => b.text() === '归档')).toBe(true);
+    expect(wrapper.findAll('button').every((b) => b.text() !== '删除')).toBe(true);
     expect(wrapper.text()).not.toContain('确定删除');
     expect(wrapper.text()).not.toContain('不可撤销');
   });

@@ -173,15 +173,19 @@ async function handleSubmit() {
 // ── Archive ───────────────────────────────────────────────────────────────────
 
 async function handleArchive(row: Product) {
-  await ElMessageBox.confirm(
-    `确定要归档产品「${row.name}」吗？归档后产品、配方和工序将退出正常业务，历史追溯记录会保留。`,
-    '归档确认',
-    {
-      confirmButtonText: '确定归档',
-      cancelButtonText: '取消',
-      type: 'warning',
-    },
-  );
+  try {
+    await ElMessageBox.confirm(
+      `确定要归档产品「${row.name}」吗？归档后产品、配方和工序将退出正常业务，历史追溯记录会保留。`,
+      '归档确认',
+      {
+        confirmButtonText: '确定归档',
+        cancelButtonText: '取消',
+        type: 'warning',
+      },
+    );
+  } catch {
+    return;
+  }
   try {
     await productApi.archive(row.id);
     ElMessage.success('归档成功');
