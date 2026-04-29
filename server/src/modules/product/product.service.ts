@@ -143,12 +143,32 @@ export class ProductService {
     });
   }
 
-  async remove(id: string) {
+  async archive(id: string) {
     await this.findOne(id);
-    return this.prisma.product.update({
-      where: { id, company_id: '1' },
-      data: { deleted_at: new Date() },
+    const archivedAt = new Date();
+
+    return this.prisma.$transaction(async (tx) => {
+      const product = await tx.product.update({
+        where: { id, company_id: '1' },
+        data: { deleted_at: archivedAt },
+      });
+
+      await tx.recipe.updateMany({
+        where: { product_id: id, company_id: '1', status: { not: 'archived' } },
+        data: { status: 'archived' },
+      });
+
+      await tx.processStep.updateMany({
+        where: { product_id: id, company_id: '1', deleted_at: null },
+        data: { deleted_at: archivedAt },
+      });
+
+      return product;
     });
+  }
+
+  async remove(id: string) {
+    return this.archive(id);
   }
 
   async uploadReport(

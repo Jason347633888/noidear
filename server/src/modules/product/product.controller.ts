@@ -77,6 +77,11 @@ export class ProductController {
     return this.service.update(id, dto);
   }
 
+  @Post(':id/archive')
+  archive(@Param('id') id: string) {
+    return this.service.archive(id);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.service.remove(id);
