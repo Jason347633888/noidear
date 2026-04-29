@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 
@@ -34,36 +34,51 @@ export class RecipeService {
   }
 
   async create(dto: CreateRecipeDto) {
-    // Destructure known-schema fields; `name` and `is_allergen` are spec-only
-    // and not yet present in the DB schema — exclude them from Prisma calls.
     const { product_id, version_note, lines } = dto;
-    const schemaLines = lines.map(
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      ({ is_allergen: _ia, ...rest }) => rest,
-    );
 
-    // Archive all existing active recipes for this product
-    await this.prisma.recipe.updateMany({
-      where: { product_id, status: 'active', company_id: '1' },
-      data: { status: 'archived' },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const areaSnapshots: Record<string, string> = {};
+      for (const line of lines) {
+        if (!areaSnapshots[line.area_id]) {
+          const area = await tx.workshopArea.findFirst({
+            where: { id: line.area_id, company_id: '1', status: 'active', deleted_at: null },
+          });
+          if (!area) {
+            throw new BadRequestException(`配料区域不存在或已停用：${line.area_id}`);
+          }
+          areaSnapshots[line.area_id] = area.name;
+        }
+      }
 
-    // Find the latest version number
-    const latest = await this.prisma.recipe.findFirst({
-      where: { product_id, company_id: '1' },
-      orderBy: { version: 'desc' },
-    });
+      const schemaLines = lines.map(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        ({ is_allergen: _ia, ...rest }) => ({
+          ...rest,
+          area_name_snapshot: areaSnapshots[rest.area_id],
+        }),
+      );
 
-    return this.prisma.recipe.create({
-      data: {
-        company_id: '1',
-        product_id,
-        version: (latest?.version ?? 0) + 1,
-        version_note,
-        status: 'active',
-        lines: { create: schemaLines },
-      },
-      include: { lines: true },
+      await tx.recipe.updateMany({
+        where: { product_id, status: 'active', company_id: '1' },
+        data: { status: 'archived' },
+      });
+
+      const latest = await tx.recipe.findFirst({
+        where: { product_id, company_id: '1' },
+        orderBy: { version: 'desc' },
+      });
+
+      return tx.recipe.create({
+        data: {
+          company_id: '1',
+          product_id,
+          version: (latest?.version ?? 0) + 1,
+          version_note,
+          status: 'active',
+          lines: { create: schemaLines },
+        },
+        include: { lines: true },
+      });
     });
   }
 

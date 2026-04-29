@@ -19,20 +19,12 @@ enum ProductionStatus {
 
 export class CreateProductionBatchDto {
   @IsString()
-  @IsOptional()
-  productId?: string;
+  @IsNotEmpty()
+  productId: string;
 
   @IsString()
   @IsNotEmpty()
-  productName: string;
-
-  @IsString()
-  @IsOptional()
-  recipeId?: string;
-
-  @IsString()
-  @IsOptional()
-  recipeName?: string;
+  recipeId: string;
 
   @IsNumber()
   @Min(0)

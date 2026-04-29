@@ -82,6 +82,7 @@ import { ModelLandingModule } from './modules/model-landing/model-landing.module
 import { TodoModule } from './modules/todo/todo.module';
 import { TaskModule } from './modules/task/task.module';
 import { UnifiedApprovalModule } from './modules/unified-approval/unified-approval.module';
+import { WorkshopAreaModule } from './modules/workshop-area/workshop-area.module';
 
 @Module({
   imports: [
@@ -170,6 +171,7 @@ import { UnifiedApprovalModule } from './modules/unified-approval/unified-approv
     TodoModule,
     TaskModule,
     UnifiedApprovalModule,
+    WorkshopAreaModule,
   ],
   providers: [],
 })

@@ -4,7 +4,11 @@ import { Type } from 'class-transformer';
 export class CreatePackagingMaterialUsageDto {
   @IsString()
   @IsNotEmpty()
-  material_name: string;
+  material_id: string;
+
+  @IsOptional()
+  @IsString()
+  material_name?: string;
 
   @IsOptional()
   @IsString()

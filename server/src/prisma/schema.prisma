@@ -902,6 +902,7 @@ model Material {
   shelf_life_days Int?
 
   batches MaterialBatch[]
+  packagingMaterialUsages PackagingMaterialUsage[]
 
   @@index([materialCode])
   @@index([categoryId])
@@ -1353,10 +1354,17 @@ model BatchMaterialUsage {
   quantity          Float
   usedAt            DateTime        @default(now())
   createdAt         DateTime        @default(now())
+  recipeLineId      String?
+  recipeLine        RecipeLine?     @relation(fields: [recipeLineId], references: [id], onDelete: SetNull)
+  area_id           String?
+  area              WorkshopArea?   @relation("BatchUsageArea", fields: [area_id], references: [id], onDelete: SetNull)
+  areaNameSnapshot  String?
 
   @@unique([productionBatchId, materialBatchId]) // 复合唯一索引
   @@index([productionBatchId])
   @@index([materialBatchId])
+  @@index([recipeLineId])
+  @@index([area_id])
   @@map("batch_material_usages")
 }
 
@@ -2610,6 +2618,7 @@ model Product {
   consumer_notice     String?
   process_instances   ProcessInstance[] @relation("ProcessProduct")
   status       String    @default("active") // 'active'|'inactive'|'discontinued'
+  source       String    @default("manual_admin")
   recipes      Recipe[]
   created_at   DateTime  @default(now())
   updated_at   DateTime  @updatedAt
@@ -2618,7 +2627,28 @@ model Product {
   production_runs ProductionRun[]
 
   @@unique([company_id, code])
+  @@index([source])
   @@map("products")
+}
+
+model WorkshopArea {
+  id          String   @id @default(cuid())
+  company_id  String
+  code        String
+  name        String
+  status      String   @default("active")
+  sort_order  Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  deleted_at  DateTime?
+
+  recipeLines    RecipeLine[]          @relation("RecipeLineArea")
+  materialUsages BatchMaterialUsage[]  @relation("BatchUsageArea")
+
+  @@unique([company_id, code])
+  @@unique([company_id, name])
+  @@index([status])
+  @@map("workshop_areas")
 }
 
 model Recipe {
@@ -2651,7 +2681,14 @@ model RecipeLine {
   unit          String
   is_critical   Boolean @default(false)
   notes         String?
+  area_id            String?
+  area               WorkshopArea? @relation("RecipeLineArea", fields: [area_id], references: [id], onDelete: SetNull)
+  area_name_snapshot String?
 
+  materialUsages BatchMaterialUsage[]
+
+  @@unique([recipe_id, material_id])
+  @@index([area_id])
   @@map("recipe_lines")
 }
 
@@ -3298,6 +3335,8 @@ model PackagingMaterialUsage {
   id                  String    @id @default(cuid())
   company_id          String
   production_batch_id String?
+  material_id         String?
+  material            Material? @relation(fields: [material_id], references: [id], onDelete: SetNull)
   material_name       String
   material_code       String?
   used_weight         Decimal?
@@ -3308,6 +3347,8 @@ model PackagingMaterialUsage {
   notes               String?
   created_at          DateTime  @default(now())
   deleted_at          DateTime?
+
+  @@index([material_id])
 }
 
 model ShiftInstance {

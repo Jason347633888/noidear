@@ -10,8 +10,8 @@ export class CreateProductionRunDto {
   @IsNotEmpty() @IsString()
   product_id: string;
 
-  @IsOptional() @IsString()
-  recipe_id?: string;
+  @IsNotEmpty() @IsString()
+  recipe_id: string;
 
   @IsOptional() @IsDateString()
   started_at?: string;

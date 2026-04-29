@@ -82,6 +82,7 @@
             <span class="lh-material">物料编号</span>
             <span class="lh-qty">用量/批次</span>
             <span class="lh-unit">单位</span>
+            <span class="lh-area">配料区域</span>
             <span class="lh-critical">关键</span>
             <span class="lh-action"></span>
           </div>
@@ -116,6 +117,15 @@
               placeholder="单位"
               @input="markDirty"
             />
+            <el-select
+              v-model="line.area_id"
+              class="lh-area-select"
+              size="small"
+              placeholder="区域"
+              @change="markDirty"
+            >
+              <el-option v-for="a in areas" :key="a.id" :label="a.name" :value="a.id" />
+            </el-select>
             <el-checkbox v-model="line.is_critical" class="lh-critical" @change="markDirty" />
             <el-button
               link type="danger" size="small" class="lh-action"
@@ -153,6 +163,7 @@ import { ElMessage } from 'element-plus';
 import { ArrowLeft, Plus, Delete } from '@element-plus/icons-vue';
 import { recipeApi, type Recipe } from '@/api/recipe';
 import { productApi, type Product } from '@/api/product';
+import { workshopAreaApi, type WorkshopArea } from '@/api/workshop-area';
 
 const route = useRoute();
 const router = useRouter();
@@ -164,6 +175,7 @@ const saving = ref(false);
 const dirty = ref(false);
 const original = ref<Recipe | null>(null);
 const products = ref<Product[]>([]);
+const areas = ref<WorkshopArea[]>([]);
 const versionNote = ref('');
 
 interface EditLine {
@@ -171,6 +183,7 @@ interface EditLine {
   qty_per_batch: number;
   unit: string;
   is_critical: boolean;
+  area_id: string;
   isNew: boolean; // true = 新增行（不在原始配方里）
 }
 
@@ -248,7 +261,7 @@ function markDirty() {
 }
 
 function addLine() {
-  editLines.value = [...editLines.value, { material_id: '', qty_per_batch: 0, unit: '', is_critical: false, isNew: true }];
+  editLines.value = [...editLines.value, { material_id: '', qty_per_batch: 0, unit: '', is_critical: false, area_id: '', isNew: true }];
   markDirty();
 }
 
@@ -268,6 +281,7 @@ async function handleSave() {
         qty_per_batch: l.qty_per_batch ?? 0,
         unit: l.unit,
         is_critical: l.is_critical,
+        area_id: l.area_id,
       })),
     });
     ElMessage.success('已保存为新版本，旧版本自动归档');
@@ -285,17 +299,20 @@ onMounted(async () => {
   loading.value = true;
   try {
     const id = route.params.id as string;
-    const [recipe, prods] = await Promise.all([
+    const [recipe, prods, areaList] = await Promise.all([
       recipeApi.getOne(id) as unknown as Promise<Recipe>,
       productApi.getList() as unknown as Promise<Product[]>,
+      workshopAreaApi.getList() as unknown as Promise<WorkshopArea[]>,
     ]);
     original.value = recipe;
     products.value = prods;
+    areas.value = areaList ?? [];
     editLines.value = (recipe.lines ?? []).map((l) => ({
       material_id: l.material_id,
       qty_per_batch: l.qty_per_batch,
       unit: l.unit,
       is_critical: l.is_critical ?? false,
+      area_id: l.area_id ?? '',
       isNew: false,
     }));
   } catch {
@@ -414,6 +431,8 @@ onMounted(async () => {
 .lh-qty    { width: 90px; flex-shrink: 0; margin-right: 8px; font-size: 13px; }
 .lh-unit   { width: 56px; flex-shrink: 0; font-size: 13px; }
 .lh-unit-input { width: 56px; flex-shrink: 0; margin-right: 8px; }
+.lh-area { width: 90px; flex-shrink: 0; font-size: 12px; }
+.lh-area-select { width: 90px; flex-shrink: 0; margin-right: 8px; }
 .lh-critical { width: 48px; flex-shrink: 0; font-size: 12px; }
 .lh-action { width: 28px; flex-shrink: 0; }
 

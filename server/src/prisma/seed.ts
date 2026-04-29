@@ -344,6 +344,18 @@ async function main() {
 
   console.log(`✅ 系统配置创建完成（共 ${configs.length} 个）`);
 
+  await prisma.systemConfig.upsert({
+    where: { key: 'product.code.format' },
+    update: {},
+    create: {
+      key: 'product.code.format',
+      value: 'CP-{序号}',
+      valueType: 'text',
+      category: 'product',
+      description: '产品编号格式',
+    },
+  });
+
   // 8. 创建产品研发7步流程模板（CX-26）
   const productRd7StepTemplate = {
     name: '产品研发流程（7步）',
@@ -712,6 +724,26 @@ async function main() {
   }
 
   console.log(`✅ 统一审批定义配置完成（共 ${approvalDefinitions.length + processApprovalDefinitions.length} 个）`);
+
+  // 车间区域基础数据
+  const workshopAreas = [
+    { code: 'SF', name: '筛粉间', sort_order: 10 },
+    { code: 'CY', name: '称油间', sort_order: 20 },
+    { code: 'XL', name: '小料房', sort_order: 30 },
+    { code: 'GJ', name: '果酱房', sort_order: 40 },
+    { code: 'JD', name: '鸡蛋房', sort_order: 50 },
+    { code: 'JL', name: '搅料间', sort_order: 60 },
+  ];
+
+  for (const area of workshopAreas) {
+    await prisma.workshopArea.upsert({
+      where: { company_id_code: { company_id: '1', code: area.code } },
+      update: { name: area.name, sort_order: area.sort_order, status: 'active' },
+      create: { company_id: '1', code: area.code, name: area.name, sort_order: area.sort_order, status: 'active' },
+    });
+  }
+
+  console.log(`✅ 车间区域创建完成（共 ${workshopAreas.length} 个）`);
 
   console.log('🎉 数据库种子数据填充完成！');
 }

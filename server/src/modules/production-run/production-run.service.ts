@@ -17,6 +17,16 @@ export class ProductionRunService {
     if (!shift) throw new NotFoundException('班次不存在');
     if (shift.status === 'closed') throw new BadRequestException('班次已关闭，不能开产');
 
+    const product = await this.prisma.product.findFirst({
+      where: { id: dto.product_id, company_id: '1', status: 'active', deleted_at: null },
+    });
+    if (!product) throw new BadRequestException('产品不存在或未启用');
+
+    const recipe = await this.prisma.recipe.findFirst({
+      where: { id: dto.recipe_id, product_id: dto.product_id, company_id: '1', status: 'active' },
+    });
+    if (!recipe) throw new BadRequestException('配方不存在、未激活或不属于该产品');
+
     return this.prisma.productionRun.create({
       data: {
         company_id: '1',

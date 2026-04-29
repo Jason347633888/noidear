@@ -61,8 +61,15 @@
     <!-- 添加物料对话框 -->
     <el-dialog v-model="usageDialogVisible" title="添加物料使用" width="500px">
       <el-form label-width="100px">
-        <el-form-item label="物料ID">
-          <el-input v-model="usageForm.materialId" placeholder="请输入物料 ID" />
+        <el-form-item label="配方明细">
+          <el-select v-model="usageForm.recipeLineId" placeholder="选择配方物料行" style="width: 100%" clearable>
+            <el-option
+              v-for="line in recipeLines"
+              :key="line.id"
+              :label="`${line.area_name_snapshot ? '[' + line.area_name_snapshot + '] ' : ''}${line.material_id} × ${line.qty_per_batch}${line.unit}`"
+              :value="line.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="物料批次ID">
           <el-input v-model="usageForm.materialBatchId" placeholder="请输入物料批次 ID" />
@@ -84,6 +91,7 @@ import { ref, reactive, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { productionBatchApi, materialUsageApi } from '@/api/batch';
+import { recipeApi, type RecipeLine } from '@/api/recipe';
 import request from '@/api/request';
 
 const route = useRoute();
@@ -94,6 +102,7 @@ const addingUsage = ref(false);
 const usageDialogVisible = ref(false);
 const batch = ref<any>(null);
 const materialUsages = ref<any[]>([]);
+const recipeLines = ref<RecipeLine[]>([]);
 
 const statusTextMap: Record<string, string> = {
   planned: '已计划', in_progress: '进行中', completed: '已完成', cancelled: '已取消',
@@ -102,10 +111,10 @@ const statusTypeMap: Record<string, string> = {
   planned: 'info', in_progress: 'primary', completed: 'success', cancelled: 'warning',
 };
 
-const usageForm = reactive({ materialId: '', materialBatchId: '', quantity: 1 });
+const usageForm = reactive({ recipeLineId: '', materialBatchId: '', quantity: 1 });
 
 const resetUsageForm = () => {
-  usageForm.materialId = '';
+  usageForm.recipeLineId = '';
   usageForm.materialBatchId = '';
   usageForm.quantity = 1;
 };
@@ -125,6 +134,10 @@ const fetchBatch = async () => {
     const res: any = await productionBatchApi.getById(batchId);
     batch.value = res;
     materialUsages.value = res.materialUsages || [];
+    if (res.recipeId) {
+      const recipe: any = await recipeApi.getOne(res.recipeId);
+      recipeLines.value = recipe?.lines ?? [];
+    }
   } catch (error) {
     ElMessage.error('获取批次详情失败');
   } finally {
@@ -142,13 +155,18 @@ const fetchUsages = async () => {
 };
 
 const handleAddUsage = async () => {
-  if (!usageForm.materialId || !usageForm.materialBatchId) {
+  if (!usageForm.recipeLineId || !usageForm.materialBatchId) {
     ElMessage.warning('请填写完整信息');
     return;
   }
   addingUsage.value = true;
   try {
-    await materialUsageApi.addUsage(batchId, { ...usageForm });
+    await materialUsageApi.addUsage({
+      productionBatchId: batchId,
+      materialBatchId: usageForm.materialBatchId,
+      recipeLineId: usageForm.recipeLineId,
+      quantity: usageForm.quantity,
+    });
     ElMessage.success('物料添加成功');
     usageDialogVisible.value = false;
     resetUsageForm();

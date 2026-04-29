@@ -19,12 +19,27 @@ export class ProductionBatchService {
   ) {}
 
   async create(createDto: CreateProductionBatchDto) {
+    const product = await this.prisma.product.findFirst({
+      where: { id: createDto.productId, company_id: '1', status: 'active', deleted_at: null },
+    });
+    if (!product) throw new BadRequestException('产品不存在或未启用');
+
+    const recipe = await this.prisma.recipe.findFirst({
+      where: { id: createDto.recipeId, product_id: createDto.productId, company_id: '1', status: 'active' },
+    });
+    if (!recipe) throw new BadRequestException('配方不存在、未激活或不属于该产品');
+
     const batchNumber = await this.batchNumberGenerator.generateBatchNumber('production');
 
     return this.prisma.productionBatch.create({
       data: {
         batchNumber,
-        ...createDto,
+        productId: product.id,
+        recipeId: recipe.id,
+        productName: product.name,
+        recipeName: `v${recipe.version}`,
+        plannedQuantity: createDto.plannedQuantity,
+        productionDate: createDto.productionDate,
         status: 'pending',
       },
     });

@@ -79,17 +79,23 @@
     <!-- 创建批次对话框 -->
     <el-dialog v-model="createDialogVisible" title="创建生产批次" width="600px">
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="100px">
-        <el-form-item label="产品名称" prop="productName">
-          <el-input v-model="createForm.productName" placeholder="请输入产品名称" />
+        <el-form-item label="产品配方" prop="productId">
+          <ProductRecipeSelect @change="onProductRecipeChange" />
         </el-form-item>
-        <el-form-item label="产品代码" prop="productCode">
-          <el-input v-model="createForm.productCode" placeholder="请输入产品代码" />
-        </el-form-item>
-        <el-form-item label="数量" prop="quantity">
-          <el-input-number v-model="createForm.quantity" :min="1" />
+        <el-form-item label="计划数量" prop="plannedQuantity">
+          <el-input-number v-model="createForm.plannedQuantity" :min="1" />
         </el-form-item>
         <el-form-item label="单位" prop="unit">
           <el-input v-model="createForm.unit" placeholder="如：kg, 件, 箱" />
+        </el-form-item>
+        <el-form-item label="生产日期" prop="productionDate">
+          <el-date-picker
+            v-model="createForm.productionDate"
+            type="date"
+            placeholder="选择生产日期"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -105,6 +111,7 @@ import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { productionBatchApi } from '@/api/batch';
+import ProductRecipeSelect from '@/components/master-data/ProductRecipeSelect.vue';
 
 const router = useRouter();
 const loading = ref(false);
@@ -122,13 +129,24 @@ const statusTypeMap: Record<string, string> = {
 
 const filterForm = reactive({ keyword: '', status: '' });
 const pagination = reactive({ page: 1, limit: 20, total: 0 });
-const createForm = reactive({ productName: '', productCode: '', quantity: 1, unit: 'kg' });
+const createForm = reactive({
+  productId: '',
+  recipeId: '',
+  plannedQuantity: 1,
+  unit: 'kg',
+  productionDate: '',
+});
 const createRules: FormRules = {
-  productName: [{ required: true, message: '请输入产品名称', trigger: 'blur' }],
-  productCode: [{ required: true, message: '请输入产品代码', trigger: 'blur' }],
-  quantity: [{ required: true, message: '请输入数量', trigger: 'blur' }],
+  productId: [{ required: true, message: '请选择产品', trigger: 'change' }],
+  plannedQuantity: [{ required: true, message: '请输入计划数量', trigger: 'blur' }],
   unit: [{ required: true, message: '请输入单位', trigger: 'blur' }],
+  productionDate: [{ required: true, message: '请选择生产日期', trigger: 'change' }],
 };
+
+function onProductRecipeChange(value: { productId: string; recipeId: string }) {
+  createForm.productId = value.productId;
+  createForm.recipeId = value.recipeId;
+}
 
 const fetchData = async () => {
   loading.value = true;
@@ -154,9 +172,18 @@ const handleReset = () => { filterForm.keyword = ''; filterForm.status = ''; han
 const handleCreate = async () => {
   if (!createFormRef.value) return;
   try { await createFormRef.value.validate(); } catch { return; }
+  if (!createForm.recipeId) {
+    ElMessage.warning('请选择配方版本');
+    return;
+  }
   creating.value = true;
   try {
-    await productionBatchApi.create({ ...createForm });
+    await productionBatchApi.create({
+      productId: createForm.productId,
+      recipeId: createForm.recipeId,
+      plannedQuantity: createForm.plannedQuantity,
+      productionDate: createForm.productionDate,
+    });
     ElMessage.success('批次创建成功');
     createDialogVisible.value = false;
     fetchData();

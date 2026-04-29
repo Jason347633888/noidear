@@ -12,6 +12,21 @@ export interface Product {
   net_weight?: number;
   weight_unit?: string;
   status: string;
+  source?: 'rd_process' | 'legacy_import' | 'manual_admin';
+}
+
+export interface LegacyProductLinePayload {
+  material_id: string;
+  qty_per_batch: number;
+  unit: string;
+  is_critical?: boolean;
+  area_id: string;
+  notes?: string;
+}
+
+export interface CreateLegacyProductPayload {
+  name: string;
+  lines: LegacyProductLinePayload[];
 }
 
 export interface ProductReportDocument {
@@ -94,5 +109,9 @@ export const productApi = {
 
   replaceReport(id: string, linkId: string, formData: FormData) {
     return request.post(`/products/${id}/reports/${linkId}/replace`, formData);
+  },
+
+  createLegacy(data: CreateLegacyProductPayload) {
+    return request.post<{ product: Product; recipe: unknown }>('/products/legacy', data);
   },
 };

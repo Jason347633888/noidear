@@ -209,7 +209,7 @@
           />
         </el-form-item>
         <el-form-item label="生产批次">
-          <el-input v-model="wasteRecordForm.production_batch_id" placeholder="生产批次号（可选）" />
+          <ProductionBatchSelect v-model="wasteRecordForm.production_batch_id" />
         </el-form-item>
         <el-form-item label="班次">
           <el-input v-model="wasteRecordForm.shift" placeholder="例如：白班、夜班（可选）" />
@@ -240,6 +240,7 @@ import wasteApi, {
   getWasteTypeText,
   getDisposalReasonText,
 } from '@/api/waste';
+import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelect.vue';
 
 const activeTab = ref('disposals');
 

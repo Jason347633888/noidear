@@ -85,8 +85,8 @@
         :rules="createRules"
         label-width="110px"
       >
-        <el-form-item label="批次号" prop="production_batch_id">
-          <el-input v-model="createForm.production_batch_id" placeholder="生产批次号" />
+        <el-form-item label="生产批次" prop="production_batch_id">
+          <ProductionBatchSelect v-model="createForm.production_batch_id" />
         </el-form-item>
         <el-form-item label="返工原因" prop="rework_reason">
           <el-input
@@ -154,6 +154,7 @@ import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import reworkRecordApi, { type ReworkRecord, getVerdictText } from '@/api/rework-record';
+import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelect.vue';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 

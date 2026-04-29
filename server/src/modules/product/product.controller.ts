@@ -16,6 +16,7 @@ import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductReportDocumentDto } from './dto/product-report-document.dto';
+import { CreateLegacyProductDto } from './dto/create-legacy-product.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('products')
@@ -26,6 +27,11 @@ export class ProductController {
   @Get()
   findAll() {
     return this.service.findAll();
+  }
+
+  @Post('legacy')
+  createLegacy(@Body() dto: CreateLegacyProductDto) {
+    return this.service.createLegacy(dto);
   }
 
   @Get(':id')

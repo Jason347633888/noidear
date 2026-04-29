@@ -70,14 +70,11 @@
         :rules="formRules"
         label-width="110px"
       >
-        <el-form-item label="物料名称" prop="material_name">
-          <el-input v-model="form.material_name" placeholder="请输入物料名称" />
+        <el-form-item label="物料" prop="material_name">
+          <MaterialSelect v-model="form.material_id" />
         </el-form-item>
-        <el-form-item label="物料编号">
-          <el-input v-model="form.material_code" placeholder="可选" />
-        </el-form-item>
-        <el-form-item label="生产批次ID">
-          <el-input v-model="form.production_batch_id" placeholder="可选" />
+        <el-form-item label="生产批次">
+          <ProductionBatchSelect v-model="form.production_batch_id" />
         </el-form-item>
         <el-form-item label="用量">
           <el-input-number
@@ -132,6 +129,8 @@ import type { FormInstance, FormRules } from 'element-plus';
 import packagingMaterialUsageApi, {
   type PackagingMaterialUsage,
 } from '@/api/packaging-material-usage';
+import MaterialSelect from '@/components/master-data/MaterialSelect.vue';
+import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelect.vue';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -145,6 +144,7 @@ const submitting = ref(false);
 const formRef = ref<FormInstance>();
 
 const form = reactive({
+  material_id: '',
   material_name: '',
   material_code: '',
   production_batch_id: '',
@@ -157,7 +157,7 @@ const form = reactive({
 });
 
 const formRules: FormRules = {
-  material_name: [{ required: true, message: '请输入物料名称', trigger: 'blur' }],
+  material_name: [{ required: true, message: '请选择物料', trigger: 'change' }],
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -174,6 +174,7 @@ function formatDate(dateStr: string | null): string {
 }
 
 function resetForm() {
+  form.material_id = '';
   form.material_name = '';
   form.material_code = '';
   form.production_batch_id = '';
@@ -212,7 +213,7 @@ async function handleCreate() {
   submitting.value = true;
   try {
     await packagingMaterialUsageApi.create({
-      material_name: form.material_name,
+      material_name: form.material_name || form.material_id,
       material_code: form.material_code || undefined,
       production_batch_id: form.production_batch_id || undefined,
       used_weight: form.used_weight,

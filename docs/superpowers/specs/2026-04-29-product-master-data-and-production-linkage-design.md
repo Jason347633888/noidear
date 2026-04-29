@@ -641,3 +641,13 @@ FinishedGoodsBatch
 - 同一物料暂定在同一配方版本中只属于一个区域。
 - 区域物料范围只做建议，不做拦截。
 - 下游模块要逐步从手填名称/批次号收敛为选择主数据或批次对象。
+
+## 12. 实施状态
+
+- 产品编号：已接入 `ProductCodeGeneratorService` 和 `SystemConfig.product.code.format`。
+- 历史产品建档：已通过 `POST /products/legacy` 写入 `Product + Recipe + RecipeLine`。
+- 配料区域：已通过 `WorkshopArea` 统一维护，配方行保存 `area_id + area_name_snapshot`。
+- 生产开工：已强制 active 产品和 active 配方。
+- 生产批次：已改为选择产品和配方，名称字段作为快照。
+- 投料记录：已通过 `BatchMaterialUsage.recipeLineId` 关联配方明细和区域快照。
+- 手填收敛：生产批次、投诉、过程记录、金检、返工、包材用量、废料统计已完成第一轮选择器替换。

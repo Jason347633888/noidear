@@ -7,16 +7,28 @@ import request from './request';
 export interface ProductionBatch {
   id: string;
   batchNumber: string;
+  productId?: string;
   productName: string;
   productCode: string;
+  recipeId?: string;
+  recipeName?: string;
   quantity: number;
+  plannedQuantity?: number;
   unit: string;
+  productionDate?: string;
   status: 'planned' | 'in_progress' | 'completed' | 'cancelled';
   startDate?: string;
   endDate?: string;
   createdAt: string;
   updatedAt: string;
   materialUsages?: MaterialUsage[];
+}
+
+export interface CreateProductionBatchPayload {
+  productId: string;
+  recipeId: string;
+  plannedQuantity: number;
+  productionDate: string;
 }
 
 export interface MaterialUsage {
@@ -57,7 +69,7 @@ export const productionBatchApi = {
     return request.get<ProductionBatch>(`/batch-trace/production-batches/${id}`);
   },
 
-  create(payload: Partial<ProductionBatch>) {
+  create(payload: Partial<ProductionBatch> | CreateProductionBatchPayload) {
     return request.post<ProductionBatch>('/batch-trace/production-batches', payload);
   },
 
@@ -75,16 +87,16 @@ export const productionBatchApi = {
 // =========================================================================
 
 export const materialUsageApi = {
-  getByBatch(batchId: string) {
-    return request.get<MaterialUsage[]>(`/batch-trace/production-batches/${batchId}/material-usage`);
+  getByBatch(productionBatchId: string) {
+    return request.get<MaterialUsage[]>('/batch-trace/material-usage', { params: { productionBatchId } });
   },
 
-  addUsage(batchId: string, payload: { materialId: string; materialBatchId: string; quantity: number }) {
-    return request.post<MaterialUsage>(`/batch-trace/production-batches/${batchId}/material-usage`, payload);
+  addUsage(payload: { productionBatchId: string; materialBatchId: string; recipeLineId: string; quantity: number }) {
+    return request.post<MaterialUsage>('/batch-trace/material-usage', payload);
   },
 
-  removeUsage(batchId: string, usageId: string) {
-    return request.delete(`/batch-trace/production-batches/${batchId}/material-usage/${usageId}`);
+  removeUsage(usageId: string) {
+    return request.delete(`/batch-trace/material-usage/${usageId}`);
   },
 };
 
