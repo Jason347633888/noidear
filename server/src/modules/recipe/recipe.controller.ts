@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, Query, UseGuards } from '@nestjs/common';
 import { RecipeService } from './recipe.service';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -9,13 +9,13 @@ export class RecipeController {
   constructor(private service: RecipeService) {}
 
   @Get()
-  findAll() {
-    return this.service.findAll();
+  findAll(@Query('archive') archive?: string) {
+    return this.service.findAll(archive === 'true');
   }
 
   @Get('product/:productId')
-  findByProduct(@Param('productId') productId: string) {
-    return this.service.findByProduct(productId);
+  findByProduct(@Param('productId') productId: string, @Query('archive') archive?: string) {
+    return this.service.findByProduct(productId, archive === 'true');
   }
 
   @Get(':id')
@@ -26,6 +26,11 @@ export class RecipeController {
   @Post()
   create(@Body() dto: CreateRecipeDto) {
     return this.service.create(dto);
+  }
+
+  @Post(':id/archive')
+  archive(@Param('id') id: string) {
+    return this.service.archive(id);
   }
 
   @Delete(':id')

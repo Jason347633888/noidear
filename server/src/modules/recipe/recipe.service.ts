@@ -6,18 +6,40 @@ import { CreateRecipeDto } from './dto/create-recipe.dto';
 export class RecipeService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll() {
+  async findAll(archive = false) {
     return this.prisma.recipe.findMany({
-      where: { company_id: '1' },
-      include: { lines: true },
+      where: archive
+        ? {
+            company_id: '1',
+            OR: [
+              { status: 'archived' },
+              { product: { deleted_at: { not: null } } },
+              { product: { status: { not: 'active' } } },
+            ],
+          }
+        : {
+            company_id: '1',
+            status: { in: ['draft', 'active'] },
+            product: { deleted_at: null, status: 'active' },
+          },
+      include: { lines: true, product: true },
       orderBy: { created_at: 'desc' },
     });
   }
 
-  async findByProduct(productId: string) {
+  async findByProduct(productId: string, archive = false) {
     return this.prisma.recipe.findMany({
-      where: { product_id: productId, company_id: '1' },
-      include: { lines: true },
+      where: {
+        product_id: productId,
+        company_id: '1',
+        ...(archive
+          ? {}
+          : {
+              status: { in: ['draft', 'active'] },
+              product: { deleted_at: null, status: 'active' },
+            }),
+      },
+      include: { lines: true, product: true },
       orderBy: { version: 'desc' },
     });
   }
@@ -25,12 +47,20 @@ export class RecipeService {
   async findOne(id: string) {
     const recipe = await this.prisma.recipe.findFirst({
       where: { id, company_id: '1' },
-      include: { lines: true },
+      include: { lines: true, product: true },
     });
     if (!recipe) {
       throw new NotFoundException(`Recipe ${id} not found`);
     }
     return recipe;
+  }
+
+  async archive(id: string) {
+    await this.findOne(id);
+    return this.prisma.recipe.update({
+      where: { id },
+      data: { status: 'archived' },
+    });
   }
 
   async create(dto: CreateRecipeDto) {
@@ -83,9 +113,6 @@ export class RecipeService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
-    return this.prisma.recipe.delete({
-      where: { id },
-    });
+    return this.archive(id);
   }
 }
