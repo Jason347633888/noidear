@@ -126,8 +126,9 @@ VITE_API_BASE_URL=https://api.example.com/api/v1
 - 账号密码登录：每个操作员使用自己的系统账号登录，提交记录时绑定当前 `User`。不使用共享账号。
 - 工位首页：显示当前登录人、当前工位/区域配置、今日待办、常用入口。
 - 我的待办：展示当前用户或当前工位范围内的待办任务。优先复用现有待办源，例如 `TodoTask`、`RecordTask`、`ScheduledTask`、`ApprovalTask`；实施时按当前已稳定接口选择第一批接入源。
-- 通用记录填写：基于 `RecordTemplate / Record` 动态表单能力，用于清洁、点检、温湿度、巡检等普通记录。
-- 记录查询：查询本人提交记录、当前工位/区域相关记录，支持关键字、时间、状态等基础筛选。
+- 通用记录填写：基于 `RecordTemplate / Record` 动态表单能力，默认展示全部 `active` 记录模板，不按清洁、点检、温湿度、巡检等业务类型做初筛。
+- 模板查找与组织：模板列表必须支持按编号、名称、部门/来源描述搜索；默认按部门/来源分组展示，并支持工位常用模板置顶。置顶只影响排序，不影响“全部 active 模板可见”。
+- 记录查询：查询本人提交记录、当前工位/区域相关记录，支持关键字、时间、状态、模板等基础筛选。
 - 扫码输入：扫码枪或 PDA 扫描头以键盘输入模式写入当前聚焦字段，用于设备编号、批号、物料批号等输入/查询。第一阶段不接原生扫码 SDK。
 
 第一阶段明确不做：
@@ -144,7 +145,7 @@ VITE_API_BASE_URL=https://api.example.com/api/v1
 - 账号与权限：`User`、`Role`、`Permission`、`Department`。
 - 工位上下文：第一阶段可先用浏览器本地配置保存工位名称、区域、默认任务范围；如后续需要集中管控，再新增 `StationProfile`。
 - 待办数据：复用 `TodoTask`、`RecordTask`、`ScheduledTask`、`ApprovalTask` 等现有任务源，不为 H5 工位另建一套待办事实表。
-- 表单数据：复用 `RecordTemplate / Record`，不为移动端复制模板或记录表。
+- 表单数据：复用 `RecordTemplate / Record`，不为移动端复制模板或记录表。H5 工位默认读取全部 `active` 模板； archived、retired 或 draft 模板不展示。
 - 主数据：展示和选择时复用 `Product`、`Material`、`Supplier`、`Location`、`Equipment`、`ProductionBatch`、`MaterialBatch(MaterialLot)` 等已有主数据/批次数据。
 - 业务记录：第一阶段以通用记录为主；涉及批次、物料、设备、位置时必须保存对应主键 ID，不能只存文本名称或备注。
 
@@ -194,9 +195,10 @@ npm run build:h5 -w mobile
 8. 生产部署说明或 `.env.example` 明确要求配置 `VITE_API_BASE_URL=https://真实域名/api/v1`。
 9. `server/src/modules/wechat/`、`/auth/wechat/miniprogram`、`WechatLoginDto`、`User.wechat_openid`、`WechatMessage` 不再存在于当前运行代码和 Prisma schema 中。
 10. 设计和实施说明明确 `mobile/` 是现场终端应用，禁用个人手机时优先使用在线 H5 工位模式。
-11. H5 工位 Phase 1 只包含账号登录、工位首页、我的待办、通用记录填写、记录查询和扫码输入。
-12. H5 工位 Phase 1 不包含异常上报、不合格/偏差/CAPA 快捷入口、离线能力、免密登录或深度业务工位流程。
-13. 本次提交不包含 `.env`、测试报告、coverage、dist 等本地未跟踪产物。
+11. H5 工位 Phase 1 只包含账号登录、工位首页、我的待办、通用记录填写、模板查找与分组、记录查询和扫码输入。
+12. 通用记录入口默认展示全部 `active` 模板，不做业务白名单初筛；必须提供搜索、部门/来源分组和常用置顶。
+13. H5 工位 Phase 1 不包含异常上报、不合格/偏差/CAPA 快捷入口、离线能力、免密登录或深度业务工位流程。
+14. 本次提交不包含 `.env`、测试报告、coverage、dist 等本地未跟踪产物。
 
 ## 风险与处理
 
