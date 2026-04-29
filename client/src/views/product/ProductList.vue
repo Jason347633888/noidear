@@ -38,7 +38,7 @@
         <el-table-column label="操作" width="130" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openEditDialog(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button link type="warning" @click="handleArchive(row)">归档</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -170,24 +170,28 @@ async function handleSubmit() {
   }
 }
 
-// ── Delete ────────────────────────────────────────────────────────────────────
+// ── Archive ───────────────────────────────────────────────────────────────────
 
-async function handleDelete(row: Product) {
-  await ElMessageBox.confirm(
-    `确定要删除产品「${row.name}」吗？此操作不可撤销。`,
-    '删除确认',
-    {
-      confirmButtonText: '确定删除',
-      cancelButtonText: '取消',
-      type: 'warning',
-    },
-  );
+async function handleArchive(row: Product) {
   try {
-    await productApi.remove(row.id);
-    ElMessage.success('删除成功');
+    await ElMessageBox.confirm(
+      `确定要归档产品「${row.name}」吗？归档后产品、配方和工序将退出正常业务，历史追溯记录会保留。`,
+      '归档确认',
+      {
+        confirmButtonText: '确定归档',
+        cancelButtonText: '取消',
+        type: 'warning',
+      },
+    );
+  } catch {
+    return;
+  }
+  try {
+    await productApi.archive(row.id);
+    ElMessage.success('归档成功');
     await loadList();
   } catch {
-    ElMessage.error('删除失败，请重试');
+    ElMessage.error('归档失败，请重试');
   }
 }
 
