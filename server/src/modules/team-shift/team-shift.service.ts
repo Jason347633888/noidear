@@ -1,5 +1,6 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { CreateTeamDto, CreateShiftTypeDto, CreateTeamScheduleDto } from './dto/team-shift.dto';
 
 @Injectable()
@@ -13,13 +14,20 @@ export class TeamShiftService {
     });
   }
 
-  createTeam(dto: CreateTeamDto) {
-    return this.prisma.team.create({
-      data: {
-        code: dto.code,
-        name: dto.name,
-      },
-    });
+  async createTeam(dto: CreateTeamDto) {
+    try {
+      return await this.prisma.team.create({
+        data: {
+          code: dto.code,
+          name: dto.name,
+        },
+      });
+    } catch (error) {
+      if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('班组代码已存在');
+      }
+      throw error;
+    }
   }
 
   listShiftTypes() {
@@ -29,16 +37,23 @@ export class TeamShiftService {
     });
   }
 
-  createShiftType(dto: CreateShiftTypeDto) {
-    return this.prisma.shiftType.create({
-      data: {
-        code: dto.code,
-        name: dto.name,
-        start_time: dto.startTime,
-        end_time: dto.endTime,
-        crosses_day: dto.crossesDay,
-      },
-    });
+  async createShiftType(dto: CreateShiftTypeDto) {
+    try {
+      return await this.prisma.shiftType.create({
+        data: {
+          code: dto.code,
+          name: dto.name,
+          start_time: dto.startTime,
+          end_time: dto.endTime,
+          crosses_day: dto.crossesDay,
+        },
+      });
+    } catch (error) {
+      if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('班次类型代码已存在');
+      }
+      throw error;
+    }
   }
 
   async createSchedule(dto: CreateTeamScheduleDto) {
