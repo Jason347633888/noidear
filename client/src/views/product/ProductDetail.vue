@@ -22,6 +22,32 @@
         </el-descriptions>
       </section>
 
+      <!-- 执行失败 -->
+      <section v-if="workbench.failureTodos?.length" class="section-card">
+        <h2>执行失败</h2>
+        <el-alert type="error" :closable="false" show-icon>
+          审批通过但自动落库未成功。请检查错误原因后重试。
+        </el-alert>
+        <el-table :data="workbench.failureTodos" stripe style="margin-top: 12px">
+          <el-table-column prop="createdAt" label="失败时间" min-width="180">
+            <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
+          </el-table-column>
+          <el-table-column prop="description" label="错误消息" min-width="280" />
+          <el-table-column label="操作" width="120">
+            <template #default="{ row }">
+              <el-button
+                size="small"
+                type="primary"
+                data-test="retry-failure"
+                @click="handleRetry(row.relatedId)"
+              >
+                重试
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </section>
+
       <!-- 当前正式数据 -->
       <section class="section-card">
         <h2>当前正式数据</h2>
@@ -66,6 +92,17 @@
             </el-table-column>
             <el-table-column prop="critical_limit" label="关键限值" min-width="160" />
             <el-table-column prop="responsible_person" label="负责人" min-width="120" />
+          </el-table>
+        </div>
+
+        <div class="subsection">
+          <h3>CCP 控制点</h3>
+          <div v-if="!workbench.ccpPoints?.length" class="empty-hint">暂无 CCP 控制点</div>
+          <el-table v-else :data="workbench.ccpPoints" stripe>
+            <el-table-column prop="ccp_no" label="CCP 编号" width="120" />
+            <el-table-column prop="hazard_type" label="危害类型" width="120" />
+            <el-table-column prop="control_measure" label="控制措施" />
+            <el-table-column prop="critical_limit" label="临界值" width="160" />
           </el-table>
         </div>
       </section>
@@ -121,6 +158,18 @@
             </el-table-column>
           </el-table>
         </div>
+
+        <div class="subsection" v-if="workbench.archivedCcpPoints?.length">
+          <h3>已归档 CCP 控制点</h3>
+          <el-table :data="workbench.archivedCcpPoints" stripe>
+            <el-table-column prop="ccp_no" label="CCP 编号" width="120" />
+            <el-table-column prop="hazard_type" label="危害类型" width="120" />
+            <el-table-column prop="deleted_at" label="归档时间" width="180">
+              <template #default="{ row }">{{ formatDate(row.deleted_at) }}</template>
+            </el-table-column>
+            <el-table-column prop="control_measure" label="控制措施" />
+          </el-table>
+        </div>
       </section>
 
       <!-- 关联变更事件 -->
@@ -171,7 +220,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import {
   productApi,
   getProductStatusText,
@@ -180,6 +229,7 @@ import {
   type RecipeLineSummary,
   type ProductProcessChangePlanSummary,
 } from '@/api/product';
+import { productProcessChangeApi } from '@/api/product-process-change';
 
 const route = useRoute();
 const router = useRouter();
@@ -284,6 +334,24 @@ async function handleStatusSave() {
     ElMessage.error('保存失败，请重试');
   } finally {
     submitting.value = false;
+  }
+}
+
+// ── Failure retry ─────────────────────────────────────────────────────────────
+
+async function handleRetry(planId: string) {
+  try {
+    await ElMessageBox.confirm(
+      '重试将把该变更重新置为草稿状态，需要重新提交审批。继续？',
+      '确认重试',
+      { type: 'warning' },
+    );
+    await productProcessChangeApi.retry(planId);
+    ElMessage.success('已重置为草稿，请到"进行中变更方案"区块继续提交');
+    await loadWorkbench();
+  } catch (err: any) {
+    if (err === 'cancel' || err === 'close') return;
+    ElMessage.error(err?.message ?? '重试失败');
   }
 }
 
