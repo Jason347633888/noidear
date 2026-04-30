@@ -99,6 +99,20 @@ describe('MixingService', () => {
       });
     });
 
+    it('throws BadRequestException when recipe does not match product', async () => {
+      prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+      prisma.recipe.findFirst.mockResolvedValue(null); // recipe not found / not active / wrong product
+
+      await expect(service.createExecution({
+        recipeId: 'recipe-1',
+        productId: 'product-wrong',
+        areaId: 'area-small',
+        workDate: '2026-04-30',
+        actualWeight: 50,
+        lines: [{ recipeLineId: 'line-flour', materialBatchId: 'mb-old', actualQuantity: 50, manualOverride: false }],
+      })).rejects.toThrow(BadRequestException);
+    });
+
     it('throws BadRequestException when recipe line not found', async () => {
       prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
       prisma.recipe.findFirst.mockResolvedValue({ id: 'recipe-1', product_id: 'product-1', status: 'active' });

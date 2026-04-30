@@ -11,7 +11,7 @@
         <el-form-item label="配方">
           <el-select v-model="form.recipeId" placeholder="请先选择产品" style="width: 100%" :disabled="!form.productId" :loading="loadingRecipes" @change="onRecipeChange">
             <el-option
-              v-for="r in recipes"
+              v-for="r in activeRecipes"
               :key="r.id"
               :label="`v${r.version}${r.version_note ? ' — ' + r.version_note : ''}`"
               :value="r.id"
@@ -60,7 +60,7 @@
           <el-button size="small" type="danger" @click="removeLine(index)">删除明细</el-button>
         </div>
 
-        <el-form-item>
+        <el-form-item v-if="!form.recipeId">
           <el-button @click="addLine">+ 添加明细</el-button>
         </el-form-item>
 
@@ -73,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { mixingApi } from '@/api/mixing';
 import { productApi, type Product } from '@/api/product';
@@ -96,6 +96,8 @@ const loadingRecipes = ref(false);
 const products = ref<Product[]>([]);
 const recipes = ref<Recipe[]>([]);
 const areas = ref<WorkshopArea[]>([]);
+
+const activeRecipes = computed(() => recipes.value.filter((r) => r.status === 'active'));
 
 const form = ref({
   productId: '',
@@ -127,7 +129,7 @@ const onRecipeChange = (recipeId: string) => {
     ...form.value,
     lines: recipe.lines.map((line) => ({
       recipeLineId: line.id,
-      recipeLineLabel: `${line.area_name_snapshot ? '[' + line.area_name_snapshot + '] ' : ''}${line.material_id} × ${line.qty_per_batch} ${line.unit}`,
+      recipeLineLabel: `${line.area_name_snapshot ? '[' + line.area_name_snapshot + '] ' : ''}${line.material?.name ?? line.material_id} × ${line.qty_per_batch} ${line.unit}`,
       materialId: line.material_id,
       materialBatchId: '',
       actualQuantity: line.qty_per_batch,

@@ -967,6 +967,7 @@ model Material {
   batches MaterialBatch[]
   packagingMaterialUsages PackagingMaterialUsage[]
   mixingExecutionLines    MixingExecutionLine[]
+  recipeLines             RecipeLine[]             @relation("RecipeLineMaterial")
 
   @@index([materialCode])
   @@index([categoryId])
@@ -2896,6 +2897,7 @@ model RecipeLine {
   recipe_id     String
   recipe        Recipe  @relation(fields: [recipe_id], references: [id])
   material_id   String
+  material      Material @relation("RecipeLineMaterial", fields: [material_id], references: [id])
   qty_per_batch Decimal @db.Decimal(14,4)
   unit          String
   is_critical   Boolean @default(false)

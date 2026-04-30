@@ -29,6 +29,7 @@ export class MixingService {
       },
       include: { area: true, lines: { include: { material: true, materialBatch: true } } },
       orderBy: { work_date: 'desc' },
+      take: 100,
     });
   }
 
@@ -85,6 +86,23 @@ export class MixingService {
       throw new BadRequestException('配方明细存在重复项');
     }
 
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await this._doCreateExecution(dto);
+      } catch (error) {
+        if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002' && attempt < 2) {
+          continue;
+        }
+        if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
+          throw new ConflictException('执行号生成冲突，请重试');
+        }
+        throw error;
+      }
+    }
+    throw new ConflictException('执行号生成冲突，请重试');
+  }
+
+  private async _doCreateExecution(dto: CreateMixingExecutionDto) {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const recipe = await tx.recipe.findFirst({
@@ -160,9 +178,6 @@ export class MixingService {
         });
       });
     } catch (error) {
-      if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException('执行号生成冲突，请重试');
-      }
       throw error;
     }
   }

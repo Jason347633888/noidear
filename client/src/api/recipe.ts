@@ -7,6 +7,7 @@ import request from './request';
 export interface RecipeLine {
   id: string;
   material_id: string;
+  material?: { id: string; name: string; materialCode: string };
   qty_per_batch: number;
   unit: string;
   is_critical?: boolean;

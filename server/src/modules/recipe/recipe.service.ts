@@ -22,7 +22,7 @@ export class RecipeService {
             status: { in: ['draft', 'active'] },
             product: { deleted_at: null, status: 'active' },
           },
-      include: { lines: true, product: true },
+      include: { lines: { include: { material: true } }, product: true },
       orderBy: { created_at: 'desc' },
     });
   }
@@ -39,7 +39,7 @@ export class RecipeService {
               product: { deleted_at: null, status: 'active' },
             }),
       },
-      include: { lines: true, product: true },
+      include: { lines: { include: { material: true } }, product: true },
       orderBy: { version: 'desc' },
     });
   }
@@ -47,7 +47,7 @@ export class RecipeService {
   async findOne(id: string) {
     const recipe = await this.prisma.recipe.findFirst({
       where: { id, company_id: '1' },
-      include: { lines: true, product: true },
+      include: { lines: { include: { material: true } }, product: true },
     });
     if (!recipe) {
       throw new NotFoundException(`Recipe ${id} not found`);
