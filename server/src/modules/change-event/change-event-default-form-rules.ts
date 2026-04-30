@@ -39,16 +39,17 @@ export function getDefaultFormCodesForChangeType(changeType: string): string[] {
   );
 }
 
-export function getDefaultFormCodesForChangeScopes(scopes: string[]): string[] {
-  const normalized = scopes.map((scope) => {
-    if (scope === 'process_step') return 'process';
-    if (scope === 'oven_temperature' || scope === 'fan_parameter' || scope === 'other_process_parameter') return 'process';
-    return scope;
-  });
+const CHANGE_SCOPE_ALIASES: Record<string, ChangeType> = {
+  process_step: 'process',
+  oven_temperature: 'process',
+  fan_parameter: 'process',
+  other_process_parameter: 'process',
+};
 
+/** Merge per-scope default form codes into a deduplicated list (preserves first-seen order). Accepts alias scopes via CHANGE_SCOPE_ALIASES. */
+export function getDefaultFormCodesForChangeScopes(scopes: string[]): string[] {
+  const normalized = scopes.map((scope) => CHANGE_SCOPE_ALIASES[scope] ?? scope);
   return Array.from(
-    new Set(
-      normalized.flatMap((scope) => getDefaultFormCodesForChangeType(scope)),
-    ),
+    new Set(normalized.flatMap((scope) => getDefaultFormCodesForChangeType(scope))),
   );
 }
