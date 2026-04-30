@@ -1473,7 +1473,7 @@ model ProductionBatch {
   productName     String
   recipeId        String? // 配方ID
   recipeName      String?
-  plannedQuantity Float
+  plannedQuantity Float?
   actualQuantity  Float?
   productionDate  DateTime
   status          ProductionStatus @default(pending) // pending, in_progress, completed, cancelled
