@@ -41,6 +41,7 @@ enum RequisitionType {
 enum StagingRecordType {
   opening
   closing
+  staging
 }
 
 enum BalanceStatus {

@@ -22,6 +22,9 @@ export class ConfirmStocktakeDto {
   @IsNumber() actualQuantity!: number;
   @IsOptional() @IsString() teamId?: string;
   @IsOptional() @IsString() note?: string;
+  @IsOptional()
+  @IsString()
+  operatorId?: string;
 }
 
 export class ListStockDto {

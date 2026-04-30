@@ -227,6 +227,16 @@ export class StagingAreaService {
         include: { batch: true, area: true },
       });
 
+      await tx.stagingAreaRecord.create({
+        data: {
+          batchId: dto.batchId,
+          recordType: 'staging',
+          quantity: dto.quantity,
+          operatorId: dto.operatorId ?? 'system',
+          shiftDate: new Date(),
+        },
+      });
+
       return stock;
     });
   }
@@ -246,13 +256,14 @@ export class StagingAreaService {
         area_id: dto.areaId,
         batchId: dto.batchId,
         kind: dto.kind,
-        status: difference === 0 ? 'confirmed' : 'exception',
+        status: Math.abs(difference) < 0.0001 ? 'confirmed' : 'exception',
         book_quantity: stock.quantity,
         actual_quantity: dto.actualQuantity,
         difference,
         work_date: new Date(dto.workDate),
         shift_type_id: dto.shiftTypeId,
         team_id: dto.teamId,
+        operatorId: dto.operatorId,
         confirmed_at: new Date(),
         note: dto.note,
       },
