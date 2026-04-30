@@ -832,25 +832,21 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/product/ProductList.vue'),
         meta: { title: '产品目录' },
       },
-      // 配方管理模块
+      // 配方管理 / 工序步骤管理已合并至产品信息页面，旧路由跳转到产品列表
       {
         path: 'recipes',
-        name: 'RecipeList',
-        component: () => import('@/views/recipe/RecipeList.vue'),
-        meta: { title: '配方管理' },
+        redirect: '/products',
+        meta: { hidden: true },
       },
       {
         path: 'recipes/:id/edit',
-        name: 'RecipeEdit',
-        component: () => import('@/views/recipe/RecipeEdit.vue'),
-        meta: { title: '修改配方' },
+        redirect: '/products',
+        meta: { hidden: true },
       },
-      // 工序步骤/CCP管理模块
       {
         path: 'process-steps',
-        name: 'ProcessStepList',
-        component: () => import('@/views/process-step/ProcessStepList.vue'),
-        meta: { title: '工序步骤管理' },
+        redirect: '/products',
+        meta: { hidden: true },
       },
       // 回料/返工记录模块
       {
