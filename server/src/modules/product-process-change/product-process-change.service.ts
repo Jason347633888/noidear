@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ChangeEventService } from '../change-event/change-event.service';
@@ -39,6 +39,8 @@ function deriveChangeType(scopes: string[]): string {
 
 @Injectable()
 export class ProductProcessChangeService {
+  private readonly logger = new Logger(ProductProcessChangeService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly changeEventService: ChangeEventService,
@@ -279,13 +281,22 @@ export class ProductProcessChangeService {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'unknown';
       // Recorded OUTSIDE the doomed tx so the failure marker survives rollback.
-      await this.prisma.productProcessChangePlan.update({
-        where: { id: plan.id },
-        data: {
-          status: 'execution_failed',
-          executionError: message,
-        },
-      });
+      // Wrapped in inner try so a recording failure cannot mask the original error.
+      try {
+        await this.prisma.productProcessChangePlan.update({
+          where: { id: plan.id },
+          data: {
+            status: 'execution_failed',
+            executionError: message,
+          },
+        });
+      } catch (recordErr) {
+        this.logger.error(
+          `Failed to record execution_failed for plan ${plan.id}: ${
+            recordErr instanceof Error ? recordErr.message : recordErr
+          }`,
+        );
+      }
       throw err;
     }
   }
