@@ -137,24 +137,25 @@ export class MixingService {
           }
 
           const stock = await tx.stagingAreaStock.findFirst({
-            where: {
-              area_id: dto.areaId,
-              batchId: input.materialBatchId,
-              quantity: { gte: input.actualQuantity },
-            },
+            where: { area_id: dto.areaId, batchId: input.materialBatchId },
             include: { batch: true },
           });
           if (!stock) {
-            throw new BadRequestException('配料区库存不足');
+            throw new BadRequestException('配料区无该原辅料批次');
           }
           if (stock.batch.materialId !== recipeLine.material_id) {
             throw new BadRequestException('原辅料批次与配方物料不一致');
           }
 
-          await tx.stagingAreaStock.update({
-            where: { id: stock.id },
+          // Atomic conditional decrement: prevents two concurrent transactions from
+          // both passing a quantity check and overdrawing the stock.
+          const decrement = await tx.stagingAreaStock.updateMany({
+            where: { id: stock.id, quantity: { gte: input.actualQuantity } },
             data: { quantity: { decrement: input.actualQuantity } },
           });
+          if (decrement.count !== 1) {
+            throw new BadRequestException('配料区库存不足或已被并发占用');
+          }
 
           await tx.mixingExecutionLine.create({
             data: {

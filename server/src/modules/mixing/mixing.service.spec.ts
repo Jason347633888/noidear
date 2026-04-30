@@ -13,6 +13,7 @@ describe('MixingService', () => {
         findMany: jest.fn(),
         findFirst: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
       },
       recipe: { findFirst: jest.fn() },
       recipeLine: { findMany: jest.fn() },
@@ -82,6 +83,7 @@ describe('MixingService', () => {
         quantity: 80,
         batch: { materialId: 'mat-flour' },
       });
+      prisma.stagingAreaStock.updateMany.mockResolvedValue({ count: 1 });
       prisma.mixingExecution.findUnique.mockResolvedValue({ id: 'mix-1', lines: [] });
 
       await service.createExecution({
@@ -93,10 +95,37 @@ describe('MixingService', () => {
         lines: [{ recipeLineId: 'line-flour', materialBatchId: 'mb-old', actualQuantity: 50, manualOverride: false }],
       });
 
-      expect(prisma.stagingAreaStock.update).toHaveBeenCalledWith({
-        where: { id: 'stock-1' },
+      expect(prisma.stagingAreaStock.updateMany).toHaveBeenCalledWith({
+        where: { id: 'stock-1', quantity: { gte: 50 } },
         data: { quantity: { decrement: 50 } },
       });
+    });
+
+    it('rejects when the conditional decrement matches zero rows (concurrent overdraw)', async () => {
+      prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+      prisma.recipe.findFirst.mockResolvedValue({ id: 'recipe-1', product_id: 'product-1', status: 'active' });
+      prisma.recipeLine.findMany.mockResolvedValue([
+        { id: 'line-flour', material_id: 'mat-flour', qty_per_batch: 50 },
+      ]);
+      prisma.mixingExecution.count.mockResolvedValue(0);
+      prisma.mixingExecution.create.mockResolvedValue({ id: 'mix-1' });
+      prisma.stagingAreaStock.findFirst.mockResolvedValue({
+        id: 'stock-1',
+        batchId: 'mb-old',
+        quantity: 80,
+        batch: { materialId: 'mat-flour' },
+      });
+      // Another concurrent transaction already decremented this stock.
+      prisma.stagingAreaStock.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(service.createExecution({
+        recipeId: 'recipe-1',
+        productId: 'product-1',
+        areaId: 'area-small',
+        workDate: '2026-04-30',
+        actualWeight: 50,
+        lines: [{ recipeLineId: 'line-flour', materialBatchId: 'mb-old', actualQuantity: 50, manualOverride: false }],
+      })).rejects.toThrow(BadRequestException);
     });
 
     it('throws BadRequestException when recipe does not match product', async () => {

@@ -41,6 +41,23 @@ export class BatchMixingAggregationService {
       throw new BadRequestException('配料执行与产品批次的产品或配方不一致');
     }
 
+    // BatchMixingAggregation has no quantity-split field, so an execution must
+    // belong to at most one product batch — otherwise a single set of material
+    // usages would be double-counted across two batches in traceability and
+    // material balance. Reject any execution already linked elsewhere.
+    const existingLinks = await this.prisma.batchMixingAggregation.findMany({
+      where: { mixingExecutionId: { in: dto.mixingExecutionIds } },
+      select: { mixingExecutionId: true, productionBatchId: true },
+    });
+    const conflicting = existingLinks.find(
+      (link) => link.productionBatchId !== dto.productionBatchId,
+    );
+    if (conflicting) {
+      throw new BadRequestException(
+        `配料执行 ${conflicting.mixingExecutionId} 已归集到其它产品批次`,
+      );
+    }
+
     const upsertOps = dto.mixingExecutionIds.map((mixingExecutionId) =>
       this.prisma.batchMixingAggregation.upsert({
         where: {

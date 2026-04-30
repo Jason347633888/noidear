@@ -42,6 +42,7 @@ describe('BatchMixingAggregationService', () => {
       prisma.mixingExecution.findMany.mockResolvedValue([
         { id: 'mix-2330', productId: 'product-1', recipeId: 'recipe-1', status: 'confirmed' },
       ]);
+      prisma.batchMixingAggregation.findMany.mockResolvedValue([]);
       prisma.$transaction.mockResolvedValue([{ id: 'agg-1' }]);
 
       const result = await service.create({
@@ -50,6 +51,27 @@ describe('BatchMixingAggregationService', () => {
       });
 
       expect(result).toHaveLength(1);
+    });
+
+    it('rejects when an execution is already aggregated to a different product batch', async () => {
+      prisma.productionBatch.findUnique.mockResolvedValue({
+        id: 'pb-new',
+        productId: 'product-1',
+        recipeId: 'recipe-1',
+      });
+      prisma.mixingExecution.findMany.mockResolvedValue([
+        { id: 'mix-1', productId: 'product-1', recipeId: 'recipe-1', status: 'confirmed' },
+      ]);
+      prisma.batchMixingAggregation.findMany.mockResolvedValue([
+        { mixingExecutionId: 'mix-1', productionBatchId: 'pb-other' },
+      ]);
+
+      await expect(
+        service.create({
+          productionBatchId: 'pb-new',
+          mixingExecutionIds: ['mix-1'],
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('throws when execution product or recipe does not match batch', async () => {
