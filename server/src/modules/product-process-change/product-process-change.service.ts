@@ -101,6 +101,7 @@ export class ProductProcessChangeService {
         } as any,
         actorId,
         tx,
+        { scopes },
       );
 
       const plan = await tx.productProcessChangePlan.create({
@@ -194,7 +195,7 @@ export class ProductProcessChangeService {
    * Designed to be reused by Task 5's `applyApprovedChange` flow.
    */
   private async validatePayload(
-    plan: { product_id: string; scopes: Prisma.JsonValue; payloadJson: Prisma.JsonValue },
+    plan: { product_id: string; scopes: Prisma.JsonValue; payloadJson: Prisma.JsonValue; company_id?: string },
     tx: Prisma.TransactionClient,
   ): Promise<void> {
     const scopes = Array.isArray(plan.scopes) ? (plan.scopes as string[]) : [];
@@ -295,6 +296,27 @@ export class ProductProcessChangeService {
         }
         seenCcpNo.add(ccp.ccp_no);
       }
+
+      // Reject reuse of soft-deleted ccp_no — `@@unique([company_id, ccp_no])`
+      // would otherwise turn this into a P2002 at apply time, which surfaces
+      // as a hostile error message to the user.
+      if (ccpPoints.length > 0) {
+        const proposedNos = ccpPoints.map((c) => c.ccp_no);
+        const archivedHits = await tx.cCPPoint.findMany({
+          where: {
+            company_id: plan.company_id ?? '1',
+            ccp_no: { in: proposedNos },
+            deleted_at: { not: null },
+          },
+          select: { ccp_no: true },
+        });
+        if (archivedHits.length > 0) {
+          const dup = archivedHits.map((h) => h.ccp_no).join(', ');
+          throw new BadRequestException(
+            `CCP 编号已被归档不可复用，请先在归档区改名后重试: ${dup}`,
+          );
+        }
+      }
     }
   }
 
@@ -303,17 +325,26 @@ export class ProductProcessChangeService {
    * active recipe, creates a new active recipe and lines, replaces process
    * steps when in scope, and records an execution + artifacts row.
    *
-   * Runs ALL business writes inside the caller's `tx` so a thrown error rolls
-   * everything back atomically. The plan-level failure record is intentionally
-   * written through `this.prisma` (a separate connection, OUTSIDE the doomed
-   * tx) so the failure marker survives the rollback.
+   * Self-manages its own transaction (the third argument is intentionally
+   * ignored). Reasoning: the approval engine's outer tx already holds a row
+   * lock on the plan row; writing the `execution_failed` marker through a
+   * separate connection while that outer tx is still alive would deadlock on
+   * the same row. By owning the tx here we guarantee the inner tx releases
+   * its locks (commit OR rollback) BEFORE we record the failure marker via
+   * `this.prisma`.
+   *
+   * Trade-off: business writes are no longer atomic with the approval
+   * engine's own commit. If the approval engine fails to commit AFTER apply
+   * succeeded, the plan stops at `executed` while approval stays pending —
+   * the user can simply retry the approve action which will short-circuit
+   * because the plan is already executed.
    */
   async applyApprovedChange(
     changeEventId: string,
     actorId: string,
-    tx: Prisma.TransactionClient,
+    _outerTxIgnored?: Prisma.TransactionClient,
   ): Promise<void> {
-    const plan = await tx.productProcessChangePlan.findUnique({
+    const plan = await this.prisma.productProcessChangePlan.findUnique({
       where: { changeEventId },
     });
     if (!plan) return;
@@ -322,58 +353,60 @@ export class ProductProcessChangeService {
     }
 
     try {
-      await tx.productProcessChangePlan.update({
-        where: { id: plan.id },
-        data: { status: 'approved_executing' },
-      });
-
-      await this.validatePayload(plan, tx);
-
-      const scopes = Array.isArray(plan.scopes) ? (plan.scopes as string[]) : [];
-      const scopeSet = new Set(scopes);
-      const payload = (plan.payloadJson ?? {}) as ProductProcessChangePayload;
-      const artifacts: Prisma.ChangeEventExecutionArtifactCreateManyInput[] = [];
-
-      let newRecipeId: string | null = null;
-      if (scopeSet.has('recipe')) {
-        newRecipeId = await this.applyRecipeChange(plan, payload, changeEventId, tx, artifacts);
-      }
-
-      if (scopeSet.has('process') || scopeSet.has('process_step')) {
-        await this.applyProcessStepChange(plan, payload, changeEventId, tx, artifacts, newRecipeId);
-      }
-
-      if (scopeSet.has('haccp')) {
-        await this.applyHaccpChange(plan, payload, changeEventId, tx, artifacts);
-      }
-
-      const execution = await tx.changeEventExecution.create({
-        data: {
-          company_id: plan.company_id,
-          changeEventId,
-          status: 'executed',
-          executedAt: new Date(),
-        },
-      });
-
-      if (artifacts.length > 0) {
-        await tx.changeEventExecutionArtifact.createMany({
-          data: artifacts.map((a) => ({ ...a, executionId: execution.id })),
+      await this.prisma.$transaction(async (tx) => {
+        await tx.productProcessChangePlan.update({
+          where: { id: plan.id },
+          data: { status: 'approved_executing' },
         });
-      }
 
-      await tx.productProcessChangePlan.update({
-        where: { id: plan.id },
-        data: {
-          status: 'executed',
-          executedAt: new Date(),
-          executionError: null,
-        },
+        await this.validatePayload(plan, tx);
+
+        const scopes = Array.isArray(plan.scopes) ? (plan.scopes as string[]) : [];
+        const scopeSet = new Set(scopes);
+        const payload = (plan.payloadJson ?? {}) as ProductProcessChangePayload;
+        const artifacts: Prisma.ChangeEventExecutionArtifactCreateManyInput[] = [];
+
+        let newRecipeId: string | null = null;
+        if (scopeSet.has('recipe')) {
+          newRecipeId = await this.applyRecipeChange(plan, payload, changeEventId, tx, artifacts);
+        }
+
+        if (scopeSet.has('process') || scopeSet.has('process_step')) {
+          await this.applyProcessStepChange(plan, payload, changeEventId, tx, artifacts, newRecipeId);
+        }
+
+        if (scopeSet.has('haccp')) {
+          await this.applyHaccpChange(plan, payload, changeEventId, tx, artifacts);
+        }
+
+        const execution = await tx.changeEventExecution.create({
+          data: {
+            company_id: plan.company_id,
+            changeEventId,
+            status: 'executed',
+            executedAt: new Date(),
+          },
+        });
+
+        if (artifacts.length > 0) {
+          await tx.changeEventExecutionArtifact.createMany({
+            data: artifacts.map((a) => ({ ...a, executionId: execution.id })),
+          });
+        }
+
+        await tx.productProcessChangePlan.update({
+          where: { id: plan.id },
+          data: {
+            status: 'executed',
+            executedAt: new Date(),
+            executionError: null,
+          },
+        });
       });
     } catch (err) {
+      // Inner tx has rolled back and released all locks. Safe to write
+      // failure markers through `this.prisma` without deadlocking.
       const message = err instanceof Error ? err.message : 'unknown';
-      // Recorded OUTSIDE the doomed tx so the failure marker survives rollback.
-      // Wrapped in inner try so a recording failure cannot mask the original error.
       try {
         await this.prisma.productProcessChangePlan.update({
           where: { id: plan.id },

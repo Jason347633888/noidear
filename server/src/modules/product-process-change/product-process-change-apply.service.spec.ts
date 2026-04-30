@@ -49,10 +49,12 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     };
   }
 
-  function buildPrisma() {
+  function buildPrisma(tx?: any): any {
     return {
       productProcessChangePlan: {
         update: jest.fn(),
+        // service now reads the plan via this.prisma (outside of any tx)
+        findUnique: jest.fn(),
       },
       changeEventExecution: {
         upsert: jest.fn(),
@@ -60,7 +62,10 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
       product: {
         findUnique: jest.fn().mockResolvedValue({ name: '酸奶' }),
       },
-      $transaction: jest.fn(),
+      // Service self-manages its tx by calling this.prisma.$transaction(cb).
+      // We forward the caller-supplied tx mock into the callback so existing
+      // assertions on `tx.<model>.<op>` keep working.
+      $transaction: jest.fn().mockImplementation(async (cb: any) => cb(tx)),
     };
   }
 
@@ -92,8 +97,11 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     };
   }
 
-  function primeHappyPath(tx: any, plan: any) {
+  function primeHappyPath(tx: any, plan: any, prismaInstance?: any) {
     tx.productProcessChangePlan.findUnique.mockResolvedValue(plan);
+    if (prismaInstance) {
+      prismaInstance.productProcessChangePlan.findUnique.mockResolvedValue(plan);
+    }
     tx.product.findFirst.mockResolvedValue({ id: 'prod-1', company_id: '1', deleted_at: null });
     tx.material.findMany.mockResolvedValue([{ id: 'mat-1' }]);
     tx.workshopArea.findMany.mockResolvedValue([{ id: 'area-1', name: 'A1' }]);
@@ -113,11 +121,9 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     });
   }
 
-  let prisma: any;
   let changeEventService: any;
 
   beforeEach(() => {
-    prisma = buildPrisma();
     changeEventService = {
       createDraftEvent: jest.fn(),
       submitForApproval: jest.fn(),
@@ -128,8 +134,9 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
 
   it('creates a new active recipe and archives previous active recipe in one transaction', async () => {
     const tx = buildTx();
+    const prisma = buildPrisma(tx);
     const plan = buildPlan();
-    primeHappyPath(tx, plan);
+    primeHappyPath(tx, plan, prisma);
 
     const service = new ProductProcessChangeService(prisma, changeEventService, todoBridge as any);
     await service.applyApprovedChange('change-1', 'approver-1', tx);
@@ -169,8 +176,9 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
 
   it('marks plan execution_failed without partial official data when validation fails during apply', async () => {
     const tx = buildTx();
+    const prisma = buildPrisma(tx);
     const plan = buildPlan();
-    primeHappyPath(tx, plan);
+    primeHappyPath(tx, plan, prisma);
     // simulate failure during recipe.create
     tx.recipe.create.mockRejectedValueOnce(new Error('database fail'));
 
@@ -205,8 +213,10 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
 
   it('refuses to re-apply an already executed plan', async () => {
     const tx = buildTx();
+    const prisma = buildPrisma(tx);
     const plan = buildPlan({ status: 'executed' });
     tx.productProcessChangePlan.findUnique.mockResolvedValue(plan);
+    prisma.productProcessChangePlan.findUnique.mockResolvedValue(plan);
 
     const service = new ProductProcessChangeService(prisma, changeEventService, todoBridge as any);
     await expect(service.applyApprovedChange('change-1', 'approver-1', tx)).rejects.toThrow('产品工艺变更已执行');
@@ -234,6 +244,8 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     tx.productProcessChangePlan.findUnique.mockResolvedValue(plan);
     tx.product.findFirst.mockResolvedValue({ id: 'prod-1', company_id: '1', deleted_at: null });
     tx.cCPPoint.findMany.mockResolvedValue([]);
+    const prisma = buildPrisma(tx);
+    prisma.productProcessChangePlan.findUnique.mockResolvedValue(plan);
     tx.processStep.findFirst = jest
       .fn()
       .mockResolvedValueOnce(null) // first lookup (with changeEventId) misses
@@ -296,7 +308,12 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     });
     tx.productProcessChangePlan.findUnique.mockResolvedValue(plan);
     tx.product.findFirst.mockResolvedValue({ id: 'prod-1', company_id: '1', deleted_at: null });
-    tx.cCPPoint.findMany.mockResolvedValue([
+    const prisma = buildPrisma(tx);
+    prisma.productProcessChangePlan.findUnique.mockResolvedValue(plan);
+    // validatePayload's archived-ccp guard fires first (deleted_at:{not:null}); then applyHaccpChange queries the active set.
+    tx.cCPPoint.findMany
+      .mockResolvedValueOnce([]) // archived guard: no archived rows reused
+      .mockResolvedValueOnce([
       {
         id: 'ccp-A',
         ccp_no: 'A',
@@ -367,8 +384,9 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
 
   it('records a failed changeEventExecution row on apply failure', async () => {
     const tx = buildTx();
+    const prisma = buildPrisma(tx);
     const plan = buildPlan();
-    primeHappyPath(tx, plan);
+    primeHappyPath(tx, plan, prisma);
     tx.recipe.create.mockRejectedValueOnce(new Error('database fail'));
 
     const service = new ProductProcessChangeService(prisma, changeEventService, todoBridge as any);
@@ -405,7 +423,8 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
         versionNote: 'v2',
       },
     });
-    primeHappyPath(tx, plan);
+    const prisma = buildPrisma(tx);
+    primeHappyPath(tx, plan, prisma);
     tx.processStep.create.mockResolvedValue({ id: 'step-new', step_no: 1, name: 'mix' });
 
     const service = new ProductProcessChangeService(prisma, changeEventService, todoBridge as any);
@@ -424,7 +443,9 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
 
   it('is a no-op when there is no plan for the change event', async () => {
     const tx = buildTx();
+    const prisma = buildPrisma(tx);
     tx.productProcessChangePlan.findUnique.mockResolvedValue(null);
+    prisma.productProcessChangePlan.findUnique.mockResolvedValue(null);
 
     const service = new ProductProcessChangeService(prisma, changeEventService, todoBridge as any);
     await service.applyApprovedChange('change-x', 'approver-1', tx);

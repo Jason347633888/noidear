@@ -25,6 +25,9 @@ describe('ProductProcessChangeService', () => {
     recipe: {
       findFirst: jest.fn(),
     },
+    cCPPoint: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
     changeEvent: {
       findUnique: jest.fn(),
     },
@@ -152,6 +155,37 @@ describe('ProductProcessChangeService', () => {
     );
   });
 
+  it('rejects reuse of soft-deleted ccp_no at validation time', async () => {
+    tx.productProcessChangePlan.findUnique.mockResolvedValue({
+      id: 'plan-1',
+      product_id: 'prod-1',
+      company_id: '1',
+      changeEventId: 'ce-1',
+      status: 'draft',
+      scopes: ['haccp'],
+      payloadJson: {
+        ccpPoints: [
+          {
+            step_no: 1,
+            ccp_no: 'CCP-OLD',
+            hazard_type: 'biological',
+            control_measure: 'cook',
+            critical_limit: '>=75C',
+          },
+        ],
+      },
+      changeEvent: { id: 'ce-1' },
+    });
+    tx.product.findFirst.mockResolvedValue({ id: 'prod-1', company_id: '1', deleted_at: null });
+    tx.cCPPoint.findMany.mockResolvedValueOnce([{ ccp_no: 'CCP-OLD' }]);
+
+    const service = createService();
+    await expect(service.submitForApproval('plan-1', 'u1')).rejects.toThrow(
+      'CCP 编号已被归档不可复用',
+    );
+    expect(approvalEngine.startApproval).not.toHaveBeenCalled();
+  });
+
   it('rejects empty ccpPoints when scope is haccp', async () => {
     tx.productProcessChangePlan.findUnique.mockResolvedValue({
       id: 'plan-1',
@@ -229,6 +263,7 @@ describe('ProductProcessChangeService', () => {
       expect.objectContaining({ change_type: 'recipe' }),
       'u1',
       tx,
+      { scopes: ['recipe'] },
     );
     expect(tx.productProcessChangePlan.create).toHaveBeenCalledWith(
       expect.objectContaining({

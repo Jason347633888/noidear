@@ -57,6 +57,27 @@ describe('ChangeEventFormTaskService', () => {
 
   beforeEach(() => jest.clearAllMocks());
 
+  it('generateDefaultTasksForScopes creates one task per merged + dedupe form code', async () => {
+    prisma.recordTemplate.findMany.mockResolvedValue([
+      { id: 'tpl1', code: 'GRSS-KF-JL-07', name: '产品验证记录表' },
+      { id: 'tpl2', code: 'GRSS-KF-JL-08', name: '工艺评审记录表' },
+      { id: 'tpl3', code: 'GRSS-PZ-JL-22', name: 'HACCP 记录表' },
+    ]);
+    prisma.changeEventFormTask.createMany.mockResolvedValue({ count: 3 });
+    prisma.changeEventFormTask.findMany.mockResolvedValue([
+      { id: 't1', sourceFormCode: 'GRSS-KF-JL-07' },
+      { id: 't2', sourceFormCode: 'GRSS-KF-JL-08' },
+      { id: 't3', sourceFormCode: 'GRSS-PZ-JL-22' },
+    ]);
+
+    const service = new ChangeEventFormTaskService(prisma as any, recordService as any);
+    await service.generateDefaultTasksForScopes('change1', ['recipe', 'process', 'haccp']);
+
+    const call = prisma.changeEventFormTask.createMany.mock.calls[0][0];
+    const codes = call.data.map((d: any) => d.sourceFormCode);
+    expect(codes).toEqual(['GRSS-KF-JL-07', 'GRSS-KF-JL-08', 'GRSS-PZ-JL-22']);
+  });
+
   it('generates pending tasks from default form codes', async () => {
     prisma.recordTemplate.findMany.mockResolvedValue([
       { id: 'tpl1', code: 'GRSS-KF-JL-07', name: '产品验证记录表' },

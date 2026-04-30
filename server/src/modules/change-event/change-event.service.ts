@@ -60,6 +60,7 @@ export class ChangeEventService {
     dto: CreateChangeEventDto,
     userId: string,
     tx?: Prisma.TransactionClient,
+    options?: { scopes?: string[] },
   ) {
     // Validate relations BEFORE the transaction (read-only checks)
     await this.relationService.validateRelations(dto.relations ?? []);
@@ -83,7 +84,14 @@ export class ChangeEventService {
       });
 
       await this.relationService.createRelations(created.id, dto.relations ?? [], db);
-      await this.formTaskService.generateDefaultTasks(created.id, dto.change_type, db);
+      // Multi-scope plans (e.g. recipe + process + haccp) must NOT collapse
+      // into a single change_type — the per-scope union of form codes is
+      // what the user actually needs to fill.
+      if (options?.scopes && options.scopes.length > 0) {
+        await this.formTaskService.generateDefaultTasksForScopes(created.id, options.scopes, db);
+      } else {
+        await this.formTaskService.generateDefaultTasks(created.id, dto.change_type, db);
+      }
 
       return created;
     };
