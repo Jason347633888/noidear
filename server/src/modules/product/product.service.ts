@@ -182,6 +182,10 @@ export class ProductService {
         },
         orderBy: { ccp_no: 'asc' },
       }),
+      // 归档区块同时包含两类：
+      //  (a) CCP 单独被软删（process_step 仍存活）；
+      //  (b) process_step 被软删带走的 CCP（process_step.deleted_at 不为 null）。
+      // 故此处不再附加 process_step.deleted_at 过滤——若要补成对称写法会丢掉 (b)。
       this.prisma.cCPPoint.findMany({
         where: {
           company_id: '1',
@@ -196,6 +200,9 @@ export class ProductService {
       }),
     ]);
 
+    // failureTodos 是 per-product（该产品所有 plan 的 pending 失败 todo），不是 per-user。
+    // 顶部"我的待办"红点走 todoStore，那条按 userId 过滤；这里给详情页用，要展示
+    // 该产品下任何待处理的失败，便于产品工作台聚合视图一眼看清。
     const planIds = allPlanIdsRaw.map((p: { id: string }) => p.id);
     const failureTodos = planIds.length
       ? await this.prisma.todoTask.findMany({
