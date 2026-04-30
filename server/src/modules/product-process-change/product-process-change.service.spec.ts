@@ -1,9 +1,14 @@
 import { ProductProcessChangeService } from './product-process-change.service';
 
 describe('ProductProcessChangeService', () => {
-  const prisma: any = {
+  // `prisma` is the outer client used for non-transactional reads (e.g. the
+  // `createDraft` precheck). `tx` is what the service should pass into
+  // changeEventService inside `prisma.$transaction(cb => cb(tx))`. Keeping
+  // them as distinct objects lets us assert that the service routes calls
+  // through the transaction client rather than accidentally going back to
+  // the outer prisma instance.
+  const tx: any = {
     productProcessChangePlan: {
-      findFirst: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -20,6 +25,18 @@ describe('ProductProcessChangeService', () => {
     recipe: {
       findFirst: jest.fn(),
     },
+    changeEvent: {
+      findUnique: jest.fn(),
+    },
+  };
+
+  const prisma: any = {
+    productProcessChangePlan: {
+      findFirst: jest.fn(),
+    },
+    product: {
+      findFirst: jest.fn(),
+    },
     $transaction: jest.fn(),
   };
 
@@ -34,7 +51,7 @@ describe('ProductProcessChangeService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    prisma.$transaction.mockImplementation(async (cb: any) => cb(prisma));
+    prisma.$transaction.mockImplementation(async (cb: any) => cb(tx));
     changeEventService.submitForApproval.mockImplementation(async (changeEventId: string, actorId: string) => {
       await approvalEngine.startApproval({
         resourceType: 'change_event',
@@ -61,7 +78,7 @@ describe('ProductProcessChangeService', () => {
   });
 
   it('rejects missing recipe line quantity before submit', async () => {
-    prisma.productProcessChangePlan.findUnique.mockResolvedValue({
+    tx.productProcessChangePlan.findUnique.mockResolvedValue({
       id: 'plan-1',
       product_id: 'prod-1',
       changeEventId: 'ce-1',
@@ -79,16 +96,16 @@ describe('ProductProcessChangeService', () => {
       },
       changeEvent: { id: 'ce-1' },
     });
-    prisma.product.findFirst.mockResolvedValue({ id: 'prod-1', company_id: '1', deleted_at: null });
+    tx.product.findFirst.mockResolvedValue({ id: 'prod-1', company_id: '1', deleted_at: null });
 
     const service = createService();
     await expect(service.submitForApproval('plan-1', 'u1')).rejects.toThrow('配方行用量不能为空');
     expect(approvalEngine.startApproval).not.toHaveBeenCalled();
-    expect(prisma.productProcessChangePlan.update).not.toHaveBeenCalled();
+    expect(tx.productProcessChangePlan.update).not.toHaveBeenCalled();
   });
 
   it('starts approval only after validation passes', async () => {
-    prisma.productProcessChangePlan.findUnique.mockResolvedValue({
+    tx.productProcessChangePlan.findUnique.mockResolvedValue({
       id: 'plan-1',
       product_id: 'prod-1',
       changeEventId: 'ce-1',
@@ -106,22 +123,22 @@ describe('ProductProcessChangeService', () => {
       },
       changeEvent: { id: 'ce-1' },
     });
-    prisma.product.findFirst.mockResolvedValue({ id: 'prod-1', company_id: '1', deleted_at: null });
-    prisma.material.findMany.mockResolvedValue([{ id: 'mat-1' }]);
-    prisma.workshopArea.findMany.mockResolvedValue([{ id: 'area-1' }]);
-    prisma.recipe.findFirst.mockResolvedValue({ id: 'recipe-1' });
-    prisma.productProcessChangePlan.update.mockResolvedValue({ id: 'plan-1', status: 'pending_approval' });
+    tx.product.findFirst.mockResolvedValue({ id: 'prod-1', company_id: '1', deleted_at: null });
+    tx.material.findMany.mockResolvedValue([{ id: 'mat-1' }]);
+    tx.workshopArea.findMany.mockResolvedValue([{ id: 'area-1' }]);
+    tx.recipe.findFirst.mockResolvedValue({ id: 'recipe-1' });
+    tx.productProcessChangePlan.update.mockResolvedValue({ id: 'plan-1', status: 'pending_approval' });
 
     const service = createService();
     await service.submitForApproval('plan-1', 'u1');
 
-    expect(prisma.productProcessChangePlan.update).toHaveBeenCalledWith(
+    expect(tx.productProcessChangePlan.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'plan-1' },
         data: expect.objectContaining({ status: 'pending_approval' }),
       }),
     );
-    expect(changeEventService.submitForApproval).toHaveBeenCalledWith('ce-1', 'u1', prisma);
+    expect(changeEventService.submitForApproval).toHaveBeenCalledWith('ce-1', 'u1', tx);
     expect(approvalEngine.startApproval).toHaveBeenCalledWith(
       expect.objectContaining({
         resourceType: 'change_event',
@@ -134,7 +151,7 @@ describe('ProductProcessChangeService', () => {
     prisma.productProcessChangePlan.findFirst.mockResolvedValue(null);
     prisma.product.findFirst.mockResolvedValue({ id: 'prod-1', name: '黄油饼干', company_id: '1', deleted_at: null });
     changeEventService.createDraftEvent.mockResolvedValue({ id: 'ce-1', change_no: 'CE-2026-0001' });
-    prisma.productProcessChangePlan.create.mockResolvedValue({ id: 'plan-new', changeEventId: 'ce-1' });
+    tx.productProcessChangePlan.create.mockResolvedValue({ id: 'plan-new', changeEventId: 'ce-1' });
 
     const service = createService();
     const plan = await service.createDraft(
@@ -146,9 +163,9 @@ describe('ProductProcessChangeService', () => {
     expect(changeEventService.createDraftEvent).toHaveBeenCalledWith(
       expect.objectContaining({ change_type: 'recipe' }),
       'u1',
-      prisma,
+      tx,
     );
-    expect(prisma.productProcessChangePlan.create).toHaveBeenCalledWith(
+    expect(tx.productProcessChangePlan.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           changeEventId: 'ce-1',

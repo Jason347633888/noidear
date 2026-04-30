@@ -54,7 +54,7 @@ describe('ChangeEventService', () => {
       relations: [{ targetType: 'recipe', targetId: 'recipe1', targetLabel: '蛋液配方' }],
     } as any, 'user1');
 
-    expect(result!.id).toBe('change1');
+    expect(result.id).toBe('change1');
     expect(relations.validateRelations).toHaveBeenCalledWith([
       { targetType: 'recipe', targetId: 'recipe1', targetLabel: '蛋液配方' },
     ]);
@@ -68,5 +68,69 @@ describe('ChangeEventService', () => {
         triggerKey: 'approve_change',
       }),
     );
+  });
+
+  it('submitForApproval reads via the provided tx client, not this.prisma', async () => {
+    const tx = {
+      changeEvent: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'change1', change_no: 'CE-2026-0001' }),
+      },
+    };
+
+    const service = new ChangeEventService(
+      prisma as any,
+      eventEmitter as any,
+      formTasks as any,
+      relations as any,
+      approvalEngine as any,
+    );
+
+    await service.submitForApproval('change1', 'user1', tx as any);
+
+    expect(tx.changeEvent.findUnique).toHaveBeenCalledWith({ where: { id: 'change1' } });
+    expect(prisma.changeEvent.findUnique).not.toHaveBeenCalled();
+    expect(approvalEngine.startApproval).toHaveBeenCalledWith(
+      expect.objectContaining({ resourceId: 'change1', triggerKey: 'approve_change' }),
+    );
+  });
+
+  it('create() returns the freshly persisted change event (non-null)', async () => {
+    relations.validateRelations.mockResolvedValue(undefined);
+    prisma.changeEvent.count.mockResolvedValue(0);
+    prisma.changeEvent.create.mockResolvedValue({
+      id: 'change-happy',
+      change_no: 'CE-2026-0002',
+      change_type: 'process',
+    });
+    prisma.changeEvent.findUnique.mockResolvedValue({
+      id: 'change-happy',
+      change_no: 'CE-2026-0002',
+      change_type: 'process',
+      verifications: [],
+      relations: [],
+      formTasks: [],
+    });
+    formTasks.generateDefaultTasks.mockResolvedValue([]);
+    relations.createRelations.mockResolvedValue({ count: 0 });
+
+    const service = new ChangeEventService(
+      prisma as any,
+      eventEmitter as any,
+      formTasks as any,
+      relations as any,
+      approvalEngine as any,
+    );
+
+    const result = await service.create(
+      {
+        change_type: 'process',
+        title: '工艺调整',
+        description: '调整工艺参数',
+        relations: [],
+      } as any,
+      'user1',
+    );
+
+    expect(result.id).toBe('change-happy');
   });
 });

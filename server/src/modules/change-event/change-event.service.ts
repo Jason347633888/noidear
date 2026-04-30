@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -31,8 +31,24 @@ export class ChangeEventService {
    */
   async create(dto: CreateChangeEventDto, userId: string) {
     const changeEvent = await this.createDraftEvent(dto, userId);
-    await this.submitForApproval(changeEvent.id, userId);
-    return this.findOne(changeEvent.id);
+    // Legacy callers (controller / older tests) expect best-effort approval
+    // startup — they should not crash if the unified approval definition is
+    // missing. The new ProductProcessChangeService path calls
+    // submitForApproval directly and DOES want the error to surface so its
+    // outer transaction rolls back.
+    try {
+      await this.submitForApproval(changeEvent.id, userId);
+    } catch (error) {
+      this.logger.warn(
+        'Approval engine skipped (no definition or error)',
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+    const result = await this.findOne(changeEvent.id);
+    if (!result) {
+      throw new InternalServerErrorException('刚创建的变更事件读取失败');
+    }
+    return result;
   }
 
   /**
@@ -83,26 +99,27 @@ export class ChangeEventService {
    * Safe to call from inside an outer transaction; the engine itself runs its
    * own transactional logic.
    */
-  async submitForApproval(changeEventId: string, userId: string, _tx?: Prisma.TransactionClient) {
-    const changeEvent = await this.prisma.changeEvent.findUnique({ where: { id: changeEventId } });
+  async submitForApproval(changeEventId: string, userId: string, tx?: Prisma.TransactionClient) {
+    const db = tx ?? this.prisma;
+    const changeEvent = await db.changeEvent.findUnique({ where: { id: changeEventId } });
     if (!changeEvent) {
       throw new Error(`ChangeEvent ${changeEventId} not found`);
     }
-    try {
-      await this.approvalEngine?.startApproval({
-        resourceType: 'change_event',
-        resourceId: changeEvent.id,
-        resourceStep: 'submit',
-        triggerKey: 'approve_change',
-        title: `变更事件审批：${changeEvent.change_no}`,
-        createdById: userId,
-      });
-    } catch (error) {
-      this.logger.warn(
-        'Approval engine skipped (no definition or error)',
-        error instanceof Error ? error.message : String(error),
-      );
-    }
+    // NOTE: ApprovalEngineService.startApproval owns its own transaction and
+    // does not accept an external tx client. We deliberately do NOT swallow
+    // its errors here — if approval startup fails after the plan was flipped
+    // to `pending_approval`, callers (e.g. ProductProcessChangeService) rely
+    // on the throw to roll back their outer transaction so we never end up
+    // with a plan in `pending_approval` whose approval was never created.
+    // Legacy best-effort semantics live in `create()`.
+    await this.approvalEngine?.startApproval({
+      resourceType: 'change_event',
+      resourceId: changeEvent.id,
+      resourceStep: 'submit',
+      triggerKey: 'approve_change',
+      title: `变更事件审批：${changeEvent.change_no}`,
+      createdById: userId,
+    });
     return changeEvent;
   }
 
