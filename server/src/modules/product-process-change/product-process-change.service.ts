@@ -3,8 +3,9 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ChangeEventService } from '../change-event/change-event.service';
 import { CreateProductProcessChangeDraftDto } from './dto/product-process-change.dto';
+import { UNFINISHED_PRODUCT_PROCESS_CHANGE_STATUSES } from './product-process-change.constants';
 
-const UNFINISHED_STATUSES = ['draft', 'pending_approval', 'approved_executing', 'execution_failed'];
+const UNFINISHED_STATUSES: string[] = [...UNFINISHED_PRODUCT_PROCESS_CHANGE_STATUSES];
 
 interface RecipeLineInput {
   material_id?: string;

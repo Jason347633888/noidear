@@ -9,6 +9,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductReportDocumentDto } from './dto/product-report-document.dto';
 import { ProductCodeGeneratorService } from './product-code-generator.service';
 import { CreateLegacyProductDto } from './dto/create-legacy-product.dto';
+import { UNFINISHED_PRODUCT_PROCESS_CHANGE_STATUSES } from '../product-process-change/product-process-change.constants';
 
 @Injectable()
 export class ProductService {
@@ -161,7 +162,7 @@ export class ProductService {
           where: {
             product_id: id,
             company_id: '1',
-            status: { in: ['draft', 'pending_approval', 'approved_executing', 'execution_failed'] },
+            status: { in: [...UNFINISHED_PRODUCT_PROCESS_CHANGE_STATUSES] },
           },
           orderBy: { createdAt: 'desc' },
         }),
