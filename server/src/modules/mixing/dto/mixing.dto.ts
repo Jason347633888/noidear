@@ -8,6 +8,7 @@ import {
   Min,
   ValidateNested,
   ValidateIf,
+  ArrayNotEmpty,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -67,6 +68,7 @@ export class CreateMixingExecutionDto {
   @Min(0.000001)
   actualWeight!: number;
 
+  @ArrayNotEmpty()
   @ValidateNested({ each: true })
   @Type(() => MixingLineInputDto)
   lines!: MixingLineInputDto[];

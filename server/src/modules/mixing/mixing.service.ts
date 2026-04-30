@@ -1,4 +1,5 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   RecommendMaterialBatchDto,
@@ -53,71 +54,83 @@ export class MixingService {
   }
 
   async createExecution(dto: CreateMixingExecutionDto) {
-    const recipeLines = await this.prisma.recipeLine.findMany({
-      where: { recipe_id: dto.recipeId },
-    });
-    const recipeLineById = new Map(recipeLines.map((line) => [line.id, line]));
+    const recipeLineIds = dto.lines.map((l) => l.recipeLineId);
+    if (new Set(recipeLineIds).size !== recipeLineIds.length) {
+      throw new BadRequestException('配方明细存在重复项');
+    }
 
-    return this.prisma.$transaction(async (tx) => {
-      const execution = await tx.mixingExecution.create({
-        data: {
-          executionNo: await this.generateExecutionNo(tx),
-          recipeId: dto.recipeId,
-          productId: dto.productId,
-          area_id: dto.areaId,
-          work_date: new Date(dto.workDate),
-          actual_weight: dto.actualWeight,
-          status: 'confirmed',
-          confirmedAt: new Date(),
-        },
-      });
-
-      for (const input of dto.lines) {
-        const recipeLine = recipeLineById.get(input.recipeLineId);
-        if (!recipeLine) {
-          throw new BadRequestException('配方明细不存在');
-        }
-
-        const stock = await tx.stagingAreaStock.findFirst({
-          where: {
-            area_id: dto.areaId,
-            batchId: input.materialBatchId,
-            quantity: { gte: input.actualQuantity },
-          },
-          include: { batch: true },
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const recipeLines = await tx.recipeLine.findMany({
+          where: { recipe_id: dto.recipeId },
         });
-        if (!stock) {
-          throw new BadRequestException('配料区库存不足');
-        }
-        if (stock.batch.materialId !== recipeLine.material_id) {
-          throw new BadRequestException('原辅料批次与配方物料不一致');
-        }
+        const recipeLineById = new Map(recipeLines.map((line) => [line.id, line]));
 
-        await tx.stagingAreaStock.update({
-          where: { id: stock.id },
-          data: { quantity: { decrement: input.actualQuantity } },
-        });
-
-        await tx.mixingExecutionLine.create({
+        const execution = await tx.mixingExecution.create({
           data: {
-            executionId: execution.id,
-            recipeLineId: input.recipeLineId,
-            materialId: recipeLine.material_id,
-            materialBatchId: input.materialBatchId,
-            stagingAreaStockId: stock.id,
-            plannedQuantity: Number(recipeLine.qty_per_batch),
-            actualQuantity: input.actualQuantity,
-            fifoSuggested: !input.manualOverride,
-            manualOverride: input.manualOverride,
-            overrideReason: input.overrideReason,
+            executionNo: await this.generateExecutionNo(tx),
+            recipeId: dto.recipeId,
+            productId: dto.productId,
+            area_id: dto.areaId,
+            work_date: new Date(dto.workDate),
+            actual_weight: dto.actualWeight,
+            status: 'confirmed',
+            confirmedAt: new Date(),
           },
         });
-      }
 
-      return tx.mixingExecution.findUnique({
-        where: { id: execution.id },
-        include: { lines: true },
+        for (const input of dto.lines) {
+          const recipeLine = recipeLineById.get(input.recipeLineId);
+          if (!recipeLine) {
+            throw new BadRequestException('配方明细不存在');
+          }
+
+          const stock = await tx.stagingAreaStock.findFirst({
+            where: {
+              area_id: dto.areaId,
+              batchId: input.materialBatchId,
+              quantity: { gte: input.actualQuantity },
+            },
+            include: { batch: true },
+          });
+          if (!stock) {
+            throw new BadRequestException('配料区库存不足');
+          }
+          if (stock.batch.materialId !== recipeLine.material_id) {
+            throw new BadRequestException('原辅料批次与配方物料不一致');
+          }
+
+          await tx.stagingAreaStock.update({
+            where: { id: stock.id },
+            data: { quantity: { decrement: input.actualQuantity } },
+          });
+
+          await tx.mixingExecutionLine.create({
+            data: {
+              executionId: execution.id,
+              recipeLineId: input.recipeLineId,
+              materialId: recipeLine.material_id,
+              materialBatchId: input.materialBatchId,
+              stagingAreaStockId: stock.id,
+              plannedQuantity: Number(recipeLine.qty_per_batch),
+              actualQuantity: input.actualQuantity,
+              fifoSuggested: !input.manualOverride,
+              manualOverride: input.manualOverride,
+              overrideReason: input.overrideReason,
+            },
+          });
+        }
+
+        return tx.mixingExecution.findUnique({
+          where: { id: execution.id },
+          include: { lines: true },
+        });
       });
-    });
+    } catch (error) {
+      if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('执行号生成冲突，请重试');
+      }
+      throw error;
+    }
   }
 }
