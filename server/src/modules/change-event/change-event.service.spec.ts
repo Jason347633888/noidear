@@ -54,7 +54,7 @@ describe('ChangeEventService', () => {
       relations: [{ targetType: 'recipe', targetId: 'recipe1', targetLabel: '蛋液配方' }],
     } as any, 'user1');
 
-    expect(result.id).toBe('change1');
+    expect(result!.id).toBe('change1');
     expect(relations.validateRelations).toHaveBeenCalledWith([
       { targetType: 'recipe', targetId: 'recipe1', targetLabel: '蛋液配方' },
     ]);

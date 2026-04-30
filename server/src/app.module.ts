@@ -84,6 +84,7 @@ import { UnifiedApprovalModule } from './modules/unified-approval/unified-approv
 import { WorkshopAreaModule } from './modules/workshop-area/workshop-area.module';
 import { TeamShiftModule } from './modules/team-shift/team-shift.module';
 import { MixingModule } from './modules/mixing/mixing.module';
+import { ProductProcessChangeModule } from './modules/product-process-change/product-process-change.module';
 
 @Module({
   imports: [
@@ -174,6 +175,7 @@ import { MixingModule } from './modules/mixing/mixing.module';
     WorkshopAreaModule,
     TeamShiftModule,
     MixingModule,
+    ProductProcessChangeModule,
   ],
   providers: [],
 })
