@@ -14,4 +14,11 @@ describe('product process change schema', () => {
     const select: import('@prisma/client').Prisma.CCPPointSelect = { deleted_at: true };
     expect(select.deleted_at).toBe(true);
   });
+
+  it('TodoType includes change_execution_failed', () => {
+    const select: import('@prisma/client').Prisma.TodoTaskWhereInput = {
+      type: 'change_execution_failed',
+    };
+    expect(select.type).toBe('change_execution_failed');
+  });
 });
