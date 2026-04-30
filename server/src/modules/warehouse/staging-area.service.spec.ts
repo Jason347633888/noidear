@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { StagingAreaService } from './staging-area.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BadRequestException } from '@nestjs/common';
+import { StagingStocktakeKind } from './dto/staging-area.dto';
 
 describe('StagingAreaService', () => {
   let service: StagingAreaService;
@@ -160,5 +161,109 @@ describe('StagingAreaService', () => {
         orderBy: { createdAt: 'desc' },
       });
     });
+  });
+
+  describe('listAvailableStocks', () => {
+    it('returns FIFO stocks by material and area', async () => {
+      jest.spyOn(prisma.stagingAreaStock, 'findMany').mockResolvedValue([]);
+      await service.listAvailableStocks({ areaId: 'area-small', materialId: 'mat-sugar' });
+
+      expect(prisma.stagingAreaStock.findMany).toHaveBeenCalledWith({
+        where: {
+          area_id: 'area-small',
+          quantity: { gt: 0 },
+          batch: { materialId: 'mat-sugar' },
+        },
+        include: { batch: true, area: true },
+        orderBy: [{ batch: { productionDate: 'asc' } }, { createdAt: 'asc' }],
+      });
+    });
+  });
+});
+
+describe('StagingAreaService - confirmStocktake', () => {
+  let localService: StagingAreaService;
+  let localPrisma: any;
+
+  beforeEach(async () => {
+    localPrisma = {
+      stagingAreaStock: {
+        findUnique: jest.fn(),
+        findFirst: jest.fn(),
+        findMany: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        count: jest.fn(),
+      },
+      stagingAreaRecord: { create: jest.fn(), findMany: jest.fn() },
+      stagingAreaStocktake: { create: jest.fn() },
+      materialBatch: { findUnique: jest.fn() },
+      $transaction: jest.fn(),
+    };
+
+    const mod = await Test.createTestingModule({
+      providers: [
+        StagingAreaService,
+        { provide: PrismaService, useValue: localPrisma },
+      ],
+    }).compile();
+
+    localService = mod.get<StagingAreaService>(StagingAreaService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('marks stocktake as exception when actual differs from book', async () => {
+    localPrisma.stagingAreaStock.findUnique.mockResolvedValue({ id: 'stock-1', quantity: 100 });
+    localPrisma.stagingAreaStocktake.create.mockResolvedValue({ status: 'exception', difference: -2 });
+
+    const result = await localService.confirmStocktake({
+      areaId: 'area-small',
+      batchId: 'mb-1',
+      kind: StagingStocktakeKind.shift_end,
+      workDate: '2026-04-30',
+      shiftTypeId: 'shift-night',
+      actualQuantity: 98,
+    });
+
+    expect(localPrisma.stagingAreaStocktake.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'exception', difference: -2 }) })
+    );
+    expect(result).toEqual({ status: 'exception', difference: -2 });
+  });
+
+  it('marks stocktake as confirmed when quantities match', async () => {
+    localPrisma.stagingAreaStock.findUnique.mockResolvedValue({ id: 'stock-1', quantity: 100 });
+    localPrisma.stagingAreaStocktake.create.mockResolvedValue({ status: 'confirmed', difference: 0 });
+
+    await localService.confirmStocktake({
+      areaId: 'area-small',
+      batchId: 'mb-1',
+      kind: StagingStocktakeKind.shift_start,
+      workDate: '2026-04-30',
+      shiftTypeId: 'shift-day',
+      actualQuantity: 100,
+    });
+
+    expect(localPrisma.stagingAreaStocktake.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'confirmed', difference: 0 }) })
+    );
+  });
+
+  it('throws BadRequestException when stock not found', async () => {
+    localPrisma.stagingAreaStock.findUnique.mockResolvedValue(null);
+
+    await expect(
+      localService.confirmStocktake({
+        areaId: 'area-small',
+        batchId: 'mb-missing',
+        kind: StagingStocktakeKind.handover,
+        workDate: '2026-04-30',
+        shiftTypeId: 'shift-day',
+        actualQuantity: 50,
+      })
+    ).rejects.toThrow(BadRequestException);
   });
 });
