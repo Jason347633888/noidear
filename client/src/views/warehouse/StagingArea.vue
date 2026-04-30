@@ -18,29 +18,75 @@
 
         <el-tab-pane label="班前盘点" name="start">
           <el-form :model="startForm" label-width="100px" style="max-width: 600px">
-            <el-form-item label="配料区"><el-input v-model="startForm.areaId" placeholder="配料区ID" /></el-form-item>
-            <el-form-item label="原辅料批次"><el-input v-model="startForm.batchId" placeholder="批次ID" /></el-form-item>
-            <el-form-item label="班次"><el-input v-model="startForm.shiftTypeId" placeholder="班次ID" /></el-form-item>
-            <el-form-item label="工作日期"><el-date-picker v-model="startForm.workDate" type="date" value-format="YYYY-MM-DD" /></el-form-item>
-            <el-form-item label="实际数量"><el-input-number v-model="startForm.actualQuantity" :min="0" /></el-form-item>
-            <el-form-item><el-button type="primary" @click="submitStocktake('shift_start', startForm)">提交班前盘点</el-button></el-form-item>
+            <el-form-item label="配料区">
+              <el-select v-model="startForm.areaId" placeholder="选择配料区" style="width: 100%" @change="() => onAreaChange('start')">
+                <el-option v-for="area in areas" :key="area.id" :label="area.name" :value="area.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="原辅料批次">
+              <el-select v-model="startForm.batchId" placeholder="请先选择配料区" style="width: 100%" :disabled="!startForm.areaId" :loading="loadingBatches.start">
+                <el-option
+                  v-for="stock in batchOptions.start"
+                  :key="stock.batchId"
+                  :label="`${stock.batch?.batchNumber || stock.batchId} · ${stock.batch?.material?.name || ''} · 剩余 ${stock.quantity}`"
+                  :value="stock.batchId"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="班次">
+              <el-select v-model="startForm.shiftTypeId" placeholder="选择班次" style="width: 100%">
+                <el-option v-for="st in shiftTypes" :key="st.id" :label="st.name" :value="st.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="工作日期">
+              <el-date-picker v-model="startForm.workDate" type="date" value-format="YYYY-MM-DD" />
+            </el-form-item>
+            <el-form-item label="实际数量">
+              <el-input-number v-model="startForm.actualQuantity" :min="0" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="submitStocktake('shift_start', startForm)">提交班前盘点</el-button>
+            </el-form-item>
           </el-form>
         </el-tab-pane>
 
         <el-tab-pane label="班后/交班盘点" name="handover">
           <el-form :model="handoverForm" label-width="100px" style="max-width: 600px">
-            <el-form-item label="配料区"><el-input v-model="handoverForm.areaId" placeholder="配料区ID" /></el-form-item>
-            <el-form-item label="原辅料批次"><el-input v-model="handoverForm.batchId" placeholder="批次ID" /></el-form-item>
-            <el-form-item label="班次"><el-input v-model="handoverForm.shiftTypeId" placeholder="班次ID" /></el-form-item>
-            <el-form-item label="工作日期"><el-date-picker v-model="handoverForm.workDate" type="date" value-format="YYYY-MM-DD" /></el-form-item>
-            <el-form-item label="实际数量"><el-input-number v-model="handoverForm.actualQuantity" :min="0" /></el-form-item>
+            <el-form-item label="配料区">
+              <el-select v-model="handoverForm.areaId" placeholder="选择配料区" style="width: 100%" @change="() => onAreaChange('handover')">
+                <el-option v-for="area in areas" :key="area.id" :label="area.name" :value="area.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="原辅料批次">
+              <el-select v-model="handoverForm.batchId" placeholder="请先选择配料区" style="width: 100%" :disabled="!handoverForm.areaId" :loading="loadingBatches.handover">
+                <el-option
+                  v-for="stock in batchOptions.handover"
+                  :key="stock.batchId"
+                  :label="`${stock.batch?.batchNumber || stock.batchId} · ${stock.batch?.material?.name || ''} · 剩余 ${stock.quantity}`"
+                  :value="stock.batchId"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="班次">
+              <el-select v-model="handoverForm.shiftTypeId" placeholder="选择班次" style="width: 100%">
+                <el-option v-for="st in shiftTypes" :key="st.id" :label="st.name" :value="st.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="工作日期">
+              <el-date-picker v-model="handoverForm.workDate" type="date" value-format="YYYY-MM-DD" />
+            </el-form-item>
+            <el-form-item label="实际数量">
+              <el-input-number v-model="handoverForm.actualQuantity" :min="0" />
+            </el-form-item>
             <el-form-item label="类型">
               <el-radio-group v-model="handoverKind">
                 <el-radio value="shift_end">班后</el-radio>
                 <el-radio value="handover">交班</el-radio>
               </el-radio-group>
             </el-form-item>
-            <el-form-item><el-button type="primary" @click="submitStocktake(handoverKind, handoverForm)">提交盘点</el-button></el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="submitStocktake(handoverKind, handoverForm)">提交盘点</el-button>
+            </el-form-item>
           </el-form>
         </el-tab-pane>
       </el-tabs>
@@ -49,11 +95,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { stagingAreaApi } from '@/api/warehouse';
+import { workshopAreaApi, type WorkshopArea } from '@/api/workshop-area';
+import { teamShiftApi } from '@/api/team-shift';
 
 type StocktakeKind = 'shift_start' | 'shift_end' | 'handover';
+type FormKey = 'start' | 'handover';
 
 interface StocktakeFormState {
   areaId: string;
@@ -68,25 +117,33 @@ const loading = ref(false);
 const stocks = ref<any[]>([]);
 const handoverKind = ref<'shift_end' | 'handover'>('shift_end');
 
-const startForm = ref<StocktakeFormState>({
-  areaId: '',
-  batchId: '',
-  shiftTypeId: '',
-  workDate: '',
-  actualQuantity: 0,
-});
+const areas = ref<WorkshopArea[]>([]);
+const shiftTypes = ref<any[]>([]);
+const batchOptions = reactive<Record<FormKey, any[]>>({ start: [], handover: [] });
+const loadingBatches = reactive<Record<FormKey, boolean>>({ start: false, handover: false });
 
-const handoverForm = ref<StocktakeFormState>({
-  areaId: '',
-  batchId: '',
-  shiftTypeId: '',
-  workDate: '',
-  actualQuantity: 0,
-});
+const startForm = ref<StocktakeFormState>({ areaId: '', batchId: '', shiftTypeId: '', workDate: '', actualQuantity: 0 });
+const handoverForm = ref<StocktakeFormState>({ areaId: '', batchId: '', shiftTypeId: '', workDate: '', actualQuantity: 0 });
+
+const onAreaChange = async (formKey: FormKey) => {
+  const formRef = formKey === 'start' ? startForm : handoverForm;
+  formRef.value = { ...formRef.value, batchId: '' };
+  const { areaId } = formRef.value;
+  if (!areaId) { batchOptions[formKey] = []; return; }
+  loadingBatches[formKey] = true;
+  try {
+    const res: any = await stagingAreaApi.getStock({ areaId });
+    batchOptions[formKey] = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+  } catch {
+    ElMessage.error('加载批次失败');
+  } finally {
+    loadingBatches[formKey] = false;
+  }
+};
 
 const fetchStocks = async () => {
+  loading.value = true;
   try {
-    loading.value = true;
     const res: any = await stagingAreaApi.getStock();
     stocks.value = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
   } catch {
@@ -109,5 +166,17 @@ const submitStocktake = async (kind: StocktakeKind, form: StocktakeFormState) =>
   }
 };
 
-onMounted(fetchStocks);
+onMounted(async () => {
+  await fetchStocks();
+  try {
+    const [areasRes, shiftRes]: [any, any] = await Promise.all([
+      workshopAreaApi.getList(),
+      teamShiftApi.listShiftTypes(),
+    ]);
+    areas.value = Array.isArray(areasRes.data) ? areasRes.data : (Array.isArray(areasRes) ? areasRes : []);
+    shiftTypes.value = Array.isArray(shiftRes.data) ? shiftRes.data : (Array.isArray(shiftRes) ? shiftRes : []);
+  } catch {
+    ElMessage.error('加载基础数据失败');
+  }
+});
 </script>
