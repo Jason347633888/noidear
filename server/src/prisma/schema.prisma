@@ -2780,6 +2780,7 @@ model Product {
 
   production_runs  ProductionRun[]
   mixingExecutions MixingExecution[]
+  productProcessChangePlans ProductProcessChangePlan[]
 
   @@unique([company_id, code])
   @@index([source])
@@ -2888,7 +2889,10 @@ model Recipe {
   production_runs ProductionRun[]
   mixingExecutions MixingExecution[]
 
+  changeEventId String?
+
   @@unique([company_id, product_id, version])
+  @@index([changeEventId])
   @@map("recipes")
 }
 
@@ -2933,10 +2937,12 @@ model ProcessStep {
   corrective_action    String?
   responsible_person   String?
   ccp_points           CCPPoint[]
+  changeEventId        String?
   created_at           DateTime   @default(now())
   updated_at           DateTime   @updatedAt
   deleted_at           DateTime?
 
+  @@index([changeEventId])
   @@map("process_steps")
 }
 
@@ -3307,8 +3313,64 @@ model ChangeEvent {
   relations     ChangeEventRelation[]
   formTasks     ChangeEventFormTask[]
   impactReviews DocumentImpactReview[]
+  productProcessChangePlan ProductProcessChangePlan?
+  execution                ChangeEventExecution?
 
   @@unique([company_id, change_no])
+}
+
+model ProductProcessChangePlan {
+  id                String      @id @default(cuid())
+  company_id        String
+  changeEventId     String      @unique
+  changeEvent       ChangeEvent @relation(fields: [changeEventId], references: [id], onDelete: Cascade)
+  product_id        String
+  product           Product     @relation(fields: [product_id], references: [id])
+  scopes            Json
+  baseRecipeId      String?
+  baseRecipeVersion Int?
+  status            String      @default("draft")
+  payloadJson       Json
+  validationResult  Json?
+  executionError    String?
+  lockedAt          DateTime?
+  executedAt        DateTime?
+  createdById       String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([product_id, status])
+  @@map("product_process_change_plans")
+}
+
+model ChangeEventExecution {
+  id            String      @id @default(cuid())
+  company_id    String
+  changeEventId String      @unique
+  changeEvent   ChangeEvent @relation(fields: [changeEventId], references: [id], onDelete: Cascade)
+  status        String
+  executedAt    DateTime?
+  errorMessage  String?
+  artifacts     ChangeEventExecutionArtifact[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("change_event_executions")
+}
+
+model ChangeEventExecutionArtifact {
+  id             String               @id @default(cuid())
+  executionId    String
+  execution      ChangeEventExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  resourceType   String
+  resourceId     String
+  action         String
+  beforeSnapshot Json?
+  afterSnapshot  Json?
+  createdAt      DateTime             @default(now())
+
+  @@index([resourceType, resourceId])
+  @@map("change_event_execution_artifacts")
 }
 
 model ChangeVerificationRecord {
