@@ -53,14 +53,74 @@ export interface CreateProductPayload {
   status?: string;
 }
 
+// -------------------------------------------------------------------------
+// Workbench nested types
+// -------------------------------------------------------------------------
+
+export interface RecipeLineSummary {
+  id: string;
+  material_id: string;
+  material_name?: string;
+  qty_per_batch: number | string;
+  unit: string;
+  area_id?: string;
+  is_critical?: boolean;
+}
+
+export interface RecipeSummary {
+  id?: string;
+  product_id?: string;
+  version: number;
+  status: 'active' | 'archived' | 'draft' | string;
+  changeEventId?: string | null;
+  approved_at?: string | null;
+  lines?: RecipeLineSummary[];
+}
+
+export interface ProcessStepSummary {
+  id: string;
+  product_id?: string;
+  recipe_id?: string | null;
+  step_no: number;
+  step_name?: string;
+  name?: string;
+  description?: string;
+  is_ccp?: boolean;
+  changeEventId?: string | null;
+  deleted_at?: string | null;
+}
+
+export interface ProductProcessChangePlanSummary {
+  id: string;
+  changeEventId: string;
+  status:
+    | 'draft'
+    | 'pending_approval'
+    | 'approved_executing'
+    | 'execution_failed'
+    | 'executed'
+    | string;
+  scopes: string[];
+  // payloadJson 形状由服务端 DTO 校验，前端无需提前解析。
+  payloadJson: Record<string, unknown>;
+}
+
+export interface ChangeEventSummary {
+  id: string;
+  change_no?: string;
+  status?: string;
+  title?: string;
+  created_at?: string;
+}
+
 export interface ProductWorkbench {
   product: Product;
-  currentRecipe: Record<string, unknown> | null;
-  archivedRecipes: Array<Record<string, unknown>>;
-  processSteps: Array<Record<string, unknown>>;
-  archivedProcessSteps: Array<Record<string, unknown>>;
-  activePlan: Record<string, unknown> | null;
-  relatedChanges: Array<Record<string, unknown>>;
+  currentRecipe: RecipeSummary | null;
+  archivedRecipes: RecipeSummary[];
+  processSteps: ProcessStepSummary[];
+  archivedProcessSteps: ProcessStepSummary[];
+  activePlan: ProductProcessChangePlanSummary | null;
+  relatedChanges: ChangeEventSummary[];
 }
 
 // =========================================================================

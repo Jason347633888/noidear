@@ -81,7 +81,7 @@
         />
         <el-descriptions class="plan-meta" :column="2" border>
           <el-descriptions-item label="状态">
-            {{ planStatusText(workbench.activePlan.status as string) }}
+            {{ planStatusText(workbench.activePlan.status) }}
           </el-descriptions-item>
           <el-descriptions-item label="变更范围">
             {{ planScopes(workbench.activePlan).join('、') || '—' }}
@@ -176,6 +176,9 @@ import {
   productApi,
   getProductStatusText,
   type ProductWorkbench,
+  type RecipeSummary,
+  type RecipeLineSummary,
+  type ProductProcessChangePlanSummary,
 } from '@/api/product';
 
 const route = useRoute();
@@ -193,27 +196,24 @@ const statusForm = reactive({
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function recipeVersion(recipe: Record<string, unknown> | null): number | string {
+function recipeVersion(recipe: RecipeSummary | null): number | string {
   if (!recipe) return '—';
-  return (recipe.version as number) ?? '—';
+  return recipe.version ?? '—';
 }
 
-function recipeApprovedAt(recipe: Record<string, unknown> | null): string | null {
+function recipeApprovedAt(recipe: RecipeSummary | null): string | null {
   if (!recipe) return null;
-  const value = recipe.approved_at;
-  return typeof value === 'string' ? value : null;
+  return typeof recipe.approved_at === 'string' ? recipe.approved_at : null;
 }
 
-function recipeLines(recipe: Record<string, unknown> | null): Array<Record<string, unknown>> {
+function recipeLines(recipe: RecipeSummary | null): RecipeLineSummary[] {
   if (!recipe) return [];
-  const lines = recipe.lines;
-  return Array.isArray(lines) ? (lines as Array<Record<string, unknown>>) : [];
+  return Array.isArray(recipe.lines) ? recipe.lines : [];
 }
 
-function planScopes(plan: Record<string, unknown> | null): string[] {
+function planScopes(plan: ProductProcessChangePlanSummary | null): string[] {
   if (!plan) return [];
-  const scopes = plan.scopes;
-  return Array.isArray(scopes) ? (scopes as string[]) : [];
+  return Array.isArray(plan.scopes) ? plan.scopes : [];
 }
 
 function planStatusText(status: string): string {
@@ -252,8 +252,7 @@ async function loadWorkbench() {
   if (!id) return;
   loading.value = true;
   try {
-    const res = await productApi.getWorkbench(id);
-    workbench.value = res as unknown as ProductWorkbench;
+    workbench.value = await productApi.getWorkbench(id);
   } catch {
     ElMessage.error('加载产品详情失败');
   } finally {
