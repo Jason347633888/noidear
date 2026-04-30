@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ProductionBatchService } from './production-batch.service';
 import { BatchNumberGeneratorService } from './batch-number-generator.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 
 const mockPrisma = {
   product: {
@@ -213,6 +213,77 @@ describe('ProductionBatchService', () => {
       await expect(service.update('batch-001', updateDto as any)).rejects.toThrow(
         BadRequestException,
       );
+    });
+  });
+
+  describe('confirmProductBatch', () => {
+    const validDto = {
+      batchNumber: 'PROD-PKG-001',
+      productId: 'p1',
+      recipeId: 'r1',
+      actualQuantity: 100,
+      unit: 'kg',
+      productionDate: '2026-04-30T00:00:00.000Z',
+      packagedAt: '2026-04-30T08:00:00.000Z',
+      warehousedAt: '2026-04-30T10:00:00.000Z',
+      packageMachine: 'PKG-M-01',
+      teamId: 'team-1',
+      shiftTypeId: 'shift-1',
+    };
+
+    it('should confirm product batch successfully', async () => {
+      mockPrisma.productionBatch.findUnique.mockResolvedValue(null);
+      mockPrisma.product.findFirst.mockResolvedValue({ id: 'p1', name: '蛋糕', status: 'active' });
+      mockPrisma.recipe.findFirst.mockResolvedValue({ id: 'r1', version: 1, version_note: '经典配方', status: 'active', product_id: 'p1' });
+      const mockBatch = {
+        id: 'batch-pkg-001',
+        batchNumber: 'PROD-PKG-001',
+        status: 'completed',
+      };
+      mockPrisma.productionBatch.create.mockResolvedValue(mockBatch);
+
+      const result = await service.confirmProductBatch(validDto);
+
+      expect(result).toEqual(mockBatch);
+      expect(mockPrisma.productionBatch.create).toHaveBeenCalledWith({
+        data: {
+          batchNumber: 'PROD-PKG-001',
+          productId: 'p1',
+          productName: '蛋糕',
+          recipeId: 'r1',
+          recipeName: '经典配方',
+          actualQuantity: 100,
+          unit: 'kg',
+          productionDate: new Date('2026-04-30T00:00:00.000Z'),
+          packagedAt: new Date('2026-04-30T08:00:00.000Z'),
+          warehousedAt: new Date('2026-04-30T10:00:00.000Z'),
+          packageMachine: 'PKG-M-01',
+          team_id: 'team-1',
+          shift_type_id: 'shift-1',
+          status: 'completed',
+        },
+      });
+    });
+
+    it('should throw ConflictException when batchNumber already exists', async () => {
+      mockPrisma.productionBatch.findUnique.mockResolvedValue({ id: 'existing', batchNumber: 'PROD-PKG-001' });
+
+      await expect(service.confirmProductBatch(validDto)).rejects.toThrow(ConflictException);
+    });
+
+    it('should throw BadRequestException when product not found', async () => {
+      mockPrisma.productionBatch.findUnique.mockResolvedValue(null);
+      mockPrisma.product.findFirst.mockResolvedValue(null);
+
+      await expect(service.confirmProductBatch(validDto)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException when recipe not found', async () => {
+      mockPrisma.productionBatch.findUnique.mockResolvedValue(null);
+      mockPrisma.product.findFirst.mockResolvedValue({ id: 'p1', name: '蛋糕', status: 'active' });
+      mockPrisma.recipe.findFirst.mockResolvedValue(null);
+
+      await expect(service.confirmProductBatch(validDto)).rejects.toThrow(BadRequestException);
     });
   });
 });

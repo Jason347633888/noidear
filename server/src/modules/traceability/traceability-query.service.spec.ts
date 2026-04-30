@@ -49,9 +49,10 @@ describe('TraceabilityQueryService contract', () => {
           batchMaterialUsages: [{ id: 'use-1', productionBatchId: 'pb-1', quantity: 25 }],
         }),
       },
+      // TASK-9: finishedGoods removed from productionBatch — no fg nodes in ledger
       productionBatch: {
         findMany: jest.fn().mockResolvedValue([
-          { id: 'pb-1', batch_no: 'PB-001', finishedGoods: [{ id: 'fg-1', batch_no: 'FG-001' }], delivery_notes: [{ id: 'dn-1', delivery_no: 'DN-001' }] },
+          { id: 'pb-1', batch_no: 'PB-001', delivery_notes: [{ id: 'dn-1', delivery_no: 'DN-001' }] },
         ]),
       },
     };
@@ -73,7 +74,6 @@ describe('TraceabilityQueryService contract', () => {
       'materialLot',
       'ingredientUsage',
       'productionBatch',
-      'finishedGoodsBatch',
       'deliveryNote',
     ]);
   });

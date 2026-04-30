@@ -8,7 +8,7 @@
         <el-table-column label="物料" min-width="210">
           <template #default="{ row }">
             <el-select v-model="row.material_id" filterable placeholder="选择物料" style="width: 100%" @change="syncMaterialUnit(row)">
-              <el-option v-for="m in materials" :key="m.id" :label="`${m.materialCode} ${m.name}`" :value="m.id" />
+              <el-option v-for="m in materials" :key="m.id" :label="`${m.code} ${m.name}`" :value="m.id" />
             </el-select>
           </template>
         </el-table-column>

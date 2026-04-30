@@ -41,6 +41,7 @@ enum RequisitionType {
 enum StagingRecordType {
   opening
   closing
+  staging
 }
 
 enum BalanceStatus {
@@ -55,11 +56,6 @@ enum ProductionStatus {
   cancelled
 }
 
-enum FinishedGoodsStatus {
-  in_stock
-  shipped
-  recalled
-}
 
 enum InboundStatus {
   draft
@@ -72,6 +68,29 @@ enum MaterialReturnStatus {
   draft
   approved
   completed
+}
+
+enum StagingStocktakeKind {
+  shift_start
+  shift_end
+  handover
+}
+
+enum StagingStocktakeStatus {
+  draft
+  confirmed
+  exception
+  closed
+}
+
+enum MixingExecutionStatus {
+  confirmed
+  voided
+}
+
+enum BatchMixingAggregationStatus {
+  draft
+  confirmed
 }
 
 enum MaterialScrapStatus {
@@ -825,8 +844,7 @@ model Record {
   relatedBatchNumber   String? // 批次号（冗余，加速查询）
   productionBatchId    String?
   productionBatch      ProductionBatch?    @relation("RecordProductionBatch", fields: [productionBatchId], references: [id], onDelete: SetNull)
-  finishedGoodsBatchId String?
-  finishedGoodsBatch   FinishedGoodsBatch? @relation("RecordFinishedGoodsBatch", fields: [finishedGoodsBatchId], references: [id], onDelete: SetNull)
+  // TASK-9: finishedGoodsBatchId column kept in DB for historical audit trail, but removed from Prisma model
 
   // 工作流集成字段
   workflowId         String?
@@ -866,7 +884,6 @@ model Record {
   @@index([retentionUntil])
   @@index([relatedBatchNumber])
   @@index([productionBatchId])
-  @@index([finishedGoodsBatchId])
   @@index([workflowId])
   @@index([taskInstanceId])
   @@index([shift_instance_id])
@@ -948,6 +965,8 @@ model Material {
 
   batches MaterialBatch[]
   packagingMaterialUsages PackagingMaterialUsage[]
+  mixingExecutionLines    MixingExecutionLine[]
+  recipeLines             RecipeLine[]             @relation("RecipeLineMaterial")
 
   @@index([materialCode])
   @@index([categoryId])
@@ -980,6 +999,10 @@ model MaterialBatch {
   requisitionItems    MaterialRequisitionItem[]
   // 暂存间库存
   stagingStocks       StagingAreaStock[]
+  // 暂存间盘点
+  stocktakes          StagingAreaStocktake[]
+  // 投料执行明细
+  mixingExecutionLines MixingExecutionLine[]
   // 批次追溯系统关联（TASK-159）
   batchMaterialUsages BatchMaterialUsage[]
   // 入库明细关联
@@ -1126,13 +1149,17 @@ model SupplierQualification {
 model StagingAreaStock {
   id        String        @id @default(cuid())
   batchId   String
-  batch     MaterialBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
-  quantity  Float         @default(0)
+  area_id   String?
   location  String?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  quantity  Float         @default(0)
+  batch                MaterialBatch        @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  area                 WorkshopArea?        @relation(fields: [area_id], references: [id])
+  mixingExecutionLines MixingExecutionLine[]
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
 
-  @@unique([batchId, location])
+  @@unique([batchId, area_id])
+  @@index([area_id])
   @@index([batchId])
   @@map("staging_area_stocks")
 }
@@ -1173,6 +1200,108 @@ model StagingAreaTransfer {
   @@index([toZone])
   @@index([createdAt])
   @@map("staging_area_transfers")
+}
+
+// 暂存间盘点记录
+model StagingAreaStocktake {
+  id              String                 @id @default(cuid())
+  area_id         String
+  batchId         String
+  kind            StagingStocktakeKind
+  status          StagingStocktakeStatus @default(draft)
+  book_quantity   Float
+  actual_quantity Float
+  difference      Float
+  work_date       DateTime               @db.Date
+  shift_type_id   String
+  team_id         String?
+  operatorId      String?
+  confirmed_at    DateTime?
+  note            String?
+  area            WorkshopArea           @relation(fields: [area_id], references: [id])
+  batch           MaterialBatch          @relation(fields: [batchId], references: [id])
+  shift_type      ShiftType              @relation(fields: [shift_type_id], references: [id])
+  team            Team?                  @relation(fields: [team_id], references: [id])
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@unique([area_id, batchId, kind, work_date, shift_type_id], map: "stocktakes_shift_unique")
+  @@index([area_id, work_date, shift_type_id])
+  @@index([batchId])
+  @@map("staging_area_stocktakes")
+}
+
+// 投料执行记录
+model MixingExecution {
+  id             String                @id @default(cuid())
+  executionNo    String                @unique
+  recipeId       String
+  productId      String
+  area_id        String
+  work_date      DateTime              @db.Date
+  shift_type_id  String?
+  team_id        String?
+  planned_weight Float?
+  actual_weight  Float
+  status         MixingExecutionStatus @default(confirmed)
+  operatorId     String?
+  confirmedAt    DateTime?
+  note           String?
+  recipe         Recipe                @relation(fields: [recipeId], references: [id])
+  product        Product               @relation(fields: [productId], references: [id])
+  area           WorkshopArea          @relation(fields: [area_id], references: [id])
+  lines          MixingExecutionLine[]
+  aggregations   BatchMixingAggregation[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@index([work_date, area_id])
+  @@index([recipeId])
+  @@map("mixing_executions")
+}
+
+model MixingExecutionLine {
+  id                 String           @id @default(cuid())
+  executionId        String
+  recipeLineId       String
+  materialId         String
+  materialBatchId    String
+  stagingAreaStockId String
+  plannedQuantity    Float?
+  actualQuantity     Float
+  fifoSuggested      Boolean          @default(true)
+  manualOverride     Boolean          @default(false)
+  overrideReason     String?
+  execution          MixingExecution  @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  recipeLine         RecipeLine       @relation(fields: [recipeLineId], references: [id])
+  material           Material         @relation(fields: [materialId], references: [id])
+  materialBatch      MaterialBatch    @relation(fields: [materialBatchId], references: [id])
+  stagingAreaStock   StagingAreaStock @relation(fields: [stagingAreaStockId], references: [id])
+  createdAt          DateTime         @default(now())
+
+  @@index([executionId])
+  @@index([stagingAreaStockId])
+  @@index([materialBatchId])
+  @@index([recipeLineId])
+  @@map("mixing_execution_lines")
+}
+
+model BatchMixingAggregation {
+  id                String                       @id @default(cuid())
+  productionBatchId String
+  mixingExecutionId String
+  status            BatchMixingAggregationStatus @default(draft)
+  confirmedBy       String?
+  confirmedAt       DateTime?
+  note              String?
+  productionBatch   ProductionBatch              @relation(fields: [productionBatchId], references: [id], onDelete: Cascade)
+  mixingExecution   MixingExecution              @relation(fields: [mixingExecutionId], references: [id], onDelete: Cascade)
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+
+  @@unique([productionBatchId, mixingExecutionId])
+  @@unique([mixingExecutionId], map: "agg_exec_unique")
+  @@map("batch_mixing_aggregations")
 }
 
 // TASK-187: 物料平衡表
@@ -1338,7 +1467,7 @@ model ProductionBatch {
   productName     String
   recipeId        String? // 配方ID
   recipeName      String?
-  plannedQuantity Float
+  plannedQuantity Float?
   actualQuantity  Float?
   productionDate  DateTime
   status          ProductionStatus @default(pending) // pending, in_progress, completed, cancelled
@@ -1348,12 +1477,23 @@ model ProductionBatch {
 
   // 批次物料使用关联（追溯链）
   materialUsages   BatchMaterialUsage[]
-  // 成品批次关联
-  finishedGoods    FinishedGoodsBatch[]
   // 物料平衡记录
   materialBalances MaterialBalance[]    @relation("MaterialBalanceProductionBatch")
   // TASK-169: 动态表单记录关联
   relatedRecords   Record[]             @relation("RecordProductionBatch")
+
+  // 班组排班扩展字段
+  team_id          String?
+  shift_type_id    String?
+  leader_id        String?
+  unit             String?
+  packagedAt       DateTime?
+  warehousedAt     DateTime?
+  packageMachine   String?
+  packagingLine    String?
+  team             Team?       @relation(fields: [team_id], references: [id])
+  shift_type       ShiftType?  @relation(fields: [shift_type_id], references: [id])
+  aggregations     BatchMixingAggregation[]
 
   // 食品安全扩展字段
   output_qty      Decimal?  @db.Decimal(14, 4)
@@ -1411,30 +1551,6 @@ model BatchMaterialUsage {
   @@index([recipeLineId])
   @@index([area_id])
   @@map("batch_material_usages")
-}
-
-// TASK-160: 成品批次表
-model FinishedGoodsBatch {
-  id                String              @id @default(cuid())
-  batchNumber       String              @unique // 成品批次号（BR-241: 唯一性）
-  productionBatchId String
-  productionBatch   ProductionBatch     @relation(fields: [productionBatchId], references: [id], onDelete: Restrict)
-  quantity          Float
-  packageDate       DateTime?
-  expiryDate        DateTime?
-  status            FinishedGoodsStatus @default(in_stock) // in_stock, shipped, recalled
-  shippedTo         String? // 客户信息（正向追溯）
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  deletedAt         DateTime?
-
-  // TASK-169: 动态表单记录关联
-  relatedRecords Record[] @relation("RecordFinishedGoodsBatch")
-
-  @@index([batchNumber])
-  @@index([productionBatchId])
-  @@index([status])
-  @@map("finished_goods_batches")
 }
 
 // TASK-161: 系统配置表（批次号格式配置等）
@@ -2662,7 +2778,8 @@ model Product {
   updated_at   DateTime  @updatedAt
   deleted_at   DateTime?
 
-  production_runs ProductionRun[]
+  production_runs  ProductionRun[]
+  mixingExecutions MixingExecution[]
 
   @@unique([company_id, code])
   @@index([source])
@@ -2680,13 +2797,77 @@ model WorkshopArea {
   updated_at  DateTime @updatedAt
   deleted_at  DateTime?
 
-  recipeLines    RecipeLine[]          @relation("RecipeLineArea")
-  materialUsages BatchMaterialUsage[]  @relation("BatchUsageArea")
+  recipeLines      RecipeLine[]          @relation("RecipeLineArea")
+  materialUsages   BatchMaterialUsage[]  @relation("BatchUsageArea")
+  stagingStocks    StagingAreaStock[]
+  stocktakes       StagingAreaStocktake[]
+  mixingExecutions MixingExecution[]
 
   @@unique([company_id, code])
   @@unique([company_id, name])
   @@index([status])
   @@map("workshop_areas")
+}
+
+model Team {
+  id          String              @id @default(cuid())
+  code        String              @unique
+  name        String
+  active      Boolean             @default(true)
+  members     TeamMember[]
+  schedules   TeamShiftSchedule[]
+  batches     ProductionBatch[]
+  stocktakes  StagingAreaStocktake[]
+  created_at  DateTime            @default(now())
+  updated_at  DateTime            @updatedAt
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id          String    @id @default(cuid())
+  team_id     String
+  employee_id String
+  role        String?
+  active      Boolean   @default(true)
+  joined_at   DateTime  @default(now())
+  left_at     DateTime?
+  team        Team      @relation(fields: [team_id], references: [id], onDelete: Cascade)
+
+  @@unique([team_id, employee_id])
+  @@map("team_members")
+}
+
+model ShiftType {
+  id          String               @id @default(cuid())
+  code        String               @unique
+  name        String
+  start_time  String
+  end_time    String
+  crosses_day Boolean              @default(false)
+  active      Boolean              @default(true)
+  schedules   TeamShiftSchedule[]
+  batches     ProductionBatch[]
+  records     StagingAreaStocktake[]
+  created_at  DateTime             @default(now())
+  updated_at  DateTime             @updatedAt
+
+  @@map("shift_types")
+}
+
+model TeamShiftSchedule {
+  id            String    @id @default(cuid())
+  team_id       String
+  shift_type_id String
+  work_date     DateTime  @db.Date
+  team          Team      @relation(fields: [team_id], references: [id])
+  shift_type    ShiftType @relation(fields: [shift_type_id], references: [id])
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  @@unique([team_id, shift_type_id, work_date])
+  @@index([work_date])
+  @@map("team_shift_schedules")
 }
 
 model Recipe {
@@ -2705,6 +2886,7 @@ model Recipe {
   updated_at   DateTime     @updatedAt
 
   production_runs ProductionRun[]
+  mixingExecutions MixingExecution[]
 
   @@unique([company_id, product_id, version])
   @@map("recipes")
@@ -2715,6 +2897,7 @@ model RecipeLine {
   recipe_id     String
   recipe        Recipe  @relation(fields: [recipe_id], references: [id])
   material_id   String
+  material      Material @relation("RecipeLineMaterial", fields: [material_id], references: [id])
   qty_per_batch Decimal @db.Decimal(14,4)
   unit          String
   is_critical   Boolean @default(false)
@@ -2723,7 +2906,8 @@ model RecipeLine {
   area               WorkshopArea? @relation("RecipeLineArea", fields: [area_id], references: [id], onDelete: SetNull)
   area_name_snapshot String?
 
-  materialUsages BatchMaterialUsage[]
+  materialUsages       BatchMaterialUsage[]
+  mixingExecutionLines MixingExecutionLine[]
 
   @@unique([recipe_id, material_id])
   @@index([area_id])

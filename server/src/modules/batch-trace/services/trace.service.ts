@@ -1,24 +1,22 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 
 @Injectable()
 export class TraceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async backwardTrace(finishedGoodsBatchId: string) {
-    const finishedGoods = await this.prisma.finishedGoodsBatch.findUnique({
-      where: { id: finishedGoodsBatchId },
+  // TASK-9: backwardTrace now accepts a productionBatchId directly.
+  // The old finishedGoodsBatch model has been removed; ProductionBatch is the canonical batch.
+  async backwardTrace(productionBatchId: string) {
+    const productionBatch = await this.prisma.productionBatch.findUnique({
+      where: { id: productionBatchId },
       include: {
-        productionBatch: {
+        materialUsages: {
           include: {
-            materialUsages: {
+            materialBatch: {
               include: {
-                materialBatch: {
-                  include: {
-                    material: true,
-                    supplier: true,
-                  },
-                },
+                material: true,
+                supplier: true,
               },
             },
           },
@@ -26,20 +24,16 @@ export class TraceService {
       },
     });
 
-    if (!finishedGoods) {
-      throw new Error('Finished goods batch not found');
+    if (!productionBatch) {
+      throw new NotFoundException('产品批次不存在');
     }
 
     return {
-      finishedGoods: {
-        id: finishedGoods.id,
-        batchNumber: finishedGoods.batchNumber,
-      },
       productionBatch: {
-        id: finishedGoods.productionBatch.id,
-        batchNumber: finishedGoods.productionBatch.batchNumber,
+        id: productionBatch.id,
+        batchNumber: productionBatch.batchNumber,
       },
-      rawMaterials: finishedGoods.productionBatch.materialUsages.map((usage) => ({
+      rawMaterials: productionBatch.materialUsages.map((usage) => ({
         id: usage.materialBatch.id,
         batchNumber: usage.materialBatch.batchNumber,
         materialName: usage.materialBatch.material.name,
@@ -55,18 +49,13 @@ export class TraceService {
       include: {
         batchMaterialUsages: {
           include: {
-            productionBatch: {
-              include: {
-                finishedGoods: true,
-              },
-            },
+            productionBatch: true,
           },
         },
       },
     });
 
     const productionBatches = [];
-    const finishedGoods = [];
 
     for (const batch of materialBatches) {
       for (const usage of batch.batchMaterialUsages) {
@@ -74,20 +63,11 @@ export class TraceService {
           id: usage.productionBatch.id,
           batchNumber: usage.productionBatch.batchNumber,
         });
-
-        for (const fg of usage.productionBatch.finishedGoods) {
-          finishedGoods.push({
-            id: fg.id,
-            batchNumber: fg.batchNumber,
-            shippedTo: fg.shippedTo,
-          });
-        }
       }
     }
 
     return {
       productionBatches,
-      finishedGoods,
     };
   }
 }

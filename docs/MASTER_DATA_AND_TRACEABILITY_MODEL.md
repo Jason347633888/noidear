@@ -111,9 +111,19 @@ Supplier
   -> InventoryMovement / StockCount
   -> IngredientUsage (BatchMaterialUsage)
   -> ProductionBatch
-  -> FinishedGoodsBatch
+  -> BatchMixingAggregation -> MixingExecution
   -> DeliveryNote
   -> Customer / 市场 / 投诉 / 召回
+```
+
+### 5.1.1 配料区投料追溯子链（TASK-9 新增）
+
+```text
+WorkshopArea
+  -> StagingAreaStock (原辅料批次在配料区的库存)
+  -> MixingExecution (一次配料执行)
+    -> MixingExecutionLine -> MaterialBatch (具体用了哪个批次、多少量)
+  -> BatchMixingAggregation <- ProductionBatch (哪批产品使用了该配料执行)
 ```
 
 ### 5.2 关键关系解释
@@ -124,7 +134,7 @@ Supplier
 - **仓储与移动链**：MaterialLot -> InventoryMovement / StockRecord -> Requisition / Return / Scrap / StockCount；任何进入车间、退库、报废、盘点都必须回到批次级别。
 - **生产投料链**：ProductionBatch -> IngredientUsage(BatchMaterialUsage) -> MaterialLot；正追和反追都依赖这张桥接表，这是整个项目最关键的关系表。
 - **过程与放行链**：ProductionBatch -> CCPRecord / EnvironmentRecord / ProcessMonitorRecord / MetalDetectionLog / ReworkRecord / Sample；这些记录共同决定批次是否可放行。
-- **成品与发货链**：ProductionBatch -> FinishedGoodsBatch -> DeliveryNote -> Customer/运输商；这段链路支持正向追溯到客户。
+- **成品与发货链**：ProductionBatch -> DeliveryNote -> Customer/运输商；FinishedGoodsBatch 已作为独立模型移除（TASK-9），ProductionBatch 现为终端批次节点，历史数据保留在 `finished_goods_batches` 表。
 - **投诉召回链**：CustomerComplaint / ProductRecall -> ProductionBatch -> IngredientUsage -> MaterialLot -> Supplier；这段链路支持反向调查问题来源。
 - **变更控制链**：ChangeEvent -> Recipe / ProcessStep / CCPPoint / Inspection 标准 -> ChangeVerificationRecord；任何配方、工艺、设备、原料变更都不应直接覆盖历史，而要产生新版本或新验证记录。
 - **管理评审链**：ManagementReview 汇总 ProductRecall、TraceabilityDrill、SupplierEvaluation、CorrectiveAction、FoodSafetyObjective、各部门年度总结；管理评审不是孤立文档，而是跨模块输入汇编。
@@ -177,7 +187,7 @@ Supplier
 | 配方明细 | `recipe_id`, `material_id` | 不能只存物料名称 |
 | 来料/检验/放行 | `material_lot_id` | 不能只存供应商批号 |
 | 投料/生产 | `production_batch_id`, `material_lot_id` | 不能只存“本批用了白砂糖” |
-| 发货/投诉/召回 | `production_batch_id` 或 `finished_goods_batch_id` | 不能只存客户口述批号文本 |
+| 发货/投诉/召回 | `production_batch_id` | 不能只存客户口述批号文本；finished_goods_batch_id 已从 Prisma 模型中移除（TASK-9） |
 | CAPA/不合格/返工 | `source_type + source_id` | 不能只存备注描述 |
 
 ### 7.3 命名收敛建议

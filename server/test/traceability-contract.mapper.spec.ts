@@ -89,7 +89,7 @@ describe('TraceabilityContractMapper', () => {
       expect(nodeTypes).toContain('materialLot');
       expect(nodeTypes).toContain('ingredientUsage');
       expect(nodeTypes).toContain('productionBatch');
-      expect(nodeTypes).toContain('finishedGoodsBatch');
+      expect(nodeTypes).toContain('productionBatch');
     });
 
     it('should create edges for graph representation', () => {

@@ -141,20 +141,28 @@ export class RequisitionService {
           data: { quantity: { decrement: item.quantity } },
         });
 
-        await tx.stagingAreaStock.upsert({
+        const existingStock = await tx.stagingAreaStock.findFirst({
           where: {
-            batchId_location: {
+            batchId: item.batchId,
+            location: requisition.targetZone ?? '未指定',
+            area_id: null,
+          },
+        });
+
+        if (existingStock) {
+          await tx.stagingAreaStock.update({
+            where: { id: existingStock.id },
+            data: { quantity: { increment: item.quantity } },
+          });
+        } else {
+          await tx.stagingAreaStock.create({
+            data: {
               batchId: item.batchId,
+              quantity: item.quantity,
               location: requisition.targetZone ?? '未指定',
             },
-          },
-          create: {
-            batchId: item.batchId,
-            quantity: item.quantity,
-            location: requisition.targetZone ?? '未指定',
-          },
-          update: { quantity: { increment: item.quantity } },
-        });
+          });
+        }
 
         await tx.stockRecord.create({
           data: {

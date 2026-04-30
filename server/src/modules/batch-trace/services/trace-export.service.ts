@@ -17,15 +17,15 @@ try {
 export class TraceExportService {
   constructor(private readonly traceabilityService: TraceabilityService) {}
 
-  async exportPDF(finishedGoodsBatchId: string) {
+  async exportPDF(productionBatchId: string) {
     const traceData = await this.traceabilityService.traceBackward(
-      finishedGoodsBatchId,
+      productionBatchId,
     );
     const buffer = await this.generateBackwardPDF(traceData);
 
     return {
       buffer,
-      filename: `Trace_Report_${traceData.finishedGoodsBatch.batchNumber}_${dayjs().format('YYYYMMDD')}.pdf`,
+      filename: `Trace_Report_${traceData.productionBatch.batchNumber}_${dayjs().format('YYYYMMDD')}.pdf`,
       contentType: 'application/pdf',
     };
   }
@@ -94,17 +94,17 @@ export class TraceExportService {
   private renderBackwardContent(traceData: any): Content[] {
     const content: Content[] = [
       {
-        text: 'Finished Goods Batch',
+        text: '产品批次',
         fontSize: 14,
         bold: true,
         margin: [0, 10, 0, 5],
       },
       {
-        text: `Batch Number: ${traceData.finishedGoodsBatch.batchNumber}`,
+        text: `Batch Number: ${traceData.productionBatch.batchNumber}`,
         fontSize: 10,
       },
       {
-        text: `Quantity: ${traceData.finishedGoodsBatch.quantity?.toString() || 'N/A'}`,
+        text: `Quantity: ${traceData.productionBatch.actualQuantity?.toString() ?? 'N/A'}`,
         fontSize: 10,
         margin: [0, 0, 0, 10],
       },

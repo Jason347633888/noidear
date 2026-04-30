@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus, UseGuards, Request } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { StagingAreaService } from './staging-area.service';
+import { StageMaterialToAreaDto, ConfirmStocktakeDto } from './dto/staging-area.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('warehouse/staging-area')
@@ -8,7 +9,10 @@ export class StagingAreaController {
   constructor(private readonly stagingAreaService: StagingAreaService) {}
 
   @Get('stock')
-  getCurrentStock(@Query() query: any) {
+  getStock(@Query() query: any) {
+    if (query.areaId && query.materialId) {
+      return this.stagingAreaService.listAvailableStocks({ areaId: query.areaId, materialId: query.materialId });
+    }
     return this.stagingAreaService.getCurrentStock(query);
   }
 
@@ -44,5 +48,17 @@ export class StagingAreaController {
   @Get('inventory/:batchId')
   getInventoryHistory(@Param('batchId') batchId: string) {
     return this.stagingAreaService.getInventoryHistory(batchId);
+  }
+
+  @Post('stage-to-area')
+  @HttpCode(HttpStatus.CREATED)
+  stageToArea(@Body() dto: StageMaterialToAreaDto) {
+    return this.stagingAreaService.stageToArea(dto);
+  }
+
+  @Post('stocktakes')
+  @HttpCode(HttpStatus.CREATED)
+  confirmStocktake(@Body() dto: ConfirmStocktakeDto) {
+    return this.stagingAreaService.confirmStocktake(dto);
   }
 }

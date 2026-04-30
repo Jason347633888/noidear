@@ -56,14 +56,9 @@ describe('TraceExportService', () => {
   describe('exportPDF', () => {
     it('should generate PDF from trace data', async () => {
       const mockTraceData = {
-        finishedGoodsBatch: {
-          id: 'fg-001',
-          batchNumber: 'FG-20260216-001',
-          quantity: 1000,
-        },
         productionBatch: {
           id: 'prod-001',
-          batchNumber: 'PROD-001',
+          batchNumber: 'PROD-20260216-001',
           productionDate: new Date('2026-02-15'),
         },
         materialBatches: [
@@ -79,20 +74,16 @@ describe('TraceExportService', () => {
 
       jest.spyOn(traceabilityService, 'traceBackward').mockResolvedValue(mockTraceData as any);
 
-      const result = await service.exportPDF('fg-001');
+      const result = await service.exportPDF('prod-001');
 
       expect(result).toBeDefined();
       expect(result.buffer).toBeInstanceOf(Buffer);
-      expect(result.filename).toContain('FG-20260216-001');
+      expect(result.filename).toContain('PROD-20260216-001');
       expect(result.contentType).toBe('application/pdf');
     }, 20000);
 
     it('should include all trace chain data in PDF', async () => {
       const mockTraceData = {
-        finishedGoodsBatch: {
-          batchNumber: 'FG-001',
-          quantity: 1000,
-        },
         productionBatch: {
           batchNumber: 'PROD-001',
         },
@@ -104,15 +95,14 @@ describe('TraceExportService', () => {
 
       jest.spyOn(traceabilityService, 'traceBackward').mockResolvedValue(mockTraceData as any);
 
-      const result = await service.exportPDF('fg-001');
+      const result = await service.exportPDF('prod-001');
 
       expect(result.buffer.length).toBeGreaterThan(0);
-      expect(traceabilityService.traceBackward).toHaveBeenCalledWith('fg-001');
+      expect(traceabilityService.traceBackward).toHaveBeenCalledWith('prod-001');
     }, 20000);
 
     it('should complete PDF generation within 3 seconds', async () => {
       const mockTraceData = {
-        finishedGoodsBatch: { batchNumber: 'FG-001' },
         productionBatch: { batchNumber: 'PROD-001' },
         materialBatches: Array.from({ length: 50 }, (_, i) => ({
           batchNumber: `MAT-${i}`,
@@ -123,7 +113,7 @@ describe('TraceExportService', () => {
       jest.spyOn(traceabilityService, 'traceBackward').mockResolvedValue(mockTraceData as any);
 
       const startTime = Date.now();
-      await service.exportPDF('fg-001');
+      await service.exportPDF('prod-001');
       const duration = Date.now() - startTime;
 
       expect(duration).toBeLessThan(3000);

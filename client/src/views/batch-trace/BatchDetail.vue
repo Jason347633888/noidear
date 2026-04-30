@@ -53,6 +53,50 @@
       </el-table>
     </el-card>
 
+    <!-- 配料执行归集 -->
+    <el-card style="margin-top: 16px">
+      <template #header>
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <span>配料执行归集</span>
+          <div style="display: flex; gap: 8px">
+            <el-button
+              v-if="hasDraftAggregations"
+              size="small"
+              type="success"
+              :loading="confirmingAggregation"
+              @click="handleConfirmAggregation"
+            >确认归集</el-button>
+            <el-button size="small" type="primary" @click="openAggregationPanel">+ 归集配料执行</el-button>
+          </div>
+        </div>
+      </template>
+      <div v-if="batch?.aggregations?.length">
+        <div v-for="agg in batch.aggregations" :key="agg.id" style="margin-bottom: 12px; padding: 8px; background: #f9f9f9; border-radius: 4px">
+          <div><strong>配料执行号：</strong>{{ agg.mixingExecution?.executionNo }}</div>
+          <div><strong>配料区：</strong>{{ agg.mixingExecution?.area?.name }}</div>
+          <div><strong>实际配料重量：</strong>{{ agg.mixingExecution?.actual_weight }}</div>
+          <div><strong>状态：</strong>{{ agg.status }}</div>
+        </div>
+      </div>
+      <el-empty v-else description="暂无配料执行归集" />
+    </el-card>
+
+    <!-- 归集选择面板 -->
+    <el-dialog v-model="showAggregationPanel" title="选择配料执行" width="700px">
+      <p style="color: #666; margin-bottom: 12px">选择要归集到此产品批次的配料执行记录</p>
+      <el-table :data="candidateMixingExecutions" row-key="id" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="48" />
+        <el-table-column prop="executionNo" label="配料执行号" />
+        <el-table-column prop="area.name" label="配料区" />
+        <el-table-column prop="actual_weight" label="实际配料重量" />
+        <el-table-column prop="work_date" label="配料日期" />
+      </el-table>
+      <template #footer>
+        <el-button @click="showAggregationPanel = false">取消</el-button>
+        <el-button type="primary" @click="submitAggregationDraft">提交归集</el-button>
+      </template>
+    </el-dialog>
+
     <div class="actions">
       <el-button @click="router.push(`/batch-trace/${batchId}/trace`)">查看追溯链</el-button>
       <el-button @click="handleExport">导出报告</el-button>
@@ -87,12 +131,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { productionBatchApi, materialUsageApi } from '@/api/batch';
+import { productionBatchApi, materialUsageApi, batchMixingAggregationApi } from '@/api/batch';
 import { recipeApi, type RecipeLine } from '@/api/recipe';
+import { useUserStore } from '@/stores/user';
 import request from '@/api/request';
+
+const userStore = useUserStore();
 
 const route = useRoute();
 const router = useRouter();
@@ -112,6 +159,67 @@ const statusTypeMap: Record<string, string> = {
 };
 
 const usageForm = reactive({ recipeLineId: '', materialBatchId: '', quantity: 1 });
+
+const showAggregationPanel = ref(false);
+const candidateMixingExecutions = ref<any[]>([]);
+const selectedExecutions = ref<any[]>([]);
+const handleSelectionChange = (rows: any[]) => {
+  selectedExecutions.value = rows;
+};
+const confirmingAggregation = ref(false);
+const hasDraftAggregations = computed(() =>
+  batch.value?.aggregations?.some((a: any) => a.status === 'draft') ?? false,
+);
+
+const submitAggregationDraft = async () => {
+  if (!selectedExecutions.value.length) {
+    ElMessage.warning('请选择至少一个配料执行');
+    return;
+  }
+  try {
+    await batchMixingAggregationApi.create({
+      productionBatchId: batch.value?.id,
+      mixingExecutionIds: selectedExecutions.value.map((e) => e.id),
+    });
+    ElMessage.success('归集成功');
+    showAggregationPanel.value = false;
+    await fetchBatch();
+  } catch {
+    ElMessage.error('归集失败');
+  }
+};
+
+const openAggregationPanel = async () => {
+  showAggregationPanel.value = true;
+  try {
+    const res: any = await request.get('/mixing/executions', {
+      params: { productId: batch.value?.productId, status: 'confirmed' },
+    });
+    candidateMixingExecutions.value = Array.isArray(res)
+      ? res
+      : Array.isArray(res?.data)
+        ? res.data
+        : [];
+  } catch {
+    ElMessage.error('加载候选配料执行失败');
+  }
+};
+
+const handleConfirmAggregation = async () => {
+  confirmingAggregation.value = true;
+  try {
+    await batchMixingAggregationApi.confirm({
+      productionBatchId: batch.value?.id,
+      confirmedBy: userStore.user?.id ?? 'unknown',
+    });
+    ElMessage.success('归集已确认');
+    await fetchBatch();
+  } catch {
+    ElMessage.error('归集确认失败');
+  } finally {
+    confirmingAggregation.value = false;
+  }
+};
 
 const resetUsageForm = () => {
   usageForm.recipeLineId = '';
@@ -170,7 +278,7 @@ const handleAddUsage = async () => {
     ElMessage.success('物料添加成功');
     usageDialogVisible.value = false;
     resetUsageForm();
-    fetchUsages();
+    await fetchUsages();
   } catch (error) {
     ElMessage.error('物料添加失败');
   } finally {

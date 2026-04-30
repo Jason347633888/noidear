@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { StageMaterialToAreaDto, ConfirmStocktakeDto } from './dto/staging-area.dto';
 
 export const WORKSHOP_ZONES = ['筛粉间', '称油间', '小料房'] as const;
 export type WorkshopZone = typeof WORKSHOP_ZONES[number];
@@ -9,10 +10,11 @@ export class StagingAreaService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getCurrentStock(query: any) {
-    const { page = 1, limit = 10, location } = query;
+    const { page = 1, limit = 10, location, areaId } = query;
     const skip = (Number(page) - 1) * Number(limit);
     const where: any = {};
     if (location) where.location = location;
+    if (areaId) where.area_id = areaId;
 
     const [data, total] = await Promise.all([
       this.prisma.stagingAreaStock.findMany({
@@ -184,6 +186,101 @@ export class StagingAreaService {
       where: { batchId },
       include: { operator: true },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async listAvailableStocks(params: { areaId: string; materialId: string }) {
+    return this.prisma.stagingAreaStock.findMany({
+      where: {
+        area_id: params.areaId,
+        quantity: { gt: 0 },
+        batch: { materialId: params.materialId },
+      },
+      include: { batch: true, area: true },
+      orderBy: [
+        { batch: { productionDate: 'asc' } },
+        { createdAt: 'asc' },
+      ],
+    });
+  }
+
+  async stageToArea(dto: StageMaterialToAreaDto) {
+    const area = await this.prisma.workshopArea.findFirst({
+      where: { id: dto.areaId, status: 'active' },
+    });
+    if (!area) {
+      throw new BadRequestException('配料区不存在或已停用');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const stock = await tx.stagingAreaStock.upsert({
+        where: { batchId_area_id: { batchId: dto.batchId, area_id: dto.areaId } },
+        create: {
+          batchId: dto.batchId,
+          area_id: dto.areaId,
+          location: area.name,
+          quantity: dto.quantity,
+        },
+        update: {
+          quantity: { increment: dto.quantity },
+          location: area.name,
+        },
+        include: { batch: true, area: true },
+      });
+
+      await tx.stagingAreaRecord.create({
+        data: {
+          batchId: dto.batchId,
+          recordType: 'staging',
+          quantity: dto.quantity,
+          operatorId: dto.operatorId ?? 'system',
+          shiftDate: new Date(),
+        },
+      });
+
+      return stock;
+    });
+  }
+
+  async confirmStocktake(dto: ConfirmStocktakeDto) {
+    const existing = await this.prisma.stagingAreaStocktake.findFirst({
+      where: {
+        area_id: dto.areaId,
+        batchId: dto.batchId,
+        kind: dto.kind,
+        work_date: new Date(dto.workDate),
+        shift_type_id: dto.shiftTypeId,
+      },
+    });
+    if (existing) {
+      throw new BadRequestException('该班次该物料批次已完成盘点，请勿重复提交');
+    }
+
+    const stock = await this.prisma.stagingAreaStock.findUnique({
+      where: { batchId_area_id: { batchId: dto.batchId, area_id: dto.areaId } },
+    });
+    if (!stock) {
+      throw new BadRequestException('配料区没有该原辅料批次库存');
+    }
+
+    const difference = dto.actualQuantity - stock.quantity;
+
+    return this.prisma.stagingAreaStocktake.create({
+      data: {
+        area_id: dto.areaId,
+        batchId: dto.batchId,
+        kind: dto.kind,
+        status: Math.abs(difference) < 0.0001 ? 'confirmed' : 'exception',
+        book_quantity: stock.quantity,
+        actual_quantity: dto.actualQuantity,
+        difference,
+        work_date: new Date(dto.workDate),
+        shift_type_id: dto.shiftTypeId,
+        team_id: dto.teamId,
+        operatorId: dto.operatorId,
+        confirmed_at: new Date(),
+        note: dto.note,
+      },
     });
   }
 }
