@@ -486,6 +486,12 @@ export class ProductProcessChangeService {
       }
     }
 
+    // recipe_id 表示工序所属的"配方版本快照"。
+    // - 仅在本次 apply 同时改了 recipe（scopeSet.has('recipe')）时填新 recipe.id；
+    // - 若本次只改 process（scope 不含 'recipe'），保持 null —— 工序此时不绑定任何具体配方版本，
+    //   仅通过 product_id + changeEventId 追溯。
+    // 这与 schema 里 recipe_id String? 的可空设计一致。
+    // 决策依据：scopes 是用户提交时显式勾选的，意图已经清楚，无需服务端再做"推断回填"。
     for (const step of steps) {
       const created = await tx.processStep.create({
         data: {
