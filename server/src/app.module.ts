@@ -82,6 +82,7 @@ import { TodoModule } from './modules/todo/todo.module';
 import { TaskModule } from './modules/task/task.module';
 import { UnifiedApprovalModule } from './modules/unified-approval/unified-approval.module';
 import { WorkshopAreaModule } from './modules/workshop-area/workshop-area.module';
+import { TeamShiftModule } from './modules/team-shift/team-shift.module';
 
 @Module({
   imports: [
@@ -170,6 +171,7 @@ import { WorkshopAreaModule } from './modules/workshop-area/workshop-area.module
     TaskModule,
     UnifiedApprovalModule,
     WorkshopAreaModule,
+    TeamShiftModule,
   ],
   providers: [],
 })
