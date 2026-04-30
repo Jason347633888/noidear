@@ -58,7 +58,16 @@
       <template #header>
         <div style="display: flex; justify-content: space-between; align-items: center">
           <span>配料执行归集</span>
-          <el-button size="small" type="primary" @click="showAggregationPanel = true">+ 归集配料执行</el-button>
+          <div style="display: flex; gap: 8px">
+            <el-button
+              v-if="hasDraftAggregations"
+              size="small"
+              type="success"
+              :loading="confirmingAggregation"
+              @click="handleConfirmAggregation"
+            >确认归集</el-button>
+            <el-button size="small" type="primary" @click="showAggregationPanel = true">+ 归集配料执行</el-button>
+          </div>
         </div>
       </template>
       <div v-if="batch?.aggregations?.length">
@@ -122,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { productionBatchApi, materialUsageApi, batchMixingAggregationApi } from '@/api/batch';
@@ -151,6 +160,10 @@ const usageForm = reactive({ recipeLineId: '', materialBatchId: '', quantity: 1 
 const showAggregationPanel = ref(false);
 const candidateMixingExecutions = ref<any[]>([]);
 const selectedExecutions = ref<any[]>([]);
+const confirmingAggregation = ref(false);
+const hasDraftAggregations = computed(() =>
+  batch.value?.aggregations?.some((a: any) => a.status === 'draft') ?? false,
+);
 
 const confirmAggregation = async () => {
   if (!selectedExecutions.value.length) {
@@ -167,6 +180,22 @@ const confirmAggregation = async () => {
     await fetchBatch();
   } catch {
     ElMessage.error('归集失败');
+  }
+};
+
+const handleConfirmAggregation = async () => {
+  confirmingAggregation.value = true;
+  try {
+    await batchMixingAggregationApi.confirm({
+      productionBatchId: batch.value?.id,
+      confirmedBy: 'operator',
+    });
+    ElMessage.success('归集已确认');
+    await fetchBatch();
+  } catch {
+    ElMessage.error('归集确认失败');
+  } finally {
+    confirmingAggregation.value = false;
   }
 };
 
