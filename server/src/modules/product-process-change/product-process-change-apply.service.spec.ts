@@ -33,8 +33,12 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
         createMany: jest.fn(),
       },
       cCPPoint: {
+        findMany: jest.fn().mockResolvedValue([]),
         findUnique: jest.fn(),
         upsert: jest.fn(),
+        update: jest.fn(),
+        create: jest.fn(),
+        updateMany: jest.fn(),
       },
       ...overrides,
     };
@@ -189,7 +193,7 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     expect(tx.recipe.create).not.toHaveBeenCalled();
   });
 
-  it('applies HACCP scope and upserts CCPPoint with proper fields and artifact', async () => {
+  it('applies HACCP scope and creates CCPPoint with proper fields and artifact', async () => {
     const tx = buildTx();
     const plan = buildPlan({
       scopes: ['haccp'],
@@ -209,24 +213,26 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     });
     tx.productProcessChangePlan.findUnique.mockResolvedValue(plan);
     tx.product.findFirst.mockResolvedValue({ id: 'prod-1', company_id: '1', deleted_at: null });
+    tx.cCPPoint.findMany.mockResolvedValue([]);
     tx.processStep.findFirst = jest
       .fn()
       .mockResolvedValueOnce(null) // first lookup (with changeEventId) misses
       .mockResolvedValueOnce({ id: 'step-existing', step_no: 2 });
-    tx.cCPPoint.findUnique.mockResolvedValue(null);
-    tx.cCPPoint.upsert.mockResolvedValue({
+    tx.cCPPoint.create.mockResolvedValue({
       id: 'ccp-id-1',
       ccp_no: 'CCP-1',
       process_step_id: 'step-existing',
+      hazard_type: 'biological',
+      control_measure: 'cook',
+      critical_limit: '>= 75C',
     });
 
     const service = new ProductProcessChangeService(prisma, changeEventService);
     await service.applyApprovedChange('change-1', 'approver-1', tx);
 
-    expect(tx.cCPPoint.upsert).toHaveBeenCalledWith(
+    expect(tx.cCPPoint.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { company_id_ccp_no: { company_id: '1', ccp_no: 'CCP-1' } },
-        create: expect.objectContaining({
+        data: expect.objectContaining({
           company_id: '1',
           ccp_no: 'CCP-1',
           process_step_id: 'step-existing',
@@ -243,6 +249,100 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
         ]),
       }),
     );
+  });
+
+  it('haccp scope: archives missing, updates matched, creates new ccp points', async () => {
+    const tx = buildTx();
+    const plan = buildPlan({
+      scopes: ['haccp'],
+      payloadJson: {
+        ccpPoints: [
+          {
+            step_no: 1,
+            ccp_no: 'A',
+            hazard_type: 'biological',
+            control_measure: 'new-control',
+            critical_limit: 'new-limit',
+          },
+          {
+            step_no: 1,
+            ccp_no: 'D',
+            hazard_type: 'physical',
+            control_measure: 'd-control',
+            critical_limit: 'd-limit',
+          },
+        ],
+      },
+    });
+    tx.productProcessChangePlan.findUnique.mockResolvedValue(plan);
+    tx.product.findFirst.mockResolvedValue({ id: 'prod-1', company_id: '1', deleted_at: null });
+    tx.cCPPoint.findMany.mockResolvedValue([
+      {
+        id: 'ccp-A',
+        ccp_no: 'A',
+        process_step_id: 'step-1',
+        hazard_type: 'biological',
+        control_measure: 'old',
+        critical_limit: 'old',
+        cl_unit: null,
+        process_step: { product_id: 'prod-1' },
+      },
+      {
+        id: 'ccp-B',
+        ccp_no: 'B',
+        process_step_id: 'step-1',
+        hazard_type: 'chemical',
+        control_measure: 'b',
+        critical_limit: 'b',
+        cl_unit: null,
+        process_step: { product_id: 'prod-1' },
+      },
+      {
+        id: 'ccp-C',
+        ccp_no: 'C',
+        process_step_id: 'step-1',
+        hazard_type: 'physical',
+        control_measure: 'c',
+        critical_limit: 'c',
+        cl_unit: null,
+        process_step: { product_id: 'prod-1' },
+      },
+    ]);
+    tx.processStep.findFirst = jest.fn().mockResolvedValue({ id: 'step-1' });
+    tx.cCPPoint.update.mockImplementation(({ where, data }: any) =>
+      Promise.resolve({
+        id: where.id,
+        ccp_no: 'A',
+        process_step_id: 'step-1',
+        ...data,
+      }),
+    );
+    tx.cCPPoint.create.mockResolvedValue({
+      id: 'ccp-D',
+      ccp_no: 'D',
+      process_step_id: 'step-1',
+    });
+
+    const service = new ProductProcessChangeService(prisma, changeEventService);
+    await service.applyApprovedChange('change-1', 'approver-1', tx);
+
+    expect(tx.cCPPoint.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: expect.arrayContaining(['ccp-B', 'ccp-C']) } },
+        data: expect.objectContaining({ deleted_at: expect.any(Date) }),
+      }),
+    );
+    expect(tx.cCPPoint.update).toHaveBeenCalledTimes(1);
+    expect(tx.cCPPoint.create).toHaveBeenCalledTimes(1);
+
+    const flat = tx.changeEventExecutionArtifact.createMany.mock.calls.flatMap(
+      (c: any) => c[0].data,
+    );
+    const ccpArts = flat.filter((a: any) => a.resourceType === 'ccp_point');
+    expect(ccpArts).toHaveLength(4);
+    expect(ccpArts.filter((a: any) => a.action === 'archive')).toHaveLength(2);
+    expect(ccpArts.filter((a: any) => a.action === 'update')).toHaveLength(1);
+    expect(ccpArts.filter((a: any) => a.action === 'create')).toHaveLength(1);
   });
 
   it('records a failed changeEventExecution row on apply failure', async () => {

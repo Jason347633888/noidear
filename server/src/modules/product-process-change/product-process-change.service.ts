@@ -523,80 +523,145 @@ export class ProductProcessChangeService {
     tx: Prisma.TransactionClient,
     artifacts: Prisma.ChangeEventExecutionArtifactCreateManyInput[],
   ): Promise<void> {
-    const ccpPoints = payload.ccpPoints ?? [];
-    if (ccpPoints.length === 0) return;
+    const proposed = payload.ccpPoints ?? [];
 
-    // TODO: handle removal of CCP points absent from payload — requires
-    // explicit "remove" semantics (deleted_at?) and is out of scope here.
+    // Whole-set replace semantics: payload.ccpPoints IS the new authoritative set.
+    // Currently active set = CCPs linked to this product's process steps and not soft-deleted.
+    const current = await tx.cCPPoint.findMany({
+      where: {
+        company_id: plan.company_id,
+        deleted_at: null,
+        process_step: { product_id: plan.product_id, deleted_at: null },
+      },
+      include: { process_step: true },
+    });
 
-    for (const ccp of ccpPoints) {
-      const step = await tx.processStep.findFirst({
-        where: {
-          product_id: plan.product_id,
-          step_no: ccp.step_no,
-          deleted_at: null,
-          // Prefer the step created in this apply (recipe-process combo) when present.
-          changeEventId,
-        },
-      }) ?? (await tx.processStep.findFirst({
-        where: {
-          product_id: plan.product_id,
-          step_no: ccp.step_no,
-          deleted_at: null,
-        },
-      }));
-      if (!step) {
-        throw new BadRequestException(`CCP ${ccp.ccp_no} 找不到对应工序步骤 ${ccp.step_no}`);
+    const proposedByCcpNo = new Map(proposed.map((c) => [c.ccp_no, c]));
+    const currentByCcpNo = new Map(current.map((c: any) => [c.ccp_no, c]));
+
+    const toDelete = current.filter((c: any) => !proposedByCcpNo.has(c.ccp_no));
+    const toUpdate = current.filter((c: any) => proposedByCcpNo.has(c.ccp_no));
+    const toCreate = proposed.filter((c) => !currentByCcpNo.has(c.ccp_no));
+
+    // 1) soft-delete missing
+    if (toDelete.length) {
+      await tx.cCPPoint.updateMany({
+        where: { id: { in: toDelete.map((c: any) => c.id) } },
+        data: { deleted_at: new Date() },
+      });
+      for (const c of toDelete) {
+        artifacts.push({
+          executionId: '',
+          resourceType: 'ccp_point',
+          resourceId: (c as any).id,
+          action: 'archive',
+          beforeSnapshot: this.snapshotCcp(c) as unknown as Prisma.InputJsonValue,
+          afterSnapshot: Prisma.JsonNull,
+        });
       }
+    }
 
-      const existing = await tx.cCPPoint.findUnique({
-        where: { company_id_ccp_no: { company_id: plan.company_id, ccp_no: ccp.ccp_no } },
-      });
-      const action = existing ? 'update' : 'create';
-
-      const baseData = {
-        process_step_id: step.id,
-        hazard_type: ccp.hazard_type,
-        control_measure: ccp.control_measure,
-        critical_limit: ccp.critical_limit,
-        cl_min:
-          ccp.cl_min === undefined || ccp.cl_min === null
-            ? null
-            : new Prisma.Decimal(ccp.cl_min as any),
-        cl_max:
-          ccp.cl_max === undefined || ccp.cl_max === null
-            ? null
-            : new Prisma.Decimal(ccp.cl_max as any),
-        cl_unit: ccp.cl_unit ?? null,
-        monitoring_method: ccp.monitoring_method ?? null,
-        monitoring_frequency: ccp.monitoring_frequency ?? null,
-        corrective_action: ccp.corrective_action ?? null,
-      };
-
-      const upserted = await tx.cCPPoint.upsert({
-        where: { company_id_ccp_no: { company_id: plan.company_id, ccp_no: ccp.ccp_no } },
-        create: {
-          company_id: plan.company_id,
-          ccp_no: ccp.ccp_no,
-          ...baseData,
+    // 2) update matched
+    for (const old of toUpdate) {
+      const next = proposedByCcpNo.get((old as any).ccp_no)!;
+      const stepId = await this.resolveStepIdForCcp(plan, next.step_no, changeEventId, tx);
+      const updated = await tx.cCPPoint.update({
+        where: { id: (old as any).id },
+        data: {
+          process_step_id: stepId,
+          hazard_type: next.hazard_type,
+          control_measure: next.control_measure,
+          critical_limit: next.critical_limit,
+          cl_min:
+            next.cl_min === undefined || next.cl_min === null
+              ? null
+              : new Prisma.Decimal(next.cl_min as any),
+          cl_max:
+            next.cl_max === undefined || next.cl_max === null
+              ? null
+              : new Prisma.Decimal(next.cl_max as any),
+          cl_unit: next.cl_unit ?? null,
+          monitoring_method: next.monitoring_method ?? null,
+          monitoring_frequency: next.monitoring_frequency ?? null,
+          corrective_action: next.corrective_action ?? null,
         },
-        update: { ...baseData },
       });
-
       artifacts.push({
         executionId: '',
         resourceType: 'ccp_point',
-        resourceId: upserted.id,
-        action,
-        beforeSnapshot: existing
-          ? (existing as unknown as Prisma.InputJsonValue)
-          : Prisma.JsonNull,
-        afterSnapshot: {
-          id: upserted.id,
-          ccp_no: upserted.ccp_no,
-          process_step_id: upserted.process_step_id,
-        } as unknown as Prisma.InputJsonValue,
+        resourceId: updated.id,
+        action: 'update',
+        beforeSnapshot: this.snapshotCcp(old) as unknown as Prisma.InputJsonValue,
+        afterSnapshot: this.snapshotCcp(updated) as unknown as Prisma.InputJsonValue,
       });
     }
+
+    // 3) create new
+    for (const fresh of toCreate) {
+      const stepId = await this.resolveStepIdForCcp(plan, fresh.step_no, changeEventId, tx);
+      const created = await tx.cCPPoint.create({
+        data: {
+          company_id: plan.company_id,
+          process_step_id: stepId,
+          ccp_no: fresh.ccp_no,
+          hazard_type: fresh.hazard_type,
+          control_measure: fresh.control_measure,
+          critical_limit: fresh.critical_limit,
+          cl_min:
+            fresh.cl_min === undefined || fresh.cl_min === null
+              ? null
+              : new Prisma.Decimal(fresh.cl_min as any),
+          cl_max:
+            fresh.cl_max === undefined || fresh.cl_max === null
+              ? null
+              : new Prisma.Decimal(fresh.cl_max as any),
+          cl_unit: fresh.cl_unit ?? null,
+          monitoring_method: fresh.monitoring_method ?? null,
+          monitoring_frequency: fresh.monitoring_frequency ?? null,
+          corrective_action: fresh.corrective_action ?? null,
+        },
+      });
+      artifacts.push({
+        executionId: '',
+        resourceType: 'ccp_point',
+        resourceId: created.id,
+        action: 'create',
+        beforeSnapshot: Prisma.JsonNull,
+        afterSnapshot: this.snapshotCcp(created) as unknown as Prisma.InputJsonValue,
+      });
+    }
+  }
+
+  private snapshotCcp(c: any): Record<string, unknown> {
+    return {
+      id: c.id,
+      ccp_no: c.ccp_no,
+      process_step_id: c.process_step_id,
+      hazard_type: c.hazard_type,
+      control_measure: c.control_measure,
+      critical_limit: c.critical_limit,
+      cl_unit: c.cl_unit,
+    };
+  }
+
+  private async resolveStepIdForCcp(
+    plan: { product_id: string },
+    stepNo: number,
+    changeEventId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<string> {
+    const fromThisChange = await tx.processStep.findFirst({
+      where: { product_id: plan.product_id, step_no: stepNo, changeEventId, deleted_at: null },
+      select: { id: true },
+    });
+    if (fromThisChange) return fromThisChange.id;
+    const active = await tx.processStep.findFirst({
+      where: { product_id: plan.product_id, step_no: stepNo, deleted_at: null },
+      select: { id: true },
+    });
+    if (!active) {
+      throw new BadRequestException(`CCP 找不到对应工序步骤 ${stepNo}`);
+    }
+    return active.id;
   }
 }
