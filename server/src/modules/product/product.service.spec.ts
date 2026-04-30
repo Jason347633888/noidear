@@ -33,6 +33,13 @@ describe('ProductService report documents', () => {
             },
             productProcessChangePlan: {
               findFirst: jest.fn(),
+              findMany: jest.fn(),
+            },
+            cCPPoint: {
+              findMany: jest.fn(),
+            },
+            todoTask: {
+              findMany: jest.fn(),
             },
             changeEvent: {
               findMany: jest.fn(),
@@ -96,6 +103,9 @@ describe('ProductService report documents', () => {
       status: 'pending_approval',
       scopes: ['recipe'],
     });
+    (prisma.productProcessChangePlan.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.cCPPoint.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.todoTask.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.changeEvent.findMany as jest.Mock).mockResolvedValue([
       { id: 'change-1', change_no: 'CE-2026-0001', status: 'executed' },
       { id: 'change-2', change_no: 'CE-2026-0002', status: 'executed' },
@@ -117,6 +127,47 @@ describe('ProductService report documents', () => {
         orderBy: { created_at: 'desc' },
       }),
     );
+  });
+
+  it('getWorkbench returns failureTodos / ccpPoints / archivedCcpPoints', async () => {
+    (prisma.product.findFirst as jest.Mock).mockResolvedValue({
+      id: 'prod-1',
+      name: 'p',
+      status: 'active',
+      deleted_at: null,
+      code: 'P-1',
+      source: 'manual',
+    });
+    (prisma.recipe.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.recipe.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.processStep.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.productProcessChangePlan.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.productProcessChangePlan.findMany as jest.Mock).mockResolvedValue([
+      { id: 'plan-A' },
+      { id: 'plan-B' },
+    ]);
+    (prisma.cCPPoint.findMany as jest.Mock)
+      .mockResolvedValueOnce([{ id: 'ccp-1', ccp_no: 'A', deleted_at: null }])
+      .mockResolvedValueOnce([{ id: 'ccp-2', ccp_no: 'B', deleted_at: new Date() }]);
+    (prisma.todoTask.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 't-1',
+        type: 'change_execution_failed',
+        relatedId: 'plan-A',
+        status: 'pending',
+        description: 'err',
+        createdAt: new Date(),
+      },
+    ]);
+    (prisma.changeEvent.findMany as jest.Mock).mockResolvedValue([]);
+
+    const wb = await service.getWorkbench('prod-1');
+
+    expect(wb.ccpPoints).toEqual([expect.objectContaining({ id: 'ccp-1' })]);
+    expect(wb.archivedCcpPoints).toEqual([expect.objectContaining({ id: 'ccp-2' })]);
+    expect(wb.failureTodos).toEqual([
+      expect.objectContaining({ id: 't-1', relatedId: 'plan-A' }),
+    ]);
   });
 
   it('uploads an external inspection report as Document and BusinessDocumentLink', async () => {

@@ -139,34 +139,74 @@ export class ProductService {
   async getWorkbench(id: string) {
     const product = await this.findOne(id);
 
-    const [currentRecipe, archivedRecipes, processSteps, archivedProcessSteps, activePlan] =
-      await Promise.all([
-        this.prisma.recipe.findFirst({
-          where: { product_id: id, company_id: '1', status: 'active' },
-          include: { lines: true },
-          orderBy: { version: 'desc' },
-        }),
-        this.prisma.recipe.findMany({
-          where: { product_id: id, company_id: '1', status: 'archived' },
-          orderBy: { version: 'desc' },
-        }),
-        this.prisma.processStep.findMany({
-          where: { product_id: id, company_id: '1', deleted_at: null },
-          orderBy: { step_no: 'asc' },
-        }),
-        this.prisma.processStep.findMany({
-          where: { product_id: id, company_id: '1', deleted_at: { not: null } },
-          orderBy: { deleted_at: 'desc' },
-        }),
-        this.prisma.productProcessChangePlan.findFirst({
+    const [
+      currentRecipe,
+      archivedRecipes,
+      processSteps,
+      archivedProcessSteps,
+      activePlan,
+      ccpPoints,
+      archivedCcpPoints,
+      allPlanIdsRaw,
+    ] = await Promise.all([
+      this.prisma.recipe.findFirst({
+        where: { product_id: id, company_id: '1', status: 'active' },
+        include: { lines: true },
+        orderBy: { version: 'desc' },
+      }),
+      this.prisma.recipe.findMany({
+        where: { product_id: id, company_id: '1', status: 'archived' },
+        orderBy: { version: 'desc' },
+      }),
+      this.prisma.processStep.findMany({
+        where: { product_id: id, company_id: '1', deleted_at: null },
+        orderBy: { step_no: 'asc' },
+      }),
+      this.prisma.processStep.findMany({
+        where: { product_id: id, company_id: '1', deleted_at: { not: null } },
+        orderBy: { deleted_at: 'desc' },
+      }),
+      this.prisma.productProcessChangePlan.findFirst({
+        where: {
+          product_id: id,
+          company_id: '1',
+          status: { in: [...UNFINISHED_PRODUCT_PROCESS_CHANGE_STATUSES] },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.cCPPoint.findMany({
+        where: {
+          company_id: '1',
+          deleted_at: null,
+          process_step: { product_id: id, deleted_at: null },
+        },
+        orderBy: { ccp_no: 'asc' },
+      }),
+      this.prisma.cCPPoint.findMany({
+        where: {
+          company_id: '1',
+          deleted_at: { not: null },
+          process_step: { product_id: id },
+        },
+        orderBy: { deleted_at: 'desc' },
+      }),
+      this.prisma.productProcessChangePlan.findMany({
+        where: { product_id: id, company_id: '1' },
+        select: { id: true },
+      }),
+    ]);
+
+    const planIds = allPlanIdsRaw.map((p: { id: string }) => p.id);
+    const failureTodos = planIds.length
+      ? await this.prisma.todoTask.findMany({
           where: {
-            product_id: id,
-            company_id: '1',
-            status: { in: [...UNFINISHED_PRODUCT_PROCESS_CHANGE_STATUSES] },
+            type: 'change_execution_failed',
+            status: 'pending',
+            relatedId: { in: planIds },
           },
           orderBy: { createdAt: 'desc' },
-        }),
-      ]);
+        })
+      : [];
 
     const recipeChangeIds = [currentRecipe, ...archivedRecipes]
       .map((recipe) => recipe?.changeEventId)
@@ -191,6 +231,9 @@ export class ProductService {
       processSteps,
       archivedProcessSteps,
       activePlan,
+      ccpPoints,
+      archivedCcpPoints,
+      failureTodos,
       relatedChanges,
     };
   }
