@@ -121,10 +121,10 @@ export class TraceabilityQueryService {
     }
 
     if (productionBatchIds.length > 0) {
+      // TASK-9: finishedGoods (FinishedGoodsBatch) removed; productionBatch is terminal node
       const productionBatches = await this.prisma.productionBatch.findMany({
         where: { id: { in: productionBatchIds } },
         include: {
-          finishedGoods: true,
           delivery_notes: true,
         },
       });
@@ -136,16 +136,6 @@ export class TraceabilityQueryService {
           label: pb.batch_no,
           batchNo: pb.batch_no,
         });
-
-        for (const fg of pb.finishedGoods as any[]) {
-          rows.push({
-            nodeType: 'productionBatch',
-            nodeId: fg.id,
-            label: fg.batch_no,
-            batchNo: fg.batch_no,
-            upstreamNodeId: pb.id,
-          });
-        }
 
         for (const dn of pb.delivery_notes as any[]) {
           rows.push({

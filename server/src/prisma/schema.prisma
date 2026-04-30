@@ -56,11 +56,6 @@ enum ProductionStatus {
   cancelled
 }
 
-enum FinishedGoodsStatus {
-  in_stock
-  shipped
-  recalled
-}
 
 enum InboundStatus {
   draft
@@ -850,8 +845,7 @@ model Record {
   relatedBatchNumber   String? // 批次号（冗余，加速查询）
   productionBatchId    String?
   productionBatch      ProductionBatch?    @relation("RecordProductionBatch", fields: [productionBatchId], references: [id], onDelete: SetNull)
-  finishedGoodsBatchId String?
-  finishedGoodsBatch   FinishedGoodsBatch? @relation("RecordFinishedGoodsBatch", fields: [finishedGoodsBatchId], references: [id], onDelete: SetNull)
+  // TASK-9: finishedGoodsBatchId column kept in DB for historical audit trail, but removed from Prisma model
 
   // 工作流集成字段
   workflowId         String?
@@ -891,7 +885,6 @@ model Record {
   @@index([retentionUntil])
   @@index([relatedBatchNumber])
   @@index([productionBatchId])
-  @@index([finishedGoodsBatchId])
   @@index([workflowId])
   @@index([taskInstanceId])
   @@index([shift_instance_id])
@@ -1483,8 +1476,6 @@ model ProductionBatch {
 
   // 批次物料使用关联（追溯链）
   materialUsages   BatchMaterialUsage[]
-  // 成品批次关联
-  finishedGoods    FinishedGoodsBatch[]
   // 物料平衡记录
   materialBalances MaterialBalance[]    @relation("MaterialBalanceProductionBatch")
   // TASK-169: 动态表单记录关联
@@ -1559,30 +1550,6 @@ model BatchMaterialUsage {
   @@index([recipeLineId])
   @@index([area_id])
   @@map("batch_material_usages")
-}
-
-// TASK-160: 成品批次表
-model FinishedGoodsBatch {
-  id                String              @id @default(cuid())
-  batchNumber       String              @unique // 成品批次号（BR-241: 唯一性）
-  productionBatchId String
-  productionBatch   ProductionBatch     @relation(fields: [productionBatchId], references: [id], onDelete: Restrict)
-  quantity          Float
-  packageDate       DateTime?
-  expiryDate        DateTime?
-  status            FinishedGoodsStatus @default(in_stock) // in_stock, shipped, recalled
-  shippedTo         String? // 客户信息（正向追溯）
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  deletedAt         DateTime?
-
-  // TASK-169: 动态表单记录关联
-  relatedRecords Record[] @relation("RecordFinishedGoodsBatch")
-
-  @@index([batchNumber])
-  @@index([productionBatchId])
-  @@index([status])
-  @@map("finished_goods_batches")
 }
 
 // TASK-161: 系统配置表（批次号格式配置等）

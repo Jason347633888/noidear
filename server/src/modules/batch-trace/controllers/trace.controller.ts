@@ -13,11 +13,11 @@ export class TraceController {
 
   @Post('backward')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: '逆向追溯（成品 -> 原料）[已弃用 — 使用 POST /traceability/query]' })
+  @ApiOperation({ summary: '逆向追溯（产品批次 -> 原料）[已弃用 — 使用 POST /traceability/query]' })
   @ApiResponse({ status: 200, description: '追溯成功' })
-  @ApiResponse({ status: 404, description: '成品批次不存在' })
-  async backwardTrace(@Body('finishedGoodsBatchId') finishedGoodsBatchId: string) {
-    const data = await this.traceabilityService.traceBackward(finishedGoodsBatchId);
+  @ApiResponse({ status: 404, description: '产品批次不存在' })
+  async backwardTrace(@Body('productionBatchId') productionBatchId: string) {
+    const data = await this.traceabilityService.traceBackward(productionBatchId);
     return {
       data,
       meta: {

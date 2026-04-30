@@ -95,7 +95,7 @@ export class ProductionBatchService {
             },
           },
         },
-        finishedGoods: true,
+        // TASK-9: finishedGoods (FinishedGoodsBatch) removed; use productionBatch directly
         aggregations: {
           include: {
             mixingExecution: {

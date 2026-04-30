@@ -3,6 +3,7 @@ import { TraceabilityService } from './traceability.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { NotFoundException } from '@nestjs/common';
 
+// TASK-9: FinishedGoodsBatch removed — traceBackward now accepts productionBatchId
 describe('TraceabilityService', () => {
   let service: TraceabilityService;
   let prisma: PrismaService;
@@ -14,10 +15,6 @@ describe('TraceabilityService', () => {
         {
           provide: PrismaService,
           useValue: {
-            finishedGoodsBatch: {
-              findUnique: jest.fn(),
-              findMany: jest.fn(),
-            },
             productionBatch: {
               findUnique: jest.fn(),
             },
@@ -40,22 +37,18 @@ describe('TraceabilityService', () => {
   });
 
   describe('traceBackward', () => {
-    it('should trace from finished goods to raw materials', async () => {
-      const finishedBatchId = 'finished-1';
-      const mockFinishedBatch = {
-        id: finishedBatchId,
-        batchNumber: 'FG-001',
-        productionBatchId: 'prod-1',
-        productionBatch: {
-          id: 'prod-1',
-          batchNumber: 'PROD-001',
-        },
+    it('should trace from production batch to raw materials', async () => {
+      const productionBatchId = 'prod-1';
+      const mockProductionBatch = {
+        id: productionBatchId,
+        batchNumber: 'PROD-001',
+        actualQuantity: 1000,
       };
 
       const mockUsages = [
         {
           id: 'usage-1',
-          productionBatchId: 'prod-1',
+          productionBatchId,
           materialBatchId: 'mat-1',
           quantity: 10,
           usedAt: new Date(),
@@ -68,49 +61,43 @@ describe('TraceabilityService', () => {
         },
       ];
 
-      jest.spyOn(prisma.finishedGoodsBatch, 'findUnique').mockResolvedValue(mockFinishedBatch as any);
+      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockProductionBatch as any);
       jest.spyOn(prisma.batchMaterialUsage, 'findMany').mockResolvedValue(mockUsages as any);
 
-      const result = await service.traceBackward(finishedBatchId);
+      const result = await service.traceBackward(productionBatchId);
 
-      expect(result.finishedGoodsBatch).toEqual(mockFinishedBatch);
-      expect(result.productionBatch).toEqual(mockFinishedBatch.productionBatch);
+      expect(result.finishedGoodsBatch.batchNumber).toBe('PROD-001');
+      expect(result.productionBatch).toEqual(mockProductionBatch);
       expect(result.materialBatches).toHaveLength(1);
       expect(result.materialBatches[0].usedQuantity).toBe(10);
       expect(result.traceTime).toBeInstanceOf(Date);
     });
 
-    it('should throw NotFoundException if finished batch not found', async () => {
-      const finishedBatchId = 'finished-1';
+    it('should throw NotFoundException if production batch not found', async () => {
+      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(null);
 
-      jest.spyOn(prisma.finishedGoodsBatch, 'findUnique').mockResolvedValue(null);
-
-      await expect(service.traceBackward(finishedBatchId)).rejects.toThrow(NotFoundException);
+      await expect(service.traceBackward('nonexistent')).rejects.toThrow(NotFoundException);
     });
 
     it('should return empty materials if no usages found', async () => {
-      const finishedBatchId = 'finished-1';
-      const mockFinishedBatch = {
-        id: finishedBatchId,
-        batchNumber: 'FG-001',
-        productionBatchId: 'prod-1',
-        productionBatch: {
-          id: 'prod-1',
-          batchNumber: 'PROD-001',
-        },
+      const productionBatchId = 'prod-1';
+      const mockProductionBatch = {
+        id: productionBatchId,
+        batchNumber: 'PROD-001',
+        actualQuantity: null,
       };
 
-      jest.spyOn(prisma.finishedGoodsBatch, 'findUnique').mockResolvedValue(mockFinishedBatch as any);
+      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockProductionBatch as any);
       jest.spyOn(prisma.batchMaterialUsage, 'findMany').mockResolvedValue([]);
 
-      const result = await service.traceBackward(finishedBatchId);
+      const result = await service.traceBackward(productionBatchId);
 
       expect(result.materialBatches).toEqual([]);
     });
   });
 
   describe('traceForward', () => {
-    it('should trace from raw materials to finished goods', async () => {
+    it('should trace from raw materials to production batches', async () => {
       const materialBatchId = 'mat-1';
       const mockMaterialBatch = {
         id: materialBatchId,
@@ -135,29 +122,21 @@ describe('TraceabilityService', () => {
         },
       ];
 
-      const mockFinishedGoods = [
-        { id: 'finished-1', batchNumber: 'FG-001', productionBatchId: 'prod-1' },
-      ];
-
       jest.spyOn(prisma.materialBatch, 'findUnique').mockResolvedValue(mockMaterialBatch as any);
       jest.spyOn(prisma.batchMaterialUsage, 'findMany').mockResolvedValue(mockUsages as any);
-      jest.spyOn(prisma.finishedGoodsBatch, 'findMany').mockResolvedValue(mockFinishedGoods as any);
 
       const result = await service.traceForward(materialBatchId);
 
       expect(result.materialBatch).toEqual(mockMaterialBatch);
       expect(result.productionBatches).toHaveLength(1);
       expect(result.productionBatches[0].usedQuantity).toBe(10);
-      expect(result.productionBatches[0].finishedGoods).toHaveLength(1);
       expect(result.traceTime).toBeInstanceOf(Date);
     });
 
     it('should throw NotFoundException if material batch not found', async () => {
-      const materialBatchId = 'mat-1';
-
       jest.spyOn(prisma.materialBatch, 'findUnique').mockResolvedValue(null);
 
-      await expect(service.traceForward(materialBatchId)).rejects.toThrow(NotFoundException);
+      await expect(service.traceForward('mat-1')).rejects.toThrow(NotFoundException);
     });
 
     it('should return empty production batches if no usages found', async () => {
@@ -171,7 +150,6 @@ describe('TraceabilityService', () => {
 
       jest.spyOn(prisma.materialBatch, 'findUnique').mockResolvedValue(mockMaterialBatch as any);
       jest.spyOn(prisma.batchMaterialUsage, 'findMany').mockResolvedValue([]);
-      jest.spyOn(prisma.finishedGoodsBatch, 'findMany').mockResolvedValue([]);
 
       const result = await service.traceForward(materialBatchId);
 

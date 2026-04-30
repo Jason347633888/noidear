@@ -10,11 +10,12 @@ import { TraceabilityService } from '../batch-trace/services/traceability.servic
 export class WarehouseTraceabilityController {
   constructor(private readonly traceabilityService: TraceabilityService) {}
 
-  @Get('backward/:finishedGoodsBatchId')
+  // TASK-9: URL param renamed to productionBatchId; FinishedGoodsBatch removed
+  @Get('backward/:productionBatchId')
   async traceBackward(
-    @Param('finishedGoodsBatchId', ParseUUIDPipe) finishedGoodsBatchId: string,
+    @Param('productionBatchId', ParseUUIDPipe) productionBatchId: string,
   ) {
-    const data = await this.traceabilityService.traceBackward(finishedGoodsBatchId);
+    const data = await this.traceabilityService.traceBackward(productionBatchId);
     return {
       data,
       meta: {
