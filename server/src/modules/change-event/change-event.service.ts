@@ -105,13 +105,14 @@ export class ChangeEventService {
     if (!changeEvent) {
       throw new Error(`ChangeEvent ${changeEventId} not found`);
     }
-    // NOTE: ApprovalEngineService.startApproval owns its own transaction and
-    // does not accept an external tx client. We deliberately do NOT swallow
-    // its errors here — if approval startup fails after the plan was flipped
-    // to `pending_approval`, callers (e.g. ProductProcessChangeService) rely
-    // on the throw to roll back their outer transaction so we never end up
-    // with a plan in `pending_approval` whose approval was never created.
-    // Legacy best-effort semantics live in `create()`.
+    // NOTE: ApprovalEngineService.startApproval can run inside an outer tx
+    // when one is forwarded via `input.tx`; otherwise it owns its own
+    // transaction. We deliberately do NOT swallow its errors here — if
+    // approval startup fails after the plan was flipped to `pending_approval`,
+    // callers (e.g. ProductProcessChangeService) rely on the throw to roll
+    // back their outer transaction so we never end up with a plan in
+    // `pending_approval` whose approval was never created. Legacy
+    // best-effort semantics live in `create()`.
     await this.approvalEngine?.startApproval({
       resourceType: 'change_event',
       resourceId: changeEvent.id,
@@ -119,6 +120,7 @@ export class ChangeEventService {
       triggerKey: 'approve_change',
       title: `变更事件审批：${changeEvent.change_no}`,
       createdById: userId,
+      tx,
     });
     return changeEvent;
   }

@@ -90,7 +90,12 @@ describe('ChangeEventService', () => {
     expect(tx.changeEvent.findUnique).toHaveBeenCalledWith({ where: { id: 'change1' } });
     expect(prisma.changeEvent.findUnique).not.toHaveBeenCalled();
     expect(approvalEngine.startApproval).toHaveBeenCalledWith(
-      expect.objectContaining({ resourceId: 'change1', triggerKey: 'approve_change' }),
+      expect.objectContaining({
+        resourceType: 'change_event',
+        resourceId: 'change1',
+        triggerKey: 'approve_change',
+        tx,
+      }),
     );
   });
 
