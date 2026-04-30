@@ -1227,6 +1227,7 @@ model StagingAreaStocktake {
   area            WorkshopArea           @relation(fields: [area_id], references: [id])
   batch           MaterialBatch          @relation(fields: [batchId], references: [id])
   shift_type      ShiftType              @relation(fields: [shift_type_id], references: [id])
+  team            Team?                  @relation(fields: [team_id], references: [id])
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
 
@@ -1283,6 +1284,8 @@ model MixingExecutionLine {
   stagingAreaStock   StagingAreaStock @relation(fields: [stagingAreaStockId], references: [id])
   createdAt          DateTime         @default(now())
 
+  @@index([executionId])
+  @@index([stagingAreaStockId])
   @@index([materialBatchId])
   @@index([recipeLineId])
   @@map("mixing_execution_lines")
@@ -2845,6 +2848,7 @@ model Team {
   members     TeamMember[]
   schedules   TeamShiftSchedule[]
   batches     ProductionBatch[]
+  stocktakes  StagingAreaStocktake[]
   created_at  DateTime            @default(now())
   updated_at  DateTime            @updatedAt
 
