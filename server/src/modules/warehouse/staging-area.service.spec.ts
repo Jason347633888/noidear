@@ -196,7 +196,7 @@ describe('StagingAreaService - confirmStocktake', () => {
         count: jest.fn(),
       },
       stagingAreaRecord: { create: jest.fn(), findMany: jest.fn() },
-      stagingAreaStocktake: { create: jest.fn() },
+      stagingAreaStocktake: { create: jest.fn(), findFirst: jest.fn().mockResolvedValue(null) },
       materialBatch: { findUnique: jest.fn() },
       $transaction: jest.fn(),
     };

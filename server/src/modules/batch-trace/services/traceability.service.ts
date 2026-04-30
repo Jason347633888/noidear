@@ -43,12 +43,6 @@ export class TraceabilityService {
     });
 
     return {
-      // TASK-9: keep finishedGoodsBatch key in response envelope for backward compat with PDF export
-      finishedGoodsBatch: {
-        id: productionBatch.id,
-        batchNumber: productionBatch.batchNumber,
-        quantity: productionBatch.actualQuantity,
-      },
       productionBatch,
       materialBatches: materialUsages.map((u) => ({
         ...u.materialBatch,

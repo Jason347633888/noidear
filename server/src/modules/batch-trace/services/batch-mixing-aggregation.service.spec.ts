@@ -15,6 +15,7 @@ describe('BatchMixingAggregationService', () => {
         findMany: jest.fn(),
         updateMany: jest.fn(),
         upsert: jest.fn(),
+        count: jest.fn(),
       },
       $transaction: jest.fn(),
     };
@@ -92,31 +93,35 @@ describe('BatchMixingAggregationService', () => {
   });
 
   describe('confirm', () => {
-    it('throws when no aggregations exist for the batch', async () => {
+    it('throws when no aggregations exist at all for the batch', async () => {
+      prisma.batchMixingAggregation.count.mockResolvedValue(0);
+
+      await expect(
+        service.confirm({ productionBatchId: 'pb-1', confirmedBy: 'user-1' }),
+      ).rejects.toThrow('产品批次尚未归集配料执行');
+    });
+
+    it('throws when all aggregations are already confirmed', async () => {
+      prisma.batchMixingAggregation.count.mockResolvedValue(2);
       prisma.batchMixingAggregation.updateMany.mockResolvedValue({ count: 0 });
 
       await expect(
-        service.confirm({
-          productionBatchId: 'pb-1',
-          confirmedBy: 'user-1',
-        }),
-      ).rejects.toThrow(BadRequestException);
+        service.confirm({ productionBatchId: 'pb-1', confirmedBy: 'user-1' }),
+      ).rejects.toThrow('归集已全部确认，无需重复操作');
     });
 
-    it('returns aggregations after confirming', async () => {
+    it('only updates draft aggregations and returns all aggregations', async () => {
+      prisma.batchMixingAggregation.count.mockResolvedValue(2);
       prisma.batchMixingAggregation.updateMany.mockResolvedValue({ count: 2 });
       prisma.batchMixingAggregation.findMany.mockResolvedValue([
         { id: 'agg-1', mixingExecution: { lines: [] } },
         { id: 'agg-2', mixingExecution: { lines: [] } },
       ]);
 
-      const result = await service.confirm({
-        productionBatchId: 'pb-1',
-        confirmedBy: 'user-1',
-      });
+      const result = await service.confirm({ productionBatchId: 'pb-1', confirmedBy: 'user-1' });
 
       expect(prisma.batchMixingAggregation.updateMany).toHaveBeenCalledWith({
-        where: { productionBatchId: 'pb-1' },
+        where: { productionBatchId: 'pb-1', status: 'draft' },
         data: expect.objectContaining({ status: 'confirmed', confirmedBy: 'user-1' }),
       });
       expect(result).toHaveLength(2);

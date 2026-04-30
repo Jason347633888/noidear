@@ -65,8 +65,15 @@ export class BatchMixingAggregationService {
   }
 
   async confirm(dto: ConfirmBatchMixingAggregationDto) {
-    const result = await this.prisma.batchMixingAggregation.updateMany({
+    const total = await this.prisma.batchMixingAggregation.count({
       where: { productionBatchId: dto.productionBatchId },
+    });
+    if (total === 0) {
+      throw new BadRequestException('产品批次尚未归集配料执行');
+    }
+
+    const result = await this.prisma.batchMixingAggregation.updateMany({
+      where: { productionBatchId: dto.productionBatchId, status: 'draft' },
       data: {
         status: 'confirmed',
         confirmedBy: dto.confirmedBy,
@@ -75,7 +82,7 @@ export class BatchMixingAggregationService {
     });
 
     if (result.count === 0) {
-      throw new BadRequestException('产品批次尚未归集配料执行');
+      throw new BadRequestException('归集已全部确认，无需重复操作');
     }
 
     return this.findByProductBatch(dto.productionBatchId);

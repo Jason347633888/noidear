@@ -1,7 +1,9 @@
 import {
   Controller,
+  Get,
   Post,
   Body,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -11,12 +13,18 @@ import { MixingService } from './mixing.service';
 import {
   RecommendMaterialBatchDto,
   CreateMixingExecutionDto,
+  ListMixingExecutionsDto,
 } from './dto/mixing.dto';
 
 @Controller('mixing')
 @UseGuards(JwtAuthGuard)
 export class MixingController {
   constructor(private readonly service: MixingService) {}
+
+  @Get('executions')
+  listExecutions(@Query() dto: ListMixingExecutionsDto) {
+    return this.service.listExecutions(dto);
+  }
 
   @Post('recommend-material-batches')
   recommend(@Body() dto: RecommendMaterialBatchDto) {

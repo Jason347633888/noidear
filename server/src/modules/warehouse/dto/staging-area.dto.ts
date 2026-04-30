@@ -19,7 +19,7 @@ export class ConfirmStocktakeDto {
   @IsEnum(StagingStocktakeKind) kind!: StagingStocktakeKind;
   @IsDateString() workDate!: string;
   @IsString() @IsNotEmpty() shiftTypeId!: string;
-  @IsNumber() actualQuantity!: number;
+  @IsNumber() @Min(0) actualQuantity!: number;
   @IsOptional() @IsString() teamId?: string;
   @IsOptional() @IsString() note?: string;
   @IsOptional()

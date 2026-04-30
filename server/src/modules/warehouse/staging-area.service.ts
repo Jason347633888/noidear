@@ -242,6 +242,19 @@ export class StagingAreaService {
   }
 
   async confirmStocktake(dto: ConfirmStocktakeDto) {
+    const existing = await this.prisma.stagingAreaStocktake.findFirst({
+      where: {
+        area_id: dto.areaId,
+        batchId: dto.batchId,
+        kind: dto.kind,
+        work_date: new Date(dto.workDate),
+        shift_type_id: dto.shiftTypeId,
+      },
+    });
+    if (existing) {
+      throw new BadRequestException('该班次该物料批次已完成盘点，请勿重复提交');
+    }
+
     const stock = await this.prisma.stagingAreaStock.findUnique({
       where: { batchId_area_id: { batchId: dto.batchId, area_id: dto.areaId } },
     });

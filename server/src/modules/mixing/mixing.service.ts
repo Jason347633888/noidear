@@ -4,11 +4,33 @@ import { PrismaService } from '../../prisma/prisma.service';
 import {
   RecommendMaterialBatchDto,
   CreateMixingExecutionDto,
+  ListMixingExecutionsDto,
 } from './dto/mixing.dto';
 
 @Injectable()
 export class MixingService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async listExecutions(dto: ListMixingExecutionsDto) {
+    return this.prisma.mixingExecution.findMany({
+      where: {
+        ...(dto.productId && { productId: dto.productId }),
+        ...(dto.recipeId && { recipeId: dto.recipeId }),
+        ...(dto.areaId && { area_id: dto.areaId }),
+        ...(dto.status && { status: dto.status as any }),
+        ...(dto.dateFrom || dto.dateTo
+          ? {
+              work_date: {
+                ...(dto.dateFrom && { gte: new Date(dto.dateFrom) }),
+                ...(dto.dateTo && { lte: new Date(dto.dateTo) }),
+              },
+            }
+          : {}),
+      },
+      include: { area: true, lines: { include: { material: true, materialBatch: true } } },
+      orderBy: { work_date: 'desc' },
+    });
+  }
 
   async recommendMaterialBatches(dto: RecommendMaterialBatchDto) {
     const stocks = await this.prisma.stagingAreaStock.findMany({
@@ -47,9 +69,13 @@ export class MixingService {
     return { recommendations, shortage: remaining };
   }
 
-  private async generateExecutionNo(tx: any): Promise<string> {
-    const count = await tx.mixingExecution.count();
-    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  private async generateExecutionNo(tx: any, workDate: Date): Promise<string> {
+    const date = workDate.toISOString().slice(0, 10).replace(/-/g, '');
+    const dayStart = new Date(`${workDate.toISOString().slice(0, 10)}T00:00:00.000Z`);
+    const dayEnd = new Date(`${workDate.toISOString().slice(0, 10)}T23:59:59.999Z`);
+    const count = await tx.mixingExecution.count({
+      where: { work_date: { gte: dayStart, lte: dayEnd } },
+    });
     return `MIX-${date}-${String(count + 1).padStart(4, '0')}`;
   }
 
@@ -61,6 +87,13 @@ export class MixingService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        const recipe = await tx.recipe.findFirst({
+          where: { id: dto.recipeId, product_id: dto.productId, status: 'active' },
+        });
+        if (!recipe) {
+          throw new BadRequestException('配方与产品不匹配或配方未启用');
+        }
+
         const recipeLines = await tx.recipeLine.findMany({
           where: { recipe_id: dto.recipeId },
         });
@@ -68,7 +101,7 @@ export class MixingService {
 
         const execution = await tx.mixingExecution.create({
           data: {
-            executionNo: await this.generateExecutionNo(tx),
+            executionNo: await this.generateExecutionNo(tx, new Date(dto.workDate)),
             recipeId: dto.recipeId,
             productId: dto.productId,
             area_id: dto.areaId,

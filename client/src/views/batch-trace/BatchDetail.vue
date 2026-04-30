@@ -84,7 +84,7 @@
     <!-- 归集选择面板 -->
     <el-dialog v-model="showAggregationPanel" title="选择配料执行" width="700px">
       <p style="color: #666; margin-bottom: 12px">选择要归集到此产品批次的配料执行记录</p>
-      <el-table :data="candidateMixingExecutions" row-key="id" @selection-change="selectedExecutions = $event">
+      <el-table :data="candidateMixingExecutions" row-key="id" @selection-change="(rows: any[]) => { selectedExecutions.value = rows }">
         <el-table-column type="selection" width="48" />
         <el-table-column prop="executionNo" label="配料执行号" />
         <el-table-column prop="area.name" label="配料区" />
@@ -93,7 +93,7 @@
       </el-table>
       <template #footer>
         <el-button @click="showAggregationPanel = false">取消</el-button>
-        <el-button type="primary" @click="confirmAggregation">确认归集</el-button>
+        <el-button type="primary" @click="submitAggregationDraft">提交归集</el-button>
       </template>
     </el-dialog>
 
@@ -168,7 +168,7 @@ const hasDraftAggregations = computed(() =>
   batch.value?.aggregations?.some((a: any) => a.status === 'draft') ?? false,
 );
 
-const confirmAggregation = async () => {
+const submitAggregationDraft = async () => {
   if (!selectedExecutions.value.length) {
     ElMessage.warning('请选择至少一个配料执行');
     return;

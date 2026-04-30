@@ -48,6 +48,15 @@ export class MixingLineInputDto {
   overrideReason?: string;
 }
 
+export class ListMixingExecutionsDto {
+  @IsOptional() @IsString() productId?: string;
+  @IsOptional() @IsString() recipeId?: string;
+  @IsOptional() @IsString() areaId?: string;
+  @IsOptional() @IsString() status?: string;
+  @IsOptional() @IsDateString() dateFrom?: string;
+  @IsOptional() @IsDateString() dateTo?: string;
+}
+
 export class CreateMixingExecutionDto {
   @IsString()
   @IsNotEmpty()

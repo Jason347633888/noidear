@@ -14,6 +14,7 @@ describe('MixingService', () => {
         findFirst: jest.fn(),
         update: jest.fn(),
       },
+      recipe: { findFirst: jest.fn() },
       recipeLine: { findMany: jest.fn() },
       mixingExecution: { create: jest.fn(), findUnique: jest.fn(), count: jest.fn() },
       mixingExecutionLine: { create: jest.fn() },
@@ -69,6 +70,7 @@ describe('MixingService', () => {
   describe('createExecution', () => {
     it('deducts stock and creates execution lines', async () => {
       prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+      prisma.recipe.findFirst.mockResolvedValue({ id: 'recipe-1', product_id: 'product-1', status: 'active' });
       prisma.recipeLine.findMany.mockResolvedValue([
         { id: 'line-flour', material_id: 'mat-flour', qty_per_batch: 50 },
       ]);
@@ -99,6 +101,7 @@ describe('MixingService', () => {
 
     it('throws BadRequestException when recipe line not found', async () => {
       prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+      prisma.recipe.findFirst.mockResolvedValue({ id: 'recipe-1', product_id: 'product-1', status: 'active' });
       prisma.recipeLine.findMany.mockResolvedValue([]);
       prisma.mixingExecution.count.mockResolvedValue(0);
       prisma.mixingExecution.create.mockResolvedValue({ id: 'mix-1' });
@@ -115,6 +118,7 @@ describe('MixingService', () => {
 
     it('throws BadRequestException when stock insufficient', async () => {
       prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+      prisma.recipe.findFirst.mockResolvedValue({ id: 'recipe-1', product_id: 'product-1', status: 'active' });
       prisma.recipeLine.findMany.mockResolvedValue([
         { id: 'line-flour', material_id: 'mat-flour', qty_per_batch: 50 },
       ]);
