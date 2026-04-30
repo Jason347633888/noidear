@@ -84,7 +84,6 @@ enum StagingStocktakeStatus {
 }
 
 enum MixingExecutionStatus {
-  draft
   confirmed
   voided
 }
@@ -1226,6 +1225,7 @@ model StagingAreaStocktake {
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
 
+  @@unique([area_id, batchId, kind, work_date, shift_type_id])
   @@index([area_id, work_date, shift_type_id])
   @@index([batchId])
   @@map("staging_area_stocktakes")
