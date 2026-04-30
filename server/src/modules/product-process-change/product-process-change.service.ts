@@ -564,7 +564,7 @@ export class ProductProcessChangeService {
     // 2) update matched
     for (const old of toUpdate) {
       const next = proposedByCcpNo.get((old as any).ccp_no)!;
-      const stepId = await this.resolveStepIdForCcp(plan, next.step_no, changeEventId, tx);
+      const stepId = await this.resolveStepIdForCcp(plan, next.step_no, next.ccp_no, changeEventId, tx);
       const updated = await tx.cCPPoint.update({
         where: { id: (old as any).id },
         data: {
@@ -598,7 +598,7 @@ export class ProductProcessChangeService {
 
     // 3) create new
     for (const fresh of toCreate) {
-      const stepId = await this.resolveStepIdForCcp(plan, fresh.step_no, changeEventId, tx);
+      const stepId = await this.resolveStepIdForCcp(plan, fresh.step_no, fresh.ccp_no, changeEventId, tx);
       const created = await tx.cCPPoint.create({
         data: {
           company_id: plan.company_id,
@@ -640,13 +640,24 @@ export class ProductProcessChangeService {
       hazard_type: c.hazard_type,
       control_measure: c.control_measure,
       critical_limit: c.critical_limit,
-      cl_unit: c.cl_unit,
+      // Decimal 序列化为字符串避免 JSON 精度问题；保留所有业务字段以便审计回放数值变更。
+      cl_min: c.cl_min != null ? c.cl_min.toString() : null,
+      cl_max: c.cl_max != null ? c.cl_max.toString() : null,
+      cl_unit: c.cl_unit ?? null,
+      monitoring_method: c.monitoring_method ?? null,
+      monitoring_frequency: c.monitoring_frequency ?? null,
+      corrective_action: c.corrective_action ?? null,
     };
   }
 
+  // resolveStepIdForCcp 依赖一个不变量：applyApprovedChange dispatcher 必须先跑 process scope，
+  // 再跑 haccp scope（见 applyApprovedChange 内的 if 顺序）。这样当本次同时改 process 与 haccp
+  // 且 step 重新编号时，旧 step 已经被 process apply 软删，prefer-this-change-first 命中的就是
+  // 用户语义里的"新" step，而不会误挂到陈旧 step 上。
   private async resolveStepIdForCcp(
     plan: { product_id: string },
     stepNo: number,
+    ccpNo: string,
     changeEventId: string,
     tx: Prisma.TransactionClient,
   ): Promise<string> {
@@ -660,7 +671,7 @@ export class ProductProcessChangeService {
       select: { id: true },
     });
     if (!active) {
-      throw new BadRequestException(`CCP 找不到对应工序步骤 ${stepNo}`);
+      throw new BadRequestException(`CCP ${ccpNo} 找不到对应工序步骤 ${stepNo}`);
     }
     return active.id;
   }
