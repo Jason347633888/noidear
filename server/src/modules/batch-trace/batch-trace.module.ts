@@ -6,11 +6,13 @@ import { BatchMaterialUsageService } from './services/batch-material-usage.servi
 import { MaterialUsageService } from './services/material-usage.service';
 import { TraceabilityService } from './services/traceability.service';
 import { TraceExportService } from './services/trace-export.service';
+import { BatchMixingAggregationService } from './services/batch-mixing-aggregation.service';
 import { ProductionBatchController } from './controllers/production-batch.controller';
 import { MaterialBatchController } from './controllers/material-batch.controller';
 import { MaterialUsageController } from './controllers/material-usage.controller';
 import { TraceController } from './controllers/trace.controller';
 import { TraceExportController } from './controllers/trace-export.controller';
+import { BatchMixingAggregationController } from './controllers/batch-mixing-aggregation.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
@@ -21,6 +23,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
     MaterialUsageController,
     TraceController,
     TraceExportController,
+    BatchMixingAggregationController,
   ],
   providers: [
     BatchNumberGeneratorService,
@@ -30,6 +33,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
     MaterialUsageService,
     TraceabilityService,
     TraceExportService,
+    BatchMixingAggregationService,
   ],
   exports: [
     BatchNumberGeneratorService,
@@ -39,6 +43,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
     MaterialUsageService,
     TraceabilityService,
     TraceExportService,
+    BatchMixingAggregationService,
   ],
 })
 export class BatchTraceModule {}
