@@ -80,6 +80,15 @@ describe('BatchMixingAggregationService', () => {
         }),
       ).rejects.toThrow(BadRequestException);
     });
+
+    it('throws when productionBatch does not exist', async () => {
+      prisma.productionBatch.findUnique.mockResolvedValue(null);
+
+      await expect(service.create({
+        productionBatchId: 'missing',
+        mixingExecutionIds: ['mix-1'],
+      })).rejects.toThrow(BadRequestException);
+    });
   });
 
   describe('confirm', () => {
@@ -92,6 +101,25 @@ describe('BatchMixingAggregationService', () => {
           confirmedBy: 'user-1',
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('returns aggregations after confirming', async () => {
+      prisma.batchMixingAggregation.updateMany.mockResolvedValue({ count: 2 });
+      prisma.batchMixingAggregation.findMany.mockResolvedValue([
+        { id: 'agg-1', mixingExecution: { lines: [] } },
+        { id: 'agg-2', mixingExecution: { lines: [] } },
+      ]);
+
+      const result = await service.confirm({
+        productionBatchId: 'pb-1',
+        confirmedBy: 'user-1',
+      });
+
+      expect(prisma.batchMixingAggregation.updateMany).toHaveBeenCalledWith({
+        where: { productionBatchId: 'pb-1' },
+        data: expect.objectContaining({ status: 'confirmed', confirmedBy: 'user-1' }),
+      });
+      expect(result).toHaveLength(2);
     });
   });
 });

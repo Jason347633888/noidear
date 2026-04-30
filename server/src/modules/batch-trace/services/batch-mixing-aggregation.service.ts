@@ -17,6 +17,10 @@ export class BatchMixingAggregationService {
       throw new BadRequestException('产品批次不存在');
     }
 
+    if (!productionBatch.recipeId) {
+      throw new BadRequestException('产品批次缺少配方，无法归集配料执行');
+    }
+
     const confirmedExecutions = await this.prisma.mixingExecution.findMany({
       where: {
         id: { in: dto.mixingExecutionIds },
