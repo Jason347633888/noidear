@@ -18,7 +18,7 @@ onMounted(async () => {
   const planId = route.params.planId as string;
   try {
     const plan = await productProcessChangeApi.getByPlanId(planId);
-    const productId = (plan as any).product_id ?? (plan as any).productId;
+    const productId = plan.product_id ?? plan.productId;
     if (!productId) {
       throw new Error('产品工艺变更未关联产品');
     }
@@ -34,6 +34,7 @@ onMounted(async () => {
 
 <style scoped>
 .redirect-loading {
+  min-height: 200px;
   padding: 40px;
   text-align: center;
   color: #909399;
