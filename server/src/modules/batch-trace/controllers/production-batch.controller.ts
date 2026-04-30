@@ -14,6 +14,7 @@ import {
   CreateProductionBatchDto,
   UpdateProductionBatchDto,
   QueryProductionBatchDto,
+  ConfirmProductBatchDto,
 } from '../dto/production-batch.dto';
 
 @Controller('batch-trace/production-batches')
@@ -24,6 +25,12 @@ export class ProductionBatchController {
   @HttpCode(HttpStatus.CREATED)
   create(@Body() createDto: CreateProductionBatchDto) {
     return this.productionBatchService.create(createDto);
+  }
+
+  @Post('confirm')
+  @HttpCode(HttpStatus.CREATED)
+  confirmProductBatch(@Body() dto: ConfirmProductBatchDto) {
+    return this.productionBatchService.confirmProductBatch(dto);
   }
 
   @Get()

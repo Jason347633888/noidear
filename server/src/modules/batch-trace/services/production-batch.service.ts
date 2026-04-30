@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { BatchNumberGeneratorService } from './batch-number-generator.service';
@@ -9,6 +10,7 @@ import {
   CreateProductionBatchDto,
   UpdateProductionBatchDto,
   QueryProductionBatchDto,
+  ConfirmProductBatchDto,
 } from '../dto/production-batch.dto';
 
 @Injectable()
@@ -93,6 +95,20 @@ export class ProductionBatchService {
           },
         },
         finishedGoods: true,
+        aggregations: {
+          include: {
+            mixingExecution: {
+              include: {
+                lines: {
+                  include: {
+                    materialBatch: true,
+                    material: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -101,6 +117,49 @@ export class ProductionBatchService {
     }
 
     return batch;
+  }
+
+  async confirmProductBatch(dto: ConfirmProductBatchDto) {
+    const existing = await this.prisma.productionBatch.findUnique({
+      where: { batchNumber: dto.batchNumber },
+    });
+    if (existing) {
+      throw new ConflictException('产品批次号已存在');
+    }
+
+    const product = await this.prisma.product.findFirst({
+      where: { id: dto.productId, status: 'active', deleted_at: null },
+    });
+    if (!product) {
+      throw new BadRequestException('产品不存在');
+    }
+
+    const recipe = await this.prisma.recipe.findFirst({
+      where: { id: dto.recipeId, product_id: dto.productId, status: 'active' },
+    });
+    if (!recipe) {
+      throw new BadRequestException('产品配方不存在或未启用');
+    }
+
+    return this.prisma.productionBatch.create({
+      data: {
+        batchNumber: dto.batchNumber,
+        productId: dto.productId,
+        productName: product.name,
+        recipeId: dto.recipeId,
+        recipeName: recipe.version_note ?? `v${recipe.version}`,
+        plannedQuantity: dto.actualQuantity,
+        actualQuantity: dto.actualQuantity,
+        unit: dto.unit,
+        productionDate: new Date(dto.productionDate),
+        packagedAt: new Date(dto.packagedAt),
+        warehousedAt: new Date(dto.warehousedAt),
+        packageMachine: dto.packageMachine,
+        team_id: dto.teamId,
+        shift_type_id: dto.shiftTypeId,
+        status: 'completed',
+      },
+    });
   }
 
   async update(id: string, updateDto: UpdateProductionBatchDto) {
