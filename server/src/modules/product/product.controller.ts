@@ -41,6 +41,11 @@ export class ProductController {
     return this.service.findOne(id);
   }
 
+  @Get(':id/workbench')
+  getWorkbench(@Param('id') id: string) {
+    return this.service.getWorkbench(id);
+  }
+
   @Get(':id/reports')
   getReports(@Param('id') id: string) {
     return this.service.getReports(id);

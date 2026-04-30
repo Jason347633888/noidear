@@ -2,7 +2,10 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RecordService } from '../record/record.service';
-import { getDefaultFormCodesForChangeType } from './change-event-default-form-rules';
+import {
+  getDefaultFormCodesForChangeScopes,
+  getDefaultFormCodesForChangeType,
+} from './change-event-default-form-rules';
 
 @Injectable()
 export class ChangeEventFormTaskService {
@@ -12,7 +15,35 @@ export class ChangeEventFormTaskService {
   ) {}
 
   async generateDefaultTasks(changeEventId: string, changeType: string, tx?: Prisma.TransactionClient) {
-    const codes = getDefaultFormCodesForChangeType(changeType);
+    return this.generateDefaultTasksForCodes(
+      changeEventId,
+      getDefaultFormCodesForChangeType(changeType),
+      tx,
+    );
+  }
+
+  /**
+   * Same as {@link generateDefaultTasks} but takes the full list of change
+   * scopes (e.g. ['recipe','process','haccp']) so multi-scope plans don't
+   * lose forms after the legacy single-`changeType` collapse.
+   */
+  async generateDefaultTasksForScopes(
+    changeEventId: string,
+    scopes: string[],
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.generateDefaultTasksForCodes(
+      changeEventId,
+      getDefaultFormCodesForChangeScopes(scopes),
+      tx,
+    );
+  }
+
+  private async generateDefaultTasksForCodes(
+    changeEventId: string,
+    codes: string[],
+    tx?: Prisma.TransactionClient,
+  ) {
     if (codes.length === 0) return [];
 
     const db = tx ?? this.prisma;

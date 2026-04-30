@@ -29,37 +29,43 @@
         <el-button type="primary" @click="searchDocuments">搜索</el-button>
       </div>
 
-      <el-table :data="documents" v-loading="loading" stripe>
-        <el-table-column prop="number" label="编号" width="160" />
-        <el-table-column prop="title" label="标题" min-width="220" show-overflow-tooltip />
-        <el-table-column label="类型" width="150">
-          <template #default="{ row }">{{ typeLabel(row.document_type) }}</template>
-        </el-table-column>
-        <el-table-column prop="owner_department" label="负责部门" width="140" />
-        <el-table-column label="状态" width="110">
-          <template #default="{ row }"><el-tag>{{ row.status }}</el-tag></template>
-        </el-table-column>
-        <el-table-column label="复审日期" width="140">
-          <template #default="{ row }">{{ formatDate(row.review_due_date) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="router.push(`/documents/${row.id}`)">查看</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <el-empty
+        v-if="!filters.sourceFolder"
+        description="请选择左侧文件夹查看文件"
+      />
+      <template v-else>
+        <el-table :data="documents" v-loading="loading" stripe>
+          <el-table-column prop="number" label="编号" width="160" />
+          <el-table-column prop="title" label="标题" min-width="220" show-overflow-tooltip />
+          <el-table-column label="类型" width="150">
+            <template #default="{ row }">{{ typeLabel(row.document_type) }}</template>
+          </el-table-column>
+          <el-table-column prop="owner_department" label="负责部门" width="140" />
+          <el-table-column label="状态" width="110">
+            <template #default="{ row }"><el-tag>{{ row.status }}</el-tag></template>
+          </el-table-column>
+          <el-table-column label="复审日期" width="140">
+            <template #default="{ row }">{{ formatDate(row.review_due_date) }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="router.push(`/documents/${row.id}`)">查看</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
 
-      <div class="pagination">
-        <el-pagination
-          v-model:current-page="pagination.page"
-          v-model:page-size="pagination.limit"
-          :page-sizes="[20, 50, 100]"
-          :total="pagination.total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handlePageSizeChange"
-          @current-change="handlePageChange"
-        />
-      </div>
+        <div class="pagination">
+          <el-pagination
+            v-model:current-page="pagination.page"
+            v-model:page-size="pagination.limit"
+            :page-sizes="[20, 50, 100]"
+            :total="pagination.total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handlePageSizeChange"
+            @current-change="handlePageChange"
+          />
+        </div>
+      </template>
     </main>
   </div>
 </template>
@@ -116,16 +122,22 @@ const selectFolder = (folder: string) => {
 };
 
 const searchDocuments = () => {
+  if (!filters.sourceFolder) {
+    ElMessage.warning('请先选择左侧文件夹');
+    return;
+  }
   pagination.page = 1;
   fetchDocuments();
 };
 
 const handlePageChange = (page: number) => {
+  if (!filters.sourceFolder) return;
   pagination.page = page;
   fetchDocuments();
 };
 
 const handlePageSizeChange = (limit: number) => {
+  if (!filters.sourceFolder) return;
   pagination.limit = limit;
   pagination.page = 1;
   fetchDocuments();
@@ -169,7 +181,6 @@ onMounted(() => {
   if (route.query.issue === 'missingMetadata') {
     filters.issue = 'missingMetadata';
   }
-  fetchDocuments();
 });
 </script>
 

@@ -38,3 +38,18 @@ export function getDefaultFormCodesForChangeType(changeType: string): string[] {
     (code) => !RETIRED_CHANGE_FORM_CODES.has(code) && !PRODUCT_RND_ONLY_FORM_CODES.has(code),
   );
 }
+
+const CHANGE_SCOPE_ALIASES: Record<string, ChangeType> = {
+  process_step: 'process',
+  oven_temperature: 'process',
+  fan_parameter: 'process',
+  other_process_parameter: 'process',
+};
+
+/** Merge per-scope default form codes into a deduplicated list (preserves first-seen order). Accepts alias scopes via CHANGE_SCOPE_ALIASES. */
+export function getDefaultFormCodesForChangeScopes(scopes: string[]): string[] {
+  const normalized = scopes.map((scope) => CHANGE_SCOPE_ALIASES[scope] ?? scope);
+  return Array.from(
+    new Set(normalized.flatMap((scope) => getDefaultFormCodesForChangeType(scope))),
+  );
+}

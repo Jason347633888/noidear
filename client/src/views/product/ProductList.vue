@@ -35,9 +35,16 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="130" fixed="right">
+        <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openEditDialog(row)">编辑</el-button>
+            <el-button
+              link
+              type="primary"
+              data-test="product-detail"
+              @click="openDetail(row)"
+            >
+              查看/详情
+            </el-button>
             <el-button link type="warning" @click="handleArchive(row)">归档</el-button>
           </template>
         </el-table-column>
@@ -45,50 +52,14 @@
     </el-card>
 
     <LegacyProductDrawer v-model="legacyDrawerVisible" @created="loadList" />
-
-    <!-- 编辑产品对话框 -->
-    <el-dialog
-      v-model="dialogVisible"
-      title="编辑产品"
-      width="520px"
-      :close-on-click-modal="false"
-    >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="formRules"
-        label-width="100px"
-      >
-        <el-form-item label="产品编号" prop="code">
-          <el-input v-model="form.code" disabled placeholder="例如：PRD-001" />
-        </el-form-item>
-        <el-form-item label="产品名称" prop="name">
-          <el-input v-model="form.name" placeholder="请输入产品名称" />
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-select v-model="form.status" placeholder="请选择" style="width: 100%">
-            <el-option label="在产" value="active" />
-            <el-option label="停产" value="inactive" />
-            <el-option label="淘汰" value="discontinued" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="handleSubmit">
-          保存修改
-        </el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
-import type { FormInstance, FormRules } from 'element-plus';
 import {
   productApi,
   type Product,
@@ -104,25 +75,6 @@ const list = ref<Product[]>([]);
 const loading = ref(false);
 const legacyDrawerVisible = ref(false);
 
-// ── Dialog ────────────────────────────────────────────────────────────────────
-
-const dialogVisible = ref(false);
-const submitting = ref(false);
-const editingId = ref<string | null>(null);
-const formRef = ref<FormInstance>();
-
-const form = reactive({
-  code: '',
-  name: '',
-  status: 'active',
-});
-
-const formRules: FormRules = {
-  code: [{ required: true, message: '请输入产品编号', trigger: 'blur' }],
-  name: [{ required: true, message: '请输入产品名称', trigger: 'blur' }],
-  status: [{ required: true, message: '请选择状态', trigger: 'change' }],
-};
-
 // ── Data loading ──────────────────────────────────────────────────────────────
 
 async function loadList() {
@@ -137,37 +89,10 @@ async function loadList() {
   }
 }
 
-// ── Edit ──────────────────────────────────────────────────────────────────────
+// ── Detail navigation ────────────────────────────────────────────────────────
 
-function openEditDialog(row: Product) {
-  editingId.value = row.id;
-  form.code = row.code;
-  form.name = row.name;
-  form.status = row.status;
-  dialogVisible.value = true;
-}
-
-async function handleSubmit() {
-  const valid = await formRef.value?.validate().catch(() => false);
-  if (!valid) return;
-  submitting.value = true;
-  try {
-    const payload = {
-      code: form.code,
-      name: form.name,
-      status: form.status,
-    };
-    if (editingId.value) {
-      await productApi.update(editingId.value, payload);
-      ElMessage.success('修改成功');
-    }
-    dialogVisible.value = false;
-    await loadList();
-  } catch {
-    ElMessage.error('修改失败，请重试');
-  } finally {
-    submitting.value = false;
-  }
+function openDetail(row: Product) {
+  router.push(`/products/${row.id}`);
 }
 
 // ── Archive ───────────────────────────────────────────────────────────────────

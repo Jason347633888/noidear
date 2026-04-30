@@ -17,7 +17,7 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('element-plus', () => ({
-  ElMessage: { error: vi.fn() },
+  ElMessage: { error: vi.fn(), warning: vi.fn() },
 }));
 
 const stubs = {
@@ -29,6 +29,7 @@ const stubs = {
   'el-table-column': { template: '<div />' },
   'el-tag': { template: '<span><slot /></span>' },
   'el-pagination': { template: '<div />', props: ['currentPage', 'pageSize', 'pageSizes', 'total', 'layout'] },
+  'el-empty': { template: '<div class="el-empty">{{ description }}</div>', props: ['description'] },
 };
 
 import SystemFileLibrary from '../SystemFileLibrary.vue';
@@ -42,39 +43,53 @@ describe('SystemFileLibrary', () => {
     mockListDocuments.mockResolvedValue({ list: [], total: 0, page: 1, limit: 50 });
   });
 
-  it('loads documents on mount', async () => {
-    mount(SystemFileLibrary, mountOptions);
+  it('does not load documents until a folder is selected', async () => {
+    const wrapper = mount(SystemFileLibrary, mountOptions);
     await flushPromises();
+    expect(mockListDocuments).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain('请选择左侧文件夹查看文件');
+  });
+
+  it('loads documents after a folder is selected', async () => {
+    const wrapper = mount(SystemFileLibrary, mountOptions);
+    await flushPromises();
+    await (wrapper.vm as any).selectFolder('01');
     expect(mockListDocuments).toHaveBeenCalled();
   });
 
-  it('initializes external-file filter from route issue before fetching', async () => {
+  it('initializes external-file filter from route issue without auto-fetching', async () => {
     mockRoute = { query: { issue: 'expiringExternalFiles' } };
 
-    mount(SystemFileLibrary, mountOptions);
+    const wrapper = mount(SystemFileLibrary, mountOptions);
     await flushPromises();
+    expect(mockListDocuments).not.toHaveBeenCalled();
 
+    await (wrapper.vm as any).selectFolder('06');
     expect(mockListDocuments).toHaveBeenCalledWith(expect.objectContaining({ documentType: 'EXTERNAL_FILE' }));
   });
 
-  it('initializes due-for-review status filter from route issue before fetching', async () => {
+  it('initializes due-for-review status filter from route issue without auto-fetching', async () => {
     mockRoute = { query: { issue: 'dueForReview' } };
 
-    mount(SystemFileLibrary, mountOptions);
+    const wrapper = mount(SystemFileLibrary, mountOptions);
     await flushPromises();
+    expect(mockListDocuments).not.toHaveBeenCalled();
 
+    await (wrapper.vm as any).selectFolder('01');
     expect(mockListDocuments).toHaveBeenCalledWith(expect.objectContaining({
       status: 'effective',
       dueWithinDays: 30,
     }));
   });
 
-  it('initializes missing-metadata issue filter from route issue before fetching', async () => {
+  it('initializes missing-metadata issue filter from route issue without auto-fetching', async () => {
     mockRoute = { query: { issue: 'missingMetadata' } };
 
-    mount(SystemFileLibrary, mountOptions);
+    const wrapper = mount(SystemFileLibrary, mountOptions);
     await flushPromises();
+    expect(mockListDocuments).not.toHaveBeenCalled();
 
+    await (wrapper.vm as any).selectFolder('01');
     expect(mockListDocuments).toHaveBeenCalledWith(expect.objectContaining({ issue: 'missingMetadata' }));
   });
 
@@ -88,6 +103,7 @@ describe('SystemFileLibrary', () => {
   it('loads the selected page', async () => {
     const wrapper = mount(SystemFileLibrary, mountOptions);
     await flushPromises();
+    await (wrapper.vm as any).selectFolder('01');
     await (wrapper.vm as any).handlePageChange(2);
     expect(mockListDocuments).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2, limit: 50 }));
   });
@@ -95,6 +111,7 @@ describe('SystemFileLibrary', () => {
   it('resets to the first page when page size changes', async () => {
     const wrapper = mount(SystemFileLibrary, mountOptions);
     await flushPromises();
+    await (wrapper.vm as any).selectFolder('01');
     await (wrapper.vm as any).handlePageChange(2);
     await (wrapper.vm as any).handlePageSizeChange(100);
     expect(mockListDocuments).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, limit: 100 }));
@@ -119,6 +136,8 @@ describe('SystemFileLibrary', () => {
     });
 
     const wrapper = mount(SystemFileLibrary, mountOptions);
+    await flushPromises();
+    await (wrapper.vm as any).selectFolder('01');
     await flushPromises();
 
     expect(wrapper.text()).toContain('质量手册');

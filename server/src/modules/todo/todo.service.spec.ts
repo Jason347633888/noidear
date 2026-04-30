@@ -63,6 +63,16 @@ describe('TodoService', () => {
       expect(result.items[0].actionRoute).toBe('/documents/business-links/link1');
     });
 
+    it('routes change_execution_failed todos to product-by-plan redirect', async () => {
+      mockPrisma.todoTask.findMany.mockResolvedValue([
+        makeTodo({ type: 'change_execution_failed', relatedId: 'plan-99' }),
+      ]);
+      mockPrisma.todoTask.count.mockResolvedValue(1);
+
+      const result = await service.findAll('user1', { status: 'all', type: 'all', page: 1, limit: 20 });
+      expect(result.items[0].actionRoute).toBe('/products/by-plan/plan-99');
+    });
+
     it('sets hasMore true when more pages exist', async () => {
       mockPrisma.todoTask.findMany.mockResolvedValue(new Array(5).fill(makeTodo()));
       mockPrisma.todoTask.count.mockResolvedValue(10);

@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -20,17 +20,57 @@ export class ChangeEventService {
     @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {}
 
+  /**
+   * Backwards-compatible facade. Task 4 split this into two phases:
+   * 1. {@link createDraftEvent} writes the ChangeEvent + relations + default form tasks.
+   * 2. {@link submitForApproval} kicks off the unified approval workflow.
+   *
+   * The product-process-change adapter (Task 4) needs to insert validation
+   * between (1) and (2). Existing callers (controller / legacy tests) can still
+   * use `create()` to do both in one go.
+   */
   async create(dto: CreateChangeEventDto, userId: string) {
+    const changeEvent = await this.createDraftEvent(dto, userId);
+    // Legacy callers (controller / older tests) expect best-effort approval
+    // startup — they should not crash if the unified approval definition is
+    // missing. The new ProductProcessChangeService path calls
+    // submitForApproval directly and DOES want the error to surface so its
+    // outer transaction rolls back.
+    try {
+      await this.submitForApproval(changeEvent.id, userId);
+    } catch (error) {
+      this.logger.warn(
+        'Approval engine skipped (no definition or error)',
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+    const result = await this.findOne(changeEvent.id);
+    if (!result) {
+      throw new InternalServerErrorException('刚创建的变更事件读取失败');
+    }
+    return result;
+  }
+
+  /**
+   * Phase 1 of change-event creation: persist the ChangeEvent record together
+   * with its relations and default form tasks in a single transaction. Does
+   * NOT start the approval workflow — see {@link submitForApproval}.
+   */
+  async createDraftEvent(
+    dto: CreateChangeEventDto,
+    userId: string,
+    tx?: Prisma.TransactionClient,
+    options?: { scopes?: string[] },
+  ) {
     // Validate relations BEFORE the transaction (read-only checks)
     await this.relationService.validateRelations(dto.relations ?? []);
 
     const year = new Date().getFullYear();
 
-    // Atomic: ChangeEvent + relations + form tasks all in one transaction
-    const changeEvent = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const count = await tx.changeEvent.count();
+    const run = async (db: Prisma.TransactionClient) => {
+      const count = await db.changeEvent.count();
       const change_no = `CE-${year}-${String(count + 1).padStart(4, '0')}`;
-      const created = await tx.changeEvent.create({
+      const created = await db.changeEvent.create({
         data: {
           company_id: '1',
           change_no,
@@ -43,26 +83,54 @@ export class ChangeEventService {
         },
       });
 
-      await this.relationService.createRelations(created.id, dto.relations ?? [], tx);
-      await this.formTaskService.generateDefaultTasks(created.id, dto.change_type, tx);
+      await this.relationService.createRelations(created.id, dto.relations ?? [], db);
+      // Multi-scope plans (e.g. recipe + process + haccp) must NOT collapse
+      // into a single change_type — the per-scope union of form codes is
+      // what the user actually needs to fill.
+      if (options?.scopes && options.scopes.length > 0) {
+        await this.formTaskService.generateDefaultTasksForScopes(created.id, options.scopes, db);
+      } else {
+        await this.formTaskService.generateDefaultTasks(created.id, dto.change_type, db);
+      }
 
       return created;
-    });
+    };
 
-    try {
-      await this.approvalEngine?.startApproval({
-        resourceType: 'change_event',
-        resourceId: changeEvent.id,
-        resourceStep: 'submit',
-        triggerKey: 'submit',
-        title: `变更事件审批：${changeEvent.change_no}`,
-        createdById: userId,
-      });
-    } catch (error) {
-      this.logger.warn('Approval engine skipped (no definition or error)', error instanceof Error ? error.message : String(error));
+    if (tx) {
+      return run(tx);
     }
+    return this.prisma.$transaction(run);
+  }
 
-    return this.findOne(changeEvent.id);
+  /**
+   * Phase 2 of change-event creation: hand off to the unified approval engine.
+   * Safe to call from inside an outer transaction; the engine itself runs its
+   * own transactional logic.
+   */
+  async submitForApproval(changeEventId: string, userId: string, tx?: Prisma.TransactionClient) {
+    const db = tx ?? this.prisma;
+    const changeEvent = await db.changeEvent.findUnique({ where: { id: changeEventId } });
+    if (!changeEvent) {
+      throw new Error(`ChangeEvent ${changeEventId} not found`);
+    }
+    // NOTE: ApprovalEngineService.startApproval can run inside an outer tx
+    // when one is forwarded via `input.tx`; otherwise it owns its own
+    // transaction. We deliberately do NOT swallow its errors here — if
+    // approval startup fails after the plan was flipped to `pending_approval`,
+    // callers (e.g. ProductProcessChangeService) rely on the throw to roll
+    // back their outer transaction so we never end up with a plan in
+    // `pending_approval` whose approval was never created. Legacy
+    // best-effort semantics live in `create()`.
+    await this.approvalEngine?.startApproval({
+      resourceType: 'change_event',
+      resourceId: changeEvent.id,
+      resourceStep: 'submit',
+      triggerKey: 'approve_change',
+      title: `变更事件审批：${changeEvent.change_no}`,
+      createdById: userId,
+      tx,
+    });
+    return changeEvent;
   }
 
   async findAll() {
