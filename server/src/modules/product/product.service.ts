@@ -135,6 +135,65 @@ export class ProductService {
     }
   }
 
+  async getWorkbench(id: string) {
+    const product = await this.findOne(id);
+
+    const [currentRecipe, archivedRecipes, processSteps, archivedProcessSteps, activePlan] =
+      await Promise.all([
+        this.prisma.recipe.findFirst({
+          where: { product_id: id, company_id: '1', status: 'active' },
+          include: { lines: true },
+          orderBy: { version: 'desc' },
+        }),
+        this.prisma.recipe.findMany({
+          where: { product_id: id, company_id: '1', status: 'archived' },
+          orderBy: { version: 'desc' },
+        }),
+        this.prisma.processStep.findMany({
+          where: { product_id: id, company_id: '1', deleted_at: null },
+          orderBy: { step_no: 'asc' },
+        }),
+        this.prisma.processStep.findMany({
+          where: { product_id: id, company_id: '1', deleted_at: { not: null } },
+          orderBy: { deleted_at: 'desc' },
+        }),
+        this.prisma.productProcessChangePlan.findFirst({
+          where: {
+            product_id: id,
+            company_id: '1',
+            status: { in: ['draft', 'pending_approval', 'approved_executing', 'execution_failed'] },
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+      ]);
+
+    const recipeChangeIds = [currentRecipe, ...archivedRecipes]
+      .map((recipe) => recipe?.changeEventId)
+      .filter((value): value is string => Boolean(value));
+    const stepChangeIds = [...processSteps, ...archivedProcessSteps]
+      .map((step) => step.changeEventId)
+      .filter((value): value is string => Boolean(value));
+    const planChangeIds = activePlan ? [activePlan.changeEventId] : [];
+    const allIds = Array.from(new Set([...recipeChangeIds, ...stepChangeIds, ...planChangeIds]));
+
+    const relatedChanges = allIds.length
+      ? await this.prisma.changeEvent.findMany({
+          where: { id: { in: allIds } },
+          orderBy: { created_at: 'desc' },
+        })
+      : [];
+
+    return {
+      product,
+      currentRecipe,
+      archivedRecipes,
+      processSteps,
+      archivedProcessSteps,
+      activePlan,
+      relatedChanges,
+    };
+  }
+
   async update(id: string, dto: UpdateProductDto) {
     await this.findOne(id);
     return this.prisma.product.update({

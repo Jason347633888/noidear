@@ -69,6 +69,15 @@ describe('ProductList archive UX', () => {
     expect(wrapper.text()).not.toContain('不可撤销');
   });
 
+  it('opens product detail instead of editing recipe or process directly', async () => {
+    const wrapper = mountProductList();
+    await flushPromises();
+    const btn = wrapper.find('[data-test="product-detail"]');
+    expect(btn.exists()).toBe(true);
+    await btn.trigger('click');
+    expect(mockPush).toHaveBeenCalledWith('/products/prod-1');
+  });
+
   it('archives a product and reloads the list', async () => {
     const { ElMessageBox, ElMessage } = await import('element-plus');
     (ElMessageBox.confirm as any).mockResolvedValue(true);

@@ -832,6 +832,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/product/ProductList.vue'),
         meta: { title: '产品目录' },
       },
+      {
+        path: 'products/:id',
+        name: 'ProductDetail',
+        component: () => import('@/views/product/ProductDetail.vue'),
+        meta: { title: '产品详情' },
+      },
       // 配方管理 / 工序步骤管理已合并至产品信息页面，旧路由跳转到产品列表
       {
         path: 'recipes',

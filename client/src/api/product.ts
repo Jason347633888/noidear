@@ -53,6 +53,16 @@ export interface CreateProductPayload {
   status?: string;
 }
 
+export interface ProductWorkbench {
+  product: Product;
+  currentRecipe: Record<string, unknown> | null;
+  archivedRecipes: Array<Record<string, unknown>>;
+  processSteps: Array<Record<string, unknown>>;
+  archivedProcessSteps: Array<Record<string, unknown>>;
+  activePlan: Record<string, unknown> | null;
+  relatedChanges: Array<Record<string, unknown>>;
+}
+
 // =========================================================================
 // Display helpers
 // =========================================================================
@@ -86,6 +96,10 @@ export const productApi = {
 
   getOne(id: string) {
     return request.get<Product>(`/products/${id}`);
+  },
+
+  getWorkbench(id: string) {
+    return request.get<ProductWorkbench>(`/products/${id}/workbench`);
   },
 
   create(data: CreateProductPayload) {
