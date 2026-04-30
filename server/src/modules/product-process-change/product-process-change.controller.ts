@@ -27,4 +27,12 @@ export class ProductProcessChangeController {
   ) {
     return this.service.submitForApproval(planId, req.user.id);
   }
+
+  @Post('/product-process-changes/:planId/retry')
+  retry(
+    @Param('planId') planId: string,
+    @Request() req: { user: { id: string } },
+  ) {
+    return this.service.retryFailed(planId, req.user.id);
+  }
 }

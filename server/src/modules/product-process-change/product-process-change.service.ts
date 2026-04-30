@@ -151,6 +151,22 @@ export class ProductProcessChangeService {
     });
   }
 
+  async retryFailed(planId: string, actorId: string) {
+    const plan = await this.prisma.$transaction(async (tx) => {
+      const found = await tx.productProcessChangePlan.findUnique({ where: { id: planId } });
+      if (!found) throw new NotFoundException('产品工艺变更不存在');
+      if (found.status !== 'execution_failed') {
+        throw new BadRequestException('仅失败状态的变更可重试');
+      }
+      return tx.productProcessChangePlan.update({
+        where: { id: planId },
+        data: { status: 'draft', executionError: null, lockedAt: null },
+      });
+    });
+    await this.todoBridge.closeFailureTodo(planId, actorId);
+    return plan;
+  }
+
   /**
    * Validates the plan's payloadJson against current authoritative data.
    * Designed to be reused by Task 5's `applyApprovedChange` flow.

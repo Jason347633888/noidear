@@ -169,6 +169,49 @@ describe('ProductProcessChangeService', () => {
     expect(approvalEngine.startApproval).not.toHaveBeenCalled();
   });
 
+  describe('retryFailed', () => {
+    beforeEach(() => {
+      todoBridge.closeFailureTodo.mockReset();
+    });
+
+    it('resets execution_failed plan to draft and closes the failure todo', async () => {
+      prisma.$transaction.mockImplementation(async (cb: any) => cb(tx));
+      tx.productProcessChangePlan.findUnique.mockResolvedValue({
+        id: 'plan-1',
+        status: 'execution_failed',
+      });
+      tx.productProcessChangePlan.update.mockResolvedValue({ id: 'plan-1', status: 'draft' });
+
+      const service = createService();
+      await service.retryFailed('plan-1', 'user-2');
+
+      expect(tx.productProcessChangePlan.update).toHaveBeenCalledWith({
+        where: { id: 'plan-1' },
+        data: { status: 'draft', executionError: null, lockedAt: null },
+      });
+      expect(todoBridge.closeFailureTodo).toHaveBeenCalledWith('plan-1', 'user-2');
+    });
+
+    it('rejects retry when plan is not in execution_failed', async () => {
+      prisma.$transaction.mockImplementation(async (cb: any) => cb(tx));
+      tx.productProcessChangePlan.findUnique.mockResolvedValue({
+        id: 'plan-1',
+        status: 'executed',
+      });
+      const service = createService();
+      await expect(service.retryFailed('plan-1', 'u1')).rejects.toThrow('仅失败状态的变更可重试');
+      expect(todoBridge.closeFailureTodo).not.toHaveBeenCalled();
+    });
+
+    it('rejects retry when plan does not exist', async () => {
+      prisma.$transaction.mockImplementation(async (cb: any) => cb(tx));
+      tx.productProcessChangePlan.findUnique.mockResolvedValue(null);
+      const service = createService();
+      await expect(service.retryFailed('plan-x', 'u1')).rejects.toThrow('产品工艺变更不存在');
+      expect(todoBridge.closeFailureTodo).not.toHaveBeenCalled();
+    });
+  });
+
   it('createDraft persists plan linked to a freshly created ChangeEvent', async () => {
     prisma.productProcessChangePlan.findFirst.mockResolvedValue(null);
     prisma.product.findFirst.mockResolvedValue({ id: 'prod-1', name: '黄油饼干', company_id: '1', deleted_at: null });
