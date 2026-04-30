@@ -54,7 +54,7 @@ export class ChangeEventService {
         resourceType: 'change_event',
         resourceId: changeEvent.id,
         resourceStep: 'submit',
-        triggerKey: 'submit',
+        triggerKey: 'approve_change',
         title: `变更事件审批：${changeEvent.change_no}`,
         createdById: userId,
       });

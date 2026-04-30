@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import { getDefaultFormCodesForChangeType } from './change-event-default-form-rules';
+import { getDefaultFormCodesForChangeType, getDefaultFormCodesForChangeScopes } from './change-event-default-form-rules';
 import { ChangeEventFormTaskService } from './change-event-form-task.service';
 
 describe('change event default form rules', () => {
@@ -29,6 +29,20 @@ describe('change event default form rules', () => {
   it('returns empty array for document and record_form change types', () => {
     expect(getDefaultFormCodesForChangeType('document')).toEqual([]);
     expect(getDefaultFormCodesForChangeType('record_form')).toEqual([]);
+  });
+
+  it('merges and deduplicates default form codes across multiple scopes', () => {
+    expect(getDefaultFormCodesForChangeScopes(['recipe', 'process', 'haccp'])).toEqual([
+      'GRSS-KF-JL-07',
+      'GRSS-KF-JL-08',
+      'GRSS-PZ-JL-22',
+    ]);
+  });
+
+  it('normalizes process aliases when merging scopes', () => {
+    expect(
+      getDefaultFormCodesForChangeScopes(['process_step', 'oven_temperature', 'fan_parameter', 'other_process_parameter']),
+    ).toEqual(['GRSS-KF-JL-08', 'GRSS-PZ-JL-22']);
   });
 });
 

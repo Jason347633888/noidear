@@ -62,5 +62,11 @@ describe('ChangeEventService', () => {
       { targetType: 'recipe', targetId: 'recipe1', targetLabel: '蛋液配方' },
     ], prisma);
     expect(formTasks.generateDefaultTasks).toHaveBeenCalledWith('change1', 'recipe', prisma);
+    expect(approvalEngine.startApproval).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resourceType: 'change_event',
+        triggerKey: 'approve_change',
+      }),
+    );
   });
 });

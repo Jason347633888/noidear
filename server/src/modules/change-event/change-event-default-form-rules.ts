@@ -38,3 +38,17 @@ export function getDefaultFormCodesForChangeType(changeType: string): string[] {
     (code) => !RETIRED_CHANGE_FORM_CODES.has(code) && !PRODUCT_RND_ONLY_FORM_CODES.has(code),
   );
 }
+
+export function getDefaultFormCodesForChangeScopes(scopes: string[]): string[] {
+  const normalized = scopes.map((scope) => {
+    if (scope === 'process_step') return 'process';
+    if (scope === 'oven_temperature' || scope === 'fan_parameter' || scope === 'other_process_parameter') return 'process';
+    return scope;
+  });
+
+  return Array.from(
+    new Set(
+      normalized.flatMap((scope) => getDefaultFormCodesForChangeType(scope)),
+    ),
+  );
+}
