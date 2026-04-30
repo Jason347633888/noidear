@@ -151,6 +151,12 @@ export class ProductProcessChangeService {
     });
   }
 
+  /**
+   * 将 execution_failed 的 plan 复位为 draft，并关闭对应的 change_execution_failed 待办。
+   * 复位写入在 $transaction 内原子完成；待办关闭走独立连接（post-tx），属 best-effort，
+   * 失败仅记日志，不让 retry 接口对外返回 500（plan 状态已成功复位）。
+   * 幂等：并发两次 retry 都把状态写成 draft、关闭同一组待办，无副作用。
+   */
   async retryFailed(planId: string, actorId: string) {
     const plan = await this.prisma.$transaction(async (tx) => {
       const found = await tx.productProcessChangePlan.findUnique({ where: { id: planId } });
@@ -163,7 +169,15 @@ export class ProductProcessChangeService {
         data: { status: 'draft', executionError: null, lockedAt: null },
       });
     });
-    await this.todoBridge.closeFailureTodo(planId, actorId);
+    try {
+      await this.todoBridge.closeFailureTodo(planId, actorId);
+    } catch (err) {
+      this.logger.error(
+        `Failed to close change_execution_failed todo for plan ${planId}: ${
+          err instanceof Error ? err.message : err
+        }`,
+      );
+    }
     return plan;
   }
 
