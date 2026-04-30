@@ -659,6 +659,7 @@ const referenceHealthStatusText = (status: ReferenceHealthStatus): string => {
   const map: Record<ReferenceHealthStatus, string> = {
     healthy: '正常',
     dangling: '悬空',
+    unimplemented: '未落地',
     invalid: '无效',
     conflict: '冲突',
     superseded: '被替代',
@@ -676,6 +677,7 @@ const referenceHealthActionText = (status: ReferenceHealthStatus): string => {
   const map: Record<ReferenceHealthStatus, string> = {
     healthy: '查看',
     dangling: '定位引用',
+    unimplemented: '落地引用',
     invalid: '查看目标',
     conflict: '处理冲突',
     superseded: '查看新版',

@@ -517,7 +517,7 @@ export class RecordService {
     batchNumber: string,
     batchType: string,
   ): Promise<any> {
-    if (batchType === 'production') {
+    if (batchType === 'production' || batchType === 'finished_goods') {
       const batch = await this.prisma.productionBatch.findUnique({
         where: { batchNumber },
       });
@@ -528,19 +528,6 @@ export class RecordService {
           relatedBatchId: batch.id,
           relatedBatchNumber: batch.batchNumber,
           productionBatchId: batch.id,
-        };
-      }
-    } else if (batchType === 'finished_goods') {
-      const batch = await this.prisma.finishedGoodsBatch.findUnique({
-        where: { batchNumber },
-      });
-
-      if (batch) {
-        return {
-          relatedBatchType: 'finished_goods',
-          relatedBatchId: batch.id,
-          relatedBatchNumber: batch.batchNumber,
-          finishedGoodsBatchId: batch.id,
         };
       }
     }

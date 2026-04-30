@@ -31,8 +31,7 @@ const nodeTypeLabel = (type: string): string => {
   const map: Record<string, string> = {
     materialLot: '原料批次',
     ingredientUsage: '投料',
-    productionBatch: '生产批次',
-    finishedGoodsBatch: '成品批次',
+    productionBatch: '产品批次',
     deliveryNote: '发货单',
   };
   return map[type] ?? type;
@@ -42,8 +41,7 @@ const nodeTypeTag = (type: string) => {
   const map: Record<string, string> = {
     materialLot: '',
     ingredientUsage: 'info',
-    productionBatch: 'warning',
-    finishedGoodsBatch: 'success',
+    productionBatch: 'success',
     deliveryNote: 'danger',
   };
   return map[type] ?? '';

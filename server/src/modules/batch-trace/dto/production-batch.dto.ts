@@ -7,6 +7,7 @@ import {
   IsDate,
   IsNumber,
   IsEnum,
+  IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -44,6 +45,49 @@ export class UpdateProductionBatchDto {
   @IsEnum(ProductionStatus)
   @IsOptional()
   status?: ProductionStatus;
+}
+
+export class ConfirmProductBatchDto {
+  @IsString()
+  @IsNotEmpty()
+  batchNumber!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  productId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  recipeId!: string;
+
+  @IsNumber()
+  @Min(0.000001)
+  actualQuantity!: number;
+
+  @IsString()
+  @IsNotEmpty()
+  unit!: string;
+
+  @IsDateString()
+  productionDate!: string;
+
+  @IsDateString()
+  packagedAt!: string;
+
+  @IsDateString()
+  warehousedAt!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  packageMachine!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  teamId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  shiftTypeId!: string;
 }
 
 export class QueryProductionBatchDto {

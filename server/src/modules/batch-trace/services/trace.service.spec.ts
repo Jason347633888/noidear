@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { TraceService } from './trace.service';
 
+// TASK-9: FinishedGoodsBatch removed — tests updated to use ProductionBatch directly
 describe('TraceService', () => {
   let service: TraceService;
   let prisma: PrismaService;
@@ -13,7 +14,7 @@ describe('TraceService', () => {
         {
           provide: PrismaService,
           useValue: {
-            finishedGoodsBatch: {
+            productionBatch: {
               findUnique: jest.fn(),
             },
             materialBatch: {
@@ -33,52 +34,46 @@ describe('TraceService', () => {
   });
 
   describe('backwardTrace', () => {
-    it('should trace finished goods to raw materials', async () => {
-      const mockFinishedGoods = {
-        id: 'fg-001',
-        batchNumber: 'FG-001',
-        productionBatch: {
-          id: 'prod-001',
-          batchNumber: 'PROD-001',
-          materialUsages: [
-            {
-              materialBatch: {
-                id: 'mat-001',
-                batchNumber: 'MAT-001',
-                material: { name: '面粉' },
-                supplier: { name: '供应商A' },
-              },
-              quantity: 50,
+    it('should trace production batch to raw materials', async () => {
+      const mockProductionBatch = {
+        id: 'prod-001',
+        batchNumber: 'PROD-001',
+        materialUsages: [
+          {
+            materialBatch: {
+              id: 'mat-001',
+              batchNumber: 'MAT-001',
+              material: { name: '面粉' },
+              supplier: { name: '供应商A' },
             },
-          ],
-        },
+            quantity: 50,
+          },
+        ],
       };
 
-      jest.spyOn(prisma.finishedGoodsBatch, 'findUnique').mockResolvedValue(mockFinishedGoods as any);
+      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockProductionBatch as any);
 
-      const result = await service.backwardTrace('fg-001');
+      const result = await service.backwardTrace('prod-001');
 
-      expect(result.finishedGoods.batchNumber).toBe('FG-001');
       expect(result.productionBatch.batchNumber).toBe('PROD-001');
       expect(result.rawMaterials).toHaveLength(1);
       expect(result.rawMaterials[0].batchNumber).toBe('MAT-001');
     });
+
+    it('should throw error if production batch not found', async () => {
+      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(null);
+
+      await expect(service.backwardTrace('prod-999')).rejects.toThrow('产品批次不存在');
+    });
   });
 
   describe('forwardTrace', () => {
-    it('should trace raw material to finished goods', async () => {
+    it('should trace raw material to production batches', async () => {
       const mockUsages = [
         {
           productionBatch: {
             id: 'prod-001',
             batchNumber: 'PROD-001',
-            finishedGoods: [
-              {
-                id: 'fg-001',
-                batchNumber: 'FG-001',
-                shippedTo: '客户A',
-              },
-            ],
           },
           quantity: 50,
         },
@@ -94,8 +89,6 @@ describe('TraceService', () => {
 
       expect(result.productionBatches).toHaveLength(1);
       expect(result.productionBatches[0].batchNumber).toBe('PROD-001');
-      expect(result.finishedGoods).toHaveLength(1);
-      expect(result.finishedGoods[0].batchNumber).toBe('FG-001');
     });
   });
 });

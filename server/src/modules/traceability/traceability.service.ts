@@ -87,7 +87,7 @@ const MATERIAL_LOT_INCLUDE = {
   batchMaterialUsages: {
     include: {
       productionBatch: {
-        include: { finishedGoods: true, delivery_notes: true },
+        include: { delivery_notes: true },
       },
     },
   },
