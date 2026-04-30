@@ -113,6 +113,26 @@ export interface ChangeEventSummary {
   created_at?: string;
 }
 
+export interface CcpPointSummary {
+  id: string;
+  ccp_no: string;
+  hazard_type: string;
+  control_measure: string;
+  critical_limit: string;
+  cl_min?: string | number | null;
+  cl_max?: string | number | null;
+  cl_unit?: string | null;
+  process_step_id: string;
+  deleted_at?: string | null;
+}
+
+export interface FailureTodoSummary {
+  id: string;
+  relatedId: string;       // plan id
+  description: string;     // error message
+  createdAt: string;
+}
+
 export interface ProductWorkbench {
   product: Product;
   currentRecipe: RecipeSummary | null;
@@ -120,6 +140,9 @@ export interface ProductWorkbench {
   processSteps: ProcessStepSummary[];
   archivedProcessSteps: ProcessStepSummary[];
   activePlan: ProductProcessChangePlanSummary | null;
+  ccpPoints: CcpPointSummary[];
+  archivedCcpPoints: CcpPointSummary[];
+  failureTodos: FailureTodoSummary[];
   relatedChanges: ChangeEventSummary[];
 }
 

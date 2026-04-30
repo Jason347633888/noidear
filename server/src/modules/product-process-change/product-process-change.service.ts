@@ -181,6 +181,14 @@ export class ProductProcessChangeService {
     return plan;
   }
 
+  async getByPlanId(planId: string) {
+    const plan = await this.prisma.productProcessChangePlan.findUnique({
+      where: { id: planId },
+    });
+    if (!plan) throw new NotFoundException('产品工艺变更不存在');
+    return plan;
+  }
+
   /**
    * Validates the plan's payloadJson against current authoritative data.
    * Designed to be reused by Task 5's `applyApprovedChange` flow.

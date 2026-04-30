@@ -27,4 +27,16 @@ export const productProcessChangeApi = {
       `/product-process-changes/${planId}/submit`,
     );
   },
+
+  retry(planId: string) {
+    return request.post<ProductProcessChangePlan>(
+      `/product-process-changes/${planId}/retry`,
+    );
+  },
+
+  getByPlanId(planId: string) {
+    return request.get<ProductProcessChangePlan & { product_id?: string }>(
+      `/product-process-changes/${planId}`,
+    );
+  },
 };

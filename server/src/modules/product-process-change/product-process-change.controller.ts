@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ProductProcessChangeService } from './product-process-change.service';
 import { CreateProductProcessChangeDraftBodyDto } from './dto/product-process-change.dto';
@@ -34,5 +34,10 @@ export class ProductProcessChangeController {
     @Request() req: { user: { id: string } },
   ) {
     return this.service.retryFailed(planId, req.user.id);
+  }
+
+  @Get('/product-process-changes/:planId')
+  getByPlanId(@Param('planId') planId: string) {
+    return this.service.getByPlanId(planId);
   }
 }
