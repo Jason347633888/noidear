@@ -1225,7 +1225,7 @@ model StagingAreaStocktake {
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
 
-  @@unique([area_id, batchId, kind, work_date, shift_type_id])
+  @@unique([area_id, batchId, kind, work_date, shift_type_id], map: "stocktakes_shift_unique")
   @@index([area_id, work_date, shift_type_id])
   @@index([batchId])
   @@map("staging_area_stocktakes")
@@ -1243,7 +1243,7 @@ model MixingExecution {
   team_id        String?
   planned_weight Float?
   actual_weight  Float
-  status         MixingExecutionStatus @default(draft)
+  status         MixingExecutionStatus @default(confirmed)
   operatorId     String?
   confirmedAt    DateTime?
   note           String?
