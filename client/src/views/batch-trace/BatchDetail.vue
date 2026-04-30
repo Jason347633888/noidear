@@ -66,7 +66,7 @@
               :loading="confirmingAggregation"
               @click="handleConfirmAggregation"
             >确认归集</el-button>
-            <el-button size="small" type="primary" @click="showAggregationPanel = true">+ 归集配料执行</el-button>
+            <el-button size="small" type="primary" @click="openAggregationPanel">+ 归集配料执行</el-button>
           </div>
         </div>
       </template>
@@ -136,7 +136,10 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { productionBatchApi, materialUsageApi, batchMixingAggregationApi } from '@/api/batch';
 import { recipeApi, type RecipeLine } from '@/api/recipe';
+import { useUserStore } from '@/stores/user';
 import request from '@/api/request';
+
+const userStore = useUserStore();
 
 const route = useRoute();
 const router = useRouter();
@@ -183,12 +186,24 @@ const confirmAggregation = async () => {
   }
 };
 
+const openAggregationPanel = async () => {
+  showAggregationPanel.value = true;
+  try {
+    const res: any = await request.get('/mixing/executions', {
+      params: { productId: batch.value?.productId, status: 'confirmed' },
+    });
+    candidateMixingExecutions.value = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+  } catch {
+    ElMessage.error('加载候选配料执行失败');
+  }
+};
+
 const handleConfirmAggregation = async () => {
   confirmingAggregation.value = true;
   try {
     await batchMixingAggregationApi.confirm({
       productionBatchId: batch.value?.id,
-      confirmedBy: 'operator',
+      confirmedBy: userStore.user?.id ?? 'unknown',
     });
     ElMessage.success('归集已确认');
     await fetchBatch();
@@ -256,7 +271,7 @@ const handleAddUsage = async () => {
     ElMessage.success('物料添加成功');
     usageDialogVisible.value = false;
     resetUsageForm();
-    fetchUsages();
+    await fetchUsages();
   } catch (error) {
     ElMessage.error('物料添加失败');
   } finally {

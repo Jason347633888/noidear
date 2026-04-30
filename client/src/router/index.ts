@@ -420,7 +420,8 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'warehouse/staging-area',
         name: 'StagingArea',
-        redirect: '/production/workshop-staging',
+        component: () => import('@/views/warehouse/StagingArea.vue'),
+        meta: { title: '配料区库存与盘点' },
       },
       {
         path: 'mixing/workbench',

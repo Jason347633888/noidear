@@ -14,6 +14,12 @@
           <el-form-item :label="`配方明细${index + 1}`">
             <el-input v-model="line.recipeLineId" placeholder="配方明细ID" />
           </el-form-item>
+          <el-form-item label="物料ID">
+            <div style="display: flex; gap: 8px">
+              <el-input v-model="line.materialId" placeholder="物料ID（用于FIFO推荐）" />
+              <el-button size="small" @click="loadRecommendations(index)" :disabled="!form.areaId || !line.materialId">获取推荐</el-button>
+            </div>
+          </el-form-item>
           <el-form-item label="原辅料批次">
             <el-select v-model="line.materialBatchId" filterable placeholder="选择原辅料批次">
               <el-option
@@ -53,6 +59,16 @@ import { ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { mixingApi } from '@/api/mixing';
 
+interface MixingLine {
+  recipeLineId: string;
+  materialId: string;
+  materialBatchId: string;
+  actualQuantity: number;
+  manualOverride: boolean;
+  overrideReason?: string;
+  recommendedStocks?: any[];
+}
+
 const submitting = ref(false);
 
 const form = ref({
@@ -61,14 +77,7 @@ const form = ref({
   areaId: '',
   workDate: '',
   actualWeight: 0,
-  lines: [] as Array<{
-    recipeLineId: string;
-    materialBatchId: string;
-    actualQuantity: number;
-    manualOverride: boolean;
-    overrideReason?: string;
-    recommendedStocks?: any[];
-  }>,
+  lines: [] as MixingLine[],
 });
 
 const addLine = () => {
@@ -76,7 +85,7 @@ const addLine = () => {
     ...form.value,
     lines: [
       ...form.value.lines,
-      { recipeLineId: '', materialBatchId: '', actualQuantity: 0, manualOverride: false, recommendedStocks: [] },
+      { recipeLineId: '', materialId: '', materialBatchId: '', actualQuantity: 0, manualOverride: false, recommendedStocks: [] },
     ],
   };
 };
@@ -88,9 +97,38 @@ const removeLine = (index: number) => {
   };
 };
 
+const loadRecommendations = async (index: number) => {
+  const line = form.value.lines[index];
+  if (!form.value.areaId || !line.materialId) return;
+  try {
+    const res: any = await mixingApi.recommendMaterialBatches({
+      areaId: form.value.areaId,
+      materialId: line.materialId,
+      requiredQuantity: line.actualQuantity > 0 ? line.actualQuantity : 1,
+    });
+    const recommendations = res?.recommendations ?? res?.data?.recommendations ?? [];
+    form.value = {
+      ...form.value,
+      lines: form.value.lines.map((l, i) =>
+        i === index ? { ...l, recommendedStocks: recommendations } : l,
+      ),
+    };
+  } catch {
+    ElMessage.error('加载推荐批次失败');
+  }
+};
+
 const submitExecution = async () => {
   if (!form.value.recipeId || !form.value.productId || !form.value.areaId) {
     ElMessage.error('请选择产品、配方和配料区');
+    return;
+  }
+  if (!form.value.workDate) {
+    ElMessage.error('请选择工作日期');
+    return;
+  }
+  if (form.value.actualWeight <= 0) {
+    ElMessage.error('请填写实际配料重量');
     return;
   }
   if (form.value.lines.length === 0) {
