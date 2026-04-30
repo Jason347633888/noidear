@@ -2964,8 +2964,10 @@ model CCPPoint {
   records              CCPRecord[]
   created_at           DateTime    @default(now())
   updated_at           DateTime    @updatedAt
+  deleted_at           DateTime?
 
   @@unique([company_id, ccp_no])
+  @@index([company_id, deleted_at])
   @@map("ccp_points")
 }
 

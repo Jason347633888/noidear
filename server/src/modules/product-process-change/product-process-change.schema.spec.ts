@@ -7,4 +7,10 @@ describe('product process change schema', () => {
     expect(prisma.changeEventExecution).toBeDefined();
     expect(prisma.changeEventExecutionArtifact).toBeDefined();
   });
+
+  it('exposes CCPPoint.deleted_at', async () => {
+    const prisma = new PrismaClient();
+    const dummy = prisma.cCPPoint.findFirst({ select: { deleted_at: true } });
+    expect(dummy).toBeDefined();
+  });
 });
