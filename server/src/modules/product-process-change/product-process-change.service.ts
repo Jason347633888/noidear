@@ -208,4 +208,222 @@ export class ProductProcessChangeService {
       }
     }
   }
+
+  /**
+   * Applies an approved product-process change plan: archives the previous
+   * active recipe, creates a new active recipe and lines, replaces process
+   * steps when in scope, and records an execution + artifacts row.
+   *
+   * Runs ALL business writes inside the caller's `tx` so a thrown error rolls
+   * everything back atomically. The plan-level failure record is intentionally
+   * written through `this.prisma` (a separate connection, OUTSIDE the doomed
+   * tx) so the failure marker survives the rollback.
+   */
+  async applyApprovedChange(
+    changeEventId: string,
+    actorId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    const plan = await tx.productProcessChangePlan.findUnique({
+      where: { changeEventId },
+    });
+    if (!plan) return;
+    if (plan.status === 'executed') {
+      throw new BadRequestException('产品工艺变更已执行');
+    }
+
+    try {
+      await tx.productProcessChangePlan.update({
+        where: { id: plan.id },
+        data: { status: 'approved_executing' },
+      });
+
+      await this.validatePayload(plan, tx);
+
+      const scopes = Array.isArray(plan.scopes) ? (plan.scopes as string[]) : [];
+      const scopeSet = new Set(scopes);
+      const payload = (plan.payloadJson ?? {}) as ProductProcessChangePayload;
+      const artifacts: Prisma.ChangeEventExecutionArtifactCreateManyInput[] = [];
+
+      if (scopeSet.has('recipe')) {
+        await this.applyRecipeChange(plan, payload, changeEventId, tx, artifacts);
+      }
+
+      if (scopeSet.has('process') || scopeSet.has('process_step')) {
+        await this.applyProcessStepChange(plan, payload, changeEventId, tx, artifacts);
+      }
+
+      const execution = await tx.changeEventExecution.create({
+        data: {
+          company_id: plan.company_id,
+          changeEventId,
+          status: 'executed',
+          executedAt: new Date(),
+        },
+      });
+
+      if (artifacts.length > 0) {
+        await tx.changeEventExecutionArtifact.createMany({
+          data: artifacts.map((a) => ({ ...a, executionId: execution.id })),
+        });
+      }
+
+      await tx.productProcessChangePlan.update({
+        where: { id: plan.id },
+        data: {
+          status: 'executed',
+          executedAt: new Date(),
+          executionError: null,
+        },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'unknown';
+      // Recorded OUTSIDE the doomed tx so the failure marker survives rollback.
+      await this.prisma.productProcessChangePlan.update({
+        where: { id: plan.id },
+        data: {
+          status: 'execution_failed',
+          executionError: message,
+        },
+      });
+      throw err;
+    }
+  }
+
+  private async applyRecipeChange(
+    plan: { id: string; product_id: string; company_id: string },
+    payload: ProductProcessChangePayload,
+    changeEventId: string,
+    tx: Prisma.TransactionClient,
+    artifacts: Prisma.ChangeEventExecutionArtifactCreateManyInput[],
+  ): Promise<void> {
+    const recipeLines = payload.recipeLines ?? [];
+
+    const previousActive = await tx.recipe.findFirst({
+      where: { product_id: plan.product_id, status: 'active' },
+    });
+
+    await tx.recipe.updateMany({
+      where: { product_id: plan.product_id, status: 'active' },
+      data: { status: 'archived' },
+    });
+
+    const latest = await tx.recipe.findFirst({
+      where: { product_id: plan.product_id, company_id: plan.company_id },
+      orderBy: { version: 'desc' },
+    });
+    const nextVersion = (latest?.version ?? previousActive?.version ?? 0) + 1;
+
+    const areaIds = Array.from(new Set(recipeLines.map((l) => l.area_id!).filter(Boolean)));
+    const areas = await tx.workshopArea.findMany({
+      where: { id: { in: areaIds } },
+      select: { id: true, name: true },
+    });
+    const areaName = new Map(areas.map((a) => [a.id, a.name] as const));
+
+    const newRecipe = await tx.recipe.create({
+      data: {
+        company_id: plan.company_id,
+        product_id: plan.product_id,
+        version: nextVersion,
+        version_note: payload.versionNote ?? null,
+        status: 'active',
+        changeEventId,
+        lines: {
+          create: recipeLines.map((l) => ({
+            material_id: l.material_id!,
+            qty_per_batch: new Prisma.Decimal(l.qty_per_batch as any),
+            unit: l.unit!,
+            is_critical: !!l.is_critical,
+            notes: l.notes ?? null,
+            area_id: l.area_id ?? null,
+            area_name_snapshot: l.area_id ? areaName.get(l.area_id) ?? null : null,
+          })),
+        },
+      },
+    });
+
+    if (previousActive) {
+      artifacts.push({
+        executionId: '',
+        resourceType: 'recipe',
+        resourceId: previousActive.id,
+        action: 'archive',
+        beforeSnapshot: previousActive as unknown as Prisma.InputJsonValue,
+        afterSnapshot: Prisma.JsonNull,
+      });
+    }
+    artifacts.push({
+      executionId: '',
+      resourceType: 'recipe',
+      resourceId: newRecipe.id,
+      action: 'create',
+      beforeSnapshot: Prisma.JsonNull,
+      afterSnapshot: {
+        id: newRecipe.id,
+        version: newRecipe.version,
+        status: newRecipe.status,
+      } as unknown as Prisma.InputJsonValue,
+    });
+  }
+
+  private async applyProcessStepChange(
+    plan: { id: string; product_id: string; company_id: string },
+    payload: ProductProcessChangePayload,
+    changeEventId: string,
+    tx: Prisma.TransactionClient,
+    artifacts: Prisma.ChangeEventExecutionArtifactCreateManyInput[],
+  ): Promise<void> {
+    const steps = payload.processSteps ?? [];
+    if (steps.length === 0) return;
+
+    const existing = await tx.processStep.findMany({
+      where: { product_id: plan.product_id, deleted_at: null },
+    });
+
+    if (existing.length > 0) {
+      await tx.processStep.updateMany({
+        where: { product_id: plan.product_id, deleted_at: null },
+        data: { deleted_at: new Date() },
+      });
+      for (const old of existing) {
+        artifacts.push({
+          executionId: '',
+          resourceType: 'process_step',
+          resourceId: old.id,
+          action: 'archive',
+          beforeSnapshot: old as unknown as Prisma.InputJsonValue,
+          afterSnapshot: Prisma.JsonNull,
+        });
+      }
+    }
+
+    for (const step of steps) {
+      const created = await tx.processStep.create({
+        data: {
+          company_id: plan.company_id,
+          product_id: plan.product_id,
+          seq: step.step_no!,
+          step_no: step.step_no!,
+          step_name: step.step_name ?? step.name ?? '',
+          name: step.name ?? step.step_name ?? '',
+          description: step.description ?? null,
+          is_ccp: !!step.is_ccp,
+          changeEventId,
+        },
+      });
+      artifacts.push({
+        executionId: '',
+        resourceType: 'process_step',
+        resourceId: created.id,
+        action: 'create',
+        beforeSnapshot: Prisma.JsonNull,
+        afterSnapshot: {
+          id: created.id,
+          step_no: created.step_no,
+          name: created.name,
+        } as unknown as Prisma.InputJsonValue,
+      });
+    }
+  }
 }
