@@ -102,9 +102,19 @@ npm ci
 # 2. 启动基础服务与监控组件
 docker compose up -d postgres redis minio prometheus grafana alertmanager loki promtail
 
-# 3. 配置后端环境变量
-cp server/.env.example server/.env
-# 按需设置 DATABASE_URL、JWT_SECRET、Redis、MinIO 等配置
+# 3. 配置后端环境变量（匹配 docker-compose.yml 的本地账号和端口）
+cat > server/.env <<'EOF'
+DATABASE_URL="postgresql://noidear:noidear123@localhost:5432/document_system"
+JWT_SECRET="change-me-local-dev-secret-at-least-32-characters"
+JWT_EXPIRES_IN="7d"
+REDIS_URL="redis://localhost:6379"
+MINIO_ENDPOINT="localhost"
+MINIO_PORT=9000
+MINIO_USE_SSL=false
+MINIO_ACCESS_KEY="admin"
+MINIO_SECRET_KEY="noidear123"
+CORS_ORIGIN="http://localhost:5173"
+EOF
 
 # 4. 初始化 Prisma
 npm run prisma:generate
@@ -161,7 +171,7 @@ npm run build:server
 npm run build:client
 npm run build:mcp
 npm run verify
-npm run verify:full
+npm run typecheck:types
 
 # Prisma
 npm run prisma:generate
