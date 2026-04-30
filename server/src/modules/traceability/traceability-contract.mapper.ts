@@ -52,8 +52,8 @@ export function mapForwardTraceResult(materialBatch: any, permission: any): any 
     for (const fg of usage.productionBatch.finishedGoods ?? []) {
       rows.push({
         nodeId: fg.id,
-        nodeType: 'finishedGoodsBatch',
-        businessObject: 'FinishedGoodsBatch',
+        nodeType: 'productionBatch',
+        businessObject: 'ProductionBatch',
         label: fg.batch_no,
         batchNo: fg.batch_no,
         riskLevel: 'normal',

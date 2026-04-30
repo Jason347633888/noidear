@@ -18,6 +18,9 @@ describe('TraceabilityService', () => {
               findUnique: jest.fn(),
               findMany: jest.fn(),
             },
+            productionBatch: {
+              findUnique: jest.fn(),
+            },
             materialBatch: {
               findUnique: jest.fn(),
             },
@@ -173,6 +176,44 @@ describe('TraceabilityService', () => {
       const result = await service.traceForward(materialBatchId);
 
       expect(result.productionBatches).toEqual([]);
+    });
+  });
+
+  describe('traceProductionBatch', () => {
+    it('traces product batch to material batches through mixing aggregations', async () => {
+      const mockBatch = {
+        id: 'pb-1',
+        batchNumber: '20260430',
+        aggregations: [
+          {
+            mixingExecution: {
+              id: 'mix-1',
+              executionNo: 'MIX-20260430-0001',
+              area: null,
+              lines: [
+                {
+                  material: { name: '面粉' },
+                  materialBatch: { id: 'mb-1', batchNumber: 'MF20260401' },
+                },
+              ],
+            },
+          },
+        ],
+      };
+
+      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockBatch as any);
+
+      const result = await service.traceProductionBatch('pb-1');
+
+      expect(result.nodes.some((node) => node.label.includes('MF20260401'))).toBe(true);
+      expect(result.nodes.some((node) => node.type === 'productionBatch')).toBe(true);
+      expect(result.nodes.some((node) => node.type === 'mixingExecution')).toBe(true);
+    });
+
+    it('throws NotFoundException if production batch not found', async () => {
+      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(null);
+
+      await expect(service.traceProductionBatch('nonexistent')).rejects.toThrow(NotFoundException);
     });
   });
 

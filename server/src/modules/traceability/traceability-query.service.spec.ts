@@ -73,7 +73,7 @@ describe('TraceabilityQueryService contract', () => {
       'materialLot',
       'ingredientUsage',
       'productionBatch',
-      'finishedGoodsBatch',
+      'productionBatch',
       'deliveryNote',
     ]);
   });

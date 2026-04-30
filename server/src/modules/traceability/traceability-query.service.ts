@@ -139,7 +139,7 @@ export class TraceabilityQueryService {
 
         for (const fg of pb.finishedGoods as any[]) {
           rows.push({
-            nodeType: 'finishedGoodsBatch',
+            nodeType: 'productionBatch',
             nodeId: fg.id,
             label: fg.batch_no,
             batchNo: fg.batch_no,

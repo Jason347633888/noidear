@@ -8,7 +8,7 @@
             <el-select v-model="form.objectType" style="width: 100%">
               <el-option label="原料批次" value="materialLot" />
               <el-option label="生产批次" value="productionBatch" />
-              <el-option label="成品批次" value="finishedGoodsBatch" />
+              <el-option label="产品批次" value="productionBatch" />
               <el-option label="发货单" value="deliveryNote" />
             </el-select>
           </el-form-item>

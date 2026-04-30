@@ -35,7 +35,7 @@ describe('traceability contract mapper', () => {
       'materialLot',
       'ingredientUsage',
       'productionBatch',
-      'finishedGoodsBatch',
+      'productionBatch',
       'deliveryNote',
     ]);
     expect(result.graph.nodes).toHaveLength(5);
