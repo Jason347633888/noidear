@@ -211,7 +211,7 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     );
   });
 
-  it('refuses to re-apply an already executed plan', async () => {
+  it('idempotent on already executed plan: silent no-op so retries can complete', async () => {
     const tx = buildTx();
     const prisma = buildPrisma(tx);
     const plan = buildPlan({ status: 'executed' });
@@ -219,8 +219,11 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     prisma.productProcessChangePlan.findUnique.mockResolvedValue(plan);
 
     const service = new ProductProcessChangeService(prisma, changeEventService, todoBridge as any);
-    await expect(service.applyApprovedChange('change-1', 'approver-1', tx)).rejects.toThrow('产品工艺变更已执行');
+    await expect(
+      service.applyApprovedChange('change-1', 'approver-1', tx),
+    ).resolves.toBeUndefined();
     expect(tx.recipe.create).not.toHaveBeenCalled();
+    expect(tx.productProcessChangePlan.update).not.toHaveBeenCalled();
   });
 
   it('applies HACCP scope and creates CCPPoint with proper fields and artifact', async () => {

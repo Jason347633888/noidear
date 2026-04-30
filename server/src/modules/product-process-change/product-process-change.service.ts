@@ -348,9 +348,10 @@ export class ProductProcessChangeService {
       where: { changeEventId },
     });
     if (!plan) return;
-    if (plan.status === 'executed') {
-      throw new BadRequestException('产品工艺变更已执行');
-    }
+    // 幂等短路：apply 不再共享审批引擎事务后，可能出现"业务写入已 commit、审批引擎 commit 失败"
+    // 的窗口；用户重试审批时回调会再次进入这里。plan ↔ changeEvent 是 1:1，executed 状态意味着
+    // 本计划已经被同一次审批的回调应用过，直接返回让审批引擎继续标记 APPROVED 即可。
+    if (plan.status === 'executed') return;
 
     try {
       await this.prisma.$transaction(async (tx) => {
