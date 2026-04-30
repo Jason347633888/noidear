@@ -64,8 +64,13 @@ describe('ProductProcessChangeService', () => {
     });
   });
 
+  const todoBridge: any = {
+    createFailureTodo: jest.fn(),
+    closeFailureTodo: jest.fn(),
+  };
+
   function createService() {
-    return new ProductProcessChangeService(prisma, changeEventService);
+    return new ProductProcessChangeService(prisma, changeEventService, todoBridge);
   }
 
   it('rejects a second unfinished plan for the same product', async () => {

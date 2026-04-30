@@ -1,6 +1,11 @@
 import { ProductProcessChangeService } from './product-process-change.service';
 
 describe('ProductProcessChangeService.applyApprovedChange', () => {
+  const todoBridge = {
+    createFailureTodo: jest.fn(),
+    closeFailureTodo: jest.fn(),
+  };
+
   function buildTx(overrides: any = {}) {
     return {
       productProcessChangePlan: {
@@ -52,6 +57,9 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
       changeEventExecution: {
         upsert: jest.fn(),
       },
+      product: {
+        findUnique: jest.fn().mockResolvedValue({ name: '酸奶' }),
+      },
       $transaction: jest.fn(),
     };
   }
@@ -66,6 +74,7 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
       scopes: ['recipe'],
       baseRecipeId: 'recipe-old',
       baseRecipeVersion: 1,
+      createdById: 'creator-1',
       payloadJson: {
         recipeLines: [
           {
@@ -113,6 +122,8 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
       createDraftEvent: jest.fn(),
       submitForApproval: jest.fn(),
     };
+    todoBridge.createFailureTodo.mockReset();
+    todoBridge.closeFailureTodo.mockReset();
   });
 
   it('creates a new active recipe and archives previous active recipe in one transaction', async () => {
@@ -120,7 +131,7 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     const plan = buildPlan();
     primeHappyPath(tx, plan);
 
-    const service = new ProductProcessChangeService(prisma, changeEventService);
+    const service = new ProductProcessChangeService(prisma, changeEventService, todoBridge as any);
     await service.applyApprovedChange('change-1', 'approver-1', tx);
 
     expect(tx.recipe.updateMany).toHaveBeenCalledWith(
@@ -163,7 +174,7 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     // simulate failure during recipe.create
     tx.recipe.create.mockRejectedValueOnce(new Error('database fail'));
 
-    const service = new ProductProcessChangeService(prisma, changeEventService);
+    const service = new ProductProcessChangeService(prisma, changeEventService, todoBridge as any);
     await expect(service.applyApprovedChange('change-1', 'approver-1', tx)).rejects.toThrow('database fail');
 
     // failure record persisted OUTSIDE the doomed tx so it survives rollback
@@ -181,6 +192,15 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     expect(tx.productProcessChangePlan.update).not.toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: 'executed' }) }),
     );
+    // a failure todo must be written via the bridge so the submitter is notified
+    expect(todoBridge.createFailureTodo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plan: expect.objectContaining({ id: 'plan-1' }),
+        actorId: 'approver-1',
+        errorMessage: expect.any(String),
+        productName: expect.any(String),
+      }),
+    );
   });
 
   it('refuses to re-apply an already executed plan', async () => {
@@ -188,7 +208,7 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     const plan = buildPlan({ status: 'executed' });
     tx.productProcessChangePlan.findUnique.mockResolvedValue(plan);
 
-    const service = new ProductProcessChangeService(prisma, changeEventService);
+    const service = new ProductProcessChangeService(prisma, changeEventService, todoBridge as any);
     await expect(service.applyApprovedChange('change-1', 'approver-1', tx)).rejects.toThrow('产品工艺变更已执行');
     expect(tx.recipe.create).not.toHaveBeenCalled();
   });
@@ -227,7 +247,7 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
       critical_limit: '>= 75C',
     });
 
-    const service = new ProductProcessChangeService(prisma, changeEventService);
+    const service = new ProductProcessChangeService(prisma, changeEventService, todoBridge as any);
     await service.applyApprovedChange('change-1', 'approver-1', tx);
 
     expect(tx.cCPPoint.create).toHaveBeenCalledWith(
@@ -323,7 +343,7 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
       process_step_id: 'step-1',
     });
 
-    const service = new ProductProcessChangeService(prisma, changeEventService);
+    const service = new ProductProcessChangeService(prisma, changeEventService, todoBridge as any);
     await service.applyApprovedChange('change-1', 'approver-1', tx);
 
     expect(tx.cCPPoint.updateMany).toHaveBeenCalledWith(
@@ -351,7 +371,7 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     primeHappyPath(tx, plan);
     tx.recipe.create.mockRejectedValueOnce(new Error('database fail'));
 
-    const service = new ProductProcessChangeService(prisma, changeEventService);
+    const service = new ProductProcessChangeService(prisma, changeEventService, todoBridge as any);
     await expect(service.applyApprovedChange('change-1', 'approver-1', tx)).rejects.toThrow('database fail');
 
     expect(prisma.changeEventExecution.upsert).toHaveBeenCalledWith(
@@ -388,7 +408,7 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     primeHappyPath(tx, plan);
     tx.processStep.create.mockResolvedValue({ id: 'step-new', step_no: 1, name: 'mix' });
 
-    const service = new ProductProcessChangeService(prisma, changeEventService);
+    const service = new ProductProcessChangeService(prisma, changeEventService, todoBridge as any);
     await service.applyApprovedChange('change-1', 'approver-1', tx);
 
     expect(tx.processStep.create).toHaveBeenCalledWith(
@@ -406,7 +426,7 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     const tx = buildTx();
     tx.productProcessChangePlan.findUnique.mockResolvedValue(null);
 
-    const service = new ProductProcessChangeService(prisma, changeEventService);
+    const service = new ProductProcessChangeService(prisma, changeEventService, todoBridge as any);
     await service.applyApprovedChange('change-x', 'approver-1', tx);
 
     expect(tx.recipe.create).not.toHaveBeenCalled();

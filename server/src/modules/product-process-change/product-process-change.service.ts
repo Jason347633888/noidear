@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ChangeEventService } from '../change-event/change-event.service';
 import { CreateProductProcessChangeDraftDto } from './dto/product-process-change.dto';
 import { UNFINISHED_PRODUCT_PROCESS_CHANGE_STATUSES } from './product-process-change.constants';
+import { ProductProcessChangeTodoBridge } from './product-process-change-todo.bridge';
 
 const UNFINISHED_STATUSES: string[] = [...UNFINISHED_PRODUCT_PROCESS_CHANGE_STATUSES];
 
@@ -62,6 +63,7 @@ export class ProductProcessChangeService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly changeEventService: ChangeEventService,
+    private readonly todoBridge: ProductProcessChangeTodoBridge,
   ) {}
 
   async createDraft(dto: CreateProductProcessChangeDraftDto, actorId: string) {
@@ -368,6 +370,15 @@ export class ProductProcessChangeService {
           }`,
         );
       }
+      const productForName = await this.prisma.product
+        .findUnique({ where: { id: plan.product_id }, select: { name: true } })
+        .catch(() => null);
+      await this.todoBridge.createFailureTodo({
+        plan: { id: plan.id, product_id: plan.product_id, createdById: plan.createdById },
+        actorId,
+        errorMessage: message,
+        productName: productForName?.name ?? plan.product_id,
+      });
       throw err;
     }
   }
