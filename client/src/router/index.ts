@@ -833,6 +833,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '产品目录' },
       },
       {
+        path: 'products/by-plan/:planId',
+        name: 'ProductByPlanRedirect',
+        component: () => import('@/views/product/ProductByPlanRedirect.vue'),
+        meta: { title: '产品工艺变更跳转', hidden: true },
+      },
+      {
         path: 'products/:id',
         name: 'ProductDetail',
         component: () => import('@/views/product/ProductDetail.vue'),
