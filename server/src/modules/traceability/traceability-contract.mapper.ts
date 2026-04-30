@@ -49,18 +49,6 @@ export function mapForwardTraceResult(materialBatch: any, permission: any): any 
       permission: defaultPermission(),
     });
 
-    for (const fg of usage.productionBatch.finishedGoods ?? []) {
-      rows.push({
-        nodeId: fg.id,
-        nodeType: 'productionBatch',
-        businessObject: 'ProductionBatch',
-        label: fg.batch_no,
-        batchNo: fg.batch_no,
-        riskLevel: 'normal',
-        permission: defaultPermission(),
-      });
-    }
-
     for (const dn of usage.productionBatch.delivery_notes ?? []) {
       rows.push({
         nodeId: dn.id,

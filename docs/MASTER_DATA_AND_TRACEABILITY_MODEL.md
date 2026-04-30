@@ -116,6 +116,16 @@ Supplier
   -> Customer / 市场 / 投诉 / 召回
 ```
 
+### 5.1.1 配料区投料追溯子链（TASK-9 新增）
+
+```text
+WorkshopArea
+  -> StagingAreaStock (原辅料批次在配料区的库存)
+  -> MixingExecution (一次配料执行)
+    -> MixingExecutionLine -> MaterialBatch (具体用了哪个批次、多少量)
+  -> BatchMixingAggregation <- ProductionBatch (哪批产品使用了该配料执行)
+```
+
 ### 5.2 关键关系解释
 
 - **产品主数据链**：Product -> Recipe -> RecipeLine -> ProcessStep -> CCPPoint/Inspection 标准；研发新增产品后，生产、检验、销售均通过 Product 或 Recipe 复用，不允许下游手工重新维护产品名称。

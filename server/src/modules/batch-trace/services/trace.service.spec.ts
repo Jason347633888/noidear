@@ -63,7 +63,7 @@ describe('TraceService', () => {
     it('should throw error if production batch not found', async () => {
       jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(null);
 
-      await expect(service.backwardTrace('prod-999')).rejects.toThrow('Production batch not found');
+      await expect(service.backwardTrace('prod-999')).rejects.toThrow('产品批次不存在');
     });
   });
 

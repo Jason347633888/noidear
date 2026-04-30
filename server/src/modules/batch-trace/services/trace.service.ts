@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 
 @Injectable()
@@ -25,7 +25,7 @@ export class TraceService {
     });
 
     if (!productionBatch) {
-      throw new Error('Production batch not found');
+      throw new NotFoundException('产品批次不存在');
     }
 
     return {

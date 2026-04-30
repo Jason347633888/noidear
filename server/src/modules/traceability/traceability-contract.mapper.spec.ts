@@ -12,7 +12,6 @@ describe('traceability contract mapper', () => {
           productionBatch: {
             id: 'pb-1',
             batch_no: 'PB-001',
-            finishedGoods: [{ id: 'fg-1', batch_no: 'FG-001' }],
             delivery_notes: [{ id: 'dn-1', delivery_no: 'DN-001' }],
           },
         },
@@ -35,9 +34,8 @@ describe('traceability contract mapper', () => {
       'materialLot',
       'ingredientUsage',
       'productionBatch',
-      'productionBatch',
       'deliveryNote',
     ]);
-    expect(result.graph.nodes).toHaveLength(5);
+    expect(result.graph.nodes).toHaveLength(4);
   });
 });

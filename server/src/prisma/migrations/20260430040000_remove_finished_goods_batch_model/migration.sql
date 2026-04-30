@@ -5,8 +5,15 @@
 -- Note: The finished_goods_batch_id column on records was already cleaned up in a prior migration.
 -- This migration performs a no-op data migration guard + drops the FK if it still exists.
 
+-- Data migration: link any records still pointing to finished_goods_batches
+-- to the corresponding production_batch (idempotent — skips rows already linked)
+UPDATE records r
+SET production_batch_id = fgb.production_batch_id
+FROM finished_goods_batches fgb
+WHERE r.finished_goods_batch_id = fgb.id
+  AND r.production_batch_id IS NULL;
+
 -- Drop the FK constraint from records.finished_goods_batch_id if it exists
--- (column may have already been removed in a prior task)
 DO $$
 BEGIN
   IF EXISTS (
