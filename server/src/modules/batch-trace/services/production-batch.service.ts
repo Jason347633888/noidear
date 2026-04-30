@@ -4,6 +4,7 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { BatchNumberGeneratorService } from './batch-number-generator.service';
 import {
@@ -141,25 +142,31 @@ export class ProductionBatchService {
       throw new BadRequestException('产品配方不存在或未启用');
     }
 
-    return this.prisma.productionBatch.create({
-      data: {
-        batchNumber: dto.batchNumber,
-        productId: dto.productId,
-        productName: product.name,
-        recipeId: dto.recipeId,
-        recipeName: recipe.version_note ?? `v${recipe.version}`,
-        plannedQuantity: dto.actualQuantity,
-        actualQuantity: dto.actualQuantity,
-        unit: dto.unit,
-        productionDate: new Date(dto.productionDate),
-        packagedAt: new Date(dto.packagedAt),
-        warehousedAt: new Date(dto.warehousedAt),
-        packageMachine: dto.packageMachine,
-        team_id: dto.teamId,
-        shift_type_id: dto.shiftTypeId,
-        status: 'completed',
-      },
-    });
+    try {
+      return await this.prisma.productionBatch.create({
+        data: {
+          batchNumber: dto.batchNumber,
+          productId: dto.productId,
+          productName: product.name,
+          recipeId: dto.recipeId,
+          recipeName: recipe.version_note ?? `v${recipe.version}`,
+          actualQuantity: dto.actualQuantity,
+          unit: dto.unit,
+          productionDate: new Date(dto.productionDate),
+          packagedAt: new Date(dto.packagedAt),
+          warehousedAt: new Date(dto.warehousedAt),
+          packageMachine: dto.packageMachine,
+          team_id: dto.teamId,
+          shift_type_id: dto.shiftTypeId,
+          status: 'completed',
+        },
+      });
+    } catch (error) {
+      if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('产品批次号已存在');
+      }
+      throw error;
+    }
   }
 
   async update(id: string, updateDto: UpdateProductionBatchDto) {

@@ -252,7 +252,6 @@ describe('ProductionBatchService', () => {
           productName: '蛋糕',
           recipeId: 'r1',
           recipeName: '经典配方',
-          plannedQuantity: 100,
           actualQuantity: 100,
           unit: 'kg',
           productionDate: new Date('2026-04-30T00:00:00.000Z'),
