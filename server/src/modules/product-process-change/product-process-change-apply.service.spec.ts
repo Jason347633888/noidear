@@ -32,6 +32,10 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
       changeEventExecutionArtifact: {
         createMany: jest.fn(),
       },
+      cCPPoint: {
+        findUnique: jest.fn(),
+        upsert: jest.fn(),
+      },
       ...overrides,
     };
   }
@@ -40,6 +44,9 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     return {
       productProcessChangePlan: {
         update: jest.fn(),
+      },
+      changeEventExecution: {
+        upsert: jest.fn(),
       },
       $transaction: jest.fn(),
     };
@@ -180,6 +187,119 @@ describe('ProductProcessChangeService.applyApprovedChange', () => {
     const service = new ProductProcessChangeService(prisma, changeEventService);
     await expect(service.applyApprovedChange('change-1', 'approver-1', tx)).rejects.toThrow('产品工艺变更已执行');
     expect(tx.recipe.create).not.toHaveBeenCalled();
+  });
+
+  it('applies HACCP scope and upserts CCPPoint with proper fields and artifact', async () => {
+    const tx = buildTx();
+    const plan = buildPlan({
+      scopes: ['haccp'],
+      payloadJson: {
+        ccpPoints: [
+          {
+            step_no: 2,
+            ccp_no: 'CCP-1',
+            hazard_type: 'biological',
+            control_measure: 'cook',
+            critical_limit: '>= 75C',
+            cl_min: 75,
+            cl_unit: 'C',
+          },
+        ],
+      },
+    });
+    tx.productProcessChangePlan.findUnique.mockResolvedValue(plan);
+    tx.product.findFirst.mockResolvedValue({ id: 'prod-1', company_id: '1', deleted_at: null });
+    tx.processStep.findFirst = jest
+      .fn()
+      .mockResolvedValueOnce(null) // first lookup (with changeEventId) misses
+      .mockResolvedValueOnce({ id: 'step-existing', step_no: 2 });
+    tx.cCPPoint.findUnique.mockResolvedValue(null);
+    tx.cCPPoint.upsert.mockResolvedValue({
+      id: 'ccp-id-1',
+      ccp_no: 'CCP-1',
+      process_step_id: 'step-existing',
+    });
+
+    const service = new ProductProcessChangeService(prisma, changeEventService);
+    await service.applyApprovedChange('change-1', 'approver-1', tx);
+
+    expect(tx.cCPPoint.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { company_id_ccp_no: { company_id: '1', ccp_no: 'CCP-1' } },
+        create: expect.objectContaining({
+          company_id: '1',
+          ccp_no: 'CCP-1',
+          process_step_id: 'step-existing',
+          hazard_type: 'biological',
+          control_measure: 'cook',
+          critical_limit: '>= 75C',
+        }),
+      }),
+    );
+    expect(tx.changeEventExecutionArtifact.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({ resourceType: 'ccp_point', resourceId: 'ccp-id-1', action: 'create' }),
+        ]),
+      }),
+    );
+  });
+
+  it('records a failed changeEventExecution row on apply failure', async () => {
+    const tx = buildTx();
+    const plan = buildPlan();
+    primeHappyPath(tx, plan);
+    tx.recipe.create.mockRejectedValueOnce(new Error('database fail'));
+
+    const service = new ProductProcessChangeService(prisma, changeEventService);
+    await expect(service.applyApprovedChange('change-1', 'approver-1', tx)).rejects.toThrow('database fail');
+
+    expect(prisma.changeEventExecution.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { changeEventId: 'change-1' },
+        create: expect.objectContaining({
+          changeEventId: 'change-1',
+          status: 'failed',
+          errorMessage: 'database fail',
+        }),
+        update: expect.objectContaining({ status: 'failed', errorMessage: 'database fail' }),
+      }),
+    );
+  });
+
+  it('links new process steps to the freshly created recipe when both scopes run', async () => {
+    const tx = buildTx();
+    const plan = buildPlan({
+      scopes: ['recipe', 'process'],
+      payloadJson: {
+        recipeLines: [
+          {
+            material_id: 'mat-1',
+            qty_per_batch: 10,
+            unit: 'kg',
+            area_id: 'area-1',
+            is_critical: false,
+          },
+        ],
+        processSteps: [{ step_no: 1, step_name: 'mix', name: 'mix' }],
+        versionNote: 'v2',
+      },
+    });
+    primeHappyPath(tx, plan);
+    tx.processStep.create.mockResolvedValue({ id: 'step-new', step_no: 1, name: 'mix' });
+
+    const service = new ProductProcessChangeService(prisma, changeEventService);
+    await service.applyApprovedChange('change-1', 'approver-1', tx);
+
+    expect(tx.processStep.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          step_no: 1,
+          recipe_id: 'recipe-new',
+          changeEventId: 'change-1',
+        }),
+      }),
+    );
   });
 
   it('is a no-op when there is no plan for the change event', async () => {

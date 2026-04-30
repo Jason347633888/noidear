@@ -147,6 +147,23 @@ describe('ProductProcessChangeService', () => {
     );
   });
 
+  it('rejects empty ccpPoints when scope is haccp', async () => {
+    tx.productProcessChangePlan.findUnique.mockResolvedValue({
+      id: 'plan-1',
+      product_id: 'prod-1',
+      changeEventId: 'ce-1',
+      status: 'draft',
+      scopes: ['haccp'],
+      payloadJson: { ccpPoints: [] },
+      changeEvent: { id: 'ce-1' },
+    });
+    tx.product.findFirst.mockResolvedValue({ id: 'prod-1', company_id: '1', deleted_at: null });
+
+    const service = createService();
+    await expect(service.submitForApproval('plan-1', 'u1')).rejects.toThrow('CCP 控制点不能为空');
+    expect(approvalEngine.startApproval).not.toHaveBeenCalled();
+  });
+
   it('createDraft persists plan linked to a freshly created ChangeEvent', async () => {
     prisma.productProcessChangePlan.findFirst.mockResolvedValue(null);
     prisma.product.findFirst.mockResolvedValue({ id: 'prod-1', name: '黄油饼干', company_id: '1', deleted_at: null });

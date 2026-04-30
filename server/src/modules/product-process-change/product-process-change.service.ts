@@ -24,9 +24,26 @@ interface ProcessStepInput {
   is_ccp?: boolean;
 }
 
+interface CcpPointInput {
+  step_no: number;
+  ccp_no: string;
+  hazard_type: 'biological' | 'chemical' | 'physical';
+  control_measure: string;
+  critical_limit: string;
+  cl_min?: number | string | null;
+  cl_max?: number | string | null;
+  cl_unit?: string;
+  monitoring_method?: string;
+  monitoring_frequency?: string;
+  corrective_action?: string;
+}
+
+const CCP_HAZARD_TYPES = new Set(['biological', 'chemical', 'physical']);
+
 interface ProductProcessChangePayload {
   recipeLines?: RecipeLineInput[];
   processSteps?: ProcessStepInput[];
+  ccpPoints?: CcpPointInput[];
   baseRecipeId?: string;
   baseRecipeVersion?: number;
   versionNote?: string;
@@ -210,6 +227,35 @@ export class ProductProcessChangeService {
         seen.add(step.step_no);
       }
     }
+
+    if (scopeSet.has('haccp')) {
+      const ccpPoints = payload.ccpPoints ?? [];
+      if (ccpPoints.length === 0) {
+        throw new BadRequestException('CCP 控制点不能为空');
+      }
+      const seenCcpNo = new Set<string>();
+      for (const ccp of ccpPoints) {
+        if (typeof ccp.step_no !== 'number' || !Number.isInteger(ccp.step_no) || ccp.step_no < 1) {
+          throw new BadRequestException('CCP 编号不能为空');
+        }
+        if (!ccp.ccp_no || typeof ccp.ccp_no !== 'string') {
+          throw new BadRequestException('CCP 编号不能为空');
+        }
+        if (!ccp.hazard_type || !CCP_HAZARD_TYPES.has(ccp.hazard_type)) {
+          throw new BadRequestException('CCP 危害类型不合法');
+        }
+        if (!ccp.control_measure) {
+          throw new BadRequestException('CCP 控制措施不能为空');
+        }
+        if (!ccp.critical_limit) {
+          throw new BadRequestException('CCP 临界值不能为空');
+        }
+        if (seenCcpNo.has(ccp.ccp_no)) {
+          throw new BadRequestException(`CCP 编号重复: ${ccp.ccp_no}`);
+        }
+        seenCcpNo.add(ccp.ccp_no);
+      }
+    }
   }
 
   /**
@@ -248,12 +294,17 @@ export class ProductProcessChangeService {
       const payload = (plan.payloadJson ?? {}) as ProductProcessChangePayload;
       const artifacts: Prisma.ChangeEventExecutionArtifactCreateManyInput[] = [];
 
+      let newRecipeId: string | null = null;
       if (scopeSet.has('recipe')) {
-        await this.applyRecipeChange(plan, payload, changeEventId, tx, artifacts);
+        newRecipeId = await this.applyRecipeChange(plan, payload, changeEventId, tx, artifacts);
       }
 
       if (scopeSet.has('process') || scopeSet.has('process_step')) {
-        await this.applyProcessStepChange(plan, payload, changeEventId, tx, artifacts);
+        await this.applyProcessStepChange(plan, payload, changeEventId, tx, artifacts, newRecipeId);
+      }
+
+      if (scopeSet.has('haccp')) {
+        await this.applyHaccpChange(plan, payload, changeEventId, tx, artifacts);
       }
 
       const execution = await tx.changeEventExecution.create({
@@ -298,6 +349,25 @@ export class ProductProcessChangeService {
           }`,
         );
       }
+      try {
+        await this.prisma.changeEventExecution.upsert({
+          where: { changeEventId },
+          create: {
+            company_id: plan.company_id,
+            changeEventId,
+            status: 'failed',
+            executedAt: new Date(),
+            errorMessage: message,
+          },
+          update: { status: 'failed', errorMessage: message, executedAt: new Date() },
+        });
+      } catch (recordErr) {
+        this.logger.error(
+          `Failed to record changeEventExecution failure for ${changeEventId}: ${
+            recordErr instanceof Error ? recordErr.message : recordErr
+          }`,
+        );
+      }
       throw err;
     }
   }
@@ -308,7 +378,7 @@ export class ProductProcessChangeService {
     changeEventId: string,
     tx: Prisma.TransactionClient,
     artifacts: Prisma.ChangeEventExecutionArtifactCreateManyInput[],
-  ): Promise<void> {
+  ): Promise<string> {
     const recipeLines = payload.recipeLines ?? [];
 
     const previousActive = await tx.recipe.findFirst({
@@ -377,6 +447,8 @@ export class ProductProcessChangeService {
         status: newRecipe.status,
       } as unknown as Prisma.InputJsonValue,
     });
+
+    return newRecipe.id;
   }
 
   private async applyProcessStepChange(
@@ -385,6 +457,10 @@ export class ProductProcessChangeService {
     changeEventId: string,
     tx: Prisma.TransactionClient,
     artifacts: Prisma.ChangeEventExecutionArtifactCreateManyInput[],
+    // When recipe scope ran in the same apply, this is the freshly created
+    // recipe id. When recipe scope did NOT run, we leave recipe_id as null:
+    // safer than silently linking to a stale active recipe.
+    recipeId: string | null = null,
   ): Promise<void> {
     const steps = payload.processSteps ?? [];
     if (steps.length === 0) return;
@@ -421,6 +497,7 @@ export class ProductProcessChangeService {
           name: step.name ?? step.step_name ?? '',
           description: step.description ?? null,
           is_ccp: !!step.is_ccp,
+          recipe_id: recipeId,
           changeEventId,
         },
       });
@@ -434,6 +511,90 @@ export class ProductProcessChangeService {
           id: created.id,
           step_no: created.step_no,
           name: created.name,
+        } as unknown as Prisma.InputJsonValue,
+      });
+    }
+  }
+
+  private async applyHaccpChange(
+    plan: { id: string; product_id: string; company_id: string },
+    payload: ProductProcessChangePayload,
+    changeEventId: string,
+    tx: Prisma.TransactionClient,
+    artifacts: Prisma.ChangeEventExecutionArtifactCreateManyInput[],
+  ): Promise<void> {
+    const ccpPoints = payload.ccpPoints ?? [];
+    if (ccpPoints.length === 0) return;
+
+    // TODO: handle removal of CCP points absent from payload — requires
+    // explicit "remove" semantics (deleted_at?) and is out of scope here.
+
+    for (const ccp of ccpPoints) {
+      const step = await tx.processStep.findFirst({
+        where: {
+          product_id: plan.product_id,
+          step_no: ccp.step_no,
+          deleted_at: null,
+          // Prefer the step created in this apply (recipe-process combo) when present.
+          changeEventId,
+        },
+      }) ?? (await tx.processStep.findFirst({
+        where: {
+          product_id: plan.product_id,
+          step_no: ccp.step_no,
+          deleted_at: null,
+        },
+      }));
+      if (!step) {
+        throw new BadRequestException(`CCP ${ccp.ccp_no} 找不到对应工序步骤 ${ccp.step_no}`);
+      }
+
+      const existing = await tx.cCPPoint.findUnique({
+        where: { company_id_ccp_no: { company_id: plan.company_id, ccp_no: ccp.ccp_no } },
+      });
+      const action = existing ? 'update' : 'create';
+
+      const baseData = {
+        process_step_id: step.id,
+        hazard_type: ccp.hazard_type,
+        control_measure: ccp.control_measure,
+        critical_limit: ccp.critical_limit,
+        cl_min:
+          ccp.cl_min === undefined || ccp.cl_min === null
+            ? null
+            : new Prisma.Decimal(ccp.cl_min as any),
+        cl_max:
+          ccp.cl_max === undefined || ccp.cl_max === null
+            ? null
+            : new Prisma.Decimal(ccp.cl_max as any),
+        cl_unit: ccp.cl_unit ?? null,
+        monitoring_method: ccp.monitoring_method ?? null,
+        monitoring_frequency: ccp.monitoring_frequency ?? null,
+        corrective_action: ccp.corrective_action ?? null,
+      };
+
+      const upserted = await tx.cCPPoint.upsert({
+        where: { company_id_ccp_no: { company_id: plan.company_id, ccp_no: ccp.ccp_no } },
+        create: {
+          company_id: plan.company_id,
+          ccp_no: ccp.ccp_no,
+          ...baseData,
+        },
+        update: { ...baseData },
+      });
+
+      artifacts.push({
+        executionId: '',
+        resourceType: 'ccp_point',
+        resourceId: upserted.id,
+        action,
+        beforeSnapshot: existing
+          ? (existing as unknown as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
+        afterSnapshot: {
+          id: upserted.id,
+          ccp_no: upserted.ccp_no,
+          process_step_id: upserted.process_step_id,
         } as unknown as Prisma.InputJsonValue,
       });
     }
