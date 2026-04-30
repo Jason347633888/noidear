@@ -80,6 +80,22 @@ export const productionBatchApi = {
   complete(id: string) {
     return request.post(`/batch-trace/production-batches/${id}/complete`);
   },
+
+  confirm(data: {
+    batchNumber: string;
+    productId: string;
+    recipeId: string;
+    actualQuantity: number;
+    unit: string;
+    productionDate: string;
+    packagedAt: string;
+    warehousedAt: string;
+    packageMachine: string;
+    teamId: string;
+    shiftTypeId: string;
+  }) {
+    return request.post('/batch-trace/production-batches/confirm', data);
+  },
 };
 
 // =========================================================================
@@ -100,4 +116,18 @@ export const materialUsageApi = {
   },
 };
 
+// =========================================================================
+// Batch Mixing Aggregation APIs
+// =========================================================================
 
+export const batchMixingAggregationApi = {
+  create(data: { productionBatchId: string; mixingExecutionIds: string[]; note?: string }) {
+    return request.post('/batch-trace/batch-mixing-aggregations', data);
+  },
+  confirm(data: { productionBatchId: string; confirmedBy: string }) {
+    return request.post('/batch-trace/batch-mixing-aggregations/confirm', data);
+  },
+  getByProductBatch(productionBatchId: string) {
+    return request.get(`/batch-trace/batch-mixing-aggregations/by-product-batch/${productionBatchId}`);
+  },
+};

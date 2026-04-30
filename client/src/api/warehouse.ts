@@ -223,20 +223,25 @@ export const requisitionApi = {
 // =========================================================================
 
 export const stagingAreaApi = {
-  getList(params: { page?: number; limit?: number; status?: string } = {}) {
-    return request.get<PaginatedResponse<StagingAreaItem>>('/warehouse/staging-area', { params });
+  getStock(params?: { areaId?: string; materialId?: string; page?: number; limit?: number }) {
+    return request.get('/warehouse/staging-area/stock', { params });
   },
 
-  stage(materialId: string, batchId: string, quantity: number) {
-    return request.post('/warehouse/staging-area/stage', { materialId, batchId, quantity });
+  stageToArea(data: { batchId: string; areaId: string; quantity: number; operatorId?: string }) {
+    return request.post('/warehouse/staging-area/stage-to-area', data);
   },
 
-  dispense(id: string) {
-    return request.post(`/warehouse/staging-area/${id}/dispense`);
-  },
-
-  returnItem(id: string) {
-    return request.post(`/warehouse/staging-area/${id}/return`);
+  confirmStocktake(data: {
+    areaId: string;
+    batchId: string;
+    kind: 'shift_start' | 'shift_end' | 'handover';
+    workDate: string;
+    shiftTypeId: string;
+    actualQuantity: number;
+    teamId?: string;
+    note?: string;
+  }) {
+    return request.post('/warehouse/staging-area/stocktakes', data);
   },
 };
 

@@ -423,6 +423,12 @@ const routes: RouteRecordRaw[] = [
         redirect: '/production/workshop-staging',
       },
       {
+        path: 'mixing/workbench',
+        name: 'MixingWorkbench',
+        component: () => import('@/views/mixing/MixingWorkbench.vue'),
+        meta: { title: '配料执行' },
+      },
+      {
         path: 'warehouse/material-balance',
         name: 'MaterialBalance',
         component: () => import('@/views/warehouse/MaterialBalance.vue'),
