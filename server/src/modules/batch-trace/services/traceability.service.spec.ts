@@ -66,8 +66,8 @@ describe('TraceabilityService', () => {
 
       const result = await service.traceBackward(productionBatchId);
 
-      expect(result.finishedGoodsBatch.batchNumber).toBe('PROD-001');
       expect(result.productionBatch).toEqual(mockProductionBatch);
+      expect(result.productionBatch.batchNumber).toBe('PROD-001');
       expect(result.materialBatches).toHaveLength(1);
       expect(result.materialBatches[0].usedQuantity).toBe(10);
       expect(result.traceTime).toBeInstanceOf(Date);

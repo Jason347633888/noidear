@@ -84,7 +84,7 @@
     <!-- 归集选择面板 -->
     <el-dialog v-model="showAggregationPanel" title="选择配料执行" width="700px">
       <p style="color: #666; margin-bottom: 12px">选择要归集到此产品批次的配料执行记录</p>
-      <el-table :data="candidateMixingExecutions" row-key="id" @selection-change="(rows: any[]) => { selectedExecutions.value = rows }">
+      <el-table :data="candidateMixingExecutions" row-key="id" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="48" />
         <el-table-column prop="executionNo" label="配料执行号" />
         <el-table-column prop="area.name" label="配料区" />
@@ -163,6 +163,9 @@ const usageForm = reactive({ recipeLineId: '', materialBatchId: '', quantity: 1 
 const showAggregationPanel = ref(false);
 const candidateMixingExecutions = ref<any[]>([]);
 const selectedExecutions = ref<any[]>([]);
+const handleSelectionChange = (rows: any[]) => {
+  selectedExecutions.value = rows;
+};
 const confirmingAggregation = ref(false);
 const hasDraftAggregations = computed(() =>
   batch.value?.aggregations?.some((a: any) => a.status === 'draft') ?? false,
@@ -192,7 +195,11 @@ const openAggregationPanel = async () => {
     const res: any = await request.get('/mixing/executions', {
       params: { productId: batch.value?.productId, status: 'confirmed' },
     });
-    candidateMixingExecutions.value = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+    candidateMixingExecutions.value = Array.isArray(res)
+      ? res
+      : Array.isArray(res?.data)
+        ? res.data
+        : [];
   } catch {
     ElMessage.error('加载候选配料执行失败');
   }

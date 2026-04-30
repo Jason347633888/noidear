@@ -10,10 +10,11 @@ export class StagingAreaService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getCurrentStock(query: any) {
-    const { page = 1, limit = 10, location } = query;
+    const { page = 1, limit = 10, location, areaId } = query;
     const skip = (Number(page) - 1) * Number(limit);
     const where: any = {};
     if (location) where.location = location;
+    if (areaId) where.area_id = areaId;
 
     const [data, total] = await Promise.all([
       this.prisma.stagingAreaStock.findMany({
