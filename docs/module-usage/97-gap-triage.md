@@ -27,7 +27,7 @@
 | GAP-102 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/设计 spec（库存流水单一事实源决策） |
 | GAP-103 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（Supplier 双状态门禁逻辑） |
 | GAP-104 | P2 | 需要运行系统确认 | 否 | 否 | 否 | `grill-me` | | | 先运行系统确认菜单可见性，待确认后重新分诊 |
-| GAP-105 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 多租户 companyId 修复，写小型 plan 直接实现 |
+| GAP-105 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-105-supplier-evaluation-company-id-implementation.md` | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-106 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | 依赖 GAP-102；GAP-102 完成后写 plan |
 | GAP-107 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 spec（物料平衡公式 scrap/return 纳入） |
 | GAP-108 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 前端枚举同步，写小型 plan 直接实现 |
@@ -75,7 +75,7 @@
 | GAP-412 | P2 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema 重构（trainees String[] → 桥接表），先用 brainstorming 写 spec |
 | GAP-413 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | 与 GAP-405 合并，写 plan 直接执行 |
 | GAP-414 | P2 | 需要业务确认 | 否 | 否 | 否 | `grill-with-docs` | | | 先业务确认 ManagementReview 建模需求，待确认后重新分诊 |
-| GAP-500 | P1 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P1 旧接口删除，写小型 plan 直接执行 |
+| GAP-500 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-500-remove-legacy-approval-level-api-implementation.md` | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-501 | P0 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P0 auth GET/POST 方法不匹配，先用 brainstorming 写 spec |
 | GAP-502 | P1 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P1 架构决策文档，写 plan（废弃计划文档） |
 | GAP-503 | P1 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P1 决策文档补充，写 plan（Workflow vs UnifiedApproval 决策树） |
@@ -89,7 +89,7 @@
 | GAP-511 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 路由去重，写小型 plan 直接执行 |
 | GAP-512 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 权限模型文档补充，写 plan 直接执行 |
 | GAP-600 | P0 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P0 计量多租户隔离，依赖 GAP-304，先用 brainstorming 写 spec |
-| GAP-601 | P1 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P1 认证守卫缺失，写小型 plan 直接执行 |
+| GAP-601 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-601-equipment-controller-auth-guard-implementation.md` | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-602 | P1 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | 与 GAP-600 合并 PR；写 plan |
 | GAP-603 | P2 | 已验证（schema 层面） | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema FK，先用 brainstorming 写轻量 spec |
 | GAP-604 | P2 | 需要运行系统确认 | 否 | 否 | 否 | `grill-with-docs` | | | 先业务确认检验记录是否需要关联量器，待确认后重新分诊 |

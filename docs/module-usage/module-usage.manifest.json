@@ -742,7 +742,7 @@
       "id": "GAP-105",
       "severity": "P2",
       "moduleId": "supplier-procurement-incoming",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -750,7 +750,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "supplier",
       "prOrder": null,
@@ -759,7 +759,7 @@
         "pnpm test:e2e -- --grep GAP-105"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-105-supplier-evaluation-company-id-implementation.md"
     },
     {
       "id": "GAP-106",
@@ -1939,7 +1939,7 @@
       "id": "GAP-500",
       "severity": "P1",
       "moduleId": "task-approval-workflow",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -1947,7 +1947,7 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "workflow",
       "prOrder": null,
@@ -1956,7 +1956,7 @@
         "pnpm test:e2e -- --grep GAP-500"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-500-remove-legacy-approval-level-api-implementation.md"
     },
     {
       "id": "GAP-501",
@@ -2265,7 +2265,7 @@
       "id": "GAP-601",
       "severity": "P1",
       "moduleId": "equipment-and-measuring",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -2273,7 +2273,7 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "equipment",
       "prOrder": null,
@@ -2282,7 +2282,7 @@
         "pnpm test:e2e -- --grep GAP-601"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-601-equipment-controller-auth-guard-implementation.md"
     },
     {
       "id": "GAP-602",

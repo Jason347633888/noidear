@@ -22,4 +22,6 @@
 
 | 顺序 | PR | GAP | 依赖 GAP | spec | plan | 推荐执行 superpower | 可并行 | 备注 |
 |---|---|---|---|---|---|---|---|---|
-_当前无可执行 PR。GAP 必须先完成 spec/plan 并回写 manifest 后，才能进入此表。_
+| 1 | supplier/GAP-105 | GAP-105 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-105-supplier-evaluation-company-id-implementation.md` | `executing-plans` | 是 | 供应商评估 companyId 去硬编码；只改 supplier-evaluation 模块 |
+| 2 | workflow/GAP-500 | GAP-500 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-500-remove-legacy-approval-level-api-implementation.md` | `executing-plans` | 是 | 删除前端旧 level1/level2 approval 调用；不改后端统一审批 |
+| 3 | equipment/GAP-601 | GAP-601 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-601-equipment-controller-auth-guard-implementation.md` | `executing-plans` | 是 | 设备模块控制器加 JwtAuthGuard；不做权限细分 |
