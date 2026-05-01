@@ -136,6 +136,16 @@ export class BackupService {
     };
   }
 
+  async getBackupStatus(id: string) {
+    const record = await this.prisma.backupHistory.findUnique({
+      where: { id: BigInt(id) },
+    });
+    if (!record) {
+      throw new NotFoundException(`Backup record with ID ${id} not found`);
+    }
+    return record;
+  }
+
   /**
    * 删除备份记录
    * TASK-365: Delete backup record

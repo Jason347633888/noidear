@@ -72,6 +72,26 @@ export class BackupController {
     return this.backupService.getBackupStats();
   }
 
+  @Get('available')
+  @ApiOperation({ summary: '列出可用于恢复的备份' })
+  @ApiResponse({ status: 200, description: '查询成功' })
+  async getAvailableBackups(
+    @Query('backupType') backupType?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsedLimit = limit ? parseInt(limit, 10) : 10;
+    return this.backupService.listAvailableForRestore(backupType, parsedLimit || 10);
+  }
+
+  @Get(':id/status')
+  @ApiOperation({ summary: '查询单条备份记录状态' })
+  @ApiParam({ name: 'id', description: '备份记录 ID' })
+  @ApiResponse({ status: 200, description: '查询成功' })
+  @ApiResponse({ status: 404, description: '备份记录不存在' })
+  async getBackupStatus(@Param('id') id: string) {
+    return this.backupService.getBackupStatus(id);
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: '删除备份记录' })
   @ApiParam({ name: 'id', description: '备份记录 ID' })
