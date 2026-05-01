@@ -1,4 +1,4 @@
-# 文控中心与记录表单管理
+# 体系文件中心与记录表单管理
 
 ---
 module_id: document-control-and-record-forms
@@ -44,10 +44,10 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 
 ## 1. 模块定位
 
-文控中心不是单纯的文件库，而是食品安全体系文件的治理平台。它管辖三类受控对象：
+体系文件中心不是单纯的文件库，而是食品安全体系文件的治理平台。它管辖三类受控对象：
 
 ```
-文控中心
+体系文件中心
 ├── 受控文件（Document）：01 管理手册 / 02 程序文件 / 03 作业指导书 / 05 公司文件 / 06 外来文件
 ├── 记录表单索引（RecordFormLandingEntry）：04 记录表单索引，管理 283 张源表单与落地入口的映射关系
 └── 动态表单引擎（RecordTemplate + Record）：用于承接那些无独立业务模块的表单填写
@@ -61,7 +61,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | 动态表单（RecordTemplate/Record） | 通用表单引擎，承接无独立业务模型的表单填写 | `RecordTemplate` + `Record` 模型，`RecordFill.vue` 页面 |
 | 业务模块 Landing | 已有独立业务模型的模块（如 IncomingInspection、ProductionBatch）承接表单记录 | 各业务模块独立路由，RecordFormLandingEntry.targetModule/targetRoute 指向 |
 
-**文控中心不存储培训记录、内审记录、CAPA 记录或追溯记录的业务事实**。它通过 `DocumentTrainingNeed`（文控派生）和 `DocumentAuditCoverageService`（派生查询）提供治理视图，但培训和内审事实分别由各自独立模块管理。
+**体系文件中心不存储培训记录、内审记录、CAPA 记录或追溯记录的业务事实**。它通过 `DocumentTrainingNeed`（文控派生）和 `DocumentAuditCoverageService`（派生查询）提供治理视图，但培训和内审事实分别由各自独立模块管理。
 
 ## 2. 使用角色
 
@@ -133,14 +133,14 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 
 ## 6. 上下游绑定关系
 
-**文控中心作为上游时，下游模块引用规则：**
+**体系文件中心作为上游时，下游模块引用规则：**
 
-- **内审模块**：`AuditPlan.documentIds[]` 直接存储 `Document.id`，`AuditFinding.documentId` 关联 `Document`。内审事实（AuditPlan、AuditFinding）的事实源在内审模块，不在文控中心。文控中心通过 `DocumentAuditCoverageService` 提供聚合视图，但不拥有内审数据。
-- **培训模块**：`TrainingProject.documentIds[]` 存储 `Document.id`。文控中心的 `DocumentTrainingNeed` 是由文控工作台发现"某文件需要培训"时生成的派生需求，可与 `TrainingProject` 关联，但培训记录事实在培训模块。
+- **内审模块**：`AuditPlan.documentIds[]` 直接存储 `Document.id`，`AuditFinding.documentId` 关联 `Document`。内审事实（AuditPlan、AuditFinding）的事实源在内审模块，不在体系文件中心。体系文件中心通过 `DocumentAuditCoverageService` 提供聚合视图，但不拥有内审数据。
+- **培训模块**：`TrainingProject.documentIds[]` 存储 `Document.id`。体系文件中心的 `DocumentTrainingNeed` 是由文控工作台发现"某文件需要培训"时生成的派生需求，可与 `TrainingProject` 关联，但培训记录事实在培训模块。
 - **动态表单**：`RecordFormLandingEntry.targetTemplateId` 指向 `RecordTemplate`，`RecordTemplate` 的 `Record` 为实际填写事实。文控索引是指针层，动态表单是实际数据层。
-- **业务模块（如 IncomingInspection、ProductionBatch）**：`RecordFormLandingEntry.targetModule` 和 `targetRoute` 指向业务模块路由，实际数据不存在文控中心。
-- **CAPA（CorrectiveAction）**：文控中心不创建 CAPA 记录，不拥有 CAPA 事实。CAPA 由独立 CorrectiveAction 模块管理。
-- **追溯**：文控中心不参与追溯主链（MaterialLot→IngredientUsage→ProductionBatch）。Record 可通过 `productionBatchId` 关联批次，但追溯查询必须经过 `TraceabilityQueryService`。
+- **业务模块（如 IncomingInspection、ProductionBatch）**：`RecordFormLandingEntry.targetModule` 和 `targetRoute` 指向业务模块路由，实际数据不存在体系文件中心。
+- **CAPA（CorrectiveAction）**：体系文件中心不创建 CAPA 记录，不拥有 CAPA 事实。CAPA 由独立 CorrectiveAction 模块管理。
+- **追溯**：体系文件中心不参与追溯主链（MaterialLot→IngredientUsage→ProductionBatch）。Record 可通过 `productionBatchId` 关联批次，但追溯查询必须经过 `TraceabilityQueryService`。
 
 ## 7. 当前系统差距
 
@@ -151,7 +151,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | GAP-402 | `documents/operations/training-needs` 页面（TrainingNeedCenter）展示的是文控派生培训需求（DocumentTrainingNeed），与培训模块的 TrainingProject 是两套入口，用户容易混淆两者定位 | 文控派生需求与培训模块实体语义相近，但入口独立 | 文控专员和培训负责人可能在两处重复维护培训信息，产生平行事实风险 | P2 | 已验证 | `client/src/api/document-operations.ts` 第 10-29 行；`client/src/router/index.ts` 第 90-93 行（documents/operations/training-needs）；`client/src/router/index.ts` 第 513-565 行（独立培训模块路由） |
 | GAP-403 | 04 记录表单索引（RecordFormLandingIndex.vue）目前是手工维护入口，landingStatus 大量为 unimplemented，文控工作台报告大量 missingLandingTargets 和 unconfirmedLandingTargets 类型问题 | 283 张表单未全部完成落地映射确认 | 无法向监管机构证明所有源表单均有数字化落地入口 | P2 | 已验证 | `client/src/api/document-control.ts` WorkbenchIssueType 枚举包含 `missingLandingTargets`、`unconfirmedLandingTargets`；`RecordFormLandingEntry.landingStatus @default("unimplemented")` |
 | GAP-404 | 动态表单 RecordTemplate 版本管理中 `templateFamilyId + version` 的唯一约束已实现，但前端 `TemplateEdit.vue` 的 `updateFields` 调用与后端接口字段存在不一致风险 | 前端改版过程中接口版本演进不同步 | 模板字段更新可能静默失败，影响表单填写 | P2 | 未验证（需运行系统确认） | spec 文件 `docs/superpowers/specs/2026-04-28-document-control-and-record-form-governance-design.md` 第 77 行：「前端 updateFields 与后端接口存在不一致风险」 |
-| GAP-405 | AuditReport 完成后生成 PDF 并存入 Document（`AuditReport.documentId` 关联 Document），等于内审报告被归入文控文件体系。但文控中心的 document_type 枚举不包含 AUDIT_REPORT 类型，导致内审报告与受控文件混在同一个列表 | AuditReport 设计时将归档文件引用了 Document 模型，但未对 document_type 进行分类区分 | 内审报告出现在受控文件列表中，干扰文控专员查阅，也不符合内审文件应由内审模块管理的边界原则 | P2 | 已验证 | `server/src/prisma/schema.prisma` 第 2255-2260 行 `AuditReport.documentId String`；`document-control.constants.ts` 第 1-8 行 DOCUMENT_TYPES 枚举无 AUDIT_REPORT 类型 |
+| GAP-405 | AuditReport 完成后生成 PDF 并存入 Document（`AuditReport.documentId` 关联 Document），等于内审报告被归入文控文件体系。但体系文件中心的 document_type 枚举不包含 AUDIT_REPORT 类型，导致内审报告与受控文件混在同一个列表 | AuditReport 设计时将归档文件引用了 Document 模型，但未对 document_type 进行分类区分 | 内审报告出现在受控文件列表中，干扰文控专员查阅，也不符合内审文件应由内审模块管理的边界原则 | P2 | 已验证 | `server/src/prisma/schema.prisma` 第 2255-2260 行 `AuditReport.documentId String`；`document-control.constants.ts` 第 1-8 行 DOCUMENT_TYPES 枚举无 AUDIT_REPORT 类型 |
 | GAP-406 | `DocumentVersion` 的 version 字段也是 Decimal，与 Document 主表版本号问题一致，且缺少 V1/V2/V3 语义的修订版本号展示规则 | 版本设计决策问题 | 用户无法区分文件是"1.1 小修"还是"V2 大修"，影响体系文件管理规范性 | P2 | 已验证 | `server/src/prisma/schema.prisma` 第 386 行 `model DocumentVersion` |
 
 ## 8. 整改建议
@@ -194,9 +194,9 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | 记录表单落地映射 | `RecordFormLandingEntry` 模型 | sourceCode, landingStatus, targetModule, targetRoute | 禁止在各业务模块各自维护表单编号映射 | 无 |
 | 动态表单模板 | `RecordTemplate` 模型 | code, name, fieldsJson, version, status | 禁止在 Document 模型中存储表单字段定义 | 无 |
 | 动态表单填写记录 | `Record` 模型 | number, dataJson, status, productionBatchId | 禁止为每类记录表单新建独立模型（应先判断是否需要业务模块落地） | 无 |
-| 培训需求（文控派生） | `DocumentTrainingNeed` 模型（派生） | linkedTrainingProjectId | 禁止文控中心存储培训出勤、考试成绩等培训事实 | 无 |
+| 培训需求（文控派生） | `DocumentTrainingNeed` 模型（派生） | linkedTrainingProjectId | 禁止体系文件中心存储培训出勤、考试成绩等培训事实 | 无 |
 | 文件发放记录 | `DocumentIssuance` 模型 | document_name, document_code, issued_to, issued_by | 禁止在 Document 模型中增加发放记录字段 | 补 documentId 外键关联（GAP-2） |
-| 内审覆盖统计 | `DocumentAuditCoverageService` 派生查询 | 审核覆盖率、未覆盖文件列表 | 禁止在文控中心建立 AuditFinding 或 AuditPlan 副本 | 无 |
+| 内审覆盖统计 | `DocumentAuditCoverageService` 派生查询 | 审核覆盖率、未覆盖文件列表 | 禁止在体系文件中心建立 AuditFinding 或 AuditPlan 副本 | 无 |
 
 ## 11. 后续整改入口
 

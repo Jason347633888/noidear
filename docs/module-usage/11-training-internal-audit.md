@@ -20,10 +20,10 @@ facts_or_projections:
   - TrainingArchive：由 ArchiveService 生成的归档文件，事实源在 TrainingProject
   - AuditPlan/AuditFinding：事实源
   - AuditReport：由 ReportService 生成，归档 PDF 存入 Document，事实源在 AuditPlan
-  - DocumentTrainingNeed（文控中心）：文控派生需求，不是培训事实源
-  - DocumentAuditCoverageService（文控中心）：文控派生查询，不是内审事实源
+  - DocumentTrainingNeed（体系文件中心）：文控派生需求，不是培训事实源
+  - DocumentAuditCoverageService（体系文件中心）：文控派生查询，不是内审事实源
 downstream_consumers:
-  - 文控中心（Document.auditFindings、Document.auditReports 反向关系）
+  - 体系文件中心（Document.auditFindings、Document.auditReports 反向关系）
   - 文控工作台（DocumentAuditCoverageService 消费 AuditPlan/AuditFinding）
   - TodoTask（audit_rectification 类型任务由内审整改生成）
   - UnifiedApprovalModule（AuditPlan 完成时触发审批流）
@@ -144,7 +144,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 
 **培训模块上下游：**
 
-- **上游**：Document（TrainingProject.documentIds 引用培训资料文件）；文控中心的 DocumentTrainingNeed（文控工作台发现某文件需要培训，可关联到 TrainingProject）
+- **上游**：Document（TrainingProject.documentIds 引用培训资料文件）；体系文件中心的 DocumentTrainingNeed（文控工作台发现某文件需要培训，可关联到 TrainingProject）
 - **下游**：ManagementReview（年度培训统计汇入管理评审）；GRSS-PZ-JL-55（行政人事部工作总结）包含 TrainingRecord 实体
 - **边界**：培训不参与追溯主链，不关联 ProductionBatch/MaterialLot。TrainingProject.trainees 存储 User.id 数组，复用 Employee/User 主数据。
 
@@ -211,10 +211,10 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 
 | 对象 | 当前事实源 | 允许展示字段 | 禁止新增的平行事实源 | 旧字段或旧模块处理 |
 |---|---|---|---|---|
-| 培训计划 | `TrainingPlan` | year, title, status | 禁止文控中心或管理评审模块重建培训计划副本 | 无 |
+| 培训计划 | `TrainingPlan` | year, title, status | 禁止体系文件中心或管理评审模块重建培训计划副本 | 无 |
 | 培训项目与档案 | `TrainingProject` + `TrainingArchive` | department, scheduledDate, attendeeCount, passedCount | 禁止在 RecordTemplate/Record 中建立平行的培训出勤事实 | 无 |
-| 培训需求（文控派生） | `DocumentTrainingNeed`（派生） | linkedTrainingProjectId（投影） | 禁止在文控中心存储培训出勤、考试成绩等培训事实 | 无 |
-| 内审计划与发现 | `AuditPlan` + `AuditFinding` | planId, documentId, auditResult, status | 禁止在文控中心建立 AuditFinding 副本；禁止在业务模块建立局部内审记录替代全厂内审系统 | 无 |
+| 培训需求（文控派生） | `DocumentTrainingNeed`（派生） | linkedTrainingProjectId（投影） | 禁止在体系文件中心存储培训出勤、考试成绩等培训事实 | 无 |
+| 内审计划与发现 | `AuditPlan` + `AuditFinding` | planId, documentId, auditResult, status | 禁止在体系文件中心建立 AuditFinding 副本；禁止在业务模块建立局部内审记录替代全厂内审系统 | 无 |
 | 内审报告 | `AuditReport`（归档至 Document） | summary, pdfUrl, documentId | 内审报告事实在 AuditReport，Document 仅作归档存储；禁止在 RecordTemplate/Record 中平行维护内审报告 | 补 document_type 标签区分受控文件与内审归档（GAP-14） |
 | CAPA 关联 | `CorrectiveAction`（独立模块） | trigger_type = internal_audit | 禁止在 AuditFinding 中建立整改闭环替代 CAPA；整改证据需最终在 CorrectiveAction 中关联 | 补 correctiveActionId 外键（GAP-11） |
 | 管理评审汇总 | 待定（建议 ManagementReview 独立模型） | AuditReport.summary, TrainingArchive 统计 | 禁止分散在各部门 RecordTemplate/Record 中各自维护管理评审数据 | 短期 RecordTemplate 过渡，长期独立建模（GAP-15） |
