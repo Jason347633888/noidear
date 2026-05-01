@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ApprovalEngineService } from '../../unified-approval/approval-engine.service';
+import { InventoryMovementLedgerService } from './inventory-movement-ledger.service';
+import { Prisma } from '@prisma/client';
 import { CreateReturnDto, ApproveReturnDto } from '../dto/return.dto';
 
 @Injectable()
@@ -8,6 +10,7 @@ export class ReturnService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly approvalEngine: ApprovalEngineService,
+    private readonly inventoryMovementLedger: InventoryMovementLedgerService,
   ) {}
 
   async create(dto: CreateReturnDto) {
@@ -141,7 +144,7 @@ export class ReturnService {
     }
 
     // Transaction: StagingAreaStock ↓ + MaterialBatch ↑ + StockRecord (type: return)
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       for (const item of materialReturn.items) {
         // Decrement staging area stock
         const stagingStock = await tx.stagingAreaStock.findFirst({
@@ -175,6 +178,21 @@ export class ReturnService {
             remark: `退料单: ${materialReturn.returnNo}`,
           },
         });
+
+        await this.inventoryMovementLedger.recordMaterialBatchMovement(
+          {
+            movementType: 'return_to_warehouse',
+            batchId: item.materialBatchId,
+            quantity: item.quantity,
+            unit: 'kg',
+            refType: 'return',
+            refId: materialReturn.id,
+            operatorId: materialReturn.requesterId,
+            movedAt: new Date(),
+            notes: '退料回仓',
+          },
+          tx,
+        );
       }
 
       // Update return status

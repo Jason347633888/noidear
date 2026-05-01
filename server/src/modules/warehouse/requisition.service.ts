@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
+import { InventoryMovementLedgerService } from './services/inventory-movement-ledger.service';
+import { Prisma } from '@prisma/client';
 import * as dayjs from 'dayjs';
 
 @Injectable()
@@ -8,12 +10,13 @@ export class RequisitionService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly approvalEngine: ApprovalEngineService,
+    private readonly inventoryMovementLedger: InventoryMovementLedgerService,
   ) {}
 
   async create(createDto: any) {
     const requisitionNo = this.generateRequisitionNo();
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const requisition = await tx.materialRequisition.create({
         data: {
           requisitionNo,
@@ -134,7 +137,7 @@ export class RequisitionService {
       throw new BadRequestException('Only approved requisition can be completed');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       for (const item of requisition.items) {
         await tx.materialBatch.update({
           where: { id: item.batchId },
@@ -174,6 +177,22 @@ export class RequisitionService {
             operatorId,
           },
         });
+
+        await this.inventoryMovementLedger.recordMaterialBatchMovement(
+          {
+            movementType: 'issue_to_production',
+            batchId: item.batchId,
+            quantity: item.quantity,
+            unit: 'kg',
+            refType: 'requisition',
+            refId: requisition.id,
+            operatorId,
+            movedAt: new Date(),
+            toLocation: requisition.targetZone ?? undefined,
+            notes: '生产领料',
+          },
+          tx,
+        );
       }
 
       return tx.materialRequisition.update({

@@ -1,11 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ScrapService } from './scrap.service';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { InventoryMovementLedgerService } from './inventory-movement-ledger.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 describe('ScrapService', () => {
   let service: ScrapService;
   let prisma: PrismaService;
+  let inventoryMovementLedger: InventoryMovementLedgerService;
 
   const mockPrismaService = {
     materialScrap: {
@@ -37,11 +39,16 @@ describe('ScrapService', () => {
           provide: PrismaService,
           useValue: mockPrismaService,
         },
+        {
+          provide: InventoryMovementLedgerService,
+          useValue: { recordMaterialBatchMovement: jest.fn() },
+        },
       ],
     }).compile();
 
     service = module.get<ScrapService>(ScrapService);
     prisma = module.get<PrismaService>(PrismaService);
+    inventoryMovementLedger = module.get<InventoryMovementLedgerService>(InventoryMovementLedgerService);
   });
 
   afterEach(() => {
@@ -131,27 +138,32 @@ describe('ScrapService', () => {
         ],
       };
 
+      const txClient = {
+        stagingAreaStock: {
+          findFirst: jest.fn().mockResolvedValue({ id: 's1', quantity: 50 }),
+          update: jest.fn().mockResolvedValue({}),
+        },
+        materialBatch: { update: jest.fn().mockResolvedValue({}) },
+        stockRecord: { create: jest.fn().mockResolvedValue({}) },
+        materialScrap: { update: jest.fn().mockResolvedValue({ ...mockScrap, status: 'completed' }) },
+      };
+
       prisma.materialScrap.findUnique = jest.fn().mockResolvedValue(mockScrap);
-      prisma.$transaction = jest.fn(async (cb: any) => cb(prisma)) as any;
-      prisma.stagingAreaStock.findFirst = jest.fn().mockResolvedValue({
-        id: 's1',
-        quantity: 50,
-      });
-      prisma.stagingAreaStock.update = jest.fn();
-      prisma.materialBatch.update = jest.fn();
-      prisma.stockRecord.create = jest.fn();
-      prisma.materialScrap.update = jest.fn().mockResolvedValue({
-        ...mockScrap,
-        status: 'completed',
-      });
+      prisma.stagingAreaStock.findFirst = jest.fn().mockResolvedValue({ id: 's1', quantity: 50 });
+      prisma.$transaction = jest.fn(async (cb: any) => cb(txClient)) as any;
+      jest.spyOn(inventoryMovementLedger, 'recordMaterialBatchMovement').mockResolvedValue({} as any);
 
       const result = await service.complete('scrap-1');
 
       expect(result.status).toBe('completed');
-      expect(prisma.materialBatch.update).toHaveBeenCalledWith({
+      expect(txClient.materialBatch.update).toHaveBeenCalledWith({
         where: { id: 'batch-1' },
         data: { quantity: { decrement: 10 } },
       });
+      expect(inventoryMovementLedger.recordMaterialBatchMovement).toHaveBeenCalledWith(
+        expect.objectContaining({ movementType: 'scrap', batchId: 'batch-1' }),
+        txClient,
+      );
     });
 
     it('should throw NotFoundException if not found', async () => {
@@ -185,10 +197,11 @@ describe('ScrapService', () => {
       };
 
       prisma.materialScrap.findUnique = jest.fn().mockResolvedValue(mockScrap);
-      prisma.$transaction = jest.fn(async (cb: any) => cb(prisma)) as any;
-      prisma.stagingAreaStock.findFirst = jest.fn().mockResolvedValue({
-        quantity: 50,
-      });
+      prisma.$transaction = jest.fn(async (cb: any) =>
+        cb({
+          stagingAreaStock: { findFirst: jest.fn().mockResolvedValue({ quantity: 50 }) },
+        }),
+      ) as any;
 
       await expect(service.complete('scrap-1')).rejects.toThrow(
         BadRequestException,
@@ -217,25 +230,33 @@ describe('ScrapService', () => {
         quantity: 20,
       };
 
+      const txClient2 = {
+        stagingAreaStock: {
+          findFirst: jest.fn().mockResolvedValue(mockStagingStock),
+          update: jest.fn().mockResolvedValue({}),
+        },
+        materialBatch: { update: jest.fn().mockResolvedValue({}) },
+        stockRecord: { create: jest.fn().mockResolvedValue({}) },
+        materialScrap: { update: jest.fn().mockResolvedValue({ ...mockScrap, status: 'completed' }) },
+      };
+
       jest.spyOn(prisma.materialScrap, 'findUnique').mockResolvedValue(mockScrap as any);
       jest.spyOn(prisma.stagingAreaStock, 'findFirst').mockResolvedValue(mockStagingStock as any);
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback) => {
-        return callback(prisma);
+      jest.spyOn(inventoryMovementLedger, 'recordMaterialBatchMovement').mockResolvedValue({} as any);
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
+        return callback(txClient2);
       });
-      jest.spyOn(prisma.stagingAreaStock, 'update').mockResolvedValue({} as any);
-      jest.spyOn(prisma.materialBatch, 'update').mockResolvedValue({} as any);
-      jest.spyOn(prisma.stockRecord, 'create').mockResolvedValue({} as any);
-      jest.spyOn(prisma.materialScrap, 'update').mockResolvedValue({
-        ...mockScrap,
-        status: 'completed',
-      } as any);
 
       await service.complete('scrap-1');
 
-      expect(prisma.materialBatch.update).toHaveBeenCalledWith({
+      expect(txClient2.materialBatch.update).toHaveBeenCalledWith({
         where: { id: 'batch-1' },
         data: { quantity: { decrement: 10 } },
       });
+      expect(inventoryMovementLedger.recordMaterialBatchMovement).toHaveBeenCalledWith(
+        expect.objectContaining({ movementType: 'scrap', batchId: 'batch-1' }),
+        txClient2,
+      );
     });
   });
 

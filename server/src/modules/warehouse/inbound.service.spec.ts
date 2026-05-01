@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { InboundService } from './inbound.service';
 import { BatchNumberGeneratorService } from '../batch-trace/services/batch-number-generator.service';
+import { InventoryMovementLedgerService } from './services/inventory-movement-ledger.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import * as dayjs from 'dayjs';
 
@@ -9,6 +10,7 @@ describe('InboundService', () => {
   let service: InboundService;
   let prisma: PrismaService;
   let batchNumberGenerator: BatchNumberGeneratorService;
+  let inventoryMovementLedger: InventoryMovementLedgerService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -42,12 +44,17 @@ describe('InboundService', () => {
             generateBatchNumber: jest.fn(),
           },
         },
+        {
+          provide: InventoryMovementLedgerService,
+          useValue: { recordMaterialBatchMovement: jest.fn() },
+        },
       ],
     }).compile();
 
     service = module.get<InboundService>(InboundService);
     prisma = module.get<PrismaService>(PrismaService);
     batchNumberGenerator = module.get<BatchNumberGeneratorService>(BatchNumberGeneratorService);
+    inventoryMovementLedger = module.get<InventoryMovementLedgerService>(InventoryMovementLedgerService);
   });
 
   afterEach(() => {
@@ -175,25 +182,19 @@ describe('InboundService', () => {
 
       jest.spyOn(prisma.materialInbound, 'findUnique').mockResolvedValue(mockInbound as any);
       jest.spyOn(batchNumberGenerator, 'generateBatchNumber').mockResolvedValue('BATCH-20260215-001');
+      jest.spyOn(inventoryMovementLedger, 'recordMaterialBatchMovement').mockResolvedValue({} as any);
+
+      const txClient = {
+        materialBatch: { create: jest.fn().mockResolvedValue(mockBatch) },
+        stockRecord: { create: jest.fn() },
+        materialInboundItem: { update: jest.fn() },
+        materialInbound: {
+          update: jest.fn().mockResolvedValue({ ...mockInbound, status: 'completed' }),
+        },
+      };
 
       jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
-        return callback({
-          materialBatch: {
-            create: jest.fn().mockResolvedValue(mockBatch),
-          },
-          stockRecord: {
-            create: jest.fn(),
-          },
-          materialInboundItem: {
-            update: jest.fn(),
-          },
-          materialInbound: {
-            update: jest.fn().mockResolvedValue({
-              ...mockInbound,
-              status: 'completed',
-            }),
-          },
-        });
+        return callback(txClient);
       });
 
       // Act
@@ -203,6 +204,10 @@ describe('InboundService', () => {
       expect(result.status).toBe('completed');
       expect(batchNumberGenerator.generateBatchNumber).toHaveBeenCalledWith('material');
       expect(prisma.$transaction).toHaveBeenCalled();
+      expect(inventoryMovementLedger.recordMaterialBatchMovement).toHaveBeenCalledWith(
+        expect.objectContaining({ movementType: 'receive', batchId: mockBatch.id }),
+        txClient,
+      );
     });
 
     it('should throw BadRequestException if not approved', async () => {

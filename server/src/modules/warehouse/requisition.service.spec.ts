@@ -1,11 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RequisitionService } from './requisition.service';
+import { InventoryMovementLedgerService } from './services/inventory-movement-ledger.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('RequisitionService', () => {
   let service: RequisitionService;
   let prisma: PrismaService;
+  let inventoryMovementLedger: InventoryMovementLedgerService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -29,6 +31,9 @@ describe('RequisitionService', () => {
             },
             stagingAreaStock: {
               upsert: jest.fn(),
+              findFirst: jest.fn(),
+              update: jest.fn(),
+              create: jest.fn(),
             },
             stockRecord: {
               create: jest.fn(),
@@ -36,11 +41,16 @@ describe('RequisitionService', () => {
             $transaction: jest.fn(),
           },
         },
+        {
+          provide: InventoryMovementLedgerService,
+          useValue: { recordMaterialBatchMovement: jest.fn() },
+        },
       ],
     }).compile();
 
     service = module.get<RequisitionService>(RequisitionService);
     prisma = module.get<PrismaService>(PrismaService);
+    inventoryMovementLedger = module.get<InventoryMovementLedgerService>(InventoryMovementLedgerService);
   });
 
   afterEach(() => {
@@ -119,14 +129,27 @@ describe('RequisitionService', () => {
       };
 
       jest.spyOn(prisma.materialRequisition, 'findUnique').mockResolvedValue(mockRequisition as any);
-      
+      jest.spyOn(inventoryMovementLedger, 'recordMaterialBatchMovement').mockResolvedValue({} as any);
+
+      const txClient = {
+        materialBatch: { update: jest.fn() },
+        stagingAreaStock: { upsert: jest.fn(), findFirst: jest.fn(), update: jest.fn(), create: jest.fn() },
+        stockRecord: { create: jest.fn() },
+        materialRequisition: { update: jest.fn().mockResolvedValue({ ...mockRequisition, status: 'completed' }) },
+        materialRequisitionItem: { findMany: jest.fn().mockResolvedValue(mockRequisition.items) },
+      };
+
       jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
-        return callback(prisma);
+        return callback(txClient);
       });
 
       await service.complete('req-001', 'user-001');
 
       expect(prisma.$transaction).toHaveBeenCalled();
+      expect(inventoryMovementLedger.recordMaterialBatchMovement).toHaveBeenCalledWith(
+        expect.objectContaining({ movementType: 'issue_to_production', batchId: 'batch-001' }),
+        txClient,
+      );
     });
 
     it('should throw BadRequestException if not approved', async () => {

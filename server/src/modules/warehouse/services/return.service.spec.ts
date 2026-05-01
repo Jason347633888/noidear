@@ -1,11 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ReturnService } from './return.service';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { InventoryMovementLedgerService } from './inventory-movement-ledger.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 describe('ReturnService', () => {
   let service: ReturnService;
   let prisma: PrismaService;
+  let inventoryMovementLedger: InventoryMovementLedgerService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -35,11 +37,16 @@ describe('ReturnService', () => {
             $transaction: jest.fn((callback) => callback(prisma)),
           },
         },
+        {
+          provide: InventoryMovementLedgerService,
+          useValue: { recordMaterialBatchMovement: jest.fn() },
+        },
       ],
     }).compile();
 
     service = module.get<ReturnService>(ReturnService);
     prisma = module.get<PrismaService>(PrismaService);
+    inventoryMovementLedger = module.get<InventoryMovementLedgerService>(InventoryMovementLedgerService);
   });
 
   describe('create', () => {
@@ -152,21 +159,27 @@ describe('ReturnService', () => {
 
       jest.spyOn(prisma.materialReturn, 'findUnique').mockResolvedValue(mockReturn as any);
       jest.spyOn(prisma.stagingAreaStock, 'findFirst').mockResolvedValue(mockStagingStock as any);
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback) => {
-        return callback(prisma);
+      jest.spyOn(inventoryMovementLedger, 'recordMaterialBatchMovement').mockResolvedValue({} as any);
+
+      const txClient = {
+        stagingAreaStock: { findFirst: jest.fn().mockResolvedValue(mockStagingStock), update: jest.fn().mockResolvedValue({}) },
+        materialBatch: { update: jest.fn().mockResolvedValue({}) },
+        stockRecord: { create: jest.fn().mockResolvedValue({}) },
+        materialReturn: { update: jest.fn().mockResolvedValue({ ...mockReturn, status: 'completed' }) },
+      };
+
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
+        return callback(txClient);
       });
-      jest.spyOn(prisma.stagingAreaStock, 'update').mockResolvedValue({} as any);
-      jest.spyOn(prisma.materialBatch, 'update').mockResolvedValue({} as any);
-      jest.spyOn(prisma.stockRecord, 'create').mockResolvedValue({} as any);
-      jest.spyOn(prisma.materialReturn, 'update').mockResolvedValue({
-        ...mockReturn,
-        status: 'completed',
-      } as any);
 
       const result = await service.complete('return-1');
 
       expect(result.status).toBe('completed');
       expect(prisma.$transaction).toHaveBeenCalled();
+      expect(inventoryMovementLedger.recordMaterialBatchMovement).toHaveBeenCalledWith(
+        expect.objectContaining({ movementType: 'return_to_warehouse', batchId: 'batch-1' }),
+        txClient,
+      );
     });
 
     it('should throw BadRequestException if staging stock insufficient', async () => {
