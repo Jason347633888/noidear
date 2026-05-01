@@ -102,6 +102,12 @@ describe('ProductionBatchService', () => {
           status: 'pending',
         },
       });
+      expect(mockPrisma.product.findFirst).toHaveBeenCalledWith({
+        where: { id: 'p1', company_id: '1', status: 'active', deleted_at: null },
+      });
+      expect(mockPrisma.recipe.findFirst).toHaveBeenCalledWith({
+        where: { id: 'r1', product_id: 'p1', company_id: '1', status: 'active' },
+      });
     });
   });
 
@@ -245,6 +251,12 @@ describe('ProductionBatchService', () => {
       const result = await service.confirmProductBatch(validDto);
 
       expect(result).toEqual(mockBatch);
+      expect(mockPrisma.product.findFirst).toHaveBeenCalledWith({
+        where: { id: 'p1', company_id: '1', status: 'active', deleted_at: null },
+      });
+      expect(mockPrisma.recipe.findFirst).toHaveBeenCalledWith({
+        where: { id: 'r1', product_id: 'p1', company_id: '1', status: 'active' },
+      });
       expect(mockPrisma.productionBatch.create).toHaveBeenCalledWith({
         data: {
           batchNumber: 'PROD-PKG-001',
@@ -284,6 +296,17 @@ describe('ProductionBatchService', () => {
       mockPrisma.recipe.findFirst.mockResolvedValue(null);
 
       await expect(service.confirmProductBatch(validDto)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject recipe that does not belong to the selected product', async () => {
+      mockPrisma.productionBatch.findUnique.mockResolvedValue(null);
+      mockPrisma.product.findFirst.mockResolvedValue({ id: 'p1', name: '蛋糕', status: 'active' });
+      mockPrisma.recipe.findFirst.mockResolvedValue(null);
+
+      await expect(service.confirmProductBatch(validDto)).rejects.toThrow(BadRequestException);
+      expect(mockPrisma.recipe.findFirst).toHaveBeenCalledWith({
+        where: { id: 'r1', product_id: 'p1', company_id: '1', status: 'active' },
+      });
     });
   });
 });
