@@ -391,6 +391,8 @@ export class ReportService {
         fileType: 'application/pdf',
         status: 'published',
         creatorId: userId,
+        document_type: 'AUDIT_REPORT',
+        source_folder: null,
       },
     });
 

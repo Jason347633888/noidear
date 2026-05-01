@@ -5,6 +5,7 @@ export const DOCUMENT_TYPES = [
   'RECORD_FORM_INDEX',
   'COMPANY_FILE',
   'EXTERNAL_FILE',
+  'AUDIT_REPORT',
 ] as const;
 
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
@@ -120,4 +121,5 @@ export const REQUIRED_METADATA_BY_TYPE: Record<DocumentType, string[]> = {
   RECORD_FORM_INDEX: ['sourceCode', 'landingStrategy'],
   COMPANY_FILE: ['organizationScope'],
   EXTERNAL_FILE: ['externalSource', 'applicableScope'],
+  AUDIT_REPORT: [],
 };
