@@ -29,3 +29,4 @@
 | 3 | documents/GAP-402 | GAP-402 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-402-training-need-ux-clarification-implementation.md` | `executing-plans` | 是 | 文控派生培训需求页面说明与关联培训项目入口 |
 | 4 | documents/GAP-403 | GAP-403 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-403-record-form-landing-batch-confirm-implementation.md` | `executing-plans` | 是 | 记录表单落地建议支持选中后批量确认 |
 | 5 | documents/GAP-405-413 | GAP-405, GAP-413 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-405-413-audit-report-document-boundary-implementation.md` | `executing-plans` | 是 | 内审报告归档 Document 打 AUDIT_REPORT 标签，默认不混入体系文件库 |
+| 6 | equipment/GAP-600-602 | GAP-600, GAP-602 | GAP-304 | `docs/superpowers/specs/2026-05-01-gap-600-602-measuring-equipment-tenant-isolation-design.md` | `docs/superpowers/plans/2026-05-01-gap-600-602-measuring-equipment-tenant-isolation-implementation.md` | `executing-plans` | 否 | 计量器具与校准记录按 JWT companyId 隔离；等当前 5 个 agent 空出后派发 |

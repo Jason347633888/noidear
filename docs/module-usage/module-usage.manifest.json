@@ -2236,7 +2236,7 @@
       "id": "GAP-600",
       "severity": "P0",
       "moduleId": "equipment-and-measuring",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [
         "GAP-304"
       ],
@@ -2246,18 +2246,16 @@
       "schemaImpact": true,
       "historicalDataImpact": true,
       "recommendedSuperpowers": [
-        "brainstorming",
-        "grill-with-docs",
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "equipment",
-      "prOrder": null,
+      "prOrder": 6,
       "recommendedPr": "equipment/GAP-600",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-600"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-600-602-measuring-equipment-tenant-isolation-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-600-602-measuring-equipment-tenant-isolation-implementation.md"
     },
     {
       "id": "GAP-601",
@@ -2286,7 +2284,7 @@
       "id": "GAP-602",
       "severity": "P1",
       "moduleId": "equipment-and-measuring",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -2294,16 +2292,16 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "equipment",
-      "prOrder": null,
+      "prOrder": 6,
       "recommendedPr": "equipment/GAP-602",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-602"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-600-602-measuring-equipment-tenant-isolation-implementation.md"
     },
     {
       "id": "GAP-603",
