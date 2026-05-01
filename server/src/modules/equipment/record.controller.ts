@@ -8,7 +8,9 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RecordService } from './record.service';
 import {
   CreateRecordDto,
@@ -18,6 +20,7 @@ import {
   QueryRecordDto,
 } from './dto/record.dto';
 
+@UseGuards(JwtAuthGuard)
 @Controller('maintenance-records')
 export class RecordController {
   constructor(private readonly recordService: RecordService) {}

@@ -11,7 +11,9 @@ import {
   UploadedFile,
   UseInterceptors,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { StorageService } from '../../common/services/storage.service';
 
@@ -24,6 +26,7 @@ const ALLOWED_IMAGE_TYPES = [
   'image/webp',
 ];
 
+@UseGuards(JwtAuthGuard)
 @Controller('upload')
 export class UploadController {
   constructor(private readonly storageService: StorageService) {}
