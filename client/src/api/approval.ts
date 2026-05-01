@@ -75,28 +75,6 @@ export default {
   },
 
   /**
-   * 一级审批（主管审批）- 向后兼容
-   */
-  approveLevel1(id: string, action: 'approved' | 'rejected', commentOrReason?: string) {
-    return request.post<Approval>(`/approvals/level1/${id}/approve`, {
-      approvalId: id,
-      action,
-      ...(action === 'approved' ? { comment: commentOrReason } : { rejectionReason: commentOrReason }),
-    });
-  },
-
-  /**
-   * 二级审批（经理审批）- 向后兼容
-   */
-  approveLevel2(id: string, action: 'approved' | 'rejected', commentOrReason?: string) {
-    return request.post<Approval>(`/approvals/level2/${id}/approve`, {
-      approvalId: id,
-      action,
-      ...(action === 'approved' ? { comment: commentOrReason } : { rejectionReason: commentOrReason }),
-    });
-  },
-
-  /**
    * 获取审批链
    */
   getApprovalChain(recordId: string) {

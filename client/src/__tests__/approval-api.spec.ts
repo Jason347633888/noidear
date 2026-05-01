@@ -37,49 +37,6 @@ describe('Approval API', () => {
     });
   });
 
-  describe('approveLevel1', () => {
-    it('should POST approved action with comment', async () => {
-      await approvalApi.approveLevel1('ap-1', 'approved', '同意');
-
-      expect(mockPost).toHaveBeenCalledWith(
-        '/approvals/level1/ap-1/approve',
-        {
-          approvalId: 'ap-1',
-          action: 'approved',
-          comment: '同意',
-        },
-      );
-    });
-
-    it('should POST rejected action with rejectionReason', async () => {
-      await approvalApi.approveLevel1('ap-1', 'rejected', '数据有误，请修正后重新提交');
-
-      expect(mockPost).toHaveBeenCalledWith(
-        '/approvals/level1/ap-1/approve',
-        {
-          approvalId: 'ap-1',
-          action: 'rejected',
-          rejectionReason: '数据有误，请修正后重新提交',
-        },
-      );
-    });
-  });
-
-  describe('approveLevel2', () => {
-    it('should POST to level2 approve endpoint', async () => {
-      await approvalApi.approveLevel2('ap-2', 'approved', '同意');
-
-      expect(mockPost).toHaveBeenCalledWith(
-        '/approvals/level2/ap-2/approve',
-        {
-          approvalId: 'ap-2',
-          action: 'approved',
-          comment: '同意',
-        },
-      );
-    });
-  });
-
   describe('getApprovalChain', () => {
     it('should GET approval chain by recordId', async () => {
       await approvalApi.getApprovalChain('record-456');
