@@ -14,9 +14,9 @@ export class CreatePackagingMaterialUsageDto {
   @IsString()
   material_code?: string;
 
-  @IsOptional()
   @IsString()
-  production_batch_id?: string;
+  @IsNotEmpty()
+  production_batch_id: string;
 
   @IsOptional()
   @IsNumber()

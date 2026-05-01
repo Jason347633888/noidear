@@ -7,7 +7,7 @@ import request from './request';
 export interface PackagingMaterialUsage {
   id: string;
   company_id: string;
-  production_batch_id: string | null;
+  production_batch_id: string;
   material_name: string;
   material_code: string | null;
   used_weight: string | null;
@@ -21,9 +21,8 @@ export interface PackagingMaterialUsage {
 }
 
 export interface CreatePackagingMaterialUsagePayload {
-  material_name: string;
-  material_code?: string;
-  production_batch_id?: string;
+  material_id: string;
+  production_batch_id: string;
   used_weight?: number;
   waste_weight?: number;
   unit?: string;

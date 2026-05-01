@@ -1497,6 +1497,7 @@ model ProductionBatch {
   team             Team?       @relation(fields: [team_id], references: [id])
   shift_type       ShiftType?  @relation(fields: [shift_type_id], references: [id])
   aggregations     BatchMixingAggregation[]
+  packagingMaterialUsages PackagingMaterialUsage[]
 
   // 食品安全扩展字段
   output_qty      Decimal?  @db.Decimal(14, 4)
@@ -3635,7 +3636,8 @@ model ExternalParty {
 model PackagingMaterialUsage {
   id                  String    @id @default(cuid())
   company_id          String
-  production_batch_id String?
+  production_batch_id String
+  production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id], onDelete: Restrict)
   material_id         String?
   material            Material? @relation(fields: [material_id], references: [id], onDelete: SetNull)
   material_name       String
@@ -3649,6 +3651,7 @@ model PackagingMaterialUsage {
   created_at          DateTime  @default(now())
   deleted_at          DateTime?
 
+  @@index([production_batch_id])
   @@index([material_id])
 }
 
