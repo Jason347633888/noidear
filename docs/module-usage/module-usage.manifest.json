@@ -1632,7 +1632,7 @@
       "id": "GAP-402",
       "severity": "P2",
       "moduleId": "document-control-and-record-forms",
-      "triageStatus": "ready_for_plan",
+      "triageStatus": "needs_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -1640,16 +1640,16 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "documents",
-      "prOrder": 9,
+      "prOrder": null,
       "recommendedPr": "documents/GAP-402",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-402"
       ],
       "specPath": "",
-      "planPath": "docs/superpowers/plans/2026-05-01-gap-402-training-need-ux-clarification-implementation.md"
+      "planPath": ""
     },
     {
       "id": "GAP-403",

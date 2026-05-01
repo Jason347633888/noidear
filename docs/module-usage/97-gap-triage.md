@@ -10,6 +10,8 @@
 | 证据不足 | 不排 PR，先补验证任务 | `grill-me` 或运行系统验证 |
 | 需要业务判断 | 不排 PR，先业务确认 | `grill-with-docs` |
 
+> **统一硬门槛：** 所有 implementation plan 不分大小，必须经过 superpower 计划流程，并在 plan 文件中写入 `Superpower 与 grill-me 校准记录` 后，才允许进入 `96-pr-roadmap.md`。执行 agent 只允许按 plan 使用 `superpowers:executing-plans`。
+
 ## GAP 分诊总表
 
 | GAP | 严重级别 | 验证状态 | 是否确认 | 是否需要 spec | 是否需要 implementation plan | 推荐 superpower | spec 路径 | plan 路径 | 分诊结论 |
@@ -62,7 +64,7 @@
 | GAP-318 | P2 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema FK，先用 brainstorming 写轻量 spec（ReworkRecord→NC FK） |
 | GAP-400 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/migration spec（Document version 字段类型变更） |
 | GAP-401 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/migration spec（DocumentIssuance→Document FK） |
-| GAP-402 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-402-training-need-ux-clarification-implementation.md` | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
+| GAP-402 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 入口/体验优化，暂不进入本轮 5-agent 派发；后续需按统一硬门槛补齐 grill-me 校准后再进入 roadmap |
 | GAP-403 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 记录表单落地批量确认，写 plan 直接执行 |
 | GAP-404 | P2 | 未验证（需运行系统确认） | 否 | 否 | 否 | `grill-me` | | | 先运行系统确认 updateFields 接口不一致问题，待确认后重新分诊 |
 | GAP-405 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 document_type 标签，写小型 plan 直接执行 |

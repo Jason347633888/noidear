@@ -197,6 +197,23 @@ for (const gapId of roadmapPrimaryGaps) {
       `96-pr-roadmap.md schedules ${gapId} but planPath is empty — ` +
       `write an implementation plan first, then add it to the roadmap`
     )
+  } else {
+    const planFile = join(ROOT, g.planPath)
+    if (existsSync(planFile)) {
+      const planContent = readFileSync(planFile, 'utf8')
+      if (!planContent.includes('Superpower 与 grill-me 校准记录')) {
+        err(
+          `96-pr-roadmap.md schedules ${gapId} but ${g.planPath} is missing ` +
+          `"Superpower 与 grill-me 校准记录" — every implementation plan must pass the superpower + grill-me gate`
+        )
+      }
+      if (!planContent.includes('superpowers:executing-plans')) {
+        err(
+          `96-pr-roadmap.md schedules ${gapId} but ${g.planPath} does not require ` +
+          `superpowers:executing-plans for execution`
+        )
+      }
+    }
   }
 }
 
