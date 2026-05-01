@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 生成一套 `docs/module-usage/` 模块使用逻辑与整改地图，覆盖全项目模块，说明每条业务链怎么走、每一步生成什么结果、缺失会造成什么后果、当前系统差距和整改优先级。
+**Goal:** 生成一套 `docs/module-usage/` 模块使用逻辑与整改地图，覆盖全项目模块，说明每条业务链怎么走、每一步生成什么结果、缺失会造成什么后果、当前系统差距和后续整改优先级。
 
-**Architecture:** 第一轮只读梳理，不修改业务代码、schema、API 或页面。用多 agent 并行按业务链读取现有代码、路由、API、Prisma schema 和已有 docs，再由主 agent 汇总成统一目录化文档与 `99-current-gap-register.md`。
+**Architecture:** 第一轮只读梳理，不实施任何业务整改，不修改业务代码、schema、API 或页面。用多 agent 并行按业务链读取现有代码、路由、API、Prisma schema 和已有 docs，再由主 agent 汇总成统一目录化文档、机器可读 manifest、覆盖矩阵、GAP 总表和文档一致性检查脚本。
 
 **Tech Stack:** Markdown documentation, NestJS/Vue/Prisma code inspection, ripgrep, git worktree, subagent-driven documentation workflow.
 
@@ -12,9 +12,10 @@
 
 ## 0. Non-Negotiable Scope
 
-- 第一轮只生成文档，不改任何业务代码。
+- 第一轮只生成审计产物：模块使用逻辑文档、机器可读 manifest、覆盖矩阵、GAP 总表和文档一致性检查脚本。
+- 第一轮禁止实施整改：不改业务代码、不改 schema、不改 API、不改页面、不迁移数据。
 - 文档主结构按真实业务链组织，现有菜单、API、Prisma 模型作为映射层。
-- 每篇模块文档同时写当前状态、目标状态、差距和整改建议。
+- 每篇模块文档同时写当前状态、目标状态、差距和后续整改建议。
 - 每个发现必须进入 `99-current-gap-register.md`，使用稳定编号 `GAP-001` 起。
 - P0 问题必须能指出具体页面、API、字段、模型或函数。
 - 后续整改 PR 必须引用对应模块文档和 GAP 编号。
@@ -39,8 +40,10 @@
 - `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/11-training-internal-audit.md`
 - `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/12-task-approval-workflow.md`
 - `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/13-system-admin-ops.md`
+- `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/module-usage.manifest.json`
 - `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/98-coverage-matrix.md`
 - `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/99-current-gap-register.md`
+- `/Users/jiashenglin/Desktop/好玩的项目/noidear/tools/check-module-usage-docs.mjs`
 
 ### Read-Only Evidence Sources
 
@@ -127,9 +130,9 @@ last_verified_commit: git_sha
 
 ## 7. 当前系统差距
 
-| GAP 编号 | 当前问题 | 根因 | 影响后果 | 严重级别 | 证据 |
-|---|---|---|---|---|---|
-| GAP-001 | 问题描述 | 根因描述 | 后果描述 | P0 | 文件路径或字段名 |
+| GAP 编号 | 当前问题 | 根因 | 影响后果 | 严重级别 | 验证状态 | 证据 |
+|---|---|---|---|---|---|---|
+| GAP-001 | 问题描述 | 根因描述 | 后果描述 | P0 | 已验证 | 文件路径或字段名 |
 
 ## 8. 整改建议
 
@@ -178,9 +181,9 @@ last_verified_commit: git_sha
 
 ## GAP 总表
 
-| 编号 | 业务链 | 模块 | 当前问题 | 根因 | 影响后果 | 严重级别 | 依赖模块 | 建议整改 | 涉及文件 | 是否涉及 schema/migration | 是否涉及历史数据迁移 | 测试/验收命令 | 不能破坏什么 | 是否需要新设计 | 建议 PR |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| GAP-001 | 业务链名称 | 模块名称 | 当前问题 | 根因描述 | 业务后果 | P0 | 依赖模块 | 整改动作 | 文件列表 | 是/否 | 是/否 | `npm run verify` | 已有数据和接口合同 | 是 | PR 名称建议 |
+| 编号 | 业务链 | 模块 | 当前问题 | 根因 | 影响后果 | 严重级别 | 验证状态 | 依赖模块 | 建议整改 | 涉及文件 | 是否涉及 schema/migration | 是否涉及历史数据迁移 | 测试/验收命令 | 不能破坏什么 | 是否需要新设计 | 建议 PR |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| GAP-001 | 业务链名称 | 模块名称 | 当前问题 | 根因描述 | 业务后果 | P0 | 已验证 | 依赖模块 | 整改动作 | 文件列表 | 是/否 | 是/否 | `npm run verify` | 已有数据和接口合同 | 是 | PR 名称建议 |
 ```
 
 ---
@@ -260,6 +263,178 @@ Residual handling:
 删除入口: 页面或菜单入口不应保留，但后端历史兼容可暂留。
 历史兼容: 数据或 API 暂时保留用于旧记录、迁移或审计，不作为新功能事实源。
 基础设施: upload、redis、health 等基础能力不进入业务主链，但必须归入 13-system-admin-ops.md 或覆盖矩阵。
+```
+
+---
+
+## 3.2 Machine-Readable Manifest Format
+
+`module-usage.manifest.json` is the fast index for future agents. It must be valid JSON and must not contain comments.
+
+```json
+{
+  "schemaVersion": 1,
+  "generatedAtCommit": "git_sha",
+  "documents": [
+    {
+      "moduleId": "warehouse-inventory",
+      "path": "docs/module-usage/05-warehouse-inventory.md",
+      "businessChains": ["供应商 -> 原辅料批次 -> 仓储库存 -> 配料执行"],
+      "moduleTypes": ["批次数据", "库存事实源"],
+      "routes": ["/warehouse/materials", "/warehouse/batches"],
+      "serverModules": ["server/src/modules/warehouse"],
+      "clientApis": ["client/src/api/warehouse.ts"],
+      "prismaModels": ["Material", "MaterialBatch", "StockRecord", "InventoryMovement"],
+      "facts": ["MaterialBatch", "InventoryMovement"],
+      "projections": [],
+      "gaps": ["GAP-100", "GAP-101"]
+    }
+  ],
+  "gaps": [
+    {
+      "id": "GAP-100",
+      "severity": "P0",
+      "moduleId": "warehouse-inventory",
+      "dependsOn": [],
+      "blocks": ["GAP-210", "GAP-300"],
+      "canParallelize": false,
+      "needsDesign": true,
+      "schemaImpact": false,
+      "historicalDataImpact": false,
+      "recommendedPr": "PR-来料批次主链整改",
+      "validation": ["npm run build:server"]
+    }
+  ]
+}
+```
+
+Rules:
+
+```text
+Every module document must have exactly one `documents[]` entry.
+Every stable GAP in `99-current-gap-register.md` must have exactly one `gaps[]` entry.
+`documents[].gaps` must match GAP IDs referenced in the module document.
+`gaps[].dependsOn` and `gaps[].blocks` must use stable GAP IDs only.
+Do not include provisional `AGENT-N-GAP-M` IDs in the final manifest.
+```
+
+---
+
+## 3.3 GAP Dependency Graph And PR Split Rules
+
+`99-current-gap-register.md` must include a section named `## GAP 依赖图`.
+
+Format:
+
+```text
+GAP-100 统一库存流水事实源
+  -> GAP-210 配料区库存扣减
+  -> GAP-300 物料平衡追溯
+```
+
+Dependency rules:
+
+```text
+If a GAP changes a fact source, all downstream GAPs must depend on it.
+If a GAP needs schema/migration, it must be split from UI-only work.
+If a GAP fixes an API contract, dependent frontend GAPs must depend on it.
+If a GAP only changes labels, menu placement or display wording, it must not block fact-source GAPs.
+```
+
+PR split rules for future implementation:
+
+```text
+P0 chain break: one dedicated PR.
+Schema or migration: one dedicated PR.
+Fact-source migration: one dedicated PR, with historical-data plan.
+Frontend/backend field binding: one focused PR after backend contract is stable.
+Copy, label, menu, and small UX changes: may be grouped if they do not alter data contracts.
+Residual module entry removal: one dedicated PR.
+Documentation-only follow-up: may be grouped, but must not hide behavior changes.
+```
+
+This plan only records these future PR boundaries. It must not implement them during the audit.
+
+---
+
+## 3.4 Evidence Confidence Rules
+
+Agents must not present guesses as verified findings.
+
+Use one of these labels for every important claim:
+
+```text
+已验证: confirmed from code, route, schema, test, or authoritative docs.
+未验证: suspected but not proven from available evidence.
+需要业务确认: requires user or domain decision.
+需要运行系统确认: requires local/dev server behavior or browser/API test.
+需要数据库样本确认: requires real database data or seeded sample inspection.
+```
+
+Rules:
+
+```text
+Only `已验证` issues may become P0 without qualification.
+`未验证` issues may enter module docs, but must be marked as suspected and should not drive implementation PRs.
+`需要业务确认` issues must not invent schema or process decisions.
+`需要运行系统确认` issues must include the exact route, API, or manual test path.
+`需要数据库样本确认` issues must state which table/model and what sample is needed.
+```
+
+---
+
+## 3.5 Short Completed Example
+
+Use this as the minimum quality bar for each module document. Real documents must be more complete, but should keep the same density and evidence style.
+
+```markdown
+# 仓储与库存
+
+---
+module_id: warehouse-inventory
+business_chain:
+  - 供应商 -> 原辅料批次
+  - 仓储库存
+  - 配料执行 -> 追溯
+module_type:
+  - 批次数据
+  - 库存事实源
+source_of_truth:
+  - MaterialBatch
+  - InventoryMovement
+facts_or_projections:
+  - MaterialBatch: fact_source
+  - StockRecord: legacy_or_migration_source
+downstream_consumers:
+  - 配料执行
+  - 追溯
+current_entrypoints:
+  - /warehouse/materials
+  - /warehouse/batches
+last_verified_commit: git_sha
+---
+
+## 1. 模块定位
+
+仓储模块负责物料主数据展示、原辅料批次入库、库存移动、领退料、报废和盘点。它是原辅料批次和库存事实源，不应让下游模块重新维护物料名称、供应商名称或批次号。
+
+## 7. 当前系统差距
+
+| GAP 编号 | 当前问题 | 根因 | 影响后果 | 严重级别 | 验证状态 | 证据 |
+|---|---|---|---|---|---|---|
+| GAP-100 | `StockRecord` 和 `InventoryMovement` 双轨并存 | 当前仓储 service 深度写入 `StockRecord`，`InventoryMovement` 语义更完整但接入浅 | 后续配料、盘点、追溯可能引用不同库存事实源 | P0 | 已验证 | `server/src/prisma/schema.prisma`, `server/src/modules/warehouse` |
+
+## 10. 禁止重复实现与事实源边界
+
+| 对象 | 当前事实源 | 允许展示字段 | 禁止新增的平行事实源 | 旧字段或旧模块处理 |
+|---|---|---|---|---|
+| 原辅料批次 | `MaterialBatch` | 批次号、供应商批号、剩余数量 | 配料模块手填批次号 | 改为选择或由库存上下文带出 |
+
+## 11. 后续整改入口
+
+| 优先级 | GAP 编号 | 推荐 PR | 前置依赖 | 可并行 | 验收命令 |
+|---|---|---|---|---|---|
+| 1 | GAP-100 | PR-统一库存流水事实源 | 无 | 否 | `npm run build:server` |
 ```
 
 ---
@@ -517,6 +692,7 @@ Expected: directory exists.
 | `11-training-internal-audit.md` | 培训、内审 |
 | `12-task-approval-workflow.md` | 任务、审批、工作流 |
 | `13-system-admin-ops.md` | 权限、账号、通知、备份、监控、审计 |
+| `module-usage.manifest.json` | 机器可读索引：文档、路由、模块、模型、GAP、依赖 |
 | `98-coverage-matrix.md` | 前端路由、后端模块、Prisma 模型、API 覆盖证明 |
 | `99-current-gap-register.md` | 当前差距整改总表 |
 ```
@@ -536,8 +712,15 @@ Expected: directory exists.
 
 ## GAP 总表
 
-| 编号 | 业务链 | 模块 | 当前问题 | 影响后果 | 严重级别 | 依赖模块 | 建议整改 | 是否需要新设计 | 建议 PR |
-|---|---|---|---|---|---|---|---|---|---|
+| 编号 | 业务链 | 模块 | 当前问题 | 根因 | 影响后果 | 严重级别 | 验证状态 | 依赖模块 | 建议整改 | 涉及文件 | 是否涉及 schema/migration | 是否涉及历史数据迁移 | 测试/验收命令 | 不能破坏什么 | 是否需要新设计 | 建议 PR |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+
+## GAP 依赖图
+
+```text
+GAP-100 示例上游问题
+  -> GAP-210 示例下游问题
+```
 ```
 
 - [ ] **Step 4: Create `01-business-chain-overview.md`**
@@ -579,14 +762,42 @@ Expected: directory exists.
 - 每个 GAP 必须有编号，后续 PR 必须引用编号。
 ```
 
-- [ ] **Step 5: Commit skeleton**
+- [ ] **Step 5: Create `module-usage.manifest.json` skeleton**
+
+```json
+{
+  "schemaVersion": 1,
+  "generatedAtCommit": "",
+  "documents": [],
+  "gaps": []
+}
+```
+
+- [ ] **Step 6: Create `tools/check-module-usage-docs.mjs` skeleton**
+
+The script must eventually validate:
+
+```text
+Required module docs exist.
+Every module doc has metadata.
+GAP IDs are unique.
+GAP IDs referenced in module docs exist in `99-current-gap-register.md`.
+Every GAP in `99-current-gap-register.md` exists in `module-usage.manifest.json`.
+`98-coverage-matrix.md` has no unresolved `未判定` or `待判定` rows.
+P0/P1 rows include root cause, likely files, schema impact, historical-data impact and validation path.
+P0/P1 rows include a valid verification status.
+```
+
+The first skeleton may fail with a clear TODO message until Task 6 fills the docs.
+
+- [ ] **Step 7: Commit skeleton**
 
 ```bash
-git add docs/module-usage/00-index.md docs/module-usage/01-business-chain-overview.md docs/module-usage/99-current-gap-register.md
+git add docs/module-usage/00-index.md docs/module-usage/01-business-chain-overview.md docs/module-usage/99-current-gap-register.md docs/module-usage/module-usage.manifest.json tools/check-module-usage-docs.mjs
 git commit -m "docs: add module usage documentation skeleton"
 ```
 
-Expected: commit created with only three skeleton files.
+Expected: commit created with only documentation skeleton files and the documentation validation script skeleton.
 
 ### Task 2: Dispatch Six Read-Only Documentation Agents
 
@@ -607,6 +818,7 @@ Use the exact assignment text from section 4. Each agent must:
 7. Fill the metadata block at the top of every assigned module document.
 8. Fill `禁止重复实现与事实源边界` so future agents know what not to recreate.
 9. Fill `后续整改入口` so each GAP can be converted into an implementation PR.
+10. Mark each important claim as `已验证`, `未验证`, `需要业务确认`, `需要运行系统确认`, or `需要数据库样本确认`.
 ```
 
 - [ ] **Step 2: Require each agent to produce module docs and provisional GAP rows**
@@ -616,8 +828,18 @@ Expected output from each agent:
 ```text
 Completed:
 - Created or updated assigned docs/module-usage/*.md files
-- Listed provisional GAP rows
-- Did not modify business code
+- Files modified
+- Modules inspected
+- Routes inspected
+- API adapters inspected
+- Controllers/services inspected
+- Prisma models inspected
+- GAPs created
+- Suspected but unconfirmed issues
+- Scope not covered
+- Claims requiring business confirmation
+- Claims requiring runtime or database-sample confirmation
+- Did not modify business code, schema, API, page code, generated files, env files, reports or runtime artifacts
 ```
 
 ### Task 3: Normalize GAP Numbering
@@ -663,7 +885,7 @@ AGENT-3-GAP-1 -> GAP-200
 For each stable GAP, add one row:
 
 ```markdown
-| GAP-100 | 来料 -> 仓储 -> 投料 | 来料检验 | `material_batch_id` 录入方式需要核对是否仍可手填 | 来料检验和原辅料批次上下文绑定不稳定 | 后续投料可能无法稳定追溯到供应商、来料放行和原辅料批次 | P0 | MaterialBatch, IncomingInspection, Warehouse | 改为从原辅料批次选择器或到货批次上下文带出 | `client/src/views/incoming-inspection`, `server/src/modules/incoming-inspection` | 否 | 否 | `npm run build:server` | 已有来料检验记录和原辅料批次关联 | 是 | PR-来料批次主链整改 |
+| GAP-100 | 来料 -> 仓储 -> 投料 | 来料检验 | `material_batch_id` 录入方式需要核对是否仍可手填 | 来料检验和原辅料批次上下文绑定不稳定 | 后续投料可能无法稳定追溯到供应商、来料放行和原辅料批次 | P0 | 已验证 | MaterialBatch, IncomingInspection, Warehouse | 改为从原辅料批次选择器或到货批次上下文带出 | `client/src/views/incoming-inspection`, `server/src/modules/incoming-inspection` | 否 | 否 | `npm run build:server` | 已有来料检验记录和原辅料批次关联 | 是 | PR-来料批次主链整改 |
 ```
 
 Each row must include enough execution detail for another agent to start a PR without re-auditing the entire module. If a row cannot name likely files, schema impact, historical-data impact and validation path, downgrade it to a design-needed GAP instead of pretending it is implementation-ready.
@@ -753,6 +975,17 @@ Add this section:
 3. 是否新增或删除主数据、批次、桥接关系或动态表单承载。
 4. 是否影响追溯、放行、库存、审批或任务闭环。
 5. 是否同步更新对应模块使用逻辑文档。
+
+## 后续整改完成后的回写规则
+
+每个后续整改 PR 完成后必须回写：
+
+1. 对应 `docs/module-usage/*.md` 的当前实现、差距和后续整改入口。
+2. `docs/module-usage/99-current-gap-register.md` 的 GAP 状态、依赖和验收结果。
+3. `docs/module-usage/98-coverage-matrix.md` 的路由、模块、模型或 API 覆盖状态。
+4. `docs/module-usage/module-usage.manifest.json` 的文档、GAP、依赖和验证命令。
+5. 如涉及术语、事实源或业务边界变化，同步更新 `CONTEXT.md`。
+6. 运行 `node tools/check-module-usage-docs.mjs` 并保持通过。
 ```
 
 ### Task 5: Build Coverage Matrix
@@ -839,12 +1072,62 @@ rg -n "^\\| .*\\| .*\\| .*\\| 待判定 \\|" docs/module-usage/98-coverage-matri
 
 Expected: no unresolved table row remains before final commit.
 
-### Task 6: Final Documentation Validation
+### Task 6: Build Manifest And Validation Script
+
+**Files:**
+- Modify: `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/module-usage.manifest.json`
+- Modify: `/Users/jiashenglin/Desktop/好玩的项目/noidear/tools/check-module-usage-docs.mjs`
+
+- [ ] **Step 1: Populate `module-usage.manifest.json`**
+
+Use the format in section 3.2. The manifest must include:
+
+```text
+All module documents.
+Routes covered by each document.
+Server modules covered by each document.
+Client API adapters covered by each document.
+Business-relevant Prisma models covered by each document.
+Fact sources and projections.
+Stable GAP IDs created by each document.
+GAP dependency edges.
+Recommended PR name and validation command for each GAP.
+```
+
+- [ ] **Step 2: Implement `tools/check-module-usage-docs.mjs`**
+
+The script must fail with a non-zero exit code if:
+
+```text
+Required files are missing.
+Any module doc is missing metadata.
+Any module doc is missing `禁止重复实现与事实源边界`.
+Any module doc is missing `后续整改入口`.
+Any GAP ID is duplicated.
+Any module-doc GAP is missing from `99-current-gap-register.md`.
+Any register GAP is missing from `module-usage.manifest.json`.
+Any manifest GAP references unknown dependencies.
+`98-coverage-matrix.md` contains unresolved `未判定` or `待判定` rows.
+Any P0/P1 row misses root cause, verification status, likely files, schema impact, historical-data impact, validation path or do-not-break note.
+```
+
+- [ ] **Step 3: Run validation script**
+
+Run:
+
+```bash
+node tools/check-module-usage-docs.mjs
+```
+
+Expected: exit code 0.
+
+### Task 7: Final Documentation Validation
 
 **Files:**
 - Read: `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/**`
+- Read: `/Users/jiashenglin/Desktop/好玩的项目/noidear/tools/check-module-usage-docs.mjs`
 
-- [ ] **Step 1: Verify only documentation files changed**
+- [ ] **Step 1: Verify only documentation artifacts changed**
 
 Run:
 
@@ -852,7 +1135,7 @@ Run:
 git diff --name-only
 ```
 
-Expected: only files under `docs/module-usage/` are listed.
+Expected: only files under `docs/module-usage/` and `tools/check-module-usage-docs.mjs` are listed.
 
 - [ ] **Step 2: Verify all expected docs exist**
 
@@ -874,8 +1157,10 @@ for file in \
   docs/module-usage/11-training-internal-audit.md \
   docs/module-usage/12-task-approval-workflow.md \
   docs/module-usage/13-system-admin-ops.md \
+  docs/module-usage/module-usage.manifest.json \
   docs/module-usage/98-coverage-matrix.md \
-  docs/module-usage/99-current-gap-register.md; do
+  docs/module-usage/99-current-gap-register.md \
+  tools/check-module-usage-docs.mjs; do
   test -s "$file" || exit 1
 done
 ```
@@ -892,14 +1177,24 @@ rg -n "^\\| GAP-[0-9]{3} \\|" docs/module-usage/99-current-gap-register.md
 
 Expected: at least one GAP row.
 
-- [ ] **Step 4: Commit docs**
+- [ ] **Step 4: Verify manifest and docs are internally consistent**
+
+Run:
 
 ```bash
-git add docs/module-usage
+node tools/check-module-usage-docs.mjs
+```
+
+Expected: exit code 0.
+
+- [ ] **Step 5: Commit docs**
+
+```bash
+git add docs/module-usage tools/check-module-usage-docs.mjs
 git commit -m "docs: add module usage audit map"
 ```
 
-Expected: commit contains only `docs/module-usage/**`.
+Expected: commit contains only `docs/module-usage/**` and `tools/check-module-usage-docs.mjs`.
 
 ---
 
@@ -924,15 +1219,18 @@ Use these seeds only after verifying them from code.
 
 ## 7. Final Success Criteria
 
-- `docs/module-usage/` contains all 16 expected files.
+- `docs/module-usage/` contains all 16 expected Markdown documents plus `module-usage.manifest.json`.
+- `tools/check-module-usage-docs.mjs` exists and passes.
 - Every module document uses the shared structure.
 - Every module document has agent-readable metadata, source-of-truth boundaries, anti-duplication rules and remediation entry rows.
 - `98-coverage-matrix.md` maps frontend routes, backend modules, business-relevant Prisma models and API adapters to module documents.
 - No frontend route, backend module, business-relevant Prisma model or API adapter remains `未判定` or `待判定`.
+- `module-usage.manifest.json` maps documents, routes, backend modules, client APIs, Prisma models, fact sources, projections, GAPs, dependencies and recommended PRs.
 - `99-current-gap-register.md` has stable GAP IDs.
-- P0/P1 issues include root cause, likely files, schema impact, historical-data impact, validation path, and concrete evidence paths or exact field/API/model names.
+- `99-current-gap-register.md` includes a GAP dependency graph.
+- P0/P1 issues include root cause, verification status, likely files, schema impact, historical-data impact, validation path, and concrete evidence paths or exact field/API/model names.
 - Residual modules have an explicit handling path: keep and assign, migrate, deprecate, remove entry, keep for historical compatibility, or classify as infrastructure.
-- No business code, schema, API, test, build, generated, env, report or local runtime file is modified.
+- No business code, schema, API, page code, generated, env, report or local runtime file is modified. The only allowed non-doc artifact is `tools/check-module-usage-docs.mjs`.
 - The documentation gives enough detail for the user to understand:
   - each module can do what,
   - each function is used how,
