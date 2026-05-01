@@ -39,6 +39,7 @@
 - `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/11-training-internal-audit.md`
 - `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/12-task-approval-workflow.md`
 - `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/13-system-admin-ops.md`
+- `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/98-coverage-matrix.md`
 - `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/99-current-gap-register.md`
 
 ### Read-Only Evidence Sources
@@ -146,6 +147,55 @@ Every module document must follow this exact structure.
 | 编号 | 业务链 | 模块 | 当前问题 | 影响后果 | 严重级别 | 依赖模块 | 建议整改 | 是否需要新设计 | 建议 PR |
 |---|---|---|---|---|---|---|---|---|---|
 | GAP-001 | 业务链名称 | 模块名称 | 当前问题 | 业务后果 | P0 | 依赖模块 | 整改动作 | 是 | PR 名称建议 |
+```
+
+---
+
+## 3.1 Coverage Matrix Format
+
+`98-coverage-matrix.md` must prove the audit did not silently skip routes, modules, models or API adapters.
+
+```markdown
+# 覆盖矩阵
+
+## 1. 前端路由覆盖表
+
+| 路由 | 页面 | 所属模块文档 | 状态 | 备注 |
+|---|---|---|---|---|
+| `/warehouse/materials` | `client/src/views/warehouse/MaterialList.vue` | `05-warehouse-inventory.md` | 已覆盖 | 物料主数据入口 |
+
+## 2. 后端模块覆盖表
+
+| 后端模块 | 所属模块文档 | 模块类型 | 状态 | 备注 |
+|---|---|---|---|---|
+| `server/src/modules/warehouse` | `05-warehouse-inventory.md` | 业务主链 | 已覆盖 | 仓储、批次、库存 |
+
+## 3. Prisma 模型覆盖表
+
+| Prisma 模型 | 业务对象类型 | 所属业务链 | 所属模块文档 | 是否事实源 | 备注 |
+|---|---|---|---|---|---|
+| `MaterialBatch` | 批次数据 | 原辅料批次 | `05-warehouse-inventory.md` | 是 | 业务名为原辅料批次 |
+
+## 4. API 覆盖表
+
+| 前端 API | 后端 Controller | 后端 Service | 所属模块文档 | 状态 | 备注 |
+|---|---|---|---|---|---|
+| `client/src/api/warehouse.ts` | `WarehouseController` | `WarehouseService` | `05-warehouse-inventory.md` | 已覆盖 | 示例 |
+
+## 5. 未覆盖或需判定对象
+
+| 对象 | 类型 | 当前判断 | 后续动作 |
+|---|---|---|---|
+| `server/src/modules/example` | 后端模块 | 未判定 | 补充归属或标记残留 |
+```
+
+Statuses:
+
+```text
+已覆盖: 已归入某篇模块使用逻辑文档。
+支撑能力: 不属于食品安全主链，但为系统能力，需要在 13-system-admin-ops.md 或相关文档中说明。
+残留模块: 当前可能是历史实现、旧入口或未接入模块，必须进入 GAP 表或说明清理建议。
+未判定: 审计未完成前的临时状态，最终文档不得保留。
 ```
 
 ---
@@ -403,6 +453,7 @@ Expected: directory exists.
 | `11-training-internal-audit.md` | 培训、内审 |
 | `12-task-approval-workflow.md` | 任务、审批、工作流 |
 | `13-system-admin-ops.md` | 权限、账号、通知、备份、监控、审计 |
+| `98-coverage-matrix.md` | 前端路由、后端模块、Prisma 模型、API 覆盖证明 |
 | `99-current-gap-register.md` | 当前差距整改总表 |
 ```
 
@@ -618,7 +669,90 @@ Add this section:
 5. 是否同步更新对应模块使用逻辑文档。
 ```
 
-### Task 5: Final Documentation Validation
+### Task 5: Build Coverage Matrix
+
+**Files:**
+- Create or modify: `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/98-coverage-matrix.md`
+
+- [ ] **Step 1: Build frontend route coverage table**
+
+Run:
+
+```bash
+cd /Users/jiashenglin/Desktop/好玩的项目/noidear
+rg -n "path:|component:" client/src/router/index.ts
+```
+
+Expected: every business or admin route is mapped to one module usage document in `98-coverage-matrix.md`.
+
+- [ ] **Step 2: Build backend module coverage table**
+
+Run:
+
+```bash
+cd /Users/jiashenglin/Desktop/好玩的项目/noidear
+find server/src/modules -maxdepth 1 -type d | sed 's#server/src/modules/##' | sort
+```
+
+Expected: every backend module is marked as one of:
+
+```text
+业务主链
+支撑能力
+残留模块
+基础设施
+```
+
+No module may be omitted. Residual modules must either link to an existing GAP or include a cleanup note.
+
+- [ ] **Step 3: Build Prisma model coverage table**
+
+Run:
+
+```bash
+cd /Users/jiashenglin/Desktop/好玩的项目/noidear
+rg -n "^model " server/src/prisma/schema.prisma
+```
+
+Expected: every business-relevant Prisma model is mapped to:
+
+```text
+主数据
+批次数据
+桥接关系
+过程记录
+治理记录
+系统能力
+审计/日志
+历史兼容
+```
+
+P0/P1 traceability, stock, approval, release or master-data models must be explicitly marked as fact source or projection.
+
+- [ ] **Step 4: Build API coverage table**
+
+Run:
+
+```bash
+cd /Users/jiashenglin/Desktop/好玩的项目/noidear
+find client/src/api -maxdepth 1 -type f | sort
+find server/src/modules -name "*controller.ts" | sort
+find server/src/modules -name "*service.ts" | sort
+```
+
+Expected: API adapters, controllers and services are mapped by module document. Unmatched adapters or controllers must be listed in `98-coverage-matrix.md` section `未覆盖或需判定对象`.
+
+- [ ] **Step 5: Verify no final `未判定` remains**
+
+Run:
+
+```bash
+rg -n "^\\| .*\\| .*\\| 未判定 \\|" docs/module-usage/98-coverage-matrix.md
+```
+
+Expected: no unresolved table row remains before final commit.
+
+### Task 6: Final Documentation Validation
 
 **Files:**
 - Read: `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/**`
@@ -653,6 +787,7 @@ for file in \
   docs/module-usage/11-training-internal-audit.md \
   docs/module-usage/12-task-approval-workflow.md \
   docs/module-usage/13-system-admin-ops.md \
+  docs/module-usage/98-coverage-matrix.md \
   docs/module-usage/99-current-gap-register.md; do
   test -s "$file" || exit 1
 done
@@ -702,8 +837,10 @@ Use these seeds only after verifying them from code.
 
 ## 7. Final Success Criteria
 
-- `docs/module-usage/` contains all 15 expected files.
+- `docs/module-usage/` contains all 16 expected files.
 - Every module document uses the shared structure.
+- `98-coverage-matrix.md` maps frontend routes, backend modules, business-relevant Prisma models and API adapters to module documents.
+- No frontend route, backend module, business-relevant Prisma model or API adapter remains `未判定`.
 - `99-current-gap-register.md` has stable GAP IDs.
 - P0 issues include concrete evidence paths or exact field/API/model names.
 - No business code, schema, API, test, build, generated, env, report or local runtime file is modified.
