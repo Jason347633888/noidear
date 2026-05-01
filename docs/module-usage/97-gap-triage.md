@@ -22,11 +22,11 @@
 | GAP-004 | P3 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | docs/superpowers/plans/2026-05-01-gap-004-legacy-product-route-redirect-notice-implementation.md | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-005 | P2 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-005-process-step-relation-validation-design.md | docs/superpowers/plans/2026-05-01-gap-005-process-step-relation-validation-implementation.md | spec 和 plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-006 | P1 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-001-006-process-instance-product-link-design.md | docs/superpowers/plans/2026-05-01-gap-001-006-process-instance-product-link-implementation.md | 与 GAP-001 合并，spec 和 plan 已写完；执行时只使用 executing-plans |
-| GAP-007 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | 依赖 GAP-002 先完成；GAP-002 spec 完成后写 plan |
+| GAP-007 | P2 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-007-production-batch-product-snapshot-design.md | docs/superpowers/plans/2026-05-01-gap-007-production-batch-product-snapshot-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
 | GAP-008 | P2 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema 变更（area_id 非空），先用 brainstorming 写轻量 spec |
 | GAP-100 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（IncomingInspection↔MaterialBatch 选择器） |
 | GAP-101 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（批次手工创建门禁） |
-| GAP-102 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/设计 spec（库存流水单一事实源决策） |
+| GAP-102 | P1 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-102-inventory-movement-ledger-unification-design.md | docs/superpowers/plans/2026-05-01-gap-102-inventory-movement-ledger-unification-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
 | GAP-103 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（Supplier 双状态门禁逻辑） |
 | GAP-104 | P2 | 需要运行系统确认 | 否 | 否 | 否 | `grill-me` | | | 先运行系统确认菜单可见性，待确认后重新分诊 |
 | GAP-105 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-105-supplier-evaluation-company-id-implementation.md` | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
@@ -40,7 +40,7 @@
 | GAP-202 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（BatchDetail 批次选择器） |
 | GAP-203 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema spec（PackagingMaterialUsage FK 到 ProductionBatch） |
 | GAP-204 | P2 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema FK，先用 brainstorming 写轻量 spec |
-| GAP-205 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 历史数据清理，写 plan 直接执行 |
+| GAP-205 | P2 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-205-finished-goods-residual-cleanup-design.md | docs/superpowers/plans/2026-05-01-gap-205-finished-goods-residual-cleanup-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
 | GAP-206 | P2 | 需要运行系统确认 | 否 | 否 | 否 | `grill-me` | | | 先确认盘点校验是否已有实现，待确认后重新分诊 |
 | GAP-207 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | 依赖 GAP-200；GAP-200 spec 完成后写 plan |
 | GAP-300 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/migration spec（EnvironmentRecord batch FK） |
@@ -49,7 +49,7 @@
 | GAP-303 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（CCP missing 按产品过滤） |
 | GAP-304 | P0 | 已验证 | 是 | 是 | 是 | - | docs/superpowers/specs/2026-05-01-gap-304-company-id-from-jwt-design.md | docs/superpowers/plans/2026-05-01-gap-304-company-id-from-jwt-implementation.md | 已执行：认证上下文补齐 companyId，CCP/不合格/CAPA/投诉/返工链路按 JWT companyId 写入与过滤；ProductionBatch 租户归属另行分诊 |
 | GAP-305 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（CCP 偏差自动触发 NonConformance） |
-| GAP-306 | P0 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P0 追溯服务未注册，先用 brainstorming 写 spec；GAP-307/308/309/310/311/312 依赖此 |
+| GAP-306 | P0 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-306-traceability-module-service-registration-design.md | docs/superpowers/plans/2026-05-01-gap-306-traceability-module-service-registration-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
 | GAP-307 | P0 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P0 追溯查询完整链路，依赖 GAP-306，先用 brainstorming 写 spec |
 | GAP-308 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 依赖 GAP-306；先用 brainstorming 写跨模块 spec（快照持久化） |
 | GAP-309 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema spec（CustomerComplaint customer FK） |

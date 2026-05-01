@@ -553,7 +553,7 @@
       "id": "GAP-007",
       "severity": "P2",
       "moduleId": "master-data-and-boundaries",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [
         "GAP-002"
       ],
@@ -563,18 +563,16 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "brainstorming",
-        "grill-with-docs",
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "master-data",
-      "prOrder": null,
+      "prOrder": 10,
       "recommendedPr": "master-data/GAP-007",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-007"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-007-production-batch-product-snapshot-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-007-production-batch-product-snapshot-implementation.md"
     },
     {
       "id": "GAP-008",
@@ -655,7 +653,7 @@
       "id": "GAP-102",
       "severity": "P1",
       "moduleId": "supplier-procurement-incoming",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [
         "GAP-106",
@@ -669,18 +667,16 @@
       "schemaImpact": true,
       "historicalDataImpact": true,
       "recommendedSuperpowers": [
-        "brainstorming",
-        "grill-with-docs",
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "supplier",
-      "prOrder": null,
+      "prOrder": 11,
       "recommendedPr": "supplier/GAP-102",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-102"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-102-inventory-movement-ledger-unification-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-102-inventory-movement-ledger-unification-implementation.md"
     },
     {
       "id": "GAP-103",
@@ -1009,7 +1005,7 @@
       "id": "GAP-205",
       "severity": "P2",
       "moduleId": "mixing-production-packaging",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -1017,18 +1013,16 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "brainstorming",
-        "grill-with-docs",
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "production",
-      "prOrder": null,
+      "prOrder": 12,
       "recommendedPr": "production/GAP-205",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-205"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-205-finished-goods-residual-cleanup-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-205-finished-goods-residual-cleanup-implementation.md"
     },
     {
       "id": "GAP-206",
@@ -1232,7 +1226,7 @@
       "id": "GAP-306",
       "severity": "P0",
       "moduleId": "traceability-complaint-recall",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [
         "GAP-307",
@@ -1247,18 +1241,16 @@
       "schemaImpact": true,
       "historicalDataImpact": true,
       "recommendedSuperpowers": [
-        "brainstorming",
-        "grill-with-docs",
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "traceability",
-      "prOrder": null,
+      "prOrder": 13,
       "recommendedPr": "traceability/GAP-306",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-306"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-306-traceability-module-service-registration-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-306-traceability-module-service-registration-implementation.md"
     },
     {
       "id": "GAP-307",
