@@ -1523,6 +1523,7 @@ model ProductionBatch {
   process_monitor_records ProcessMonitorRecord[]
   metal_detection_logs    MetalDetectionLog[]
   environment_records     EnvironmentRecord[]
+  fragile_item_inspections FragileItemInspection[]
 
   production_run_id String?
   production_run    ProductionRun? @relation(fields: [production_run_id], references: [id], onDelete: SetNull)
@@ -3535,7 +3536,8 @@ model AssetLoanRecord {
 model FragileItemInspection {
   id                  String    @id @default(cuid())
   company_id          String
-  production_batch_id String?
+  production_batch_id String
+  production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id], onDelete: Restrict)
   location            String?
   item_name           String
   total_qty           Int
@@ -3545,6 +3547,8 @@ model FragileItemInspection {
   inspected_at        DateTime
   inspector_id        String?
   created_at          DateTime  @default(now())
+
+  @@index([production_batch_id])
 }
 
 model ChangeComplianceRecord {

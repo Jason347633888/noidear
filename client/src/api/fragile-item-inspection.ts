@@ -7,7 +7,7 @@ import request from './request';
 export interface FragileItemInspection {
   id: string;
   company_id: string;
-  production_batch_id: string | null;
+  production_batch_id: string;
   location: string | null;
   item_name: string;
   total_qty: number;
@@ -20,7 +20,7 @@ export interface FragileItemInspection {
 }
 
 export interface CreateFragileItemInspectionPayload {
-  production_batch_id?: string;
+  production_batch_id: string;
   location?: string;
   item_name: string;
   total_qty: number;
