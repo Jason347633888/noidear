@@ -3,6 +3,8 @@
 > 生成日期：2026-05-01  
 > 覆盖范围：前端路由、后端模块、Prisma 模型、API 适配器
 
+> **审批 / 工作流 / 任务机制选择指南：** [`docs/superpowers/specs/2026-05-01-approval-workflow-task-boundary-guide.md`](../superpowers/specs/2026-05-01-approval-workflow-task-boundary-guide.md)（涵盖 GAP-502/503/504 边界说明）
+
 ---
 
 ## 1. 前端路由覆盖表
@@ -220,7 +222,7 @@
 | notification | 13-system-admin-ops.md | 支撑能力 | 已覆盖 | 通知推送 |
 | operation-log | 13-system-admin-ops.md | 支撑能力 | 已覆盖 | 操作日志 |
 | packaging-material-usage | 06-mixing-production-packaging.md | 业务主链 | 已覆盖 | 包材用量，见 GAP-203 |
-| permission | 13-system-admin-ops.md | 支撑能力 | 已覆盖 | 权限模型，见 GAP-512 |
+| permission | 13-system-admin-ops.md | 支撑能力 | 已覆盖 | 权限模型，见 GAP-512；决策指南见 [2026-05-01-permission-model-decision-guide.md](../superpowers/specs/2026-05-01-permission-model-decision-guide.md) |
 | process | 02-master-data-and-boundaries.md | 业务主链 | 已覆盖 | 研发工艺流程，见 GAP-001/006 |
 | process-record | 07-quality-qc-release.md | 业务主链 | 已覆盖 | 生产过程记录 |
 | process-step | 02-master-data-and-boundaries.md | 业务主链 | 已覆盖 | 工序，见 GAP-005 |
