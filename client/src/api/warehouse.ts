@@ -145,10 +145,6 @@ export const batchApi = {
     return request.get<MaterialBatch>(`/warehouse/batches/${id}`);
   },
 
-  create(payload: Partial<MaterialBatch>) {
-    return request.post<MaterialBatch>('/warehouse/batches', payload);
-  },
-
   update(id: string, payload: Partial<MaterialBatch>) {
     return request.put<MaterialBatch>(`/warehouse/batches/${id}`, payload);
   },

@@ -237,6 +237,32 @@ describe('InboundService', () => {
       expect(result.status).toBe('completed');
       expect(batchNumberGenerator.generateBatchNumber).toHaveBeenCalledWith('material');
       expect(prisma.$transaction).toHaveBeenCalled();
+      expect(txClient.materialBatch.create).toHaveBeenCalledWith({
+        data: {
+          batchNumber: 'BATCH-20260215-001',
+          materialId: 'material-001',
+          supplierBatchNo: 'SUP-001',
+          supplierId: 'supplier-001',
+          productionDate: new Date('2026-01-01'),
+          expiryDate: new Date('2026-07-01'),
+          quantity: 100,
+          status: 'normal',
+        },
+      });
+      expect(txClient.stockRecord.create).toHaveBeenCalledWith({
+        data: {
+          batchId: 'batch-001',
+          recordType: 'in',
+          quantity: 100,
+          relatedId: 'inbound-001',
+          relatedType: 'inbound',
+          operatorId: 'user-001',
+        },
+      });
+      expect(txClient.materialInboundItem.update).toHaveBeenCalledWith({
+        where: { id: 'item-001' },
+        data: { createdBatchId: 'batch-001' },
+      });
       expect(inventoryMovementLedger.recordMaterialBatchMovement).toHaveBeenCalledWith(
         expect.objectContaining({ movementType: 'receive', batchId: mockBatch.id }),
         txClient,
