@@ -82,12 +82,12 @@
 | GAP-504 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 文档补充，写 plan 直接执行 |
 | GAP-505 | P1 | 需要运行系统确认 | 否 | 否 | 否 | `grill-me` | | | 先运行系统确认 User.role String 使用残留范围，待确认后重新分诊 |
 | GAP-506 | P2 | 未验证 | 否 | 否 | 否 | `grill-me` | | | 先运行系统验证权限审计日志端点，待确认后重新分诊 |
-| GAP-507 | P1 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P1 前后端 HTTP 方法不匹配，写小型 plan 直接执行 |
-| GAP-508 | P1 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P1 前后端路径不匹配，写小型 plan 直接执行 |
-| GAP-509 | P1 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P1 后端端点缺失，写小型 plan 直接执行 |
-| GAP-510 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 后端端点缺失，写小型 plan 直接执行 |
+| GAP-507 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-507-508-monitoring-api-contract-implementation.md` | plan 已写完，可进入 PR roadmap；与 GAP-508 合并执行以避免同文件冲突 |
+| GAP-508 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-507-508-monitoring-api-contract-implementation.md` | plan 已写完，可进入 PR roadmap；与 GAP-507 合并执行以避免同文件冲突 |
+| GAP-509 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-509-510-backup-endpoints-implementation.md` | plan 已写完，可进入 PR roadmap；与 GAP-510 合并补备份端点 |
+| GAP-510 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-509-510-backup-endpoints-implementation.md` | plan 已写完，可进入 PR roadmap；与 GAP-509 合并补备份端点 |
 | GAP-511 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 路由去重，写小型 plan 直接执行 |
-| GAP-512 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 权限模型文档补充，写 plan 直接执行 |
+| GAP-512 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-512-permission-model-decision-doc-implementation.md` | plan 已写完，可进入 PR roadmap；文档化权限模型决策树，不改运行时代码 |
 | GAP-600 | P0 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P0 计量多租户隔离，依赖 GAP-304，先用 brainstorming 写 spec |
 | GAP-601 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-601-equipment-controller-auth-guard-implementation.md` | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-602 | P1 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | 与 GAP-600 合并 PR；写 plan |

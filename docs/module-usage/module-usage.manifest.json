@@ -2100,7 +2100,7 @@
       "id": "GAP-507",
       "severity": "P1",
       "moduleId": "system-admin-ops",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -2108,22 +2108,22 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "admin",
-      "prOrder": null,
-      "recommendedPr": "admin/GAP-507",
+      "prOrder": 4,
+      "recommendedPr": "admin/GAP-507-508",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-507"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-507-508-monitoring-api-contract-implementation.md"
     },
     {
       "id": "GAP-508",
       "severity": "P1",
       "moduleId": "system-admin-ops",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -2131,22 +2131,22 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "admin",
-      "prOrder": null,
-      "recommendedPr": "admin/GAP-508",
+      "prOrder": 4,
+      "recommendedPr": "admin/GAP-507-508",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-508"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-507-508-monitoring-api-contract-implementation.md"
     },
     {
       "id": "GAP-509",
       "severity": "P1",
       "moduleId": "system-admin-ops",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -2154,22 +2154,22 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "admin",
-      "prOrder": null,
-      "recommendedPr": "admin/GAP-509",
+      "prOrder": 5,
+      "recommendedPr": "admin/GAP-509-510",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-509"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-509-510-backup-endpoints-implementation.md"
     },
     {
       "id": "GAP-510",
       "severity": "P2",
       "moduleId": "system-admin-ops",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -2177,16 +2177,16 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "admin",
-      "prOrder": null,
-      "recommendedPr": "admin/GAP-510",
+      "prOrder": 5,
+      "recommendedPr": "admin/GAP-509-510",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-510"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-509-510-backup-endpoints-implementation.md"
     },
     {
       "id": "GAP-511",
@@ -2215,7 +2215,7 @@
       "id": "GAP-512",
       "severity": "P2",
       "moduleId": "system-admin-ops",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -2223,16 +2223,16 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "admin",
-      "prOrder": null,
+      "prOrder": 6,
       "recommendedPr": "admin/GAP-512",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-512"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-512-permission-model-decision-doc-implementation.md"
     },
     {
       "id": "GAP-600",

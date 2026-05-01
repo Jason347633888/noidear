@@ -25,3 +25,6 @@
 | 1 | supplier/GAP-105 | GAP-105 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-105-supplier-evaluation-company-id-implementation.md` | `executing-plans` | 是 | 供应商评估 companyId 去硬编码；只改 supplier-evaluation 模块 |
 | 2 | workflow/GAP-500 | GAP-500 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-500-remove-legacy-approval-level-api-implementation.md` | `executing-plans` | 是 | 删除前端旧 level1/level2 approval 调用；不改后端统一审批 |
 | 3 | equipment/GAP-601 | GAP-601 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-601-equipment-controller-auth-guard-implementation.md` | `executing-plans` | 是 | 设备模块控制器加 JwtAuthGuard；不做权限细分 |
+| 4 | admin/GAP-507-508 | GAP-507, GAP-508 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-507-508-monitoring-api-contract-implementation.md` | `executing-plans` | 是 | 监控指标查询和告警历史查询前端 API 对齐后端 POST 合同；同改 `client/src/api/monitoring.ts` |
+| 5 | admin/GAP-509-510 | GAP-509, GAP-510 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-509-510-backup-endpoints-implementation.md` | `executing-plans` | 是 | 备份模块补 `GET /backup/available` 与 `GET /backup/:id/status`；同改 backup controller/service |
+| 6 | admin/GAP-512 | GAP-512 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-512-permission-model-decision-doc-implementation.md` | `executing-plans` | 是 | 文档化权限模型权威入口和决策树；不改运行时代码 |
