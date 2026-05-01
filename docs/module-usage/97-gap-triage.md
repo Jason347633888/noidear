@@ -16,12 +16,12 @@
 
 | GAP | 严重级别 | 验证状态 | 是否确认 | 是否需要 spec | 是否需要 implementation plan | 推荐 superpower | spec 路径 | plan 路径 | 分诊结论 |
 |---|---|---|---|---|---|---|---|---|---|
-| GAP-001 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（ProcessInstance↔Product 绑定），与 GAP-006 合并 PR |
-| GAP-002 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/migration spec（productId 非空约束 + 历史数据迁移） |
-| GAP-003 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/migration spec（recipeId 非空约束），可与 GAP-002 合并 |
-| GAP-004 | P3 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | 低优先级，写小型 implementation plan 后直接实现 |
+| GAP-001 | P1 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-001-006-process-instance-product-link-design.md | docs/superpowers/plans/2026-05-01-gap-001-006-process-instance-product-link-implementation.md | 与 GAP-006 合并，spec 和 plan 已写完；执行时只使用 executing-plans |
+| GAP-002 | P1 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-002-003-production-batch-product-recipe-required-design.md | docs/superpowers/plans/2026-05-01-gap-002-003-production-batch-product-recipe-required-implementation.md | 与 GAP-003 合并，schema/migration plan 已写完；执行时只使用 executing-plans |
+| GAP-003 | P1 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-002-003-production-batch-product-recipe-required-design.md | docs/superpowers/plans/2026-05-01-gap-002-003-production-batch-product-recipe-required-implementation.md | 与 GAP-002 合并，schema/migration plan 已写完；执行时只使用 executing-plans |
+| GAP-004 | P3 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | docs/superpowers/plans/2026-05-01-gap-004-legacy-product-route-redirect-notice-implementation.md | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-005 | P2 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-005-process-step-relation-validation-design.md | docs/superpowers/plans/2026-05-01-gap-005-process-step-relation-validation-implementation.md | spec 和 plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
-| GAP-006 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 与 GAP-001 合并，先用 brainstorming 写 spec |
+| GAP-006 | P1 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-001-006-process-instance-product-link-design.md | docs/superpowers/plans/2026-05-01-gap-001-006-process-instance-product-link-implementation.md | 与 GAP-001 合并，spec 和 plan 已写完；执行时只使用 executing-plans |
 | GAP-007 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | 依赖 GAP-002 先完成；GAP-002 spec 完成后写 plan |
 | GAP-008 | P2 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema 变更（area_id 非空），先用 brainstorming 写轻量 spec |
 | GAP-100 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（IncomingInspection↔MaterialBatch 选择器） |

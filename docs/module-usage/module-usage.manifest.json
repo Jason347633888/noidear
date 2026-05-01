@@ -413,7 +413,7 @@
       "id": "GAP-001",
       "severity": "P1",
       "moduleId": "master-data-and-boundaries",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -421,24 +421,22 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "brainstorming",
-        "grill-with-docs",
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "master-data",
-      "prOrder": null,
-      "recommendedPr": "master-data/GAP-001",
+      "prOrder": 3,
+      "recommendedPr": "master-data/GAP-001-006",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-001"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-001-006-process-instance-product-link-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-001-006-process-instance-product-link-implementation.md"
     },
     {
       "id": "GAP-002",
       "severity": "P1",
       "moduleId": "master-data-and-boundaries",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [
         "GAP-007"
@@ -448,24 +446,22 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "brainstorming",
-        "grill-with-docs",
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "master-data",
-      "prOrder": null,
-      "recommendedPr": "master-data/GAP-002",
+      "prOrder": 4,
+      "recommendedPr": "master-data/GAP-002-003",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-002"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-002-003-production-batch-product-recipe-required-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-002-003-production-batch-product-recipe-required-implementation.md"
     },
     {
       "id": "GAP-003",
       "severity": "P1",
       "moduleId": "master-data-and-boundaries",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -473,39 +469,39 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "brainstorming",
-        "grill-with-docs",
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "master-data",
-      "prOrder": null,
-      "recommendedPr": "master-data/GAP-003",
+      "prOrder": 4,
+      "recommendedPr": "master-data/GAP-002-003",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-003"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-002-003-production-batch-product-recipe-required-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-002-003-production-batch-product-recipe-required-implementation.md"
     },
     {
       "id": "GAP-004",
       "severity": "P3",
       "moduleId": "master-data-and-boundaries",
-      "triageStatus": "defer",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
       "needsDesign": false,
       "schemaImpact": false,
       "historicalDataImpact": false,
-      "recommendedSuperpowers": [],
+      "recommendedSuperpowers": [
+        "executing-plans"
+      ],
       "prRoadmapGroup": "master-data",
-      "prOrder": null,
+      "prOrder": 5,
       "recommendedPr": "master-data/GAP-004",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-004"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-004-legacy-product-route-redirect-notice-implementation.md"
     },
     {
       "id": "GAP-005",
@@ -522,7 +518,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "master-data",
-      "prOrder": 1,
+      "prOrder": null,
       "recommendedPr": "master-data/GAP-005",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-005"
@@ -534,7 +530,7 @@
       "id": "GAP-006",
       "severity": "P1",
       "moduleId": "master-data-and-boundaries",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -542,18 +538,16 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "brainstorming",
-        "grill-with-docs",
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "master-data",
-      "prOrder": null,
-      "recommendedPr": "master-data/GAP-006",
+      "prOrder": 3,
+      "recommendedPr": "master-data/GAP-001-006",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-006"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-001-006-process-instance-product-link-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-001-006-process-instance-product-link-implementation.md"
     },
     {
       "id": "GAP-007",
@@ -1541,7 +1535,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "nonconformance",
-      "prOrder": 2,
+      "prOrder": null,
       "recommendedPr": "nonconformance/GAP-317",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-317"
@@ -1641,7 +1635,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "documents",
-      "prOrder": 3,
+      "prOrder": null,
       "recommendedPr": "documents/GAP-402",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-402"
@@ -1664,7 +1658,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "documents",
-      "prOrder": 4,
+      "prOrder": 1,
       "recommendedPr": "documents/GAP-403",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-403"
@@ -1710,7 +1704,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "documents",
-      "prOrder": 5,
+      "prOrder": null,
       "recommendedPr": "documents/GAP-405",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-405"
@@ -1902,7 +1896,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "training",
-      "prOrder": 5,
+      "prOrder": null,
       "recommendedPr": "training/GAP-413",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-413"
@@ -2249,7 +2243,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "equipment",
-      "prOrder": 6,
+      "prOrder": 2,
       "recommendedPr": "equipment/GAP-600",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-600"
@@ -2295,7 +2289,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "equipment",
-      "prOrder": 6,
+      "prOrder": 2,
       "recommendedPr": "equipment/GAP-602",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-602"
