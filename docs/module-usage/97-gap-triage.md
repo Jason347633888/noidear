@@ -43,7 +43,7 @@
 | GAP-205 | P2 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-205-finished-goods-residual-cleanup-design.md | docs/superpowers/plans/2026-05-01-gap-205-finished-goods-residual-cleanup-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
 | GAP-206 | P2 | 需要运行系统确认 | 否 | 否 | 否 | `grill-me` | | | 先确认盘点校验是否已有实现，待确认后重新分诊 |
 | GAP-207 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | 依赖 GAP-200；GAP-200 spec 完成后写 plan |
-| GAP-300 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/migration spec（EnvironmentRecord batch FK） |
+| GAP-300 | P1 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-300-environment-record-batch-fk-design.md | docs/superpowers/plans/2026-05-01-gap-300-environment-record-batch-fk-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
 | GAP-301 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/业务 spec（FragileItemInspection batch FK，需确认哪些场景可无批次） |
 | GAP-302 | P2 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema FK，先用 brainstorming 写轻量 spec |
 | GAP-303 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（CCP missing 按产品过滤） |
