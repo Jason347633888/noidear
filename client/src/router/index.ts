@@ -1,5 +1,11 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
 import { useUserStore } from '@/stores/user';
+import { ElMessage } from 'element-plus';
+
+const redirectToProductWorkbench = () => {
+  ElMessage.info('配方和工序已合并到产品详情/产品工作台，请在产品目录中进入对应产品维护。');
+  return '/products';
+};
 
 const routes: RouteRecordRaw[] = [
   {
@@ -847,17 +853,17 @@ const routes: RouteRecordRaw[] = [
       // 配方管理 / 工序步骤管理已合并至产品信息页面，旧路由跳转到产品列表
       {
         path: 'recipes',
-        redirect: '/products',
+        beforeEnter: redirectToProductWorkbench,
         meta: { hidden: true },
       },
       {
         path: 'recipes/:id/edit',
-        redirect: '/products',
+        beforeEnter: redirectToProductWorkbench,
         meta: { hidden: true },
       },
       {
         path: 'process-steps',
-        redirect: '/products',
+        beforeEnter: redirectToProductWorkbench,
         meta: { hidden: true },
       },
       // 回料/返工记录模块
