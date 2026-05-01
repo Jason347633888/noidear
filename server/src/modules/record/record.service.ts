@@ -517,6 +517,8 @@ export class RecordService {
     batchNumber: string,
     batchType: string,
   ): Promise<any> {
+    // GAP-205: `finished_goods` is accepted only for historical templates.
+    // New templates must use `production`; both values resolve to ProductionBatch.
     if (batchType === 'production' || batchType === 'finished_goods') {
       const batch = await this.prisma.productionBatch.findUnique({
         where: { batchNumber },

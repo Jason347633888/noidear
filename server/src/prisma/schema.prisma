@@ -788,7 +788,7 @@ model RecordTemplate {
 
   // TASK-169: 批次关联配置
   batchLinkEnabled Boolean @default(false) // 是否启用批次关联
-  batchLinkType    String? // "production" | "finished_goods"
+  batchLinkType    String? // "production"; legacy rows may contain "finished_goods"
   batchLinkField   String? // 哪个字段存储批次号
 
   // 工作流集成字段
@@ -840,7 +840,7 @@ model Record {
   deletedAt      DateTime?
 
   // TASK-169: 批次关联
-  relatedBatchType     String? // "production" | "finished_goods"
+  relatedBatchType     String? // "production"; legacy rows may contain "finished_goods"
   relatedBatchId       String? // 批次 ID
   relatedBatchNumber   String? // 批次号（冗余，加速查询）
   productionBatchId    String?
@@ -2674,7 +2674,7 @@ model IncomingInspectionResult {
 model InventoryMovement {
   id            Int      @id @default(autoincrement())
   company_id    Int
-  movement_type String   // 'receive'|'issue_to_production'|'transfer'|'finished_goods_in'|'finished_goods_out'|'adjustment'
+  movement_type String   // 'receive'|'issue_to_production'|'transfer'|'production_in'|'production_out'|'adjustment'|'return_to_warehouse'|'scrap'
   object_type   String   // 'material_batch'|'production_batch'
   object_id     String
   from_location String?
