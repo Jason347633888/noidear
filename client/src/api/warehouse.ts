@@ -27,7 +27,7 @@ export interface MaterialBatch {
   quantity: number;
   expiryDate?: string;
   supplierId?: string;
-  status: 'available' | 'reserved' | 'consumed' | 'expired';
+  status: 'normal' | 'expired' | 'locked';
   receivedAt: string;
   material?: Material;
   supplier?: Supplier;
