@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateMaterialUsageDto } from '../dto/material-usage.dto';
 
@@ -37,11 +38,14 @@ export class MaterialUsageService {
     if (materialBatch.materialId !== recipeLine.material_id) {
       throw new BadRequestException('物料批次对应物料与配方明细不一致');
     }
+    if (materialBatch.status !== 'normal') {
+      throw new BadRequestException('原料批次状态不可用，仅允许投料 normal 状态批次');
+    }
     if (materialBatch.quantity < dto.quantity) {
       throw new BadRequestException('原料批次库存不足');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const usage = await tx.batchMaterialUsage.create({
         data: {
           productionBatchId: dto.productionBatchId,
@@ -83,7 +87,7 @@ export class MaterialUsageService {
       throw new NotFoundException('关联记录不存在');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.materialBatch.update({
         where: { id: usage.materialBatchId },
         data: { quantity: { increment: usage.quantity } },

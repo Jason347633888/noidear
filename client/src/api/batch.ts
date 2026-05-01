@@ -117,6 +117,34 @@ export const materialUsageApi = {
 };
 
 // =========================================================================
+// MaterialBatch Selector APIs
+// =========================================================================
+
+export interface MaterialBatchOption {
+  id: string;
+  materialId: string;
+  batchNumber: string;
+  quantity: number;
+  expiryDate?: string;
+  status: 'normal' | 'expired' | 'locked';
+  material?: {
+    id: string;
+    code?: string;
+    name: string;
+  };
+  supplier?: {
+    id: string;
+    name: string;
+  };
+}
+
+export const materialBatchApi = {
+  getList(params: { materialId?: string; keyword?: string; limit?: number } = {}) {
+    return request.get<MaterialBatchOption[]>('/batch-trace/material-batches', { params });
+  },
+};
+
+// =========================================================================
 // Batch Mixing Aggregation APIs
 // =========================================================================
 

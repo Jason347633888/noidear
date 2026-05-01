@@ -51,7 +51,7 @@ describe('MaterialUsageService', () => {
 
       const mockProductionBatch = { id: 'prod-1', batchNumber: 'PROD-001', recipeId: 'recipe-1' };
       const mockRecipeLine = { id: 'line-1', recipe_id: 'recipe-1', material_id: 'mat-id-1', area_id: 'area-1', area_name_snapshot: '搅料间' };
-      const mockMaterialBatch = { id: 'mat-1', materialId: 'mat-id-1', quantity: 50 };
+      const mockMaterialBatch = { id: 'mat-1', materialId: 'mat-id-1', quantity: 50, status: 'normal' };
       const mockUsage = { id: 'usage-1', ...dto };
 
       jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockProductionBatch as any);
@@ -166,7 +166,45 @@ describe('MaterialUsageService', () => {
 
       const mockProductionBatch = { id: 'prod-1', batchNumber: 'PROD-001', recipeId: 'recipe-1' };
       const mockRecipeLine = { id: 'line-1', recipe_id: 'recipe-1', material_id: 'mat-id-1', area_id: 'area-1', area_name_snapshot: '筛粉间' };
-      const mockMaterialBatch = { id: 'mat-1', materialId: 'mat-id-1', quantity: 50 };
+      const mockMaterialBatch = { id: 'mat-1', materialId: 'mat-id-1', quantity: 50, status: 'normal' };
+
+      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockProductionBatch as any);
+      jest.spyOn(prisma.recipeLine, 'findFirst').mockResolvedValue(mockRecipeLine as any);
+      jest.spyOn(prisma.materialBatch, 'findUnique').mockResolvedValue(mockMaterialBatch as any);
+
+      await expect(service.create(dto)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if material batch status is expired', async () => {
+      const dto = {
+        productionBatchId: 'prod-1',
+        materialBatchId: 'mat-1',
+        recipeLineId: 'line-1',
+        quantity: 10,
+      };
+
+      const mockProductionBatch = { id: 'prod-1', batchNumber: 'PROD-001', recipeId: 'recipe-1' };
+      const mockRecipeLine = { id: 'line-1', recipe_id: 'recipe-1', material_id: 'mat-id-1', area_id: 'area-1', area_name_snapshot: '筛粉间' };
+      const mockMaterialBatch = { id: 'mat-1', materialId: 'mat-id-1', quantity: 50, status: 'expired' };
+
+      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockProductionBatch as any);
+      jest.spyOn(prisma.recipeLine, 'findFirst').mockResolvedValue(mockRecipeLine as any);
+      jest.spyOn(prisma.materialBatch, 'findUnique').mockResolvedValue(mockMaterialBatch as any);
+
+      await expect(service.create(dto)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if material batch status is locked', async () => {
+      const dto = {
+        productionBatchId: 'prod-1',
+        materialBatchId: 'mat-1',
+        recipeLineId: 'line-1',
+        quantity: 10,
+      };
+
+      const mockProductionBatch = { id: 'prod-1', batchNumber: 'PROD-001', recipeId: 'recipe-1' };
+      const mockRecipeLine = { id: 'line-1', recipe_id: 'recipe-1', material_id: 'mat-id-1', area_id: 'area-1', area_name_snapshot: '筛粉间' };
+      const mockMaterialBatch = { id: 'mat-1', materialId: 'mat-id-1', quantity: 50, status: 'locked' };
 
       jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockProductionBatch as any);
       jest.spyOn(prisma.recipeLine, 'findFirst').mockResolvedValue(mockRecipeLine as any);
