@@ -30,9 +30,9 @@
 | GAP-103 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（Supplier 双状态门禁逻辑） |
 | GAP-104 | P2 | 需要运行系统确认 | 否 | 否 | 否 | `grill-me` | | | 先运行系统确认菜单可见性，待确认后重新分诊 |
 | GAP-105 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-105-supplier-evaluation-company-id-implementation.md` | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
-| GAP-106 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | 依赖 GAP-102；GAP-102 完成后写 plan |
-| GAP-107 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 spec（物料平衡公式 scrap/return 纳入） |
-| GAP-108 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 前端枚举同步，写小型 plan 直接实现 |
+| GAP-106 | P2 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-106-requisition-stock-nonnegative-design.md | docs/superpowers/plans/2026-05-01-gap-106-requisition-stock-nonnegative-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
+| GAP-107 | P1 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-107-material-balance-scrap-return-design.md | docs/superpowers/plans/2026-05-01-gap-107-material-balance-scrap-return-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
+| GAP-108 | P2 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-108-batch-status-enum-sync-design.md | docs/superpowers/plans/2026-05-01-gap-108-batch-status-enum-sync-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
 | GAP-109 | P3 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P3 配置化优化，低优先级写 plan 后实现 |
 | GAP-110 | P2 | 需要运行系统确认 | 否 | 否 | 否 | `grill-me` | | | 先运行系统确认 FIFO 推荐现状，待确认后重新分诊 |
 | GAP-200 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/migration spec（ShiftInstance shift_type_id FK） |
@@ -55,7 +55,7 @@
 | GAP-309 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema spec（CustomerComplaint customer FK） |
 | GAP-310 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/业务 spec（投诉必须关联批次） |
 | GAP-311 | P0 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P0 召回独立建模，先用 brainstorming 写架构 spec（状态机设计） |
-| GAP-312 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 废弃端点清理，写 plan 直接执行 |
+| GAP-312 | P2 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-312-remove-deprecated-trace-endpoints-design.md | docs/superpowers/plans/2026-05-01-gap-312-remove-deprecated-trace-endpoints-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
 | GAP-313 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema spec（NC 多态关联校验+索引） |
 | GAP-314 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（安全序列号生成机制） |
 | GAP-315 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（NC dispose→ReworkRecord 自动创建） |

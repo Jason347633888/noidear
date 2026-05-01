@@ -753,59 +753,7 @@
       "id": "GAP-106",
       "severity": "P2",
       "moduleId": "warehouse-inventory",
-      "triageStatus": "needs_spec",
-      "dependsOn": [
-        "GAP-102"
-      ],
-      "blocks": [],
-      "canParallelize": false,
-      "needsDesign": true,
-      "schemaImpact": true,
-      "historicalDataImpact": false,
-      "recommendedSuperpowers": [
-        "brainstorming",
-        "grill-with-docs",
-        "writing-plans"
-      ],
-      "prRoadmapGroup": "warehouse",
-      "prOrder": null,
-      "recommendedPr": "warehouse/GAP-106",
-      "validationCommands": [
-        "pnpm test:e2e -- --grep GAP-106"
-      ],
-      "specPath": "",
-      "planPath": ""
-    },
-    {
-      "id": "GAP-107",
-      "severity": "P1",
-      "moduleId": "warehouse-inventory",
-      "triageStatus": "needs_plan",
-      "dependsOn": [
-        "GAP-102"
-      ],
-      "blocks": [],
-      "canParallelize": false,
-      "needsDesign": true,
-      "schemaImpact": true,
-      "historicalDataImpact": false,
-      "recommendedSuperpowers": [
-        "writing-plans"
-      ],
-      "prRoadmapGroup": "warehouse",
-      "prOrder": null,
-      "recommendedPr": "warehouse/GAP-107",
-      "validationCommands": [
-        "pnpm test:e2e -- --grep GAP-107"
-      ],
-      "specPath": "",
-      "planPath": ""
-    },
-    {
-      "id": "GAP-108",
-      "severity": "P2",
-      "moduleId": "warehouse-inventory",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [
         "GAP-102"
       ],
@@ -815,16 +763,66 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "warehouse",
-      "prOrder": null,
+      "prOrder": 14,
+      "recommendedPr": "warehouse/GAP-106",
+      "validationCommands": [
+        "pnpm test:e2e -- --grep GAP-106"
+      ],
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-106-requisition-stock-nonnegative-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-106-requisition-stock-nonnegative-implementation.md"
+    },
+    {
+      "id": "GAP-107",
+      "severity": "P1",
+      "moduleId": "warehouse-inventory",
+      "triageStatus": "ready_for_plan",
+      "dependsOn": [
+        "GAP-102"
+      ],
+      "blocks": [],
+      "canParallelize": false,
+      "needsDesign": true,
+      "schemaImpact": false,
+      "historicalDataImpact": false,
+      "recommendedSuperpowers": [
+        "executing-plans"
+      ],
+      "prRoadmapGroup": "warehouse",
+      "prOrder": 15,
+      "recommendedPr": "warehouse/GAP-107",
+      "validationCommands": [
+        "pnpm test:e2e -- --grep GAP-107"
+      ],
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-107-material-balance-scrap-return-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-107-material-balance-scrap-return-implementation.md"
+    },
+    {
+      "id": "GAP-108",
+      "severity": "P2",
+      "moduleId": "warehouse-inventory",
+      "triageStatus": "ready_for_plan",
+      "dependsOn": [
+        "GAP-102"
+      ],
+      "blocks": [],
+      "canParallelize": false,
+      "needsDesign": true,
+      "schemaImpact": false,
+      "historicalDataImpact": false,
+      "recommendedSuperpowers": [
+        "executing-plans"
+      ],
+      "prRoadmapGroup": "warehouse",
+      "prOrder": 16,
       "recommendedPr": "warehouse/GAP-108",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-108"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-108-batch-status-enum-sync-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-108-batch-status-enum-sync-implementation.md"
     },
     {
       "id": "GAP-109",
@@ -1391,7 +1389,7 @@
       "id": "GAP-312",
       "severity": "P2",
       "moduleId": "traceability-complaint-recall",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [
         "GAP-306"
       ],
@@ -1401,16 +1399,16 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "traceability",
-      "prOrder": null,
+      "prOrder": 17,
       "recommendedPr": "traceability/GAP-312",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-312"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-312-remove-deprecated-trace-endpoints-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-312-remove-deprecated-trace-endpoints-implementation.md"
     },
     {
       "id": "GAP-313",
