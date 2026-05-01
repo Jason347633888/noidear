@@ -4,10 +4,9 @@
       <el-form :model="filterForm" inline>
         <el-form-item label="状态">
           <el-select v-model="filterForm.status" clearable placeholder="全部">
-            <el-option value="available" label="可用" />
-            <el-option value="reserved" label="已预留" />
-            <el-option value="consumed" label="已消耗" />
+            <el-option value="normal" label="正常" />
             <el-option value="expired" label="已过期" />
+            <el-option value="locked" label="已锁定" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -74,8 +73,8 @@ const tableData = ref<any[]>([]);
 const filterForm = reactive({ status: '' });
 const pagination = reactive({ page: 1, limit: 20, total: 0 });
 
-const batchStatusText = (s: string) => ({ available: '可用', reserved: '已预留', consumed: '已消耗', expired: '已过期' }[s] || s);
-const batchStatusType = (s: string) => ({ available: 'success', reserved: 'warning', consumed: 'info', expired: 'danger' }[s] || 'info');
+const batchStatusText = (s: string) => ({ normal: '正常', expired: '已过期', locked: '已锁定' }[s] || s);
+const batchStatusType = (s: string) => ({ normal: 'success', expired: 'danger', locked: 'warning' }[s] || 'info');
 
 const fetchData = async () => {
   loading.value = true;
