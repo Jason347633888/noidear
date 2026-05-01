@@ -41,6 +41,8 @@
 - `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/12-task-approval-workflow.md`
 - `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/13-system-admin-ops.md`
 - `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/module-usage.manifest.json`
+- `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/96-pr-roadmap.md`
+- `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/97-gap-triage.md`
 - `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/98-coverage-matrix.md`
 - `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/99-current-gap-register.md`
 - `/Users/jiashenglin/Desktop/好玩的项目/noidear/tools/check-module-usage-docs.mjs`
@@ -301,6 +303,12 @@ Residual handling:
       "needsDesign": true,
       "schemaImpact": false,
       "historicalDataImpact": false,
+      "triageStatus": "needs_spec",
+      "recommendedSuperpowers": ["grill-with-docs", "writing-plans"],
+      "specPath": "docs/superpowers/specs/YYYY-MM-DD-gap-100-inventory-movement-unification.md",
+      "planPath": "docs/superpowers/plans/YYYY-MM-DD-gap-100-inventory-movement-unification-implementation.md",
+      "prRoadmapGroup": "inventory-fact-source",
+      "prOrder": 1,
       "recommendedPr": "PR-来料批次主链整改",
       "validation": ["npm run build:server"]
     }
@@ -315,6 +323,9 @@ Every module document must have exactly one `documents[]` entry.
 Every stable GAP in `99-current-gap-register.md` must have exactly one `gaps[]` entry.
 `documents[].gaps` must match GAP IDs referenced in the module document.
 `gaps[].dependsOn` and `gaps[].blocks` must use stable GAP IDs only.
+`gaps[].triageStatus` must be one of: `ready_for_plan`, `needs_plan`, `needs_spec`, `needs_business_confirmation`, `needs_runtime_confirmation`, `needs_database_sample`, `defer`, `no_action`.
+`gaps[].recommendedSuperpowers` must list the superpower workflow required before implementation.
+`gaps[].specPath` and `gaps[].planPath` must be empty until those artifacts exist.
 Do not include provisional `AGENT-N-GAP-M` IDs in the final manifest.
 ```
 
@@ -383,7 +394,76 @@ Only `已验证` issues may become P0 without qualification.
 
 ---
 
-## 3.5 Short Completed Example
+## 3.5 Superpower Triage, Spec And Plan Gate
+
+After the module usage audit is complete, agents must not directly open implementation PRs from GAP rows. Each GAP must pass triage first.
+
+Create `97-gap-triage.md` with this structure:
+
+```markdown
+# GAP 分诊表
+
+## 分诊规则
+
+| 条件 | 处理方式 | 必须调用的 superpower |
+|---|---|---|
+| 影响事实源、schema、历史数据、追溯、库存、审批闭环 | 先写 spec，再写 implementation plan | `grill-with-docs` + `writing-plans` |
+| 影响跨模块业务链但不改 schema | 先写轻量 spec 或 decision note，再写 implementation plan | `grill-with-docs` + `writing-plans` |
+| 只改页面展示、入口、文案、低风险校验 | 可直接写小型 implementation plan | `writing-plans` |
+| 证据不足 | 不排 PR，先补验证任务 | `grill-me` 或运行系统验证 |
+| 需要业务判断 | 不排 PR，先业务确认 | `grill-with-docs` |
+
+## GAP 分诊总表
+
+| GAP | 严重级别 | 验证状态 | 是否确认 | 是否需要 spec | 是否需要 implementation plan | 推荐 superpower | spec 路径 | plan 路径 | 分诊结论 |
+|---|---|---|---|---|---|---|---|---|---|
+| GAP-100 | P0 | 已验证 | 是 | 是 | 是 | `grill-with-docs`, `writing-plans` | `docs/superpowers/specs/...` | `docs/superpowers/plans/...` | 先写库存事实源统一 spec |
+```
+
+Rules:
+
+```text
+No implementation PR may be scheduled from a GAP with `是否确认 = 否`.
+No implementation PR may be scheduled from a GAP with `是否需要 spec = 是` until `spec 路径` exists.
+No implementation PR may be scheduled from a GAP with `是否需要 implementation plan = 是` until `plan 路径` exists.
+All P0 GAPs must call a superpower workflow before implementation planning.
+All schema/migration/history-data GAPs must call `grill-with-docs` before `writing-plans`.
+All generated spec and plan paths must be copied back into `module-usage.manifest.json`.
+```
+
+Create `96-pr-roadmap.md` only after `97-gap-triage.md` is complete.
+
+```markdown
+# PR 排期路线图
+
+## 排期规则
+
+- 上游事实源先于下游页面和统计。
+- schema/migration 单独 PR。
+- 历史数据迁移单独 PR 或在 schema PR 中显式列出迁移方案。
+- 前后端字段绑定必须等后端合同稳定后再排。
+- 残留模块入口删除单独 PR。
+- 每个 PR 必须引用 GAP、spec、implementation plan。
+
+## PR 路线图
+
+| 顺序 | PR | GAP | 依赖 GAP | spec | plan | 推荐执行 superpower | 可并行 | 备注 |
+|---|---|---|---|---|---|---|---|---|
+| 1 | PR-统一库存流水事实源 | GAP-100 | 无 | `docs/superpowers/specs/...` | `docs/superpowers/plans/...` | `executing-plans` | 否 | 上游事实源 |
+```
+
+Rules:
+
+```text
+PR roadmap is an execution queue, not an implementation diff.
+Every roadmap row must point to an existing spec and plan unless it is a low-risk docs-only or display-only task.
+Execution agents must call the plan's required superpower before editing files.
+If the plan is stale, update the plan first instead of improvising implementation.
+```
+
+---
+
+## 3.6 Short Completed Example
 
 Use this as the minimum quality bar for each module document. Real documents must be more complete, but should keep the same density and evidence style.
 
@@ -693,6 +773,8 @@ Expected: directory exists.
 | `12-task-approval-workflow.md` | 任务、审批、工作流 |
 | `13-system-admin-ops.md` | 权限、账号、通知、备份、监控、审计 |
 | `module-usage.manifest.json` | 机器可读索引：文档、路由、模块、模型、GAP、依赖 |
+| `96-pr-roadmap.md` | GAP 分诊后的 PR 排期路线图 |
+| `97-gap-triage.md` | GAP 分诊、superpower gate、spec/plan 状态 |
 | `98-coverage-matrix.md` | 前端路由、后端模块、Prisma 模型、API 覆盖证明 |
 | `99-current-gap-register.md` | 当前差距整改总表 |
 ```
@@ -773,7 +855,36 @@ GAP-100 示例上游问题
 }
 ```
 
-- [ ] **Step 6: Create `tools/check-module-usage-docs.mjs` skeleton**
+- [ ] **Step 6: Create `97-gap-triage.md` skeleton**
+
+```markdown
+# GAP 分诊表
+
+## 分诊规则
+
+| 条件 | 处理方式 | 必须调用的 superpower |
+|---|---|---|
+
+## GAP 分诊总表
+
+| GAP | 严重级别 | 验证状态 | 是否确认 | 是否需要 spec | 是否需要 implementation plan | 推荐 superpower | spec 路径 | plan 路径 | 分诊结论 |
+|---|---|---|---|---|---|---|---|---|---|
+```
+
+- [ ] **Step 7: Create `96-pr-roadmap.md` skeleton**
+
+```markdown
+# PR 排期路线图
+
+## 排期规则
+
+## PR 路线图
+
+| 顺序 | PR | GAP | 依赖 GAP | spec | plan | 推荐执行 superpower | 可并行 | 备注 |
+|---|---|---|---|---|---|---|---|---|
+```
+
+- [ ] **Step 8: Create `tools/check-module-usage-docs.mjs` skeleton**
 
 The script must eventually validate:
 
@@ -783,6 +894,9 @@ Every module doc has metadata.
 GAP IDs are unique.
 GAP IDs referenced in module docs exist in `99-current-gap-register.md`.
 Every GAP in `99-current-gap-register.md` exists in `module-usage.manifest.json`.
+Every GAP has a row in `97-gap-triage.md`.
+Every scheduled PR in `96-pr-roadmap.md` references existing GAP IDs.
+Every non-low-risk PR roadmap row references an existing spec and plan path.
 `98-coverage-matrix.md` has no unresolved `未判定` or `待判定` rows.
 P0/P1 rows include root cause, likely files, schema impact, historical-data impact and validation path.
 P0/P1 rows include a valid verification status.
@@ -790,10 +904,10 @@ P0/P1 rows include a valid verification status.
 
 The first skeleton may fail with a clear TODO message until Task 6 fills the docs.
 
-- [ ] **Step 7: Commit skeleton**
+- [ ] **Step 9: Commit skeleton**
 
 ```bash
-git add docs/module-usage/00-index.md docs/module-usage/01-business-chain-overview.md docs/module-usage/99-current-gap-register.md docs/module-usage/module-usage.manifest.json tools/check-module-usage-docs.mjs
+git add docs/module-usage/00-index.md docs/module-usage/01-business-chain-overview.md docs/module-usage/96-pr-roadmap.md docs/module-usage/97-gap-triage.md docs/module-usage/99-current-gap-register.md docs/module-usage/module-usage.manifest.json tools/check-module-usage-docs.mjs
 git commit -m "docs: add module usage documentation skeleton"
 ```
 
@@ -1092,6 +1206,8 @@ Fact sources and projections.
 Stable GAP IDs created by each document.
 GAP dependency edges.
 Recommended PR name and validation command for each GAP.
+Triage status, recommended superpowers, spec path and implementation plan path.
+PR roadmap group and PR order.
 ```
 
 - [ ] **Step 2: Implement `tools/check-module-usage-docs.mjs`**
@@ -1107,6 +1223,11 @@ Any GAP ID is duplicated.
 Any module-doc GAP is missing from `99-current-gap-register.md`.
 Any register GAP is missing from `module-usage.manifest.json`.
 Any manifest GAP references unknown dependencies.
+Any GAP is missing from `97-gap-triage.md`.
+Any GAP marked `needs_spec` has a PR roadmap row before a spec path exists.
+Any GAP marked `needs_plan` or `ready_for_plan` has a PR roadmap row before a plan path exists.
+Any PR roadmap row references unknown GAP IDs.
+Any non-low-risk PR roadmap row lacks a spec path or plan path.
 `98-coverage-matrix.md` contains unresolved `未判定` or `待判定` rows.
 Any P0/P1 row misses root cause, verification status, likely files, schema impact, historical-data impact, validation path or do-not-break note.
 ```
@@ -1121,7 +1242,76 @@ node tools/check-module-usage-docs.mjs
 
 Expected: exit code 0.
 
-### Task 7: Final Documentation Validation
+### Task 7: Build GAP Triage And PR Roadmap
+
+**Files:**
+- Modify: `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/97-gap-triage.md`
+- Modify: `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/96-pr-roadmap.md`
+- Modify: `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/module-usage.manifest.json`
+
+- [ ] **Step 1: Populate GAP triage**
+
+For every GAP in `99-current-gap-register.md`, add a row to `97-gap-triage.md`.
+
+Rules:
+
+```text
+P0 fact-source/schema/history-data/traceability/inventory/approval GAP -> needs spec and implementation plan.
+P1 cross-module GAP -> needs lightweight spec or decision note and implementation plan.
+P2 display/menu/copy GAP -> may need only a small implementation plan.
+Unverified GAP -> no PR scheduling.
+Business-confirmation GAP -> no PR scheduling.
+Runtime/database-sample GAP -> no PR scheduling until verified.
+```
+
+- [ ] **Step 2: Require superpower workflow before PR readiness**
+
+For each triage row, set recommended superpower:
+
+```text
+Needs domain/spec decision: grill-with-docs.
+Needs business clarification: grill-me or grill-with-docs.
+Needs implementation plan: writing-plans.
+Ready to execute an existing plan: executing-plans.
+Large parallel implementation after plan exists: subagent-driven-development.
+```
+
+- [ ] **Step 3: Populate PR roadmap**
+
+Only add PR roadmap rows when:
+
+```text
+GAP is confirmed.
+Dependencies are known.
+Required spec exists or is explicitly not required.
+Required implementation plan exists or is explicitly not required for low-risk docs/display work.
+The PR boundary follows section 3.5 split rules.
+```
+
+- [ ] **Step 4: Copy triage and roadmap status into manifest**
+
+For every manifest GAP, update:
+
+```text
+triageStatus
+recommendedSuperpowers
+specPath
+planPath
+prRoadmapGroup
+prOrder
+```
+
+- [ ] **Step 5: Validate triage and roadmap**
+
+Run:
+
+```bash
+node tools/check-module-usage-docs.mjs
+```
+
+Expected: exit code 0.
+
+### Task 8: Final Documentation Validation
 
 **Files:**
 - Read: `/Users/jiashenglin/Desktop/好玩的项目/noidear/docs/module-usage/**`
@@ -1158,6 +1348,8 @@ for file in \
   docs/module-usage/12-task-approval-workflow.md \
   docs/module-usage/13-system-admin-ops.md \
   docs/module-usage/module-usage.manifest.json \
+  docs/module-usage/96-pr-roadmap.md \
+  docs/module-usage/97-gap-triage.md \
   docs/module-usage/98-coverage-matrix.md \
   docs/module-usage/99-current-gap-register.md \
   tools/check-module-usage-docs.mjs; do
@@ -1219,13 +1411,16 @@ Use these seeds only after verifying them from code.
 
 ## 7. Final Success Criteria
 
-- `docs/module-usage/` contains all 16 expected Markdown documents plus `module-usage.manifest.json`.
+- `docs/module-usage/` contains all 18 expected Markdown documents plus `module-usage.manifest.json`.
 - `tools/check-module-usage-docs.mjs` exists and passes.
 - Every module document uses the shared structure.
 - Every module document has agent-readable metadata, source-of-truth boundaries, anti-duplication rules and remediation entry rows.
 - `98-coverage-matrix.md` maps frontend routes, backend modules, business-relevant Prisma models and API adapters to module documents.
 - No frontend route, backend module, business-relevant Prisma model or API adapter remains `未判定` or `待判定`.
 - `module-usage.manifest.json` maps documents, routes, backend modules, client APIs, Prisma models, fact sources, projections, GAPs, dependencies and recommended PRs.
+- `97-gap-triage.md` records every GAP's superpower gate, spec status and implementation-plan status.
+- `96-pr-roadmap.md` schedules only confirmed GAPs whose required spec and implementation plan gates are satisfied.
+- `module-usage.manifest.json` records triage status, recommended superpowers, spec path, implementation plan path, roadmap group and PR order for each GAP.
 - `99-current-gap-register.md` has stable GAP IDs.
 - `99-current-gap-register.md` includes a GAP dependency graph.
 - P0/P1 issues include root cause, verification status, likely files, schema impact, historical-data impact, validation path, and concrete evidence paths or exact field/API/model names.
