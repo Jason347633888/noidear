@@ -1632,7 +1632,7 @@
       "id": "GAP-402",
       "severity": "P2",
       "moduleId": "document-control-and-record-forms",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -1640,16 +1640,16 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "documents",
-      "prOrder": null,
+      "prOrder": 9,
       "recommendedPr": "documents/GAP-402",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-402"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-402-training-need-ux-clarification-implementation.md"
     },
     {
       "id": "GAP-403",
@@ -1985,7 +1985,7 @@
       "id": "GAP-502",
       "severity": "P1",
       "moduleId": "task-approval-workflow",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -1993,22 +1993,22 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "workflow",
-      "prOrder": null,
-      "recommendedPr": "workflow/GAP-502",
+      "prOrder": 8,
+      "recommendedPr": "workflow/GAP-502-503-504",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-502"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-502-503-504-workflow-task-governance-docs-implementation.md"
     },
     {
       "id": "GAP-503",
       "severity": "P1",
       "moduleId": "task-approval-workflow",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -2016,22 +2016,22 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "workflow",
-      "prOrder": null,
-      "recommendedPr": "workflow/GAP-503",
+      "prOrder": 8,
+      "recommendedPr": "workflow/GAP-502-503-504",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-503"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-502-503-504-workflow-task-governance-docs-implementation.md"
     },
     {
       "id": "GAP-504",
       "severity": "P2",
       "moduleId": "task-approval-workflow",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -2039,16 +2039,16 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "workflow",
-      "prOrder": null,
-      "recommendedPr": "workflow/GAP-504",
+      "prOrder": 8,
+      "recommendedPr": "workflow/GAP-502-503-504",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-504"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-502-503-504-workflow-task-governance-docs-implementation.md"
     },
     {
       "id": "GAP-505",
@@ -2192,7 +2192,7 @@
       "id": "GAP-511",
       "severity": "P2",
       "moduleId": "system-admin-ops",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -2200,16 +2200,16 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "admin",
-      "prOrder": null,
+      "prOrder": 7,
       "recommendedPr": "admin/GAP-511",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-511"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-511-alert-route-dedup-implementation.md"
     },
     {
       "id": "GAP-512",

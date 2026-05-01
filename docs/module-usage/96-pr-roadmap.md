@@ -28,3 +28,6 @@
 | 4 | admin/GAP-507-508 | GAP-507, GAP-508 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-507-508-monitoring-api-contract-implementation.md` | `executing-plans` | 是 | 监控指标查询和告警历史查询前端 API 对齐后端 POST 合同；同改 `client/src/api/monitoring.ts` |
 | 5 | admin/GAP-509-510 | GAP-509, GAP-510 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-509-510-backup-endpoints-implementation.md` | `executing-plans` | 是 | 备份模块补 `GET /backup/available` 与 `GET /backup/:id/status`；同改 backup controller/service |
 | 6 | admin/GAP-512 | GAP-512 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-512-permission-model-decision-doc-implementation.md` | `executing-plans` | 是 | 文档化权限模型权威入口和决策树；不改运行时代码 |
+| 7 | admin/GAP-511 | GAP-511 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-511-alert-route-dedup-implementation.md` | `executing-plans` | 是 | 告警公开 API 收敛到 `/monitoring/alerts/*`；停止注册独立 `/alerts/*` controller |
+| 8 | workflow/GAP-502-503-504 | GAP-502, GAP-503, GAP-504 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-502-503-504-workflow-task-governance-docs-implementation.md` | `executing-plans` | 是 | 文档化旧审批、统一审批、Workflow、Task、RecordTask 的使用边界；不改运行时代码 |
+| 9 | documents/GAP-402 | GAP-402 | 无 | 不需要 | `docs/superpowers/plans/2026-05-01-gap-402-training-need-ux-clarification-implementation.md` | `executing-plans` | 是 | 文控派生培训需求入口澄清，并复用已有 linkTrainingNeed 关联培训项目 |

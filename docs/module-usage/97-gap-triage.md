@@ -62,7 +62,7 @@
 | GAP-318 | P2 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema FK，先用 brainstorming 写轻量 spec（ReworkRecord→NC FK） |
 | GAP-400 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/migration spec（Document version 字段类型变更） |
 | GAP-401 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/migration spec（DocumentIssuance→Document FK） |
-| GAP-402 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 入口/体验优化，写小型 plan 直接执行 |
+| GAP-402 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-402-training-need-ux-clarification-implementation.md` | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-403 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 记录表单落地批量确认，写 plan 直接执行 |
 | GAP-404 | P2 | 未验证（需运行系统确认） | 否 | 否 | 否 | `grill-me` | | | 先运行系统确认 updateFields 接口不一致问题，待确认后重新分诊 |
 | GAP-405 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 document_type 标签，写小型 plan 直接执行 |
@@ -77,16 +77,16 @@
 | GAP-414 | P2 | 需要业务确认 | 否 | 否 | 否 | `grill-with-docs` | | | 先业务确认 ManagementReview 建模需求，待确认后重新分诊 |
 | GAP-500 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-500-remove-legacy-approval-level-api-implementation.md` | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-501 | P0 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P0 auth GET/POST 方法不匹配，先用 brainstorming 写 spec |
-| GAP-502 | P1 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P1 架构决策文档，写 plan（废弃计划文档） |
-| GAP-503 | P1 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P1 决策文档补充，写 plan（Workflow vs UnifiedApproval 决策树） |
-| GAP-504 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 文档补充，写 plan 直接执行 |
+| GAP-502 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-502-503-504-workflow-task-governance-docs-implementation.md` | plan 已写完，可进入 PR roadmap；与 GAP-503/504 合并输出边界指南，避免同文档冲突 |
+| GAP-503 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-502-503-504-workflow-task-governance-docs-implementation.md` | plan 已写完，可进入 PR roadmap；与 GAP-502/504 合并输出边界指南，避免同文档冲突 |
+| GAP-504 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-502-503-504-workflow-task-governance-docs-implementation.md` | plan 已写完，可进入 PR roadmap；与 GAP-502/503 合并输出边界指南，避免同文档冲突 |
 | GAP-505 | P1 | 需要运行系统确认 | 否 | 否 | 否 | `grill-me` | | | 先运行系统确认 User.role String 使用残留范围，待确认后重新分诊 |
 | GAP-506 | P2 | 未验证 | 否 | 否 | 否 | `grill-me` | | | 先运行系统验证权限审计日志端点，待确认后重新分诊 |
 | GAP-507 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-507-508-monitoring-api-contract-implementation.md` | plan 已写完，可进入 PR roadmap；与 GAP-508 合并执行以避免同文件冲突 |
 | GAP-508 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-507-508-monitoring-api-contract-implementation.md` | plan 已写完，可进入 PR roadmap；与 GAP-507 合并执行以避免同文件冲突 |
 | GAP-509 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-509-510-backup-endpoints-implementation.md` | plan 已写完，可进入 PR roadmap；与 GAP-510 合并补备份端点 |
 | GAP-510 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-509-510-backup-endpoints-implementation.md` | plan 已写完，可进入 PR roadmap；与 GAP-509 合并补备份端点 |
-| GAP-511 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 路由去重，写小型 plan 直接执行 |
+| GAP-511 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-511-alert-route-dedup-implementation.md` | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-512 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-512-permission-model-decision-doc-implementation.md` | plan 已写完，可进入 PR roadmap；文档化权限模型决策树，不改运行时代码 |
 | GAP-600 | P0 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P0 计量多租户隔离，依赖 GAP-304，先用 brainstorming 写 spec |
 | GAP-601 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-601-equipment-controller-auth-guard-implementation.md` | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
