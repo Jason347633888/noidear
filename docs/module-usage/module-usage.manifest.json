@@ -945,7 +945,7 @@
       "id": "GAP-203",
       "severity": "P1",
       "moduleId": "mixing-production-packaging",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -955,16 +955,20 @@
       "recommendedSuperpowers": [
         "brainstorming",
         "grill-with-docs",
-        "writing-plans"
+        "writing-plans",
+        "executing-plans"
       ],
       "prRoadmapGroup": "production",
-      "prOrder": null,
+      "prOrder": 15,
       "recommendedPr": "production/GAP-203",
       "validationCommands": [
-        "pnpm test:e2e -- --grep GAP-203"
+        "(cd server && npx prisma validate --schema src/prisma/schema.prisma)",
+        "(cd server && npm test -- packaging-material-usage.service.spec.ts --runInBand)",
+        "npm run build:client",
+        "npm run test:e2e -w client -- --grep GAP-203 (if no GAP-203 E2E exists, do not install pnpm; report substitute checks)"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-203-packaging-material-usage-batch-fk-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-203-packaging-material-usage-batch-fk-implementation.md"
     },
     {
       "id": "GAP-204",
