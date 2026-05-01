@@ -37,7 +37,7 @@
 | GAP-110 | P2 | 需要运行系统确认 | 否 | 否 | 否 | `grill-me` | | | 先运行系统确认 FIFO 推荐现状，待确认后重新分诊 |
 | GAP-200 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/migration spec（ShiftInstance shift_type_id FK） |
 | GAP-201 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写业务设计 spec（配料归集多对多 vs 唯一约束决策） |
-| GAP-202 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（BatchDetail 批次选择器） |
+| GAP-202 | P1 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-202-batch-detail-material-batch-selector-design.md | docs/superpowers/plans/2026-05-01-gap-202-batch-detail-material-batch-selector-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
 | GAP-203 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema spec（PackagingMaterialUsage FK 到 ProductionBatch） |
 | GAP-204 | P2 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema FK，先用 brainstorming 写轻量 spec |
 | GAP-205 | P2 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-205-finished-goods-residual-cleanup-design.md | docs/superpowers/plans/2026-05-01-gap-205-finished-goods-residual-cleanup-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
