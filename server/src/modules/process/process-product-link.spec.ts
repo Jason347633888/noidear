@@ -1,5 +1,79 @@
 import { applyProcessStepApproved } from './process-approval.callbacks';
 
+const SEVEN_STEPS = Array.from({ length: 7 }, (_, i) => ({ stepNumber: i + 1 }));
+
+const createTxStep6 = (recipeLines: any[]) => ({
+  processInstance: {
+    findUnique: jest.fn().mockResolvedValue({
+      id: 'pi-1',
+      productId: 'prod-1',
+      template: { steps: SEVEN_STEPS },
+    }),
+    update: jest.fn().mockResolvedValue({}),
+  },
+  processStepData: {
+    findUnique: jest.fn().mockResolvedValue({
+      instanceId: 'pi-1',
+      stepNumber: 6,
+      status: 'SUBMITTED',
+      data: { recipeLines },
+    }),
+    update: jest.fn().mockResolvedValue({}),
+  },
+  workshopArea: {
+    findFirst: jest.fn().mockResolvedValue({ id: 'area-1', name: '配料间A' }),
+  },
+  recipe: {
+    create: jest.fn().mockResolvedValue({ id: 'recipe-1' }),
+  },
+  recipeLine: {
+    createMany: jest.fn().mockResolvedValue({ count: 1 }),
+  },
+  product: { update: jest.fn().mockResolvedValue({}) },
+});
+
+describe('process step 6 recipe line area validation (callbacks)', () => {
+  const callStep6 = (tx: any) =>
+    applyProcessStepApproved({} as any, {
+      tx,
+      resourceId: 'pi-1',
+      resourceStep: 'step:6',
+      actorId: 'user-1',
+    } as any);
+
+  it('writes area_id and area_name_snapshot when areaId is present', async () => {
+    const tx = createTxStep6([
+      { materialId: 'mat-1', areaId: 'area-1', qtyPerBatch: '10', unit: 'kg' },
+    ]);
+
+    await callStep6(tx);
+
+    expect(tx.workshopArea.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: 'area-1' }) }),
+    );
+    expect(tx.recipeLine.createMany).toHaveBeenCalledWith({
+      data: expect.arrayContaining([
+        expect.objectContaining({ area_id: 'area-1', area_name_snapshot: '配料间A' }),
+      ]),
+    });
+  });
+
+  it('throws when areaId is missing from a recipe line', async () => {
+    const tx = createTxStep6([{ materialId: 'mat-1', qtyPerBatch: '5', unit: 'kg' }]);
+
+    await expect(callStep6(tx)).rejects.toThrow(/配料区域/);
+  });
+
+  it('throws when area does not exist or is inactive', async () => {
+    const tx = createTxStep6([
+      { materialId: 'mat-1', areaId: 'no-such-area', qtyPerBatch: '5', unit: 'kg' },
+    ]);
+    tx.workshopArea.findFirst.mockResolvedValue(null);
+
+    await expect(callStep6(tx)).rejects.toThrow(/不存在或已停用/);
+  });
+});
+
 describe('process product link approval callback', () => {
   const createTx = (stepData: any, instanceOverrides: any = {}) => ({
     processInstance: {

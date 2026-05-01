@@ -99,17 +99,38 @@ export async function applyProcessStepApproved(
       },
     });
     const recipeLines = (data.recipeLines as any[]) ?? [];
+    const areaSnapshots: Record<string, string> = {};
+    for (const line of recipeLines.filter((l: any) => l.materialId)) {
+      const areaId: string | undefined = line.areaId ?? line.area_id;
+      if (!areaId) {
+        throw new Error(`配方行缺少配料区域（材料 ${line.materialId}）`);
+      }
+      if (!areaSnapshots[areaId]) {
+        const area = await tx.workshopArea.findFirst({
+          where: { id: areaId, company_id: '1', status: 'active', deleted_at: null },
+        });
+        if (!area) {
+          throw new Error(`配料区域不存在或已停用：${areaId}`);
+        }
+        areaSnapshots[areaId] = area.name;
+      }
+    }
     await tx.recipeLine.createMany({
       data: recipeLines
         .filter((line: any) => line.materialId)
-        .map((line: any) => ({
-          recipe_id: recipe.id,
-          material_id: line.materialId,
-          qty_per_batch: parseFloat(line.qtyPerBatch) || 0,
-          unit: line.unit || 'kg',
-          is_critical: line.isCritical ?? false,
-          notes: line.notes ?? '',
-        })),
+        .map((line: any) => {
+          const areaId: string = line.areaId ?? line.area_id;
+          return {
+            recipe_id: recipe.id,
+            material_id: line.materialId,
+            qty_per_batch: parseFloat(line.qtyPerBatch) || 0,
+            unit: line.unit || 'kg',
+            is_critical: line.isCritical ?? false,
+            notes: line.notes ?? '',
+            area_id: areaId,
+            area_name_snapshot: areaSnapshots[areaId],
+          };
+        }),
     });
   }
 
