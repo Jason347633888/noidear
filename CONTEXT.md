@@ -2,7 +2,12 @@
 
 本上下文记录食品安全 SaaS 中主数据、文控、记录表单、生产、配料、库存和追溯相关的业务语言。它用于避免在设计、实现和评审中把同一个现场概念拆成多个平行概念。
 
-## Language
+本文分两层：
+
+- **Stable Domain Language**：稳定业务术语和已确认领域边界，默认可作为后续讨论口径。
+- **Implementation Notes**：当前代码状态快照，必须按标注的核验日期和证据重新确认，不能当作永久事实。
+
+## Stable Domain Language
 
 ### 主数据与产品链
 
@@ -52,6 +57,10 @@ _Avoid_: 另造一套成品批次号
 某个配料区在某个时间完成的一次配料活动。
 _Avoid_: 把一次配料直接叫成产品批次
 
+**投料记录**:
+产品批次与原辅料批次之间用于追溯的桥接结果。
+_Avoid_: 把投料记录当成配料区现场唯一录入入口
+
 **配料投入池**:
 一次或多次配料执行形成的实际投入集合，可归集到一个或多个产品批次。
 _Avoid_: 虚构每个产品批次精确分摊的原料重量
@@ -63,6 +72,10 @@ _Avoid_: 手填无法关联库存的批次文本
 **配料区库存**:
 某个车间配料区内按原辅料批次记录的现场结存。
 _Avoid_: 用仓库总库存代替配料区库存
+
+**库存流水**:
+库存对象在位置、数量或状态上发生变化的一次可追溯移动记录。
+_Avoid_: 把入库、出库、调拨、盘点调整、成品入库、成品出库拆成互不相干的流水事实源
 
 **班组**:
 对某个班次生产、配料、包装或确认动作负责的现场责任组织。
@@ -160,6 +173,28 @@ _Avoid_: 只显示有无路由
 体系文件 Markdown 引用是否正常、悬空、无效、冲突或指向旧版本的判断。
 _Avoid_: 只展示引用数量
 
+### 任务、审批与工作流
+
+**正式审批**:
+对业务对象作出同意、驳回、转交或撤销等决策的审批事实。
+_Avoid_: 用普通待办或工作流任务替代审批事实
+
+**待办收件箱**:
+用户需要处理事项的统一入口投影。
+_Avoid_: 把待办当成审批、记录填写或业务执行事实源
+
+**记录填写任务**:
+要求用户在指定时间或条件下填写某张记录表单的执行任务。
+_Avoid_: 用普通任务替代记录表单填写任务
+
+**周期任务生成器**:
+按频率、班次、日期或规则生成记录填写任务或待办的调度机制。
+_Avoid_: 把调度规则当成已经发生的执行事实
+
+**工作流编排**:
+把多个任务、审批或状态节点串成流程的编排能力。
+_Avoid_: 用工作流编排另造第二套审批事实源
+
 ## Relationships
 
 - 一个 **产品档案** 可以有多个 **配方** 版本，但新生产只能使用可用产品和可用配方。
@@ -169,7 +204,9 @@ _Avoid_: 只展示引用数量
 - 一个 **产品批次** 可以归集一个或多个 **配料投入池**。
 - 一个 **配料投入池** 可以关联一个或多个 **产品批次**。
 - 一个 **配料执行** 包含一条或多条 **原辅料批次** 投入明细。
+- **投料记录** 是产品批次与原辅料批次的追溯桥接结果，可由 **配料执行** 归集确认后生成或兼容保留。
 - **配料执行** 扣减 **配料区库存**，不是直接扣减仓库总库存。
+- **库存流水** 是长期统一库存移动事实源，应覆盖原辅料入库、领料、调拨、退料、报废、盘点调整、成品入库和成品出库。
 - 夜班跨零点时，同一班次可以产生两个 **产品批次**，例如 20260429 和 20260430。
 - 一个 **排班** 把 **时间班次** 绑定到一个 **班组**。
 - **班前盘点** 或 **接班盘点** 有 **盘点差异** 时，不应正常开班配料。
@@ -183,6 +220,9 @@ _Avoid_: 只展示引用数量
 - 一个 **记录表单索引** 条目可以由 **业务模块承接**，也可以由 **动态表单** 承接。
 - **动态表单** 可以记录填写事实，但不替代已经存在的主数据、批次、投料或检验事实源。
 - **引用健康状态** 属于受控文件关系；**落地健康状态** 属于记录表单落地关系。
+- **正式审批** 承载审批决策事实；**待办收件箱** 只投影用户需要处理的事项。
+- **记录填写任务** 是记录表单执行要求；**周期任务生成器** 只负责生成任务，不代表任务已执行。
+- **工作流编排** 可以串联任务和审批，但不得另造第二套审批事实源。
 
 ## Example dialogue
 
@@ -198,9 +238,22 @@ _Avoid_: 只展示引用数量
 ## Flagged ambiguities
 
 - "生产批次"、"喷码批次"、"成品批次"曾被混用。已决议：业务文档统一使用 **产品批次**，代码当前由 `ProductionBatch` 承载。
-- `FinishedGoodsBatch` 曾被用作成品批次层。已决议：它不再作为核心业务批次概念。**TASK-9 已完成移除**：Prisma 模型已删除，TypeScript 引用已迁移至 `ProductionBatch`，历史数据保留在 `finished_goods_batches` DB 表。
+- `FinishedGoodsBatch` 曾被用作成品批次层。已决议：它不再作为核心业务批次概念，业务侧统一使用 **产品批次**。
 - "删除产品"曾用于产品退出正常业务。已决议：用户侧统一使用 **产品归档**，历史追溯证据保留。
 - "配方"和"Formula"不再并列。已决议：业务文档统一使用 **配方**。
 - "体系文件库"和"文档台账"曾作为两个入口并存。已决议：统一收敛为 **体系文件中心** 的不同视图。
 - "04 记录表单"曾被误解为普通文件夹或统一填报页。已决议：它是 **记录表单索引**，用于路由到业务模块或动态表单。
 - "盘点差异"不得默认按普通盘盈盘亏跳过。已决议：班前、接班、班后发现差异时走异常处理和确认闭环。
+- `approval`、`unified-approval`、`workflow`、`task`、`todo`、`record-task`、`scheduled-task` 曾被混用。已决议：业务口径区分 **正式审批**、**待办收件箱**、**记录填写任务**、**周期任务生成器** 和 **工作流编排**。
+
+## Implementation Notes
+
+这些备注是当前实现状态快照，只用于提醒后续 module-usage 梳理和整改验证。涉及代码修改前，必须重新核验 `schema.prisma`、后端模块、前端 API 和最近 commit。
+
+| 主题 | 当前实现备注 | 最后核验 | 证据 |
+|---|---|---|---|
+| `FinishedGoodsBatch` | Prisma 核心模型已移除，TypeScript 主链已迁移至 `ProductionBatch`；历史数据保留在 `finished_goods_batches` DB 表作为审计遗留。后续整改只清理 UI、API、DTO、模板枚举中的 `finished_goods` / `finished_goods_batch` 遗留口径和兼容入口，不再写成迁移式剔除待办。 | 2026-05-01 | `server/src/prisma/schema.prisma`, commit `555d27c` |
+| `InventoryMovement` / `StockRecord` | 长期统一库存流水事实源定为 `InventoryMovement`。当前真实仓储实现更深入使用 `StockRecord`：入库、领料、退料、报废和物料平衡都读写 `StockRecord`。`InventoryMovement` 主要存在于 schema、主数据追溯文档和 model-landing 映射，未看到仓储 service 的实际写入点。module-usage 第一轮应把它列为库存流水双事实源风险，并单独设计从 `StockRecord` 迁移统一到 `InventoryMovement` 的方案。 | 2026-05-01 | `server/src/modules/warehouse/inbound.service.ts`, `server/src/modules/warehouse/requisition.service.ts`, `server/src/modules/warehouse/services/return.service.ts`, `server/src/modules/warehouse/services/scrap.service.ts`, `server/src/modules/warehouse/material-balance.service.ts`, `server/src/prisma/schema.prisma` |
+| `MixingExecution` / `BatchMaterialUsage` | 领域口径定为：`MixingExecution` 记录现场配料动作，`BatchMaterialUsage` 表示产品批次与原辅料批次之间的追溯桥接结果。`BatchMaterialUsage` 不再作为配料区现场正式录入入口；应由配料执行归集确认后生成或作为旧链路兼容保留。 | 2026-05-01 | `server/src/prisma/schema.prisma`, `server/src/modules/mixing`, `server/src/modules/batch-trace` |
+| 任务/审批/工作流实现 | 目标边界：`unified-approval` 是正式审批事实源；`todo` 是待办收件箱投影；`record-task` 是记录填写任务；`scheduled-task` 是周期任务生成器；`workflow` 是编排能力，不应扩成第二套审批事实源；旧 `approval` 和旧 `task` 需要在 module-usage 中标为收敛对象。 | 2026-05-01 | `server/src/modules/unified-approval`, `server/src/modules/todo`, `server/src/modules/record-task`, `server/src/modules/workflow`, `server/src/modules/approval`, `server/src/modules/task` |
+| `Team` / `ShiftType` / `ShiftInstance` | 代码里同时存在班组/班次主数据模型和旧的班次实例字段，module-usage 第一轮应核验排班、开班、产品批次责任归属是否已经完全接通。 | 2026-05-01 | `server/src/prisma/schema.prisma`, `server/src/modules/team-shift`, `server/src/modules/shift-instance` |
