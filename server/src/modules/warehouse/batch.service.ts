@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  GoneException,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -18,20 +19,10 @@ export class BatchService {
     private readonly supplierAccess: SupplierAccessService,
   ) {}
 
-  async create(createBatchDto: CreateBatchDto) {
-    if (createBatchDto.supplierId) {
-      await this.supplierAccess.assertSupplierUsable(createBatchDto.supplierId, '创建物料批次');
-    }
-    try {
-      return await this.prisma.materialBatch.create({
-        data: createBatchDto,
-      });
-    } catch (error) {
-      if (error.code === 'P2002') {
-        throw new BadRequestException('Batch number already exists (BR-241)');
-      }
-      throw error;
-    }
+  async create(_createBatchDto: CreateBatchDto) {
+    throw new GoneException(
+      'Direct material batch creation is disabled. Complete a MaterialInbound to create MaterialBatch.',
+    );
   }
 
   async findAll(query: QueryBatchDto) {

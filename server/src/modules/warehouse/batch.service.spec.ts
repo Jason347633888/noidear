@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BatchService } from './batch.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, GoneException, NotFoundException } from '@nestjs/common';
 import { SupplierAccessService } from './services/supplier-access.service';
 import * as dayjs from 'dayjs';
 
@@ -45,8 +45,7 @@ describe('BatchService', () => {
   });
 
   describe('create', () => {
-    it('should create batch successfully', async () => {
-      // Arrange
+    it('rejects direct manual batch creation with GoneException', async () => {
       const createDto = {
         batchNumber: 'BATCH-20260215-001',
         materialId: 'material-001',
@@ -57,44 +56,27 @@ describe('BatchService', () => {
         supplierBatchNo: 'SUP-001',
       };
 
-      const mockBatch = {
-        id: 'batch-001',
-        ...createDto,
-        status: 'normal',
-        createdAt: new Date(),
-      };
-
-      jest.spyOn(prisma.materialBatch, 'create').mockResolvedValue(mockBatch as any);
-
-      // Act
-      const result = await service.create(createDto);
-
-      // Assert
-      expect(result).toEqual(mockBatch);
-      expect(supplierAccess.assertSupplierUsable).toHaveBeenCalledWith('supplier-001', '创建物料批次');
-    });
-
-    it('should reject batch creation when supplier is not usable', async () => {
-      const createDto = {
-        batchNumber: 'BATCH-20260215-001',
-        materialId: 'material-001',
-        productionDate: new Date('2026-01-01'),
-        expiryDate: new Date('2026-07-01'),
-        quantity: 100,
-        supplierId: 'supplier-001',
-        supplierBatchNo: 'SUP-001',
-      };
-
-      jest
-        .spyOn(supplierAccess, 'assertSupplierUsable')
-        .mockRejectedValue(new BadRequestException('供应商已淘汰'));
-
-      await expect(service.create(createDto as any)).rejects.toThrow(BadRequestException);
+      await expect(service.create(createDto)).rejects.toThrow(GoneException);
       expect(prisma.materialBatch.create).not.toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException if batch number exists', async () => {
-      // Arrange
+    it('rejects direct manual batch creation regardless of supplier status', async () => {
+      const createDto = {
+        batchNumber: 'BATCH-20260215-001',
+        materialId: 'material-001',
+        productionDate: new Date('2026-01-01'),
+        expiryDate: new Date('2026-07-01'),
+        quantity: 100,
+        supplierId: 'supplier-001',
+        supplierBatchNo: 'SUP-001',
+      };
+
+      await expect(service.create(createDto as any)).rejects.toThrow(GoneException);
+      expect(prisma.materialBatch.create).not.toHaveBeenCalled();
+      expect(supplierAccess.assertSupplierUsable).not.toHaveBeenCalled();
+    });
+
+    it('does not attempt Prisma create even when batch number would duplicate', async () => {
       const createDto = {
         batchNumber: 'BATCH-20260215-001',
         materialId: 'material-001',
@@ -103,13 +85,8 @@ describe('BatchService', () => {
         quantity: 100,
       };
 
-      jest.spyOn(prisma.materialBatch, 'create').mockRejectedValue({
-        code: 'P2002',
-        meta: { target: ['batchNumber'] },
-      });
-
-      // Act & Assert
-      await expect(service.create(createDto as any)).rejects.toThrow(BadRequestException);
+      await expect(service.create(createDto as any)).rejects.toThrow(GoneException);
+      expect(prisma.materialBatch.create).not.toHaveBeenCalled();
     });
   });
 
