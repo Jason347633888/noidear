@@ -130,7 +130,7 @@ describe('MaterialUsageService', () => {
       };
 
       const mockProductionBatch = { id: 'prod-1', batchNumber: 'PROD-001', recipeId: 'recipe-1' };
-      const mockRecipeLine = { id: 'line-1', recipe_id: 'recipe-1', material_id: 'mat-id-1', area_id: null, area_name_snapshot: null };
+      const mockRecipeLine = { id: 'line-1', recipe_id: 'recipe-1', material_id: 'mat-id-1', area_id: 'area-1', area_name_snapshot: '筛粉间' };
       jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockProductionBatch as any);
       jest.spyOn(prisma.recipeLine, 'findFirst').mockResolvedValue(mockRecipeLine as any);
       jest.spyOn(prisma.materialBatch, 'findUnique').mockResolvedValue(null);
@@ -147,7 +147,7 @@ describe('MaterialUsageService', () => {
       };
 
       const mockProductionBatch = { id: 'prod-1', batchNumber: 'PROD-001', recipeId: 'recipe-1' };
-      const mockRecipeLine = { id: 'line-1', recipe_id: 'recipe-1', material_id: 'mat-id-1', area_id: null, area_name_snapshot: null };
+      const mockRecipeLine = { id: 'line-1', recipe_id: 'recipe-1', material_id: 'mat-id-1', area_id: 'area-1', area_name_snapshot: '筛粉间' };
       const mockMaterialBatch = { id: 'mat-1', materialId: 'different-material', quantity: 50 };
       jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockProductionBatch as any);
       jest.spyOn(prisma.recipeLine, 'findFirst').mockResolvedValue(mockRecipeLine as any);
@@ -165,7 +165,7 @@ describe('MaterialUsageService', () => {
       };
 
       const mockProductionBatch = { id: 'prod-1', batchNumber: 'PROD-001', recipeId: 'recipe-1' };
-      const mockRecipeLine = { id: 'line-1', recipe_id: 'recipe-1', material_id: 'mat-id-1', area_id: null, area_name_snapshot: null };
+      const mockRecipeLine = { id: 'line-1', recipe_id: 'recipe-1', material_id: 'mat-id-1', area_id: 'area-1', area_name_snapshot: '筛粉间' };
       const mockMaterialBatch = { id: 'mat-1', materialId: 'mat-id-1', quantity: 50 };
 
       jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockProductionBatch as any);

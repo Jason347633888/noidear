@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { RecipeService } from './recipe.service';
 
 describe('RecipeService archive behavior', () => {
@@ -17,7 +18,7 @@ describe('RecipeService archive behavior', () => {
         status: { in: ['draft', 'active'] },
         product: { deleted_at: null, status: 'active' },
       },
-      include: { lines: true, product: true },
+      include: { lines: { include: { material: true } }, product: true },
       orderBy: { created_at: 'desc' },
     });
   });
@@ -41,7 +42,7 @@ describe('RecipeService archive behavior', () => {
           { product: { status: { not: 'active' } } },
         ],
       },
-      include: { lines: true, product: true },
+      include: { lines: { include: { material: true } }, product: true },
       orderBy: { created_at: 'desc' },
     });
   });
@@ -63,7 +64,7 @@ describe('RecipeService archive behavior', () => {
         status: { in: ['draft', 'active'] },
         product: { deleted_at: null, status: 'active' },
       },
-      include: { lines: true, product: true },
+      include: { lines: { include: { material: true } }, product: true },
       orderBy: { version: 'desc' },
     });
   });
@@ -83,7 +84,7 @@ describe('RecipeService archive behavior', () => {
         product_id: 'prod-1',
         company_id: '1',
       },
-      include: { lines: true, product: true },
+      include: { lines: { include: { material: true } }, product: true },
       orderBy: { version: 'desc' },
     });
   });
@@ -124,5 +125,96 @@ describe('RecipeService archive behavior', () => {
       data: { status: 'archived' },
     });
     expect(prisma.recipe.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe('RecipeService create area validation', () => {
+  it('rejects recipe lines without an active workshop area', async () => {
+    const tx: any = {
+      workshopArea: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      recipe: {
+        updateMany: jest.fn(),
+        findFirst: jest.fn(),
+        create: jest.fn(),
+      },
+    };
+    const prisma: any = {
+      $transaction: jest.fn((fn) => fn(tx)),
+    };
+    const service = new RecipeService(prisma);
+
+    await expect(
+      service.create({
+        product_id: 'prod-1',
+        lines: [
+          {
+            material_id: 'mat-1',
+            qty_per_batch: 10,
+            unit: 'kg',
+            area_id: '',
+          },
+        ],
+      } as any),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(tx.recipe.create).not.toHaveBeenCalled();
+  });
+
+  it('writes area_name_snapshot from the selected workshop area', async () => {
+    const tx: any = {
+      workshopArea: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'area-1', name: '筛粉间' }),
+      },
+      recipe: {
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        findFirst: jest.fn().mockResolvedValue({ version: 1 }),
+        create: jest.fn().mockResolvedValue({ id: 'recipe-2' }),
+      },
+    };
+    const prisma: any = {
+      $transaction: jest.fn((fn) => fn(tx)),
+    };
+    const service = new RecipeService(prisma);
+
+    await service.create({
+      product_id: 'prod-1',
+      lines: [
+        {
+          material_id: 'mat-1',
+          qty_per_batch: 10,
+          unit: 'kg',
+          area_id: 'area-1',
+          is_critical: true,
+        },
+      ],
+    });
+
+    expect(tx.workshopArea.findFirst).toHaveBeenCalledWith({
+      where: { id: 'area-1', company_id: '1', status: 'active', deleted_at: null },
+    });
+    expect(tx.recipe.create).toHaveBeenCalledWith({
+      data: {
+        company_id: '1',
+        product_id: 'prod-1',
+        version: 2,
+        version_note: undefined,
+        status: 'active',
+        lines: {
+          create: [
+            {
+              material_id: 'mat-1',
+              qty_per_batch: 10,
+              unit: 'kg',
+              area_id: 'area-1',
+              is_critical: true,
+              area_name_snapshot: '筛粉间',
+            },
+          ],
+        },
+      },
+      include: { lines: true },
+    });
   });
 });
