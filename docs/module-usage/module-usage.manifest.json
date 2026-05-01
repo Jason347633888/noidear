@@ -1072,7 +1072,7 @@
       "id": "GAP-300",
       "severity": "P1",
       "moduleId": "quality-qc-release",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -1080,18 +1080,16 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "brainstorming",
-        "grill-with-docs",
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "quality",
-      "prOrder": null,
+      "prOrder": 8,
       "recommendedPr": "quality/GAP-300",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-300"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-300-environment-record-batch-fk-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-300-environment-record-batch-fk-implementation.md"
     },
     {
       "id": "GAP-301",
