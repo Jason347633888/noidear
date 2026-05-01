@@ -7,14 +7,21 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateBatchDto, UpdateBatchDto, QueryBatchDto } from './dto/batch.dto';
+import { SupplierAccessService } from './services/supplier-access.service';
 
 @Injectable()
 export class BatchService {
   private readonly logger = new Logger(BatchService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly supplierAccess: SupplierAccessService,
+  ) {}
 
   async create(createBatchDto: CreateBatchDto) {
+    if (createBatchDto.supplierId) {
+      await this.supplierAccess.assertSupplierUsable(createBatchDto.supplierId, '创建物料批次');
+    }
     try {
       return await this.prisma.materialBatch.create({
         data: createBatchDto,

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Optional } from '@n
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 import { InventoryMovementLedgerService } from './services/inventory-movement-ledger.service';
+import { SupplierAccessService } from './services/supplier-access.service';
 import { Prisma } from '@prisma/client';
 import * as dayjs from 'dayjs';
 
@@ -11,6 +12,7 @@ export class RequisitionService {
     private readonly prisma: PrismaService,
     @Optional() private readonly approvalEngine: ApprovalEngineService,
     private readonly inventoryMovementLedger: InventoryMovementLedgerService,
+    private readonly supplierAccess: SupplierAccessService,
   ) {}
 
   async create(createDto: any) {
@@ -148,6 +150,7 @@ export class RequisitionService {
 
     return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       for (const item of requisition.items) {
+        await this.supplierAccess.assertBatchSupplierUsable(item.batchId, '完成领料');
         const requestedQty = this.toNumber(item.quantity);
         const { count } = await tx.materialBatch.updateMany({
           where: { id: item.batchId, quantity: { gte: requestedQty } },

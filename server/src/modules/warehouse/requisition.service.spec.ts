@@ -2,12 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RequisitionService } from './requisition.service';
 import { InventoryMovementLedgerService } from './services/inventory-movement-ledger.service';
+import { SupplierAccessService } from './services/supplier-access.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('RequisitionService', () => {
   let service: RequisitionService;
   let prisma: PrismaService;
   let inventoryMovementLedger: InventoryMovementLedgerService;
+  let supplierAccess: SupplierAccessService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -46,12 +48,19 @@ describe('RequisitionService', () => {
           provide: InventoryMovementLedgerService,
           useValue: { recordMaterialBatchMovement: jest.fn() },
         },
+        {
+          provide: SupplierAccessService,
+          useValue: {
+            assertBatchSupplierUsable: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<RequisitionService>(RequisitionService);
     prisma = module.get<PrismaService>(PrismaService);
     inventoryMovementLedger = module.get<InventoryMovementLedgerService>(InventoryMovementLedgerService);
+    supplierAccess = module.get<SupplierAccessService>(SupplierAccessService);
   });
 
   afterEach(() => {
@@ -206,10 +215,44 @@ describe('RequisitionService', () => {
       await service.complete('req-001', 'user-001');
 
       expect(prisma.$transaction).toHaveBeenCalled();
+      expect(supplierAccess.assertBatchSupplierUsable).toHaveBeenCalledWith('batch-001', '完成领料');
       expect(inventoryMovementLedger.recordMaterialBatchMovement).toHaveBeenCalledWith(
         expect.objectContaining({ movementType: 'issue_to_production', batchId: 'batch-001' }),
         txClient,
       );
+    });
+
+    it('should reject requisition completion when batch supplier is not usable', async () => {
+      const mockRequisition = {
+        id: 'req-001',
+        status: 'approved',
+        items: [
+          {
+            batchId: 'batch-001',
+            quantity: 50,
+          },
+        ],
+      };
+
+      jest.spyOn(prisma.materialRequisition, 'findUnique').mockResolvedValue(mockRequisition as any);
+      jest
+        .spyOn(supplierAccess, 'assertBatchSupplierUsable')
+        .mockRejectedValue(new BadRequestException('供应商已淘汰'));
+
+      const txClient = {
+        materialBatch: { update: jest.fn() },
+        stagingAreaStock: { upsert: jest.fn(), findFirst: jest.fn(), update: jest.fn(), create: jest.fn() },
+        stockRecord: { create: jest.fn() },
+        materialRequisition: { update: jest.fn() },
+        materialRequisitionItem: { findMany: jest.fn().mockResolvedValue(mockRequisition.items) },
+      };
+
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
+        return callback(txClient);
+      });
+
+      await expect(service.complete('req-001', 'user-001')).rejects.toThrow(BadRequestException);
+      expect(txClient.materialBatch.update).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestException if not approved', async () => {

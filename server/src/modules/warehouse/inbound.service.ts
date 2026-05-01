@@ -9,6 +9,7 @@ import { BatchNumberGeneratorService } from '../batch-trace/services/batch-numbe
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 import { CreateInboundDto, QueryInboundDto } from './dto/inbound.dto';
 import { InventoryMovementLedgerService } from './services/inventory-movement-ledger.service';
+import { SupplierAccessService } from './services/supplier-access.service';
 import { Prisma } from '@prisma/client';
 import * as dayjs from 'dayjs';
 
@@ -19,10 +20,12 @@ export class InboundService {
     private readonly batchNumberGenerator: BatchNumberGeneratorService,
     @Optional() private readonly approvalEngine: ApprovalEngineService,
     private readonly inventoryMovementLedger: InventoryMovementLedgerService,
+    private readonly supplierAccess: SupplierAccessService,
   ) {}
 
   async create(createInboundDto: CreateInboundDto, createdById?: string) {
     const { supplierId, items, remark } = createInboundDto;
+    await this.supplierAccess.assertSupplierUsable(supplierId, '创建来料单');
     const inboundNo = await this.generateInboundNo();
 
     const inbound = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {

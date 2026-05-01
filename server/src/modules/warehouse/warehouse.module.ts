@@ -29,12 +29,13 @@ import { ScrapService } from './services/scrap.service';
 import { WarehouseTraceabilityController } from './traceability.controller';
 import { WarehouseCronService } from './warehouse-cron.service';
 import { InventoryMovementLedgerService } from './services/inventory-movement-ledger.service';
+import { SupplierAccessService } from './services/supplier-access.service';
 
 @Module({
   imports: [PrismaModule, BatchTraceModule, NotificationModule, UnifiedApprovalModule, DocumentModule, UserPermissionModule],
   controllers: [MaterialController, SupplierController, InboundController, BatchController, RequisitionController, StagingAreaController, MaterialBalanceController, ReturnController, ScrapController, WarehouseTraceabilityController],
-  providers: [MaterialService, SupplierService, InboundService, BatchService, RequisitionService, StagingAreaService, MaterialBalanceService, ReturnService, ScrapService, WarehouseCronService, StorageService, PermissionGuard, InventoryMovementLedgerService],
-  exports: [MaterialService, SupplierService, InboundService, BatchService, RequisitionService, StagingAreaService, MaterialBalanceService, ReturnService, ScrapService, InventoryMovementLedgerService],
+  providers: [MaterialService, SupplierService, InboundService, BatchService, RequisitionService, StagingAreaService, MaterialBalanceService, ReturnService, ScrapService, WarehouseCronService, StorageService, PermissionGuard, InventoryMovementLedgerService, SupplierAccessService],
+  exports: [MaterialService, SupplierService, InboundService, BatchService, RequisitionService, StagingAreaService, MaterialBalanceService, ReturnService, ScrapService, InventoryMovementLedgerService, SupplierAccessService],
 })
 export class WarehouseModule implements OnModuleInit {
   constructor(private readonly callbacks: ApprovalCallbackRegistry) {}

@@ -2,11 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BatchService } from './batch.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { SupplierAccessService } from './services/supplier-access.service';
 import * as dayjs from 'dayjs';
 
 describe('BatchService', () => {
   let service: BatchService;
   let prisma: PrismaService;
+  let supplierAccess: SupplierAccessService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -24,11 +26,18 @@ describe('BatchService', () => {
             },
           },
         },
+        {
+          provide: SupplierAccessService,
+          useValue: {
+            assertSupplierUsable: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<BatchService>(BatchService);
     prisma = module.get<PrismaService>(PrismaService);
+    supplierAccess = module.get<SupplierAccessService>(SupplierAccessService);
   });
 
   afterEach(() => {
@@ -62,6 +71,26 @@ describe('BatchService', () => {
 
       // Assert
       expect(result).toEqual(mockBatch);
+      expect(supplierAccess.assertSupplierUsable).toHaveBeenCalledWith('supplier-001', '创建物料批次');
+    });
+
+    it('should reject batch creation when supplier is not usable', async () => {
+      const createDto = {
+        batchNumber: 'BATCH-20260215-001',
+        materialId: 'material-001',
+        productionDate: new Date('2026-01-01'),
+        expiryDate: new Date('2026-07-01'),
+        quantity: 100,
+        supplierId: 'supplier-001',
+        supplierBatchNo: 'SUP-001',
+      };
+
+      jest
+        .spyOn(supplierAccess, 'assertSupplierUsable')
+        .mockRejectedValue(new BadRequestException('供应商已淘汰'));
+
+      await expect(service.create(createDto as any)).rejects.toThrow(BadRequestException);
+      expect(prisma.materialBatch.create).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestException if batch number exists', async () => {

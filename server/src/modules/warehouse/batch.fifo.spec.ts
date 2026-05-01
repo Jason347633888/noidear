@@ -14,6 +14,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BatchService } from './batch.service';
+import { SupplierAccessService } from './services/supplier-access.service';
 
 // ---------------------------------------------------------------------------
 // 辅助类型
@@ -97,6 +98,13 @@ describe('MaterialBatch FIFO 自动关联逻辑 (BR-307/308)', () => {
               update: jest.fn(),
               count: jest.fn(),
             },
+          },
+        },
+        {
+          provide: SupplierAccessService,
+          useValue: {
+            assertSupplierUsable: jest.fn(),
+            assertBatchSupplierUsable: jest.fn(),
           },
         },
       ],
