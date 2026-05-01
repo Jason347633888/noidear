@@ -783,7 +783,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "warehouse",
-      "prOrder": 15,
+      "prOrder": 4,
       "recommendedPr": "warehouse/GAP-107",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-107"
@@ -808,7 +808,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "warehouse",
-      "prOrder": 16,
+      "prOrder": 5,
       "recommendedPr": "warehouse/GAP-108",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-108"
@@ -1095,7 +1095,7 @@
       "id": "GAP-301",
       "severity": "P1",
       "moduleId": "quality-qc-release",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -1103,18 +1103,16 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "brainstorming",
-        "grill-with-docs",
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "quality",
-      "prOrder": null,
+      "prOrder": 16,
       "recommendedPr": "quality/GAP-301",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-301"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-301-fragile-item-inspection-batch-fk-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-301-fragile-item-inspection-batch-fk-implementation.md"
     },
     {
       "id": "GAP-302",
