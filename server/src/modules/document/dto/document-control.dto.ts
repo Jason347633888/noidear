@@ -282,6 +282,12 @@ export class UpsertNumberRuleDto {
   resetPolicy?: string;
 }
 
+export class BatchConfirmRecordFormLandingDto {
+  @IsArray()
+  @IsString({ each: true })
+  codes!: string[];
+}
+
 export class ConfirmRecordFormLandingDto extends UpdateRecordFormLandingEntryDto {
   @IsIn(LANDING_STATUSES)
   landingStatus!: string;

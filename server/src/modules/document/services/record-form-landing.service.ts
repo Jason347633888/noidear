@@ -117,6 +117,38 @@ export class RecordFormLandingService {
     };
   }
 
+  async batchConfirmSuggested(codes: string[], userId: string) {
+    const uniqueCodes = [...new Set(codes.map((code) => code.trim()).filter(Boolean))];
+    const results: Array<{ code: string; status: string; reason?: string; entry?: any }> = [];
+
+    for (const code of uniqueCodes) {
+      const suggestion = await this.suggest(code);
+      if (suggestion.landingStatus === 'unimplemented') {
+        results.push({ code, status: 'skipped', reason: '没有可确认的落地建议' });
+        continue;
+      }
+
+      const entry = await this.confirm(code, {
+        landingStatus: suggestion.landingStatus,
+        landingStrategy: suggestion.landingStatus,
+        targetModule: suggestion.targetModule,
+        targetModel: suggestion.targetModel,
+        targetRoute: suggestion.targetRoute,
+        targetTemplateId: suggestion.targetTemplateId,
+        confirmationStatus: 'confirmed',
+        fieldCoverageStatus: (suggestion.fieldCoverageStatus as any) ?? 'unknown',
+      }, userId);
+      results.push({ code, status: 'confirmed', entry });
+    }
+
+    return {
+      total: uniqueCodes.length,
+      confirmed: results.filter((r) => r.status === 'confirmed').length,
+      skipped: results.filter((r) => r.status === 'skipped').length,
+      results,
+    };
+  }
+
   async confirm(code: string, dto: ConfirmRecordFormLandingDto, userId: string) {
     const form = this.modelLanding.getFormByCode(code);
     if (!form) throw new NotFoundException(`Unknown source form: ${code}`);

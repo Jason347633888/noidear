@@ -177,6 +177,10 @@ export const documentControlApi = {
     return request.post(`/documents/record-form-index/${code}/confirm`, payload);
   },
 
+  batchConfirmRecordFormLanding(codes: string[]) {
+    return request.post('/documents/record-form-index/batch-confirm-suggested', { codes });
+  },
+
   getRecordFormFieldCoverage(code: string) {
     return request.get(`/documents/record-form-index/${code}/field-coverage`);
   },

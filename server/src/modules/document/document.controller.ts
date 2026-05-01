@@ -38,7 +38,7 @@ import { DocumentEvidenceChainService } from './services/document-evidence-chain
 import { DocumentReferenceHealthService } from './services/document-reference-health.service';
 import { NumberRuleService } from './services/number-rule.service';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto, WorkbenchQueryDto, WorkbenchIssueQueryDto, CreateReadRequirementDto, TrainingNeedActionDto, ImpactReviewCreateDto, ImpactItemUpdateDto, CoverageQueryDto, AuditChainQueryDto, UpdateMarkdownDto } from './dto';
-import { ConfirmRecordFormLandingDto, UpdateRecordFormLandingEntryDto, UpsertNumberRuleDto } from './dto/document-control.dto';
+import { BatchConfirmRecordFormLandingDto, ConfirmRecordFormLandingDto, UpdateRecordFormLandingEntryDto, UpsertNumberRuleDto } from './dto/document-control.dto';
 import { PublishDocumentDto, RollbackDocumentVersionDto } from './dto/document-lifecycle.dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -171,6 +171,14 @@ export class DocumentController {
     @Query('templateGroupId') templateGroupId?: string,
   ) {
     return this.recordFormLandingService.list({ keyword, department, templateGroupId });
+  }
+
+  @Post('record-form-index/batch-confirm-suggested')
+  @UseGuards(PermissionGuard)
+  @CheckPermission('record_form:landing_manage')
+  @ApiOperation({ summary: '批量确认选中表单的落地建议' })
+  batchConfirmRecordFormLanding(@Body() dto: BatchConfirmRecordFormLandingDto, @Req() req: any) {
+    return this.recordFormLandingService.batchConfirmSuggested(dto.codes, req.user?.id || 'system');
   }
 
   @Get('record-form-index/:code/suggestion')

@@ -3,9 +3,17 @@
     <div class="toolbar">
       <el-input v-model="keyword" placeholder="搜索表单编号或名称" clearable @keyup.enter="fetchRows" />
       <el-button type="primary" @click="fetchRows">搜索</el-button>
+      <el-button
+        type="primary"
+        :disabled="selectedRows.length === 0"
+        @click="batchConfirmSelected"
+      >
+        批量确认建议
+      </el-button>
     </div>
 
-    <el-table :data="rows" v-loading="loading" stripe>
+    <el-table :data="rows" v-loading="loading" stripe @selection-change="selectedRows = $event">
+      <el-table-column type="selection" width="48" />
       <el-table-column prop="code" label="源编号" width="150" />
       <el-table-column prop="formName" label="表单名" min-width="220" show-overflow-tooltip />
       <el-table-column prop="department" label="部门" width="120" />
@@ -167,6 +175,16 @@ const saveEdit = async () => {
   }
 };
 
+const selectedRows = ref<RecordFormLandingEntry[]>([]);
+
+const batchConfirmSelected = async () => {
+  const codes = selectedRows.value.map((row) => row.code);
+  const res: any = await documentControlApi.batchConfirmRecordFormLanding(codes);
+  ElMessage.success(`已确认 ${res.confirmed || 0} 条，跳过 ${res.skipped || 0} 条`);
+  selectedRows.value = [];
+  await fetchRows();
+};
+
 const activeSuggestion = ref<any>(null);
 
 async function loadSuggestion(row: any) {
@@ -189,7 +207,7 @@ onMounted(fetchRows);
 <style scoped>
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) auto;
+  grid-template-columns: minmax(240px, 1fr) auto auto;
   gap: 10px;
   margin-bottom: 12px;
 }
