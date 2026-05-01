@@ -868,7 +868,7 @@
       "id": "GAP-200",
       "severity": "P1",
       "moduleId": "mixing-production-packaging",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [
         "GAP-207"
@@ -880,16 +880,17 @@
       "recommendedSuperpowers": [
         "brainstorming",
         "grill-with-docs",
-        "writing-plans"
+        "writing-plans",
+        "executing-plans"
       ],
       "prRoadmapGroup": "production",
-      "prOrder": null,
+      "prOrder": 12,
       "recommendedPr": "production/GAP-200",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-200"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-200-shift-instance-shift-type-fk-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-200-shift-instance-shift-type-fk-implementation.md"
     },
     {
       "id": "GAP-201",
