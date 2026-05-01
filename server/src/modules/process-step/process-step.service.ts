@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProcessStepDto } from './dto/create-process-step.dto';
 import { UpdateProcessStepDto } from './dto/update-process-step.dto';
@@ -6,6 +6,15 @@ import { UpdateProcessStepDto } from './dto/update-process-step.dto';
 @Injectable()
 export class ProcessStepService {
   constructor(private prisma: PrismaService) {}
+
+  private assertHasProductOrRecipe(productId?: string, recipeId?: string) {
+    const hasProduct = typeof productId === 'string' && productId.trim().length > 0;
+    const hasRecipe = typeof recipeId === 'string' && recipeId.trim().length > 0;
+
+    if (!hasProduct && !hasRecipe) {
+      throw new BadRequestException('工序必须关联产品或配方');
+    }
+  }
 
   async findAll() {
     return this.prisma.processStep.findMany({
@@ -32,6 +41,8 @@ export class ProcessStepService {
   }
 
   async create(dto: CreateProcessStepDto) {
+    this.assertHasProductOrRecipe(dto.product_id, dto.recipe_id);
+
     return this.prisma.processStep.create({
       data: {
         company_id: '1',
