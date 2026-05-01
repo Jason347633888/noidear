@@ -88,7 +88,8 @@ describe('ProductionBatchService', () => {
         recipeId: 'r1',
         plannedQuantity: 100,
         productionDate: new Date('2026-04-29T00:00:00.000Z'),
-      });
+        productName: '前端伪造产品名',
+      } as any);
 
       expect(mockPrisma.productionBatch.create).toHaveBeenCalledWith({
         data: {
@@ -248,7 +249,10 @@ describe('ProductionBatchService', () => {
       };
       mockPrisma.productionBatch.create.mockResolvedValue(mockBatch);
 
-      const result = await service.confirmProductBatch(validDto);
+      const result = await service.confirmProductBatch({
+        ...validDto,
+        productName: '包装端伪造产品名',
+      } as any);
 
       expect(result).toEqual(mockBatch);
       expect(mockPrisma.product.findFirst).toHaveBeenCalledWith({

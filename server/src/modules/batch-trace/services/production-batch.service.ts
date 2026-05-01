@@ -39,6 +39,7 @@ export class ProductionBatchService {
         batchNumber,
         productId: product.id,
         recipeId: recipe.id,
+        // GAP-007: productName is a historical snapshot from Product, never caller input.
         productName: product.name,
         recipeName: `v${recipe.version}`,
         plannedQuantity: createDto.plannedQuantity,
@@ -147,6 +148,7 @@ export class ProductionBatchService {
         data: {
           batchNumber: dto.batchNumber,
           productId: dto.productId,
+          // GAP-007: productName is a historical snapshot from Product, never caller input.
           productName: product.name,
           recipeId: dto.recipeId,
           recipeName: recipe.version_note ?? `v${recipe.version}`,
