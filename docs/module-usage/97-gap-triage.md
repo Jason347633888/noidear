@@ -46,7 +46,7 @@
 | GAP-300 | P1 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-300-environment-record-batch-fk-design.md | docs/superpowers/plans/2026-05-01-gap-300-environment-record-batch-fk-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
 | GAP-301 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/业务 spec（FragileItemInspection batch FK，需确认哪些场景可无批次） |
 | GAP-302 | P2 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema FK，先用 brainstorming 写轻量 spec |
-| GAP-303 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（CCP missing 按产品过滤） |
+| GAP-303 | P1 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-303-ccp-missing-product-filter-design.md | docs/superpowers/plans/2026-05-01-gap-303-ccp-missing-product-filter-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans，CCP missing 查询按批次产品/配方过滤 |
 | GAP-304 | P0 | 已验证 | 是 | 是 | 是 | - | docs/superpowers/specs/2026-05-01-gap-304-company-id-from-jwt-design.md | docs/superpowers/plans/2026-05-01-gap-304-company-id-from-jwt-implementation.md | 已执行：认证上下文补齐 companyId，CCP/不合格/CAPA/投诉/返工链路按 JWT companyId 写入与过滤；ProductionBatch 租户归属另行分诊 |
 | GAP-305 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（CCP 偏差自动触发 NonConformance） |
 | GAP-306 | P0 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-306-traceability-module-service-registration-design.md | docs/superpowers/plans/2026-05-01-gap-306-traceability-module-service-registration-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
