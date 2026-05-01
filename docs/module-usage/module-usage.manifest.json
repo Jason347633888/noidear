@@ -1248,28 +1248,30 @@
       "id": "GAP-307",
       "severity": "P0",
       "moduleId": "traceability-complaint-recall",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [
         "GAP-306"
       ],
       "blocks": [],
       "canParallelize": false,
       "needsDesign": true,
-      "schemaImpact": true,
-      "historicalDataImpact": true,
+      "schemaImpact": false,
+      "historicalDataImpact": false,
       "recommendedSuperpowers": [
         "brainstorming",
         "grill-with-docs",
-        "writing-plans"
+        "writing-plans",
+        "executing-plans"
       ],
       "prRoadmapGroup": "traceability",
-      "prOrder": null,
+      "prOrder": 6,
       "recommendedPr": "traceability/GAP-307",
       "validationCommands": [
-        "pnpm test:e2e -- --grep GAP-307"
+        "npm --prefix server run traceability:test",
+        "npm --prefix client test -- traceability"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-307-traceability-full-query-chain-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-307-traceability-full-query-chain-implementation.md"
     },
     {
       "id": "GAP-308",

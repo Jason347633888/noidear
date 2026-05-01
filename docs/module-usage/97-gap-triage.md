@@ -50,7 +50,7 @@
 | GAP-304 | P0 | 已验证 | 是 | 是 | 是 | - | docs/superpowers/specs/2026-05-01-gap-304-company-id-from-jwt-design.md | docs/superpowers/plans/2026-05-01-gap-304-company-id-from-jwt-implementation.md | 已执行：认证上下文补齐 companyId，CCP/不合格/CAPA/投诉/返工链路按 JWT companyId 写入与过滤；ProductionBatch 租户归属另行分诊 |
 | GAP-305 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（CCP 偏差自动触发 NonConformance） |
 | GAP-306 | P0 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-306-traceability-module-service-registration-design.md | docs/superpowers/plans/2026-05-01-gap-306-traceability-module-service-registration-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
-| GAP-307 | P0 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P0 追溯查询完整链路，依赖 GAP-306，先用 brainstorming 写 spec |
+| GAP-307 | P0 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-307-traceability-full-query-chain-design.md | docs/superpowers/plans/2026-05-01-gap-307-traceability-full-query-chain-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
 | GAP-308 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 依赖 GAP-306；先用 brainstorming 写跨模块 spec（快照持久化） |
 | GAP-309 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema spec（CustomerComplaint customer FK） |
 | GAP-310 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/业务 spec（投诉必须关联批次） |
