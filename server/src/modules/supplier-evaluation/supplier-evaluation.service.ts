@@ -6,7 +6,7 @@ import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 export class SupplierEvaluationService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateEvaluationDto) {
+  async create(dto: CreateEvaluationDto, companyId: string) {
     const total_score =
       dto.quality_score != null &&
       dto.delivery_score != null &&
@@ -16,7 +16,7 @@ export class SupplierEvaluationService {
 
     const evaluation = await this.prisma.supplierEvaluation.create({
       data: {
-        company_id: '1',
+        company_id: companyId,
         supplier_id: dto.supplier_id,
         eval_period: dto.eval_period,
         eval_date: new Date(),
@@ -46,15 +46,16 @@ export class SupplierEvaluationService {
     return evaluation;
   }
 
-  async findBySupplier(supplierId: string) {
+  async findBySupplier(supplierId: string, companyId: string) {
     return this.prisma.supplierEvaluation.findMany({
-      where: { supplier_id: supplierId },
+      where: { supplier_id: supplierId, company_id: companyId },
       orderBy: { eval_date: 'desc' },
     });
   }
 
-  async findAll() {
+  async findAll(companyId: string) {
     return this.prisma.supplierEvaluation.findMany({
+      where: { company_id: companyId },
       include: { supplier: true },
       orderBy: { eval_date: 'desc' },
       take: 100,
