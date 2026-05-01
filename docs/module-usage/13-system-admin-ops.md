@@ -65,6 +65,8 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 
 **关键结论**：`FineGrainedPermission` + `UserPermission` 是 ABAC 的细粒度定义源，`Permission` + `RolePermission` 是 RBAC 的粗粒度定义源。两者并存，由 `FineGrainedPermissionGuard` 在请求时联合评估。`DepartmentPermission` 是独立的数据边界层。
 
+> **新功能权限决策参考**：在新功能中决定使用哪个权限层时，请先阅读 [`docs/superpowers/specs/2026-05-01-permission-model-decision-guide.md`](../superpowers/specs/2026-05-01-permission-model-decision-guide.md)，其中包含各层职责定义、决策树和禁止重复实现规则（GAP-512）。
+
 ## 2. 使用角色
 
 | 角色 | 使用目的 | 关键动作 |

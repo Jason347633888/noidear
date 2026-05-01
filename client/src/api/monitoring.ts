@@ -73,7 +73,7 @@ export interface UpdateAlertRuleDto {
 
 // 查询历史指标
 export const queryMetrics = (params: QueryMetricsParams) => {
-  return request.get<SystemMetric[]>('/monitoring/metrics/query', { params });
+  return request.post<SystemMetric[]>('/monitoring/metrics/query', params);
 };
 
 // 获取可用指标列表
@@ -113,7 +113,7 @@ export const toggleAlertRule = (id: string, enabled: boolean) => {
 
 // 查询告警历史
 export const queryAlertHistory = (params: QueryAlertHistoryParams) => {
-  return request.get<{ items: AlertHistory[]; total: number }>('/monitoring/alerts/history', { params });
+  return request.post<{ items: AlertHistory[]; total: number }>('/monitoring/alerts/history/query', params);
 };
 
 // 确认告警
