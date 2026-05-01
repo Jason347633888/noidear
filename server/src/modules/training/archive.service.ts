@@ -117,6 +117,30 @@ export class ArchiveService {
     return archivesWithUrl;
   }
 
+  async findArchiveById(id: string) {
+    const archive = await this.prisma.trainingArchive.findUnique({
+      where: { id },
+      include: {
+        project: {
+          include: {
+            plan: {
+              select: { year: true, title: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!archive) {
+      throw new NotFoundException('培训档案不存在');
+    }
+
+    return {
+      ...archive,
+      pdfUrl: await this.storageService.getFileUrl(archive.pdfPath),
+    };
+  }
+
   /**
    * 下载培训档案 PDF
    */

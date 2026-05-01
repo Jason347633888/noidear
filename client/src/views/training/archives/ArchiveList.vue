@@ -113,9 +113,10 @@ const fetchArchives = async () => {
       params.year = filters.value.year.getFullYear();
     }
 
-    const res = await request.get<any>('/api/v1/training/archives', { params });
-    archives.value = (res as any).data || [];
-    pagination.value.total = (res as any).total || 0;
+    const res = await request.get<any[]>('/training/archive', { params });
+    const list = Array.isArray(res) ? res : ((res as any).data || []);
+    archives.value = list;
+    pagination.value.total = Array.isArray(res) ? res.length : ((res as any).total || list.length);
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || '获取培训档案失败');
   } finally {
@@ -147,7 +148,7 @@ const handleRowClick = (row: any) => {
 
 const downloadArchive = async (id: string) => {
   try {
-    const res = await request.get(`/api/v1/training/archives/${id}/download`, {
+    const res = await request.get(`/training/archive/${id}/download`, {
       responseType: 'blob',
     });
 

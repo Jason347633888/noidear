@@ -88,12 +88,12 @@ const fetchArchive = async () => {
     loading.value = true;
     const id = route.params.id as string;
 
-    const res = await request.get<any>(`/api/v1/training/archives/${id}`);
+    const res = await request.get<any>(`/training/archive/${id}`);
     archive.value = (res as any).data || res;
 
     // 获取 PDF URL
     const pdfRes = await request.get(
-      `/api/v1/training/archives/${id}/download`,
+      `/training/archive/${id}/download`,
       { responseType: 'blob' }
     );
     pdfUrl.value = URL.createObjectURL(new Blob([pdfRes as BlobPart]));
@@ -112,7 +112,7 @@ const fetchArchive = async () => {
 const downloadPdf = async () => {
   try {
     const id = route.params.id as string;
-    const res = await request.get(`/api/v1/training/archives/${id}/download`, {
+    const res = await request.get(`/training/archive/${id}/download`, {
       responseType: 'blob',
     });
 
