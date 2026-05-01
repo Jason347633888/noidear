@@ -7,7 +7,9 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { FaultService } from './fault.service';
 import {
   CreateFaultDto,
@@ -16,6 +18,7 @@ import {
   QueryFaultDto,
 } from './dto/fault.dto';
 
+@UseGuards(JwtAuthGuard)
 @Controller('equipment/faults')
 export class FaultController {
   constructor(private readonly faultService: FaultService) {}

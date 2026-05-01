@@ -9,7 +9,9 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { EquipmentService } from './equipment.service';
 import {
   CreateEquipmentDto,
@@ -18,6 +20,7 @@ import {
   QueryEquipmentDto,
 } from './dto/equipment.dto';
 
+@UseGuards(JwtAuthGuard)
 @Controller('equipment')
 export class EquipmentController {
   constructor(private readonly equipmentService: EquipmentService) {}
