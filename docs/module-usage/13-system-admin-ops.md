@@ -110,7 +110,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | BackupHistory | `backup_histories` 表 | 备份执行记录（postgres/minio 两类） |
 | BackupService | 调用 docker exec 执行 pg_dump | 备份文件保存在容器内 /tmp，不是对象存储 |
 | MetricsService | 使用 prom-client 生成 Prometheus 格式指标 | `GET /monitoring/metrics` 输出 Prometheus 文本 |
-| AlertService | 双路径暴露（/alerts/* 和 /monitoring/alerts/*） | 两套路由调用同一 service，见 GAP-12 |
+| AlertService | 权威路径：`/monitoring/alerts/*`（由 MonitoringController 提供）；`/alerts/*` 独立路由已停止注册（GAP-511 已修复） | AlertController 已从 AlertModule.controllers 移除，AlertService 仍由 AlertModule export 供 MonitoringModule 使用 |
 
 ## 5. 正确业务流程
 
@@ -147,7 +147,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 - **权限系统 → 所有业务模块**：`JwtAuthGuard` 验证 JWT，`RolesGuard` 按角色限制路由，`FineGrainedPermissionGuard` 按细粒度权限码限制操作。
 - **DepartmentPermission → 数据隔离**：`DepartmentPermissionService.checkAccess` 用于限制跨部门数据访问，与功能权限独立。
 - **PermissionLog → 审计**：记录 `assign_role`/`revoke_role`/`change_department` 三类变更，是权限合规审计的事实源。
-- **AlertService 双路径**：`/alerts/*`（alert.controller）和 `/monitoring/alerts/*`（monitoring.controller）调用同一 AlertService，两套路由并存。
+- **AlertService 权威路径**：告警 API 权威路径为 `/monitoring/alerts/*`（由 monitoring.controller 提供）。`/alerts/*` 独立路由已于 GAP-511 修复中停止注册；`alert.controller.ts` 保留但不再挂载。
 - **MetricsService → Prometheus**：`GET /monitoring/metrics` 输出 Prometheus 格式，可被外部监控系统抓取；数据库指标持久化由 `POST /monitoring/metrics` 写入 SystemMetric。
 
 ## 7. 当前系统差距
@@ -160,7 +160,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | GAP-508 | 前端 `queryAlertHistory` 调用 `GET /monitoring/alerts/history`，后端路由为 `POST /monitoring/alerts/history/query` | 路径不同（history vs history/query）且方法不同（GET vs POST） | 告警历史列表无数据 | P1（高） | 已验证 | `client/src/api/monitoring.ts:L116`；`server/src/modules/monitoring/monitoring.controller.ts:L138` |
 | GAP-509 | 前端 `getAvailableBackups` 调用 `GET /backup/available`，后端无此路由 | 前端实现了接口但后端未实现对应端点（现有 `POST /backup/restore` 返回可用备份列表） | 备份页面无法展示可用于恢复的备份列表 | P1（高） | 已验证 | `client/src/api/backup.ts:L36`；`server/src/modules/backup/backup.controller.ts` 无 `GET /backup/available` 路由 |
 | GAP-510 | 前端 `getBackupStatus` 调用 `GET /backup/:id/status`，后端无此路由 | 前端实现了轮询状态接口但后端未实现 | 备份进度轮询失败，无法感知备份是否完成 | P2（中） | 已验证 | `client/src/api/backup.ts:L44`；`server/src/modules/backup/backup.controller.ts` 无 `:id/status` 路由 |
-| GAP-511 | AlertService 的操作路由在 `/alerts/*`（alert.controller）和 `/monitoring/alerts/*`（monitoring.controller）均注册 | 系统同时注册了两套路由，未清理 | 文档混淆，客户端应调用哪个路径不明确；可能造成 API 版本冲突 | P2（中） | 已验证 | `server/src/modules/alert/alert.controller.ts`（`@Controller('alerts')`）和 `server/src/modules/monitoring/monitoring.controller.ts`（内含 alerts 子路由） |
+| GAP-511 | AlertService 的操作路由在 `/alerts/*`（alert.controller）和 `/monitoring/alerts/*`（monitoring.controller）均注册 | 系统同时注册了两套路由，未清理 | 文档混淆，客户端应调用哪个路径不明确；可能造成 API 版本冲突 | P2（中） | **已修复**（PR codex/gap-511-alert-route-dedup） | `AlertController` 已从 `AlertModule.controllers` 移除；权威路径收敛至 `/monitoring/alerts/*` |
 | GAP-512 | 四个权限模型（Permission/FineGrainedPermission/UserPermission/DepartmentPermission）并存，文档未说明哪一个是管理员配置的"权威入口" | P1-2 阶段引入了 ABAC 叠加层 | 新开发者不清楚应该配置哪个模型，可能导致权限漏配或重复配置 | P2（中） | 已验证（权限层级已梳理，但文档缺失） | `schema.prisma:L595`（Role）, L641（FineGrainedPermission）, L2349（DepartmentPermission）；各自独立模块 |
 
 ## 8. 整改建议
