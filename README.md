@@ -1,400 +1,254 @@
-# 文档管理系统
+# noidear 食品安全与质量管理平台
 
-> 企业级三级文档管理与四级配方填报系统
+> 面向食品生产企业的质量、文控、研发、仓储、追溯、培训、内审与运营管理系统。
 
-[![Tests](https://img.shields.io/badge/tests-164%20passed-brightgreen.svg)](server/test)
-[![Coverage](https://img.shields.io/badge/coverage-85.3%25-brightgreen.svg)](server/coverage)
-[![Status](https://img.shields.io/badge/status-production%20ready-green.svg)]()
-
----
-
-## 📋 项目简介
-
-当前四级记录表单口径以 `/Users/jiashenglin/Desktop/mybrain/文件管理体系/当前公司/04-记录表单` 为唯一事实源；截至2026-04-23，源表单为283张。`SaaS产品构思` 是字段映射和产品语义参考层，项目实现以 `noidear` 为落地点。
-
-一个完整的企业文档管理与配方填报系统，支持三级文档管理、四级模板配方、任务派发与填报、配方偏离检测与统计分析、二级审批流程、数据导出与文件预览、**灵活工作流引擎**等功能。
-
-**项目状态** _(最后更新: 2026-04-27，详见 [docs/complete-audit-report.md](docs/complete-audit-report.md))_:
-- ✅ 全部 22 个功能模块（TASK-001~402）已开发，总体完成度 **85.6%**（154/180 任务）
-- ✅ MVP 模块 01~10：核心业务功能全部交付
-- ✅ 高级模块 14~22：培训/内审/移动端/监控/高级功能全部交付
-- ✅ 真实 ElasticSearch 集成（TASK-401）+ 真实 LDAP 认证（TASK-402）
-- ✅ 安全加固：LDAP 注入防护、XSS 防护、ES 竞态修复
-- ✅ 业务规则：113 条（BR-1.1 ~ BR-1.60, BR-281 ~ BR-359）
-- ✅ **全部 5 个业务规则违规（BRV-01~05）已修复**（密码锁定、工作流超时、回收站定时清理等）
-- ✅ P1-2 细粒度权限前端组件全部落地（12/18 完成），后端控制器已完善
-- ✅ **Vault SaaS Browser Alignment 完成**（2026-04-23）：283张表单对齐，31个缺失映射 + 3个编号不匹配修复
-- ✅ **oh-my-opencode 智能体框架集成**（Kimi K2.6 + GPT-5.4）
-- ✅ **E2E 测试框架优化**（Playwright 全局登录缓存，解决429限流问题）
-- ✅ **Agent 入口与权威链对齐**（2026-04-27）：AGENTS.md 回归短根入口，CLAUDE.md 保持薄代理，AGENT_GUIDE.md 承载项目特有补充协议，MASTER_DATA_AND_TRACEABILITY_MODEL.md 作为食品安全 hard gate，validate-agent-onboarding-docs.sh 同步更新
-- ✅ **Model Landing 层**（2026-04-24）：283 张表单 / 59 个执行组冻结为可查询 TypeScript 运行时 artifact，NestJS ModelLandingModule 提供 REST 查询接口，freeze-guard 测试 + verify 脚本确保 artifact 与冻结 spec 对齐
-- ⚠️ 残留：`RoleFineGrainedPermission` 中间表、`RecordTemplate.workflowConfig` 等 Schema 字段待补全
-- ⚠️ 前端 E2E 测试（Playwright）：30 个 spec 文件，覆盖率约 45%
+[![Node](https://img.shields.io/badge/node-20.x-brightgreen.svg)](.nvmrc)
+[![Frontend](https://img.shields.io/badge/frontend-Vue%203%20%2B%20Element%20Plus-409eff.svg)](client)
+[![Backend](https://img.shields.io/badge/backend-NestJS%2010%20%2B%20Prisma-e0234e.svg)](server)
+[![Deploy](https://img.shields.io/badge/deploy-Docker%20Compose-2496ed.svg)](docker-compose.yml)
 
 ---
 
-## 🚀 快速开始
+## 项目概览
+
+`noidear` 是一个食品安全与质量管理 SaaS 原型/平台，覆盖从体系文件、记录表单、产品研发、仓储批次到追溯查询的完整业务链路。项目当前以 283 张四级记录表单为表单事实源，并将主数据、批次数据、过程记录、审批工作流和质量治理记录落到统一的前后端系统中。
+
+当前代码库包含：
+
+- `client/`：Vue 3 + TypeScript + Element Plus 前端应用
+- `server/`：NestJS + Prisma 后端 API
+- `packages/types/`：前后端共享 TypeScript 类型
+- `tools/noidear-mcp/`：面向 Agent 的 MCP 工具服务
+- `mobile/`：移动端/同步相关能力
+- `monitoring/`：Prometheus、Grafana、Loki、Alertmanager 配置
+- `docs/`：需求、设计、业务规则、Agent 协议与追溯权威模型
+
+---
+
+## 核心能力
+
+### 文控与记录表单
+
+- 三级体系文件管理、版本控制、审批、归档、作废、回收站
+- 记录表单索引、编号规则、文控工作台、阅读确认、培训需求、影响分析
+- 动态表单、字段组件、记录填报、任务派发、逾期与锁定控制
+
+### 食品安全主链路
+
+- 产品、物料、供应商、外部方、仓库、批次、生产批次等主数据
+- 仓库物料、批次、领料、FIFO、配料区库存、物料平衡
+- 统一追溯查询入口 `/traceability`，收敛旧批次追溯与仓库追溯路径
+- 来料检验、不合格品、纠正措施、顾客投诉、返工/回料、召回相关链路基础
+
+### 研发、生产与质量过程
+
+- 产品研发 9 步流程，含 HACCP 审批、步骤顺序推进、打印视图
+- 配方管理、工序步骤/CCP、配料执行、车间暂存、班次看板
+- 环境温湿度、过程参数、金属探测、清洁消毒、换产检查、玻璃及硬塑完整性检查
+- 偏差检测、偏差报告、统计分析、数据导出
+
+### 组织、权限与工作流
+
+- 用户、角色、部门、RBAC、细粒度权限、部门权限、权限审计
+- 通用审批、统一审批、工作流模板、工作流实例、我的待办
+- 登录日志、权限日志、敏感操作日志、全局搜索、导入导出
+
+### 培训、内审与运营
+
+- 培训计划、培训项目、题库、考试、档案、统计
+- 内审计划、审核执行、整改、复审验证、报告
+- 设备台账、维保计划、故障报修、测量设备校准
+- 健康检查、备份管理、系统监控、告警规则、告警历史
+
+### Agent 与自动化
+
+- `AGENTS.md` 作为根入口，`docs/AGENT_GUIDE.md` 承接项目操作协议
+- `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md` 作为食品安全主数据与追溯 hard gate
+- `llms.txt` 提供系统能力、API、认证和 MCP 入口摘要
+- `tools/noidear-mcp/` 提供 API 发现、调用、运维和测试类工具
+
+---
+
+## 技术栈
+
+| 层级 | 技术 |
+|------|------|
+| 前端 | Vue 3.4+、TypeScript、Vite 5、Element Plus、Pinia、Vue Router、ECharts、Vitest、Playwright |
+| 后端 | Node.js 20、NestJS 10、TypeScript、Prisma 5、Jest、Swagger |
+| 数据 | PostgreSQL 15、Redis 7、MinIO、可选 ElasticSearch |
+| 监控 | Prometheus、Grafana、Alertmanager、Loki、Promtail |
+| 部署 | Docker、Docker Compose、Nginx |
+| 自动化 | npm workspaces、MCP server、共享类型包 |
+
+---
+
+## 快速开始
 
 ### 环境要求
 
-- Node.js >= 18
-- Docker & Docker Compose
-- PostgreSQL 15（Docker）
-- Redis 7（Docker）
-- MinIO（Docker）
+- Node.js 20.x（见 `.nvmrc`）
+- npm 10+
+- Docker 与 Docker Compose
 
-### 启动步骤
+不要使用 Node 25 安装后端依赖，`bcrypt` 在该版本下可能安装失败。
+
+### 本地开发
 
 ```bash
-# 1. 启动 Docker 服务
-docker compose up -d
+# 1. 切换 Node 版本并安装依赖
+nvm use
+npm ci
 
-# 2. 安装后端依赖
+# 2. 启动基础服务与监控组件
+docker compose up -d postgres redis minio prometheus grafana alertmanager loki promtail
+
+# 3. 配置后端环境变量（匹配 docker-compose.yml 的本地账号和端口）
+cat > server/.env <<'EOF'
+DATABASE_URL="postgresql://noidear:noidear123@localhost:5432/document_system"
+JWT_SECRET="change-me-local-dev-secret-at-least-32-characters"
+JWT_EXPIRES_IN="7d"
+REDIS_URL="redis://localhost:6379"
+MINIO_ENDPOINT="localhost"
+MINIO_PORT=9000
+MINIO_USE_SSL=false
+MINIO_ACCESS_KEY="admin"
+MINIO_SECRET_KEY="noidear123"
+CORS_ORIGIN="http://localhost:5173"
+EOF
+
+# 4. 初始化 Prisma
+npm run prisma:generate
 cd server
-npm install
-npx prisma generate --schema=src/prisma/schema.prisma
 npx prisma db push --schema=src/prisma/schema.prisma
+cd ..
 
-# 3. 配置环境变量
-cp .env.example .env
-# 编辑 .env 设置 JWT_SECRET 等配置
+# 5. 启动后端
+npm run start:dev -w server
 
-# 4. 启动后端
-npm run start:dev
+# 6. 新终端启动前端
+npm run dev -w client
+```
 
-# 5. 安装并启动前端（新终端）
-cd ../client
-npm install
-npm run dev
+### Docker 运行
+
+```bash
+docker compose up -d
 ```
 
 ### 访问地址
 
 | 服务 | 地址 |
 |------|------|
-| 前端 | http://localhost:5173 |
-| 后端 API | http://localhost:3000 |
+| 前端开发服务 | http://localhost:5173 |
+| Docker 前端 | http://localhost |
+| 后端 API | http://localhost:3000/api/v1 |
+| Swagger UI | http://localhost:3000/api/docs |
+| Swagger JSON | http://localhost:3000/api/docs-json |
 | MinIO 控制台 | http://localhost:9001 |
+| Grafana | http://localhost:3001 |
+| Prometheus | http://localhost:9090 |
+| Alertmanager | http://localhost:9093 |
 
-### 默认账号
+默认登录账号：
 
-```
+```text
 用户名: admin
 密码: ChangeMe123!
 ```
 
 ---
 
-## 📦 技术栈
+## 常用命令
 
-| 层级 | 技术 |
-|------|------|
-| 前端 | Vue 3.4+ + TypeScript + Element Plus 2.5+ + Vite 5.0+ + Pinia 2.1+ + echarts 6.0+ + sortablejs 1.15+ |
-| 后端 | Node.js 18 + NestJS 10+ + TypeScript 5.3+ + Prisma 5.7+ |
-| 数据库 | PostgreSQL 15+ + Redis 7+ |
-| 存储 | MinIO 8.0+ (S3 兼容) |
-| 工具库 | exceljs 4.4+ + @nestjs/swagger 7.1+ + helmet 8.1+ + bcrypt 5.1+ |
-| 搜索 | ElasticSearch 8.11+（可选，降级至 PostgreSQL LIKE） |
-| 认证 | LDAP + OAuth2 SSO（ldapjs 3.0.7） |
-| 测试 | Jest（后端 E2E 15 套件，覆盖率 ~85%） |
-| 部署 | Docker + Docker Compose |
+在仓库根目录优先使用 npm workspaces：
+
+```bash
+# 安装
+npm ci
+
+# 构建
+npm run build:server
+npm run build:client
+npm run build:mcp
+npm run verify
+npm run typecheck:types
+
+# Prisma
+npm run prisma:generate
+npm run prisma:migrate -w server
+npm run prisma:seed -w server
+
+# 测试
+npm run test:server
+npm run test:client
+npm run test:e2e -w client
+
+# 追溯专项验证
+npm run traceability:test -w server
+npm run traceability:verify -w server
+
+# Model Landing artifact 验证
+npm run model-landing:verify -w server
+```
 
 ---
 
-## 🎯 核心功能
+## 项目结构
 
-### 文档管理
-- ✅ 三级文档分类（一级/二级/三级）
-- ✅ 文档上传（PDF/Word/Excel，最大10MB）
-- ✅ 版本控制与历史记录
-- ✅ 审批流程与通知
-- ✅ 在线预览（PDF）
-- ✅ 回收站
-
-### 配方模板与任务
-- ✅ 四级模板配置
-- ✅ 动态字段定义
-- ✅ 公差设置（范围/百分比）
-- ✅ 任务派发与填报
-- ✅ 配方偏离检测
-- ✅ 偏离报告生成
-
-### 审批流程
-- ✅ 单级审批（文档）
-- ✅ 二级审批（偏离任务：主管 → 经理）
-- ✅ 审批记录追溯
-
-### 工作流引擎（v1.1.0 新增）
-
-- ✅ **灵活配置**：通过 JSON 或 UI 可视化配置工作流
-- ✅ **多样化步骤**：支持三级文档和四级表单混合编排
-- ✅ **智能审批**：自动分配审批人，支持并行审批和条件分支
-- ✅ **版本管理**：工作流配置支持版本控制和回滚
-- ✅ **统计分析**：工作流执行效率和瓶颈分析
-- ✅ **高级功能**：子工作流、超时处理、审批人代理
-
-#### 快速开始工作流
-
-**1. 配置工作流**（管理员）
-```bash
-访问 http://localhost:5173/workflows
-点击"新建工作流" → 进入可视化设计器
-拖拽添加步骤 → 配置模板和审批规则 → 保存
-```
-
-**2. 启动工作流**（普通用户）
-```bash
-访问 http://localhost:5173/workflows
-点击"发起工作流" → 选择工作流类型 → 填写名称 → 启动
-```
-
-**3. 执行工作流**
-```bash
-进入工作流详情页
-按步骤提交文档或填写表单
-等待审批通过 → 自动进入下一步
-```
-
-详见 [docs/WORKFLOW_CONFIG.md](docs/WORKFLOW_CONFIG.md)
-
-### 数据分析与导出
-- ✅ 偏离趋势分析（按天/周/月）
-- ✅ 偏离字段分布统计
-- ✅ 部门偏离率对比
-- ✅ Excel 批量导出
-
-### 高级功能（v2.0 新增）
-- ✅ 全文搜索（ElasticSearch + PostgreSQL 降级）
-- ✅ 文档推荐（协同过滤算法）
-- ✅ SSO 单点登录（LDAP 三步认证 + OAuth2）
-- ✅ 批量导入（Excel/CSV）
-- ✅ 国际化（i18n 动态切换）
-- ✅ 系统运维监控（Prometheus + Grafana + 告警）
-- ✅ 备份管理
-- ✅ 内审管理系统
-- ✅ 培训管理系统
-- ✅ 移动端适配
-
-### 系统管理
-- ✅ 用户管理（RBAC）
-- ✅ 组织架构
-- ✅ 操作日志
-- ✅ 通知系统
-
----
-
-## 🏗️ 项目结构
-
-```
+```text
 noidear/
-├── server/                 # 后端服务
-│   ├── src/
-│   │   ├── modules/       # 功能模块
-│   │   ├── prisma/        # 数据库 Schema
-│   │   └── common/        # 公共工具
-│   └── test/              # 测试文件
-├── client/                # 前端应用
-│   ├── src/
-│   │   ├── views/         # 页面组件
-│   │   ├── components/    # 通用组件
-│   │   └── api/           # API 接口
-├── docs/                  # 项目文档
-├── docker-compose.yml     # Docker 配置
-└── .env.example          # 环境变量模板
+├── AGENTS.md                    # Agent 根入口：阅读顺序与 hard gate
+├── CLAUDE.md                    # Claude 入口代理
+├── llms.txt                     # Agent/LLM 快速入口
+├── docker-compose.yml           # 本地与部署编排
+├── client/                      # Vue 3 前端
+│   ├── src/api/                 # API 适配层
+│   ├── src/components/          # 通用组件与字段组件
+│   ├── src/router/              # 路由表
+│   ├── src/stores/              # Pinia stores
+│   ├── src/views/               # 业务页面
+│   └── e2e/                     # Playwright E2E
+├── server/                      # NestJS 后端
+│   ├── src/common/              # 公共装饰器、过滤器、拦截器、管道
+│   ├── src/modules/             # 业务模块
+│   ├── src/prisma/              # Prisma schema、migrations、seed
+│   └── test/                    # 后端 E2E 测试
+├── packages/types/              # 共享类型定义
+├── tools/noidear-mcp/           # MCP 工具服务
+├── monitoring/                  # Prometheus/Grafana/Loki/Alertmanager
+├── mobile/                      # 移动端相关能力
+└── docs/                        # 需求、设计、业务规则与操作文档
 ```
 
-详见 [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)
-
 ---
 
-## 🧪 测试
-
-```bash
-cd server
-
-# 运行所有测试
-npm test
-
-# 测试覆盖率
-npm run test:cov
-```
-
-**测试状态**:
-- ✅ 后端 E2E：17 个测试套件（alert/audit/backup/deviation/document/export/health/monitoring/permission/recycle-bin/role/statistics/task/training/workflow/fine-grained-permission + load spec）
-- ✅ 后端覆盖率：核心业务逻辑 ~95%，API 端点 ~85%
-- ⚠️ 前端单元测试：~55% 覆盖（~32 个 spec 文件）
-- ⚠️ 前端 E2E（Playwright）：30 个 spec 文件，~45% 覆盖
-
----
-
-## 🔒 安全
-
-- ✅ JWT 认证（512位密钥）
-- ✅ 密码 bcrypt 加密
-- ✅ Helmet 安全头
-- ✅ 输入验证
-- ✅ SQL 注入防护（Prisma ORM）
-- ✅ LDAP 注入防护（escapeLdapFilter）
-- ✅ XSS 防护（搜索结果 HTML 转义）
-- ✅ 文件类型白名单
-- ✅ 全局限流（ThrottlerGuard 100 req/min）
-
-详见 [SECURITY.md](SECURITY.md)
-
----
-
-## 📚 文档
+## 关键文档
 
 | 文档 | 说明 |
 |------|------|
-| [DESIGN.md](docs/DESIGN.md) | 技术设计文档（v10.7，113条业务规则 + P1技术债务完整方案） |
-| [complete-audit-report.md](docs/complete-audit-report.md) | **完整功能审计报告（2026-02-22，第三次更新，85.6% 完成）** |
-| [INTERACTION_DESIGN.md](docs/INTERACTION_DESIGN.md) | 前端交互设计规范（v1.1） |
-| [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | 项目结构详解（v6.5，补齐 Agent 入口与文档权威链） |
-| [AGENTS.md](AGENTS.md) | Agent 根入口文档（短入口） |
-| [CLAUDE.md](CLAUDE.md) | Claude 入口代理 |
-| [AGENT_GUIDE.md](docs/AGENT_GUIDE.md) | 项目特有补充协议（运行时 / MCP / 测试 / 追溯） |
-| [MASTER_DATA_AND_TRACEABILITY_MODEL.md](docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md) | 食品安全主数据与追溯权威模型 |
+| [AGENTS.md](AGENTS.md) | Agent 根入口，定义阅读顺序和食品安全 hard gate |
+| [docs/AGENT_GUIDE.md](docs/AGENT_GUIDE.md) | 项目特有操作协议，包含 MCP、API、测试、追溯规则 |
+| [docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md](docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md) | 食品安全主数据与追溯权威模型 |
+| [docs/BUSINESS_RULES.md](docs/BUSINESS_RULES.md) | 业务规则清单 |
+| [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | 项目结构、模块映射与快速定位 |
+| [docs/DESIGN.md](docs/DESIGN.md) | 技术设计与业务规则设计 |
+| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | 需求积压与历史需求说明 |
+| [docs/INTERACTION_DESIGN.md](docs/INTERACTION_DESIGN.md) | 前端交互设计规范 |
+| [llms.txt](llms.txt) | LLM/Agent 系统能力入口 |
 | [SECURITY.md](SECURITY.md) | 安全说明 |
 
 ---
 
-## 🛠️ 开发
+## 开发约束
 
-### 提交规范
-
-```bash
-feat: 新功能
-fix: 修复bug
-docs: 文档更新
-refactor: 重构
-test: 测试
-chore: 构建/工具变动
-```
-
-### 常用命令
-
-```bash
-# Docker
-docker compose up -d           # 启动服务
-docker compose down           # 停止服务
-docker compose logs -f        # 查看日志
-
-# 后端
-cd server
-npm install                   # 安装依赖
-npm run start:dev            # 开发启动
-npm run build                # 构建
-npm test                     # 测试
-
-# 前端
-cd client
-npm install                  # 安装依赖
-npm run dev                  # 开发启动
-npm run build                # 构建
-```
+- 保持 Vue 3 + Element Plus + NestJS + Prisma 的既有技术路线
+- 涉及食品安全、主数据、批次、追溯、召回、投诉、不合格、返工等任务时，先阅读 `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md`
+- 不要复制主数据事实源；产品、物料、供应商、员工、位置等统一从既有主数据模型出发
+- 追溯查询统一走 `server/src/modules/traceability/` 与 `packages/types/traceability.ts`
+- 敏感配置必须使用环境变量，不要硬编码密钥
 
 ---
 
-## 📝 更新日志
-
-### v1.0.4 (2026-02-22) - 代码修复 + 文档同步版本
-
-**重大更新**:
-- ✅ **BRV-01~05 全部业务规则违规修复**
-  - BRV-01：`RecordTemplate.retentionYears` 默认值 3 → 5（BR-1.9）
-  - BRV-02：密码错误锁定时长 30 分钟 → 1 分钟（BR-321）
-  - BRV-03：工作流超时改为仅通知，不自动转交上级（BR-1.21）
-  - BRV-04：新增 `recycle-bin.cron.ts`，每天凌晨 2 点自动清理 30 天以上数据（BR-316）
-  - BRV-05：`record.service.ts` 审批通过记录添加状态锁定检查（BR-1.8）
-- ✅ **P1-2 细粒度权限前端全部落地**（TASK-239~252）
-  - 新增 `FineGrainedPermission.vue`（344行）、`DepartmentPermission.vue`（358行）、`PermissionAuditLog.vue`（267行）
-  - 新增 `permission-audit-log.controller.ts`、`department-permission.controller.ts`
-  - 新增对应前端单元测试（3个 spec 文件）
-- ✅ **测试覆盖提升**：新增 5 个 E2E spec + 7 个前端单元测试 spec
-- ✅ **文档同步**：complete-audit-report.md 第三次更新，PROJECT_STRUCTURE.md v6.0 完整重写
-
-**更新动机**:
-- 第二次深度审计（complete-audit-report.md）发现 5 个业务规则违规，本版本全部修复落地
-- P1-2 细粒度权限模块从骨架状态（2/18）提升至 12/18 完成度
-- 项目结构文档严重过时，完整重写以反映实际代码状态
-
-### v1.0.3 (2026-02-13) - 文档完善版本
-
-**重大更新**:
-- ✅ DESIGN.md v10.5 → v10.6
-  - 新增 MVP 实现状态追踪（Phase 1-6 完成度 98.1%）
-  - 新增现有技术栈总结（Vue 3 + Element Plus + NestJS + Prisma）
-  - 新增增量开发指导（新功能集成检查清单）
-  - 新增数据库迁移策略（Prisma Schema 更新步骤）
-  - 新增前后端集成测试清单
-  - 新增集成失败常见问题排查
-  - 新增代码复用指南
-- ✅ INTERACTION_DESIGN.md v1.0 → v1.1
-  - 新增 UI 状态管理规范（Loading/Error/Empty/Skeleton）
-  - 新增快捷键支持（全局/表格/对话框快捷键）
-  - 新增动画与过渡效果（页面切换/列表项/对话框/加载动画）
-  - 新增可访问性规范（ARIA 属性/键盘导航/屏幕阅读器/色盲友好）
-  - 新增异常处理规范（网络异常/表单验证/权限不足/数据冲突）
-  - 新增响应式设计规范（断点定义/桌面端布局/表格表单响应式）
-
-**更新动机**:
-- 基于 MVP 已完成 98.1% 的事实，补充实现状态追踪
-- 为后续增量开发提供明确的集成指导
-- 完善前端交互设计的细节规范，覆盖所有 UI/UX 场景
-
-### v1.0.2 (2026-02-13) - 交互设计完成版本
-
-**重大更新**:
-- ✅ 完成前端交互设计规范文档（INTERACTION_DESIGN.md）
-  - 7大模块完整交互规范（文档、模板、任务、审批、权限、回收站、通知）
-  - 每个模块包含页面布局、按钮设计、交互流程、状态映射
-  - Element Plus 组件使用规范
-- ✅ 补充 18 条前端 UI/UX 业务规则（BR-328 ~ BR-345）
-  - 审批流程可视化（BR-328 ~ BR-330）
-  - 表格操作列设计（BR-337 ~ BR-338）
-  - 状态标签可视化（BR-341 ~ BR-342）
-  - 菜单权限动态显示（BR-334 ~ BR-336）
-  - 表单分组布局（BR-339 ~ BR-340）
-  - 对话框尺寸规范（BR-343）
-  - 操作反馈规范（BR-344 ~ BR-345）
-- ✅ 更新 DESIGN.md 到 v10.5 版本（104条业务规则完整）
-
-**技术参考**:
-- 参考 SPMS-Web 优秀设计模式
-- 符合 Material Design / Apple HIG 设计规范
-
-### v1.0.1 (2026-02-13) - 文档对齐版本
-
-**文档更新**:
-- 对齐所有文档版本号和项目状态
-- 补充完整技术栈信息（echarts, sortablejs, exceljs等）
-- 明确技术债务状态（3个P1问题待实施）
-- 同步 DESIGN.md v10.1 业务规则细化
-
-### v1.0.0 (2026-02-06)
-
-**完成功能**:
-- Phase 1-6: 核心功能（文档/模板/任务/审批）
-- Phase 7-8: 配方偏离检测（已实现）
-- Phase 9: 数据导出（Excel，已实现）
-- Phase 10: 二级审批流程（设计完成）
-- Phase 11: 文件预览（设计完成）
-- Phase 12: 偏离统计分析（已实现）
-- 回收站功能
-
-**测试状态**: 164/164 测试通过，85.3% 覆盖率
-
-详见 [docs/CHANGELOG.md](docs/CHANGELOG.md)
-
----
-
-## 📄 License
+## 许可证
 
 MIT License
-
----
-
-**项目状态**: 🟢 开发完成 85.6%（BRV-01~05 已修复，P1-2 前端落地，Vault对齐完成，Schema 字段补全待完成）
-**文档版本**: 4.3
-**最后更新**: 2026-04-24
