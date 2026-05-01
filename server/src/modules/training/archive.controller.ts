@@ -35,4 +35,10 @@ export class ArchiveController {
   async downloadArchivePDF(@Param('id') id: string) {
     return this.archiveService.downloadArchivePDF(id);
   }
+
+  @Get(':id')
+  @ApiOperation({ summary: '查询培训档案详情' })
+  async findArchiveById(@Param('id') id: string) {
+    return this.archiveService.findArchiveById(id);
+  }
 }

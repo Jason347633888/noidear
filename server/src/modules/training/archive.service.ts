@@ -100,21 +100,62 @@ export class ArchiveService {
             plan: {
               select: { year: true, title: true },
             },
+            learningRecords: {
+              select: { passed: true },
+            },
           },
         },
       },
       orderBy: { generatedAt: 'desc' },
     });
 
-    // 生成下载URL
-    const archivesWithUrl = await Promise.all(
-      archives.map(async (archive) => ({
-        ...archive,
-        pdfUrl: await this.storageService.getFileUrl(archive.pdfPath),
-      }))
+    return Promise.all(
+      archives.map(async (archive: any) => this.normalizeArchive(archive))
     );
+  }
 
-    return archivesWithUrl;
+  async findArchiveById(id: string) {
+    const archive = await this.prisma.trainingArchive.findUnique({
+      where: { id },
+      include: {
+        project: {
+          include: {
+            plan: {
+              select: { year: true, title: true },
+            },
+            learningRecords: {
+              select: { passed: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!archive) {
+      throw new NotFoundException('培训档案不存在');
+    }
+
+    return {
+      ...(await this.normalizeArchive(archive)),
+      relatedDocuments: [],
+    };
+  }
+
+  private async normalizeArchive(archive: any) {
+    return {
+      id: archive.id,
+      projectId: archive.projectId,
+      documentId: archive.documentId,
+      pdfPath: archive.pdfPath,
+      generatedAt: archive.generatedAt,
+      createdAt: archive.createdAt,
+      projectTitle: archive.project.title,
+      departmentName: archive.project.department,
+      trainingDate: archive.project.scheduledDate,
+      attendeeCount: archive.project.learningRecords.length,
+      passedCount: archive.project.learningRecords.filter((r: any) => r.passed).length,
+      pdfUrl: await this.storageService.getFileUrl(archive.pdfPath),
+    };
   }
 
   /**
