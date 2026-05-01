@@ -36,7 +36,7 @@
 | GAP-109 | P3 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P3 配置化优化，低优先级写 plan 后实现 |
 | GAP-110 | P2 | 需要运行系统确认 | 否 | 否 | 否 | `grill-me` | | | 先运行系统确认 FIFO 推荐现状，待确认后重新分诊 |
 | GAP-200 | P1 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-200-shift-instance-shift-type-fk-design.md | docs/superpowers/plans/2026-05-01-gap-200-shift-instance-shift-type-fk-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
-| GAP-201 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写业务设计 spec（配料归集多对多 vs 唯一约束决策） |
+| GAP-201 | P1 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-201-mixing-aggregation-many-to-many-design.md | docs/superpowers/plans/2026-05-01-gap-201-mixing-aggregation-many-to-many-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans，恢复 BatchMixingAggregation 多对多并显式标识共享配料投入池 |
 | GAP-202 | P1 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-202-batch-detail-material-batch-selector-design.md | docs/superpowers/plans/2026-05-01-gap-202-batch-detail-material-batch-selector-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
 | GAP-203 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema spec（PackagingMaterialUsage FK 到 ProductionBatch） |
 | GAP-204 | P2 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema FK，先用 brainstorming 写轻量 spec |

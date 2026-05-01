@@ -896,26 +896,27 @@
       "id": "GAP-201",
       "severity": "P1",
       "moduleId": "mixing-production-packaging",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
-      "canParallelize": true,
+      "canParallelize": false,
       "needsDesign": true,
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
         "brainstorming",
         "grill-with-docs",
-        "writing-plans"
+        "writing-plans",
+        "executing-plans"
       ],
       "prRoadmapGroup": "production",
-      "prOrder": null,
+      "prOrder": 13,
       "recommendedPr": "production/GAP-201",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-201"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-201-mixing-aggregation-many-to-many-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-201-mixing-aggregation-many-to-many-implementation.md"
     },
     {
       "id": "GAP-202",
