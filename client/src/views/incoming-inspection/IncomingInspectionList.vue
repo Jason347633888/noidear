@@ -88,8 +88,25 @@
         :rules="createRules"
         label-width="110px"
       >
-        <el-form-item label="物料批次ID" prop="material_batch_id">
-          <el-input v-model="createForm.material_batch_id" placeholder="请输入物料批次 ID" />
+        <el-form-item label="物料批次" prop="material_batch_id">
+          <el-select
+            v-model="createForm.material_batch_id"
+            filterable
+            remote
+            clearable
+            reserve-keyword
+            :remote-method="loadBatchOptions"
+            :loading="batchLoading"
+            placeholder="请选择物料批次"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="batch in batchOptions"
+              :key="batch.id"
+              :label="formatBatchOptionLabel(batch)"
+              :value="batch.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="总体结论" prop="overall_result">
           <el-select v-model="createForm.overall_result" placeholder="请选择" style="width: 100%">
@@ -217,6 +234,7 @@ import incomingInspectionApi, {
   getOverallResultText,
   getOverallResultTagType,
 } from '@/api/incoming-inspection';
+import { batchApi, type MaterialBatch } from '@/api/warehouse';
 import filePreviewApi from '@/api/file-preview';
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -236,6 +254,9 @@ const createDialogVisible = ref(false);
 const submitting = ref(false);
 const createFormRef = ref<FormInstance>();
 
+const batchOptions = ref<MaterialBatch[]>([]);
+const batchLoading = ref(false);
+
 function defaultResultRow(): InspectionResult {
   return { item_name: '', actual_value: '', is_pass: true };
 }
@@ -251,7 +272,7 @@ const createForm = reactive({
 });
 
 const createRules: FormRules = {
-  material_batch_id: [{ required: true, message: '请输入物料批次 ID', trigger: 'blur' }],
+  material_batch_id: [{ required: true, message: '请选择物料批次', trigger: 'change' }],
   overall_result: [{ required: true, message: '请选择总体结论', trigger: 'change' }],
 };
 
@@ -274,6 +295,32 @@ function calcPassRate(results: InspectionResult[]): string {
   return `${passed} / ${results.length}`;
 }
 
+function getBatchNumber(batch: MaterialBatch & { lot_number?: string }): string {
+  return batch.batchNumber || batch.lot_number || batch.id;
+}
+
+function formatBatchOptionLabel(batch: MaterialBatch & { lot_number?: string }): string {
+  const materialName = batch.material?.name || '未知物料';
+  const supplierName = batch.supplier?.name || '未知供应商';
+  const quantityText = batch.quantity != null ? `剩余 ${batch.quantity}` : '数量未知';
+  return `${getBatchNumber(batch)} / ${materialName} / ${supplierName} / ${quantityText}`;
+}
+
+function normalizeBatchListResponse(response: unknown): MaterialBatch[] {
+  if (Array.isArray(response)) {
+    return response as MaterialBatch[];
+  }
+
+  const payload = response as { list?: MaterialBatch[]; data?: MaterialBatch[] };
+  if (Array.isArray(payload.list)) {
+    return payload.list;
+  }
+  if (Array.isArray(payload.data)) {
+    return payload.data;
+  }
+  return [];
+}
+
 // ── Result rows ───────────────────────────────────────────────────────────────
 
 function addResultRow() {
@@ -285,6 +332,23 @@ function removeResultRow(index: number) {
 }
 
 // ── Data loading ──────────────────────────────────────────────────────────────
+
+async function loadBatchOptions(search = '') {
+  batchLoading.value = true;
+  try {
+    const response = await batchApi.getList({
+      page: 1,
+      limit: 20,
+      status: 'normal',
+      search: search || undefined,
+    } as Parameters<typeof batchApi.getList>[0] & { search?: string });
+    batchOptions.value = normalizeBatchListResponse(response);
+  } catch {
+    ElMessage.error('加载物料批次失败');
+  } finally {
+    batchLoading.value = false;
+  }
+}
 
 async function loadList() {
   loading.value = true;
@@ -309,6 +373,7 @@ function openCreateDialog() {
   createForm.notes = '';
   createForm.results = [defaultResultRow()];
   createDialogVisible.value = true;
+  void loadBatchOptions();
 }
 
 async function handleCreate() {
