@@ -1464,9 +1464,11 @@ model MaterialScrapItem {
 model ProductionBatch {
   id              String           @id @default(cuid())
   batchNumber     String           @unique // 生产批次号（BR-241: 唯一性，BR-242: 不可修改）
-  productId       String? // 产品ID
+  productId       String // 产品ID
+  product         Product @relation(fields: [productId], references: [id], onDelete: Restrict)
   productName     String
-  recipeId        String? // 配方ID
+  recipeId        String // 配方ID
+  recipe          Recipe  @relation(fields: [recipeId], references: [id], onDelete: Restrict)
   recipeName      String?
   plannedQuantity Float?
   actualQuantity  Float?
@@ -1527,6 +1529,8 @@ model ProductionBatch {
   @@index([productionDate])
   @@index([status])
   @@index([production_run_id])
+  @@index([productId])
+  @@index([recipeId])
   @@map("production_batches")
 }
 
@@ -2783,6 +2787,7 @@ model Product {
   production_runs  ProductionRun[]
   mixingExecutions MixingExecution[]
   productProcessChangePlans ProductProcessChangePlan[]
+  productionBatches ProductionBatch[]
 
   @@unique([company_id, code])
   @@index([source])
@@ -2890,6 +2895,7 @@ model Recipe {
 
   production_runs ProductionRun[]
   mixingExecutions MixingExecution[]
+  productionBatches ProductionBatch[]
 
   changeEventId String?
 

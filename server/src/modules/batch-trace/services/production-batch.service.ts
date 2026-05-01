@@ -129,14 +129,14 @@ export class ProductionBatchService {
     }
 
     const product = await this.prisma.product.findFirst({
-      where: { id: dto.productId, status: 'active', deleted_at: null },
+      where: { id: dto.productId, company_id: '1', status: 'active', deleted_at: null },
     });
     if (!product) {
       throw new BadRequestException('产品不存在');
     }
 
     const recipe = await this.prisma.recipe.findFirst({
-      where: { id: dto.recipeId, product_id: dto.productId, status: 'active' },
+      where: { id: dto.recipeId, product_id: dto.productId, company_id: '1', status: 'active' },
     });
     if (!recipe) {
       throw new BadRequestException('产品配方不存在或未启用');
