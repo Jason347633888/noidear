@@ -70,10 +70,10 @@
         :rules="formRules"
         label-width="110px"
       >
-        <el-form-item label="物料" prop="material_name">
+        <el-form-item label="物料" prop="material_id">
           <MaterialSelect v-model="form.material_id" />
         </el-form-item>
-        <el-form-item label="生产批次">
+        <el-form-item label="生产批次" prop="production_batch_id">
           <ProductionBatchSelect v-model="form.production_batch_id" />
         </el-form-item>
         <el-form-item label="用量">
@@ -157,7 +157,8 @@ const form = reactive({
 });
 
 const formRules: FormRules = {
-  material_name: [{ required: true, message: '请选择物料', trigger: 'change' }],
+  material_id: [{ required: true, message: '请选择物料', trigger: 'change' }],
+  production_batch_id: [{ required: true, message: '请选择生产批次', trigger: 'change' }],
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -213,9 +214,8 @@ async function handleCreate() {
   submitting.value = true;
   try {
     await packagingMaterialUsageApi.create({
-      material_name: form.material_name || form.material_id,
-      material_code: form.material_code || undefined,
-      production_batch_id: form.production_batch_id || undefined,
+      material_id: form.material_id,
+      production_batch_id: form.production_batch_id,
       used_weight: form.used_weight,
       waste_weight: form.waste_weight,
       unit: form.unit || undefined,

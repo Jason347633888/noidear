@@ -20,13 +20,15 @@ export class PackagingMaterialUsageService {
     });
     if (!material) throw new BadRequestException('物料不存在或已停用');
 
-    if (dto.production_batch_id) {
-      const batch = await this.prisma.productionBatch.findUnique({
-        where: { id: dto.production_batch_id },
-        select: { id: true },
-      });
-      if (!batch) throw new NotFoundException('生产批次不存在');
+    if (!dto.production_batch_id) {
+      throw new BadRequestException('生产批次不能为空');
     }
+
+    const batch = await this.prisma.productionBatch.findUnique({
+      where: { id: dto.production_batch_id },
+      select: { id: true },
+    });
+    if (!batch) throw new NotFoundException('生产批次不存在');
 
     return this.prisma.packagingMaterialUsage.create({
       data: {
