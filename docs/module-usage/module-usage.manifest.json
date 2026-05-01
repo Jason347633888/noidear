@@ -1367,7 +1367,7 @@
       "id": "GAP-311",
       "severity": "P0",
       "moduleId": "traceability-complaint-recall",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [
         "GAP-306"
       ],
@@ -1379,16 +1379,20 @@
       "recommendedSuperpowers": [
         "brainstorming",
         "grill-with-docs",
-        "writing-plans"
+        "writing-plans",
+        "executing-plans"
       ],
       "prRoadmapGroup": "traceability",
-      "prOrder": null,
+      "prOrder": 20,
       "recommendedPr": "traceability/GAP-311",
       "validationCommands": [
-        "pnpm test:e2e -- --grep GAP-311"
+        "npm run test --workspace server -- product-recall traceability-linkage corrective-action --runInBand",
+        "npm run traceability:test --workspace server",
+        "npm run build:server",
+        "npm run build:client"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-02-gap-311-product-recall-independent-model-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-02-gap-311-product-recall-independent-model-implementation.md"
     },
     {
       "id": "GAP-312",
