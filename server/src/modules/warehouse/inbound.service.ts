@@ -18,7 +18,7 @@ export class InboundService {
     private readonly prisma: PrismaService,
     private readonly batchNumberGenerator: BatchNumberGeneratorService,
     @Optional() private readonly approvalEngine: ApprovalEngineService,
-    @Optional() private readonly inventoryMovementLedger: InventoryMovementLedgerService,
+    private readonly inventoryMovementLedger: InventoryMovementLedgerService,
   ) {}
 
   async create(createInboundDto: CreateInboundDto, createdById?: string) {
@@ -181,8 +181,8 @@ export class InboundService {
           },
         });
 
-        if (this.inventoryMovementLedger) {
-          await this.inventoryMovementLedger.recordMaterialBatchMovement({
+        await this.inventoryMovementLedger.recordMaterialBatchMovement(
+          {
             movementType: 'receive',
             batchId: batch.id,
             quantity: item.quantity,
@@ -192,8 +192,9 @@ export class InboundService {
             operatorId,
             movedAt: new Date(),
             notes: '来料入库',
-          });
-        }
+          },
+          tx,
+        );
 
         await tx.materialInboundItem.update({
           where: { id: item.id },

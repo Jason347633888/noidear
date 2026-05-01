@@ -10,7 +10,7 @@ export class RequisitionService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly approvalEngine: ApprovalEngineService,
-    @Optional() private readonly inventoryMovementLedger: InventoryMovementLedgerService,
+    private readonly inventoryMovementLedger: InventoryMovementLedgerService,
   ) {}
 
   async create(createDto: any) {
@@ -178,8 +178,8 @@ export class RequisitionService {
           },
         });
 
-        if (this.inventoryMovementLedger) {
-          await this.inventoryMovementLedger.recordMaterialBatchMovement({
+        await this.inventoryMovementLedger.recordMaterialBatchMovement(
+          {
             movementType: 'issue_to_production',
             batchId: item.batchId,
             quantity: item.quantity,
@@ -190,8 +190,9 @@ export class RequisitionService {
             movedAt: new Date(),
             toLocation: requisition.targetZone ?? undefined,
             notes: '生产领料',
-          });
-        }
+          },
+          tx,
+        );
       }
 
       return tx.materialRequisition.update({

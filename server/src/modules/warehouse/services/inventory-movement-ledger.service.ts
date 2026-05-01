@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 
 export type InventoryMovementType =
@@ -28,8 +29,12 @@ interface RecordMaterialBatchMovementInput {
 export class InventoryMovementLedgerService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async recordMaterialBatchMovement(input: RecordMaterialBatchMovementInput) {
-    return this.prisma.inventoryMovement.create({
+  async recordMaterialBatchMovement(
+    input: RecordMaterialBatchMovementInput,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client = tx ?? this.prisma;
+    return client.inventoryMovement.create({
       data: {
         company_id: input.companyId ?? 1,
         movement_type: input.movementType,

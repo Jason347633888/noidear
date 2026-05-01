@@ -15,7 +15,7 @@ export class ScrapService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly approvalEngine: ApprovalEngineService,
-    @Optional() private readonly inventoryMovementLedger: InventoryMovementLedgerService,
+    private readonly inventoryMovementLedger: InventoryMovementLedgerService,
   ) {}
 
   async create(dto: CreateScrapDto) {
@@ -180,8 +180,8 @@ export class ScrapService {
           },
         });
 
-        if (this.inventoryMovementLedger) {
-          await this.inventoryMovementLedger.recordMaterialBatchMovement({
+        await this.inventoryMovementLedger.recordMaterialBatchMovement(
+          {
             movementType: 'scrap',
             batchId: item.materialBatchId,
             quantity: item.quantity,
@@ -191,8 +191,9 @@ export class ScrapService {
             operatorId: materialScrap.requesterId,
             movedAt: new Date(),
             notes: '物料报废',
-          });
-        }
+          },
+          tx,
+        );
       }
 
       return tx.materialScrap.update({

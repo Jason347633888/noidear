@@ -10,7 +10,7 @@ export class ReturnService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly approvalEngine: ApprovalEngineService,
-    @Optional() private readonly inventoryMovementLedger: InventoryMovementLedgerService,
+    private readonly inventoryMovementLedger: InventoryMovementLedgerService,
   ) {}
 
   async create(dto: CreateReturnDto) {
@@ -179,8 +179,8 @@ export class ReturnService {
           },
         });
 
-        if (this.inventoryMovementLedger) {
-          await this.inventoryMovementLedger.recordMaterialBatchMovement({
+        await this.inventoryMovementLedger.recordMaterialBatchMovement(
+          {
             movementType: 'return_to_warehouse',
             batchId: item.materialBatchId,
             quantity: item.quantity,
@@ -190,8 +190,9 @@ export class ReturnService {
             operatorId: materialReturn.requesterId,
             movedAt: new Date(),
             notes: '退料回仓',
-          });
-        }
+          },
+          tx,
+        );
       }
 
       // Update return status
