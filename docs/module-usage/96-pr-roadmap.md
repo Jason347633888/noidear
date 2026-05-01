@@ -17,7 +17,8 @@
 > 2. 如需 spec：`specPath` 文件已存在
 > 3. `planPath` 文件已存在（implementation plan 已写完）
 > 4. plan 文件内必须包含 `Superpower 与 grill-me 校准记录`
-> 5. `triageStatus` 为 `ready_for_plan` 且 `planPath` 非空，或已升级为可执行状态
+> 5. plan 文件内必须明确要求执行 agent 使用独立 worktree 或 Multica 隔离工作目录，禁止写主 checkout
+> 6. `triageStatus` 为 `ready_for_plan` 且 `planPath` 非空，或已升级为可执行状态
 >
 > **尚未有 implementation plan 的 GAP 由 `97-gap-triage.md` 管理，不在此表出现。**
 

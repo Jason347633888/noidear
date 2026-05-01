@@ -213,6 +213,12 @@ for (const gapId of roadmapPrimaryGaps) {
           `superpowers:executing-plans for execution`
         )
       }
+      if (!planContent.includes('独立 worktree') && !planContent.includes('Multica 隔离工作目录')) {
+        err(
+          `96-pr-roadmap.md schedules ${gapId} but ${g.planPath} does not require ` +
+          `an isolated execution worktree — every executable plan must include 独立 worktree or Multica 隔离工作目录`
+        )
+      }
     }
   }
 }

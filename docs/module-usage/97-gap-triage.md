@@ -10,7 +10,7 @@
 | 证据不足 | 不排 PR，先补验证任务 | `grill-me` 或运行系统验证 |
 | 需要业务判断 | 不排 PR，先业务确认 | `grill-with-docs` |
 
-> **统一硬门槛：** 所有 implementation plan 不分大小，必须经过 superpower 计划流程，并在 plan 文件中写入 `Superpower 与 grill-me 校准记录` 后，才允许进入 `96-pr-roadmap.md`。执行 agent 只允许按 plan 使用 `superpowers:executing-plans`。
+> **统一硬门槛：** 所有 implementation plan 不分大小，必须经过 superpower 计划流程，并在 plan 文件中写入 `Superpower 与 grill-me 校准记录` 后，才允许进入 `96-pr-roadmap.md`。执行 agent 只允许按 plan 使用 `superpowers:executing-plans`，并且必须在独立 worktree 或 Multica 隔离工作目录中执行，禁止直接写主 checkout。
 
 ## GAP 分诊总表
 

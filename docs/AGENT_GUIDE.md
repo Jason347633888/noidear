@@ -116,6 +116,27 @@ cd /Users/jiashenglin/Desktop/好玩的项目/noidear/server && npm run traceabi
 
 ---
 
+## Plan 执行隔离要求
+
+执行 implementation plan 时，执行 agent 不得直接在主 checkout `/Users/jiashenglin/Desktop/好玩的项目/noidear` 写入。每个 plan 必须先从最新 `origin/master` 创建独立 worktree，或使用 Multica run 自带的隔离工作目录；如果 cwd 是主 checkout，必须停止并回报主 agent，不得继续修改、提交或 push。
+
+推荐路径：
+
+```bash
+git fetch origin master
+git worktree add /Users/jiashenglin/Desktop/好玩的项目/noidear-<gap-or-feature> -b codex/<gap-or-feature> origin/master
+```
+
+执行前检查：
+
+```bash
+git worktree list --porcelain
+pwd
+git branch --show-current
+```
+
+执行完成后，执行 agent 只在自己的 worktree 分支提交、push、开 PR。主 agent 负责 review、反馈、合并和清理 worktree/分支。
+
 ## 快速开始
 
 ```bash

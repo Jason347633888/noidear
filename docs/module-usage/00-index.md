@@ -21,7 +21,8 @@
 4. 调用 `writing-plans` 生成 implementation plan。
 5. 将真实 `specPath`、`planPath` 回写到 `module-usage.manifest.json` 和 `97-gap-triage.md`。
 6. 只有 `planPath` 文件真实存在后，GAP 才能进入 `96-pr-roadmap.md`。
-7. 执行 PR 时调用 `executing-plans`，并在完成后按本目录回写规则更新文档。
+7. 执行 PR 时必须在独立 worktree 或 Multica 隔离工作目录中调用 `executing-plans`，禁止直接写主 checkout。
+8. 完成后按本目录回写规则更新文档，并由主 agent review、反馈、合并和清理 worktree/分支。
 
 ## 文档清单
 
