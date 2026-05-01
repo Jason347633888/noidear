@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { InboundService } from './inbound.service';
 import { BatchNumberGeneratorService } from '../batch-trace/services/batch-number-generator.service';
+import { InventoryMovementLedgerService } from './services/inventory-movement-ledger.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import * as dayjs from 'dayjs';
 
@@ -41,6 +42,10 @@ describe('InboundService', () => {
           useValue: {
             generateBatchNumber: jest.fn(),
           },
+        },
+        {
+          provide: InventoryMovementLedgerService,
+          useValue: { recordMaterialBatchMovement: jest.fn() },
         },
       ],
     }).compile();

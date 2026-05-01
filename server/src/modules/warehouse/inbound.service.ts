@@ -8,6 +8,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { BatchNumberGeneratorService } from '../batch-trace/services/batch-number-generator.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 import { CreateInboundDto, QueryInboundDto } from './dto/inbound.dto';
+import { InventoryMovementLedgerService } from './services/inventory-movement-ledger.service';
+import { Prisma } from '@prisma/client';
 import * as dayjs from 'dayjs';
 
 @Injectable()
@@ -16,13 +18,14 @@ export class InboundService {
     private readonly prisma: PrismaService,
     private readonly batchNumberGenerator: BatchNumberGeneratorService,
     @Optional() private readonly approvalEngine: ApprovalEngineService,
+    @Optional() private readonly inventoryMovementLedger: InventoryMovementLedgerService,
   ) {}
 
   async create(createInboundDto: CreateInboundDto, createdById?: string) {
     const { supplierId, items, remark } = createInboundDto;
     const inboundNo = await this.generateInboundNo();
 
-    const inbound = await this.prisma.$transaction(async (tx) => {
+    const inbound = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const created = await tx.materialInbound.create({
         data: {
           inboundNo,
@@ -150,7 +153,7 @@ export class InboundService {
       throw new BadRequestException('Only approved inbound can be completed');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       for (const item of inbound.items) {
         const batchNumber = await this.batchNumberGenerator.generateBatchNumber('material');
 
@@ -177,6 +180,20 @@ export class InboundService {
             operatorId,
           },
         });
+
+        if (this.inventoryMovementLedger) {
+          await this.inventoryMovementLedger.recordMaterialBatchMovement({
+            movementType: 'receive',
+            batchId: batch.id,
+            quantity: item.quantity,
+            unit: 'kg',
+            refType: 'inbound',
+            refId: inbound.id,
+            operatorId,
+            movedAt: new Date(),
+            notes: '来料入库',
+          });
+        }
 
         await tx.materialInboundItem.update({
           where: { id: item.id },

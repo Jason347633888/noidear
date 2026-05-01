@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ApprovalEngineService } from '../../unified-approval/approval-engine.service';
+import { InventoryMovementLedgerService } from './inventory-movement-ledger.service';
+import { Prisma } from '@prisma/client';
 import { CreateScrapDto, ApproveScrapDto } from '../dto/scrap.dto';
 
 @Injectable()
@@ -13,6 +15,7 @@ export class ScrapService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly approvalEngine: ApprovalEngineService,
+    @Optional() private readonly inventoryMovementLedger: InventoryMovementLedgerService,
   ) {}
 
   async create(dto: CreateScrapDto) {
@@ -144,7 +147,7 @@ export class ScrapService {
       }
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       for (const item of materialScrap.items) {
         const stagingStock = await tx.stagingAreaStock.findFirst({
           where: { batchId: item.materialBatchId },
@@ -176,6 +179,20 @@ export class ScrapService {
             remark: `报废单: ${materialScrap.scrapNo}`,
           },
         });
+
+        if (this.inventoryMovementLedger) {
+          await this.inventoryMovementLedger.recordMaterialBatchMovement({
+            movementType: 'scrap',
+            batchId: item.materialBatchId,
+            quantity: item.quantity,
+            unit: 'kg',
+            refType: 'scrap',
+            refId: materialScrap.id,
+            operatorId: materialScrap.requesterId,
+            movedAt: new Date(),
+            notes: '物料报废',
+          });
+        }
       }
 
       return tx.materialScrap.update({

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RequisitionService } from './requisition.service';
+import { InventoryMovementLedgerService } from './services/inventory-movement-ledger.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('RequisitionService', () => {
@@ -29,12 +30,19 @@ describe('RequisitionService', () => {
             },
             stagingAreaStock: {
               upsert: jest.fn(),
+              findFirst: jest.fn(),
+              update: jest.fn(),
+              create: jest.fn(),
             },
             stockRecord: {
               create: jest.fn(),
             },
             $transaction: jest.fn(),
           },
+        },
+        {
+          provide: InventoryMovementLedgerService,
+          useValue: { recordMaterialBatchMovement: jest.fn() },
         },
       ],
     }).compile();

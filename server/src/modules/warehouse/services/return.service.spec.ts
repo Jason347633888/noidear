@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ReturnService } from './return.service';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { InventoryMovementLedgerService } from './inventory-movement-ledger.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 describe('ReturnService', () => {
@@ -34,6 +35,10 @@ describe('ReturnService', () => {
             },
             $transaction: jest.fn((callback) => callback(prisma)),
           },
+        },
+        {
+          provide: InventoryMovementLedgerService,
+          useValue: { recordMaterialBatchMovement: jest.fn() },
         },
       ],
     }).compile();
@@ -152,7 +157,7 @@ describe('ReturnService', () => {
 
       jest.spyOn(prisma.materialReturn, 'findUnique').mockResolvedValue(mockReturn as any);
       jest.spyOn(prisma.stagingAreaStock, 'findFirst').mockResolvedValue(mockStagingStock as any);
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback) => {
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
         return callback(prisma);
       });
       jest.spyOn(prisma.stagingAreaStock, 'update').mockResolvedValue({} as any);
