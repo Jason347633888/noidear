@@ -28,7 +28,7 @@ describe('RequisitionService', () => {
             },
             materialBatch: {
               findUnique: jest.fn(),
-              update: jest.fn(),
+              updateMany: jest.fn(),
             },
             stagingAreaStock: {
               upsert: jest.fn(),
@@ -117,28 +117,19 @@ describe('RequisitionService', () => {
   });
 
   describe('complete', () => {
-    it('should reject completion when requested quantity exceeds batch stock', async () => {
+    it('should reject completion when requested quantity exceeds batch stock (atomic updateMany returns count=0)', async () => {
       const mockRequisition = {
         id: 'req-001',
         status: 'approved',
-        items: [
-          {
-            batchId: 'batch-001',
-            quantity: 50,
-          },
-        ],
+        items: [{ batchId: 'batch-001', quantity: 50 }],
       };
 
       jest.spyOn(prisma.materialRequisition, 'findUnique').mockResolvedValue(mockRequisition as any);
 
       const txClient = {
         materialBatch: {
-          findUnique: jest.fn().mockResolvedValue({
-            id: 'batch-001',
-            batchNumber: 'MB-001',
-            quantity: 10,
-          }),
-          update: jest.fn(),
+          updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          findUnique: jest.fn().mockResolvedValue({ batchNumber: 'MB-001' }),
         },
         stagingAreaStock: { upsert: jest.fn(), findFirst: jest.fn(), update: jest.fn(), create: jest.fn() },
         stockRecord: { create: jest.fn() },
@@ -149,7 +140,35 @@ describe('RequisitionService', () => {
       jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => callback(txClient));
 
       await expect(service.complete('req-001', 'user-001')).rejects.toThrow(BadRequestException);
-      expect(txClient.materialBatch.update).not.toHaveBeenCalled();
+      expect(txClient.stockRecord.create).not.toHaveBeenCalled();
+      expect(txClient.stagingAreaStock.create).not.toHaveBeenCalled();
+      expect(txClient.stagingAreaStock.update).not.toHaveBeenCalled();
+      expect(inventoryMovementLedger.recordMaterialBatchMovement).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException and stop side effects when batch does not exist (updateMany count=0, findUnique null)', async () => {
+      const mockRequisition = {
+        id: 'req-001',
+        status: 'approved',
+        items: [{ batchId: 'batch-nonexistent', quantity: 10 }],
+      };
+
+      jest.spyOn(prisma.materialRequisition, 'findUnique').mockResolvedValue(mockRequisition as any);
+
+      const txClient = {
+        materialBatch: {
+          updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          findUnique: jest.fn().mockResolvedValue(null),
+        },
+        stagingAreaStock: { upsert: jest.fn(), findFirst: jest.fn(), update: jest.fn(), create: jest.fn() },
+        stockRecord: { create: jest.fn() },
+        materialRequisition: { update: jest.fn() },
+        materialRequisitionItem: { findMany: jest.fn().mockResolvedValue(mockRequisition.items) },
+      };
+
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => callback(txClient));
+
+      await expect(service.complete('req-001', 'user-001')).rejects.toThrow(BadRequestException);
       expect(txClient.stockRecord.create).not.toHaveBeenCalled();
       expect(inventoryMovementLedger.recordMaterialBatchMovement).not.toHaveBeenCalled();
     });
@@ -171,14 +190,10 @@ describe('RequisitionService', () => {
 
       const txClient = {
         materialBatch: {
-          findUnique: jest.fn().mockResolvedValue({
-            id: 'batch-001',
-            batchNumber: 'MB-001',
-            quantity: 100,
-          }),
-          update: jest.fn(),
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          findUnique: jest.fn(),
         },
-        stagingAreaStock: { upsert: jest.fn(), findFirst: jest.fn(), update: jest.fn(), create: jest.fn() },
+        stagingAreaStock: { upsert: jest.fn(), findFirst: jest.fn().mockResolvedValue(null), update: jest.fn(), create: jest.fn() },
         stockRecord: { create: jest.fn() },
         materialRequisition: { update: jest.fn().mockResolvedValue({ ...mockRequisition, status: 'completed' }) },
         materialRequisitionItem: { findMany: jest.fn().mockResolvedValue(mockRequisition.items) },
