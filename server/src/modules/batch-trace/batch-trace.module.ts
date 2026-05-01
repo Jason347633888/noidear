@@ -10,7 +10,6 @@ import { BatchMixingAggregationService } from './services/batch-mixing-aggregati
 import { ProductionBatchController } from './controllers/production-batch.controller';
 import { MaterialBatchController } from './controllers/material-batch.controller';
 import { MaterialUsageController } from './controllers/material-usage.controller';
-import { TraceController } from './controllers/trace.controller';
 import { TraceExportController } from './controllers/trace-export.controller';
 import { BatchMixingAggregationController } from './controllers/batch-mixing-aggregation.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
@@ -21,7 +20,6 @@ import { PrismaModule } from '../../prisma/prisma.module';
     ProductionBatchController,
     MaterialBatchController,
     MaterialUsageController,
-    TraceController,
     TraceExportController,
     BatchMixingAggregationController,
   ],
