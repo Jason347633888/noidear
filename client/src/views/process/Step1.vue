@@ -11,6 +11,23 @@
         <el-form-item label="申请日期">
           <el-input :model-value="form.requestDate" disabled />
         </el-form-item>
+        <el-form-item label="关联已有产品">
+          <el-select
+            v-model="form.productId"
+            filterable
+            clearable
+            placeholder="不选择则按新产品研发"
+            style="width: 100%"
+            @change="handleProductChange"
+          >
+            <el-option
+              v-for="product in products"
+              :key="product.id"
+              :label="`${product.code} ${product.name}`"
+              :value="product.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="开发产品名称" prop="productName" :rules="[{ required: true, message: '请填写产品名称' }]">
           <el-input v-model="form.productName" placeholder="如：海盐芝士味蛋糕" />
         </el-form-item>
@@ -75,6 +92,7 @@ import { ElMessage } from 'element-plus';
 import type { FormInstance } from 'element-plus';
 import dayjs from 'dayjs';
 import ApprovalTaskPanel from '@/components/approval/ApprovalTaskPanel.vue';
+import { productApi, type Product } from '@/api/product';
 
 const props = defineProps<{
   instanceId: string;
@@ -91,9 +109,11 @@ const emit = defineEmits<{
 }>();
 
 const formRef = ref<FormInstance>();
+const products = ref<Product[]>([]);
 
 const form = reactive({
   requestDate: dayjs().format('YYYY-MM-DD'),
+  productId: '',
   productName: '',
   developmentQuantity: '',
   processRequirement: '',
@@ -105,7 +125,14 @@ const form = reactive({
   applicationConclusion: '',
 });
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    const res = await productApi.getList();
+    products.value = (res as any)?.data ?? (Array.isArray(res) ? res : []);
+  } catch {
+    products.value = [];
+  }
+
   if (props.modelValue) {
     const mv = props.modelValue as typeof form;
     Object.keys(form).forEach((k) => {
@@ -126,6 +153,13 @@ const handleSubmit = async () => {
     return;
   }
   emit('submitted', { ...form });
+};
+
+const handleProductChange = (productId: string) => {
+  const product = products.value.find((p) => p.id === productId);
+  if (product) {
+    form.productName = product.name;
+  }
 };
 </script>
 

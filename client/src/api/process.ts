@@ -72,8 +72,8 @@ export const processApi = {
   getInstance: (id: string) =>
     request.get<ProcessInstance & { stepDataList?: ProcessStepData[] }>(`/process/instances/${id}`),
 
-  createInstance: (templateId: string, productName?: string) =>
-    request.post<ProcessInstance>('/process/instances', { templateId, productName }),
+  createInstance: (templateId: string, productName?: string, productId?: string) =>
+    request.post<ProcessInstance>('/process/instances', { templateId, productName, productId }),
 
   deleteInstance: (id: string) =>
     request.delete(`/process/instances/${id}`),

@@ -61,10 +61,25 @@ export class ProcessInstanceController {
   @ApiOperation({ summary: '创建流程实例' })
   async create(@Body() data: any, @Request() req: any) {
     const userId = req.user?.sub || req.user?.id;
+
+    const productId = typeof data.productId === 'string' && data.productId.trim()
+      ? data.productId.trim()
+      : undefined;
+    const product = productId
+      ? await this.prisma.product.findFirst({
+          where: { id: productId, deleted_at: null },
+        })
+      : null;
+
+    if (productId && !product) {
+      throw new BadRequestException('产品不存在或已删除');
+    }
+
     const instance = await this.prisma.processInstance.create({
       data: {
         templateId: data.templateId,
-        productName: data.productName || '',
+        productId: product?.id,
+        productName: product?.name ?? data.productName ?? '',
         createdById: userId,
         status: 'DRAFT',
         currentStep: 1,
