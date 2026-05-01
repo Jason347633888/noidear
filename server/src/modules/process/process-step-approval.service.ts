@@ -205,20 +205,40 @@ export class ProcessStepApprovalService {
     }
 
     if (stepNumber === 6 && instance.productId && Array.isArray(data.recipeLines) && data.recipeLines.length > 0) {
+      const validLines = data.recipeLines.filter((l: any) => l.materialId);
+      const areaSnapshots: Record<string, string> = {};
+      for (const l of validLines) {
+        const areaId: string | undefined = l.areaId ?? l.area_id;
+        if (!areaId) {
+          throw new BadRequestException(`配方行缺少配料区域（材料 ${l.materialId}）`);
+        }
+        if (!areaSnapshots[areaId]) {
+          const area = await tx.workshopArea.findFirst({
+            where: { id: areaId, company_id: '1', status: 'active', deleted_at: null },
+          });
+          if (!area) {
+            throw new BadRequestException(`配料区域不存在或已停用：${areaId}`);
+          }
+          areaSnapshots[areaId] = area.name;
+        }
+      }
       const recipe = await tx.recipe.create({
         data: { company_id: '1', product_id: instance.productId, version: 1, version_note: '研发首版', status: 'draft' },
       });
       await tx.recipeLine.createMany({
-        data: data.recipeLines
-          .filter((l: any) => l.materialId)
-          .map((l: any) => ({
+        data: validLines.map((l: any) => {
+          const areaId: string = l.areaId ?? l.area_id;
+          return {
             recipe_id: recipe.id,
             material_id: l.materialId,
             qty_per_batch: parseFloat(l.qtyPerBatch) || 0,
             unit: l.unit || 'kg',
             is_critical: l.isCritical ?? false,
             notes: l.notes ?? '',
-          })),
+            area_id: areaId,
+            area_name_snapshot: areaSnapshots[areaId],
+          };
+        }),
       });
     }
 

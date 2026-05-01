@@ -2914,8 +2914,8 @@ model RecipeLine {
   unit          String
   is_critical   Boolean @default(false)
   notes         String?
-  area_id            String?
-  area               WorkshopArea? @relation("RecipeLineArea", fields: [area_id], references: [id], onDelete: SetNull)
+  area_id            String
+  area               WorkshopArea @relation("RecipeLineArea", fields: [area_id], references: [id], onDelete: Restrict)
   area_name_snapshot String?
 
   materialUsages       BatchMaterialUsage[]
