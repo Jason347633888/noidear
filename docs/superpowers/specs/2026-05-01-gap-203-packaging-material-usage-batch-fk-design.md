@@ -103,4 +103,4 @@
 - `PackagingMaterialUsageList.vue` 新建记录时必须选择生产批次，不能提交空批次。
 - `npx prisma validate --schema src/prisma/schema.prisma` 通过。
 - `npm test -- packaging-material-usage.service.spec.ts --runInBand` 通过。
-- `pnpm test:e2e -- --grep GAP-203` 通过，或执行 agent 明确说明该命令在当前仓库无对应脚本并提供已运行的替代验证。
+- `npm run test:e2e -w client -- --grep GAP-203` 通过；如果当前仓库没有 GAP-203 E2E 脚本或测试用例，执行 agent 不安装 pnpm，需明确记录该结果，并以 Prisma validate、focused Jest、client build 作为替代验证。

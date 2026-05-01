@@ -459,10 +459,10 @@ Expected: PASS.
 - [ ] **Step 4: Run the GAP acceptance command**
 
 ```bash
-pnpm test:e2e -- --grep GAP-203
+npm run test:e2e -w client -- --grep GAP-203
 ```
 
-Expected: PASS if the repository has a matching E2E target. If the command is unavailable or no GAP-203 E2E exists, report the exact failure and the successful substitute checks from Steps 1-3.
+Expected: PASS if the repository has a matching GAP-203 E2E target. If the command is unavailable or no GAP-203 E2E exists, do not install pnpm; report the exact npm command result and the successful substitute checks from Steps 1-3 plus `npm run build:client`.
 
 - [ ] **Step 5: Inspect the final diff**
 
