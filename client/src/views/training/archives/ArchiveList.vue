@@ -148,11 +148,9 @@ const handleRowClick = (row: any) => {
 
 const downloadArchive = async (id: string) => {
   try {
-    const res = await request.get(`/training/archive/${id}/download`, {
-      responseType: 'blob',
-    });
+    const res = await request.get<{ url: string }>(`/training/archive/${id}/download`);
+    const url = (res as any).url;
 
-    const url = window.URL.createObjectURL(new Blob([res as BlobPart]));
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', `培训档案_${id}.pdf`);
