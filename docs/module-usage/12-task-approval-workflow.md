@@ -122,6 +122,10 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 
 ## 7. 当前系统差距
 
+> **边界说明见：** [`docs/superpowers/specs/2026-05-01-approval-workflow-task-boundary-guide.md`](../superpowers/specs/2026-05-01-approval-workflow-task-boundary-guide.md)
+>
+> 该文档包含旧 Approval、UnifiedApproval、Workflow、Task、RecordTaskAssignment 五类机制的定义、决策树和禁止事项，适用于 GAP-502/503/504 的后续整改。
+
 | GAP 编号 | 当前问题 | 根因 | 影响后果 | 严重级别 | 验证状态 | 证据 |
 |----------|----------|------|----------|----------|----------|------|
 | GAP-500 | 前端 `approveLevel1`/`approveLevel2` 调用 `/approvals/level1/:id/approve` 和 `/approvals/level2/:id/approve`，后端无此路由 | 旧接口残留调用未清理 | 旧审批"一级/二级审批"按钮调用后返回 404 | P1（高） | 已验证 | `client/src/api/approval.ts:L63,L76`；`server/src/modules/approval/approval.controller.ts` 无 level1/level2 路由 |
