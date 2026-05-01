@@ -120,4 +120,22 @@ export class TrainingController {
   async updateProjectStatus(@Param('id') id: string, @Body() body: { status: string }) {
     return this.trainingService.updateProjectStatus(id, body.status);
   }
+
+  @Post('projects/:id/start')
+  @ApiOperation({ summary: '启动培训项目' })
+  async startProject(@Param('id') id: string) {
+    return this.trainingService.updateProjectStatus(id, 'ongoing');
+  }
+
+  @Post('projects/:id/complete')
+  @ApiOperation({ summary: '完成培训项目' })
+  async completeProject(@Param('id') id: string) {
+    return this.trainingService.updateProjectStatus(id, 'completed');
+  }
+
+  @Post('projects/:id/cancel')
+  @ApiOperation({ summary: '取消培训项目' })
+  async cancelProject(@Param('id') id: string) {
+    return this.trainingService.updateProjectStatus(id, 'cancelled');
+  }
 }

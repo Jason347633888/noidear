@@ -539,7 +539,7 @@ export class TrainingService {
     const updated = await this.prisma.trainingProject.update({
       where: { id },
       data: {
-        trainees: project.trainees.filter(t => t !== userId),
+        trainees: project.trainees.filter((t: string) => t !== userId),
       },
     });
 
@@ -622,7 +622,7 @@ export class TrainingService {
       throw new BadRequestException('部分培训资料不存在');
     }
 
-    const unpublishedDocs = documents.filter(doc => doc.status !== 'published');
+    const unpublishedDocs = documents.filter((doc: { id: string; status: string }) => doc.status !== 'published');
     if (unpublishedDocs.length > 0) {
       throw new BadRequestException('只能引用已发布的文档作为培训资料');
     }
@@ -634,7 +634,7 @@ export class TrainingService {
       select: { userId: true },
     });
 
-    const existingUserIds = new Set(existingRecords.map(r => r.userId));
+    const existingUserIds = new Set(existingRecords.map((r: { userId: string }) => r.userId));
     const newTrainees = trainees.filter(userId => !existingUserIds.has(userId));
 
     if (newTrainees.length > 0) {
@@ -656,15 +656,15 @@ export class TrainingService {
       where: { projectId },
     });
 
-    const existingUserIds = new Set(existingRecords.map(r => r.userId));
+    const existingUserIds = new Set(existingRecords.map((r: { id: string; userId: string }) => r.userId));
     const newTraineesSet = new Set(newTrainees);
 
     // 删除不在新列表中的学习记录
-    const toDelete = existingRecords.filter(r => !newTraineesSet.has(r.userId));
+    const toDelete = existingRecords.filter((r: { id: string; userId: string }) => !newTraineesSet.has(r.userId));
     if (toDelete.length > 0) {
       await this.prisma.learningRecord.deleteMany({
         where: {
-          id: { in: toDelete.map(r => r.id) },
+          id: { in: toDelete.map((r: { id: string; userId: string }) => r.id) },
         },
       });
     }
