@@ -1751,16 +1751,16 @@
       "schemaImpact": true,
       "historicalDataImpact": true,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "training",
-      "prOrder": null,
-      "recommendedPr": "training/GAP-407",
+      "prOrder": 7,
+      "recommendedPr": "audit/GAP-407",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-407"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-407-internal-audit-api-prefix-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-407-internal-audit-api-prefix-implementation.md"
     },
     {
       "id": "GAP-408",
@@ -1774,16 +1774,16 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "training",
-      "prOrder": null,
+      "prOrder": 8,
       "recommendedPr": "training/GAP-408",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-408"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-408-training-archive-route-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-408-training-archive-route-implementation.md"
     },
     {
       "id": "GAP-409",
@@ -1797,16 +1797,16 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "training",
-      "prOrder": null,
+      "prOrder": 9,
       "recommendedPr": "training/GAP-409",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-409"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-409-training-project-status-endpoints-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-409-training-project-status-endpoints-implementation.md"
     },
     {
       "id": "GAP-410",
@@ -1962,16 +1962,16 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "workflow",
-      "prOrder": null,
-      "recommendedPr": "workflow/GAP-501",
+      "prOrder": 6,
+      "recommendedPr": "system/GAP-501",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-501"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-501-auth-profile-method-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-501-auth-profile-method-implementation.md"
     },
     {
       "id": "GAP-502",
