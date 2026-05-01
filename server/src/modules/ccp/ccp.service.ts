@@ -34,6 +34,7 @@ export class CcpService {
   async findMissingCCPs(productionBatchId: string, companyId: string) {
     const batch = await this.prisma.productionBatch.findUnique({
       where: { id: productionBatchId },
+      select: { id: true, productId: true, recipeId: true },
     });
     if (!batch) return [];
 
@@ -43,10 +44,19 @@ export class CcpService {
     });
     const filledIds = new Set(records.map((r) => r.ccp_point_id));
 
-    const allCCPs = await this.prisma.cCPPoint.findMany({
-      where: { company_id: companyId },
+    const expectedCCPs = await this.prisma.cCPPoint.findMany({
+      where: {
+        company_id: companyId,
+        deleted_at: null,
+        process_step: {
+          company_id: companyId,
+          deleted_at: null,
+          OR: [{ product_id: batch.productId }, { recipe_id: batch.recipeId }],
+        },
+      },
+      orderBy: [{ ccp_no: 'asc' }, { created_at: 'asc' }],
     });
 
-    return allCCPs.filter((c) => !filledIds.has(c.id));
+    return expectedCCPs.filter((ccp) => !filledIds.has(ccp.id));
   }
 }
