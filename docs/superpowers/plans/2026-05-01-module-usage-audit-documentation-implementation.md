@@ -65,6 +65,28 @@ Every module document must follow this exact structure.
 ```markdown
 # 模块名称
 
+---
+module_id: stable-module-id
+business_chain:
+  - 上游业务链
+  - 当前业务链
+  - 下游业务链
+module_type:
+  - 主数据
+  - 批次数据
+  - 桥接关系
+source_of_truth:
+  - PrismaModelOrService
+facts_or_projections:
+  - ModelName: fact_source
+  - ViewOrTodo: projection
+downstream_consumers:
+  - 下游模块名称
+current_entrypoints:
+  - route_or_menu
+last_verified_commit: git_sha
+---
+
 ## 1. 模块定位
 
 说明这个模块在食品安全 SaaS 里的职责边界，明确它是主数据、批次数据、桥接关系、过程记录、治理记录、动态表单还是系统能力。
@@ -105,15 +127,15 @@ Every module document must follow this exact structure.
 
 ## 7. 当前系统差距
 
-| GAP 编号 | 当前问题 | 影响后果 | 严重级别 | 证据 |
-|---|---|---|---|---|
-| GAP-001 | 问题描述 | 后果描述 | P0 | 文件路径或字段名 |
+| GAP 编号 | 当前问题 | 根因 | 影响后果 | 严重级别 | 证据 |
+|---|---|---|---|---|---|
+| GAP-001 | 问题描述 | 根因描述 | 后果描述 | P0 | 文件路径或字段名 |
 
 ## 8. 整改建议
 
-| GAP 编号 | 建议整改 | 依赖模块 | 是否需要新设计 | 建议 PR |
-|---|---|---|---|---|
-| GAP-001 | 具体整改动作 | 依赖模块 | 是/否 | PR 名称建议 |
+| GAP 编号 | 建议整改 | 依赖模块 | 是否需要新设计 | 建议 PR | 是否可并行 |
+|---|---|---|---|---|---|
+| GAP-001 | 具体整改动作 | 依赖模块 | 是/否 | PR 名称建议 | 否 |
 
 ## 9. 证据索引
 
@@ -123,6 +145,18 @@ Every module document must follow this exact structure.
 - `server/src/modules/warehouse/material.service.ts`
 - `server/src/prisma/schema.prisma`
 - `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md`
+
+## 10. 禁止重复实现与事实源边界
+
+| 对象 | 当前事实源 | 允许展示字段 | 禁止新增的平行事实源 | 旧字段或旧模块处理 |
+|---|---|---|---|---|
+| 产品 | `Product` | 产品名称、产品编号 | 下游模块自建产品名称事实字段 | 迁移为引用或标记历史兼容 |
+
+## 11. 后续整改入口
+
+| 优先级 | GAP 编号 | 推荐 PR | 前置依赖 | 可并行 | 验收命令 |
+|---|---|---|---|---|---|
+| 1 | GAP-001 | PR 名称建议 | 依赖模块或无 | 否 | `npm run verify` |
 ```
 
 ---
@@ -144,12 +178,31 @@ Every module document must follow this exact structure.
 
 ## GAP 总表
 
-| 编号 | 业务链 | 模块 | 当前问题 | 影响后果 | 严重级别 | 依赖模块 | 建议整改 | 是否需要新设计 | 建议 PR |
-|---|---|---|---|---|---|---|---|---|---|
-| GAP-001 | 业务链名称 | 模块名称 | 当前问题 | 业务后果 | P0 | 依赖模块 | 整改动作 | 是 | PR 名称建议 |
+| 编号 | 业务链 | 模块 | 当前问题 | 根因 | 影响后果 | 严重级别 | 依赖模块 | 建议整改 | 涉及文件 | 是否涉及 schema/migration | 是否涉及历史数据迁移 | 测试/验收命令 | 不能破坏什么 | 是否需要新设计 | 建议 PR |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| GAP-001 | 业务链名称 | 模块名称 | 当前问题 | 根因描述 | 业务后果 | P0 | 依赖模块 | 整改动作 | 文件列表 | 是/否 | 是/否 | `npm run verify` | 已有数据和接口合同 | 是 | PR 名称建议 |
 ```
 
 ---
+
+## 3.0 Agent Execution Contract
+
+These docs are primarily for future agents, not for manual reading only. Every GAP must be executable without re-discovering the whole project.
+
+For every P0/P1 GAP, include:
+
+```text
+Root cause: why the current implementation is wrong or incomplete.
+Files likely to change: exact files or directories, if known.
+Schema or migration impact: yes/no, with model names.
+Historical data impact: yes/no, with migration or compatibility note.
+Tests to add or update: unit, e2e, integration, or manual smoke path.
+Validation command: exact command or manual path.
+Do not break: API contracts, existing records, approval history, traceability chain, or document audit chain.
+Parallelization: whether another agent can work on it independently.
+```
+
+If the exact fix is not known, mark `是否需要新设计 = 是` and state the decision that must be made before implementation. Do not invent schema or fields just to make a GAP look actionable.
 
 ## 3.1 Coverage Matrix Format
 
@@ -184,9 +237,9 @@ Every module document must follow this exact structure.
 
 ## 5. 未覆盖或需判定对象
 
-| 对象 | 类型 | 当前判断 | 后续动作 |
-|---|---|---|---|
-| `server/src/modules/example` | 后端模块 | 未判定 | 补充归属或标记残留 |
+| 对象 | 类型 | 当前判断 | 处理方式 | 对应 GAP | 后续动作 |
+|---|---|---|---|---|---|
+| `server/src/modules/example` | 后端模块 | 未判定 | 待判定 | GAP-XXX | 补充归属或标记残留 |
 ```
 
 Statuses:
@@ -196,6 +249,17 @@ Statuses:
 支撑能力: 不属于食品安全主链，但为系统能力，需要在 13-system-admin-ops.md 或相关文档中说明。
 残留模块: 当前可能是历史实现、旧入口或未接入模块，必须进入 GAP 表或说明清理建议。
 未判定: 审计未完成前的临时状态，最终文档不得保留。
+```
+
+Residual handling:
+
+```text
+保留并归属: 模块仍有真实业务或系统用途，归入对应模块文档。
+迁移到新模块: 模块语义正确但事实源位置错误，进入 GAP 表并给迁移方向。
+标记废弃: 模块不应继续作为入口或事实源，进入 GAP 表并说明废弃条件。
+删除入口: 页面或菜单入口不应保留，但后端历史兼容可暂留。
+历史兼容: 数据或 API 暂时保留用于旧记录、迁移或审计，不作为新功能事实源。
+基础设施: upload、redis、health 等基础能力不进入业务主链，但必须归入 13-system-admin-ops.md 或覆盖矩阵。
 ```
 
 ---
@@ -540,6 +604,9 @@ Use the exact assignment text from section 4. Each agent must:
 4. Use the shared document template from section 2.
 5. Add GAP rows in its output with provisional numbers using prefix AGENT-N-GAP-M.
 6. Include evidence paths for every P0 issue.
+7. Fill the metadata block at the top of every assigned module document.
+8. Fill `禁止重复实现与事实源边界` so future agents know what not to recreate.
+9. Fill `后续整改入口` so each GAP can be converted into an implementation PR.
 ```
 
 - [ ] **Step 2: Require each agent to produce module docs and provisional GAP rows**
@@ -596,8 +663,10 @@ AGENT-3-GAP-1 -> GAP-200
 For each stable GAP, add one row:
 
 ```markdown
-| GAP-100 | 来料 -> 仓储 -> 投料 | 来料检验 | `material_batch_id` 录入方式需要核对是否仍可手填 | 后续投料可能无法稳定追溯到供应商、来料放行和原辅料批次 | P0 | MaterialBatch, IncomingInspection, Warehouse | 改为从原辅料批次选择器或到货批次上下文带出 | 是 | PR-来料批次主链整改 |
+| GAP-100 | 来料 -> 仓储 -> 投料 | 来料检验 | `material_batch_id` 录入方式需要核对是否仍可手填 | 来料检验和原辅料批次上下文绑定不稳定 | 后续投料可能无法稳定追溯到供应商、来料放行和原辅料批次 | P0 | MaterialBatch, IncomingInspection, Warehouse | 改为从原辅料批次选择器或到货批次上下文带出 | `client/src/views/incoming-inspection`, `server/src/modules/incoming-inspection` | 否 | 否 | `npm run build:server` | 已有来料检验记录和原辅料批次关联 | 是 | PR-来料批次主链整改 |
 ```
+
+Each row must include enough execution detail for another agent to start a PR without re-auditing the entire module. If a row cannot name likely files, schema impact, historical-data impact and validation path, downgrade it to a design-needed GAP instead of pretending it is implementation-ready.
 
 - [ ] **Step 4: Verify no provisional GAP IDs remain**
 
@@ -642,6 +711,23 @@ done
 ```
 
 Expected: command exits successfully for every module document except `00-index.md`, `01-business-chain-overview.md`, and `99-current-gap-register.md`.
+
+- [ ] **Step 2.1: Enforce agent metadata and execution sections**
+
+Run:
+
+```bash
+for file in docs/module-usage/0[2-9]-*.md docs/module-usage/1[0-3]-*.md; do
+  echo "$file"
+  rg -q "^module_id:" "$file" &&
+  rg -q "^source_of_truth:" "$file" &&
+  rg -q "^last_verified_commit:" "$file" &&
+  rg -q "## 10\\. 禁止重复实现与事实源边界" "$file" &&
+  rg -q "## 11\\. 后续整改入口" "$file"
+done
+```
+
+Expected: command exits successfully for every module document.
 
 - [ ] **Step 3: Enforce evidence paths for P0 rows**
 
@@ -742,12 +828,13 @@ find server/src/modules -name "*service.ts" | sort
 
 Expected: API adapters, controllers and services are mapped by module document. Unmatched adapters or controllers must be listed in `98-coverage-matrix.md` section `未覆盖或需判定对象`.
 
-- [ ] **Step 5: Verify no final `未判定` remains**
+- [ ] **Step 5: Verify no final unresolved object remains**
 
 Run:
 
 ```bash
 rg -n "^\\| .*\\| .*\\| 未判定 \\|" docs/module-usage/98-coverage-matrix.md
+rg -n "^\\| .*\\| .*\\| .*\\| 待判定 \\|" docs/module-usage/98-coverage-matrix.md
 ```
 
 Expected: no unresolved table row remains before final commit.
@@ -839,10 +926,12 @@ Use these seeds only after verifying them from code.
 
 - `docs/module-usage/` contains all 16 expected files.
 - Every module document uses the shared structure.
+- Every module document has agent-readable metadata, source-of-truth boundaries, anti-duplication rules and remediation entry rows.
 - `98-coverage-matrix.md` maps frontend routes, backend modules, business-relevant Prisma models and API adapters to module documents.
-- No frontend route, backend module, business-relevant Prisma model or API adapter remains `未判定`.
+- No frontend route, backend module, business-relevant Prisma model or API adapter remains `未判定` or `待判定`.
 - `99-current-gap-register.md` has stable GAP IDs.
-- P0 issues include concrete evidence paths or exact field/API/model names.
+- P0/P1 issues include root cause, likely files, schema impact, historical-data impact, validation path, and concrete evidence paths or exact field/API/model names.
+- Residual modules have an explicit handling path: keep and assign, migrate, deprecate, remove entry, keep for historical compatibility, or classify as infrastructure.
 - No business code, schema, API, test, build, generated, env, report or local runtime file is modified.
 - The documentation gives enough detail for the user to understand:
   - each module can do what,
