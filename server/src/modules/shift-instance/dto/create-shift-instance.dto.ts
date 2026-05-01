@@ -1,9 +1,15 @@
-import { IsNotEmpty, IsIn, IsDateString, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 export class CreateShiftInstanceDto {
+  @ValidateIf((dto) => !dto.shift_type)
   @IsNotEmpty()
-  @IsIn(['白班', '夜班'])
-  shift_type: string;
+  @IsString()
+  shiftTypeId?: string;
+
+  @ValidateIf((dto) => !dto.shiftTypeId)
+  @IsNotEmpty()
+  @IsString()
+  shift_type?: string;
 
   @IsNotEmpty()
   @IsDateString()

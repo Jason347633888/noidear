@@ -6,11 +6,15 @@
     @close="$emit('update:modelValue', false)"
   >
     <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
-      <el-form-item label="班次类型" prop="shift_type">
-        <el-radio-group v-model="form.shift_type">
-          <el-radio value="白班">白班</el-radio>
-          <el-radio value="夜班">夜班</el-radio>
-        </el-radio-group>
+      <el-form-item label="班次类型" prop="shiftTypeId">
+        <el-select v-model="form.shiftTypeId" placeholder="请选择班次类型" style="width: 100%">
+          <el-option
+            v-for="shiftType in shiftTypes"
+            :key="shiftType.id"
+            :label="formatShiftTypeLabel(shiftType)"
+            :value="shiftType.id"
+          />
+        </el-select>
       </el-form-item>
       <el-form-item label="开班日期" prop="shift_date">
         <el-date-picker
@@ -32,9 +36,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
-import { ShiftInstanceApi, type CreateShiftInstancePayload } from '@/api/shift-instance';
+import { ShiftInstanceApi, type CreateShiftInstancePayload, type ShiftTypeSummary } from '@/api/shift-instance';
+import { teamShiftApi } from '@/api/team-shift';
 
 defineProps<{ modelValue: boolean }>();
 const emit = defineEmits<{
@@ -45,17 +50,37 @@ const emit = defineEmits<{
 const formRef = ref<FormInstance>();
 const loading = ref(false);
 const today = new Date().toISOString().slice(0, 10);
+const shiftTypes = ref<ShiftTypeSummary[]>([]);
 
 const form = reactive<CreateShiftInstancePayload>({
-  shift_type: '白班',
+  shiftTypeId: '',
   shift_date: today,
   notes: '',
 });
 
 const rules: FormRules = {
-  shift_type: [{ required: true, message: '请选择班次类型', trigger: 'change' }],
+  shiftTypeId: [{ required: true, message: '请选择班次类型', trigger: 'change' }],
   shift_date: [{ required: true, message: '请选择日期', trigger: 'change' }],
 };
+
+onMounted(loadShiftTypes);
+
+async function loadShiftTypes() {
+  const response = await teamShiftApi.listShiftTypes();
+  const data = Array.isArray((response as any).data)
+    ? (response as any).data
+    : Array.isArray(response)
+      ? response
+      : [];
+  shiftTypes.value = data as ShiftTypeSummary[];
+  if (!form.shiftTypeId && shiftTypes.value.length > 0) {
+    form.shiftTypeId = shiftTypes.value[0].id;
+  }
+}
+
+function formatShiftTypeLabel(shiftType: ShiftTypeSummary): string {
+  return `${shiftType.name} ${shiftType.start_time}-${shiftType.end_time}`;
+}
 
 async function submit() {
   const valid = await formRef.value?.validate().catch(() => false);

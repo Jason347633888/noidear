@@ -7,6 +7,9 @@ describe('ShiftInstanceService', () => {
   let service: ShiftInstanceService;
 
   const mockPrisma = {
+    shiftType: {
+      findFirst: jest.fn(),
+    },
     shiftInstance: {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
@@ -28,21 +31,100 @@ describe('ShiftInstanceService', () => {
   });
 
   describe('create', () => {
-    it('should throw ConflictException when shift already exists', async () => {
+    const dayShiftType = {
+      id: 'shift-day',
+      code: 'DAY',
+      name: '白班',
+      start_time: '08:00',
+      end_time: '20:00',
+      crosses_day: false,
+      active: true,
+    };
+
+    it('should throw ConflictException when shift already exists for shiftTypeId and date', async () => {
+      mockPrisma.shiftType.findFirst.mockResolvedValue(dayShiftType);
       mockPrisma.shiftInstance.findUnique.mockResolvedValue({ id: 'existing' });
+
       await expect(
-        service.create({ shift_type: '白班', shift_date: '2026-04-22' }, 'user1'),
+        service.create({ shiftTypeId: 'shift-day', shift_date: '2026-04-22' }, 'user1'),
       ).rejects.toThrow(ConflictException);
+
+      expect(mockPrisma.shiftInstance.findUnique).toHaveBeenCalledWith({
+        where: {
+          company_id_shift_type_id_shift_date: {
+            company_id: '1',
+            shift_type_id: 'shift-day',
+            shift_date: new Date('2026-04-22'),
+          },
+        },
+      });
     });
 
-    it('should create shift when none exists', async () => {
+    it('should create shift from shiftTypeId and persist the legacy name snapshot', async () => {
+      mockPrisma.shiftType.findFirst.mockResolvedValue(dayShiftType);
       mockPrisma.shiftInstance.findUnique.mockResolvedValue(null);
-      mockPrisma.shiftInstance.create.mockResolvedValue({ id: 'new-id', status: 'open' });
-      const result = await service.create({ shift_type: '白班', shift_date: '2026-04-22' }, 'user1');
-      expect(result.status).toBe('open');
-      expect(mockPrisma.shiftInstance.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ shift_type: '白班' }) }),
+      mockPrisma.shiftInstance.create.mockResolvedValue({
+        id: 'new-id',
+        status: 'open',
+        shift_type_id: 'shift-day',
+        shift_type: '白班',
+      });
+
+      const result = await service.create(
+        { shiftTypeId: 'shift-day', shift_date: '2026-04-22' },
+        'user1',
       );
+
+      expect(result.status).toBe('open');
+      expect(mockPrisma.shiftType.findFirst).toHaveBeenCalledWith({
+        where: { id: 'shift-day', active: true },
+      });
+      expect(mockPrisma.shiftInstance.create).toHaveBeenCalledWith({
+        data: {
+          company_id: '1',
+          shift_type_id: 'shift-day',
+          shift_type: '白班',
+          shift_date: new Date('2026-04-22'),
+          opened_by: 'user1',
+          notes: undefined,
+        },
+        include: { shift_type_ref: true },
+      });
+    });
+
+    it('should keep legacy shift_type payload working during migration window', async () => {
+      mockPrisma.shiftType.findFirst.mockResolvedValue(dayShiftType);
+      mockPrisma.shiftInstance.findUnique.mockResolvedValue(null);
+      mockPrisma.shiftInstance.create.mockResolvedValue({
+        id: 'new-id',
+        status: 'open',
+        shift_type_id: 'shift-day',
+        shift_type: '白班',
+      });
+
+      await service.create({ shift_type: '白班', shift_date: '2026-04-22' }, 'user1');
+
+      expect(mockPrisma.shiftType.findFirst).toHaveBeenCalledWith({
+        where: { name: '白班', active: true },
+      });
+      expect(mockPrisma.shiftInstance.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            shift_type_id: 'shift-day',
+            shift_type: '白班',
+          }),
+        }),
+      );
+    });
+
+    it('should reject unknown legacy shift_type values', async () => {
+      mockPrisma.shiftType.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.create({ shift_type: '中班', shift_date: '2026-04-22' }, 'user1'),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockPrisma.shiftInstance.create).not.toHaveBeenCalled();
     });
   });
 
