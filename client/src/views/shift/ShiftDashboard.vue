@@ -21,7 +21,7 @@
             <el-tag :type="shift.status === 'open' ? 'success' : 'info'">
               {{ shift.status === 'open' ? '进行中' : '已关班' }}
             </el-tag>
-            &nbsp;{{ shift.shift_type }} | {{ formatDate(shift.shift_date) }}
+            &nbsp;{{ displayShiftType(shift) }} | {{ formatDate(shift.shift_date) }}
           </span>
           <div>
             <el-button
@@ -119,6 +119,10 @@ function formatDate(d: string): string {
 function formatTime(d: string): string {
   if (!d) return '';
   return new Date(d).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function displayShiftType(shift: ShiftInstance): string {
+  return shift.shift_type_ref?.name ?? shift.shift_type;
 }
 
 function openRunFor(shift: ShiftInstance) {

@@ -2856,8 +2856,9 @@ model ShiftType {
   crosses_day Boolean              @default(false)
   active      Boolean              @default(true)
   schedules   TeamShiftSchedule[]
-  batches     ProductionBatch[]
-  records     StagingAreaStocktake[]
+  batches        ProductionBatch[]
+  records        StagingAreaStocktake[]
+  shiftInstances ShiftInstance[]
   created_at  DateTime             @default(now())
   updated_at  DateTime             @updatedAt
 
@@ -3654,7 +3655,9 @@ model PackagingMaterialUsage {
 model ShiftInstance {
   id              String   @id @default(cuid())
   company_id      String
-  shift_type      String   // '白班' | '夜班'
+  shift_type_id   String
+  shift_type_ref  ShiftType @relation(fields: [shift_type_id], references: [id], onDelete: Restrict)
+  shift_type      String   // legacy display snapshot; derived from ShiftType.name
   shift_date      DateTime @db.Date
   opened_by       String
   closed_by       String?
@@ -3669,7 +3672,9 @@ model ShiftInstance {
   records         Record[]
 
   @@unique([company_id, shift_type, shift_date])
+  @@unique([company_id, shift_type_id, shift_date])
   @@index([company_id, shift_date])
+  @@index([shift_type_id])
   @@map("shift_instances")
 }
 

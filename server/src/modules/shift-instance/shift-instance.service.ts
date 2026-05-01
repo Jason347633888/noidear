@@ -11,13 +11,32 @@ import { CreateShiftInstanceDto, CloseShiftInstanceDto } from './dto/create-shif
 export class ShiftInstanceService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private async resolveShiftType(dto: CreateShiftInstanceDto) {
+    const shiftType = dto.shiftTypeId
+      ? await this.prisma.shiftType.findFirst({
+          where: { id: dto.shiftTypeId, active: true },
+        })
+      : await this.prisma.shiftType.findFirst({
+          where: { name: dto.shift_type, active: true },
+        });
+
+    if (!shiftType) {
+      throw new BadRequestException('班次类型不存在或已停用');
+    }
+
+    return shiftType;
+  }
+
   async create(dto: CreateShiftInstanceDto, userId: string) {
+    const shiftType = await this.resolveShiftType(dto);
+    const shiftDate = new Date(dto.shift_date);
+
     const existing = await this.prisma.shiftInstance.findUnique({
       where: {
-        company_id_shift_type_shift_date: {
+        company_id_shift_type_id_shift_date: {
           company_id: '1',
-          shift_type: dto.shift_type,
-          shift_date: new Date(dto.shift_date),
+          shift_type_id: shiftType.id,
+          shift_date: shiftDate,
         },
       },
     });
@@ -26,11 +45,13 @@ export class ShiftInstanceService {
     return this.prisma.shiftInstance.create({
       data: {
         company_id: '1',
-        shift_type: dto.shift_type,
-        shift_date: new Date(dto.shift_date),
+        shift_type_id: shiftType.id,
+        shift_type: shiftType.name,
+        shift_date: shiftDate,
         opened_by: userId,
         notes: dto.notes,
       },
+      include: { shift_type_ref: true },
     });
   }
 
@@ -41,6 +62,7 @@ export class ShiftInstanceService {
         ...(date ? { shift_date: new Date(date) } : {}),
       },
       include: {
+        shift_type_ref: true,
         production_runs: {
           include: { product: true },
           orderBy: { started_at: 'asc' },
@@ -54,6 +76,7 @@ export class ShiftInstanceService {
     const inst = await this.prisma.shiftInstance.findFirst({
       where: { id, company_id: '1' },
       include: {
+        shift_type_ref: true,
         production_runs: {
           include: { product: true, recipe: true },
           orderBy: { started_at: 'asc' },

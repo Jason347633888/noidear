@@ -4,9 +4,21 @@ import request from './request';
 // Types
 // =========================================================================
 
+export interface ShiftTypeSummary {
+  id: string;
+  code: string;
+  name: string;
+  start_time: string;
+  end_time: string;
+  crosses_day: boolean;
+  active: boolean;
+}
+
 export interface ShiftInstance {
   id: string;
+  shift_type_id: string;
   shift_type: string;
+  shift_type_ref?: ShiftTypeSummary;
   shift_date: string;
   status: 'open' | 'closed';
   notes?: string;
@@ -24,7 +36,7 @@ export interface ProductionRunSummary {
 }
 
 export interface CreateShiftInstancePayload {
-  shift_type: string;
+  shiftTypeId: string;
   shift_date: string;
   notes?: string;
 }
