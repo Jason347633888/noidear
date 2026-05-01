@@ -1141,26 +1141,26 @@
       "id": "GAP-303",
       "severity": "P1",
       "moduleId": "quality-qc-release",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
       "needsDesign": true,
-      "schemaImpact": true,
+      "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "brainstorming",
-        "grill-with-docs",
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "quality",
-      "prOrder": null,
+      "prOrder": 14,
       "recommendedPr": "quality/GAP-303",
       "validationCommands": [
-        "pnpm test:e2e -- --grep GAP-303"
+        "(cd server && npm test -- ccp.service.spec.ts --runInBand)",
+        "(cd server && npm test -- --runInBand)",
+        "git diff --check"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-303-ccp-missing-product-filter-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-303-ccp-missing-product-filter-implementation.md"
     },
     {
       "id": "GAP-304",
