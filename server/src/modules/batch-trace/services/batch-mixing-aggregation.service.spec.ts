@@ -53,7 +53,7 @@ describe('BatchMixingAggregationService', () => {
       expect(result).toHaveLength(1);
     });
 
-    it('rejects when an execution is already aggregated to a different product batch', async () => {
+    it('allows one confirmed execution to be aggregated to another matching product batch', async () => {
       prisma.productionBatch.findUnique.mockResolvedValue({
         id: 'pb-new',
         productId: 'product-1',
@@ -62,16 +62,55 @@ describe('BatchMixingAggregationService', () => {
       prisma.mixingExecution.findMany.mockResolvedValue([
         { id: 'mix-1', productId: 'product-1', recipeId: 'recipe-1', status: 'confirmed' },
       ]);
-      prisma.batchMixingAggregation.findMany.mockResolvedValue([
-        { mixingExecutionId: 'mix-1', productionBatchId: 'pb-other' },
-      ]);
+      prisma.$transaction.mockResolvedValue([{ id: 'agg-new', productionBatchId: 'pb-new', mixingExecutionId: 'mix-1' }]);
 
-      await expect(
-        service.create({
-          productionBatchId: 'pb-new',
-          mixingExecutionIds: ['mix-1'],
+      const result = await service.create({
+        productionBatchId: 'pb-new',
+        mixingExecutionIds: ['mix-1'],
+      });
+
+      expect(result).toHaveLength(1);
+      expect(prisma.batchMixingAggregation.findMany).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ mixingExecutionId: expect.anything() }),
         }),
-      ).rejects.toThrow(BadRequestException);
+      );
+    });
+
+    it('upserts the same production batch and execution pair instead of creating duplicates', async () => {
+      prisma.productionBatch.findUnique.mockResolvedValue({
+        id: 'pb-1',
+        productId: 'product-1',
+        recipeId: 'recipe-1',
+      });
+      prisma.mixingExecution.findMany.mockResolvedValue([
+        { id: 'mix-1', productId: 'product-1', recipeId: 'recipe-1', status: 'confirmed' },
+      ]);
+      prisma.$transaction.mockResolvedValue([{ id: 'agg-existing', productionBatchId: 'pb-1', mixingExecutionId: 'mix-1' }]);
+
+      await service.create({
+        productionBatchId: 'pb-1',
+        mixingExecutionIds: ['mix-1'],
+        note: 'reuse same pair',
+      });
+
+      expect(prisma.batchMixingAggregation.upsert).toHaveBeenCalledWith({
+        where: {
+          productionBatchId_mixingExecutionId: {
+            productionBatchId: 'pb-1',
+            mixingExecutionId: 'mix-1',
+          },
+        },
+        create: {
+          productionBatchId: 'pb-1',
+          mixingExecutionId: 'mix-1',
+          status: 'draft',
+          note: 'reuse same pair',
+        },
+        update: {
+          note: 'reuse same pair',
+        },
+      });
     });
 
     it('throws when execution product or recipe does not match batch', async () => {

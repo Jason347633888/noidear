@@ -41,23 +41,10 @@ export class BatchMixingAggregationService {
       throw new BadRequestException('配料执行与产品批次的产品或配方不一致');
     }
 
-    // BatchMixingAggregation has no quantity-split field, so an execution must
-    // belong to at most one product batch — otherwise a single set of material
-    // usages would be double-counted across two batches in traceability and
-    // material balance. Reject any execution already linked elsewhere.
-    const existingLinks = await this.prisma.batchMixingAggregation.findMany({
-      where: { mixingExecutionId: { in: dto.mixingExecutionIds } },
-      select: { mixingExecutionId: true, productionBatchId: true },
-    });
-    const conflicting = existingLinks.find(
-      (link) => link.productionBatchId !== dto.productionBatchId,
-    );
-    if (conflicting) {
-      throw new BadRequestException(
-        `配料执行 ${conflicting.mixingExecutionId} 已归集到其它产品批次`,
-      );
-    }
-
+    // GAP-201: BatchMixingAggregation is a many-to-many bridge. The composite
+    // unique key keeps one production batch from linking the same execution
+    // twice, while allowing another production batch to share the same input
+    // pool for cross-day packaging traceability.
     const upsertOps = dto.mixingExecutionIds.map((mixingExecutionId) =>
       this.prisma.batchMixingAggregation.upsert({
         where: {

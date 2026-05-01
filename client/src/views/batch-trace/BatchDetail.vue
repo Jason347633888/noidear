@@ -75,6 +75,11 @@
           <div><strong>配料执行号：</strong>{{ agg.mixingExecution?.executionNo }}</div>
           <div><strong>配料区：</strong>{{ agg.mixingExecution?.area?.name }}</div>
           <div><strong>实际配料重量：</strong>{{ agg.mixingExecution?.actual_weight }}</div>
+          <div v-if="isSharedMixingExecution(agg)">
+            <strong>归集方式：</strong>
+            <el-tag type="warning" size="small">共用配料执行</el-tag>
+            <span style="margin-left: 8px">{{ linkedBatchNumbers(agg) }}</span>
+          </div>
           <div><strong>状态：</strong>{{ agg.status }}</div>
         </div>
       </div>
@@ -187,6 +192,19 @@ const confirmingAggregation = ref(false);
 const hasDraftAggregations = computed(() =>
   batch.value?.aggregations?.some((a: any) => a.status === 'draft') ?? false,
 );
+
+const linkedProductionBatches = (agg: any) =>
+  agg?.mixingExecution?.aggregations
+    ?.map((item: any) => item.productionBatch)
+    ?.filter(Boolean) ?? [];
+
+const isSharedMixingExecution = (agg: any) =>
+  linkedProductionBatches(agg).length > 1;
+
+const linkedBatchNumbers = (agg: any) =>
+  linkedProductionBatches(agg)
+    .map((batch: any) => batch.batchNumber || batch.id)
+    .join('、');
 
 const submitAggregationDraft = async () => {
   if (!selectedExecutions.value.length) {
