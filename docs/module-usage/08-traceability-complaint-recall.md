@@ -19,7 +19,7 @@ source_of_truth:
 facts_or_projections:
   - TraceabilitySnapshot 为异步导出快照存储
   - CustomerComplaint.customer_name 为自由文本，无 FK 关联 Customer/ExternalParty
-  - CustomerComplaint.production_batch_id 为可选 FK
+  - CustomerComplaint.production_batch_id 为可选裸字段，当前无 ProductionBatch FK relation
   - ProductRecall 未独立建模，仍通过 RecordTemplate/Record 动态表单处理
 downstream_consumers:
   - CorrectiveAction（投诉触发 CAPA）
@@ -89,7 +89,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | `TraceabilitySnapshot` | 模型存在于 schema，export/snapshot 接口返回内存构造对象，**未持久化到数据库** | `已验证`: traceability.service.ts createExport/createSnapshot 方法 |
 | `TraceController`（batch-trace）| 端点明确标注已弃用，返回 `deprecated: true` meta 标志 | `已验证`: trace.controller.ts line 16,31 |
 | `CustomerComplaint.customer_name` | 自由文本字符串，无 FK 关联 Customer/ExternalParty | `已验证`: schema.prisma line 3098 |
-| `CustomerComplaint.production_batch_id` | 可选字段 `String?`，允许不关联生产批次 | `已验证`: schema.prisma line 3099 |
+| `CustomerComplaint.production_batch_id` | 可选裸字段 `String?`，允许不关联生产批次，且当前无 `@relation` 到 `ProductionBatch` | `已验证`: schema.prisma line 3110 |
 | `ProductRecall` | 未独立建模 | `已验证`: MASTER_DATA_AND_TRACEABILITY_MODEL.md；schema 中无此模型 |
 
 ## 5. 正确业务流程
@@ -116,7 +116,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | GAP-307 | 权威 `TraceabilityService.query` 仅支持 `objectType: materialLot` 的正追，其他入口（ProductionBatch 反追、DeliveryNote 查询、场景工作台）返回空结果 | 服务层实现不完整 | 生产批次反追、发货批次查询无法使用，追溯能力严重缺失 | P0 | 已验证 | traceability.service.ts line 101–106 |
 | GAP-308 | `TraceabilitySnapshot` 模型存在于 schema，但 `createExport`/`createSnapshot` 接口仅返回内存构造对象，**不写库** | 服务层实现不完整 | 追溯快照无法持久化，异步导出无法恢复，合规审查无历史记录 | P1 | 已验证 | traceability.service.ts createExport/createSnapshot 方法：纯内存返回，无 prisma 操作 |
 | GAP-309 | `CustomerComplaint.customer_name` 为自由文本，无 FK 关联 `Customer`/`ExternalParty` 主数据 | schema 设计 | 同一客户多次投诉无法聚合分析；投诉趋势分析（GRSS-YX-JL-06）的客户维度失效 | P1 | 已验证 | schema.prisma line 3098：`customer_name String` |
-| GAP-310 | `CustomerComplaint.production_batch_id` 为可选字段，允许投诉不关联生产批次 | schema 设计 | 投诉无法做反向追溯，召回时无法从投诉定位问题批次 | P1 | 已验证 | schema.prisma line 3099：`production_batch_id String?` |
+| GAP-310 | `CustomerComplaint.production_batch_id` 为可选裸字段，允许投诉不关联生产批次，且无 FK relation | schema 设计 | 投诉无法做反向追溯，召回时无法从投诉定位问题批次 | P1 | 已验证 | schema.prisma line 3110：`production_batch_id String?` |
 | GAP-311 | `ProductRecall` 未独立建模，通过动态表单处理，无状态机 | 建模策略待决策（见 MASTER_DATA_AND_TRACEABILITY_MODEL.md 第 4.1 节） | 无法查询召回进度状态，无法触发客户通知链，不满足 BRCGS 审核要求 | P0 | 已验证 | MASTER_DATA_AND_TRACEABILITY_MODEL.md 第 4.1 节 |
 | GAP-312 | `batch-trace/trace/backward` 和 `forward` 端点仍在生产中运行，虽标记 deprecated，但未设定下线时间 | 遗留端点未清理 | 前端或外部调用者可能仍在使用旧端点，无法强制收敛到权威路径 | P2 | 已验证 | trace.controller.ts line 13–47 |
 
@@ -128,7 +128,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | GAP-307 | 扩展 TraceabilityService.query 支持 productionBatch 反追和 deliveryNote 查询 | batch-trace, ProductionBatch, DeliveryNote | 是（参考 traceability-query-layer-design.md） | feat/traceability-query-full-chain | 否（依赖 GAP-7） |
 | GAP-308 | createExport 和 createSnapshot 实现持久化，写入 TraceabilitySnapshot 表 | prisma | 否 | fix/traceability-snapshot-persist | 是 |
 | GAP-309 | CustomerComplaint 新增 customer_id FK（关联 ExternalParty 或 Customer），customer_name 保留展示用 | ExternalParty/Customer 主数据 | 需要业务确认 | fix/complaint-customer-fk | 是 |
-| GAP-310 | 在业务层校验 production_batch_id 必填，或 schema 改为非空 | ProductionBatch | 需要业务确认（部分投诉可能无批次） | fix/complaint-batch-required | 是 |
+| GAP-310 | 将 CustomerComplaint.production_batch_id 改为非空 FK，并在 DTO、服务层和页面强制选择生产批次 | ProductionBatch | 是（spec/plan 已完成） | traceability/GAP-310 | 否（依赖 GAP-306） |
 | GAP-311 | 将 ProductRecall 从动态表单中抽出，建立独立状态机（pending/notified/completed/cancelled） | 营销部表单 GRSS-YX-JL-02/03/04 | 是（需独立设计） | feat/product-recall-independent-model | 否（高优先级，需单独排期） |
 | GAP-312 | 设定 batch-trace 旧端点下线日期，迁移后移除 TraceController | 无活跃使用方确认 | 否 | chore/remove-deprecated-trace-endpoints | 是 |
 
@@ -166,5 +166,5 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | P0 | GAP-311 | feat/product-recall-independent-model | 业务设计确认 | 否 | E2E 召回流程测试 |
 | P1 | GAP-308 | fix/traceability-snapshot-persist | 无 | 是 | query_db SELECT * FROM traceability_snapshots |
 | P1 | GAP-309 | fix/complaint-customer-fk | 需业务确认 | 是 | npm run verify |
-| P1 | GAP-310 | fix/complaint-batch-required | 需业务确认 | 是 | npm run verify |
+| P1 | GAP-310 | traceability/GAP-310 | GAP-306 | 否 | `(cd server && npx prisma validate --schema src/prisma/schema.prisma)`；`(cd server && npm test -- customer-complaint.service.spec.ts --runInBand)`；`npm run build:client` |
 | P2 | GAP-312 | chore/remove-deprecated-trace-endpoints | 确认无活跃调用者 | 是 | grep -r "batch-trace/trace" client/src |
