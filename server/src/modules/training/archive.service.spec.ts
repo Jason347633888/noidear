@@ -15,10 +15,18 @@ describe('ArchiveService', () => {
     documentId: 'doc-1',
     pdfPath: 'archives/2026/test.pdf',
     generatedAt: new Date('2026-05-01'),
+    createdAt: new Date('2026-05-01'),
     project: {
       id: 'project-1',
       title: 'GMP培训',
+      department: '生产部',
+      scheduledDate: new Date('2026-04-15'),
       plan: { year: 2026, title: '2026年度培训计划' },
+      learningRecords: [
+        { passed: true },
+        { passed: true },
+        { passed: false },
+      ],
     },
   };
 
@@ -66,6 +74,18 @@ describe('ArchiveService', () => {
       expect(storageService.getFileUrl).toHaveBeenCalledWith(mockArchive.pdfPath);
     });
 
+    it('应该返回扁平化字段 projectTitle/departmentName/trainingDate/attendeeCount/passedCount', async () => {
+      prisma.trainingArchive.findMany.mockResolvedValue([mockArchive]);
+
+      const result = await service.findArchives();
+
+      expect(result[0].projectTitle).toBe('GMP培训');
+      expect(result[0].departmentName).toBe('生产部');
+      expect(result[0].trainingDate).toEqual(new Date('2026-04-15'));
+      expect(result[0].attendeeCount).toBe(3);
+      expect(result[0].passedCount).toBe(2);
+    });
+
     it('应该按 projectId 过滤', async () => {
       prisma.trainingArchive.findMany.mockResolvedValue([mockArchive]);
 
@@ -96,6 +116,19 @@ describe('ArchiveService', () => {
       expect(result.id).toBe('archive-1');
       expect(result.pdfUrl).toBe(mockSignedUrl);
       expect(storageService.getFileUrl).toHaveBeenCalledWith(mockArchive.pdfPath);
+    });
+
+    it('应该返回扁平化字段 projectTitle/departmentName/trainingDate/attendeeCount/passedCount/relatedDocuments', async () => {
+      prisma.trainingArchive.findUnique.mockResolvedValue(mockArchive);
+
+      const result = await service.findArchiveById('archive-1');
+
+      expect(result.projectTitle).toBe('GMP培训');
+      expect(result.departmentName).toBe('生产部');
+      expect(result.trainingDate).toEqual(new Date('2026-04-15'));
+      expect(result.attendeeCount).toBe(3);
+      expect(result.passedCount).toBe(2);
+      expect(result.relatedDocuments).toEqual([]);
     });
 
     it('档案不存在时应该抛出 NotFoundException', async () => {
