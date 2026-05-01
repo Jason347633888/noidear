@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { InboundService } from './inbound.service';
 import { BatchNumberGeneratorService } from '../batch-trace/services/batch-number-generator.service';
 import { InventoryMovementLedgerService } from './services/inventory-movement-ledger.service';
+import { SupplierAccessService } from './services/supplier-access.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import * as dayjs from 'dayjs';
 
@@ -11,6 +12,7 @@ describe('InboundService', () => {
   let prisma: PrismaService;
   let batchNumberGenerator: BatchNumberGeneratorService;
   let inventoryMovementLedger: InventoryMovementLedgerService;
+  let supplierAccess: SupplierAccessService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -48,6 +50,12 @@ describe('InboundService', () => {
           provide: InventoryMovementLedgerService,
           useValue: { recordMaterialBatchMovement: jest.fn() },
         },
+        {
+          provide: SupplierAccessService,
+          useValue: {
+            assertSupplierUsable: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -55,6 +63,7 @@ describe('InboundService', () => {
     prisma = module.get<PrismaService>(PrismaService);
     batchNumberGenerator = module.get<BatchNumberGeneratorService>(BatchNumberGeneratorService);
     inventoryMovementLedger = module.get<InventoryMovementLedgerService>(InventoryMovementLedgerService);
+    supplierAccess = module.get<SupplierAccessService>(SupplierAccessService);
   });
 
   afterEach(() => {
@@ -103,6 +112,30 @@ describe('InboundService', () => {
       // Assert
       expect(result.inboundNo).toContain('IN-');
       expect(prisma.$transaction).toHaveBeenCalled();
+      expect(supplierAccess.assertSupplierUsable).toHaveBeenCalledWith('supplier-001', '创建来料单');
+    });
+
+    it('should reject inbound creation when supplier is not usable', async () => {
+      const createDto = {
+        supplierId: 'supplier-001',
+        items: [
+          {
+            materialId: 'material-001',
+            quantity: 100,
+            supplierBatchNo: 'SUP-BATCH-001',
+            productionDate: new Date('2026-01-01'),
+            expiryDate: new Date('2026-07-01'),
+          },
+        ],
+        remark: '测试入库',
+      };
+
+      jest
+        .spyOn(supplierAccess, 'assertSupplierUsable')
+        .mockRejectedValue(new BadRequestException('供应商已淘汰'));
+
+      await expect(service.create(createDto)).rejects.toThrow(BadRequestException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
     });
   });
 
