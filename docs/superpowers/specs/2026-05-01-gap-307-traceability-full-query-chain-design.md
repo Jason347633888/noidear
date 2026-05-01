@@ -116,4 +116,3 @@ GAP-307 只补齐追溯查询链路，不改变主数据与批次事实源：
 - `brainstorming`：本 spec 已比较三种方案，选择将查询算法收敛到 `TraceabilityQueryService`，避免新增平行查询事实源。
 - `grill-with-docs`：已对照 `MASTER_DATA_AND_TRACEABILITY_MODEL.md` 和冻结追溯设计，确认不重复造主数据、不引入平行批次链路、不破坏 `ProductionBatch / MaterialBatch / BatchMaterialUsage / InventoryMovement` 主链。
 - `writing-plans`：后续 implementation plan 必须只交给执行 agent 使用 `superpowers:executing-plans`。
-
