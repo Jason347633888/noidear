@@ -7,7 +7,7 @@ export class MaterialBatchService {
 
   async findAll(options: { materialId?: string; keyword?: string; limit?: number } = {}) {
     const { materialId, keyword, limit = 20 } = options;
-    const where: any = { deletedAt: null };
+    const where: any = { deletedAt: null, status: 'normal', quantity: { gt: 0 } };
 
     if (materialId) {
       where.materialId = materialId;

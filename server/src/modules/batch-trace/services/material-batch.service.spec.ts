@@ -53,6 +53,8 @@ describe('MaterialBatchService', () => {
       expect(prisma.materialBatch.findMany).toHaveBeenCalledWith({
         where: {
           deletedAt: null,
+          status: 'normal',
+          quantity: { gt: 0 },
           materialId: 'material-001',
         },
         include: {
@@ -75,6 +77,8 @@ describe('MaterialBatchService', () => {
       expect(prisma.materialBatch.findMany).toHaveBeenCalledWith({
         where: {
           deletedAt: null,
+          status: 'normal',
+          quantity: { gt: 0 },
           materialId: 'material-001',
           OR: [
             { batchNumber: { contains: 'SUP-A', mode: 'insensitive' } },
@@ -92,6 +96,33 @@ describe('MaterialBatchService', () => {
         ],
         take: 20,
       });
+    });
+
+    it('should exclude expired batches from selector', async () => {
+      jest.spyOn(prisma.materialBatch, 'findMany').mockResolvedValue([]);
+
+      await service.findAll({ materialId: 'material-001' });
+
+      const callArgs = (prisma.materialBatch.findMany as jest.Mock).mock.calls[0][0];
+      expect(callArgs.where.status).toBe('normal');
+    });
+
+    it('should exclude locked batches from selector', async () => {
+      jest.spyOn(prisma.materialBatch, 'findMany').mockResolvedValue([]);
+
+      await service.findAll({ materialId: 'material-001' });
+
+      const callArgs = (prisma.materialBatch.findMany as jest.Mock).mock.calls[0][0];
+      expect(callArgs.where.status).toBe('normal');
+    });
+
+    it('should exclude zero-quantity batches from selector', async () => {
+      jest.spyOn(prisma.materialBatch, 'findMany').mockResolvedValue([]);
+
+      await service.findAll({ materialId: 'material-001' });
+
+      const callArgs = (prisma.materialBatch.findMany as jest.Mock).mock.calls[0][0];
+      expect(callArgs.where.quantity).toEqual({ gt: 0 });
     });
   });
 
