@@ -11,9 +11,11 @@ import {
   UploadedFile,
   UseInterceptors,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { StorageService } from '../../common/services/storage.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 const PHOTO_MAX_SIZE = 5 * 1024 * 1024;
 const SIGNATURE_MAX_SIZE = 1 * 1024 * 1024;
@@ -25,6 +27,7 @@ const ALLOWED_IMAGE_TYPES = [
 ];
 
 @Controller('upload')
+@UseGuards(JwtAuthGuard)
 export class UploadController {
   constructor(private readonly storageService: StorageService) {}
 

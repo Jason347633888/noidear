@@ -4,11 +4,14 @@ import {
   Post,
   Param,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { PlanService } from './plan.service';
 import { QueryPlanDto, CalendarQueryDto } from './dto/plan.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('maintenance-plans')
+@UseGuards(JwtAuthGuard)
 export class PlanController {
   constructor(private readonly planService: PlanService) {}
 
