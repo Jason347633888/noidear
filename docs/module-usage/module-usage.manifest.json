@@ -421,9 +421,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "master-data",
       "prOrder": null,
@@ -448,9 +448,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "master-data",
       "prOrder": null,
@@ -473,9 +473,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "master-data",
       "prOrder": null,
@@ -497,9 +497,7 @@
       "needsDesign": false,
       "schemaImpact": false,
       "historicalDataImpact": false,
-      "recommendedSuperpowers": [
-        "executing-plans"
-      ],
+      "recommendedSuperpowers": [],
       "prRoadmapGroup": "master-data",
       "prOrder": null,
       "recommendedPr": "master-data/GAP-004",
@@ -521,9 +519,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "master-data",
       "prOrder": null,
@@ -546,9 +544,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "master-data",
       "prOrder": null,
@@ -573,9 +571,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "master-data",
       "prOrder": null,
@@ -598,9 +596,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "master-data",
       "prOrder": null,
@@ -623,9 +621,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "supplier",
       "prOrder": null,
@@ -648,9 +646,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "supplier",
       "prOrder": null,
@@ -679,9 +677,9 @@
       "schemaImpact": true,
       "historicalDataImpact": true,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "supplier",
       "prOrder": null,
@@ -704,9 +702,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "supplier",
       "prOrder": null,
@@ -729,8 +727,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "supplier",
       "prOrder": null,
@@ -753,8 +750,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "supplier",
       "prOrder": null,
@@ -779,9 +775,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "warehouse",
       "prOrder": null,
@@ -806,8 +802,7 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "warehouse",
       "prOrder": null,
@@ -832,8 +827,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "warehouse",
       "prOrder": null,
@@ -857,9 +851,7 @@
       "needsDesign": false,
       "schemaImpact": false,
       "historicalDataImpact": false,
-      "recommendedSuperpowers": [
-        "executing-plans"
-      ],
+      "recommendedSuperpowers": [],
       "prRoadmapGroup": "warehouse",
       "prOrder": null,
       "recommendedPr": "warehouse/GAP-109",
@@ -883,8 +875,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "warehouse",
       "prOrder": null,
@@ -909,9 +900,9 @@
       "schemaImpact": true,
       "historicalDataImpact": true,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "production",
       "prOrder": null,
@@ -934,9 +925,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "production",
       "prOrder": null,
@@ -959,9 +950,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "production",
       "prOrder": null,
@@ -984,9 +975,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "production",
       "prOrder": null,
@@ -1009,9 +1000,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "production",
       "prOrder": null,
@@ -1034,9 +1025,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "production",
       "prOrder": null,
@@ -1059,8 +1050,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "production",
       "prOrder": null,
@@ -1085,9 +1075,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "production",
       "prOrder": null,
@@ -1110,9 +1100,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "quality",
       "prOrder": null,
@@ -1135,9 +1125,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "quality",
       "prOrder": null,
@@ -1160,9 +1150,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "quality",
       "prOrder": null,
@@ -1185,9 +1175,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "quality",
       "prOrder": null,
@@ -1212,9 +1202,9 @@
       "schemaImpact": true,
       "historicalDataImpact": true,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "quality",
       "prOrder": null,
@@ -1237,9 +1227,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "quality",
       "prOrder": null,
@@ -1269,9 +1259,9 @@
       "schemaImpact": true,
       "historicalDataImpact": true,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "traceability",
       "prOrder": null,
@@ -1296,9 +1286,9 @@
       "schemaImpact": true,
       "historicalDataImpact": true,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "traceability",
       "prOrder": null,
@@ -1323,9 +1313,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "traceability",
       "prOrder": null,
@@ -1350,9 +1340,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "traceability",
       "prOrder": null,
@@ -1377,9 +1367,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "traceability",
       "prOrder": null,
@@ -1404,9 +1394,9 @@
       "schemaImpact": true,
       "historicalDataImpact": true,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "traceability",
       "prOrder": null,
@@ -1431,8 +1421,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "traceability",
       "prOrder": null,
@@ -1455,9 +1444,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "nonconformance",
       "prOrder": null,
@@ -1480,9 +1469,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "nonconformance",
       "prOrder": null,
@@ -1505,9 +1494,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "nonconformance",
       "prOrder": null,
@@ -1530,9 +1519,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "nonconformance",
       "prOrder": null,
@@ -1555,8 +1544,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "nonconformance",
       "prOrder": null,
@@ -1579,9 +1567,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "nonconformance",
       "prOrder": null,
@@ -1606,9 +1594,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "documents",
       "prOrder": null,
@@ -1631,9 +1619,9 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "documents",
       "prOrder": null,
@@ -1656,8 +1644,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "documents",
       "prOrder": null,
@@ -1680,8 +1667,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "documents",
       "prOrder": null,
@@ -1704,8 +1690,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "documents",
       "prOrder": null,
@@ -1728,8 +1713,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "documents",
       "prOrder": null,
@@ -1754,9 +1738,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "documents",
       "prOrder": null,
@@ -1779,8 +1763,7 @@
       "schemaImpact": true,
       "historicalDataImpact": true,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "training",
       "prOrder": null,
@@ -1803,8 +1786,7 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "training",
       "prOrder": null,
@@ -1827,8 +1809,7 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "training",
       "prOrder": null,
@@ -1851,9 +1832,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "training",
       "prOrder": null,
@@ -1876,8 +1857,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "training",
       "prOrder": null,
@@ -1900,9 +1880,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "training",
       "prOrder": null,
@@ -1925,8 +1905,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "training",
       "prOrder": null,
@@ -1949,8 +1928,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "training",
       "prOrder": null,
@@ -1973,8 +1951,7 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "workflow",
       "prOrder": null,
@@ -1997,8 +1974,7 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "workflow",
       "prOrder": null,
@@ -2021,8 +1997,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "workflow",
       "prOrder": null,
@@ -2045,8 +2020,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "workflow",
       "prOrder": null,
@@ -2069,8 +2043,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "workflow",
       "prOrder": null,
@@ -2093,8 +2066,7 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "admin",
       "prOrder": null,
@@ -2117,8 +2089,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "admin",
       "prOrder": null,
@@ -2141,8 +2112,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "admin",
       "prOrder": null,
@@ -2165,8 +2135,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "admin",
       "prOrder": null,
@@ -2189,8 +2158,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "admin",
       "prOrder": null,
@@ -2213,8 +2181,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "admin",
       "prOrder": null,
@@ -2237,8 +2204,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "admin",
       "prOrder": null,
@@ -2261,8 +2227,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "admin",
       "prOrder": null,
@@ -2287,9 +2252,9 @@
       "schemaImpact": true,
       "historicalDataImpact": true,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "equipment",
       "prOrder": null,
@@ -2312,8 +2277,7 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "equipment",
       "prOrder": null,
@@ -2336,8 +2300,7 @@
       "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "equipment",
       "prOrder": null,
@@ -2360,9 +2323,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "equipment",
       "prOrder": null,
@@ -2385,8 +2348,7 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "equipment",
       "prOrder": null,
@@ -2409,9 +2371,9 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
+        "brainstorming",
         "grill-with-docs",
-        "writing-plans",
-        "executing-plans"
+        "writing-plans"
       ],
       "prRoadmapGroup": "equipment",
       "prOrder": null,

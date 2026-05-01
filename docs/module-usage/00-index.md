@@ -11,6 +11,18 @@
 - 不允许用自由文本字段替代可关联的主数据或批次数据。
 - 动态表单只能承接不适合独立业务建模的记录，不替代核心业务对象。
 
+## 标准执行流程
+
+后续 agent 处理 GAP 时必须按以下顺序推进：
+
+1. 在 `97-gap-triage.md` 确认 GAP 状态、依赖和是否需要 spec。
+2. `needs_spec` 先调用 `brainstorming` 形成 spec 初稿。
+3. 用 `grill-with-docs` 对照现有文档、术语、schema 和业务边界校准 spec。
+4. 调用 `writing-plans` 生成 implementation plan。
+5. 将真实 `specPath`、`planPath` 回写到 `module-usage.manifest.json` 和 `97-gap-triage.md`。
+6. 只有 `planPath` 文件真实存在后，GAP 才能进入 `96-pr-roadmap.md`。
+7. 执行 PR 时调用 `executing-plans`，并在完成后按本目录回写规则更新文档。
+
 ## 文档清单
 
 | 文件 | 范围 |

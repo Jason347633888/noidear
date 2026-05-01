@@ -200,14 +200,44 @@ for (const gapId of roadmapPrimaryGaps) {
   }
 }
 
-// Gate 3: needs_spec manifest entries must include grill-with-docs
+// Gate 3: needs_spec manifest entries must include the full spec workflow.
+// The required order is: brainstorming -> grill-with-docs -> writing-plans.
 console.log('Checking superpower gates...')
+const REQUIRED_NEEDS_SPEC_SUPERPOWERS = ['brainstorming', 'grill-with-docs', 'writing-plans']
 for (const g of manifest.gaps) {
-  if (g.triageStatus === 'needs_spec' && !g.recommendedSuperpowers.includes('grill-with-docs')) {
+  if (g.triageStatus === 'needs_spec') {
+    const missing = REQUIRED_NEEDS_SPEC_SUPERPOWERS.filter(s => !g.recommendedSuperpowers.includes(s))
+    if (missing.length > 0) {
+      err(
+        `manifest GAP ${g.id} has triageStatus="needs_spec" but recommendedSuperpowers ` +
+        `is missing ${missing.map(s => `"${s}"`).join(', ')} — ` +
+        `required workflow is brainstorming -> grill-with-docs -> writing-plans`
+      )
+    }
+
+    const extra = g.recommendedSuperpowers.filter(s => !REQUIRED_NEEDS_SPEC_SUPERPOWERS.includes(s))
+    if (extra.length > 0) {
+      err(
+        `manifest GAP ${g.id} has triageStatus="needs_spec" but recommendedSuperpowers ` +
+        `includes ${extra.map(s => `"${s}"`).join(', ')} — ` +
+        `do not include execution superpowers until specPath and planPath exist`
+      )
+    }
+  }
+
+  if (g.recommendedSuperpowers.includes('executing-plans') && !g.planPath) {
     err(
-      `manifest GAP ${g.id} has triageStatus="needs_spec" but recommendedSuperpowers ` +
-      `does not include "grill-with-docs" — add it before any planning starts`
+      `manifest GAP ${g.id} recommends "executing-plans" but planPath is empty — ` +
+      `execution may only be recommended after an implementation plan exists`
     )
+  }
+
+  if (g.planPath && !existsSync(join(ROOT, g.planPath))) {
+    err(`manifest GAP ${g.id} planPath points to a missing file: ${g.planPath}`)
+  }
+
+  if (g.specPath && !existsSync(join(ROOT, g.specPath))) {
+    err(`manifest GAP ${g.id} specPath points to a missing file: ${g.specPath}`)
   }
 }
 

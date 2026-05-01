@@ -304,7 +304,7 @@ Residual handling:
       "schemaImpact": false,
       "historicalDataImpact": false,
       "triageStatus": "needs_spec",
-      "recommendedSuperpowers": ["grill-with-docs", "writing-plans"],
+      "recommendedSuperpowers": ["brainstorming", "grill-with-docs", "writing-plans"],
       "specPath": "docs/superpowers/specs/YYYY-MM-DD-gap-100-inventory-movement-unification.md",
       "planPath": "docs/superpowers/plans/YYYY-MM-DD-gap-100-inventory-movement-unification-implementation.md",
       "prRoadmapGroup": "inventory-fact-source",
@@ -325,6 +325,7 @@ Every stable GAP in `99-current-gap-register.md` must have exactly one `gaps[]` 
 `gaps[].dependsOn` and `gaps[].blocks` must use stable GAP IDs only.
 `gaps[].triageStatus` must be one of: `ready_for_plan`, `needs_plan`, `needs_spec`, `needs_business_confirmation`, `needs_runtime_confirmation`, `needs_database_sample`, `defer`, `no_action`.
 `gaps[].recommendedSuperpowers` must list the superpower workflow required before implementation.
+For `triageStatus = needs_spec`, `gaps[].recommendedSuperpowers` must be exactly the spec workflow: `brainstorming`, `grill-with-docs`, `writing-plans`. Do not include `executing-plans` until an implementation plan exists and the GAP is moved into the PR roadmap.
 `gaps[].specPath` and `gaps[].planPath` must be empty until those artifacts exist.
 Do not include provisional `AGENT-N-GAP-M` IDs in the final manifest.
 ```
@@ -407,8 +408,8 @@ Create `97-gap-triage.md` with this structure:
 
 | 条件 | 处理方式 | 必须调用的 superpower |
 |---|---|---|
-| 影响事实源、schema、历史数据、追溯、库存、审批闭环 | 先写 spec，再写 implementation plan | `grill-with-docs` + `writing-plans` |
-| 影响跨模块业务链但不改 schema | 先写轻量 spec 或 decision note，再写 implementation plan | `grill-with-docs` + `writing-plans` |
+| 影响事实源、schema、历史数据、追溯、库存、审批闭环 | 先用 brainstorming 写 spec 初稿，再用 grill-with-docs 校准，最后写 implementation plan | `brainstorming` -> `grill-with-docs` -> `writing-plans` |
+| 影响跨模块业务链但不改 schema | 先用 brainstorming 写轻量 spec 或 decision note，再用 grill-with-docs 校准，最后写 implementation plan | `brainstorming` -> `grill-with-docs` -> `writing-plans` |
 | 只改页面展示、入口、文案、低风险校验 | 可直接写小型 implementation plan | `writing-plans` |
 | 证据不足 | 不排 PR，先补验证任务 | `grill-me` 或运行系统验证 |
 | 需要业务判断 | 不排 PR，先业务确认 | `grill-with-docs` |
@@ -417,7 +418,7 @@ Create `97-gap-triage.md` with this structure:
 
 | GAP | 严重级别 | 验证状态 | 是否确认 | 是否需要 spec | 是否需要 implementation plan | 推荐 superpower | spec 路径 | plan 路径 | 分诊结论 |
 |---|---|---|---|---|---|---|---|---|---|
-| GAP-100 | P0 | 已验证 | 是 | 是 | 是 | `grill-with-docs`, `writing-plans` | `docs/superpowers/specs/...` | `docs/superpowers/plans/...` | 先写库存事实源统一 spec |
+| GAP-100 | P0 | 已验证 | 是 | 是 | 是 | `brainstorming`, `grill-with-docs`, `writing-plans` | `docs/superpowers/specs/...` | `docs/superpowers/plans/...` | 先用 brainstorming 写库存事实源统一 spec 初稿 |
 ```
 
 Rules:
@@ -426,8 +427,8 @@ Rules:
 No implementation PR may be scheduled from a GAP with `是否确认 = 否`.
 No implementation PR may be scheduled from a GAP with `是否需要 spec = 是` until `spec 路径` exists.
 No implementation PR may be scheduled from a GAP with `是否需要 implementation plan = 是` until `plan 路径` exists.
-All P0 GAPs must call a superpower workflow before implementation planning.
-All schema/migration/history-data GAPs must call `grill-with-docs` before `writing-plans`.
+All P0 GAPs must call the required superpower workflow before implementation planning.
+All schema/migration/history-data GAPs must call `brainstorming` before `grill-with-docs`, then `writing-plans`.
 All generated spec and plan paths must be copied back into `module-usage.manifest.json`.
 ```
 
@@ -1269,7 +1270,7 @@ Runtime/database-sample GAP -> no PR scheduling until verified.
 For each triage row, set recommended superpower:
 
 ```text
-Needs domain/spec decision: grill-with-docs.
+Needs domain/spec decision: brainstorming to write the spec draft, then grill-with-docs to challenge it against repo docs.
 Needs business clarification: grill-me or grill-with-docs.
 Needs implementation plan: writing-plans.
 Ready to execute an existing plan: executing-plans.
