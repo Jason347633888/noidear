@@ -265,6 +265,8 @@ describe('ReportService', () => {
         expect.objectContaining({
           data: expect.objectContaining({
             number: `REC-AUDIT-${year}-006`,
+            document_type: 'AUDIT_REPORT',
+            source_folder: null,
           }),
         }),
       );
