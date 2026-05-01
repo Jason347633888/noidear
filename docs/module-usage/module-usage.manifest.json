@@ -1193,26 +1193,29 @@
       "id": "GAP-305",
       "severity": "P1",
       "moduleId": "quality-qc-release",
-      "triageStatus": "needs_spec",
-      "dependsOn": [],
+      "triageStatus": "ready_for_plan",
+      "dependsOn": [
+        "GAP-304"
+      ],
       "blocks": [],
-      "canParallelize": true,
+      "canParallelize": false,
       "needsDesign": true,
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
         "brainstorming",
         "grill-with-docs",
-        "writing-plans"
+        "writing-plans",
+        "executing-plans"
       ],
       "prRoadmapGroup": "quality",
-      "prOrder": null,
+      "prOrder": 9,
       "recommendedPr": "quality/GAP-305",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-305"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-02-gap-305-ccp-deviation-nonconformance-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-02-gap-305-ccp-deviation-nonconformance-implementation.md"
     },
     {
       "id": "GAP-306",
