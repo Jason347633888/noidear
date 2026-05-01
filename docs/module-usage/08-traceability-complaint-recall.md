@@ -117,7 +117,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | GAP-308 | `TraceabilitySnapshot` 模型存在于 schema，但 `createExport`/`createSnapshot` 接口仅返回内存构造对象，**不写库** | 服务层实现不完整 | 追溯快照无法持久化，异步导出无法恢复，合规审查无历史记录 | P1 | 已验证 | traceability.service.ts createExport/createSnapshot 方法：纯内存返回，无 prisma 操作 |
 | GAP-309 | `CustomerComplaint.customer_name` 为自由文本，无 FK 关联 `Customer`/`ExternalParty` 主数据 | schema 设计 | 同一客户多次投诉无法聚合分析；投诉趋势分析（GRSS-YX-JL-06）的客户维度失效 | P1 | 已验证 | schema.prisma line 3098：`customer_name String` |
 | GAP-310 | `CustomerComplaint.production_batch_id` 为可选字段，允许投诉不关联生产批次 | schema 设计 | 投诉无法做反向追溯，召回时无法从投诉定位问题批次 | P1 | 已验证 | schema.prisma line 3099：`production_batch_id String?` |
-| GAP-311 | `ProductRecall` 未独立建模，通过动态表单处理，无状态机 | 建模策略待决策（MASTER_DATA_AND_TRACEABILITY_MODEL.md 已标注） | 无法查询召回进度状态，无法触发客户通知链，不满足 BRCGS 审核要求 | P0 | 已验证（设计文档明确标注） | MASTER_DATA_AND_TRACEABILITY_MODEL.md 第 4.1 节 |
+| GAP-311 | `ProductRecall` 未独立建模，通过动态表单处理，无状态机 | 建模策略待决策（见 MASTER_DATA_AND_TRACEABILITY_MODEL.md 第 4.1 节） | 无法查询召回进度状态，无法触发客户通知链，不满足 BRCGS 审核要求 | P0 | 已验证 | MASTER_DATA_AND_TRACEABILITY_MODEL.md 第 4.1 节 |
 | GAP-312 | `batch-trace/trace/backward` 和 `forward` 端点仍在生产中运行，虽标记 deprecated，但未设定下线时间 | 遗留端点未清理 | 前端或外部调用者可能仍在使用旧端点，无法强制收敛到权威路径 | P2 | 已验证 | trace.controller.ts line 13–47 |
 
 ## 8. 整改建议
