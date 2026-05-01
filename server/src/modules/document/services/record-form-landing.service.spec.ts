@@ -109,7 +109,7 @@ describe('RecordFormLandingService', () => {
       const service = makeService();
       const result = await service.list({});
 
-      expect(result[0].landingEntry!.targetTemplate).toEqual({
+      expect((result[0].landingEntry as any)!.targetTemplate).toEqual({
         id: 'tmpl1',
         code: 'TMP-01',
         name: '记录模板',
@@ -127,7 +127,7 @@ describe('RecordFormLandingService', () => {
       const service = makeService();
       const result = await service.list({});
 
-      expect(result[0].landingEntry!.targetTemplate).toBeNull();
+      expect((result[0].landingEntry as any)!.targetTemplate).toBeNull();
     });
   });
 
@@ -158,7 +158,7 @@ describe('RecordFormLandingService', () => {
       const service = makeService();
       const result = await service.get('GRSS-KF-JL-01');
 
-      expect(result.landingEntry!.targetTemplate).toEqual({
+      expect((result.landingEntry as any)!.targetTemplate).toEqual({
         id: 'tmpl1',
         code: 'TMP-01',
         name: '记录模板',

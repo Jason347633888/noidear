@@ -32,7 +32,7 @@ export class RecordFormLandingService {
         targetTemplate: { select: { id: true, code: true, name: true, status: true } },
       },
     });
-    const overrideMap = new Map(overrides.map((entry) => [entry.sourceCode, entry]));
+    const overrideMap = new Map(overrides.map((entry: (typeof overrides)[number]) => [entry.sourceCode, entry]));
 
     return filtered.map((form) => ({
       ...form,
@@ -112,6 +112,7 @@ export class RecordFormLandingService {
       targetModule: (form as any).primaryEntity || null,
       targetModel: (form as any).primaryEntity || null,
       targetRoute,
+      targetTemplateId: null as string | null,
       fieldCoverageStatus: targetRoute ? 'partial' : 'unknown',
       reason: targetRoute ? 'model-landing 已存在候选业务入口' : '未识别到业务入口或动态模板',
     };
