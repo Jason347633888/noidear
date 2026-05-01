@@ -13,3 +13,29 @@
 
 | 顺序 | PR | GAP | 依赖 GAP | spec | plan | 推荐执行 superpower | 可并行 | 备注 |
 |---|---|---|---|---|---|---|---|---|
+| 1 | fix/auth-profile-method-get | GAP-501 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P0；auth GET/POST 方法不匹配，系统初始化失败；最高优先级 |
+| 2 | fix/internal-audit-api-prefix | GAP-407 | — | 待写 | 待写 | `writing-plans` → `executing-plans` | 是 | P0；内审所有 API 调用失败；spec 完成后立即跟进 |
+| 3 | fix/training-archive-route-mismatch | GAP-408 | — | 待写 | 待写 | `writing-plans` → `executing-plans` | 是 | P0；培训档案列表无法加载 |
+| 4 | fix/training-project-status-endpoints | GAP-409 | — | 待写 | 待写 | `writing-plans` → `executing-plans` | 是 | P0；培训项目状态变更全部 404 |
+| 5 | fix/approval-remove-legacy-level-calls | GAP-500 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P1；删除前端旧审批接口调用，无 schema 变更 |
+| 6 | fix/monitoring-metrics-query-method | GAP-507 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P1；前端 GET→POST，无 schema 变更 |
+| 7 | fix/monitoring-alert-history-path | GAP-508 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P1；前端路径修正，无 schema 变更 |
+| 8 | fix/backup-available-endpoint | GAP-509 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P1；后端补充 GET /backup/available 端点 |
+| 9 | fix/equipment-controller-auth-guard | GAP-601 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P1；设备模块控制器加 JwtAuthGuard，无 schema 变更 |
+| 10 | fix/material-balance-scrap-return | GAP-107 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P1；物料平衡公式补 scrap/return，纯逻辑修复无 schema |
+| 11 | fix/supplier-status-gate | GAP-103 | — | 待写 | 待写 | `writing-plans` → `executing-plans` | 是 | P1；Supplier 双状态门禁；spec 完成后执行 |
+| 12 | fix/supplier-eval-company-id | GAP-105 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P2；SupplierEvaluationService 动态 companyId，无 schema |
+| 13 | fix/batch-status-enum-sync | GAP-108 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P2；前端 BatchStatus 枚举同步，无 schema |
+| 14 | chore/remove-deprecated-trace-endpoints | GAP-312 | GAP-306 | 不需要 | 待写 | `writing-plans` → `executing-plans` | 否 | P2；依赖 GAP-306 追溯模块先修复后再清理旧端点 |
+| 15 | fix/nc-add-indexes | GAP-317 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P2；NonConformance 表添加索引，schema migration 低风险 |
+| 16 | fix/backup-status-endpoint | GAP-510 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P2；后端补充备份状态查询端点 |
+| 17 | fix/alert-route-dedup | GAP-511 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P2；告警路由去重，明确权威路径 |
+| 18 | fix/require-product-or-recipe-on-process-step | GAP-005 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P2；CreateProcessStepDto 业务校验，无 schema |
+| 19 | fix/training-need-ux-clarification | GAP-402 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P2；培训需求中心 UX 优化，无 schema |
+| 20 | feat/record-form-landing-batch-confirm | GAP-403 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P2；表单落地批量确认，无 schema |
+| 21 | fix/audit-report-document-type-tag | GAP-405, GAP-413 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P2；内审报告文档类型标签，GAP-413 合并至此 PR |
+| 22 | docs/approval-migration-plan | GAP-502 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P1；旧审批废弃计划文档 |
+| 23 | docs/workflow-vs-unified-approval-decision | GAP-503 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P1；Workflow vs UnifiedApproval 决策树文档 |
+| 24 | docs/task-vs-record-task-guide | GAP-504 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P2；Task vs RecordTask 使用场景文档 |
+| 25 | docs/permission-model-decision-guide | GAP-512 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P2；四层权限模型决策文档 |
+| 26 | chore/add-redirect-notice-for-legacy-routes | GAP-004 | — | 不需要 | 待写 | `writing-plans` → `executing-plans` | 是 | P3；重定向提示，最低优先级 |
