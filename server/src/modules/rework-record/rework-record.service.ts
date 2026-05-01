@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateReworkRecordDto } from './dto/create-rework-record.dto';
 
@@ -6,21 +6,21 @@ import { CreateReworkRecordDto } from './dto/create-rework-record.dto';
 export class ReworkRecordService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateReworkRecordDto) {
+  async create(dto: CreateReworkRecordDto, companyId: string) {
     return this.prisma.reworkRecord.create({
       data: {
         ...dto,
-        company_id: '1',
+        company_id: companyId,
         rework_date: new Date(dto.rework_date),
         rework_qty: dto.rework_qty,
       },
     });
   }
 
-  async findAll(startDate?: string, endDate?: string) {
+  async findAll(companyId: string, startDate?: string, endDate?: string) {
     return this.prisma.reworkRecord.findMany({
       where: {
-        company_id: '1',
+        company_id: companyId,
         ...(startDate || endDate
           ? {
               rework_date: {
@@ -35,7 +35,12 @@ export class ReworkRecordService {
     });
   }
 
-  async remove(id: string) {
+  async remove(id: string, companyId: string) {
+    const record = await this.prisma.reworkRecord.findFirst({
+      where: { id, company_id: companyId },
+    });
+    if (!record) throw new NotFoundException('返工记录不存在');
+
     return this.prisma.reworkRecord.delete({ where: { id } });
   }
 }

@@ -22,5 +22,4 @@
 
 | 顺序 | PR | GAP | 依赖 GAP | spec | plan | 推荐执行 superpower | 可并行 | 备注 |
 |---|---|---|---|---|---|---|---|---|
-
-_当前无可执行 PR。所有 GAP 尚在分诊或等待 implementation plan 编写中，请查阅 `97-gap-triage.md`。_
+_当前无可执行 PR。GAP 必须先完成 spec/plan 并回写 manifest 后，才能进入此表。_

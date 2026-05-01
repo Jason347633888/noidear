@@ -43,7 +43,7 @@
 | GAP-301 | 品质、质检、放行、追溯、投诉、召回、CAPA | 异物检查（FragileItemInspection） | `FragileItemInspection.production_batch_id` 为可选字段 | schema 设计为 nullable | 异物控制记录无法关联到具体批次，无法用于批次放行或召回证据链 | P1 | 已验证 | 生产批次模块 | 将 FragileItemInspection.production_batch_id 改为非空 FK，或明确哪些场景允许无批次 | `server/src/prisma/schema.prisma` line 3457: `production_batch_id String?` | 是 | 否 | npm run verify | 已有检查记录数据不变 | 是 | fix/fragile-item-batch-fk |
 | GAP-302 | 品质、质检、放行、追溯、投诉、召回、CAPA | 环境记录（EnvironmentRecord） | `EnvironmentRecord.location` 为自由文本字符串，非 FK 关联 `Location` 主数据 | schema 设计 | 位置信息无法与 Location 主数据关联，无法做位置维度查询 | P2 | 已验证 | Location 主数据 | 将 EnvironmentRecord.location 改为 FK 关联 Location 表，或新增 location_id 字段 | `server/src/prisma/schema.prisma` line 3170: `location String` | 是 | 否 | npm run verify | 已有环境记录 location 文本不变 | 否 | fix/environment-record-location-fk |
 | GAP-303 | 品质、质检、放行、追溯、投诉、召回、CAPA | CCP 服务（CcpService） | `CcpService.findMissingCCPs` 仅对比 `company_id='1'` 的全部 CCPPoint，未按产品或配方过滤 | 服务层实现不完整 | 不同产品的 CCP 要求不同，当前算法会误报与本批次产品无关的 CCP 为缺失 | P1 | 已验证 | ccp, recipe, product | findMissingCCPs 按产品/配方下的 CCPPoint 过滤，而非全量 | `server/src/modules/ccp/ccp.service.ts` line 46–50 | 否 | 否 | GET /ccp/records/missing/:batchId 返回结果仅含本批次产品相关 CCPPoint | 其他 CCP 查询功能不变 | 否 | fix/ccp-missing-filter-by-product |
-| GAP-304 | 品质、质检、放行、追溯、投诉、召回、CAPA | 多租户隔离（全模块） | 所有 QC 记录模块中 `company_id` 均硬编码为 `'1'`，不支持多租户 | 服务层实现硬编码 | SaaS 多公司隔离失效 | P0 | 已验证 | auth | 将 company_id 改为从认证 JWT 中动态提取，全模块统一 | `server/src/modules/ccp/ccp.service.ts`；`server/src/modules/non-conformance/non-conformance.service.ts`；`server/src/modules/corrective-action/corrective-action.service.ts`；`server/src/modules/customer-complaint/customer-complaint.service.ts` | 否 | 否 | npm run verify | 现有单租户数据不变 | 否 | fix/company-id-from-jwt |
+| GAP-304 | 品质、质检、放行、追溯、投诉、召回、CAPA | 多租户隔离（全模块） | 已完成：QC/不合格/CAPA/投诉/返工记录链路不再硬编码 `company_id='1'`，改为从 JWT `companyId` 写入与过滤；`ProductionBatch` 租户归属另行分诊 | 原服务层硬编码已移除，本轮保留旧 token fallback 到 `"1"` | SaaS 多公司基础隔离已补齐，下游计量和联动 GAP 可复用认证上下文 | P0 | 已验证 | auth | 保留 spec/plan 作为执行依据；后续不要重新实现本 GAP | `docs/superpowers/specs/2026-05-01-gap-304-company-id-from-jwt-design.md`；`docs/superpowers/plans/2026-05-01-gap-304-company-id-from-jwt-implementation.md`；`server/src/modules/auth/`；`server/src/modules/ccp/`；`server/src/modules/non-conformance/`；`server/src/modules/corrective-action/`；`server/src/modules/customer-complaint/`；`server/src/modules/rework-record/` | 否 | 否 | npm run build:server；focused server tests；module usage validator | 现有单租户数据不变，User.company_id 默认 `"1"` | 否 | 已执行，不再排 PR |
 | GAP-305 | 品质、质检、放行、追溯、投诉、召回、CAPA | 批次放行状态机 | 系统无批次放行状态机：CCPRecord 的 `is_within_cl = false` 不会自动触发不合格品流程 | 功能缺失 | 偏差不能自动流转，依赖人工手动填写不合格品，存在漏报风险 | P1 | 已验证（功能缺失） | non-conformance | 在 CCPRecord 创建时，若 is_within_cl=false，自动创建 NonConformance 记录 | `server/src/modules/ccp/ccp.service.ts` 无触发逻辑；`server/src/modules/non-conformance/non-conformance.service.ts` 无 CCP 触发路径 | 否 | 否 | 集成测试验证 | 手动创建 NonConformance 的路径不变 | 是 | feat/ccp-to-nc-auto-trigger |
 | GAP-306 | 品质、质检、放行、追溯、投诉、召回、CAPA | 追溯模块（TraceabilityModule） | `TraceabilityQueryService`、`TraceabilityLinkageService`、`TraceabilityExportService`、`TraceabilityBalanceService` 四个服务文件存在但未注册到 TraceabilityModule providers | 模块定义未更新 | 这四个服务无法被 NestJS DI 注入，代码实际上不可运行，追溯层设计与实现脱节 | P0 | 已验证 | — | 将四个服务注册到 TraceabilityModule providers，并在 TraceabilityService 中注入调用 | `server/src/modules/traceability/traceability.module.ts` providers: [TraceabilityService]（仅一个）；四个服务文件均存在 | 否 | 否 | npm run traceability:test | TraceabilityService 现有功能不变 | 否 | fix/traceability-module-register-services |
 | GAP-307 | 品质、质检、放行、追溯、投诉、召回、CAPA | 追溯查询（TraceabilityService） | 权威 `TraceabilityService.query` 仅支持 `objectType: materialLot` 的正追，其他入口（ProductionBatch 反追、DeliveryNote 查询）返回空结果 | 服务层实现不完整 | 生产批次反追、发货批次查询无法使用，追溯能力严重缺失 | P0 | 已验证 | batch-trace, ProductionBatch, DeliveryNote | 扩展 TraceabilityService.query 支持 productionBatch 反追和 deliveryNote 查询 | `server/src/modules/traceability/traceability.service.ts` line 101–106 | 否 | 否 | npm run traceability:test | 现有 materialLot 正追功能不变 | 是 | feat/traceability-query-full-chain |
@@ -97,7 +97,7 @@
 
 ```text
 # 多租户隔离是系统基础，所有 company_id 硬编码问题均依赖此修复
-GAP-304 company_id 硬编码（全 QC 模块）
+GAP-304 company_id 从 JWT 提取（已完成，作为下游前置）
   -> GAP-305 CCP 偏差自动触发 NonConformance（依赖多租户隔离后才安全触发）
   -> GAP-315 不合格品 rework 自动创建 ReworkRecord（依赖 GAP-304 跨模块事务安全）
 
@@ -125,7 +125,7 @@ GAP-102 StockRecord vs InventoryMovement 统一决策
   -> GAP-107 物料平衡公式修复（依赖 GAP-102 确定唯一事实源后修复平衡公式）
 
 # 来料检验追溯链
-GAP-304 company_id 统一（跨模块基础）
+GAP-304 company_id 从 JWT 提取（跨模块基础，已完成）
   -> GAP-100 来料检验 BatchSelector（独立，可并行）
   -> GAP-200 配料批次绑定 ShiftType（独立，可并行）
 
@@ -139,8 +139,8 @@ GAP-407 内审前端 API 双前缀修复
   -> GAP-411 内审控制器路由碰撞（依赖 GAP-407 修复后再验证路由冲突）
 
 # 设备与计量器具模块
-GAP-304 company_id 硬编码（全 QC 模块）
-  -> GAP-600 MeasuringEquipmentService company_id 从 JWT 提取（同批次修复）
+GAP-304 company_id 从 JWT 提取（全 QC 模块，已完成）
+  -> GAP-600 MeasuringEquipmentService company_id 从 JWT 提取（后续复用同一认证上下文）
 GAP-600 计量器具 company_id 修复
   -> GAP-602 findOverdue() 加 company_id 过滤（合并进同一 PR）
 GAP-601 设备模块控制器加 JwtAuthGuard（可独立并行）

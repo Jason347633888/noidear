@@ -76,7 +76,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | `CapaAnalyticsService` | 按状态统计、平均关闭天数、按 trigger_type 分类 | `已验证`: capa-analytics.service.ts |
 | `ReworkRecord.nc_id` | 可选字段，允许返工不关联不合格记录 | `已验证`: schema.prisma line 3117；create-rework-record.dto.ts |
 | `ReworkRecord.production_batch_id` | 强制 FK，必须关联生产批次 | `已验证`: schema.prisma line 3114–3115 |
-| `company_id` | 所有服务硬编码为 `'1'` | `已验证`: non-conformance.service.ts, corrective-action.service.ts, rework-record.service.ts |
+| `company_id` | NonConformance / CorrectiveAction / VerificationRecord / CAPA analytics / ReworkRecord 已从 JWT `companyId` 写入与过滤 | `已验证`: GAP-304 spec/plan 与本轮实现 |
 
 ## 5. 正确业务流程
 
@@ -106,7 +106,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | GAP-316 | `CorrectiveAction.trigger_id` 为可选字符串，创建 CAPA 时不验证触发来源（NonConformance/CustomerComplaint）是否存在 | 服务层无来源校验 | CAPA 与触发来源无法双向查询（NonConformance 无 CAPA 引用，CAPA 的 trigger_id 可以是无效 ID） | P1 | 已验证 | create-capa.dto.ts：trigger_id @IsOptional @IsString；corrective-action.service.ts：无来源校验 |
 | GAP-317 | `NonConformance` 表没有 `@@index` 索引（除 unique nc_no），大批量查询时性能风险 | schema 缺索引 | 生产中不合格记录量大后，findAll 全量扫描性能下降 | P2 | 已验证 | schema.prisma line 3030–3050：无 @@index |
 | GAP-318 | `ReworkRecord.nc_id` 为可选字段且无 FK 约束（仅字符串），返工与不合格记录关联不强制 | schema 设计 | 无法从 NonConformance 反查所有返工记录；返工记录可能指向不存在的 nc_id | P2 | 已验证 | schema.prisma line 3117：`nc_id String?`，无 @relation |
-| GAP-304（复用） | 所有模块 company_id 硬编码 '1' | 见 07 文档 | 多租户隔离失效 | P0 | 已验证 | non-conformance.service.ts, corrective-action.service.ts, rework-record.service.ts |
+| GAP-304（复用） | 已完成：不合格、CAPA、验证记录、返工链路已从 JWT `companyId` 获取租户边界 | 见 07 文档 | 多租户基础隔离已补齐，下游自动联动可复用认证上下文 | P0 | 已验证 | non-conformance.service.ts, corrective-action.service.ts, verification-record.service.ts, rework-record.service.ts |
 
 ## 8. 整改建议
 
@@ -144,7 +144,6 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 
 | 优先级 | GAP 编号 | 推荐 PR | 前置依赖 | 可并行 | 验收命令 |
 |---|---|---|---|---|---|
-| P0 | GAP-304 | fix/company-id-from-jwt | auth JWT | 否 | npm run verify |
 | P1 | GAP-313 | fix/nc-source-validation-and-index | 无 | 是 | npm run verify + 集成测试 |
 | P1 | GAP-314 | fix/safe-sequence-number-generation | 无 | 是 | 并发压测编号唯一性 |
 | P1 | GAP-315 | feat/nc-dispose-to-rework-auto-create | GAP-304 | 否 | E2E 不合格返工流程测试 |

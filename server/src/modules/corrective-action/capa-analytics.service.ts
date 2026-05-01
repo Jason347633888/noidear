@@ -5,12 +5,12 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class CapaAnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getTrends(months = 6) {
+  async getTrends(companyId: string, months = 6) {
     const since = new Date();
     since.setMonth(since.getMonth() - months);
 
     const actions = await this.prisma.correctiveAction.findMany({
-      where: { company_id: '1', created_at: { gte: since } },
+      where: { company_id: companyId, created_at: { gte: since } },
       include: { verification_records: true },
     });
 

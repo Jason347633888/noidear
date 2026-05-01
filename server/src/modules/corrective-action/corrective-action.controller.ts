@@ -15,6 +15,7 @@ import { CapaAnalyticsService } from './capa-analytics.service';
 import { CreateCapaDto } from './dto/create-capa.dto';
 import { CreateVerificationDto } from './dto/create-verification.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthenticatedRequest } from '../auth/authenticated-user';
 
 @Controller('corrective-actions')
 @UseGuards(JwtAuthGuard)
@@ -28,51 +29,55 @@ export class CorrectiveActionController {
   @Post()
   create(
     @Body() dto: CreateCapaDto,
-    @Request() req: { user: { id: string } },
+    @Request() req: AuthenticatedRequest,
   ) {
-    return this.service.create(dto, req.user.id);
+    return this.service.create(dto, req.user.id, req.user.companyId);
   }
 
   @Get()
-  findAll(@Query('status') status?: string) {
-    return this.service.findAll(status);
+  findAll(@Request() req: AuthenticatedRequest, @Query('status') status?: string) {
+    return this.service.findAll(req.user.companyId, status);
   }
 
   // analytics/trends must be BEFORE :id to avoid Express shadowing
   @Get('analytics/trends')
-  getTrends(@Query('months') months?: string) {
-    return this.analyticsSvc.getTrends(months ? parseInt(months, 10) : 6);
+  getTrends(@Request() req: AuthenticatedRequest, @Query('months') months?: string) {
+    return this.analyticsSvc.getTrends(req.user.companyId, months ? parseInt(months, 10) : 6);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.service.findById(id);
+  findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.service.findById(id, req.user.companyId);
   }
 
   @Patch(':id')
-  updateStatus(@Param('id') id: string, @Body('status') status: string) {
-    return this.service.updateStatus(id, status);
+  updateStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.service.updateStatus(id, status, req.user.companyId);
   }
 
   @Post(':id/close')
   close(
     @Param('id') id: string,
-    @Request() req: { user: { id: string } },
+    @Request() req: AuthenticatedRequest,
   ) {
-    return this.service.close(id, req.user.id);
+    return this.service.close(id, req.user.id, req.user.companyId);
   }
 
   @Post(':id/verifications')
   createVerification(
     @Param('id') id: string,
     @Body() dto: CreateVerificationDto,
-    @Request() req: { user: { id: string } },
+    @Request() req: AuthenticatedRequest,
   ) {
-    return this.verificationSvc.createVerification(id, dto, req.user?.id ?? 'system');
+    return this.verificationSvc.createVerification(id, dto, req.user.id, req.user.companyId);
   }
 
   @Get(':id/verifications')
-  listVerifications(@Param('id') id: string) {
-    return this.verificationSvc.listVerifications(id);
+  listVerifications(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.verificationSvc.listVerifications(id, req.user.companyId);
   }
 }

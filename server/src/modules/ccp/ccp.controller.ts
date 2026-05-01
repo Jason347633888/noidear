@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Param, UseGuards, Request } from '@nestjs/
 import { CcpService } from './ccp.service';
 import { CreateCcpRecordDto } from './dto/create-ccp-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthenticatedRequest } from '../auth/authenticated-user';
 
 @Controller('ccp')
 @UseGuards(JwtAuthGuard)
@@ -11,18 +12,18 @@ export class CcpController {
   @Post('records')
   createRecord(
     @Body() dto: CreateCcpRecordDto,
-    @Request() req: { user: { id: string } },
+    @Request() req: AuthenticatedRequest,
   ) {
-    return this.service.createRecord(dto, req.user.id);
+    return this.service.createRecord(dto, req.user.id, req.user.companyId);
   }
 
   @Get('records/batch/:batchId')
-  findByBatch(@Param('batchId') batchId: string) {
-    return this.service.findByBatch(batchId);
+  findByBatch(@Param('batchId') batchId: string, @Request() req: AuthenticatedRequest) {
+    return this.service.findByBatch(batchId, req.user.companyId);
   }
 
   @Get('records/missing/:batchId')
-  findMissingCCPs(@Param('batchId') batchId: string) {
-    return this.service.findMissingCCPs(batchId);
+  findMissingCCPs(@Param('batchId') batchId: string, @Request() req: AuthenticatedRequest) {
+    return this.service.findMissingCCPs(batchId, req.user.companyId);
   }
 }

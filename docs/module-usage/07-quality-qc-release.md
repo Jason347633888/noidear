@@ -67,8 +67,8 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | `EnvironmentRecord` | `production_batch_id` 为 **可选**（`String?`），`location` 为自由文本 | `已验证`: schema.prisma line 3164 |
 | `ProcessMonitorRecord` | FK `production_batch_id` 强制关联 | `已验证`: schema.prisma line 3180 |
 | `FragileItemInspection` | `production_batch_id` 为 **可选**（`String?`），无强 FK 约束 | `已验证`: schema.prisma line 3520 |
-| CCP findMissingCCPs | 查询所有 company_id='1' 的 CCPPoint 与已填记录的差集 | `已验证`: ccp.service.ts line 34–51 |
-| `company_id` | 所有服务均硬编码为 `'1'` | `已验证`: ccp.service.ts, 多处 |
+| CCP findMissingCCPs | 按 `req.user.companyId` 过滤 CCPPoint 与 CCPRecord；仍未按产品/配方过滤 | `已验证`: ccp.service.ts；产品/配方过滤仍属 GAP-303 |
+| `company_id` | CCP / 不合格 / CAPA / 投诉 / 返工链路已从 JWT `companyId` 写入与过滤；`ProductionBatch` 本身仍无 `company_id` | `已验证`: GAP-304 spec/plan 与本轮实现 |
 
 ## 5. 正确业务流程
 
@@ -93,8 +93,8 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | GAP-300 | `EnvironmentRecord.production_batch_id` 为可选字段，允许不关联任何批次记录 | schema 设计为 nullable | 环境记录脱离追溯链，无法证明某批次生产时环境合规 | P1 | 已验证 | schema.prisma line 3167: `production_batch_id String?` |
 | GAP-301 | `FragileItemInspection.production_batch_id` 为可选字段 | schema 设计为 nullable | 异物控制记录无法关联到具体批次，无法用于批次放行或召回证据链 | P1 | 已验证 | schema.prisma line 3457: `production_batch_id String?` |
 | GAP-302 | `EnvironmentRecord.location` 为自由文本字符串，非 FK 关联 `Location` 主数据 | schema 设计 | 位置信息无法与 Location 主数据关联，无法做位置维度查询 | P2 | 已验证 | schema.prisma line 3170: `location String` |
-| GAP-303 | `CcpService.findMissingCCPs` 仅对比 `company_id='1'` 的全部 CCPPoint，未按产品或配方过滤 | 服务层实现不完整 | 不同产品的 CCP 要求不同，当前算法会误报与本批次产品无关的 CCP 为缺失 | P1 | 已验证 | ccp.service.ts line 46–50 |
-| GAP-304 | 所有 QC 记录模块中 `company_id` 均硬编码为 `'1'`，不支持多租户 | 服务层实现硬编码 | SaaS 多公司隔离失效 | P0 | 已验证 | ccp.service.ts, non-conformance.service.ts, corrective-action.service.ts, customer-complaint.service.ts |
+| GAP-303 | `CcpService.findMissingCCPs` 仍未按产品或配方过滤 CCPPoint | 服务层只完成租户隔离，未完成产品/配方过滤 | 不同产品的 CCP 要求不同，当前算法仍可能误报与本批次产品无关的 CCP 为缺失 | P1 | 已验证 | ccp.service.ts |
+| GAP-304 | 已完成：QC 记录链路改为从 JWT `companyId` 获取公司边界 | 原硬编码已移除；`ProductionBatch` 租户归属不在本轮范围 | 多租户基础隔离已补齐，下游 GAP 可复用认证上下文 | P0 | 已验证 | GAP-304 spec/plan；auth, ccp, non-conformance, corrective-action, customer-complaint, rework-record |
 | GAP-305 | 系统无批次放行状态机：CCPRecord 的 `is_within_cl = false` 不会自动触发不合格品流程 | 功能缺失 | 偏差不能自动流转，依赖人工手动填写不合格品，存在漏报风险 | P1 | 已验证（功能缺失） | ccp.service.ts 无触发逻辑；non-conformance.service.ts 无 CCP 触发路径 |
 
 ## 8. 整改建议
@@ -105,7 +105,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | GAP-301 | 将 FragileItemInspection.production_batch_id 改为非空 FK，或明确哪些场景允许无批次 | 生产批次模块 | 需业务确认 | fix/fragile-item-batch-fk | 是 |
 | GAP-302 | 将 EnvironmentRecord.location 改为 FK 关联 Location 表，或新增 location_id 字段 | Location 主数据 | 否 | fix/environment-record-location-fk | 是 |
 | GAP-303 | findMissingCCPs 按产品/配方下的 CCPPoint 过滤，而非全量 | ccp, recipe, product | 否 | fix/ccp-missing-filter-by-product | 是 |
-| GAP-304 | 将 company_id 改为从认证 JWT 中动态提取，全模块统一 | auth | 否（参考其他已改造模块） | fix/company-id-from-jwt | 否（需要跨模块统一） |
+| GAP-304 | 已完成：company_id 从认证 JWT `companyId` 动态提取；后续只保留 ProductionBatch 租户归属分诊 | auth | 已有 spec/plan | 已执行 | 否 |
 | GAP-305 | 在 CCPRecord 创建时，若 is_within_cl=false，自动创建 NonConformance 记录 | non-conformance | 是（需事务联动设计） | feat/ccp-to-nc-auto-trigger | 否（依赖 GAP-5 修复） |
 
 ## 9. 证据索引
@@ -129,7 +129,6 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 
 | 优先级 | GAP 编号 | 推荐 PR | 前置依赖 | 可并行 | 验收命令 |
 |---|---|---|---|---|---|
-| P0 | GAP-304 | fix/company-id-from-jwt | auth 模块 JWT user 中包含 company_id | 否 | npm run verify |
 | P1 | GAP-303 | fix/ccp-missing-filter-by-product | product / recipe 模块 | 是 | GET /ccp/records/missing/:batchId 返回结果验证 |
 | P1 | GAP-300 | fix/environment-record-batch-fk | 无 | 是 | npm run verify |
 | P1 | GAP-305 | feat/ccp-to-nc-auto-trigger | GAP-304, non-conformance | 否 | 集成测试验证 |

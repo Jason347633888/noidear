@@ -13,6 +13,7 @@ import {
 import { ApiOperation } from '@nestjs/swagger';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { StatisticsService } from './statistics.service';
 import { ManagementDashboardService } from './management-dashboard.service';
 import { TraceabilityExportService } from './traceability-export.service';
@@ -139,9 +140,9 @@ export class StatisticsController {
 
   @Get('dashboard/kpis')
   @ApiOperation({ summary: '管理层仪表盘 KPI 数据' })
-  async getDashboardKpis() {
+  async getDashboardKpis(@Request() req: AuthenticatedRequest) {
     try {
-      return await this.managementDashboardService.getKpis();
+      return await this.managementDashboardService.getKpis(req.user.companyId);
     } catch (error) {
       this.logger.error('Failed to get dashboard KPIs', error.stack);
       throw new HttpException(
@@ -153,9 +154,9 @@ export class StatisticsController {
 
   @Get('dashboard/brcgs-readiness')
   @ApiOperation({ summary: 'BRCGS 准备度视图（即将过期文件 + 超期CAPA）' })
-  async getBrcgsReadiness() {
+  async getBrcgsReadiness(@Request() req: AuthenticatedRequest) {
     try {
-      return await this.managementDashboardService.getBrcgsReadiness();
+      return await this.managementDashboardService.getBrcgsReadiness(req.user.companyId);
     } catch (error) {
       this.logger.error('Failed to get BRCGS readiness', error.stack);
       throw new HttpException(

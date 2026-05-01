@@ -10,15 +10,15 @@ export class VerificationRecordService {
     @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {}
 
-  async createVerification(capaId: string, dto: CreateVerificationDto, userId: string) {
+  async createVerification(capaId: string, dto: CreateVerificationDto, userId: string, companyId: string) {
     const capa = await this.prisma.correctiveAction.findFirst({
-      where: { id: capaId, company_id: '1' },
+      where: { id: capaId, company_id: companyId },
     });
     if (!capa) throw new NotFoundException('纠正措施不存在');
 
     await this.prisma.verificationRecord.create({
       data: {
-        company_id: '1',
+        company_id: companyId,
         corrective_action_id: capaId,
         verified_by: userId,
         verification_method: dto.verification_method,
@@ -54,9 +54,14 @@ export class VerificationRecordService {
     return updated;
   }
 
-  async listVerifications(capaId: string) {
+  async listVerifications(capaId: string, companyId: string) {
+    const capa = await this.prisma.correctiveAction.findFirst({
+      where: { id: capaId, company_id: companyId },
+    });
+    if (!capa) throw new NotFoundException('纠正措施不存在');
+
     return this.prisma.verificationRecord.findMany({
-      where: { corrective_action_id: capaId },
+      where: { corrective_action_id: capaId, company_id: companyId },
       orderBy: { created_at: 'desc' },
     });
   }

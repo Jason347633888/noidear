@@ -21,7 +21,7 @@ export class WorkflowTriggersService {
     if (payload.overall_result !== 'fail') return;
 
     try {
-      const count = await this.prisma.nonConformance.count();
+      const count = await this.prisma.nonConformance.count({ where: { company_id: payload.company_id } });
       const nc_no = `NC-AUTO-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
 
       await this.prisma.nonConformance.create({

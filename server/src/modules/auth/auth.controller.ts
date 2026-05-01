@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { LoginDTO } from './dto/login.dto';
 import { ChangePasswordDTO } from './dto/change-password.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { AuthenticatedRequest } from './authenticated-user';
 
 @Controller('auth')
 export class AuthController {
@@ -15,13 +16,13 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('profile')
-  async getProfile(@Request() req: { user: { userId: string } }) {
+  async getProfile(@Request() req: AuthenticatedRequest) {
     return req.user;
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('change-password')
-  async changePassword(@Request() req: { user: { userId: string } }, @Body() dto: ChangePasswordDTO) {
+  async changePassword(@Request() req: AuthenticatedRequest, @Body() dto: ChangePasswordDTO) {
     return this.authService.changePassword(req.user.userId, dto);
   }
 }

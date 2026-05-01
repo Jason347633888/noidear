@@ -5,6 +5,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDTO } from './dto/login.dto';
 import { ChangePasswordDTO } from './dto/change-password.dto';
 
+interface AuthTokenPayload {
+  sub: string;
+  username: string;
+  role: string;
+  name: string;
+  companyId?: string;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -44,10 +52,25 @@ export class AuthService {
       data:  { loginAttempts: 0, firstFailedAt: null, lockedUntil: null },
     });
 
-    const payload = { sub: user.id, username: user.username, role: user.role, name: user.name };
+    const payload = {
+      sub: user.id,
+      username: user.username,
+      role: user.role,
+      name: user.name,
+      companyId: user.company_id,
+    };
     const token = this.jwtService.sign(payload);
 
-    return { token, user: { id: user.id, username: user.username, name: user.name, role: user.role } };
+    return {
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        role: user.role,
+        companyId: user.company_id,
+      },
+    };
   }
 
   async changePassword(userId: string, dto: ChangePasswordDTO) {
@@ -70,11 +93,17 @@ export class AuthService {
     return { message: '密码修改成功' };
   }
 
-  validateUser(payload: { sub: string; username: string; role: string; name: string }) {
-    return { userId: payload.sub, username: payload.username, role: payload.role, name: payload.name };
+  validateUser(payload: AuthTokenPayload) {
+    return {
+      userId: payload.sub,
+      username: payload.username,
+      role: payload.role,
+      name: payload.name,
+      companyId: payload.companyId ?? '1',
+    };
   }
 
-  generateToken(payload: { sub: string; username: string; role: string; name: string }) {
+  generateToken(payload: AuthTokenPayload) {
     return this.jwtService.sign(payload);
   }
 

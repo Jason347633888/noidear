@@ -18,12 +18,15 @@ describe('AuthService', () => {
     password: 'hashed-password',
     name: '管理员',
     role: 'admin',
+    company_id: '2',
     status: 'active',
     loginAttempts: 0,
     lockedUntil: null,
   };
 
   beforeEach(async () => {
+    process.env.AUTH_LOCKOUT_DISABLED = 'false';
+
     const mockPrisma = {
       user: {
         findUnique: jest.fn(),
@@ -66,7 +69,9 @@ describe('AuthService', () => {
         username: 'admin',
         role: 'admin',
         name: '管理员',
+        companyId: '2',
       });
+      expect(result.user.companyId).toBe('2');
     });
 
     it('用户名不存在时应该抛出 UnauthorizedException', async () => {

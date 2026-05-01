@@ -47,7 +47,16 @@ export class SsoService {
     const user = await this.findOrCreateUser(ldapUser.username, ldapUser.name, 'ldap');
     const token = this.generateToken(user);
 
-    return { token, user: { id: user.id, username: user.username, name: user.name, role: user.role } };
+    return {
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        role: user.role,
+        companyId: user.company_id,
+      },
+    };
   }
 
   /**
@@ -67,7 +76,16 @@ export class SsoService {
     const user = await this.findOrCreateUser(username, oauthUser.name, oauthUser.provider);
     const token = this.generateToken(user);
 
-    return { token, user: { id: user.id, username: user.username, name: user.name, role: user.role } };
+    return {
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        role: user.role,
+        companyId: user.company_id,
+      },
+    };
   }
 
   /**
@@ -182,7 +200,7 @@ export class SsoService {
     this.logger.log(`SSO 首次登录，创建用户: ${username} (provider: ${provider})`);
 
     return this.prisma.user.create({
-      data: { id, username, name, password: defaultPassword, role: 'user', status: 'active' },
+      data: { id, username, name, password: defaultPassword, role: 'user', status: 'active', company_id: '1' },
     });
   }
 
@@ -191,6 +209,8 @@ export class SsoService {
       sub: user.id,
       username: user.username,
       role: user.role,
+      name: user.name,
+      companyId: user.company_id,
     });
   }
 }

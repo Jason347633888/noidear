@@ -114,6 +114,7 @@ model User {
   superior      User?       @relation("UserSuperior", fields: [superiorId], references: [id], onDelete: SetNull)
   subordinates  User[]      @relation("UserSuperior")
   status        String      @default("active")
+  company_id    String      @default("1")
   loginAttempts   Int         @default(0)
   firstFailedAt   DateTime?
   lockedUntil     DateTime?

@@ -5,17 +5,18 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class ManagementDashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getKpis() {
+  async getKpis(companyId: string) {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const [ncCount, capaOverdue, ccpRecords, docsExpiringSoon] =
       await Promise.all([
         this.prisma.nonConformance.count({
-          where: { created_at: { gte: monthStart } },
+          where: { company_id: companyId, created_at: { gte: monthStart } },
         }),
         this.prisma.correctiveAction.count({
           where: {
+            company_id: companyId,
             status: { not: 'closed' },
             due_date: { lt: now },
           },
@@ -44,7 +45,7 @@ export class ManagementDashboardService {
     };
   }
 
-  async getBrcgsReadiness() {
+  async getBrcgsReadiness(companyId: string) {
     const now = new Date();
 
     const [expiringDocs, overdueCapas] = await Promise.all([
@@ -65,6 +66,7 @@ export class ManagementDashboardService {
       }),
       this.prisma.correctiveAction.findMany({
         where: {
+          company_id: companyId,
           status: { not: 'closed' },
           due_date: { lt: now },
         },

@@ -45,7 +45,7 @@
 | GAP-301 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/业务 spec（FragileItemInspection batch FK，需确认哪些场景可无批次） |
 | GAP-302 | P2 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema FK，先用 brainstorming 写轻量 spec |
 | GAP-303 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（CCP missing 按产品过滤） |
-| GAP-304 | P0 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P0 多租户隔离，先用 brainstorming 写架构 spec；其他模块依赖此修复 |
+| GAP-304 | P0 | 已验证 | 是 | 是 | 是 | - | docs/superpowers/specs/2026-05-01-gap-304-company-id-from-jwt-design.md | docs/superpowers/plans/2026-05-01-gap-304-company-id-from-jwt-implementation.md | 已执行：认证上下文补齐 companyId，CCP/不合格/CAPA/投诉/返工链路按 JWT companyId 写入与过滤；ProductionBatch 租户归属另行分诊 |
 | GAP-305 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（CCP 偏差自动触发 NonConformance） |
 | GAP-306 | P0 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P0 追溯服务未注册，先用 brainstorming 写 spec；GAP-307/308/309/310/311/312 依赖此 |
 | GAP-307 | P0 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P0 追溯查询完整链路，依赖 GAP-306，先用 brainstorming 写 spec |

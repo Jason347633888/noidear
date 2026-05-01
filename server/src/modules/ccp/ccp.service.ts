@@ -6,10 +6,10 @@ import { CreateCcpRecordDto } from './dto/create-ccp-record.dto';
 export class CcpService {
   constructor(private prisma: PrismaService) {}
 
-  async createRecord(dto: CreateCcpRecordDto, operatorId: string) {
+  async createRecord(dto: CreateCcpRecordDto, operatorId: string, companyId: string) {
     return this.prisma.cCPRecord.create({
       data: {
-        company_id: '1',
+        company_id: companyId,
         production_batch_id: dto.production_batch_id,
         ccp_point_id: dto.ccp_point_id,
         measured_value: dto.measured_value,
@@ -23,28 +23,28 @@ export class CcpService {
     });
   }
 
-  async findByBatch(productionBatchId: string) {
+  async findByBatch(productionBatchId: string, companyId: string) {
     return this.prisma.cCPRecord.findMany({
-      where: { production_batch_id: productionBatchId },
+      where: { production_batch_id: productionBatchId, company_id: companyId },
       include: { ccp_point: true },
       orderBy: { created_at: 'desc' },
     });
   }
 
-  async findMissingCCPs(productionBatchId: string) {
+  async findMissingCCPs(productionBatchId: string, companyId: string) {
     const batch = await this.prisma.productionBatch.findUnique({
       where: { id: productionBatchId },
     });
     if (!batch) return [];
 
     const records = await this.prisma.cCPRecord.findMany({
-      where: { production_batch_id: productionBatchId },
+      where: { production_batch_id: productionBatchId, company_id: companyId },
       select: { ccp_point_id: true },
     });
     const filledIds = new Set(records.map((r) => r.ccp_point_id));
 
     const allCCPs = await this.prisma.cCPPoint.findMany({
-      where: { company_id: '1' },
+      where: { company_id: companyId },
     });
 
     return allCCPs.filter((c) => !filledIds.has(c.id));
