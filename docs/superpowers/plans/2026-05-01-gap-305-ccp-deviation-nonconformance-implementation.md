@@ -494,15 +494,11 @@ npm run build:server
 
 Expected: PASS with no TypeScript compile errors.
 
-- [ ] **Step 3: Run the GAP acceptance command if available**
+- [ ] **Step 3: Record the GAP-305 E2E boundary**
 
-Run:
+Current repository reality: the root workspace uses npm and has `package-lock.json`; it does not have `pnpm-lock.yaml` and does not expose a root `GAP-305` E2E script. Do not install pnpm and do not add unrelated E2E coverage in this PR.
 
-```bash
-pnpm test:e2e -- --grep GAP-305
-```
-
-Expected: PASS if the repository has this E2E command and GAP tag. If the package manager reports that the command or tag is absent, record the exact output in the PR and keep Step 1 plus Step 2 as the required verification evidence.
+Expected: record in the implementation PR that GAP-305 is verified by Step 1 focused Jest coverage plus Step 2 server build. If a future branch adds explicit GAP-305 Playwright coverage, run it with the npm workspace command owned by that branch rather than using pnpm.
 
 - [ ] **Step 4: Confirm no schema or frontend files changed**
 
