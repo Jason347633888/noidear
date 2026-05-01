@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateEnvironmentRecordDto } from './dto/create-environment-record.dto';
 
@@ -7,6 +7,15 @@ export class EnvironmentRecordService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateEnvironmentRecordDto, userId: string) {
+    const productionBatch = await this.prisma.productionBatch.findUnique({
+      where: { id: dto.production_batch_id },
+      select: { id: true },
+    });
+
+    if (!productionBatch) {
+      throw new BadRequestException('生产批次不存在');
+    }
+
     return this.prisma.environmentRecord.create({
       data: {
         ...dto,

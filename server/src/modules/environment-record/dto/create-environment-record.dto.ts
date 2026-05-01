@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsNumber, IsNotEmpty } from 'class-validator';
 
 export class CreateEnvironmentRecordDto {
   @IsString()
@@ -26,7 +26,7 @@ export class CreateEnvironmentRecordDto {
   @IsString()
   abnormal_action?: string;
 
-  @IsOptional()
   @IsString()
-  production_batch_id?: string;
+  @IsNotEmpty()
+  production_batch_id: string;
 }

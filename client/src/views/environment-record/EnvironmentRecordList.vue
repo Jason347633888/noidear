@@ -130,8 +130,8 @@
             placeholder="超标时请填写处理措施"
           />
         </el-form-item>
-        <el-form-item label="生产批次号">
-          <el-input v-model="createForm.production_batch_id" placeholder="可选" />
+        <el-form-item label="生产批次" prop="production_batch_id">
+          <ProductionBatchSelect v-model="createForm.production_batch_id" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -146,6 +146,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
+import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelect.vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import environmentRecordApi, {
   type EnvironmentRecord,
@@ -180,6 +181,7 @@ const createRules: FormRules = {
   location: [{ required: true, message: '请输入监测位置', trigger: 'blur' }],
   record_type: [{ required: true, message: '请选择记录类型', trigger: 'change' }],
   is_within_spec: [{ required: true, message: '请选择是否达标', trigger: 'change' }],
+  production_batch_id: [{ required: true, message: '请选择生产批次', trigger: 'change' }],
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -236,7 +238,7 @@ async function handleCreate() {
       pressure_diff: createForm.pressure_diff,
       is_within_spec: createForm.is_within_spec,
       abnormal_action: createForm.abnormal_action || undefined,
-      production_batch_id: createForm.production_batch_id || undefined,
+      production_batch_id: createForm.production_batch_id,
     });
     ElMessage.success('新建成功');
     createDialogVisible.value = false;

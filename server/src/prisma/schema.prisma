@@ -1521,6 +1521,7 @@ model ProductionBatch {
   // Task 15b: 过程监控
   process_monitor_records ProcessMonitorRecord[]
   metal_detection_logs    MetalDetectionLog[]
+  environment_records     EnvironmentRecord[]
 
   production_run_id String?
   production_run    ProductionRun? @relation(fields: [production_run_id], references: [id], onDelete: SetNull)
@@ -3171,19 +3172,22 @@ model CalibrationRecord {
 // ─── 过程监控 ─────────────────────────────────────
 
 model EnvironmentRecord {
-  id                  String    @id @default(cuid())
+  id                  String          @id @default(cuid())
   company_id          String
-  production_batch_id String?
+  production_batch_id String
+  production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id], onDelete: Restrict)
   location            String
-  record_type         String    // 'temperature_humidity'|'pressure_differential'|'other'
-  temperature         Decimal?  @db.Decimal(8,2)
-  humidity            Decimal?  @db.Decimal(8,2)
-  pressure_diff       Decimal?  @db.Decimal(8,2)
+  record_type         String          // 'temperature_humidity'|'pressure_differential'|'other'
+  temperature         Decimal?        @db.Decimal(8,2)
+  humidity            Decimal?        @db.Decimal(8,2)
+  pressure_diff       Decimal?        @db.Decimal(8,2)
   is_within_spec      Boolean
   abnormal_action     String?
   measured_at         DateTime
   operator_id         String?
-  created_at          DateTime  @default(now())
+  created_at          DateTime        @default(now())
+
+  @@index([production_batch_id])
 }
 
 model ProcessMonitorRecord {

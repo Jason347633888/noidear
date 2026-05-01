@@ -9,7 +9,7 @@ export type RecordType = 'temperature_humidity' | 'pressure_differential' | 'oth
 export interface EnvironmentRecord {
   id: string;
   company_id: string;
-  production_batch_id: string | null;
+  production_batch_id: string;
   location: string;
   record_type: RecordType;
   temperature: number | null;
@@ -30,7 +30,7 @@ export interface CreateEnvironmentRecordPayload {
   pressure_diff?: number;
   is_within_spec: boolean;
   abnormal_action?: string;
-  production_batch_id?: string;
+  production_batch_id: string;
 }
 
 // =========================================================================
