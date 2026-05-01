@@ -147,7 +147,7 @@ console.log('Checking PR roadmap...')
 const roadmapPath = join(DOCS, '96-pr-roadmap.md')
 const roadmapContent = existsSync(roadmapPath) ? readFileSync(roadmapPath, 'utf8') : ''
 
-// Extract primary GAP IDs from roadmap rows (column 3, not dependency column)
+// Extract primary GAP IDs from roadmap rows (column 3 = GAP column, not dependency column)
 const roadmapRows = roadmapContent.split('\n').filter(l => /^\| \d+/.test(l))
 const roadmapPrimaryGaps = new Set()
 for (const row of roadmapRows) {
@@ -157,7 +157,7 @@ for (const row of roadmapRows) {
   ids.forEach(id => roadmapPrimaryGaps.add(id))
 }
 
-// Check all GAP references (including dependency column) are known
+// Check all GAP references (including dependency column) are known IDs
 const roadmapGapRefs = [...roadmapContent.matchAll(/GAP-\d{3}/g)].map(m => m[0])
 for (const ref of roadmapGapRefs) {
   if (!uniqueIds.has(ref)) {
@@ -165,23 +165,37 @@ for (const ref of roadmapGapRefs) {
   }
 }
 
-// Gate 1: needs_spec GAP must not appear in roadmap (spec is prerequisite for planning)
-// Gate 2: needs_business_confirmation / needs_runtime_confirmation / needs_database_sample
-//         must not appear in roadmap (unconfirmed evidence)
+const manifestGapMap = new Map(manifest.gaps.map(g => [g.id, g]))
+
+// Strict gate: every GAP in the roadmap primary column must have a non-empty planPath.
+// No planPath = no roadmap row, regardless of triageStatus.
+// Rule: 没有 implementation plan，就不能进入 PR roadmap。
 const BLOCKED_STATUSES = new Set([
   'needs_spec',
+  'needs_plan',
   'needs_business_confirmation',
   'needs_runtime_confirmation',
   'needs_database_sample',
+  'defer',
+  'no_action',
 ])
-const manifestGapMap = new Map(manifest.gaps.map(g => [g.id, g]))
 for (const gapId of roadmapPrimaryGaps) {
   const g = manifestGapMap.get(gapId)
   if (!g) continue
+
+  // Any blocked triage status
   if (BLOCKED_STATUSES.has(g.triageStatus)) {
     err(
-      `96-pr-roadmap.md schedules ${gapId} (triageStatus="${g.triageStatus}") before required ` +
-      `prerequisite exists — remove from roadmap until spec/confirmation is complete`
+      `96-pr-roadmap.md schedules ${gapId} but triageStatus="${g.triageStatus}" — ` +
+      `GAP must reach ready_for_plan with a real planPath before entering the roadmap`
+    )
+  }
+
+  // planPath must be non-empty and the file must exist
+  if (!g.planPath) {
+    err(
+      `96-pr-roadmap.md schedules ${gapId} but planPath is empty — ` +
+      `write an implementation plan first, then add it to the roadmap`
     )
   }
 }
