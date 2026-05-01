@@ -69,6 +69,38 @@ describe('MaterialBalanceService', () => {
       expect(result.difference).toBe(0);
     });
 
+    it('includes return as inbound and scrap as outbound in balance calculation', async () => {
+      const prismaSimple = {
+        stockRecord: { findMany: jest.fn() },
+        batchMaterialUsage: { findMany: jest.fn() },
+        materialBatch: { findMany: jest.fn() },
+      };
+      const simpleService = new MaterialBalanceService(prismaSimple as any);
+      prismaSimple.stockRecord.findMany.mockResolvedValue([
+        { recordType: 'in', quantity: 100 },
+        { recordType: 'return', quantity: 10 },
+        { recordType: 'out', quantity: 20 },
+        { recordType: 'scrap', quantity: 5 },
+      ]);
+      prismaSimple.batchMaterialUsage.findMany.mockResolvedValue([
+        { quantity: 30 },
+      ]);
+      prismaSimple.materialBatch.findMany.mockResolvedValue([
+        { id: 'batch-1', quantity: 55 },
+      ]);
+
+      const result = await simpleService.checkBalance('batch-1');
+
+      expect(result.totalIn).toBe(110);
+      expect(result.totalOut).toBe(25);
+      expect(result.returnedToWarehouse).toBe(10);
+      expect(result.scrapped).toBe(5);
+      expect(result.usedInProduction).toBe(30);
+      expect(result.calculated).toBe(55);
+      expect(result.currentStock).toBe(55);
+      expect(result.isBalanced).toBe(true);
+    });
+
     it('should detect imbalance', async () => {
       const batchId = 'batch-1';
 
