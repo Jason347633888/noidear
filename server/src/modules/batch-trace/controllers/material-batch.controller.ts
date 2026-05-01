@@ -16,8 +16,16 @@ export class MaterialBatchController {
   constructor(private readonly materialBatchService: MaterialBatchService) {}
 
   @Get()
-  findAll(@Query('materialId') materialId?: string) {
-    return this.materialBatchService.findAll(materialId);
+  findAll(
+    @Query('materialId') materialId?: string,
+    @Query('keyword') keyword?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.materialBatchService.findAll({
+      materialId,
+      keyword,
+      limit: limit ? Number(limit) : undefined,
+    });
   }
 
   @Get(':id')

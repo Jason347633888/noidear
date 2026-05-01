@@ -5,11 +5,21 @@ import { PrismaService } from '../../../prisma/prisma.service';
 export class MaterialBatchService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(materialId?: string) {
+  async findAll(options: { materialId?: string; keyword?: string; limit?: number } = {}) {
+    const { materialId, keyword, limit = 20 } = options;
     const where: any = { deletedAt: null };
-    
+
     if (materialId) {
       where.materialId = materialId;
+    }
+
+    const normalizedKeyword = keyword?.trim();
+    if (normalizedKeyword) {
+      where.OR = [
+        { batchNumber: { contains: normalizedKeyword, mode: 'insensitive' } },
+        { material: { is: { name: { contains: normalizedKeyword, mode: 'insensitive' } } } },
+        { supplier: { is: { name: { contains: normalizedKeyword, mode: 'insensitive' } } } },
+      ];
     }
 
     return this.prisma.materialBatch.findMany({
@@ -18,7 +28,11 @@ export class MaterialBatchService {
         material: true,
         supplier: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { expiryDate: 'asc' },
+        { createdAt: 'asc' },
+      ],
+      take: Math.min(Math.max(Number(limit) || 20, 1), 50),
     });
   }
 

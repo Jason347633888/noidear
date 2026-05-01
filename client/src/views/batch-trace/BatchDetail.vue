@@ -115,8 +115,12 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="物料批次ID">
-          <el-input v-model="usageForm.materialBatchId" placeholder="请输入物料批次 ID" />
+        <el-form-item label="物料批次">
+          <MaterialBatchSelect
+            v-model="usageForm.materialBatchId"
+            :material-id="selectedRecipeLineMaterialId"
+            :disabled="!usageForm.recipeLineId"
+          />
         </el-form-item>
         <el-form-item label="使用量">
           <el-input-number v-model="usageForm.quantity" :min="0.01" :step="0.1" />
@@ -131,13 +135,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { productionBatchApi, materialUsageApi, batchMixingAggregationApi } from '@/api/batch';
 import { recipeApi, type RecipeLine } from '@/api/recipe';
 import { useUserStore } from '@/stores/user';
 import request from '@/api/request';
+import MaterialBatchSelect from '@/components/master-data/MaterialBatchSelect.vue';
 
 const userStore = useUserStore();
 
@@ -159,6 +164,18 @@ const statusTypeMap: Record<string, string> = {
 };
 
 const usageForm = reactive({ recipeLineId: '', materialBatchId: '', quantity: 1 });
+
+const selectedRecipeLineMaterialId = computed(() => {
+  const line = recipeLines.value.find((item) => item.id === usageForm.recipeLineId);
+  return (line as any)?.material_id ?? '';
+});
+
+watch(
+  () => usageForm.recipeLineId,
+  () => {
+    usageForm.materialBatchId = '';
+  },
+);
 
 const showAggregationPanel = ref(false);
 const candidateMixingExecutions = ref<any[]>([]);

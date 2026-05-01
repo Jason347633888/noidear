@@ -48,7 +48,7 @@ describe('MaterialBatchService', () => {
     it('should filter by materialId', async () => {
       jest.spyOn(prisma.materialBatch, 'findMany').mockResolvedValue([]);
 
-      await service.findAll('material-001');
+      await service.findAll({ materialId: 'material-001' });
 
       expect(prisma.materialBatch.findMany).toHaveBeenCalledWith({
         where: {
@@ -59,7 +59,38 @@ describe('MaterialBatchService', () => {
           material: true,
           supplier: true,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [
+          { expiryDate: 'asc' },
+          { createdAt: 'asc' },
+        ],
+        take: 20,
+      });
+    });
+
+    it('should filter by materialId and keyword for selector search', async () => {
+      jest.spyOn(prisma.materialBatch, 'findMany').mockResolvedValue([]);
+
+      await service.findAll({ materialId: 'material-001', keyword: 'SUP-A', limit: 20 });
+
+      expect(prisma.materialBatch.findMany).toHaveBeenCalledWith({
+        where: {
+          deletedAt: null,
+          materialId: 'material-001',
+          OR: [
+            { batchNumber: { contains: 'SUP-A', mode: 'insensitive' } },
+            { material: { is: { name: { contains: 'SUP-A', mode: 'insensitive' } } } },
+            { supplier: { is: { name: { contains: 'SUP-A', mode: 'insensitive' } } } },
+          ],
+        },
+        include: {
+          material: true,
+          supplier: true,
+        },
+        orderBy: [
+          { expiryDate: 'asc' },
+          { createdAt: 'asc' },
+        ],
+        take: 20,
       });
     });
   });
