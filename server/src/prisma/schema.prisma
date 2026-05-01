@@ -3047,6 +3047,8 @@ model NonConformance {
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
   @@unique([company_id, nc_no])
+  @@index([company_id, status])
+  @@index([company_id, source_type, source_id])
 }
 
 model CorrectiveAction {
