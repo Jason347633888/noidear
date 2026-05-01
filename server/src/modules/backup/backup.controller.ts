@@ -77,9 +77,10 @@ export class BackupController {
   @ApiResponse({ status: 200, description: '查询成功' })
   async getAvailableBackups(
     @Query('backupType') backupType?: string,
-    @Query('limit') limit?: number,
+    @Query('limit') limit?: string,
   ) {
-    return this.backupService.listAvailableForRestore(backupType, limit || 10);
+    const parsedLimit = limit ? parseInt(limit, 10) : 10;
+    return this.backupService.listAvailableForRestore(backupType, parsedLimit || 10);
   }
 
   @Get(':id/status')
