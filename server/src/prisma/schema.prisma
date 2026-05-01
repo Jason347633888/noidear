@@ -1301,7 +1301,7 @@ model BatchMixingAggregation {
   updatedAt         DateTime                     @updatedAt
 
   @@unique([productionBatchId, mixingExecutionId])
-  @@unique([mixingExecutionId], map: "agg_exec_unique")
+  @@index([mixingExecutionId])
   @@map("batch_mixing_aggregations")
 }
 

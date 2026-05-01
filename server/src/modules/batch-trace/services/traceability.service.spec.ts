@@ -168,6 +168,10 @@ describe('TraceabilityService', () => {
               id: 'mix-1',
               executionNo: 'MIX-20260430-0001',
               area: null,
+              aggregations: [
+                { productionBatch: { id: 'pb-1', batchNumber: 'PB-001' } },
+                { productionBatch: { id: 'pb-2', batchNumber: 'PB-002' } },
+              ],
               lines: [
                 {
                   material: { name: '面粉' },
@@ -186,6 +190,11 @@ describe('TraceabilityService', () => {
       expect(result.nodes.some((node) => node.label.includes('MF20260401'))).toBe(true);
       expect(result.nodes.some((node) => node.type === 'productionBatch')).toBe(true);
       expect(result.nodes.some((node) => node.type === 'mixingExecution')).toBe(true);
+      expect(result.edges).toContainEqual({
+        source: 'pb-1',
+        target: 'mix-1',
+        relation: 'sharedAggregation',
+      });
     });
 
     it('throws NotFoundException if production batch not found', async () => {

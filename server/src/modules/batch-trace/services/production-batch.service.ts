@@ -101,6 +101,14 @@ export class ProductionBatchService {
           include: {
             mixingExecution: {
               include: {
+                aggregations: {
+                  include: {
+                    productionBatch: {
+                      select: { id: true, batchNumber: true },
+                    },
+                  },
+                  orderBy: { createdAt: 'asc' },
+                },
                 lines: {
                   include: {
                     materialBatch: true,

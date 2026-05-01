@@ -63,6 +63,14 @@ export class TraceabilityService {
             mixingExecution: {
               include: {
                 area: true,
+                aggregations: {
+                  include: {
+                    productionBatch: {
+                      select: { id: true, batchNumber: true },
+                    },
+                  },
+                  orderBy: { createdAt: 'asc' },
+                },
                 lines: {
                   include: {
                     material: true,
@@ -100,10 +108,12 @@ export class TraceabilityService {
         label: execution.executionNo ?? execution.id,
       });
 
+      const linkedBatchCount = execution.aggregations?.length ?? 0;
+
       edges.push({
         source: productionBatch.id,
         target: execution.id,
-        relation: 'aggregation',
+        relation: linkedBatchCount > 1 ? 'sharedAggregation' : 'aggregation',
       });
 
       for (const line of execution.lines ?? []) {
