@@ -108,7 +108,7 @@ export class ArchiveService {
 
     // 生成下载URL
     const archivesWithUrl = await Promise.all(
-      archives.map(async (archive) => ({
+      archives.map(async (archive: any) => ({
         ...archive,
         pdfUrl: await this.storageService.getFileUrl(archive.pdfPath),
       }))
