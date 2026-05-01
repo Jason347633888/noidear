@@ -42,6 +42,15 @@ export class RequisitionService {
     });
   }
 
+  private toNumber(value: unknown): number {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') return Number(value);
+    if (value && typeof (value as { toNumber?: () => number }).toNumber === 'function') {
+      return (value as { toNumber: () => number }).toNumber();
+    }
+    return Number(value);
+  }
+
   private generateRequisitionNo(): string {
     const today = dayjs().format('YYYYMMDD');
     const seq = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
@@ -139,6 +148,21 @@ export class RequisitionService {
 
     return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       for (const item of requisition.items) {
+        const batch = await tx.materialBatch.findUnique({
+          where: { id: item.batchId },
+          select: { id: true, batchNumber: true, quantity: true },
+        });
+
+        if (!batch) {
+          throw new BadRequestException(`物料批次不存在：${item.batchId}`);
+        }
+
+        const availableQty = this.toNumber(batch.quantity);
+        const requestedQty = this.toNumber(item.quantity);
+        if (availableQty < requestedQty) {
+          throw new BadRequestException(`物料批次库存不足：${batch.batchNumber ?? item.batchId}`);
+        }
+
         await tx.materialBatch.update({
           where: { id: item.batchId },
           data: { quantity: { decrement: item.quantity } },
