@@ -35,10 +35,9 @@ export class UpdateRecordTemplateDto {
   @IsBoolean()
   batchLinkEnabled?: boolean;
 
-  @ApiPropertyOptional({ description: '批次关联类型', example: 'production', enum: ['production', 'finished_goods'] })
+  @ApiPropertyOptional({ description: '批次关联类型', example: 'production', enum: ['production'] })
   @IsOptional()
-  @IsString()
-  @IsIn(['production', 'finished_goods'])
+  @IsIn(['production'])
   batchLinkType?: string;
 
   @ApiPropertyOptional({ description: '批次关联字段名', example: 'batchNumber' })

@@ -7,6 +7,7 @@ export type FieldType =
   | 'signature'
   | 'entity-link';
 
+// Historical compatibility only. New batch-linked templates should use production_batch.
 export type EntityType =
   | 'shift_instance' | 'production_run' | 'material_lot' | 'supplier'
   | 'production_batch' | 'finished_goods_batch' | 'product' | 'recipe' | 'equipment';
