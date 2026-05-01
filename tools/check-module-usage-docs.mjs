@@ -146,10 +146,54 @@ if (/\|\s*待判定\s*\|/.test(matrixContent)) {
 console.log('Checking PR roadmap...')
 const roadmapPath = join(DOCS, '96-pr-roadmap.md')
 const roadmapContent = existsSync(roadmapPath) ? readFileSync(roadmapPath, 'utf8') : ''
+
+// Extract primary GAP IDs from roadmap rows (column 3, not dependency column)
+const roadmapRows = roadmapContent.split('\n').filter(l => /^\| \d+/.test(l))
+const roadmapPrimaryGaps = new Set()
+for (const row of roadmapRows) {
+  const cols = row.split('|').map(c => c.trim())
+  // cols[3] is the GAP column (顺序|PR|GAP|依赖 GAP|...)
+  const ids = [...(cols[3] || '').matchAll(/GAP-\d{3}/g)].map(m => m[0])
+  ids.forEach(id => roadmapPrimaryGaps.add(id))
+}
+
+// Check all GAP references (including dependency column) are known
 const roadmapGapRefs = [...roadmapContent.matchAll(/GAP-\d{3}/g)].map(m => m[0])
 for (const ref of roadmapGapRefs) {
   if (!uniqueIds.has(ref)) {
     err(`96-pr-roadmap.md references unknown GAP ID: ${ref}`)
+  }
+}
+
+// Gate 1: needs_spec GAP must not appear in roadmap (spec is prerequisite for planning)
+// Gate 2: needs_business_confirmation / needs_runtime_confirmation / needs_database_sample
+//         must not appear in roadmap (unconfirmed evidence)
+const BLOCKED_STATUSES = new Set([
+  'needs_spec',
+  'needs_business_confirmation',
+  'needs_runtime_confirmation',
+  'needs_database_sample',
+])
+const manifestGapMap = new Map(manifest.gaps.map(g => [g.id, g]))
+for (const gapId of roadmapPrimaryGaps) {
+  const g = manifestGapMap.get(gapId)
+  if (!g) continue
+  if (BLOCKED_STATUSES.has(g.triageStatus)) {
+    err(
+      `96-pr-roadmap.md schedules ${gapId} (triageStatus="${g.triageStatus}") before required ` +
+      `prerequisite exists — remove from roadmap until spec/confirmation is complete`
+    )
+  }
+}
+
+// Gate 3: needs_spec manifest entries must include grill-with-docs
+console.log('Checking superpower gates...')
+for (const g of manifest.gaps) {
+  if (g.triageStatus === 'needs_spec' && !g.recommendedSuperpowers.includes('grill-with-docs')) {
+    err(
+      `manifest GAP ${g.id} has triageStatus="needs_spec" but recommendedSuperpowers ` +
+      `does not include "grill-with-docs" — add it before any planning starts`
+    )
   }
 }
 
