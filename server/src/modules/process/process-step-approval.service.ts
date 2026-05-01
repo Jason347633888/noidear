@@ -157,8 +157,21 @@ export class ProcessStepApprovalService {
     };
 
     if (stepNumber === 1) {
+      const productId = typeof data.productId === 'string' && data.productId.trim()
+        ? data.productId.trim()
+        : undefined;
       const productName = data.productName;
-      if (productName && !instance.productId) {
+
+      if (productId) {
+        const product = await tx.product.findFirst({
+          where: { id: productId, deleted_at: null },
+        });
+        if (!product) {
+          throw new BadRequestException('产品不存在或已删除');
+        }
+        instanceUpdate.productId = product.id;
+        instanceUpdate.productName = product.name;
+      } else if (productName && !instance.productId) {
         const product = await tx.product.create({
           data: { company_id: '1', code: `RD-${Date.now()}`, name: productName, status: 'draft' },
         });

@@ -32,8 +32,21 @@ export async function applyProcessStepApproved(
   };
 
   if (stepNumber === 1) {
+    const productId = typeof data.productId === 'string' && data.productId.trim()
+      ? data.productId.trim()
+      : undefined;
     const productName = data.productName as string | undefined;
-    if (productName && !instance.productId) {
+
+    if (productId) {
+      const product = await tx.product.findFirst({
+        where: { id: productId, deleted_at: null },
+      });
+      if (!product) {
+        throw new Error('产品不存在或已删除');
+      }
+      instanceUpdate.productId = product.id;
+      instanceUpdate.productName = product.name;
+    } else if (productName && !instance.productId) {
       const product = await tx.product.create({
         data: {
           company_id: '1',
@@ -44,6 +57,8 @@ export async function applyProcessStepApproved(
       });
       instanceUpdate.productName = productName;
       instanceUpdate.productId = product.id;
+    } else if (productName) {
+      instanceUpdate.productName = productName;
     }
   }
 
