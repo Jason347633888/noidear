@@ -32,7 +32,7 @@ export class RecordFormLandingService {
         targetTemplate: { select: { id: true, code: true, name: true, status: true } },
       },
     });
-    const overrideMap = new Map(overrides.map((entry) => [entry.sourceCode, entry]));
+    const overrideMap = new Map(overrides.map((entry: (typeof overrides)[number]) => [entry.sourceCode, entry]));
 
     return filtered.map((form) => ({
       ...form,
@@ -112,8 +112,41 @@ export class RecordFormLandingService {
       targetModule: (form as any).primaryEntity || null,
       targetModel: (form as any).primaryEntity || null,
       targetRoute,
+      targetTemplateId: null as string | null,
       fieldCoverageStatus: targetRoute ? 'partial' : 'unknown',
       reason: targetRoute ? 'model-landing 已存在候选业务入口' : '未识别到业务入口或动态模板',
+    };
+  }
+
+  async batchConfirmSuggested(codes: string[], userId: string) {
+    const uniqueCodes = [...new Set(codes.map((code) => code.trim()).filter(Boolean))];
+    const results: Array<{ code: string; status: string; reason?: string; entry?: any }> = [];
+
+    for (const code of uniqueCodes) {
+      const suggestion = await this.suggest(code);
+      if (suggestion.landingStatus === 'unimplemented') {
+        results.push({ code, status: 'skipped', reason: '没有可确认的落地建议' });
+        continue;
+      }
+
+      const entry = await this.confirm(code, {
+        landingStatus: suggestion.landingStatus,
+        landingStrategy: suggestion.landingStatus,
+        targetModule: suggestion.targetModule,
+        targetModel: suggestion.targetModel,
+        targetRoute: suggestion.targetRoute,
+        targetTemplateId: suggestion.targetTemplateId,
+        confirmationStatus: 'confirmed',
+        fieldCoverageStatus: (suggestion.fieldCoverageStatus as any) ?? 'unknown',
+      }, userId);
+      results.push({ code, status: 'confirmed', entry });
+    }
+
+    return {
+      total: uniqueCodes.length,
+      confirmed: results.filter((r) => r.status === 'confirmed').length,
+      skipped: results.filter((r) => r.status === 'skipped').length,
+      results,
     };
   }
 
