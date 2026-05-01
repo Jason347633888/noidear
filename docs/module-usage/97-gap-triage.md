@@ -20,7 +20,7 @@
 | GAP-002 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/migration spec（productId 非空约束 + 历史数据迁移） |
 | GAP-003 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/migration spec（recipeId 非空约束），可与 GAP-002 合并 |
 | GAP-004 | P3 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | 低优先级，写小型 implementation plan 后直接实现 |
-| GAP-005 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 显示/校验类，写小型 implementation plan 后实现 |
+| GAP-005 | P2 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-005-process-step-relation-validation-design.md | docs/superpowers/plans/2026-05-01-gap-005-process-step-relation-validation-implementation.md | spec 和 plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-006 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 与 GAP-001 合并，先用 brainstorming 写 spec |
 | GAP-007 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | 依赖 GAP-002 先完成；GAP-002 spec 完成后写 plan |
 | GAP-008 | P2 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema 变更（area_id 非空），先用 brainstorming 写轻量 spec |
@@ -60,14 +60,14 @@
 | GAP-314 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（安全序列号生成机制） |
 | GAP-315 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（NC dispose→ReworkRecord 自动创建） |
 | GAP-316 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（CAPA 触发来源校验） |
-| GAP-317 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 索引添加，写小型 plan 直接执行 |
+| GAP-317 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | docs/superpowers/plans/2026-05-01-gap-317-nonconformance-indexes-implementation.md | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-318 | P2 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema FK，先用 brainstorming 写轻量 spec（ReworkRecord→NC FK） |
 | GAP-400 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/migration spec（Document version 字段类型变更） |
 | GAP-401 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/migration spec（DocumentIssuance→Document FK） |
-| GAP-402 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 入口/体验优化，暂不进入本轮 5-agent 派发；后续需按统一硬门槛补齐 grill-me 校准后再进入 roadmap |
-| GAP-403 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 记录表单落地批量确认，写 plan 直接执行 |
+| GAP-402 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | docs/superpowers/plans/2026-05-01-gap-402-training-need-ux-clarification-implementation.md | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
+| GAP-403 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | docs/superpowers/plans/2026-05-01-gap-403-record-form-landing-batch-confirm-implementation.md | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-404 | P2 | 未验证（需运行系统确认） | 否 | 否 | 否 | `grill-me` | | | 先运行系统确认 updateFields 接口不一致问题，待确认后重新分诊 |
-| GAP-405 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | P2 document_type 标签，写小型 plan 直接执行 |
+| GAP-405 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | docs/superpowers/plans/2026-05-01-gap-405-413-audit-report-document-boundary-implementation.md | 与 GAP-413 合并，plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-406 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | 依赖 GAP-400；GAP-400 完成后写 plan |
 | GAP-407 | P0 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P0 内审 API 双前缀，先用 brainstorming 写 spec（受影响路径全量梳理） |
 | GAP-408 | P0 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P0 培训档案路径错误，先用 brainstorming 写 spec |
@@ -75,7 +75,7 @@
 | GAP-410 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（AuditFinding→CAPA 自动联动） |
 | GAP-411 | P1 | 未验证（需要运行系统确认） | 否 | 否 | 否 | `grill-me` | | | 先运行系统确认路由冲突是否实际存在，待确认后重新分诊 |
 | GAP-412 | P2 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema 重构（trainees String[] → 桥接表），先用 brainstorming 写 spec |
-| GAP-413 | P2 | 已验证 | 是 | 否 | 是 | `writing-plans` | | | 与 GAP-405 合并，写 plan 直接执行 |
+| GAP-413 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | docs/superpowers/plans/2026-05-01-gap-405-413-audit-report-document-boundary-implementation.md | 与 GAP-405 合并，plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-414 | P2 | 需要业务确认 | 否 | 否 | 否 | `grill-with-docs` | | | 先业务确认 ManagementReview 建模需求，待确认后重新分诊 |
 | GAP-500 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-500-remove-legacy-approval-level-api-implementation.md` | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-501 | P0 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P0 auth GET/POST 方法不匹配，先用 brainstorming 写 spec |

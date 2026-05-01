@@ -1,114 +1,151 @@
-# GAP-402 文控派生培训需求入口澄清实施计划
+# GAP-402 Training Need UX Clarification Implementation Plan
 
-> **给执行 agent：** 必须使用 `superpowers:executing-plans` 按本计划逐项执行。只做入口澄清和已有关联能力的轻量补齐，不重做培训模块，不改表结构。如果当前代码与本计划描述不一致，停止并回报主 agent。
+> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task. Do not redesign training projects or document training needs. If current code disagrees with this plan, stop and report the mismatch to the main agent.
 
-**目标：** 让 `documents/operations/training-needs` 页面清楚表达它是“文控派生培训需求入口”，不是培训项目主入口；并尽量复用已有 `linkTrainingNeed` API 连接到培训项目。
+**Goal:** Make the document-derived training need page clearly distinguish derived needs from actual training projects, and expose the existing link-to-project path.
 
-**GAP：** `GAP-402`
+**Architecture:** Reuse existing `DocumentTrainingNeedService.link()` and frontend API methods. Add UI copy and a focused link action in `TrainingNeedCenter.vue`; do not add new backend models.
 
-**Spec：** 不需要。本任务是低风险前端体验和已有 API 使用补齐，不涉及 schema 或历史数据迁移。
-
-**业务边界：**
-
-- `DocumentTrainingNeed` 来源于文控文件变更、阅读确认和影响分析，是文控派生需求。
-- `TrainingProject` 是培训模块的执行项目。
-- 本计划只让页面边界更清楚，并提供到培训项目的操作入口，不把两套事实源合并。
-
-**非目标：**
-
-- 不新增培训项目 schema。
-- 不新增新的培训项目创建流程。
-- 不修改 `DocumentTrainingNeed` 数据结构。
-- 不把培训模块页面并入文控页面。
-- 不处理 GAP-403 的 283 表单落地批量确认。
+**Tech Stack:** Vue 3, Element Plus, existing document operations API.
 
 ---
 
 ## Superpower 与 grill-me 校准记录
 
-- **Superpower 产出链路：** 主 agent 已按项目文档和 superpowers 写计划要求完成上下文核对、范围收敛和 implementation plan 编写。
-- **grill-me 校准结论：** 主 agent 已按 grill-me 方式质询本计划的必要性、事实源边界、schema/历史数据影响、可并行性和验收方式；能通过代码和文档确认的问题已直接核对，未发现需要用户额外确认的阻塞问题。
+- **Superpower 产出链路：** 主 agent 已按项目文档和 `writing-plans` 要求完成上下文核对、范围收敛和 implementation plan 编写。
+- **grill-me 校准结论：** 已确认 DocumentTrainingNeed 与 TrainingProject 不是同一个事实源；本次只改善入口说明和关联动作，不合并数据模型。
 - **执行限制：** Multica 执行 agent 只能使用 `superpowers:executing-plans` 执行本计划；不得自行扩展范围、补写新 spec、重排 GAP 或改动未列入文件。
+- **执行隔离：** 执行本计划前必须从最新 `origin/master` 创建独立 worktree，或使用 Multica 隔离工作目录；不得在主 checkout `/Users/jiashenglin/Desktop/好玩的项目/noidear` 直接修改、提交或 push。如发现当前目录是主 checkout，必须停止并回报主 agent。
 - **停止条件：** 如果执行 agent 发现本计划与当前代码、AGENTS.md、docs/AGENT_GUIDE.md 或 docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md 冲突，必须停止并回报主 agent，不得猜测实现。
 
-## 文件范围
+## File Map
 
-- 修改：`client/src/views/documents/TrainingNeedCenter.vue`
-- 检查：`client/src/api/document-operations.ts`
-- 检查：`client/src/router/index.ts`
-- 可选新增/修改：相邻前端测试文件（如果已有相同页面测试模式）
+- Modify: `client/src/views/documents/TrainingNeedCenter.vue`
+- Modify only if needed: `client/src/api/document-operations.ts`
+- Add/update focused frontend test only if there is an existing nearby test pattern.
 
----
+## Task 1: Clarify page semantics
 
-## 任务 1：页面定位澄清
+**Files:**
+- Modify: `client/src/views/documents/TrainingNeedCenter.vue`
 
-**文件：**
+- [ ] **Step 1: Add a visible page note above the filter form**
 
-- `client/src/views/documents/TrainingNeedCenter.vue`
+Add an Element Plus alert near the top of the template:
 
-- [ ] 在页面顶部加入紧凑说明或状态条，明确这是“文控派生培训需求”，不是“培训项目列表”。
-- [ ] 增加跳转到 `/training/projects` 的操作入口，命名要清楚，例如“查看培训项目”。
-- [ ] 不使用大面积营销式说明，不改变页面主要表格结构。
-- [ ] 保持现有状态筛选和刷新功能。
-
-**验收：**
-
-- 用户进入页面后能区分“派生需求”和“培训项目”。
-- 页面不会新增一套培训项目编辑表单。
-
----
-
-## 任务 2：补齐关联培训项目操作
-
-**文件：**
-
-- `client/src/views/documents/TrainingNeedCenter.vue`
-- `client/src/api/document-operations.ts`
-
-- [ ] 确认 `documentOperationsApi.linkTrainingNeed(id, linkedTrainingProjectId)` 已存在。
-- [ ] 在表格操作区增加“关联项目”入口。
-- [ ] 用简洁弹窗让用户输入或选择培训项目 ID；如果项目选择器当前不存在，可以先用 ID 输入，但文案必须说明这是关联已有培训项目。
-- [ ] 调用 `linkTrainingNeed` 成功后刷新列表。
-- [ ] 不在本 PR 新做培训项目选择器，不引入新 API。
-
-**验收：**
-
-- 已接受或待评估的派生需求可以关联到已有培训项目。
-- 关联后页面刷新，状态可以反映后端返回结果。
-
----
-
-## 任务 3：列表信息补足
-
-**文件：**
-
-- `client/src/views/documents/TrainingNeedCenter.vue`
-
-- [ ] 如果 row 中存在 `linkedTrainingProjectId`，在列表中显示。
-- [ ] 如果 row 中存在 `document.title`，保持文件标题列。
-- [ ] 不假设后端一定返回不存在的字段；模板里用安全降级显示 `-`。
-
-**验收：**
-
-- 用户能看到某条派生需求是否已经关联培训项目。
-
----
-
-## 任务 4：验证
-
-运行：
-
-```bash
-rg -n "文控派生培训需求|linkTrainingNeed|linkedTrainingProjectId|/training/projects" client/src/views/documents/TrainingNeedCenter.vue client/src/api/document-operations.ts
-npm run build:client
-node tools/check-module-usage-docs.mjs
-git diff --check
+```vue
+<el-alert
+  class="page-note"
+  type="info"
+  show-icon
+  :closable="false"
+  title="这里是文控派生培训需求，不是培训项目台账。接受后应关联到培训项目，由培训模块承接计划、签到、考试和档案。"
+/>
 ```
 
-**最终回报必须包含：**
+- [ ] **Step 2: Add CSS spacing**
 
-- 已确认使用 `superpowers:executing-plans`。
-- 修改的文件列表。
-- 是否新增了培训项目选择器；如没有，说明仍用已有项目 ID 关联。
-- 验证命令结果。
-- 确认没有修改 schema 或后端 API。
+```css
+.page-note {
+  margin-bottom: 12px;
+}
+```
+
+## Task 2: Expose link-to-training-project action
+
+**Files:**
+- Modify: `client/src/views/documents/TrainingNeedCenter.vue`
+
+- [ ] **Step 1: Add action button for accepted needs**
+
+In the operation column, keep existing accept/dismiss actions and add:
+
+```vue
+<el-button
+  v-if="row.status === 'accepted'"
+  link
+  type="success"
+  @click="openLinkDialog(row)"
+>
+  关联培训项目
+</el-button>
+```
+
+- [ ] **Step 2: Add a dialog with project ID input**
+
+Add after the table:
+
+```vue
+<el-dialog v-model="linkDialog.visible" title="关联培训项目" width="420px">
+  <el-form label-width="100px">
+    <el-form-item label="培训项目ID">
+      <el-input v-model="linkDialog.projectId" placeholder="输入已有培训项目ID" clearable />
+    </el-form-item>
+  </el-form>
+  <template #footer>
+    <el-button @click="linkDialog.visible = false">取消</el-button>
+    <el-button type="primary" :loading="linkDialog.loading" @click="submitLink">确认关联</el-button>
+  </template>
+</el-dialog>
+```
+
+- [ ] **Step 3: Add script state and methods**
+
+```ts
+const linkDialog = reactive({
+  visible: false,
+  loading: false,
+  needId: '',
+  projectId: '',
+});
+
+const openLinkDialog = (row: any) => {
+  linkDialog.needId = row.id;
+  linkDialog.projectId = row.linkedTrainingProjectId || '';
+  linkDialog.visible = true;
+};
+
+const submitLink = async () => {
+  if (!linkDialog.projectId.trim()) {
+    ElMessage.warning('请输入培训项目ID');
+    return;
+  }
+  linkDialog.loading = true;
+  try {
+    await documentOperationsApi.linkTrainingNeed(linkDialog.needId, linkDialog.projectId.trim());
+    ElMessage.success('已关联培训项目');
+    linkDialog.visible = false;
+    fetchData();
+  } finally {
+    linkDialog.loading = false;
+  }
+};
+```
+
+If `reactive` is not imported, add it to the Vue import.
+
+## Task 3: Verify
+
+- [ ] **Step 1: Run focused frontend check**
+
+```bash
+cd /Users/jiashenglin/Desktop/好玩的项目/noidear/client
+npm run build
+```
+
+Expected: build succeeds, or report exact unrelated blocker.
+
+- [ ] **Step 2: Confirm no backend changes**
+
+```bash
+git diff -- server/src/modules/document/services/document-training-need.service.ts
+```
+
+Expected: no diff.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add client/src/views/documents/TrainingNeedCenter.vue
+git commit -m "fix: clarify document-derived training needs"
+```

@@ -511,7 +511,7 @@
       "id": "GAP-005",
       "severity": "P2",
       "moduleId": "master-data-and-boundaries",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -519,18 +519,16 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "brainstorming",
-        "grill-with-docs",
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "master-data",
-      "prOrder": null,
+      "prOrder": 1,
       "recommendedPr": "master-data/GAP-005",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-005"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-005-process-step-relation-validation-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-005-process-step-relation-validation-implementation.md"
     },
     {
       "id": "GAP-006",
@@ -1532,7 +1530,7 @@
       "id": "GAP-317",
       "severity": "P2",
       "moduleId": "nonconformance-capa",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -1540,16 +1538,16 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "nonconformance",
-      "prOrder": null,
+      "prOrder": 2,
       "recommendedPr": "nonconformance/GAP-317",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-317"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-317-nonconformance-indexes-implementation.md"
     },
     {
       "id": "GAP-318",
@@ -1632,7 +1630,7 @@
       "id": "GAP-402",
       "severity": "P2",
       "moduleId": "document-control-and-record-forms",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -1640,22 +1638,22 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "documents",
-      "prOrder": null,
+      "prOrder": 3,
       "recommendedPr": "documents/GAP-402",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-402"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-402-training-need-ux-clarification-implementation.md"
     },
     {
       "id": "GAP-403",
       "severity": "P2",
       "moduleId": "document-control-and-record-forms",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -1663,16 +1661,16 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "documents",
-      "prOrder": null,
+      "prOrder": 4,
       "recommendedPr": "documents/GAP-403",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-403"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-403-record-form-landing-batch-confirm-implementation.md"
     },
     {
       "id": "GAP-404",
@@ -1701,7 +1699,7 @@
       "id": "GAP-405",
       "severity": "P2",
       "moduleId": "document-control-and-record-forms",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -1709,16 +1707,16 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "documents",
-      "prOrder": null,
+      "prOrder": 5,
       "recommendedPr": "documents/GAP-405",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-405"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-405-413-audit-report-document-boundary-implementation.md"
     },
     {
       "id": "GAP-406",
@@ -1893,7 +1891,7 @@
       "id": "GAP-413",
       "severity": "P2",
       "moduleId": "training-internal-audit",
-      "triageStatus": "needs_plan",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -1901,16 +1899,16 @@
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "training",
-      "prOrder": null,
+      "prOrder": 5,
       "recommendedPr": "training/GAP-413",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-413"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-405-413-audit-report-document-boundary-implementation.md"
     },
     {
       "id": "GAP-414",
@@ -1996,7 +1994,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "workflow",
-      "prOrder": 8,
+      "prOrder": null,
       "recommendedPr": "workflow/GAP-502-503-504",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-502"
@@ -2019,7 +2017,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "workflow",
-      "prOrder": 8,
+      "prOrder": null,
       "recommendedPr": "workflow/GAP-502-503-504",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-503"
@@ -2042,7 +2040,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "workflow",
-      "prOrder": 8,
+      "prOrder": null,
       "recommendedPr": "workflow/GAP-502-503-504",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-504"
@@ -2111,7 +2109,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "admin",
-      "prOrder": 4,
+      "prOrder": null,
       "recommendedPr": "admin/GAP-507-508",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-507"
@@ -2134,7 +2132,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "admin",
-      "prOrder": 4,
+      "prOrder": null,
       "recommendedPr": "admin/GAP-507-508",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-508"
@@ -2157,7 +2155,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "admin",
-      "prOrder": 5,
+      "prOrder": null,
       "recommendedPr": "admin/GAP-509-510",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-509"
@@ -2180,7 +2178,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "admin",
-      "prOrder": 5,
+      "prOrder": null,
       "recommendedPr": "admin/GAP-509-510",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-510"
@@ -2203,7 +2201,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "admin",
-      "prOrder": 7,
+      "prOrder": null,
       "recommendedPr": "admin/GAP-511",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-511"
@@ -2226,7 +2224,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "admin",
-      "prOrder": 6,
+      "prOrder": null,
       "recommendedPr": "admin/GAP-512",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-512"
