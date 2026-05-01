@@ -5,6 +5,15 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class MaterialBalanceService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private toNumber(value: unknown): number {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') return Number(value);
+    if (value && typeof (value as { toNumber?: () => number }).toNumber === 'function') {
+      return (value as { toNumber: () => number }).toNumber();
+    }
+    return Number(value);
+  }
+
   async checkBalance(batchId: string) {
     const [stockRecords, usages, batches] = await Promise.all([
       this.prisma.stockRecord.findMany({
@@ -18,18 +27,28 @@ export class MaterialBalanceService {
       }),
     ]);
 
-    const totalIn = stockRecords
+    const received = stockRecords
       .filter((r) => r.recordType === 'in')
-      .reduce((sum, r) => sum + r.quantity, 0);
+      .reduce((sum: number, r) => sum + this.toNumber(r.quantity), 0);
 
-    const totalOut = stockRecords
+    const returnedToWarehouse = stockRecords
+      .filter((r) => r.recordType === 'return')
+      .reduce((sum: number, r) => sum + this.toNumber(r.quantity), 0);
+
+    const issuedToProduction = stockRecords
       .filter((r) => r.recordType === 'out')
-      .reduce((sum, r) => sum + r.quantity, 0);
+      .reduce((sum: number, r) => sum + this.toNumber(r.quantity), 0);
 
-    const usedInProduction = usages.reduce((sum, u) => sum + u.quantity, 0);
+    const scrapped = stockRecords
+      .filter((r) => r.recordType === 'scrap')
+      .reduce((sum: number, r) => sum + this.toNumber(r.quantity), 0);
 
+    const totalIn = received + returnedToWarehouse;
+    const totalOut = issuedToProduction + scrapped;
+    const usedInProduction = usages.reduce((sum: number, u) => sum + this.toNumber(u.quantity), 0);
+
+    const currentStock = this.toNumber(batches[0]?.quantity ?? 0);
     const calculated = totalIn - totalOut - usedInProduction;
-    const currentStock = batches[0]?.quantity || 0;
     const difference = Math.abs(calculated - currentStock);
     const isBalanced = difference < 0.01;
 
@@ -42,6 +61,10 @@ export class MaterialBalanceService {
       currentStock,
       difference,
       isBalanced,
+      received,
+      returnedToWarehouse,
+      issuedToProduction,
+      scrapped,
     };
   }
 
