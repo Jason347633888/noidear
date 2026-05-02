@@ -1120,26 +1120,26 @@
       "id": "GAP-302",
       "severity": "P2",
       "moduleId": "quality-qc-release",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
       "needsDesign": true,
-      "schemaImpact": false,
+      "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "brainstorming",
-        "grill-with-docs",
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "quality",
-      "prOrder": null,
+      "prOrder": 19,
       "recommendedPr": "quality/GAP-302",
       "validationCommands": [
-        "pnpm test:e2e -- --grep GAP-302"
+        "cd server && npm test -- environment-record.service.spec.ts --runInBand",
+        "cd server && npx prisma validate --schema src/prisma/schema.prisma",
+        "npm run build -w client"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-02-gap-302-environment-record-location-fk-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-02-gap-302-environment-record-location-fk-implementation.md"
     },
     {
       "id": "GAP-303",
