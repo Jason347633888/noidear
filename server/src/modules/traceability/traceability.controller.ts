@@ -43,12 +43,12 @@ export class TraceabilityController {
   }
 
   @Get('snapshots/:snapshotId')
-  getSnapshot(@Param('snapshotId') snapshotId: string) {
-    return this.service.getSnapshot(snapshotId);
+  getSnapshot(@Param('snapshotId') snapshotId: string, @Req() req: any) {
+    return this.service.getSnapshot(snapshotId, req.user);
   }
 
   @Get('snapshots/:snapshotId/result')
-  getSnapshotResult(@Param('snapshotId') snapshotId: string) {
-    return this.service.getSnapshotResult(snapshotId);
+  getSnapshotResult(@Param('snapshotId') snapshotId: string, @Req() req: any) {
+    return this.service.getSnapshotResult(snapshotId, req.user);
   }
 }
