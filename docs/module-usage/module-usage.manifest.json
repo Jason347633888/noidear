@@ -1426,7 +1426,7 @@
       "id": "GAP-313",
       "severity": "P1",
       "moduleId": "nonconformance-capa",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -1436,16 +1436,20 @@
       "recommendedSuperpowers": [
         "brainstorming",
         "grill-with-docs",
-        "writing-plans"
+        "writing-plans",
+        "executing-plans"
       ],
       "prRoadmapGroup": "nonconformance",
-      "prOrder": null,
+      "prOrder": 10,
       "recommendedPr": "nonconformance/GAP-313",
       "validationCommands": [
-        "pnpm test:e2e -- --grep GAP-313"
+        "(cd server && npm test -- non-conformance.service.spec.ts --runInBand)",
+        "(cd server && npm test -- workflow-triggers.service.spec.ts --runInBand)",
+        "(cd server && npx prisma validate --schema src/prisma/schema.prisma)",
+        "npm run build:server"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-02-gap-313-nc-source-validation-and-index-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-02-gap-313-nc-source-validation-and-index-implementation.md"
     },
     {
       "id": "GAP-314",
