@@ -109,8 +109,16 @@ export class TraceabilityQueryService {
   }
 
   private async queryMaterialLot(dto: QueryTraceabilityDto, currentUser: any): Promise<TraceQueryResult> {
-    const materialLot = await this.prisma.materialBatch.findUnique({
-      where: { id: dto.objectId },
+    // Material has no direct company_id; scope via production batch → product.company_id
+    const companyWhere = currentUser?.companyId
+      ? {
+          batchMaterialUsages: {
+            some: { productionBatch: { product: { company_id: currentUser.companyId } } },
+          },
+        }
+      : {};
+    const materialLot = await this.prisma.materialBatch.findFirst({
+      where: { id: dto.objectId, ...companyWhere },
       include: {
         material: true,
         supplier: true,
@@ -164,8 +172,11 @@ export class TraceabilityQueryService {
   }
 
   private async queryProductionBatch(dto: QueryTraceabilityDto, currentUser: any): Promise<TraceQueryResult> {
-    const productionBatch = await this.prisma.productionBatch.findUnique({
-      where: { id: dto.objectId },
+    const companyWhere = currentUser?.companyId
+      ? { product: { company_id: currentUser.companyId } }
+      : {};
+    const productionBatch = await this.prisma.productionBatch.findFirst({
+      where: { id: dto.objectId, ...companyWhere },
       include: {
         materialUsages: {
           include: {
@@ -218,8 +229,11 @@ export class TraceabilityQueryService {
     const deliveryId = Number(dto.objectId);
     if (!Number.isInteger(deliveryId)) return this.emptyResult(dto, currentUser);
 
-    const deliveryNote = await this.prisma.deliveryNote.findUnique({
-      where: { id: deliveryId },
+    const companyWhere = currentUser?.companyId
+      ? { company_id: Number(currentUser.companyId) }
+      : {};
+    const deliveryNote = await this.prisma.deliveryNote.findFirst({
+      where: { id: deliveryId, ...companyWhere },
       include: {
         production_batch: {
           include: {

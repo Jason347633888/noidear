@@ -4,7 +4,7 @@ describe('TraceabilityQueryService contract', () => {
   it('builds a ledger-and-graph result with stable top-level keys', async () => {
     const prisma = {
       materialBatch: {
-        findUnique: jest.fn().mockResolvedValue({
+        findFirst: jest.fn().mockResolvedValue({
           id: 'mb-1',
           batchNumber: 'RM-001',
           material: null,
@@ -51,7 +51,7 @@ describe('TraceabilityQueryService contract', () => {
   it('assembles the main traceability chain for a material lot query', async () => {
     const prisma = {
       materialBatch: {
-        findUnique: jest.fn().mockResolvedValue({
+        findFirst: jest.fn().mockResolvedValue({
           id: 'mb-1',
           batchNumber: 'RM-001',
           material: null,
@@ -95,7 +95,7 @@ describe('TraceabilityQueryService contract', () => {
   it('assembles a bidirectional chain for a production batch query', async () => {
     const prisma = {
       productionBatch: {
-        findUnique: jest.fn().mockResolvedValue({
+        findFirst: jest.fn().mockResolvedValue({
           id: 'pb-1',
           batchNumber: 'PB-001',
           productName: '海绵蛋糕',
@@ -161,7 +161,7 @@ describe('TraceabilityQueryService contract', () => {
   it('assembles a backward chain from a delivery note query', async () => {
     const prisma = {
       deliveryNote: {
-        findUnique: jest.fn().mockResolvedValue({
+        findFirst: jest.fn().mockResolvedValue({
           id: 10,
           dn_no: 'DN-001',
           customer_name: '客户A',
@@ -213,5 +213,77 @@ describe('TraceabilityQueryService contract', () => {
       'ingredientUsage',
       'materialLot',
     ]);
+  });
+
+  it('returns empty result when materialLot objectId belongs to a different company', async () => {
+    const prisma = {
+      materialBatch: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+    };
+    const service = new TraceabilityQueryService(prisma as any, { getSummary: jest.fn() } as any);
+    const result = await service.query(
+      {
+        entryMode: 'object',
+        objectType: 'materialLot',
+        objectId: 'mb-other-company',
+        traceMode: 'forward',
+        viewMode: 'ledger',
+        timeMode: 'current',
+      },
+      { department: '品质', scenarioPermissions: ['forwardTrace'], companyId: 'company-A' } as any,
+    );
+
+    expect(result.summary.resultStatus).toBe('empty');
+    expect(result.ledger.rows).toHaveLength(0);
+    expect(result.graph.nodes).toHaveLength(0);
+  });
+
+  it('returns empty result when productionBatch objectId belongs to a different company', async () => {
+    const prisma = {
+      productionBatch: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+    };
+    const service = new TraceabilityQueryService(prisma as any, { getSummary: jest.fn() } as any);
+    const result = await service.query(
+      {
+        entryMode: 'object',
+        objectType: 'productionBatch',
+        objectId: 'pb-other-company',
+        traceMode: 'bidirectional',
+        viewMode: 'ledger',
+        timeMode: 'current',
+      },
+      { department: '品质', scenarioPermissions: ['bidirectionalTrace'], companyId: 'company-A' } as any,
+    );
+
+    expect(result.summary.resultStatus).toBe('empty');
+    expect(result.ledger.rows).toHaveLength(0);
+    expect(result.graph.nodes).toHaveLength(0);
+  });
+
+  it('returns empty result when deliveryNote objectId belongs to a different company', async () => {
+    const prisma = {
+      deliveryNote: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+    };
+    const service = new TraceabilityQueryService(prisma as any, { getSummary: jest.fn() } as any);
+    const result = await service.query(
+      {
+        entryMode: 'object',
+        objectType: 'deliveryNote',
+        objectId: '99',
+        traceMode: 'backward',
+        viewMode: 'ledger',
+        timeMode: 'current',
+      },
+      { department: '品质', scenarioPermissions: ['backwardTrace'], companyId: 'company-A' } as any,
+    );
+
+    expect(result.summary.resultStatus).toBe('empty');
+    expect(result.ledger.rows).toHaveLength(0);
+    expect(result.graph.nodes).toHaveLength(0);
   });
 });
