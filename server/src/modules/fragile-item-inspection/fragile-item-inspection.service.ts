@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateFragileItemInspectionDto } from './dto/create-fragile-item-inspection.dto';
 
@@ -7,6 +7,15 @@ export class FragileItemInspectionService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateFragileItemInspectionDto) {
+    const productionBatch = await this.prisma.productionBatch.findUnique({
+      where: { id: dto.production_batch_id },
+      select: { id: true },
+    });
+
+    if (!productionBatch) {
+      throw new BadRequestException('生产批次不存在');
+    }
+
     return this.prisma.fragileItemInspection.create({
       data: {
         ...dto,

@@ -1,9 +1,9 @@
-import { IsString, IsOptional, IsBoolean, IsInt, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsInt, IsDateString, IsNotEmpty } from 'class-validator';
 
 export class CreateFragileItemInspectionDto {
-  @IsOptional()
   @IsString()
-  production_batch_id?: string;
+  @IsNotEmpty()
+  production_batch_id: string;
 
   @IsOptional()
   @IsString()

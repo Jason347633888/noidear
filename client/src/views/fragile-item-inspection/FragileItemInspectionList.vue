@@ -137,8 +137,8 @@
             placeholder="发现破损时的处置措施"
           />
         </el-form-item>
-        <el-form-item label="批次号">
-          <el-input v-model="createForm.production_batch_id" placeholder="可选" />
+        <el-form-item label="生产批次" prop="production_batch_id">
+          <ProductionBatchSelect v-model="createForm.production_batch_id" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -155,6 +155,7 @@ import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import fragileItemInspectionApi, { type FragileItemInspection } from '@/api/fragile-item-inspection';
+import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelect.vue';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -184,6 +185,7 @@ const createRules: FormRules = {
   inspected_at: [{ required: true, message: '请选择检查时间', trigger: 'change' }],
   total_qty: [{ required: true, message: '请输入总数量', trigger: 'blur' }],
   intact_qty: [{ required: true, message: '请输入完好数量', trigger: 'blur' }],
+  production_batch_id: [{ required: true, message: '请选择生产批次', trigger: 'change' }],
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -240,7 +242,7 @@ async function handleCreate() {
       intact_qty: createForm.intact_qty!,
       is_pass: createForm.is_pass,
       damage_action: createForm.damage_action || undefined,
-      production_batch_id: createForm.production_batch_id || undefined,
+      production_batch_id: createForm.production_batch_id,
     });
     ElMessage.success('新建成功');
     createDialogVisible.value = false;
