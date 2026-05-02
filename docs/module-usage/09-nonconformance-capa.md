@@ -112,7 +112,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 
 | GAP 编号 | 建议整改 | 依赖模块 | 是否需要新设计 | 建议 PR | 是否可并行 |
 |---|---|---|---|---|---|
-| GAP-313 | 在应用层对 source_id 校验其存在性（按 source_type 查对应表），添加 @@index([source_type, source_id]) | ProductionBatch, MaterialBatch | 否 | fix/nc-source-validation-and-index | 是 |
+| GAP-313 | 在应用层对 source_id 校验来源存在；`production_batch` 必须沿用 `ProductionBatch.productId -> Product.company_id` 校验租户归属，且覆盖 `create()` 与 `createFromCcpDeviation()`；保留 `@@index([company_id, source_type, source_id])` | ProductionBatch, Product, MaterialBatch, CCPRecord | 否 | fix/nc-source-validation-and-index | 是 |
 | GAP-314 | 将编号生成改为数据库序列或基于时间戳+随机数的安全方式 | 无 | 否 | fix/safe-sequence-number-generation | 是 |
 | GAP-315 | dispose 处置方式为 'rework' 时，在事务中自动创建 ReworkRecord（或推送任务给返工模块） | rework-record | 是（需事务设计） | feat/nc-dispose-to-rework-auto-create | 否（依赖 GAP-5 修复） |
 | GAP-316 | CorrectiveAction 创建时，按 trigger_type 校验 trigger_id 对应记录存在性；NonConformance 表新增 capa_ids 或反向查询接口 | non-conformance, customer-complaint | 否 | fix/capa-trigger-source-validation | 是 |
