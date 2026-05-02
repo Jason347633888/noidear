@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { mapForwardTraceResult, SOURCE_VERSION } from './traceability-contract.mapper';
+import { TraceabilityExportService } from './traceability-export.service';
 
 interface TraceCurrentUser {
   id?: string;
@@ -95,7 +96,10 @@ const MATERIAL_LOT_INCLUDE = {
 
 @Injectable()
 export class TraceabilityService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly exportService: TraceabilityExportService,
+  ) {}
 
   async query(dto: TraceQueryDto, currentUser: TraceCurrentUser) {
     const isMaterialLotQuery =
@@ -164,47 +168,18 @@ export class TraceabilityService {
   }
 
   async createExport(dto: TraceExportDto, currentUser: TraceCurrentUser) {
-    const isSimple = dto.exportMode === 'simple';
-    return {
-      exportId: `export:${Date.now()}`,
-      exportMode: dto.exportMode,
-      status: (isSimple ? 'ready' : 'queued') as 'ready' | 'queued',
-      sourceQueryRef: dto.sourceQueryRef,
-      createdAt: new Date().toISOString(),
-      requestedBy: currentUser?.id ?? 'system',
-      downloadRef: isSimple ? `/traceability/export/download/${Date.now()}` : (null as string | null),
-      snapshotId: null as string | null,
-      meta: {},
-    };
+    return this.exportService.create(dto as any, currentUser);
   }
 
-  async createSnapshot(dto: TraceSnapshotDto, _currentUser: TraceCurrentUser) {
-    return {
-      snapshotId: `snapshot:${Date.now()}`,
-      sourceQueryRef: dto.sourceQueryRef,
-      snapshotType: dto.snapshotType,
-      status: 'ready' as const,
-      createdAt: new Date().toISOString(),
-      expiresAt: null as string | null,
-      payloadRef: dto.sourceQueryRef,
-      meta: {},
-    };
+  async createSnapshot(dto: TraceSnapshotDto, currentUser: TraceCurrentUser) {
+    return this.exportService.createSnapshot(dto as any, currentUser);
   }
 
   async getSnapshot(snapshotId: string) {
-    return {
-      snapshotId,
-      sourceQueryRef: 'query-hash',
-      snapshotType: 'query' as const,
-      status: 'ready' as const,
-      createdAt: new Date().toISOString(),
-      expiresAt: null as string | null,
-      payloadRef: 'query-hash',
-      meta: {},
-    };
+    return this.exportService.getSnapshot(snapshotId);
   }
 
   async getSnapshotResult(snapshotId: string) {
-    return { snapshotId, resultType: 'query' };
+    return this.exportService.getSnapshotResult(snapshotId);
   }
 }
