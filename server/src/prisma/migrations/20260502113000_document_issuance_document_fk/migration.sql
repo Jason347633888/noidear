@@ -1,9 +1,9 @@
 -- Link every document issuance ledger row to the controlled Document fact source.
 -- Historical rows are matched only by exact document_code against Document.doc_code or Document.number.
 -- The migration intentionally fails when a row cannot be matched uniquely.
-
-ALTER TABLE "DocumentIssuance"
-  ADD COLUMN "document_id" TEXT;
+--
+-- Safety: all preflight checks run BEFORE any DDL so that a failed preflight
+-- leaves the schema unchanged and the migration is safe to re-run.
 
 DO $$
 BEGIN
@@ -30,19 +30,25 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Cannot backfill DocumentIssuance.document_id: document_code matches multiple Documents';
   END IF;
+END $$;
 
-  UPDATE "DocumentIssuance" di
-  SET "document_id" = matched."document_id"
-  FROM (
-    SELECT di_inner."id" AS issuance_id, MAX(d."id") AS document_id
-    FROM "DocumentIssuance" di_inner
-    JOIN "documents" d
-      ON d."deletedAt" IS NULL
-     AND (d."doc_code" = di_inner."document_code" OR d."number" = di_inner."document_code")
-    GROUP BY di_inner."id"
-  ) matched
-  WHERE di."id" = matched."issuance_id";
+ALTER TABLE "DocumentIssuance"
+  ADD COLUMN "document_id" TEXT;
 
+UPDATE "DocumentIssuance" di
+SET "document_id" = matched."document_id"
+FROM (
+  SELECT di_inner."id" AS issuance_id, MAX(d."id") AS document_id
+  FROM "DocumentIssuance" di_inner
+  JOIN "documents" d
+    ON d."deletedAt" IS NULL
+   AND (d."doc_code" = di_inner."document_code" OR d."number" = di_inner."document_code")
+  GROUP BY di_inner."id"
+) matched
+WHERE di."id" = matched."issuance_id";
+
+DO $$
+BEGIN
   IF EXISTS (SELECT 1 FROM "DocumentIssuance" WHERE "document_id" IS NULL) THEN
     RAISE EXCEPTION 'Cannot require DocumentIssuance.document_id: unmatched legacy rows exist';
   END IF;

@@ -15,6 +15,7 @@ export interface DocumentControlDocument {
   title: string;
   level: number;
   status: string;
+  doc_code?: string | null;
   version?: number | string;
   versionNo?: number;
   versionLabel?: string;
