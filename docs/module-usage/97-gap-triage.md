@@ -54,7 +54,7 @@
 | GAP-308 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 依赖 GAP-306；先用 brainstorming 写跨模块 spec（快照持久化） |
 | GAP-309 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema spec（CustomerComplaint customer FK） |
 | GAP-310 | P1 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-02-gap-310-customer-complaint-production-batch-fk-design.md | docs/superpowers/plans/2026-05-02-gap-310-customer-complaint-production-batch-fk-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans，CustomerComplaint 必须关联 ProductionBatch |
-| GAP-311 | P0 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P0 召回独立建模，先用 brainstorming 写架构 spec（状态机设计） |
+| GAP-311 | P0 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-02-gap-311-product-recall-independent-model-design.md | docs/superpowers/plans/2026-05-02-gap-311-product-recall-independent-model-implementation.md | spec 和 plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-312 | P2 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-312-remove-deprecated-trace-endpoints-design.md | docs/superpowers/plans/2026-05-01-gap-312-remove-deprecated-trace-endpoints-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
 | GAP-313 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema spec（NC 多态关联校验+索引） |
 | GAP-314 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（安全序列号生成机制） |
