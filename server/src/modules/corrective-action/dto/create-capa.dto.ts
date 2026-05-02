@@ -1,8 +1,23 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
+
+export const CAPA_TRIGGER_TYPES = [
+  'non_conformance',
+  'customer_complaint',
+  'internal_audit',
+  'other',
+] as const;
+
+export type CapaTriggerType = (typeof CAPA_TRIGGER_TYPES)[number];
 
 export class CreateCapaDto {
-  @IsString() trigger_type: string; // 'non_conformance'|'customer_complaint'|'internal_audit'|'product_recall'|'other'
-  @IsOptional() @IsString() trigger_id?: string;
+  @IsIn(CAPA_TRIGGER_TYPES)
+  trigger_type: CapaTriggerType;
+
+  @ValidateIf((dto: CreateCapaDto) => dto.trigger_type !== 'other' || dto.trigger_id !== undefined)
+  @IsString()
+  @IsNotEmpty()
+  trigger_id?: string;
+
   @IsString() description: string;
   @IsOptional() @IsString() root_cause?: string;
   @IsOptional() @IsString() corrective_action?: string;
