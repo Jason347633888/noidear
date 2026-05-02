@@ -366,6 +366,7 @@ model Document {
   trainingNeeds      DocumentTrainingNeed[]
   coverageReviews    DocumentCoverageReview[]
   businessLinks       BusinessDocumentLink[]
+  documentIssuances  DocumentIssuance[]
 
   // Document control governance: revision tracking
   versionNo      Int       @default(1)
@@ -3510,6 +3511,8 @@ model SupplierEvaluation {
 model DocumentIssuance {
   id              String    @id @default(cuid())
   company_id      String
+  document_id     String
+  document        Document  @relation(fields: [document_id], references: [id], onDelete: Restrict)
   document_name   String
   document_code   String?
   template_id     String?
@@ -3521,6 +3524,8 @@ model DocumentIssuance {
   notes           String?
   created_at      DateTime  @default(now())
   deleted_at      DateTime?
+
+  @@index([document_id])
 }
 
 model AssetLoanRecord {

@@ -1,8 +1,13 @@
-import { IsString, IsOptional, IsInt, Min, IsDateString } from 'class-validator';
+import { IsDateString, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateDocumentIssuanceDto {
   @IsString()
-  document_name: string;
+  @IsNotEmpty()
+  document_id: string;
+
+  @IsOptional()
+  @IsString()
+  document_name?: string;
 
   @IsOptional()
   @IsString()
