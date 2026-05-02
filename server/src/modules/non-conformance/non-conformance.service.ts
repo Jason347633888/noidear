@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { NonConformance, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateNcDto, DisposeNcDto } from './dto/create-nc.dto';
 import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
@@ -77,18 +77,67 @@ export class NonConformanceService {
   }
 
   async dispose(id: string, dto: DisposeNcDto, userId: string, companyId: string) {
-    const record = await this.prisma.nonConformance.findFirst({
-      where: { id, company_id: companyId },
-    });
-    if (!record) throw new NotFoundException('不合格记录不存在');
+    return this.prisma.$transaction(async (tx) => {
+      const record = await tx.nonConformance.findFirst({
+        where: { id, company_id: companyId },
+      });
+      if (!record) throw new NotFoundException('不合格记录不存在');
 
-    return this.prisma.nonConformance.update({
-      where: { id },
+      if (dto.disposition === 'rework') {
+        await this.ensureReworkRecordForDisposition(record, userId, companyId, tx);
+      }
+
+      return tx.nonConformance.update({
+        where: { id },
+        data: {
+          disposition: dto.disposition,
+          disposition_by: userId,
+          disposition_at: new Date(),
+          status: 'dispositioned',
+        },
+      });
+    });
+  }
+
+  private async ensureReworkRecordForDisposition(
+    record: NonConformance,
+    userId: string,
+    companyId: string,
+    tx: Prisma.TransactionClient,
+  ) {
+    if (record.source_type !== 'production_batch') {
+      throw new BadRequestException('返工处置仅支持来源为生产批次的不合格记录');
+    }
+
+    if (record.qty == null || !record.unit?.trim()) {
+      throw new BadRequestException('返工处置需要不合格数量和单位');
+    }
+
+    const productionBatch = await tx.productionBatch.findFirst({
+      where: { id: record.source_id, product: { company_id: companyId } },
+      select: { id: true },
+    });
+    if (!productionBatch) {
+      throw new BadRequestException('返工处置的生产批次不存在或不属于当前公司');
+    }
+
+    const existingReworkRecord = await tx.reworkRecord.findFirst({
+      where: { company_id: companyId, nc_id: record.id },
+      select: { id: true },
+    });
+    if (existingReworkRecord) return;
+
+    await tx.reworkRecord.create({
       data: {
-        disposition: dto.disposition,
-        disposition_by: userId,
-        disposition_at: new Date(),
-        status: 'dispositioned',
+        company_id: companyId,
+        production_batch_id: record.source_id,
+        nc_id: record.id,
+        rework_reason: record.description,
+        rework_qty: record.qty,
+        unit: record.unit.trim(),
+        rework_date: new Date(),
+        operator_id: userId,
+        quality_verdict: 'pending',
       },
     });
   }
