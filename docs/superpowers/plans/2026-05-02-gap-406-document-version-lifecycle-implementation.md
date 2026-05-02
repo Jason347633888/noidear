@@ -87,7 +87,36 @@ Expected: PASS. If tests fail because the branch is missing GAP-400 changes, sto
 
 - [ ] **Step 1: Add a failing test for revision chain labels**
 
-In `server/src/modules/document/document.service.spec.ts`, in the `describe('document revision draft', () => {` block, add this test after the existing revision draft test:
+In `server/src/modules/document/document.service.spec.ts`, in the `describe('document revision draft', () => {` block, the `prisma` mock currently lacks `documentVersion`. Before adding the test, patch the prisma mock object at the top of that describe block to add:
+
+```ts
+    documentVersion: { findMany: jest.fn() },
+```
+
+So the prisma mock becomes:
+
+```ts
+  const prisma = {
+    user: { findUnique: jest.fn() },
+    document: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+      update: jest.fn(),
+    },
+    approval: { findFirst: jest.fn(), update: jest.fn() },
+    department: { findUnique: jest.fn() },
+    documentVersion: { findMany: jest.fn() },
+    pendingNumber: { findFirst: jest.fn() },
+    numberRule: { create: jest.fn(), update: jest.fn() },
+    $transaction: jest.fn(),
+    $queryRaw: jest.fn(),
+  };
+```
+
+Then add this test after the existing revision draft test:
 
 ```ts
   it('returns controlled revision chain with Vn labels and legacy snapshot labels', async () => {
@@ -260,7 +289,7 @@ Replace the full `getVersionHistory()` method in `server/src/modules/document/do
         const decorated = this.decorateDocumentVersion(row);
         return {
           ...decorated,
-          isCurrentVersion: row.id === id || row.revisionStatus === 'current',
+          isCurrentVersion: row.revisionStatus === 'current',
         };
       });
 
