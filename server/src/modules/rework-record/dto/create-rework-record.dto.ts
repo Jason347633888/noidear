@@ -4,9 +4,8 @@ export class CreateReworkRecordDto {
   @IsString()
   production_batch_id: string;
 
-  @IsOptional()
   @IsString()
-  nc_id?: string;
+  nc_id: string;
 
   @IsString()
   rework_reason: string;
