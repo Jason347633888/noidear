@@ -2,7 +2,6 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ModelLandingService } from '../model-landing/model-landing.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueryTraceabilityDto } from './dto/query-traceability.dto';
-import type { TraceQueryResult } from '@noidear/types';
 import {
   SOURCE_VERSION,
   buildTraceResult,
@@ -12,6 +11,8 @@ import {
   materialLotNode,
   productionBatchNode,
 } from './traceability-contract.mapper';
+
+type TraceQueryResult = ReturnType<typeof buildTraceResult>;
 
 @Injectable()
 export class TraceabilityQueryService {
