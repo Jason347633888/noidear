@@ -1451,7 +1451,7 @@
       "id": "GAP-314",
       "severity": "P1",
       "moduleId": "nonconformance-capa",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -1461,16 +1461,19 @@
       "recommendedSuperpowers": [
         "brainstorming",
         "grill-with-docs",
-        "writing-plans"
+        "writing-plans",
+        "executing-plans"
       ],
       "prRoadmapGroup": "nonconformance",
-      "prOrder": null,
+      "prOrder": 19,
       "recommendedPr": "nonconformance/GAP-314",
       "validationCommands": [
-        "pnpm test:e2e -- --grep GAP-314"
+        "npm run test -w server -- non-conformance.service.spec.ts corrective-action.service.spec.ts quality-number-sequence.service.spec.ts workflow-triggers.service.spec.ts --runInBand",
+        "npm run build:server",
+        "rg -n \"nonConformance\\\\.count|correctiveAction\\\\.count|NC-AUTO|count\\\\(\\\\).*nc_no|count\\\\(\\\\).*capa_no\" server/src/modules/non-conformance server/src/modules/corrective-action server/src/modules/workflow-triggers"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-02-gap-314-safe-sequence-number-generation-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-02-gap-314-safe-sequence-number-generation-implementation.md"
     },
     {
       "id": "GAP-315",
