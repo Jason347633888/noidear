@@ -4015,3 +4015,17 @@ model ProductRecallEvidence {
   @@index([record_id])
   @@map("product_recall_evidence")
 }
+
+model BusinessNumberSequence {
+  id            String   @id @default(cuid())
+  company_id    String
+  scope         String
+  period        String
+  current_value Int      @default(0)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@unique([company_id, scope, period])
+  @@index([scope, period])
+  @@map("business_number_sequences")
+}

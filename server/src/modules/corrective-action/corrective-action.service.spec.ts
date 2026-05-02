@@ -20,16 +20,19 @@ describe('CorrectiveActionService', () => {
       findUnique: jest.fn(),
     },
   };
+  const numberSequence = {
+    generateCorrectiveActionNo: jest.fn(),
+  };
   let service: CorrectiveActionService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new CorrectiveActionService(prisma as any);
+    service = new CorrectiveActionService(prisma as any, numberSequence as any);
   });
 
-  it('scopes CAPA numbering and writes by company', async () => {
+  it('uses the shared sequence service and writes by company', async () => {
     prisma.nonConformance.findFirst.mockResolvedValue({ id: 'nc-1' });
-    prisma.correctiveAction.count.mockResolvedValue(1);
+    numberSequence.generateCorrectiveActionNo.mockResolvedValue('CAPA-2026-0002');
     prisma.correctiveAction.create.mockResolvedValue({ id: 'c1' });
 
     await service.create(
@@ -42,12 +45,13 @@ describe('CorrectiveActionService', () => {
       where: { id: 'nc-1', company_id: '2' },
       select: { id: true },
     });
-    expect(prisma.correctiveAction.count).toHaveBeenCalledWith({ where: { company_id: '2' } });
+    expect(prisma.correctiveAction.count).not.toHaveBeenCalled();
+    expect(numberSequence.generateCorrectiveActionNo).toHaveBeenCalledWith('2');
     expect(prisma.correctiveAction.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           company_id: '2',
-          capa_no: expect.stringMatching(/-0002$/),
+          capa_no: 'CAPA-2026-0002',
           trigger_type: 'non_conformance',
           trigger_id: 'nc-1',
         }),
@@ -84,7 +88,6 @@ describe('CorrectiveActionService', () => {
 
   it('validates CustomerComplaint source within the current company', async () => {
     prisma.customerComplaint.findFirst.mockResolvedValue({ id: 'cc-1' });
-    prisma.correctiveAction.count.mockResolvedValue(2);
     prisma.correctiveAction.create.mockResolvedValue({ id: 'c2' });
 
     await service.create(
@@ -124,7 +127,6 @@ describe('CorrectiveActionService', () => {
 
   it('validates internal audit finding source existence', async () => {
     prisma.auditFinding.findUnique.mockResolvedValue({ id: 'finding-1' });
-    prisma.correctiveAction.count.mockResolvedValue(3);
     prisma.correctiveAction.create.mockResolvedValue({ id: 'c3' });
 
     await service.create(
@@ -163,7 +165,6 @@ describe('CorrectiveActionService', () => {
   });
 
   it('allows other CAPA creation without a trigger source', async () => {
-    prisma.correctiveAction.count.mockResolvedValue(4);
     prisma.correctiveAction.create.mockResolvedValue({ id: 'c4' });
 
     await service.create({ trigger_type: 'other', description: '手工整改' }, 'u1', '2');

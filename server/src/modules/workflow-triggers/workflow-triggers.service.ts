@@ -1,16 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../../prisma/prisma.service';
+import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
 
 @Injectable()
 export class WorkflowTriggersService {
   private readonly logger = new Logger(WorkflowTriggersService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly numberSequence: QualityNumberSequenceService,
+  ) {}
 
-  /**
-   * 触发规则1：来料检验不合格 → 自动创建不合格品处置单
-   */
   @OnEvent('incoming-inspection.created')
   async handleInspectionFail(payload: {
     id: string;
@@ -21,8 +22,7 @@ export class WorkflowTriggersService {
     if (payload.overall_result !== 'fail') return;
 
     try {
-      const count = await this.prisma.nonConformance.count({ where: { company_id: payload.company_id } });
-      const nc_no = `NC-AUTO-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+      const nc_no = await this.numberSequence.generateNonConformanceNo(payload.company_id);
 
       await this.prisma.nonConformance.create({
         data: {
@@ -42,9 +42,6 @@ export class WorkflowTriggersService {
     }
   }
 
-  /**
-   * 触发规则2：变更提交合规评估 → 自动创建合规评估存根记录
-   */
   @OnEvent('change-event.status-changed')
   async handleChangeStatusChange(payload: {
     id: string;
@@ -67,8 +64,4 @@ export class WorkflowTriggersService {
       this.logger.error(`[WorkflowTrigger] 创建合规评估记录失败: ${(error as Error).message}`);
     }
   }
-
-  // TODO: 触发规则3：CCP 超标 → 自动创建纠正措施单
-  // 当 CcpMonitoringRecord 模型就绪后，监听 'ccp-monitoring.out-of-limit' 事件，
-  // 自动在 CorrectiveAction 表中创建纠正措施单（trigger_type = 'non_conformance'）。
 }
