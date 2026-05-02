@@ -24,7 +24,8 @@
     "traceability:test": "jest traceability-query.service.spec.ts traceability-balance.service.spec.ts traceability-linkage.service.spec.ts traceability-export.service.spec.ts --runInBand",
     "traceability:contract:test": "jest traceability-contract.mapper.spec.ts --runInBand",
     "traceability:e2e": "jest traceability-contract.e2e-spec.ts traceability-query.e2e-spec.ts --runInBand",
-    "traceability:verify": "npm run traceability:test && npm run traceability:contract:test && npm run traceability:e2e"
+    "traceability:verify": "npm run traceability:test && npm run traceability:contract:test && npm run traceability:e2e",
+    "recall:migrate-records": "ts-node scripts/migrate-product-recall-records.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",

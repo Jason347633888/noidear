@@ -1,8 +1,13 @@
+import { BadRequestException } from '@nestjs/common';
 import { TraceabilityLinkageService } from './traceability-linkage.service';
 
+const mockProductRecallService = { create: jest.fn() };
+
 describe('TraceabilityLinkageService', () => {
+  beforeEach(() => jest.clearAllMocks());
+
   it('creates a linkage payload with created status for standard action types', async () => {
-    const service = new TraceabilityLinkageService();
+    const service = new TraceabilityLinkageService(mockProductRecallService as any);
 
     const result = await service.create(
       { actionType: 'deviation', sourceQueryRef: 'hash-abc', note: '有异常' },
@@ -19,19 +24,46 @@ describe('TraceabilityLinkageService', () => {
     expect(result.writeback.linkedAt).toBeDefined();
   });
 
-  it('sets pendingReview status for recallAssessment actions', async () => {
-    const service = new TraceabilityLinkageService();
+  it('sets pendingReview status for recallAssessment actions when companyId is present', async () => {
+    mockProductRecallService.create.mockResolvedValue({ id: 'recall-1', recall_no: 'RC-2026-0001' });
+    const service = new TraceabilityLinkageService(mockProductRecallService as any);
 
     const result = await service.create(
       { actionType: 'recallAssessment', sourceQueryRef: 'hash-xyz' },
-      { id: 'user-2' } as any,
+      { id: 'user-2', companyId: 'company-2' },
     );
 
     expect(result.status).toBe('pendingReview');
   });
 
-  it('falls back to system requestedBy when user id is absent', async () => {
-    const service = new TraceabilityLinkageService();
+  it('throws BadRequestException for recallAssessment when companyId is missing', async () => {
+    const service = new TraceabilityLinkageService(mockProductRecallService as any);
+
+    await expect(
+      service.create(
+        { actionType: 'recallAssessment', sourceQueryRef: 'hash-xyz' },
+        { id: 'user-2' } as any,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(mockProductRecallService.create).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back to company "1" when companyId is absent for recallAssessment', async () => {
+    const service = new TraceabilityLinkageService(mockProductRecallService as any);
+
+    await expect(
+      service.create(
+        { actionType: 'recallAssessment', sourceQueryRef: 'hash-001' },
+        null as any,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(mockProductRecallService.create).not.toHaveBeenCalled();
+  });
+
+  it('falls back to system requestedBy when user id is absent for non-recall actions', async () => {
+    const service = new TraceabilityLinkageService(mockProductRecallService as any);
 
     const result = await service.create(
       { actionType: 'capa', sourceQueryRef: 'hash-001' },
@@ -39,5 +71,24 @@ describe('TraceabilityLinkageService', () => {
     );
 
     expect(result.requestedBy).toBe('system');
+  });
+
+  it('creates ProductRecall draft for recallAssessment actions', async () => {
+    const productRecallService = {
+      create: jest.fn().mockResolvedValue({ id: 'recall-1', recall_no: 'RC-2026-0001' }),
+    };
+    const service = new TraceabilityLinkageService(productRecallService as any);
+
+    const result = await service.create(
+      { actionType: 'recallAssessment', sourceQueryRef: 'hash-xyz', note: '高风险批次' },
+      { id: 'user-1', companyId: 'company-1' },
+    );
+
+    expect(productRecallService.create).toHaveBeenCalledWith(expect.objectContaining({
+      title: '追溯召回评估',
+      reason: '高风险批次',
+      source_query_ref: 'hash-xyz',
+    }), { id: 'user-1', companyId: 'company-1' });
+    expect(result.productRecall).toEqual({ id: 'recall-1', recall_no: 'RC-2026-0001' });
   });
 });

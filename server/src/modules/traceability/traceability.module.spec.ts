@@ -6,6 +6,7 @@ import { TraceabilityExportService } from './traceability-export.service';
 import { TraceabilityBalanceService } from './traceability-balance.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModelLandingService } from '../model-landing/model-landing.service';
+import { ProductRecallService } from '../product-recall/product-recall.service';
 
 describe('TraceabilityModule', () => {
   it('registers traceability sub-services for DI', async () => {
@@ -16,6 +17,8 @@ describe('TraceabilityModule', () => {
       .useValue({})
       .overrideProvider(ModelLandingService)
       .useValue({})
+      .overrideProvider(ProductRecallService)
+      .useValue({ create: jest.fn() })
       .compile();
 
     expect(moduleRef.get(TraceabilityQueryService)).toBeInstanceOf(TraceabilityQueryService);

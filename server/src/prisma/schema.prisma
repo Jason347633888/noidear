@@ -878,6 +878,7 @@ model Record {
   changeEventId  String?
   changeEvent    ChangeEvent? @relation("ChangeEventRecords", fields: [changeEventId], references: [id], onDelete: SetNull)
   changeFormTasks ChangeEventFormTask[]
+  product_recall_evidence ProductRecallEvidence[]
 
   @@index([templateId])
   @@index([number])
@@ -1528,6 +1529,8 @@ model ProductionBatch {
 
   production_run_id String?
   production_run    ProductionRun? @relation(fields: [production_run_id], references: [id], onDelete: SetNull)
+
+  product_recall_batches ProductRecallBatch[]
 
   @@index([batchNumber])
   @@index([productionDate])
@@ -3638,6 +3641,8 @@ model ExternalParty {
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
   deleted_at      DateTime?
+
+  product_recall_notifications ProductRecallNotification[]
 }
 
 model PackagingMaterialUsage {
@@ -3719,6 +3724,7 @@ model ProductionRun {
 // Traceability async export snapshots
 model TraceabilitySnapshot {
   id              String   @id @default(cuid())
+  company_id      String?
   sourceQueryHash String
   exportMode      String
   requesterId     String
@@ -3729,6 +3735,9 @@ model TraceabilitySnapshot {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  productRecalls ProductRecall[] @relation("ProductRecallTraceabilitySnapshot")
+
+  @@index([company_id])
   @@map("traceability_snapshots")
 }
 
@@ -3901,4 +3910,104 @@ model TaskRecord {
   @@index([taskId])
   @@index([approvalInstanceId])
   @@map("task_records")
+}
+
+// GAP-311: ProductRecall independent model
+
+model ProductRecall {
+  id                              String    @id @default(cuid())
+  company_id                      String
+  recall_no                       String
+  title                           String
+  reason                          String
+  risk_level                      String    @default("medium")
+  status                          String    @default("draft")
+  source_complaint_id             String?
+  source_query_ref                String?
+  source_traceability_snapshot_id String?
+  source_traceability_snapshot    TraceabilitySnapshot? @relation("ProductRecallTraceabilitySnapshot", fields: [source_traceability_snapshot_id], references: [id], onDelete: SetNull)
+  requested_by                    String?
+  requested_at                    DateTime  @default(now())
+  reviewed_by                     String?
+  reviewed_at                     DateTime?
+  review_note                     String?
+  completed_by                    String?
+  completed_at                    DateTime?
+  completion_summary              String?
+  cancelled_at                    DateTime?
+  cancel_reason                   String?
+  created_at                      DateTime  @default(now())
+  updated_at                      DateTime  @updatedAt
+
+  batches       ProductRecallBatch[]
+  notifications ProductRecallNotification[]
+  evidence      ProductRecallEvidence[]
+
+  @@unique([company_id, recall_no])
+  @@index([company_id, status])
+  @@index([company_id, source_complaint_id])
+  @@index([source_traceability_snapshot_id])
+  @@map("product_recalls")
+}
+
+model ProductRecallBatch {
+  id                  String          @id @default(cuid())
+  company_id          String
+  recall_id           String
+  recall              ProductRecall   @relation(fields: [recall_id], references: [id], onDelete: Cascade)
+  production_batch_id String
+  production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id], onDelete: Restrict)
+  batch_number_snapshot String
+  product_name_snapshot String
+  affected_qty        Decimal?        @db.Decimal(14, 4)
+  unit                String?
+  disposition         String?
+  status              String          @default("identified")
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+
+  @@unique([recall_id, production_batch_id])
+  @@index([company_id, production_batch_id])
+  @@map("product_recall_batches")
+}
+
+model ProductRecallNotification {
+  id                   String         @id @default(cuid())
+  company_id           String
+  recall_id            String
+  recall               ProductRecall  @relation(fields: [recall_id], references: [id], onDelete: Cascade)
+  external_party_id    String?
+  external_party       ExternalParty? @relation(fields: [external_party_id], references: [id], onDelete: SetNull)
+  customer_name        String
+  contact_name         String?
+  contact_phone        String?
+  notification_method  String         @default("phone")
+  status               String         @default("pending")
+  notified_at          DateTime?
+  response_summary     String?
+  created_at           DateTime       @default(now())
+  updated_at           DateTime       @updatedAt
+
+  @@index([company_id, recall_id])
+  @@index([external_party_id])
+  @@map("product_recall_notifications")
+}
+
+model ProductRecallEvidence {
+  id                 String        @id @default(cuid())
+  company_id         String
+  recall_id          String
+  recall             ProductRecall @relation(fields: [recall_id], references: [id], onDelete: Cascade)
+  evidence_type      String
+  record_id          String?
+  record             Record?       @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  traceability_snapshot_id String?
+  external_ref       String?
+  title              String
+  notes              String?
+  created_at         DateTime      @default(now())
+
+  @@index([company_id, recall_id])
+  @@index([record_id])
+  @@map("product_recall_evidence")
 }

@@ -1,7 +1,7 @@
 import { IsString, IsOptional } from 'class-validator';
 
 export class CreateCapaDto {
-  @IsString() trigger_type: string; // 'non_conformance'|'customer_complaint'|'internal_audit'|'other'
+  @IsString() trigger_type: string; // 'non_conformance'|'customer_complaint'|'internal_audit'|'product_recall'|'other'
   @IsOptional() @IsString() trigger_id?: string;
   @IsString() description: string;
   @IsOptional() @IsString() root_cause?: string;

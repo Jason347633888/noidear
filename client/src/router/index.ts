@@ -727,6 +727,19 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/customer-complaint/CustomerComplaintList.vue'),
         meta: { title: '顾客投诉管理' },
       },
+      // 产品召回模块
+      {
+        path: 'product-recalls',
+        name: 'ProductRecallList',
+        component: () => import('@/views/product-recall/ProductRecallList.vue'),
+        meta: { title: '产品召回' },
+      },
+      {
+        path: 'product-recalls/:id',
+        name: 'ProductRecallDetail',
+        component: () => import('@/views/product-recall/ProductRecallDetail.vue'),
+        meta: { title: '召回详情' },
+      },
       // 环境温湿度记录模块
       {
         path: 'environment-records',
