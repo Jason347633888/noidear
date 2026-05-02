@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { TraceabilityExportService } from './traceability-export.service';
 
 const createPrisma = () => ({
@@ -10,6 +10,7 @@ const createPrisma = () => ({
 
 const snapshotRow = {
   id: 'snap-1',
+  company_id: 'company-1',
   sourceQueryHash: 'hash-001',
   exportMode: 'simple',
   requesterId: 'user-1',
@@ -150,12 +151,12 @@ describe('TraceabilityExportService', () => {
     });
   });
 
-  it('reads snapshots from database', async () => {
+  it('reads snapshots from database for same-tenant user', async () => {
     const prisma = createPrisma();
     prisma.traceabilitySnapshot.findUnique.mockResolvedValue(snapshotRow);
     const service = new TraceabilityExportService(prisma as any);
 
-    const result = await service.getSnapshot('snap-1');
+    const result = await service.getSnapshot('snap-1', { id: 'user-1', companyId: 'company-1' });
 
     expect(prisma.traceabilitySnapshot.findUnique).toHaveBeenCalledWith({ where: { id: 'snap-1' } });
     expect(result).toMatchObject({
@@ -166,12 +167,22 @@ describe('TraceabilityExportService', () => {
     });
   });
 
+  it('rejects cross-tenant snapshot reads with ForbiddenException', async () => {
+    const prisma = createPrisma();
+    prisma.traceabilitySnapshot.findUnique.mockResolvedValue(snapshotRow);
+    const service = new TraceabilityExportService(prisma as any);
+
+    await expect(
+      service.getSnapshot('snap-1', { id: 'attacker', companyId: 'other-company' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it('throws NotFoundException for missing snapshots', async () => {
     const prisma = createPrisma();
     prisma.traceabilitySnapshot.findUnique.mockResolvedValue(null);
     const service = new TraceabilityExportService(prisma as any);
 
-    await expect(service.getSnapshot('missing')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.getSnapshot('missing', { id: 'user-1', companyId: 'company-1' })).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('returns persisted formal result payload for snapshot result', async () => {
@@ -179,7 +190,7 @@ describe('TraceabilityExportService', () => {
     prisma.traceabilitySnapshot.findUnique.mockResolvedValue(snapshotRow);
     const service = new TraceabilityExportService(prisma as any);
 
-    const result = await service.getSnapshotResult('snap-1') as any;
+    const result = await service.getSnapshotResult('snap-1', { id: 'user-1', companyId: 'company-1' }) as any;
 
     expect(result.summary.queryId).toBe('q-1');
     expect(result.meta.queryHash).toBe('hash-001');
@@ -193,6 +204,6 @@ describe('TraceabilityExportService', () => {
     });
     const service = new TraceabilityExportService(prisma as any);
 
-    await expect(service.getSnapshotResult('snap-1')).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.getSnapshotResult('snap-1', { id: 'user-1', companyId: 'company-1' })).rejects.toBeInstanceOf(ConflictException);
   });
 });
