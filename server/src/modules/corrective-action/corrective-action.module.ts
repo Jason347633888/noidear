@@ -5,9 +5,10 @@ import { VerificationRecordService } from './verification-record.service';
 import { CapaAnalyticsService } from './capa-analytics.service';
 import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
 import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
+import { QualityNumberSequenceModule } from '../quality-number-sequence/quality-number-sequence.module';
 
 @Module({
-  imports: [UnifiedApprovalModule],
+  imports: [UnifiedApprovalModule, QualityNumberSequenceModule],
   controllers: [CorrectiveActionController],
   providers: [CorrectiveActionService, VerificationRecordService, CapaAnalyticsService],
   exports: [CorrectiveActionService, VerificationRecordService, CapaAnalyticsService],

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CapaTriggerType, CreateCapaDto } from './dto/create-capa.dto';
+import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
 
 export interface CorrectiveActionListFilters {
   status?: string;
@@ -10,13 +11,15 @@ export interface CorrectiveActionListFilters {
 
 @Injectable()
 export class CorrectiveActionService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly numberSequence: QualityNumberSequenceService,
+  ) {}
 
   async create(dto: CreateCapaDto, userId: string, companyId: string) {
     await this.validateTriggerSource(dto, companyId);
 
-    const count = await this.prisma.correctiveAction.count({ where: { company_id: companyId } });
-    const capa_no = `CAPA-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+    const capa_no = await this.numberSequence.generateCorrectiveActionNo(companyId);
     return this.prisma.correctiveAction.create({
       data: { ...dto, company_id: companyId, capa_no },
     });
