@@ -1,15 +1,16 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateTraceabilityExportDto } from './dto/create-traceability-export.dto';
 import { CreateTraceabilitySnapshotDto } from './dto/create-traceability-snapshot.dto';
 
 type TraceCurrentUser = {
   id?: string;
+  companyId?: string;
 };
 
 type TraceabilitySnapshotRow = {
   id: string;
+  company_id: string | null;
   sourceQueryHash: string;
   exportMode: string;
   requesterId: string;
@@ -92,13 +93,13 @@ export class TraceabilityExportService {
     return this.mapSnapshot(row);
   }
 
-  async getSnapshot(snapshotId: string) {
-    const row = await this.findSnapshot(snapshotId);
+  async getSnapshot(snapshotId: string, currentUser: TraceCurrentUser) {
+    const row = await this.findSnapshot(snapshotId, currentUser);
     return this.mapSnapshot(row);
   }
 
-  async getSnapshotResult(snapshotId: string) {
-    const row = await this.findSnapshot(snapshotId);
+  async getSnapshotResult(snapshotId: string, currentUser: TraceCurrentUser) {
+    const row = await this.findSnapshot(snapshotId, currentUser);
     const summary = asSummary(row.summary);
 
     if (!summary.resultPayload) {
@@ -108,11 +109,16 @@ export class TraceabilityExportService {
     return summary.resultPayload;
   }
 
-  private async findSnapshot(snapshotId: string): Promise<TraceabilitySnapshotRow> {
+  private async findSnapshot(snapshotId: string, currentUser: TraceCurrentUser): Promise<TraceabilitySnapshotRow> {
     const row = await this.prisma.traceabilitySnapshot.findUnique({ where: { id: snapshotId } });
 
     if (!row) {
       throw new NotFoundException(`Traceability snapshot ${snapshotId} not found`);
+    }
+
+    const companyId = currentUser?.companyId;
+    if (companyId && (row as any).company_id && (row as any).company_id !== companyId) {
+      throw new ForbiddenException(`Traceability snapshot ${snapshotId} does not belong to the current tenant`);
     }
 
     return row as TraceabilitySnapshotRow;
@@ -148,12 +154,13 @@ export class TraceabilityExportService {
 
     return this.prisma.traceabilitySnapshot.create({
       data: {
+        company_id: input.currentUser?.companyId ?? null,
         sourceQueryHash: input.sourceQueryRef,
         exportMode: input.exportMode,
         requesterId,
         status: input.status,
         snapshotType: input.snapshotType,
-        summary: summary as unknown as Prisma.InputJsonValue,
+        summary: summary as unknown as object,
       },
     }) as Promise<TraceabilitySnapshotRow>;
   }

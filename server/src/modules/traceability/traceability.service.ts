@@ -6,6 +6,7 @@ import { TraceabilityExportService } from './traceability-export.service';
 
 interface TraceCurrentUser {
   id?: string;
+  companyId?: string;
   department?: string;
   scenarioPermissions?: string[];
 }
@@ -104,11 +105,11 @@ export class TraceabilityService {
     return this.exportService.createSnapshot(dto as any, currentUser);
   }
 
-  async getSnapshot(snapshotId: string) {
-    return this.exportService.getSnapshot(snapshotId);
+  async getSnapshot(snapshotId: string, currentUser: TraceCurrentUser) {
+    return this.exportService.getSnapshot(snapshotId, currentUser);
   }
 
-  async getSnapshotResult(snapshotId: string) {
-    return this.exportService.getSnapshotResult(snapshotId);
+  async getSnapshotResult(snapshotId: string, currentUser: TraceCurrentUser) {
+    return this.exportService.getSnapshotResult(snapshotId, currentUser);
   }
 }
