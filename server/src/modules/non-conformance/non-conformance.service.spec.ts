@@ -38,7 +38,7 @@ describe('NonConformanceService', () => {
   });
 
   it('validates source and uses shared sequence service for NC numbering', async () => {
-    prisma.productionBatch.findUnique.mockResolvedValue({ id: 'b1', productId: 'prod-1' });
+    prisma.productionBatch.findUnique.mockResolvedValue({ id: 'b1', productId: 'prod-1', deletedAt: null });
     prisma.product.findFirst.mockResolvedValue({ id: 'prod-1' });
     numberSequence.generateNonConformanceNo.mockResolvedValue('NC-2026-0004');
     prisma.nonConformance.create.mockResolvedValue({ id: 'nc1' });
@@ -47,7 +47,7 @@ describe('NonConformanceService', () => {
 
     expect(prisma.productionBatch.findUnique).toHaveBeenCalledWith({
       where: { id: 'b1' },
-      select: { id: true, productId: true },
+      select: { id: true, productId: true, deletedAt: true },
     });
     expect(prisma.product.findFirst).toHaveBeenCalledWith({
       where: { id: 'prod-1', company_id: '2', deleted_at: null },
@@ -92,14 +92,14 @@ describe('NonConformanceService', () => {
 
     expect(prisma.productionBatch.findUnique).toHaveBeenCalledWith({
       where: { id: 'missing-batch' },
-      select: { id: true, productId: true },
+      select: { id: true, productId: true, deletedAt: true },
     });
     expect(prisma.product.findFirst).not.toHaveBeenCalled();
     expect(prisma.nonConformance.create).not.toHaveBeenCalled();
   });
 
   it('rejects a production batch source outside the current company', async () => {
-    prisma.productionBatch.findUnique.mockResolvedValue({ id: 'other-company-batch', productId: 'prod-other' });
+    prisma.productionBatch.findUnique.mockResolvedValue({ id: 'other-company-batch', productId: 'prod-other', deletedAt: null });
     prisma.product.findFirst.mockResolvedValue(null);
 
     await expect(
@@ -108,7 +108,7 @@ describe('NonConformanceService', () => {
 
     expect(prisma.productionBatch.findUnique).toHaveBeenCalledWith({
       where: { id: 'other-company-batch' },
-      select: { id: true, productId: true },
+      select: { id: true, productId: true, deletedAt: true },
     });
     expect(prisma.product.findFirst).toHaveBeenCalledWith({
       where: { id: 'prod-other', company_id: '2', deleted_at: null },
@@ -126,7 +126,7 @@ describe('NonConformanceService', () => {
 
     expect(prisma.materialBatch.findUnique).toHaveBeenCalledWith({
       where: { id: 'missing-material-batch' },
-      select: { id: true },
+      select: { id: true, deletedAt: true },
     });
     expect(prisma.nonConformance.create).not.toHaveBeenCalled();
   });
@@ -154,7 +154,7 @@ describe('NonConformanceService', () => {
 
     expect(prisma.materialBatch.findUnique).toHaveBeenCalledWith({
       where: { id: 'mb1' },
-      select: { id: true },
+      select: { id: true, deletedAt: true },
     });
     expect(prisma.nonConformance.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -340,7 +340,7 @@ describe('NonConformanceService', () => {
         create: jest.fn().mockResolvedValue({ id: 'nc-ccp-1' }),
       },
       productionBatch: {
-        findUnique: jest.fn().mockResolvedValue({ id: 'batch-1', productId: 'prod-1' }),
+        findUnique: jest.fn().mockResolvedValue({ id: 'batch-1', productId: 'prod-1', deletedAt: null }),
       },
       product: {
         findFirst: jest.fn().mockResolvedValue({ id: 'prod-1' }),
@@ -368,7 +368,7 @@ describe('NonConformanceService', () => {
 
     expect(tx.productionBatch.findUnique).toHaveBeenCalledWith({
       where: { id: 'batch-1' },
-      select: { id: true, productId: true },
+      select: { id: true, productId: true, deletedAt: true },
     });
     expect(tx.product.findFirst).toHaveBeenCalledWith({
       where: { id: 'prod-1', company_id: '2', deleted_at: null },
@@ -400,7 +400,7 @@ describe('NonConformanceService', () => {
         create: jest.fn().mockResolvedValue({ id: 'nc-ccp-2' }),
       },
       productionBatch: {
-        findUnique: jest.fn().mockResolvedValue({ id: 'batch-1', productId: 'prod-1' }),
+        findUnique: jest.fn().mockResolvedValue({ id: 'batch-1', productId: 'prod-1', deletedAt: null }),
       },
       product: {
         findFirst: jest.fn().mockResolvedValue({ id: 'prod-1' }),
@@ -433,6 +433,39 @@ describe('NonConformanceService', () => {
     expect(data.description).toContain('未填写');
   });
 
+  it('rejects a soft-deleted material batch as NC source', async () => {
+    prisma.materialBatch.findUnique.mockResolvedValue({ id: 'mb-deleted', deletedAt: new Date('2025-01-01') });
+
+    await expect(
+      service.create({ source_type: 'material_batch', source_id: 'mb-deleted', description: '来料不合格' }, 'u1', '2'),
+    ).rejects.toThrow('物料批次来源不存在');
+
+    expect(prisma.materialBatch.findUnique).toHaveBeenCalledWith({
+      where: { id: 'mb-deleted' },
+      select: { id: true, deletedAt: true },
+    });
+    expect(prisma.nonConformance.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a soft-deleted production batch as NC source', async () => {
+    prisma.productionBatch.findUnique.mockResolvedValue({
+      id: 'pb-deleted',
+      productId: 'prod-1',
+      deletedAt: new Date('2025-01-01'),
+    });
+
+    await expect(
+      service.create({ source_type: 'production_batch', source_id: 'pb-deleted', description: '偏差' }, 'u1', '2'),
+    ).rejects.toThrow('生产批次来源不存在');
+
+    expect(prisma.productionBatch.findUnique).toHaveBeenCalledWith({
+      where: { id: 'pb-deleted' },
+      select: { id: true, productId: true, deletedAt: true },
+    });
+    expect(prisma.product.findFirst).not.toHaveBeenCalled();
+    expect(prisma.nonConformance.create).not.toHaveBeenCalled();
+  });
+
   it('rejects CCP deviation NonConformance creation when the production batch belongs to another company', async () => {
     const tx: any = {
       nonConformance: {
@@ -440,7 +473,7 @@ describe('NonConformanceService', () => {
         create: jest.fn(),
       },
       productionBatch: {
-        findUnique: jest.fn().mockResolvedValue({ id: 'batch-other', productId: 'prod-other' }),
+        findUnique: jest.fn().mockResolvedValue({ id: 'batch-other', productId: 'prod-other', deletedAt: null }),
       },
       product: {
         findFirst: jest.fn().mockResolvedValue(null),
@@ -469,7 +502,7 @@ describe('NonConformanceService', () => {
 
     expect(tx.productionBatch.findUnique).toHaveBeenCalledWith({
       where: { id: 'batch-other' },
-      select: { id: true, productId: true },
+      select: { id: true, productId: true, deletedAt: true },
     });
     expect(tx.product.findFirst).toHaveBeenCalledWith({
       where: { id: 'prod-other', company_id: '2', deleted_at: null },

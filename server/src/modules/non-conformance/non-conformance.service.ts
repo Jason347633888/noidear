@@ -76,9 +76,9 @@ export class NonConformanceService {
     if (sourceType === 'material_batch') {
       const materialBatch = await db.materialBatch.findUnique({
         where: { id: trimmedSourceId },
-        select: { id: true },
+        select: { id: true, deletedAt: true },
       });
-      if (!materialBatch) {
+      if (!materialBatch || materialBatch.deletedAt != null) {
         throw new BadRequestException('物料批次来源不存在');
       }
       return;
@@ -87,9 +87,9 @@ export class NonConformanceService {
     if (sourceType === 'production_batch') {
       const productionBatch = await db.productionBatch.findUnique({
         where: { id: trimmedSourceId },
-        select: { id: true, productId: true },
+        select: { id: true, productId: true, deletedAt: true },
       });
-      if (!productionBatch?.productId) {
+      if (!productionBatch?.productId || productionBatch.deletedAt != null) {
         throw new BadRequestException('生产批次来源不存在');
       }
 

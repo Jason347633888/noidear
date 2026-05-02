@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NonConformanceService } from '../non-conformance/non-conformance.service';
 import { CreateCcpRecordDto } from './dto/create-ccp-record.dto';
@@ -31,7 +32,7 @@ export class CcpService {
       });
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const ccpRecord = await tx.cCPRecord.create({
         data: createData,
         include: { ccp_point: true },
@@ -69,7 +70,7 @@ export class CcpService {
       where: { production_batch_id: productionBatchId, company_id: companyId },
       select: { ccp_point_id: true },
     });
-    const filledIds = new Set(records.map((r) => r.ccp_point_id));
+    const filledIds = new Set(records.map((r: { ccp_point_id: string }) => r.ccp_point_id));
 
     const expectedCCPs = await this.prisma.cCPPoint.findMany({
       where: {
@@ -84,6 +85,6 @@ export class CcpService {
       orderBy: [{ ccp_no: 'asc' }, { created_at: 'asc' }],
     });
 
-    return expectedCCPs.filter((ccp) => !filledIds.has(ccp.id));
+    return expectedCCPs.filter((ccp: { id: string }) => !filledIds.has(ccp.id));
   }
 }

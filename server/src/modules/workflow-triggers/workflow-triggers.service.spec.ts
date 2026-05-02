@@ -49,14 +49,31 @@ describe('WorkflowTriggersService', () => {
 
     expect(prisma.materialBatch.findUnique).toHaveBeenCalledWith({
       where: { id: 'missing-mb' },
-      select: { id: true },
+      select: { id: true, deletedAt: true },
+    });
+    expect(prisma.nonConformance.create).not.toHaveBeenCalled();
+  });
+
+  it('does not create a NonConformance when the material batch source is soft-deleted', async () => {
+    prisma.materialBatch.findUnique.mockResolvedValue({ id: 'mb-deleted', deletedAt: new Date('2025-01-01') });
+
+    await service.handleInspectionFail({
+      id: 'inspection-4',
+      overall_result: 'fail',
+      material_batch_id: 'mb-deleted',
+      company_id: '2',
+    });
+
+    expect(prisma.materialBatch.findUnique).toHaveBeenCalledWith({
+      where: { id: 'mb-deleted' },
+      select: { id: true, deletedAt: true },
     });
     expect(numberSequence.generateNonConformanceNo).not.toHaveBeenCalled();
     expect(prisma.nonConformance.create).not.toHaveBeenCalled();
   });
 
   it('creates a NonConformance with shared sequence when a failed inspection has a valid material batch', async () => {
-    prisma.materialBatch.findUnique.mockResolvedValue({ id: 'mb1' });
+    prisma.materialBatch.findUnique.mockResolvedValue({ id: 'mb1', deletedAt: null });
     numberSequence.generateNonConformanceNo.mockResolvedValue('NC-2026-0031');
     prisma.nonConformance.create.mockResolvedValue({ id: 'nc-auto-1' });
 
@@ -69,7 +86,7 @@ describe('WorkflowTriggersService', () => {
 
     expect(prisma.materialBatch.findUnique).toHaveBeenCalledWith({
       where: { id: 'mb1' },
-      select: { id: true },
+      select: { id: true, deletedAt: true },
     });
     expect(prisma.nonConformance.count).not.toHaveBeenCalled();
     expect(numberSequence.generateNonConformanceNo).toHaveBeenCalledWith('2');

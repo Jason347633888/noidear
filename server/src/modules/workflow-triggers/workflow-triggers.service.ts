@@ -23,10 +23,10 @@ export class WorkflowTriggersService {
 
     const materialBatch = await this.prisma.materialBatch.findUnique({
       where: { id: payload.material_batch_id },
-      select: { id: true },
+      select: { id: true, deletedAt: true },
     });
 
-    if (!materialBatch) {
+    if (!materialBatch || materialBatch.deletedAt != null) {
       this.logger.error(
         `[WorkflowTrigger] 来料检验不合格未创建不合格品处置单：物料批次不存在 ${payload.material_batch_id}`,
       );
