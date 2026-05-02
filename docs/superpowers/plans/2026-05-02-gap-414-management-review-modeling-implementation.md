@@ -13,8 +13,8 @@
 ## Superpower 与 grill-me 校准记录
 
 - **Superpower 产出链路：** 主 agent 已按 `brainstorming -> grill-with-docs -> writing-plans` 为 GAP-414 生成 spec 和本 implementation plan。
-- **grill-with-docs 校准结论：** `ManagementReview` 是治理与闭环层的年度聚合对象；`RecordTemplate/Record` 和 `Document` 只保留原始表单、会议纪要、报告和附件证据，不再作为管理评审事实源。
-- **执行限制：** Multica 执行 agent 只能使用 `superpowers:executing-plans` 执行本计划；不得自行扩展到 ProductRecall、TraceabilityDrill、SupplierEvaluation、CorrectiveAction 自动汇总适配器，也不得修改追溯主链。
+- **grill-with-docs 校准结论：** `ManagementReview` 是治理与闭环层的年度聚合对象；第一版只收集 `AuditReport` 和 `TrainingArchive` 自动输入快照。`RecordTemplate/Record` 和 `Document` 只保留原始表单、会议纪要、报告和附件证据，不作为 `ManagementReviewInput` 来源，也不作为管理评审事实源。
+- **执行限制：** Multica 执行 agent 只能使用 `superpowers:executing-plans` 执行本计划；不得自行扩展到手工输入、Record 输入、Document 输入、ProductRecall、TraceabilityDrill、SupplierEvaluation、CorrectiveAction 自动汇总适配器，也不得修改追溯主链。
 - **执行隔离：** 执行本计划前必须从最新 `origin/master` 创建独立 worktree，或使用 Multica 隔离工作目录；不得在主 checkout `/Users/jiashenglin/Desktop/好玩的项目/noidear` 直接修改、提交或 push。如发现当前目录是主 checkout，必须停止并回报主 agent。
 - **停止条件：** 如果执行 agent 发现本计划与当前代码、`AGENTS.md`、`docs/AGENT_GUIDE.md`、`docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md` 或 spec 冲突，必须停止并回报主 agent，不得猜测实现。
 - **历史数据停止条件：** 本计划不迁移历史动态表单记录；如果执行时有人要求自动回填历史 GRSS-PZ-JL-50/51/52/53 Record 到 ManagementReview，必须停止并回报需要单独数据归属确认。
@@ -71,6 +71,7 @@ describe('ManagementReviewService', () => {
         upsert: jest.fn(),
       },
       managementReviewAction: {
+        findFirst: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
       },
@@ -211,6 +212,29 @@ describe('ManagementReviewService', () => {
     await expect(service.collectSources('mr-1', 'company-1')).rejects.toThrow(
       NotFoundException,
     );
+  });
+
+  it('does not update an action that does not belong to the review', async () => {
+    const prisma = createPrismaMock();
+    prisma.managementReview.findUnique.mockResolvedValue({
+      id: 'mr-1',
+      companyId: 'company-1',
+      year: 2026,
+    });
+    prisma.managementReviewAction.findFirst.mockResolvedValue(null);
+    const service = new ManagementReviewService(prisma);
+
+    await expect(
+      service.updateAction('mr-1', 'action-from-other-review', 'company-1', {
+        status: 'completed',
+      } as any),
+    ).rejects.toThrow(NotFoundException);
+
+    expect(prisma.managementReviewAction.findFirst).toHaveBeenCalledWith({
+      where: { id: 'action-from-other-review', reviewId: 'mr-1' },
+      select: { id: true },
+    });
+    expect(prisma.managementReviewAction.update).not.toHaveBeenCalled();
   });
 });
 ```
@@ -747,6 +771,14 @@ export class ManagementReviewService {
 
   async updateAction(reviewId: string, actionId: string, companyId: string, dto: UpdateManagementReviewActionDto) {
     await this.findOwnedReview(reviewId, companyId);
+    const action = await this.prisma.managementReviewAction.findFirst({
+      where: { id: actionId, reviewId },
+      select: { id: true },
+    });
+    if (!action) {
+      throw new NotFoundException('管理评审改进措施不存在');
+    }
+
     return this.prisma.managementReviewAction.update({
       where: { id: actionId },
       data: {
@@ -922,7 +954,7 @@ import request from './request';
 
 export interface ManagementReviewInput {
   id: string;
-  sourceType: 'audit_report' | 'training_archive' | 'record' | 'document' | 'manual';
+  sourceType: 'audit_report' | 'training_archive';
   sourceId: string;
   department?: string;
   title: string;

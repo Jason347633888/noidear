@@ -13,7 +13,7 @@
 - 培训模块已有 `TrainingPlan`、`TrainingProject`、`LearningRecord`、`TrainingArchive`；`ArchiveService.normalizeArchive()` 已能提供 `attendeeCount`、`passedCount`、`departmentName`、`trainingDate` 等年度培训输入。
 - 内审模块已有 `AuditPlan`、`AuditFinding`、`AuditReport`；`AuditReport.summary` 已结构化保存 `totalDocuments`、`conformCount`、`nonConformCount`、`byLevel`、`byDepartment`、`byIssueType`。
 
-因此，GAP-414 不再缺少业务边界：第一版应建立独立 `ManagementReview` 聚合对象，并复用现有 `AuditReport` 和 `TrainingArchive` 作为自动汇总输入；RecordTemplate/Record 保留为原始表单证据和双轨展示层，不能继续充当管理评审事实源。
+因此，GAP-414 不再缺少业务边界：第一版应建立独立 `ManagementReview` 聚合对象，并且只复用现有 `AuditReport` 和 `TrainingArchive` 作为自动汇总输入；RecordTemplate/Record 保留为原始表单证据和双轨展示层，Document 保留为输出归档证据，二者不能继续充当管理评审事实源或第一版输入来源。
 
 ## 当前代码事实源
 
@@ -35,23 +35,21 @@
 本 GAP 建立最小可执行的管理评审聚合链：
 
 - 新增 `ManagementReview` 作为年度管理评审事实源，按 `companyId + year` 保持年度唯一。
-- 新增 `ManagementReviewInput` 保存输入材料快照。输入材料可来自：
+- 新增 `ManagementReviewInput` 保存输入材料快照。第一版输入材料只来自：
   - `AuditReport`：内审报告汇总。
   - `TrainingArchive`：培训项目归档和考试通过情况。
-  - `Record`：部门工作总结、会议纪要、管理评审报告等动态表单证据。
-  - `Document`：归档文件或外部资料。
-  - `manual`：第一版尚未结构化的来源摘要。
 - 新增 `ManagementReviewAction` 保存评审输出的改进措施、责任部门、责任人、期限和关闭状态。
 - 管理评审服务提供“收集输入材料”动作，从现有 `AuditReport` 和 `TrainingArchive` 生成输入快照，不复制 AuditReport 或 TrainingArchive 事实。
 - 前端新增管理评审列表和详情页，支持创建年度评审、触发输入收集、查看自动汇总和维护改进措施。
-- `RecordTemplate/Record` 双轨保留：GRSS-PZ-JL-50/51/52/53 这类表单原文仍可作为 `ManagementReviewInput.sourceType = record` 关联，不在本 GAP 中重建模板引擎。
+- `RecordTemplate/Record` 双轨保留：GRSS-PZ-JL-50/51/52/53 这类表单原文仍保留在动态表单系统中；第一版只允许 `ManagementReview` 关联 `meetingMinutesRecordId`、`reportRecordId` 作为会议纪要和报告证据，不提供 `ManagementReviewInput.sourceType = record` 输入能力。
+- `Document` 只作为 `reportDocumentId` 输出归档证据；第一版不提供 `ManagementReviewInput.sourceType = document` 输入能力。
 
 ## 不做什么
 
 - 不把管理评审做成仅 `RecordTemplate/Record` 的普通表单；独立模型是事实源。
 - 不在管理评审模块复制培训项目、培训档案、内审报告、CAPA、召回、追溯演练或供应商评价的主数据。
-- 不自动生成 GRSS-PZ-JL-52 管理评审报告 PDF；第一版只保存结构化评审对象、输入快照和改进措施，可关联已有 `Document` 或 `Record`。
-- 不实现追溯演练、ProductRecall、SupplierEvaluation、CorrectiveAction 的完整自动汇总适配器；这些来源可先作为 `manual` / `record` 输入，后续在各模块稳定后补适配器。
+- 不自动生成 GRSS-PZ-JL-52 管理评审报告 PDF；第一版只保存结构化评审对象、自动输入快照和改进措施，可在评审完成时关联已有 `Document` 或 `Record` 作为输出证据。
+- 不实现手工输入、Record 输入、Document 输入，也不实现追溯演练、ProductRecall、SupplierEvaluation、CorrectiveAction 的完整自动汇总适配器；这些来源后续在各模块稳定并另写合同后补适配器。
 - 不改 `AuditReport.summary`、`TrainingArchive`、`RecordTemplate`、`Record` 的既有语义。
 - 不触碰 `ProductionBatch / MaterialBatch / BatchMaterialUsage / InventoryMovement` 主追溯链。
 
@@ -66,7 +64,8 @@
   - `@@unique([companyId, year])` 防止同租户同年度重复评审。
 - `ManagementReviewInput`
   - 关联 `ManagementReview`，保存来源类型、来源 ID、部门、标题、摘要 JSON、是否纳入评审。
-  - `@@unique([reviewId, sourceType, sourceId])` 防止同一个来源重复进入同一次评审；`manual` 来源允许 `sourceId` 为空。
+  - `sourceType` 第一版只允许 `audit_report` 和 `training_archive`；`sourceId` 必填。
+  - `@@unique([reviewId, sourceType, sourceId])` 防止同一个来源重复进入同一次评审。
 - `ManagementReviewAction`
   - 关联 `ManagementReview`，保存改进措施、责任部门、责任人、期限、状态、验证说明和关闭时间。
 
@@ -93,7 +92,7 @@
 
 - 内审输入显示 `AuditReport` 标题、年度、文件总数、符合数、不符合数。
 - 培训输入显示 `TrainingArchive` 对应项目、部门、参训人数、通过人数。
-- 手工/记录输入显示来源类型、标题、部门、摘要。
+- 不展示手工/记录/文档输入入口；Record/Document 仅在评审完成或证据区作为会议纪要、评审报告归档引用。
 
 ## 历史数据和迁移策略
 
@@ -103,16 +102,16 @@
 
 1. 新建 `management_reviews`、`management_review_inputs`、`management_review_actions` 三张表。
 2. 不回填历史 `Record` 数据；历史管理评审表单继续保留在动态表单或文档系统中。
-3. 执行 agent 可以在服务层提供手动关联 `Record` / `Document` 的输入能力，但不得自动猜测历史 Record 属于哪一年度管理评审。
+3. 执行 agent 不得在本 GAP 中提供手动 `Record` / `Document` / `manual` 输入能力；如需要把历史 Record 作为输入来源，必须另写 schema/API 合同和数据归属规则。
 4. 新创建的管理评审从实施后开始按 `ManagementReview` 作为事实源，动态表单和文档只作为证据附件或输出归档。
 
 ## Superpower 与 grill-me 校准记录
 
 - **任务类型判断：** GAP-414 是 `needs_spec`，影响 schema、跨模块治理链和 RecordTemplate/Record 与独立业务表的取舍，必须走 `brainstorming -> grill-with-docs -> writing-plans`。
-- **brainstorming 结论：** 推荐“独立 `ManagementReview` 聚合对象 + 输入快照 + 改进措施 + Record/Document 双轨证据”。只使用 RecordTemplate/Record 无法稳定聚合 AuditReport 和 TrainingArchive；一次性接入所有治理来源又会把本 PR 扩大到召回、CAPA、供应商评价和追溯演练，超出可执行边界。
+- **brainstorming 结论：** 推荐“独立 `ManagementReview` 聚合对象 + AuditReport/TrainingArchive 自动输入快照 + 改进措施 + Record/Document 输出证据”。只使用 RecordTemplate/Record 无法稳定聚合 AuditReport 和 TrainingArchive；把 manual/record/document 输入和所有治理来源一次性接入会扩大 schema/API 合同，超出本 PR 可执行边界。
 - **grill-with-docs 校准结论：**
   - 与 `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md` 不冲突；该文档虽写“当前更适合 RecordTemplate/Record”，但同时要求“管理评审不是孤立文档，而是跨模块输入汇编”，冻结 model-landing 已将其收敛为新增双轨对象。
-  - 不重复造主数据或事实源；`AuditReport`、`TrainingArchive`、`Record`、`Document` 都只作为来源引用和快照。
+  - 不重复造主数据或事实源；`AuditReport`、`TrainingArchive` 只作为自动输入来源引用和快照，`Record`、`Document` 只作为会议纪要或输出报告证据。
   - 不引入平行批次链路；管理评审不直接关联 `ProductionBatch` 或 `MaterialBatch`。
   - 不破坏 `ProductionBatch / MaterialBatch / BatchMaterialUsage / InventoryMovement` 主链。
   - 不需要迁移历史数据；历史 Record/Document 保留，不自动猜测归属。
