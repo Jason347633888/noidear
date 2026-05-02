@@ -3719,6 +3719,7 @@ model ProductionRun {
 // Traceability async export snapshots
 model TraceabilitySnapshot {
   id              String   @id @default(cuid())
+  company_id      String?
   sourceQueryHash String
   exportMode      String
   requesterId     String
@@ -3729,6 +3730,7 @@ model TraceabilitySnapshot {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  @@index([company_id])
   @@map("traceability_snapshots")
 }
 
