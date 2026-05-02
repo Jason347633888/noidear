@@ -1490,26 +1490,32 @@
       "id": "GAP-315",
       "severity": "P1",
       "moduleId": "nonconformance-capa",
-      "triageStatus": "needs_spec",
-      "dependsOn": [],
+      "triageStatus": "ready_for_plan",
+      "dependsOn": [
+        "GAP-304"
+      ],
       "blocks": [],
-      "canParallelize": true,
+      "canParallelize": false,
       "needsDesign": true,
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
         "brainstorming",
         "grill-with-docs",
-        "writing-plans"
+        "writing-plans",
+        "executing-plans"
       ],
       "prRoadmapGroup": "nonconformance",
-      "prOrder": null,
+      "prOrder": 23,
       "recommendedPr": "nonconformance/GAP-315",
       "validationCommands": [
-        "pnpm test:e2e -- --grep GAP-315"
+        "(cd server && npm test -- non-conformance.service.spec.ts rework-record.service.spec.ts --runInBand)",
+        "(cd server && npx prisma validate --schema src/prisma/schema.prisma)",
+        "npm run build:server",
+        "npm run build:client"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-02-gap-315-nc-dispose-to-rework-record-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-02-gap-315-nc-dispose-to-rework-record-implementation.md"
     },
     {
       "id": "GAP-316",
