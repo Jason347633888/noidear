@@ -1064,6 +1064,8 @@ model MaterialRequisition {
   departmentId    String?
   remark          String?
   targetZone      String?   // 目标车间区域：筛粉间 | 称油间 | 小料房
+  equipmentId     String?
+  equipment       Equipment? @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
   submittedAt     DateTime?
   approvedAt         DateTime?
   approvedBy         String?
@@ -1078,6 +1080,7 @@ model MaterialRequisition {
   @@index([status])
   @@index([createdAt])
   @@index([requisitionType])
+  @@index([equipmentId])
   @@index([approvalInstanceId])
   @@map("material_requisitions")
 }
@@ -1651,9 +1654,10 @@ model Equipment {
   deletedAt         DateTime?
 
   // 反向关系
-  maintenancePlans   MaintenancePlan[]
-  maintenanceRecords MaintenanceRecord[]
-  equipmentFaults    EquipmentFault[]
+  maintenancePlans     MaintenancePlan[]
+  maintenanceRecords   MaintenanceRecord[]
+  equipmentFaults      EquipmentFault[]
+  materialRequisitions MaterialRequisition[]
 
   @@index([code])
   @@index([category])

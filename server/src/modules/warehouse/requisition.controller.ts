@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequisitionService } from './requisition.service';
+import { CreateRequisitionDto, QueryRequisitionDto } from './dto/requisition.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('warehouse/requisitions')
@@ -9,12 +10,12 @@ export class RequisitionController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createDto: any, @Request() req: any) {
+  create(@Body() createDto: CreateRequisitionDto, @Request() req: any) {
     return this.requisitionService.create({ ...createDto, applicantId: req.user.id });
   }
 
   @Get()
-  findAll(@Query() query: any) {
+  findAll(@Query() query: QueryRequisitionDto) {
     return this.requisitionService.findAll(query);
   }
 
