@@ -41,10 +41,18 @@ export interface CreateReworkRecordPayload {
 const VERDICT_MAP: Record<string, string> = {
   pass: '合格',
   fail: '不合格',
+  pending: '待判定',
 };
 
 export function getVerdictText(verdict: string): string {
   return VERDICT_MAP[verdict] ?? verdict;
+}
+
+export function getVerdictTagType(verdict: string): 'success' | 'warning' | 'danger' | 'info' {
+  if (verdict === 'pass') return 'success';
+  if (verdict === 'pending') return 'warning';
+  if (verdict === 'fail') return 'danger';
+  return 'info';
 }
 
 // =========================================================================

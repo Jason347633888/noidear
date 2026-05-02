@@ -2,7 +2,8 @@ import { NotFoundException } from '@nestjs/common';
 import { NonConformanceService } from './non-conformance.service';
 
 describe('NonConformanceService', () => {
-  const prisma = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const prisma: any = {
     nonConformance: {
       count: jest.fn(),
       create: jest.fn(),
@@ -10,10 +11,18 @@ describe('NonConformanceService', () => {
       findFirst: jest.fn(),
       update: jest.fn(),
     },
+    productionBatch: {
+      findFirst: jest.fn(),
+    },
+    reworkRecord: {
+      findFirst: jest.fn(),
+      create: jest.fn(),
+    },
   };
   const numberSequence = {
     generateNonConformanceNo: jest.fn(),
   };
+  prisma.$transaction = jest.fn(async (callback: (tx: unknown) => Promise<unknown>) => callback(prisma));
   let service: NonConformanceService;
 
   beforeEach(() => {
@@ -45,6 +54,165 @@ describe('NonConformanceService', () => {
 
     await expect(service.dispose('nc1', { disposition: 'rework' }, 'u1', '2')).rejects.toThrow(NotFoundException);
     expect(prisma.nonConformance.update).not.toHaveBeenCalled();
+  });
+
+  it('auto-creates one pending ReworkRecord when disposing a production-batch NC as rework', async () => {
+    prisma.nonConformance.findFirst.mockResolvedValue({
+      id: 'nc1',
+      company_id: '2',
+      nc_no: 'NC-2026-0001',
+      source_type: 'production_batch',
+      source_id: 'batch-1',
+      description: '烘烤不足，需要返工',
+      qty: 12.5,
+      unit: 'kg',
+    });
+    prisma.productionBatch.findFirst.mockResolvedValue({ id: 'batch-1' });
+    prisma.reworkRecord.findFirst.mockResolvedValue(null);
+    prisma.nonConformance.update.mockResolvedValue({ id: 'nc1', disposition: 'rework' });
+    prisma.reworkRecord.create.mockResolvedValue({ id: 'rw1' });
+
+    await service.dispose('nc1', { disposition: 'rework' }, 'u1', '2');
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.productionBatch.findFirst).toHaveBeenCalledWith({
+      where: { id: 'batch-1', product: { company_id: '2' } },
+      select: { id: true },
+    });
+    expect(prisma.reworkRecord.findFirst).toHaveBeenCalledWith({
+      where: { company_id: '2', nc_id: 'nc1' },
+      select: { id: true },
+    });
+    expect(prisma.reworkRecord.create).toHaveBeenCalledWith({
+      data: {
+        company_id: '2',
+        production_batch_id: 'batch-1',
+        nc_id: 'nc1',
+        rework_reason: '烘烤不足，需要返工',
+        rework_qty: 12.5,
+        unit: 'kg',
+        rework_date: expect.any(Date),
+        operator_id: 'u1',
+        quality_verdict: 'pending',
+      },
+    });
+    expect(prisma.nonConformance.update).toHaveBeenCalledWith({
+      where: { id: 'nc1' },
+      data: {
+        disposition: 'rework',
+        disposition_by: 'u1',
+        disposition_at: expect.any(Date),
+        status: 'dispositioned',
+      },
+    });
+  });
+
+  it('does not create a duplicate ReworkRecord when one already exists for the NC', async () => {
+    prisma.nonConformance.findFirst.mockResolvedValue({
+      id: 'nc1',
+      company_id: '2',
+      nc_no: 'NC-2026-0001',
+      source_type: 'production_batch',
+      source_id: 'batch-1',
+      description: '烘烤不足，需要返工',
+      qty: 12.5,
+      unit: 'kg',
+    });
+    prisma.productionBatch.findFirst.mockResolvedValue({ id: 'batch-1' });
+    prisma.reworkRecord.findFirst.mockResolvedValue({ id: 'rw-existing' });
+    prisma.nonConformance.update.mockResolvedValue({ id: 'nc1', disposition: 'rework' });
+
+    await service.dispose('nc1', { disposition: 'rework' }, 'u1', '2');
+
+    expect(prisma.reworkRecord.create).not.toHaveBeenCalled();
+    expect(prisma.nonConformance.update).toHaveBeenCalled();
+  });
+
+  it('rejects rework disposition when NC source is not a production batch', async () => {
+    prisma.nonConformance.findFirst.mockResolvedValue({
+      id: 'nc-material',
+      company_id: '2',
+      source_type: 'material_batch',
+      source_id: 'material-batch-1',
+      description: '原料异常',
+      qty: 1,
+      unit: 'kg',
+    });
+
+    await expect(service.dispose('nc-material', { disposition: 'rework' }, 'u1', '2')).rejects.toThrow(
+      '返工处置仅支持来源为生产批次的不合格记录',
+    );
+
+    expect(prisma.nonConformance.update).not.toHaveBeenCalled();
+    expect(prisma.reworkRecord.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects rework disposition when NC quantity or unit is missing', async () => {
+    prisma.nonConformance.findFirst.mockResolvedValue({
+      id: 'nc-no-qty',
+      company_id: '2',
+      source_type: 'production_batch',
+      source_id: 'batch-1',
+      description: '未填写数量',
+      qty: null,
+      unit: 'kg',
+    });
+
+    await expect(service.dispose('nc-no-qty', { disposition: 'rework' }, 'u1', '2')).rejects.toThrow(
+      '返工处置需要不合格数量和单位',
+    );
+
+    expect(prisma.productionBatch.findFirst).not.toHaveBeenCalled();
+    expect(prisma.nonConformance.update).not.toHaveBeenCalled();
+    expect(prisma.reworkRecord.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects rework disposition when the production batch is missing or outside company', async () => {
+    prisma.nonConformance.findFirst.mockResolvedValue({
+      id: 'nc1',
+      company_id: '2',
+      source_type: 'production_batch',
+      source_id: 'missing-batch',
+      description: '批次不存在',
+      qty: 1,
+      unit: 'kg',
+    });
+    prisma.productionBatch.findFirst.mockResolvedValue(null);
+
+    await expect(service.dispose('nc1', { disposition: 'rework' }, 'u1', '2')).rejects.toThrow(
+      '返工处置的生产批次不存在或不属于当前公司',
+    );
+
+    expect(prisma.nonConformance.update).not.toHaveBeenCalled();
+    expect(prisma.reworkRecord.create).not.toHaveBeenCalled();
+  });
+
+  it('does not touch ReworkRecord when disposition is not rework', async () => {
+    prisma.nonConformance.findFirst.mockResolvedValue({
+      id: 'nc1',
+      company_id: '2',
+      source_type: 'production_batch',
+      source_id: 'batch-1',
+      description: '让步接收',
+      qty: 1,
+      unit: 'kg',
+    });
+    prisma.nonConformance.update.mockResolvedValue({ id: 'nc1', disposition: 'concession' });
+
+    await service.dispose('nc1', { disposition: 'concession' }, 'u1', '2');
+
+    expect(prisma.productionBatch.findFirst).not.toHaveBeenCalled();
+    expect(prisma.reworkRecord.findFirst).not.toHaveBeenCalled();
+    expect(prisma.reworkRecord.create).not.toHaveBeenCalled();
+    expect(prisma.nonConformance.update).toHaveBeenCalledWith({
+      where: { id: 'nc1' },
+      data: {
+        disposition: 'concession',
+        disposition_by: 'u1',
+        disposition_at: expect.any(Date),
+        status: 'dispositioned',
+      },
+    });
   });
 
   it('creates an open NonConformance from a CCP deviation using production batch as source', async () => {

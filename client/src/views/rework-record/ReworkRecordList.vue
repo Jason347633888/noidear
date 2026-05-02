@@ -50,7 +50,7 @@
         </el-table-column>
         <el-table-column label="质量判定" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.quality_verdict === 'pass' ? 'success' : 'danger'" effect="light" size="small">
+            <el-tag :type="getVerdictTagType(row.quality_verdict)" effect="light" size="small">
               {{ getVerdictText(row.quality_verdict) }}
             </el-tag>
           </template>
@@ -153,7 +153,7 @@ import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
-import reworkRecordApi, { type ReworkRecord, getVerdictText } from '@/api/rework-record';
+import reworkRecordApi, { type ReworkRecord, getVerdictTagType, getVerdictText } from '@/api/rework-record';
 import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelect.vue';
 
 // ── State ─────────────────────────────────────────────────────────────────────
