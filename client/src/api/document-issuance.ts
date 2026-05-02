@@ -7,6 +7,7 @@ import request from './request';
 export interface DocumentIssuance {
   id: string;
   company_id: string;
+  document_id: string;
   document_name: string;
   document_code: string | null;
   template_id: string | null;
@@ -18,10 +19,19 @@ export interface DocumentIssuance {
   notes: string | null;
   created_at: string;
   deleted_at: string | null;
+  document?: {
+    id: string;
+    title: string;
+    number: string;
+    doc_code?: string | null;
+    status: string;
+    versionNo: number;
+  } | null;
 }
 
 export interface CreateDocumentIssuancePayload {
-  document_name: string;
+  document_id: string;
+  document_name?: string;
   document_code?: string;
   template_id?: string;
   issued_to?: string;

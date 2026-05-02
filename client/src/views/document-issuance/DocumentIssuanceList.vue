@@ -79,11 +79,24 @@
         :rules="createRules"
         label-width="110px"
       >
-        <el-form-item label="文件名称" prop="document_name">
-          <el-input v-model="createForm.document_name" placeholder="请输入文件名称" />
-        </el-form-item>
-        <el-form-item label="文件编号">
-          <el-input v-model="createForm.document_code" placeholder="可选" />
+        <el-form-item label="受控文件" prop="document_id">
+          <el-select
+            v-model="createForm.document_id"
+            filterable
+            remote
+            reserve-keyword
+            :remote-method="searchDocuments"
+            :loading="documentLoading"
+            placeholder="搜索文件编号或名称"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="doc in documentOptions"
+              :key="doc.id"
+              :label="`${doc.doc_code || doc.number} - ${doc.title}`"
+              :value="doc.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="领用人">
           <el-input v-model="createForm.issued_to" placeholder="领用人姓名" />
@@ -129,11 +142,14 @@ import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import documentIssuanceApi, { type DocumentIssuance } from '@/api/document-issuance';
+import { documentControlApi, type DocumentControlDocument } from '@/api/document-control';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
 const list = ref<DocumentIssuance[]>([]);
 const loading = ref(false);
+const documentLoading = ref(false);
+const documentOptions = ref<DocumentControlDocument[]>([]);
 
 // ── Create dialog ─────────────────────────────────────────────────────────────
 
@@ -142,8 +158,7 @@ const submitting = ref(false);
 const createFormRef = ref<FormInstance>();
 
 const createForm = reactive({
-  document_name: '',
-  document_code: '',
+  document_id: '',
   issued_to: '',
   issued_by: '',
   quantity: 1,
@@ -153,7 +168,7 @@ const createForm = reactive({
 });
 
 const createRules: FormRules = {
-  document_name: [{ required: true, message: '请输入文件名称', trigger: 'blur' }],
+  document_id: [{ required: true, message: '请选择受控文件', trigger: 'change' }],
   quantity: [{ required: true, message: '请输入数量', trigger: 'blur' }],
 };
 
@@ -168,6 +183,21 @@ function formatDate(dateStr: string | null): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+async function searchDocuments(keyword = '') {
+  documentLoading.value = true;
+  try {
+    const res = await documentControlApi.listDocuments({
+      keyword: keyword || undefined,
+      limit: 20,
+    });
+    documentOptions.value = res.list || [];
+  } catch {
+    ElMessage.error('加载受控文件失败');
+  } finally {
+    documentLoading.value = false;
+  }
 }
 
 // ── Data loading ──────────────────────────────────────────────────────────────
@@ -187,8 +217,7 @@ async function loadList() {
 // ── Create ────────────────────────────────────────────────────────────────────
 
 function openCreateDialog() {
-  createForm.document_name = '';
-  createForm.document_code = '';
+  createForm.document_id = '';
   createForm.issued_to = '';
   createForm.issued_by = '';
   createForm.quantity = 1;
@@ -196,6 +225,7 @@ function openCreateDialog() {
   createForm.issued_at = '';
   createForm.notes = '';
   createDialogVisible.value = true;
+  searchDocuments();
 }
 
 async function handleCreate() {
@@ -204,8 +234,7 @@ async function handleCreate() {
   submitting.value = true;
   try {
     await documentIssuanceApi.create({
-      document_name: createForm.document_name,
-      document_code: createForm.document_code || undefined,
+      document_id: createForm.document_id,
       issued_to: createForm.issued_to || undefined,
       issued_by: createForm.issued_by || undefined,
       quantity: createForm.quantity,
