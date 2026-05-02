@@ -2,12 +2,13 @@ import { TraceabilityService } from './traceability.service';
 
 describe('TraceabilityService snapshot/export delegation', () => {
   const prisma = {};
+  const queryService = {};
 
   it('delegates export creation to TraceabilityExportService', async () => {
     const exportService = {
       create: jest.fn().mockResolvedValue({ exportId: 'snap-1', snapshotId: 'snap-1' }),
     };
-    const service = new TraceabilityService(prisma as any, exportService as any);
+    const service = new TraceabilityService(prisma as any, queryService as any, exportService as any);
 
     await expect(
       service.createExport({ exportMode: 'simple', sourceQueryRef: 'hash-001' }, { id: 'user-1' }),
@@ -24,7 +25,7 @@ describe('TraceabilityService snapshot/export delegation', () => {
       getSnapshot: jest.fn().mockResolvedValue({ snapshotId: 'snap-2' }),
       getSnapshotResult: jest.fn().mockResolvedValue({ summary: { queryId: 'q-1' } }),
     };
-    const service = new TraceabilityService(prisma as any, exportService as any);
+    const service = new TraceabilityService(prisma as any, queryService as any, exportService as any);
 
     await expect(
       service.createSnapshot({ sourceQueryRef: 'hash-002', snapshotType: 'query' }, { id: 'user-2' }),

@@ -1,4 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateTraceabilityExportDto } from './dto/create-traceability-export.dto';
 import { CreateTraceabilitySnapshotDto } from './dto/create-traceability-snapshot.dto';
@@ -152,7 +153,7 @@ export class TraceabilityExportService {
         requesterId,
         status: input.status,
         snapshotType: input.snapshotType,
-        summary,
+        summary: summary as unknown as Prisma.InputJsonValue,
       },
     }) as Promise<TraceabilitySnapshotRow>;
   }

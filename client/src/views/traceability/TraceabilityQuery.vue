@@ -61,6 +61,20 @@ const runObjectQuery = async (payload: any) => {
 const runScenarioQuery = async (payload: any) => {
   error.value = '';
   try {
+    if (payload.scenario === 'materialBalance') {
+      const balance = await traceabilityApi.materialBalance({
+        productionBatchId: payload.filters?.objectType === 'productionBatch' ? payload.filters.objectId : undefined,
+        materialLotId: payload.filters?.objectType === 'materialLot' ? payload.filters.objectId : undefined,
+        timeMode: payload.timeMode,
+        asOfAt: payload.asOfAt,
+        includeEvidence: true,
+        includeRecommendations: true,
+      });
+      result.value = null;
+      ElMessage.success(`物料平衡分析完成：${balance.summary.status}`);
+      return;
+    }
+
     result.value = await traceabilityApi.query({ ...payload, viewMode: activeView.value }) as TraceQueryResult;
   } catch {
     error.value = '场景分析失败，请稍后重试';
