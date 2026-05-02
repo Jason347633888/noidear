@@ -15,6 +15,7 @@ describe('MixingService', () => {
         update: jest.fn(),
         updateMany: jest.fn(),
       },
+      shiftType: { findFirst: jest.fn() },
       recipe: { findFirst: jest.fn() },
       recipeLine: { findMany: jest.fn() },
       mixingExecution: { create: jest.fn(), findUnique: jest.fn(), count: jest.fn() },
@@ -99,6 +100,65 @@ describe('MixingService', () => {
         where: { id: 'stock-1', quantity: { gte: 50 } },
         data: { quantity: { decrement: 50 } },
       });
+    });
+
+    it('validates and persists shiftTypeId when provided', async () => {
+      prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+      prisma.recipe.findFirst.mockResolvedValue({ id: 'recipe-1', product_id: 'product-1', status: 'active' });
+      prisma.recipeLine.findMany.mockResolvedValue([
+        { id: 'line-flour', material_id: 'mat-flour', qty_per_batch: 50 },
+      ]);
+      prisma.shiftType.findFirst.mockResolvedValue({ id: 'shift-day', active: true, name: '白班' });
+      prisma.mixingExecution.count.mockResolvedValue(0);
+      prisma.mixingExecution.create.mockResolvedValue({ id: 'mix-1' });
+      prisma.stagingAreaStock.findFirst.mockResolvedValue({
+        id: 'stock-1',
+        batchId: 'mb-old',
+        quantity: 80,
+        batch: { materialId: 'mat-flour' },
+      });
+      prisma.stagingAreaStock.updateMany.mockResolvedValue({ count: 1 });
+      prisma.mixingExecution.findUnique.mockResolvedValue({ id: 'mix-1', shift_type_id: 'shift-day', lines: [] });
+
+      await service.createExecution({
+        recipeId: 'recipe-1',
+        productId: 'product-1',
+        areaId: 'area-small',
+        shiftTypeId: 'shift-day',
+        workDate: '2026-05-02',
+        actualWeight: 50,
+        lines: [{ recipeLineId: 'line-flour', materialBatchId: 'mb-old', actualQuantity: 50, manualOverride: false }],
+      });
+
+      expect(prisma.shiftType.findFirst).toHaveBeenCalledWith({
+        where: { id: 'shift-day', active: true },
+        select: { id: true },
+      });
+      expect(prisma.mixingExecution.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          shift_type_id: 'shift-day',
+        }),
+      });
+    });
+
+    it('rejects invalid shiftTypeId before decrementing staging stock', async () => {
+      prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+      prisma.recipe.findFirst.mockResolvedValue({ id: 'recipe-1', product_id: 'product-1', status: 'active' });
+      prisma.shiftType.findFirst.mockResolvedValue(null);
+
+      await expect(service.createExecution({
+        recipeId: 'recipe-1',
+        productId: 'product-1',
+        areaId: 'area-small',
+        shiftTypeId: 'missing-shift',
+        workDate: '2026-05-02',
+        actualWeight: 50,
+        lines: [{ recipeLineId: 'line-flour', materialBatchId: 'mb-old', actualQuantity: 50, manualOverride: false }],
+      })).rejects.toThrow(BadRequestException);
+
+      expect(prisma.recipeLine.findMany).not.toHaveBeenCalled();
+      expect(prisma.stagingAreaStock.updateMany).not.toHaveBeenCalled();
+      expect(prisma.mixingExecution.create).not.toHaveBeenCalled();
     });
 
     it('rejects when the conditional decrement matches zero rows (concurrent overdraw)', async () => {

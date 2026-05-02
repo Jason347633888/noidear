@@ -23,6 +23,16 @@
             <el-option v-for="area in areas" :key="area.id" :label="area.name" :value="area.id" />
           </el-select>
         </el-form-item>
+        <el-form-item label="班次类型">
+          <el-select v-model="form.shiftTypeId" placeholder="选择班次类型（可选）" style="width: 100%" clearable>
+            <el-option
+              v-for="shiftType in shiftTypes"
+              :key="shiftType.id"
+              :label="`${shiftType.name} ${shiftType.start_time}-${shiftType.end_time}`"
+              :value="shiftType.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="工作日期">
           <el-date-picker v-model="form.workDate" type="date" value-format="YYYY-MM-DD" />
         </el-form-item>
@@ -79,6 +89,7 @@ import { mixingApi } from '@/api/mixing';
 import { productApi, type Product } from '@/api/product';
 import { recipeApi, type Recipe } from '@/api/recipe';
 import { workshopAreaApi, type WorkshopArea } from '@/api/workshop-area';
+import { teamShiftApi } from '@/api/team-shift';
 
 interface MixingLine {
   recipeLineId: string;
@@ -96,6 +107,7 @@ const loadingRecipes = ref(false);
 const products = ref<Product[]>([]);
 const recipes = ref<Recipe[]>([]);
 const areas = ref<WorkshopArea[]>([]);
+const shiftTypes = ref<any[]>([]);
 
 const activeRecipes = computed(() => recipes.value.filter((r) => r.status === 'active'));
 
@@ -103,6 +115,7 @@ const form = ref({
   productId: '',
   recipeId: '',
   areaId: '',
+  shiftTypeId: '',
   workDate: '',
   actualWeight: 0,
   lines: [] as MixingLine[],
@@ -209,6 +222,7 @@ const submitExecution = async () => {
       recipeId: form.value.recipeId,
       productId: form.value.productId,
       areaId: form.value.areaId,
+      ...(form.value.shiftTypeId ? { shiftTypeId: form.value.shiftTypeId } : {}),
       workDate: form.value.workDate,
       actualWeight: form.value.actualWeight,
       lines: form.value.lines.map(({ recipeLineId, materialBatchId, actualQuantity, manualOverride, overrideReason }) => ({
@@ -229,12 +243,14 @@ const submitExecution = async () => {
 
 onMounted(async () => {
   try {
-    const [productsRes, areasRes]: [any, any] = await Promise.all([
+    const [productsRes, areasRes, shiftRes]: [any, any, any] = await Promise.all([
       productApi.getList(),
       workshopAreaApi.getList(),
+      teamShiftApi.listShiftTypes(),
     ]);
     products.value = Array.isArray(productsRes.data) ? productsRes.data : (Array.isArray(productsRes) ? productsRes : []);
     areas.value = Array.isArray(areasRes.data) ? areasRes.data : (Array.isArray(areasRes) ? areasRes : []);
+    shiftTypes.value = Array.isArray(shiftRes.data) ? shiftRes.data : (Array.isArray(shiftRes) ? shiftRes : []);
   } catch {
     ElMessage.error('加载基础数据失败');
   }

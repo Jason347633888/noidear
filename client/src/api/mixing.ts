@@ -12,6 +12,7 @@ export interface CreateMixingExecutionPayload {
   recipeId: string;
   productId: string;
   areaId: string;
+  shiftTypeId?: string;
   workDate: string;
   actualWeight: number;
   lines: MixingLineInput[];
