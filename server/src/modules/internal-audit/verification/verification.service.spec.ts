@@ -55,6 +55,7 @@ describe('VerificationService', () => {
         findMany: jest.fn(),
         findUnique: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       todoTask: {
         updateMany: jest.fn(),
@@ -123,9 +124,7 @@ describe('VerificationService', () => {
 
     it('should verify rectification successfully', async () => {
       const compliantFinding = { ...mockFinding, auditResult: '符合' };
-      const updatedFinding = { ...compliantFinding, status: 'verified' };
       mockPrismaService.auditFinding.findUnique.mockResolvedValue(compliantFinding);
-      mockPrismaService.auditFinding.update.mockResolvedValue(updatedFinding);
       mockPrismaService.todoTask.updateMany.mockResolvedValue({ count: 1 });
 
       const result = await service.verifyRectification(
@@ -135,9 +134,14 @@ describe('VerificationService', () => {
         'company-1',
       );
 
-      expect(result).toEqual(updatedFinding);
-      expect(mockPrismaService.auditFinding.update).toHaveBeenCalledWith({
-        where: { id: 'finding-1' },
+      expect(result).toMatchObject({
+        id: 'finding-1',
+        status: 'verified',
+        verifiedBy: 'auditor-1',
+        verifiedAt: expect.any(Date),
+      });
+      expect(mockPrismaService.auditFinding.updateMany).toHaveBeenCalledWith({
+        where: { id: 'finding-1', status: 'pending_verification' },
         data: {
           status: 'verified',
           verifiedBy: 'auditor-1',
@@ -209,7 +213,6 @@ describe('VerificationService', () => {
         document: { id: 'doc-1', title: '培训记录控制程序', number: 'DOC-001' },
         plan: { auditorId: 'auditor-1' },
       });
-      mockPrismaService.auditFinding.update.mockResolvedValue({ ...mockFinding, status: 'verified' });
       mockPrismaService.correctiveAction.findFirst.mockResolvedValue(null);
       correctiveActionService.create.mockResolvedValue({ id: 'capa-1' });
 
@@ -242,7 +245,7 @@ describe('VerificationService', () => {
       );
     });
 
-    it('does not create duplicate CAPA when one already exists for the finding', async () => {
+    it('does not create duplicate CAPA when one already exists for the finding (serial safety net)', async () => {
       mockPrismaService.auditFinding.findUnique.mockResolvedValue({
         ...mockFinding,
         auditResult: '不符合',
@@ -250,7 +253,6 @@ describe('VerificationService', () => {
         document: { id: 'doc-1', title: '内审文件', number: 'DOC-002' },
         plan: { auditorId: 'auditor-1' },
       });
-      mockPrismaService.auditFinding.update.mockResolvedValue({ ...mockFinding, status: 'verified' });
       mockPrismaService.correctiveAction.findFirst.mockResolvedValue({ id: 'existing-capa' });
 
       await service.verifyRectification(
@@ -263,6 +265,27 @@ describe('VerificationService', () => {
       expect(correctiveActionService.create).not.toHaveBeenCalled();
     });
 
+    it('concurrent second call does not create duplicate CAPA when updateMany returns count=0', async () => {
+      mockPrismaService.auditFinding.findUnique.mockResolvedValue({
+        ...mockFinding,
+        auditResult: '不符合',
+        description: '并发第二个请求不得创建第二条 CAPA',
+        document: { id: 'doc-1', title: '内审文件', number: 'DOC-002' },
+        plan: { auditorId: 'auditor-1' },
+      });
+      // Simulate the concurrent case: the atomic updateMany wins for the first caller
+      // but returns count=0 for the second caller (finding status already changed)
+      mockPrismaService.auditFinding.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.verifyRectification('finding-1', verifyDto, 'auditor-1', 'company-1'),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockPrismaService.correctiveAction.findFirst).not.toHaveBeenCalled();
+      expect(correctiveActionService.create).not.toHaveBeenCalled();
+      expect(mockPrismaService.todoTask.updateMany).not.toHaveBeenCalled();
+    });
+
     it('does not create CAPA for compliant audit finding', async () => {
       mockPrismaService.auditFinding.findUnique.mockResolvedValue({
         ...mockFinding,
@@ -270,8 +293,6 @@ describe('VerificationService', () => {
         document: { id: 'doc-1', title: '内审文件', number: 'DOC-003' },
         plan: { auditorId: 'auditor-1' },
       });
-      mockPrismaService.auditFinding.update.mockResolvedValue({ ...mockFinding, status: 'verified' });
-
       await service.verifyRectification(
         'finding-1',
         verifyDto,
@@ -296,13 +317,14 @@ describe('VerificationService', () => {
         service.verifyRectification('finding-1', verifyDto, 'auditor-1', undefined as any),
       ).rejects.toThrow('Missing companyId for audit CAPA creation');
 
-      expect(mockPrismaService.auditFinding.update).not.toHaveBeenCalled();
+      // updateMany ran to atomically claim the finding, but the transaction rolls back
+      expect(mockPrismaService.auditFinding.updateMany).toHaveBeenCalled();
       expect(mockPrismaService.todoTask.updateMany).not.toHaveBeenCalled();
       expect(mockPrismaService.correctiveAction.findFirst).not.toHaveBeenCalled();
       expect(correctiveActionService.create).not.toHaveBeenCalled();
     });
 
-    it('does not mark finding verified or complete todo when CAPA creation fails', async () => {
+    it('does not complete todo when CAPA creation fails (transaction rolls back)', async () => {
       mockPrismaService.auditFinding.findUnique.mockResolvedValue({
         ...mockFinding,
         auditResult: '不符合',
@@ -317,11 +339,7 @@ describe('VerificationService', () => {
         service.verifyRectification('finding-1', verifyDto, 'auditor-1', 'company-1'),
       ).rejects.toThrow('内审发现项不存在');
 
-      expect(mockPrismaService.auditFinding.update).not.toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ status: 'verified' }),
-        }),
-      );
+      // todoTask.updateMany is never reached because CAPA creation throws first
       expect(mockPrismaService.todoTask.updateMany).not.toHaveBeenCalled();
     });
   });

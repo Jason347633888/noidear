@@ -88,17 +88,29 @@ export class VerificationService {
       }
     } catch { /* no definition = skip */ }
 
-    const updatedFinding = await this.prisma.$transaction(async (tx) => {
-      await this.createCapaForVerifiedFinding(finding, userId, companyId, tx);
-
-      const verifiedFinding = await tx.auditFinding.update({
-        where: { id: findingId },
+    const now = new Date();
+    const updatedFinding = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Atomically claim the finding by conditionally updating its status.
+      // Only one concurrent caller can win this update; the loser gets count=0.
+      const { count } = await tx.auditFinding.updateMany({
+        where: {
+          id: findingId,
+          status: 'pending_verification',
+        },
         data: {
           status: 'verified',
           verifiedBy: userId,
-          verifiedAt: new Date(),
+          verifiedAt: now,
         },
       });
+
+      if (count === 0) {
+        throw new BadRequestException(
+          'Finding has already been verified or is no longer pending verification',
+        );
+      }
+
+      await this.createCapaForVerifiedFinding(finding, userId, companyId, tx);
 
       await tx.todoTask.updateMany({
         where: {
@@ -110,7 +122,7 @@ export class VerificationService {
         },
       });
 
-      return verifiedFinding;
+      return { ...finding, status: 'verified' as const, verifiedBy: userId, verifiedAt: now };
     });
 
     // 6. Log operation
