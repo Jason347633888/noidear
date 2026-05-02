@@ -1068,6 +1068,8 @@
       "prOrder": 18,
       "recommendedPr": "production/GAP-207",
       "validationCommands": [
+        "(cd server && npm test -- shift-instance.service.spec.ts team-shift.service.spec.ts --runInBand)",
+        "(cd server && npx prisma validate --schema src/prisma/schema.prisma)",
         "pnpm test:e2e -- --grep GAP-207"
       ],
       "specPath": "docs/superpowers/specs/2026-05-02-gap-207-shift-instance-team-binding-design.md",

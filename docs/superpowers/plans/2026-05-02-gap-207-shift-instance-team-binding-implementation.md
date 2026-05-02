@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task. Do not use brainstorming, writing-plans, or redesign the production master-data model during execution. Steps use checkbox (`- [ ]`) syntax for tracking. If current code disagrees with this plan, stop and report the mismatch to the main agent.
 
-**Goal:** Make new `ShiftInstance` records automatically carry the scheduled team and leader from `TeamShiftSchedule`, while allowing documented manual overrides.
+**Goal:** Make new `ShiftInstance` records carry the scheduled team and leader from `TeamShiftSchedule` only when the schedule is unambiguous, while requiring documented manual selection or override when multiple schedules match.
 
-**Architecture:** Extend the existing `TeamShiftSchedule -> ShiftInstance` path rather than adding a new scheduling source. `TeamShiftSchedule` remains the schedule fact; `ShiftInstance` stores the chosen `team_id` FK and leader snapshot at open-shift time so downstream `ProductionRun -> ProductionBatch` can trace responsibility through the shift record.
+**Architecture:** Extend the existing `TeamShiftSchedule -> ShiftInstance` path rather than adding a new scheduling source. `TeamShiftSchedule` remains the schedule fact, but the service queries all schedules for `shift_type_id + work_date` and auto-binds only when exactly one row exists. `ShiftInstance` stores the chosen `team_id` FK and leader snapshot at open-shift time so downstream `ProductionRun -> ProductionBatch` can trace responsibility through the shift record.
 
 **Tech Stack:** Prisma schema/migration, NestJS DTO/service tests, TypeScript API adapters, Vue 3 + Element Plus, Jest, Prisma validate.
 
@@ -14,6 +14,7 @@
 
 - **Superpower 产出链路：** 主 agent 已按 `using-superpowers -> using-git-worktrees -> brainstorming -> grill-with-docs -> writing-plans` 为 GAP-207 生成 spec 和本 implementation plan。
 - **grill-with-docs 校准结论：** 已确认 `Team`、`ShiftType`、`TeamShiftSchedule` 是现有班组/班次排班事实源；本计划不新增平行班组主数据，不改变 `ProductionBatch / MaterialBatch / BatchMaterialUsage / InventoryMovement` 主链。
+- **PR #162 blocker 修正：** 当前 schema 只保证 `TeamShiftSchedule(team_id, shift_type_id, work_date)` 唯一，不保证 `shift_type_id + work_date` 唯一；执行 agent 不得使用 `findFirst` 进行自动绑定，必须使用 `findMany` 并覆盖多个匹配排班的回归测试。
 - **执行限制：** Multica 执行 agent 只能使用 `superpowers:executing-plans` 执行本计划；不得扩展到 GAP-204、GAP-206、MixingExecution.team_id、ProductionBatch 回填或租户隔离。
 - **执行隔离：** 执行本计划前必须从最新 `origin/master` 创建独立 worktree，或使用 Multica 隔离工作目录；不得在主 checkout `/Users/jiashenglin/Desktop/好玩的项目/noidear` 直接修改、提交或 push。如发现当前目录是主 checkout，必须停止并回报主 agent。
 - **停止条件：** 如果执行 agent 发现本计划与当前代码、AGENTS.md、docs/AGENT_GUIDE.md、docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md 或 spec 冲突，必须停止并回报主 agent，不得猜测实现。
@@ -43,7 +44,7 @@ All commands assume the execution agent is at the root of its isolated `noidear`
 
 - [ ] **Step 1: Add team schedule mocks**
 
-Extend `mockPrisma` so the top-level object contains these keys:
+Extend `mockPrisma` so the top-level object contains these keys. Use `findMany`, not `findFirst`, because `TeamShiftSchedule` permits multiple teams for the same `shift_type_id + work_date`.
 
 ```ts
   const mockPrisma = {
@@ -51,7 +52,7 @@ Extend `mockPrisma` so the top-level object contains these keys:
       findFirst: jest.fn(),
     },
     teamShiftSchedule: {
-      findFirst: jest.fn(),
+      findMany: jest.fn(),
     },
     team: {
       findFirst: jest.fn(),
@@ -66,7 +67,15 @@ Extend `mockPrisma` so the top-level object contains these keys:
   };
 ```
 
-- [ ] **Step 2: Add scheduled team test data inside `describe('create', ...)`**
+- [ ] **Step 2: Add a default no-schedule mock in `beforeEach`**
+
+After `service = module.get(ShiftInstanceService);`, add:
+
+```ts
+    mockPrisma.teamShiftSchedule.findMany.mockResolvedValue([]);
+```
+
+- [ ] **Step 3: Add scheduled team test data inside `describe('create', ...)`**
 
 Place this next to the existing `dayShiftType` constant:
 
@@ -86,9 +95,46 @@ Place this next to the existing `dayShiftType` constant:
       leader_id: 'employee-leader-1',
       team: scheduledTeam,
     };
+
+    const secondScheduledTeam = {
+      id: 'team-b',
+      code: 'TEAM-B',
+      name: 'B班',
+      active: true,
+    };
+
+    const secondSchedule = {
+      id: 'schedule-2',
+      team_id: 'team-b',
+      shift_type_id: 'shift-day',
+      work_date: new Date('2026-05-02'),
+      leader_id: 'employee-leader-2',
+      team: secondScheduledTeam,
+    };
 ```
 
-- [ ] **Step 3: Add a test for automatic team and leader binding**
+- [ ] **Step 4: Update the existing create expectation**
+
+In `should create shift from shiftTypeId and persist the legacy name snapshot`, update the expected create call so it includes the new nullable binding fields and includes `team`:
+
+```ts
+      expect(mockPrisma.shiftInstance.create).toHaveBeenCalledWith({
+        data: {
+          company_id: '1',
+          shift_type_id: 'shift-day',
+          shift_type: '白班',
+          shift_date: new Date('2026-04-22'),
+          team_id: undefined,
+          leader_id: undefined,
+          team_override_reason: undefined,
+          opened_by: 'user1',
+          notes: undefined,
+        },
+        include: { shift_type_ref: true, team: true },
+      });
+```
+
+- [ ] **Step 5: Add a test for automatic team and leader binding**
 
 Append this test to the same `describe('create', ...)` block:
 
@@ -96,7 +142,7 @@ Append this test to the same `describe('create', ...)` block:
     it('should attach scheduled team and leader when opening a shift', async () => {
       mockPrisma.shiftType.findFirst.mockResolvedValue(dayShiftType);
       mockPrisma.shiftInstance.findUnique.mockResolvedValue(null);
-      mockPrisma.teamShiftSchedule.findFirst.mockResolvedValue(schedule);
+      mockPrisma.teamShiftSchedule.findMany.mockResolvedValue([schedule]);
       mockPrisma.shiftInstance.create.mockResolvedValue({
         id: 'shift-1',
         status: 'open',
@@ -108,12 +154,13 @@ Append this test to the same `describe('create', ...)` block:
 
       await service.create({ shiftTypeId: 'shift-day', shift_date: '2026-05-02' }, 'user1');
 
-      expect(mockPrisma.teamShiftSchedule.findFirst).toHaveBeenCalledWith({
+      expect(mockPrisma.teamShiftSchedule.findMany).toHaveBeenCalledWith({
         where: {
           shift_type_id: 'shift-day',
           work_date: new Date('2026-05-02'),
         },
         include: { team: true },
+        orderBy: { team_id: 'asc' },
       });
       expect(mockPrisma.shiftInstance.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -126,13 +173,13 @@ Append this test to the same `describe('create', ...)` block:
     });
 ```
 
-- [ ] **Step 4: Add a test for missing schedule**
+- [ ] **Step 6: Add a test for missing schedule**
 
 ```ts
     it('should allow opening a shift without a schedule', async () => {
       mockPrisma.shiftType.findFirst.mockResolvedValue(dayShiftType);
       mockPrisma.shiftInstance.findUnique.mockResolvedValue(null);
-      mockPrisma.teamShiftSchedule.findFirst.mockResolvedValue(null);
+      mockPrisma.teamShiftSchedule.findMany.mockResolvedValue([]);
       mockPrisma.shiftInstance.create.mockResolvedValue({
         id: 'shift-1',
         status: 'open',
@@ -155,13 +202,65 @@ Append this test to the same `describe('create', ...)` block:
     });
 ```
 
-- [ ] **Step 5: Add a test for override reason enforcement**
+- [ ] **Step 7: Add a test for multiple schedules without explicit team**
+
+```ts
+    it('should reject ambiguous schedules when teamId is omitted', async () => {
+      mockPrisma.shiftType.findFirst.mockResolvedValue(dayShiftType);
+      mockPrisma.shiftInstance.findUnique.mockResolvedValue(null);
+      mockPrisma.teamShiftSchedule.findMany.mockResolvedValue([schedule, secondSchedule]);
+
+      await expect(
+        service.create({ shiftTypeId: 'shift-day', shift_date: '2026-05-02' }, 'user1'),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockPrisma.shiftInstance.create).not.toHaveBeenCalled();
+    });
+```
+
+- [ ] **Step 8: Add a test for selecting one team from multiple schedules**
+
+```ts
+    it('should allow documented team selection when multiple schedules match', async () => {
+      mockPrisma.shiftType.findFirst.mockResolvedValue(dayShiftType);
+      mockPrisma.shiftInstance.findUnique.mockResolvedValue(null);
+      mockPrisma.teamShiftSchedule.findMany.mockResolvedValue([schedule, secondSchedule]);
+      mockPrisma.team.findFirst.mockResolvedValue(secondScheduledTeam);
+      mockPrisma.shiftInstance.create.mockResolvedValue({
+        id: 'shift-1',
+        team_id: 'team-b',
+        leader_id: 'employee-leader-2',
+        team_override_reason: '同班次存在多个排班，现场指定B班负责开班',
+      });
+
+      await service.create(
+        {
+          shiftTypeId: 'shift-day',
+          shift_date: '2026-05-02',
+          teamId: 'team-b',
+          teamOverrideReason: '同班次存在多个排班，现场指定B班负责开班',
+        },
+        'user1',
+      );
+
+      expect(mockPrisma.shiftInstance.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          team_id: 'team-b',
+          leader_id: 'employee-leader-2',
+          team_override_reason: '同班次存在多个排班，现场指定B班负责开班',
+        }),
+        include: { shift_type_ref: true, team: true },
+      });
+    });
+```
+
+- [ ] **Step 9: Add a test for override reason enforcement**
 
 ```ts
     it('should require a reason when overriding scheduled team or leader', async () => {
       mockPrisma.shiftType.findFirst.mockResolvedValue(dayShiftType);
       mockPrisma.shiftInstance.findUnique.mockResolvedValue(null);
-      mockPrisma.teamShiftSchedule.findFirst.mockResolvedValue(schedule);
+      mockPrisma.teamShiftSchedule.findMany.mockResolvedValue([schedule]);
       mockPrisma.team.findFirst.mockResolvedValue({
         id: 'team-b',
         code: 'TEAM-B',
@@ -184,13 +283,13 @@ Append this test to the same `describe('create', ...)` block:
     });
 ```
 
-- [ ] **Step 6: Add a test for documented override**
+- [ ] **Step 10: Add a test for documented override**
 
 ```ts
     it('should allow documented team override', async () => {
       mockPrisma.shiftType.findFirst.mockResolvedValue(dayShiftType);
       mockPrisma.shiftInstance.findUnique.mockResolvedValue(null);
-      mockPrisma.teamShiftSchedule.findFirst.mockResolvedValue(schedule);
+      mockPrisma.teamShiftSchedule.findMany.mockResolvedValue([schedule]);
       mockPrisma.team.findFirst.mockResolvedValue({
         id: 'team-b',
         code: 'TEAM-B',
@@ -226,7 +325,7 @@ Append this test to the same `describe('create', ...)` block:
     });
 ```
 
-- [ ] **Step 7: Run the focused test and verify it fails before implementation**
+- [ ] **Step 11: Run the focused test and verify it fails before implementation**
 
 Run:
 
@@ -234,7 +333,7 @@ Run:
 (cd server && npm test -- shift-instance.service.spec.ts --runInBand)
 ```
 
-Expected: FAIL because `teamShiftSchedule`, `team_id`, `leader_id`, and override validation are not implemented yet.
+Expected: FAIL because `teamShiftSchedule.findMany`, `team_id`, `leader_id`, ambiguity handling, and override validation are not implemented yet.
 
 ## Task 2: Add TeamShiftSchedule leader support tests
 
@@ -445,13 +544,14 @@ Append these fields after `shift_date`:
 Add these private methods below `resolveShiftType()`:
 
 ```ts
-  private async findSchedule(shiftTypeId: string, shiftDate: Date) {
-    return this.prisma.teamShiftSchedule.findFirst({
+  private async findSchedules(shiftTypeId: string, shiftDate: Date) {
+    return this.prisma.teamShiftSchedule.findMany({
       where: {
         shift_type_id: shiftTypeId,
         work_date: shiftDate,
       },
       include: { team: true },
+      orderBy: { team_id: 'asc' },
     });
   }
 
@@ -467,13 +567,27 @@ Add these private methods below `resolveShiftType()`:
 
   private resolveTeamBinding(
     dto: CreateShiftInstanceDto,
-    schedule: { team_id: string; leader_id?: string | null } | null,
+    schedules: Array<{ team_id: string; leader_id?: string | null }>,
   ) {
-    const scheduledTeamId = schedule?.team_id;
-    const scheduledLeaderId = schedule?.leader_id ?? undefined;
+    const hasAmbiguousSchedules = schedules.length > 1;
+
+    if (hasAmbiguousSchedules && !dto.teamId) {
+      throw new BadRequestException('同一日期和班次存在多个排班，请指定班组');
+    }
+
+    if (hasAmbiguousSchedules && !dto.teamOverrideReason) {
+      throw new BadRequestException('同一日期和班次存在多个排班，指定班组时必须填写原因');
+    }
+
+    const selectedSchedule = dto.teamId
+      ? schedules.find((schedule) => schedule.team_id === dto.teamId) ?? null
+      : schedules[0] ?? null;
+    const scheduledTeamId = selectedSchedule?.team_id;
+    const scheduledLeaderId = selectedSchedule?.leader_id ?? undefined;
     const finalTeamId = dto.teamId ?? scheduledTeamId;
     const finalLeaderId = dto.leaderId ?? scheduledLeaderId;
-    const overridesTeam = dto.teamId != null && dto.teamId !== scheduledTeamId;
+    const overridesTeam =
+      dto.teamId != null && (scheduledTeamId == null || dto.teamId !== scheduledTeamId);
     const overridesLeader = dto.leaderId != null && dto.leaderId !== scheduledLeaderId;
 
     if ((overridesTeam || overridesLeader) && !dto.teamOverrideReason) {
@@ -483,7 +597,10 @@ Add these private methods below `resolveShiftType()`:
     return {
       teamId: finalTeamId,
       leaderId: finalLeaderId,
-      overrideReason: overridesTeam || overridesLeader ? dto.teamOverrideReason : undefined,
+      overrideReason:
+        hasAmbiguousSchedules || overridesTeam || overridesLeader
+          ? dto.teamOverrideReason
+          : undefined,
     };
   }
 ```
@@ -504,8 +621,8 @@ Replace the body between `const shiftDate = new Date(dto.shift_date);` and `retu
     });
     if (existing) throw new ConflictException('该班次已开班');
 
-    const schedule = await this.findSchedule(shiftType.id, shiftDate);
-    const teamBinding = this.resolveTeamBinding(dto, schedule);
+    const schedules = await this.findSchedules(shiftType.id, shiftDate);
+    const teamBinding = this.resolveTeamBinding(dto, schedules);
 
     if (teamBinding.teamId) {
       await this.assertTeamActive(teamBinding.teamId);
