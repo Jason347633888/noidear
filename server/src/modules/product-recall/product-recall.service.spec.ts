@@ -13,6 +13,7 @@ describe('ProductRecallService', () => {
     productRecallBatch: { create: jest.fn() },
     productRecallNotification: { create: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
     productionBatch: { findFirst: jest.fn() },
+    externalParty: { findFirst: jest.fn() },
     $transaction: jest.fn(),
   };
 
@@ -103,5 +104,55 @@ describe('ProductRecallService', () => {
     prisma.productRecall.findFirst.mockResolvedValue(null);
 
     await expect(service.findOne('missing', 'company-1')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('rejects notification with external_party_id belonging to a different company', async () => {
+    prisma.productRecall.count.mockResolvedValue(0);
+    prisma.productRecall.create.mockResolvedValue({ id: 'recall-1', recall_no: 'RC-2026-0001' });
+    prisma.externalParty.findFirst.mockResolvedValue(null); // not found → cross-tenant
+    prisma.$transaction.mockImplementation(async (fn: any) => fn(prisma));
+
+    await expect(
+      service.create(
+        {
+          title: '跨企业通知召回',
+          reason: '测试',
+          notifications: [{
+            external_party_id: 'party-other-company',
+            customer_name: '客户X',
+            notification_method: 'phone',
+          }],
+        },
+        { id: 'user-1', companyId: 'company-1' },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.productRecallNotification.create).not.toHaveBeenCalled();
+  });
+
+  it('allows notification with external_party_id belonging to the same company', async () => {
+    prisma.productRecall.count.mockResolvedValue(0);
+    prisma.productRecall.create.mockResolvedValue({ id: 'recall-1', recall_no: 'RC-2026-0001' });
+    prisma.externalParty.findFirst.mockResolvedValue({ id: 'party-1', company_id: 'company-1' });
+    prisma.productRecallNotification.create.mockResolvedValue({ id: 'n1' });
+    prisma.$transaction.mockImplementation(async (fn: any) => fn(prisma));
+
+    await service.create(
+      {
+        title: '正常通知召回',
+        reason: '测试',
+        notifications: [{
+          external_party_id: 'party-1',
+          customer_name: '客户A',
+          notification_method: 'phone',
+        }],
+      },
+      { id: 'user-1', companyId: 'company-1' },
+    );
+
+    expect(prisma.externalParty.findFirst).toHaveBeenCalledWith({
+      where: { id: 'party-1', company_id: 'company-1' },
+    });
+    expect(prisma.productRecallNotification.create).toHaveBeenCalled();
   });
 });

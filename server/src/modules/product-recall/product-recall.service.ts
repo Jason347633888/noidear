@@ -179,7 +179,15 @@ export class ProductRecallService {
     });
   }
 
-  private createNotificationRow(tx: any, recallId: string, dto: CreateProductRecallNotificationDto, companyId: string) {
+  private async createNotificationRow(tx: any, recallId: string, dto: CreateProductRecallNotificationDto, companyId: string) {
+    if (dto.external_party_id) {
+      const party = await tx.externalParty.findFirst({
+        where: { id: dto.external_party_id, company_id: companyId },
+      });
+      if (!party) {
+        throw new BadRequestException(`外部方不属于当前企业: ${dto.external_party_id}`);
+      }
+    }
     return tx.productRecallNotification.create({
       data: {
         company_id: companyId,

@@ -20,13 +20,20 @@ async function main() {
       productionBatch: {
         select: { id: true, batchNumber: true, productName: true },
       },
+      creator: { select: { company_id: true } },
     },
   });
 
   console.log(`Found ${records.length} recall-related records to migrate`);
+  const skipped: string[] = [];
 
   for (const record of records) {
-    const companyId = record.createdBy;
+    const companyId = record.creator?.company_id;
+    if (!companyId) {
+      console.log(`Skipping record ${record.number}: cannot derive company_id (creator not found or missing company)`);
+      skipped.push(record.number);
+      continue;
+    }
 
     const recallCount = await prisma.productRecall.count({ where: { company_id: companyId } });
     const recall_no = `RC-HIST-${new Date().getFullYear()}-${String(recallCount + 1).padStart(4, '0')}`;
@@ -74,6 +81,9 @@ async function main() {
   }
 
   console.log('Migration complete');
+  if (skipped.length > 0) {
+    console.log(`Skipped ${skipped.length} records (no company_id derived): ${skipped.join(', ')}`);
+  }
 }
 
 main()
