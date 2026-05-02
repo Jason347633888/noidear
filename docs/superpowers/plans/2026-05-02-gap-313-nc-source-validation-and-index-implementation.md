@@ -4,7 +4,7 @@
 
 **Goal:** Prevent new `NonConformance` records from pointing at nonexistent `source_id` values, while preserving the tenant-scoped source lookup index.
 
-**Architecture:** Keep the existing polymorphic `source_type + source_id` contract and add application-layer source existence checks before writes. Cover both manual API creation through `NonConformanceService` and automatic NC creation in `WorkflowTriggersService`. Treat the existing `@@index([company_id, source_type, source_id])` as the required index; do not add a duplicate unscoped index.
+**Architecture:** Keep the existing polymorphic `source_type + source_id` contract and add application-layer source checks before writes. Cover manual API creation through `NonConformanceService.create()`, CCP deviation automatic creation through `NonConformanceService.createFromCcpDeviation()`, and incoming-inspection automatic creation in `WorkflowTriggersService`. Validate `production_batch` sources through the existing `ProductionBatch.productId -> Product.company_id` chain; treat the existing `@@index([company_id, source_type, source_id])` as the required index and do not add a duplicate unscoped index.
 
 **Tech Stack:** NestJS, Prisma, class-validator, Jest, npm workspaces.
 
@@ -14,6 +14,7 @@
 
 - **Superpower 产出链路：** 主 agent 已按 `brainstorming -> grill-with-docs -> writing-plans` 为 GAP-313 生成 spec 和本 implementation plan。
 - **grill-with-docs 校准结论：** 已确认 `NonConformance` 是不合格事实源，来源必须回到 `MaterialBatch`、`ProductionBatch` 或 `Product`；不得新增平行批次字段，不得重构为多个 nullable FK，不得自动修复历史 orphan 来源。
+- **PR review blocker 校准：** `ProductionBatch` 没有直接 `company_id`，但不能只按批次 `id` 查存在性；必须通过 `ProductionBatch.productId -> Product.company_id` 校验租户归属。`createFromCcpDeviation()` 是 CCP 偏差自动创建 NC 的现有写入路径，也必须覆盖。
 - **执行限制：** Multica 执行 agent 只能使用 `superpowers:executing-plans` 执行本计划；不得自行扩展范围、补写新 spec、重排 GAP 或改动未列入文件。
 - **执行隔离：** 执行本计划前必须从最新 `origin/master` 创建独立 worktree，或使用 Multica 隔离工作目录；不得在主 checkout `/Users/jiashenglin/Desktop/好玩的项目/noidear` 直接修改、提交或 push。如发现当前目录是主 checkout，必须停止并回报主 agent。
 - **停止条件：** 如果执行 agent 发现本计划与当前代码、`AGENTS.md`、`docs/AGENT_GUIDE.md`、`docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md` 或 spec 冲突，必须停止并回报主 agent，不得猜测实现。
@@ -27,6 +28,7 @@ All commands below assume the execution agent is at the root of its isolated `no
 - Modify: `server/src/modules/non-conformance/dto/create-nc.dto.ts`
 - Modify: `server/src/modules/non-conformance/non-conformance.service.ts`
 - Modify: `server/src/modules/non-conformance/non-conformance.service.spec.ts`
+- Verify only: `server/src/modules/ccp/ccp.service.spec.ts`
 - Add: `server/src/modules/workflow-triggers/workflow-triggers.service.spec.ts`
 - Modify: `server/src/modules/workflow-triggers/workflow-triggers.service.ts`
 - Verify only: `server/src/prisma/schema.prisma`
@@ -85,7 +87,8 @@ with:
 Replace the body of `it('scopes numbering and writes by company', async () => { ... })` with:
 
 ```ts
-    prisma.productionBatch.findUnique.mockResolvedValue({ id: 'b1' });
+    prisma.productionBatch.findUnique.mockResolvedValue({ id: 'b1', productId: 'prod-1' });
+    prisma.product.findFirst.mockResolvedValue({ id: 'prod-1' });
     prisma.nonConformance.count.mockResolvedValue(3);
     prisma.nonConformance.create.mockResolvedValue({ id: 'nc1' });
 
@@ -93,6 +96,10 @@ Replace the body of `it('scopes numbering and writes by company', async () => { 
 
     expect(prisma.productionBatch.findUnique).toHaveBeenCalledWith({
       where: { id: 'b1' },
+      select: { id: true, productId: true },
+    });
+    expect(prisma.product.findFirst).toHaveBeenCalledWith({
+      where: { id: 'prod-1', company_id: '2', deleted_at: null },
       select: { id: true },
     });
     expect(prisma.nonConformance.count).toHaveBeenCalledWith({ where: { company_id: '2' } });
@@ -132,6 +139,26 @@ Append these tests before the dispose test:
 
     expect(prisma.productionBatch.findUnique).toHaveBeenCalledWith({
       where: { id: 'missing-batch' },
+      select: { id: true, productId: true },
+    });
+    expect(prisma.product.findFirst).not.toHaveBeenCalled();
+    expect(prisma.nonConformance.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a production batch source outside the current company', async () => {
+    prisma.productionBatch.findUnique.mockResolvedValue({ id: 'other-company-batch', productId: 'prod-other' });
+    prisma.product.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.create({ source_type: 'production_batch', source_id: 'other-company-batch', description: '偏差' }, 'u1', '2'),
+    ).rejects.toThrow('生产批次来源不存在');
+
+    expect(prisma.productionBatch.findUnique).toHaveBeenCalledWith({
+      where: { id: 'other-company-batch' },
+      select: { id: true, productId: true },
+    });
+    expect(prisma.product.findFirst).toHaveBeenCalledWith({
+      where: { id: 'prod-other', company_id: '2', deleted_at: null },
       select: { id: true },
     });
     expect(prisma.nonConformance.create).not.toHaveBeenCalled();
@@ -188,13 +215,110 @@ Append these tests before the dispose test:
   });
 ```
 
-- [ ] **Step 4: Run the focused test and verify it fails before implementation**
+- [ ] **Step 4: Update CCP deviation automatic-creation tests**
+
+In the existing `creates an open NonConformance from a CCP deviation using production batch as source` test, expand the transaction mock from:
+
+```ts
+    const tx: any = {
+      nonConformance: {
+        count: jest.fn().mockResolvedValue(8),
+        create: jest.fn().mockResolvedValue({ id: 'nc-ccp-1' }),
+      },
+    };
+```
+
+to:
+
+```ts
+    const tx: any = {
+      nonConformance: {
+        count: jest.fn().mockResolvedValue(8),
+        create: jest.fn().mockResolvedValue({ id: 'nc-ccp-1' }),
+      },
+      productionBatch: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'batch-1', productId: 'prod-1' }),
+      },
+      product: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'prod-1' }),
+      },
+    };
+```
+
+After the `await service.createFromCcpDeviation(...)` call in that test, add:
+
+```ts
+    expect(tx.productionBatch.findUnique).toHaveBeenCalledWith({
+      where: { id: 'batch-1' },
+      select: { id: true, productId: true },
+    });
+    expect(tx.product.findFirst).toHaveBeenCalledWith({
+      where: { id: 'prod-1', company_id: '2', deleted_at: null },
+      select: { id: true },
+    });
+```
+
+In the existing `builds a CCP deviation description from measured text when numeric value is absent` test, add the same `productionBatch.findUnique` and `product.findFirst` mocks to the `tx` object so the automatic path still validates before creating NC.
+
+- [ ] **Step 5: Add a CCP deviation rejection test**
+
+Append this test before the dispose test or before the existing CCP description tests:
+
+```ts
+  it('rejects CCP deviation NonConformance creation when the production batch belongs to another company', async () => {
+    const tx: any = {
+      nonConformance: {
+        count: jest.fn(),
+        create: jest.fn(),
+      },
+      productionBatch: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'batch-other', productId: 'prod-other' }),
+      },
+      product: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+    };
+
+    await expect(
+      service.createFromCcpDeviation(
+        {
+          companyId: '2',
+          userId: 'operator-1',
+          ccpRecord: {
+            id: 'ccp-record-1',
+            production_batch_id: 'batch-other',
+            ccp_point_id: 'ccp-point-1',
+            measured_value: 93.5,
+            measured_text: null,
+            unit: 'C',
+            deviation_action: '隔离待评审',
+            ccp_point: { ccp_no: 'CCP-BAKE-01' },
+          },
+        },
+        tx,
+      ),
+    ).rejects.toThrow('生产批次来源不存在');
+
+    expect(tx.productionBatch.findUnique).toHaveBeenCalledWith({
+      where: { id: 'batch-other' },
+      select: { id: true, productId: true },
+    });
+    expect(tx.product.findFirst).toHaveBeenCalledWith({
+      where: { id: 'prod-other', company_id: '2', deleted_at: null },
+      select: { id: true },
+    });
+    expect(tx.nonConformance.count).not.toHaveBeenCalled();
+    expect(tx.nonConformance.create).not.toHaveBeenCalled();
+  });
+```
+
+- [ ] **Step 6: Run the focused test and verify it fails before implementation**
 
 ```bash
 (cd server && npm test -- non-conformance.service.spec.ts --runInBand)
 ```
 
-Expected: FAIL because `NonConformanceService.create()` has not yet checked source existence and currently does not throw these `BadRequestException` messages.
+Expected: FAIL because `NonConformanceService.create()` and `createFromCcpDeviation()` have not yet checked source existence or production-batch tenant ownership and currently do not throw these `BadRequestException` messages.
 
 ## Task 2: Implement DTO and service validation
 
@@ -295,19 +419,46 @@ Inside `NonConformanceService`, replace the current `create()` method with:
   }
 ```
 
-- [ ] **Step 4: Add the private validator**
+- [ ] **Step 4: Validate CCP deviation automatic creation before numbering and create**
 
-Still inside `NonConformanceService`, directly after `create()` and before `findAll()`, add:
+Inside `NonConformanceService`, replace the beginning of `createFromCcpDeviation()`:
 
 ```ts
-  private async validateSourceExists(sourceType: NcSourceType, sourceId: string, companyId: string) {
+  async createFromCcpDeviation(input: CcpDeviationInput, tx?: Prisma.TransactionClient) {
+    const db = tx ?? this.prisma;
+    const count = await db.nonConformance.count({ where: { company_id: input.companyId } });
+```
+
+with:
+
+```ts
+  async createFromCcpDeviation(input: CcpDeviationInput, tx?: Prisma.TransactionClient) {
+    const db = tx ?? this.prisma;
+    await this.validateSourceExists('production_batch', input.ccpRecord.production_batch_id, input.companyId, db);
+
+    const count = await db.nonConformance.count({ where: { company_id: input.companyId } });
+```
+
+This keeps CCP record creation and NC creation inside the same transaction. If validation fails, the transaction callback rejects and the CCP record is rolled back.
+
+- [ ] **Step 5: Add the private validator**
+
+Still inside `NonConformanceService`, directly after `createFromCcpDeviation()` and before `buildCcpDeviationDescription()`, add:
+
+```ts
+  private async validateSourceExists(
+    sourceType: NcSourceType,
+    sourceId: string,
+    companyId: string,
+    db: Prisma.TransactionClient | PrismaService = this.prisma,
+  ) {
     const trimmedSourceId = sourceId?.trim();
     if (!trimmedSourceId) {
       throw new BadRequestException('不合格来源不能为空');
     }
 
     if (sourceType === 'material_batch') {
-      const materialBatch = await this.prisma.materialBatch.findUnique({
+      const materialBatch = await db.materialBatch.findUnique({
         where: { id: trimmedSourceId },
         select: { id: true },
       });
@@ -318,18 +469,26 @@ Still inside `NonConformanceService`, directly after `create()` and before `find
     }
 
     if (sourceType === 'production_batch') {
-      const productionBatch = await this.prisma.productionBatch.findUnique({
+      const productionBatch = await db.productionBatch.findUnique({
         where: { id: trimmedSourceId },
+        select: { id: true, productId: true },
+      });
+      if (!productionBatch?.productId) {
+        throw new BadRequestException('生产批次来源不存在');
+      }
+
+      const product = await db.product.findFirst({
+        where: { id: productionBatch.productId, company_id: companyId, deleted_at: null },
         select: { id: true },
       });
-      if (!productionBatch) {
+      if (!product) {
         throw new BadRequestException('生产批次来源不存在');
       }
       return;
     }
 
     if (sourceType === 'product') {
-      const product = await this.prisma.product.findFirst({
+      const product = await db.product.findFirst({
         where: { id: trimmedSourceId, company_id: companyId, deleted_at: null },
         select: { id: true },
       });
@@ -343,7 +502,19 @@ Still inside `NonConformanceService`, directly after `create()` and before `find
   }
 ```
 
-- [ ] **Step 5: Run the focused test**
+- [ ] **Step 6: Ensure every validator lookup uses `db`**
+
+In the validator from Step 5, use the `db` argument for all source lookups:
+
+```ts
+const materialBatch = await db.materialBatch.findUnique(...)
+const productionBatch = await db.productionBatch.findUnique(...)
+const product = await db.product.findFirst(...)
+```
+
+Do not leave `this.prisma.productionBatch.findUnique` inside the validator. `createFromCcpDeviation()` passes the transaction client, so every read in the automatic CCP path must run against the same transaction client.
+
+- [ ] **Step 7: Run the focused NonConformance test**
 
 ```bash
 (cd server && npm test -- non-conformance.service.spec.ts --runInBand)
@@ -522,7 +693,15 @@ Expected: PASS and output includes `The schema at src/prisma/schema.prisma is va
 
 Expected: PASS.
 
-- [ ] **Step 2: Run focused workflow trigger tests**
+- [ ] **Step 2: Run focused CCP service tests**
+
+```bash
+(cd server && npm test -- ccp.service.spec.ts --runInBand)
+```
+
+Expected: PASS. This guards the transaction handoff from `CcpService.createRecord()` into `NonConformanceService.createFromCcpDeviation()`.
+
+- [ ] **Step 3: Run focused workflow trigger tests**
 
 ```bash
 (cd server && npm test -- workflow-triggers.service.spec.ts --runInBand)
@@ -530,7 +709,7 @@ Expected: PASS.
 
 Expected: PASS.
 
-- [ ] **Step 3: Validate Prisma schema**
+- [ ] **Step 4: Validate Prisma schema**
 
 ```bash
 (cd server && npx prisma validate --schema src/prisma/schema.prisma)
@@ -538,7 +717,7 @@ Expected: PASS.
 
 Expected: PASS.
 
-- [ ] **Step 4: Build the server**
+- [ ] **Step 5: Build the server**
 
 ```bash
 npm run build:server
@@ -546,18 +725,20 @@ npm run build:server
 
 Expected: PASS.
 
-- [ ] **Step 5: Review the diff scope**
+- [ ] **Step 6: Review the diff scope**
 
 ```bash
-git diff -- server/src/modules/non-conformance/dto/create-nc.dto.ts server/src/modules/non-conformance/non-conformance.service.ts server/src/modules/non-conformance/non-conformance.service.spec.ts server/src/modules/workflow-triggers/workflow-triggers.service.ts server/src/modules/workflow-triggers/workflow-triggers.service.spec.ts server/src/prisma/schema.prisma
+git diff -- server/src/modules/non-conformance/dto/create-nc.dto.ts server/src/modules/non-conformance/non-conformance.service.ts server/src/modules/non-conformance/non-conformance.service.spec.ts server/src/modules/ccp/ccp.service.spec.ts server/src/modules/workflow-triggers/workflow-triggers.service.ts server/src/modules/workflow-triggers/workflow-triggers.service.spec.ts server/src/prisma/schema.prisma
 ```
 
 Expected: diff only contains source validation, focused tests, workflow trigger source guard, and no unrelated refactor.
 
 ## Execution Notes
 
-- `ProductionBatch` and `MaterialBatch` do not currently carry `company_id` in Prisma schema. Do not invent tenant filters for those two models in this GAP.
+- `ProductionBatch` and `MaterialBatch` do not currently carry direct `company_id` in Prisma schema. Do not invent direct tenant fields for those two models in this GAP.
+- `ProductionBatch` must still be tenant-validated through `ProductionBatch.productId -> Product.company_id`. A plan or implementation that only checks `productionBatch.findUnique({ where: { id } })` is incomplete.
 - `Product` does carry `company_id`, so product source validation must scope by `{ id, company_id, deleted_at: null }`.
+- `createFromCcpDeviation()` is part of GAP-313 because CCP deviations automatically write `NonConformance` with `source_type='production_batch'`.
 - Do not change frontend source selectors in this PR. Backend validation is the required authority.
 - Do not alter NC numbering in this PR; count-based numbering is GAP-314.
 - Do not create or modify migration files unless the required `@@index([company_id, source_type, source_id])` is missing after rebase and schema validation requires a migration.

@@ -1444,6 +1444,7 @@
       "recommendedPr": "nonconformance/GAP-313",
       "validationCommands": [
         "(cd server && npm test -- non-conformance.service.spec.ts --runInBand)",
+        "(cd server && npm test -- ccp.service.spec.ts --runInBand)",
         "(cd server && npm test -- workflow-triggers.service.spec.ts --runInBand)",
         "(cd server && npx prisma validate --schema src/prisma/schema.prisma)",
         "npm run build:server"
