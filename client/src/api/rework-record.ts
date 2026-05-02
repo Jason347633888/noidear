@@ -8,7 +8,7 @@ export interface ReworkRecord {
   id: string;
   company_id: string;
   production_batch_id: string;
-  nc_id: string | null;
+  nc_id: string;
   rework_reason: string;
   rework_qty: number;
   unit: string;
@@ -23,7 +23,7 @@ export interface ReworkRecord {
 
 export interface CreateReworkRecordPayload {
   production_batch_id: string;
-  nc_id?: string;
+  nc_id: string;
   rework_reason: string;
   rework_qty: number;
   unit: string;

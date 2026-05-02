@@ -136,8 +136,8 @@
         <el-form-item label="判定人">
           <el-input v-model="createForm.verdict_by" placeholder="可选" />
         </el-form-item>
-        <el-form-item label="关联不合格品">
-          <el-input v-model="createForm.nc_id" placeholder="可选，不合格品记录ID" />
+        <el-form-item label="关联不合格品" prop="nc_id">
+          <el-input v-model="createForm.nc_id" placeholder="请输入不合格品记录ID" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -186,6 +186,7 @@ const createRules: FormRules = {
   rework_qty: [{ required: true, message: '请输入返工数量', trigger: 'blur' }],
   rework_date: [{ required: true, message: '请选择返工日期', trigger: 'change' }],
   quality_verdict: [{ required: true, message: '请选择质量判定', trigger: 'change' }],
+  nc_id: [{ required: true, message: '请输入关联不合格品', trigger: 'blur' }],
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -242,7 +243,7 @@ async function handleCreate() {
       rework_date: createForm.rework_date,
       quality_verdict: createForm.quality_verdict,
       verdict_by: createForm.verdict_by || undefined,
-      nc_id: createForm.nc_id || undefined,
+      nc_id: createForm.nc_id,
     });
     ElMessage.success('新建成功');
     createDialogVisible.value = false;

@@ -3066,6 +3066,8 @@ model NonConformance {
   status          String    @default("open") // 'open'|'dispositioned'|'closed'
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
+
+  rework_records  ReworkRecord[]
   @@unique([company_id, nc_no])
   @@index([company_id, status])
   @@index([company_id, source_type, source_id])
@@ -3141,7 +3143,8 @@ model ReworkRecord {
   company_id          String
   production_batch_id String
   production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id])
-  nc_id               String?
+  nc_id               String
+  non_conformance     NonConformance @relation(fields: [nc_id], references: [id], onDelete: Restrict)
   rework_reason       String
   rework_qty          Decimal         @db.Decimal(14,4)
   unit                String
@@ -3152,6 +3155,8 @@ model ReworkRecord {
   verdict_by          String?
   created_at          DateTime        @default(now())
   updated_at          DateTime        @updatedAt
+
+  @@index([nc_id])
 }
 
 model MeasuringEquipment {
