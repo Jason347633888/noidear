@@ -1577,26 +1577,30 @@
       "id": "GAP-318",
       "severity": "P2",
       "moduleId": "nonconformance-capa",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
       "needsDesign": true,
-      "schemaImpact": false,
+      "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
         "brainstorming",
         "grill-with-docs",
-        "writing-plans"
+        "writing-plans",
+        "executing-plans"
       ],
       "prRoadmapGroup": "nonconformance",
-      "prOrder": null,
+      "prOrder": 30,
       "recommendedPr": "nonconformance/GAP-318",
       "validationCommands": [
-        "pnpm test:e2e -- --grep GAP-318"
+        "(cd server && npx prisma validate --schema src/prisma/schema.prisma)",
+        "(cd server && npm test -- rework-record.service.spec.ts --runInBand)",
+        "npm run build:server",
+        "npm run build:client"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-02-gap-318-rework-record-nc-fk-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-02-gap-318-rework-record-nc-fk-implementation.md"
     },
     {
       "id": "GAP-400",
