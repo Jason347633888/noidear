@@ -30,6 +30,17 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Cannot backfill DocumentIssuance.document_id: document_code matches multiple Documents';
   END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM "DocumentIssuance" di
+    WHERE NOT EXISTS (
+      SELECT 1 FROM "documents" d
+      WHERE d."deletedAt" IS NULL
+        AND (d."doc_code" = di."document_code" OR d."number" = di."document_code")
+    )
+  ) THEN
+    RAISE EXCEPTION 'Cannot require DocumentIssuance.document_id: unmatched legacy rows exist';
+  END IF;
 END $$;
 
 ALTER TABLE "DocumentIssuance"
@@ -46,13 +57,6 @@ FROM (
   GROUP BY di_inner."id"
 ) matched
 WHERE di."id" = matched."issuance_id";
-
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM "DocumentIssuance" WHERE "document_id" IS NULL) THEN
-    RAISE EXCEPTION 'Cannot require DocumentIssuance.document_id: unmatched legacy rows exist';
-  END IF;
-END $$;
 
 ALTER TABLE "DocumentIssuance" ALTER COLUMN "document_id" SET NOT NULL;
 
