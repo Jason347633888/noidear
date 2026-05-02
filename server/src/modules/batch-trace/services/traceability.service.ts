@@ -44,7 +44,7 @@ export class TraceabilityService {
 
     return {
       productionBatch,
-      materialBatches: materialUsages.map((u) => ({
+      materialBatches: materialUsages.map((u: any) => ({
         ...u.materialBatch,
         usedQuantity: u.quantity,
         usedAt: u.usedAt,
@@ -157,7 +157,7 @@ export class TraceabilityService {
       },
     });
 
-    const productionBatchIds = usages.map((u) => u.productionBatchId);
+    const productionBatchIds = usages.map((u: any) => u.productionBatchId);
 
     // TASK-9: finishedGoodsBatch removed — query records directly via productionBatchId
     // TASK-169: 查询关联的动态表单记录
@@ -176,7 +176,7 @@ export class TraceabilityService {
 
     return {
       materialBatch,
-      productionBatches: usages.map((u) => ({
+      productionBatches: usages.map((u: any) => ({
         id: u.productionBatch.id,
         batchNumber: u.productionBatch.batchNumber,
         status: u.productionBatch.status,

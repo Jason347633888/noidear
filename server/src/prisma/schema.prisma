@@ -1485,6 +1485,7 @@ model ProductionBatch {
   materialBalances MaterialBalance[]    @relation("MaterialBalanceProductionBatch")
   // TASK-169: 动态表单记录关联
   relatedRecords   Record[]             @relation("RecordProductionBatch")
+  customer_complaints CustomerComplaint[]
 
   // 班组排班扩展字段
   team_id          String?
@@ -3112,7 +3113,8 @@ model CustomerComplaint {
   company_id          String
   complaint_no        String
   customer_name       String
-  production_batch_id String?
+  production_batch_id String
+  production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id], onDelete: Restrict)
   received_at         DateTime
   complaint_type      String?
   description         String
@@ -3122,6 +3124,7 @@ model CustomerComplaint {
   created_at          DateTime  @default(now())
   updated_at          DateTime  @updatedAt
   @@unique([company_id, complaint_no])
+  @@index([production_batch_id])
 }
 
 model ReworkRecord {

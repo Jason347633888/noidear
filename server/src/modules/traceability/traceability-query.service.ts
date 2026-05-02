@@ -2,37 +2,17 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ModelLandingService } from '../model-landing/model-landing.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueryTraceabilityDto } from './dto/query-traceability.dto';
+import {
+  SOURCE_VERSION,
+  buildTraceResult,
+  deliveryNoteNode,
+  edge,
+  ingredientUsageNode,
+  materialLotNode,
+  productionBatchNode,
+} from './traceability-contract.mapper';
 
-type TraceRiskLevel = 'normal' | 'minor' | 'important' | 'high';
-
-interface TraceLedgerRow {
-  nodeType: string;
-  nodeId: string;
-  label: string;
-  batchNo?: string;
-  status?: string;
-  riskLevel?: TraceRiskLevel;
-  upstreamNodeId?: string;
-  downstreamNodeId?: string;
-}
-
-interface TraceQueryResult {
-  summary: {
-    entryMode?: string;
-    objectType?: string;
-    objectId?: string;
-    scenario?: string;
-    traceMode?: string;
-    viewMode?: string;
-    timeMode?: string;
-    asOfAt?: string;
-  };
-  ledger: TraceLedgerRow[];
-  graph: { nodes: Array<{ id: string; type: string; label: string; riskLevel?: TraceRiskLevel }>; edges: Array<{ id: string; source: string; target: string; relation: string }> };
-  risks: Array<{ code: string; level: TraceRiskLevel; message: string }>;
-  evidence: Array<{ type: 'record'; label: string; refId: string }>;
-  permission: { canViewSummary: boolean; canViewDetail: boolean; canInitiateAction: boolean; canExecuteHighRiskAction: boolean };
-}
+type TraceQueryResult = ReturnType<typeof buildTraceResult>;
 
 @Injectable()
 export class TraceabilityQueryService {
@@ -44,28 +24,20 @@ export class TraceabilityQueryService {
   async query(dto: QueryTraceabilityDto, currentUser: any): Promise<TraceQueryResult> {
     this.assertScenarioPermission(dto, currentUser);
 
-    const summary = {
-      entryMode: dto.entryMode,
-      objectType: dto.objectType,
-      objectId: dto.objectId,
-      scenario: dto.scenario,
-      traceMode: dto.traceMode,
-      viewMode: dto.viewMode,
-      timeMode: dto.timeMode,
-      asOfAt: dto.asOfAt,
-    };
+    if (dto.entryMode === 'object' && dto.objectType === 'materialLot' && dto.objectId) {
+      return this.queryMaterialLot(dto, currentUser);
+    }
+    if (dto.entryMode === 'object' && dto.objectType === 'productionBatch' && dto.objectId) {
+      return this.queryProductionBatch(dto, currentUser);
+    }
+    if (dto.entryMode === 'object' && dto.objectType === 'deliveryNote' && dto.objectId) {
+      return this.queryDeliveryNote(dto, currentUser);
+    }
+    if (dto.entryMode === 'scenario') {
+      return this.queryScenario(dto, currentUser);
+    }
 
-    const ledger = await this.buildLedger(dto);
-    const graph = this.buildGraph(ledger);
-
-    return {
-      summary,
-      ledger,
-      graph,
-      risks: this.buildRisks(ledger),
-      evidence: this.buildEvidenceRefs(ledger),
-      permission: this.buildPermissionView(currentUser),
-    };
+    return this.emptyResult(dto, currentUser);
   }
 
   private assertScenarioPermission(dto: QueryTraceabilityDto, currentUser: any): void {
@@ -81,124 +53,250 @@ export class TraceabilityQueryService {
     }
   }
 
-  private async buildLedger(dto: QueryTraceabilityDto): Promise<TraceLedgerRow[]> {
-    if (dto.objectType === 'materialLot' && dto.objectId) {
-      return this.buildForwardLedgerFromMaterialLot(dto.objectId);
-    }
-    return [];
+  private buildPermissionView(currentUser: any) {
+    return {
+      departmentScope: currentUser?.department ?? 'unknown',
+      scenarioPermissions: currentUser?.scenarioPermissions ?? [],
+      canViewSummary: true,
+      canViewDetail: currentUser?.department !== '访客',
+      canViewEvidence: currentUser?.department !== '访客',
+      canInitiateLinkage: Boolean(currentUser?.scenarioPermissions?.length),
+      canExportSimple: true,
+      canExportFullPackage:
+        currentUser?.department === '品质' || currentUser?.department === '管理层',
+      canUseAsOfPlayback: true,
+      canExecuteHighRiskAction:
+        currentUser?.department === '品质' || currentUser?.department === '管理层',
+    };
   }
 
-  private async buildForwardLedgerFromMaterialLot(objectId: string): Promise<TraceLedgerRow[]> {
-    const materialLot: any = await this.prisma.materialBatch.findFirst({
-      where: { id: objectId },
-      include: { batchMaterialUsages: true },
+  private emptyResult(dto: QueryTraceabilityDto, currentUser: any): TraceQueryResult {
+    return {
+      summary: {
+        queryId: `empty:${dto.objectType ?? dto.scenario ?? 'unknown'}:${dto.objectId ?? 'none'}`,
+        entryMode: dto.entryMode,
+        objectType: dto.objectType,
+        objectId: dto.objectId,
+        scenario: dto.scenario,
+        traceMode: dto.traceMode,
+        viewMode: dto.viewMode,
+        timeMode: dto.timeMode,
+        asOfAt: dto.asOfAt,
+        riskLevel: 'normal',
+        resultStatus: 'empty',
+      },
+      permission: this.buildPermissionView(currentUser),
+      risk: { summaryRiskLevel: 'normal', riskCount: 0, highRiskCount: 0, items: [] },
+      ledger: {
+        columns: [{ key: 'label', label: '节点' }],
+        rows: [],
+        grouping: ['nodeType'],
+        totals: { rowCount: 0 },
+      },
+      graph: { nodes: [], edges: [], layout: 'vertical', legend: ['mainChain'] },
+      evidence: { count: 0, items: [] },
+      actions: { available: [], recommended: [], created: [] },
+      export: { simpleExportAvailable: true, fullPackageAvailable: true, latestExportId: null },
+      meta: {
+        generatedAt: new Date().toISOString(),
+        queryHash: `empty:${dto.objectId ?? dto.scenario ?? 'unknown'}`,
+        degraded: false,
+        snapshotId: null,
+        sourceVersion: SOURCE_VERSION,
+      },
+      extensions: {},
+    } as unknown as TraceQueryResult;
+  }
+
+  private async queryMaterialLot(dto: QueryTraceabilityDto, currentUser: any): Promise<TraceQueryResult> {
+    // Material has no direct company_id; scope via production batch → product.company_id
+    const companyWhere = currentUser?.companyId
+      ? {
+          batchMaterialUsages: {
+            some: { productionBatch: { product: { company_id: currentUser.companyId } } },
+          },
+        }
+      : {};
+    const materialLot = await this.prisma.materialBatch.findFirst({
+      where: { id: dto.objectId, ...companyWhere },
+      include: {
+        material: true,
+        supplier: true,
+        batchMaterialUsages: {
+          include: {
+            productionBatch: {
+              include: { delivery_notes: true },
+            },
+          },
+        },
+      },
     });
 
-    if (!materialLot) return [];
+    if (!materialLot) return this.emptyResult(dto, currentUser);
 
-    const batchLabel: string = materialLot.batch_no ?? materialLot.batchNumber ?? materialLot.id;
+    return buildTraceResult({
+      queryId: `forward:${materialLot.id}`,
+      entryMode: dto.entryMode as 'object',
+      objectType: dto.objectType,
+      objectId: dto.objectId,
+      traceMode: dto.traceMode as 'forward' | 'backward' | 'bidirectional',
+      viewMode: dto.viewMode as 'ledger' | 'graph',
+      timeMode: dto.timeMode as 'current' | 'asOf',
+      asOfAt: dto.asOfAt,
+      permission: this.buildPermissionView(currentUser),
+      ...this.materialLotChain(materialLot, dto.traceMode as 'forward' | 'backward' | 'bidirectional'),
+    }) as unknown as TraceQueryResult;
+  }
 
-    const rows: TraceLedgerRow[] = [
-      {
-        nodeType: 'materialLot',
-        nodeId: materialLot.id,
-        label: batchLabel,
-        batchNo: batchLabel,
-      },
-    ];
+  private materialLotChain(
+    materialLot: any,
+    direction: 'forward' | 'backward' | 'bidirectional',
+  ) {
+    const rows = [materialLotNode(materialLot)];
+    const edges: any[] = [];
 
-    const usages: any[] = materialLot.batchMaterialUsages ?? [];
-    const productionBatchIds = usages.map((u: any) => u.productionBatchId);
-
-    for (const usage of usages) {
-      rows.push({
-        nodeType: 'ingredientUsage',
-        nodeId: usage.id,
-        label: `投料 ${usage.quantity}`,
-        upstreamNodeId: materialLot.id,
-        downstreamNodeId: usage.productionBatchId,
-      });
-    }
-
-    if (productionBatchIds.length > 0) {
-      // TASK-9: finishedGoods (FinishedGoodsBatch) removed; productionBatch is terminal node
-      const productionBatches = await this.prisma.productionBatch.findMany({
-        where: { id: { in: productionBatchIds } },
-        include: {
-          delivery_notes: true,
-        },
-      });
-
-      for (const pb of productionBatches as any[]) {
-        rows.push({
-          nodeType: 'productionBatch',
-          nodeId: pb.id,
-          label: pb.batch_no,
-          batchNo: pb.batch_no,
-        });
-
-        for (const dn of pb.delivery_notes as any[]) {
-          rows.push({
-            nodeType: 'deliveryNote',
-            nodeId: dn.id,
-            label: dn.delivery_no,
-            upstreamNodeId: pb.id,
-          });
+    for (const usage of materialLot.batchMaterialUsages ?? []) {
+      rows.push(ingredientUsageNode(usage));
+      if (usage.productionBatch) rows.push(productionBatchNode(usage.productionBatch));
+      edges.push(edge(materialLot.id, usage.id, 'usedIn', direction, edges.length));
+      if (usage.productionBatch) {
+        edges.push(edge(usage.id, usage.productionBatch.id, 'produces', direction, edges.length));
+        for (const dn of usage.productionBatch.delivery_notes ?? []) {
+          rows.push(deliveryNoteNode(dn));
+          edges.push(edge(usage.productionBatch.id, String(dn.id), 'shippedBy', direction, edges.length));
         }
       }
     }
 
-    return rows;
+    return { rows, edges };
   }
 
-  private buildGraph(ledger: TraceLedgerRow[]) {
-    return {
-      nodes: ledger.map((row) => ({
-        id: row.nodeId,
-        type: row.nodeType,
-        label: row.label,
-        riskLevel: row.riskLevel,
-      })),
-      edges: ledger
-        .filter((row) => row.upstreamNodeId && row.downstreamNodeId)
-        .map((row) => ({
-          id: `${row.upstreamNodeId}:${row.downstreamNodeId}`,
-          source: row.upstreamNodeId as string,
-          target: row.downstreamNodeId as string,
-          relation: row.nodeType,
-        })),
-    };
+  private async queryProductionBatch(dto: QueryTraceabilityDto, currentUser: any): Promise<TraceQueryResult> {
+    const companyWhere = currentUser?.companyId
+      ? { product: { company_id: currentUser.companyId } }
+      : {};
+    const productionBatch = await this.prisma.productionBatch.findFirst({
+      where: { id: dto.objectId, ...companyWhere },
+      include: {
+        materialUsages: {
+          include: {
+            materialBatch: {
+              include: { material: true, supplier: true },
+            },
+          },
+        },
+        delivery_notes: true,
+      },
+    });
+
+    if (!productionBatch) return this.emptyResult(dto, currentUser);
+
+    const rows: any[] = [];
+    const edges: any[] = [];
+
+    for (const usage of (productionBatch as any).materialUsages ?? []) {
+      if (usage.materialBatch) rows.push(materialLotNode(usage.materialBatch));
+      rows.push(ingredientUsageNode(usage));
+      if (usage.materialBatch) {
+        edges.push(edge(usage.materialBatch.id, usage.id, 'usedIn', dto.traceMode as any, edges.length));
+      }
+      edges.push(edge(usage.id, productionBatch.id, 'produces', dto.traceMode as any, edges.length));
+    }
+
+    rows.push(productionBatchNode(productionBatch));
+
+    for (const dn of (productionBatch as any).delivery_notes ?? []) {
+      rows.push(deliveryNoteNode(dn));
+      edges.push(edge(productionBatch.id, String(dn.id), 'shippedBy', dto.traceMode as any, edges.length));
+    }
+
+    return buildTraceResult({
+      queryId: `${dto.traceMode}:${productionBatch.id}`,
+      entryMode: dto.entryMode as 'object',
+      objectType: dto.objectType,
+      objectId: dto.objectId,
+      traceMode: dto.traceMode as 'forward' | 'backward' | 'bidirectional',
+      viewMode: dto.viewMode as 'ledger' | 'graph',
+      timeMode: dto.timeMode as 'current' | 'asOf',
+      asOfAt: dto.asOfAt,
+      permission: this.buildPermissionView(currentUser),
+      rows,
+      edges,
+    }) as unknown as TraceQueryResult;
   }
 
-  private buildRisks(ledger: TraceLedgerRow[]) {
-    return ledger
-      .filter((row) => row.riskLevel && row.riskLevel !== 'normal')
-      .map((row) => ({
-        code: row.nodeType,
-        level: row.riskLevel as TraceRiskLevel,
-        message: `${row.label} 存在风险标记`,
-      }));
+  private async queryDeliveryNote(dto: QueryTraceabilityDto, currentUser: any): Promise<TraceQueryResult> {
+    const deliveryId = Number(dto.objectId);
+    if (!Number.isInteger(deliveryId)) return this.emptyResult(dto, currentUser);
+
+    const companyWhere = currentUser?.companyId
+      ? { company_id: Number(currentUser.companyId) }
+      : {};
+    const deliveryNote = await this.prisma.deliveryNote.findFirst({
+      where: { id: deliveryId, ...companyWhere },
+      include: {
+        production_batch: {
+          include: {
+            materialUsages: {
+              include: {
+                materialBatch: {
+                  include: { material: true, supplier: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!deliveryNote) return this.emptyResult(dto, currentUser);
+
+    const rows: any[] = [deliveryNoteNode(deliveryNote)];
+    const edges: any[] = [];
+    const productionBatch = (deliveryNote as any).production_batch;
+    rows.push(productionBatchNode(productionBatch));
+    edges.push(edge(String(deliveryNote.id), productionBatch.id, 'shipsFrom', 'backward', edges.length));
+
+    for (const usage of productionBatch.materialUsages ?? []) {
+      rows.push(ingredientUsageNode(usage));
+      if (usage.materialBatch) rows.push(materialLotNode(usage.materialBatch));
+      edges.push(edge(productionBatch.id, usage.id, 'containsUsage', 'backward', edges.length));
+      if (usage.materialBatch) {
+        edges.push(edge(usage.id, usage.materialBatch.id, 'usesLot', 'backward', edges.length));
+      }
+    }
+
+    return buildTraceResult({
+      queryId: `backward:${deliveryNote.id}`,
+      entryMode: dto.entryMode as 'object',
+      objectType: dto.objectType,
+      objectId: dto.objectId,
+      traceMode: dto.traceMode as 'forward' | 'backward' | 'bidirectional',
+      viewMode: dto.viewMode as 'ledger' | 'graph',
+      timeMode: dto.timeMode as 'current' | 'asOf',
+      asOfAt: dto.asOfAt,
+      permission: this.buildPermissionView(currentUser),
+      rows,
+      edges,
+    }) as unknown as TraceQueryResult;
   }
 
-  private buildEvidenceRefs(ledger: TraceLedgerRow[]) {
-    return ledger.map((row) => ({
-      type: 'record' as const,
-      label: row.label,
-      refId: row.nodeId,
-    }));
+  private async queryScenario(dto: QueryTraceabilityDto, currentUser: any): Promise<TraceQueryResult> {
+    const objectId =
+      typeof (dto as any).filters?.objectId === 'string'
+        ? (dto as any).filters.objectId
+        : dto.objectId;
+    const objectType =
+      typeof (dto as any).filters?.objectType === 'string'
+        ? (dto as any).filters.objectType
+        : dto.objectType;
+
+    if (!objectId || !objectType) return this.emptyResult(dto, currentUser);
+
+    return this.query({ ...dto, entryMode: 'object', objectType, objectId }, currentUser);
   }
 
   getTraceabilityPermissionView(currentUser: any) {
     return this.buildPermissionView(currentUser);
-  }
-
-  private buildPermissionView(currentUser: any) {
-    return {
-      canViewSummary: true,
-      canViewDetail: currentUser?.department !== '访客',
-      canInitiateAction: Boolean(currentUser?.scenarioPermissions?.length),
-      canExecuteHighRiskAction:
-        currentUser?.department === '品质' || currentUser?.department === '管理层',
-    };
   }
 }

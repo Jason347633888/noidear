@@ -14,6 +14,20 @@
             </el-select>
           </el-form-item>
         </el-col>
+        <el-col :span="5">
+          <el-form-item label="对象类型">
+            <el-select v-model="form.objectType" style="width: 100%">
+              <el-option label="原料批次" value="materialLot" />
+              <el-option label="产品批次" value="productionBatch" />
+              <el-option label="发货单" value="deliveryNote" />
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="6">
+          <el-form-item label="对象编号">
+            <el-input v-model="form.objectId" placeholder="批次号 / ID" clearable />
+          </el-form-item>
+        </el-col>
         <el-col :span="4">
           <el-form-item label="历史模式">
             <el-switch v-model="asOfEnabled" />
@@ -43,17 +57,35 @@
 import { reactive, ref } from 'vue';
 
 const asOfEnabled = ref(false);
-const form = reactive({ scenario: 'forwardTrace', asOfAt: '' });
+const form = reactive({
+  scenario: 'forwardTrace',
+  objectType: 'materialLot',
+  objectId: '',
+  asOfAt: '',
+});
 
 const emit = defineEmits<{ submit: [payload: Record<string, unknown>] }>();
 
+const scenarioTraceMode = (scenario: string) => {
+  if (scenario === 'backwardTrace' || scenario === 'complaintInvestigation' || scenario === 'recallAssessment') {
+    return 'backward';
+  }
+  if (scenario === 'materialBalance') return 'bidirectional';
+  return 'forward';
+};
+
 const handleSubmit = () => {
   emit('submit', {
-    ...form,
+    scenario: form.scenario,
     entryMode: 'scenario',
-    traceMode: 'forward',
+    traceMode: scenarioTraceMode(form.scenario),
     viewMode: 'ledger',
     timeMode: asOfEnabled.value ? 'asOf' : 'current',
+    asOfAt: form.asOfAt,
+    filters: {
+      objectType: form.objectType,
+      objectId: form.objectId,
+    },
   });
 };
 </script>

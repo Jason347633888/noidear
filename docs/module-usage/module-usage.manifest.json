@@ -1281,7 +1281,7 @@
       "id": "GAP-308",
       "severity": "P1",
       "moduleId": "traceability-complaint-recall",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [
         "GAP-306"
       ],
@@ -1293,16 +1293,19 @@
       "recommendedSuperpowers": [
         "brainstorming",
         "grill-with-docs",
-        "writing-plans"
+        "writing-plans",
+        "executing-plans"
       ],
       "prRoadmapGroup": "traceability",
-      "prOrder": null,
+      "prOrder": 15,
       "recommendedPr": "traceability/GAP-308",
       "validationCommands": [
-        "pnpm test:e2e -- --grep GAP-308"
+        "npm --prefix server test -- traceability-export.service --runInBand",
+        "npm --prefix server test -- traceability.service traceability-export.service --runInBand",
+        "npm --prefix server test -- traceability --runInBand"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-01-gap-308-traceability-snapshot-persistence-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-01-gap-308-traceability-snapshot-persistence-implementation.md"
     },
     {
       "id": "GAP-309",

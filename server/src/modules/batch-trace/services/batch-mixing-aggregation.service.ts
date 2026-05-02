@@ -33,7 +33,7 @@ export class BatchMixingAggregationService {
     }
 
     const mismatch = confirmedExecutions.find(
-      (exec) =>
+      (exec: any) =>
         exec.productId !== productionBatch.productId ||
         exec.recipeId !== productionBatch.recipeId,
     );
