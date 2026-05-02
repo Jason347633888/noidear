@@ -93,6 +93,6 @@
 | GAP-600 | P0 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-600-602-measuring-equipment-tenant-isolation-design.md | docs/superpowers/plans/2026-05-01-gap-600-602-measuring-equipment-tenant-isolation-implementation.md | 与 GAP-602 合并，spec 和 plan 已写完；执行时只使用 executing-plans |
 | GAP-601 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-601-equipment-controller-auth-guard-implementation.md` | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-602 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | docs/superpowers/plans/2026-05-01-gap-600-602-measuring-equipment-tenant-isolation-implementation.md | 与 GAP-600 合并，plan 已写完；执行时只使用 executing-plans |
-| GAP-603 | P2 | 已验证（schema 层面） | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema FK，先用 brainstorming 写轻量 spec |
+| GAP-603 | P2 | 已验证（schema 层面） | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-02-gap-603-requisition-equipment-link-design.md | docs/superpowers/plans/2026-05-02-gap-603-requisition-equipment-link-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans，维修领料必须关联 Equipment 台账 |
 | GAP-604 | P2 | 需要运行系统确认 | 否 | 否 | 否 | `grill-with-docs` | | | 先业务确认检验记录是否需要关联量器，待确认后重新分诊 |
 | GAP-605 | P2 | 已验证（模块定义无审批） | 是 | 否 | 是 | `writing-plans` | | | P2 校准记录审批，先业务确认后写 plan |
