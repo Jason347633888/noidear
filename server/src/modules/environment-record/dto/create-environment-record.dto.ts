@@ -2,7 +2,12 @@ import { IsString, IsOptional, IsBoolean, IsNumber, IsNotEmpty } from 'class-val
 
 export class CreateEnvironmentRecordDto {
   @IsString()
-  location: string;
+  @IsNotEmpty()
+  location_id: string;
+
+  @IsOptional()
+  @IsString()
+  location?: string;
 
   @IsString()
   record_type: string; // 'temperature_humidity'|'pressure_differential'|'other'

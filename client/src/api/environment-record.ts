@@ -10,6 +10,7 @@ export interface EnvironmentRecord {
   id: string;
   company_id: string;
   production_batch_id: string;
+  location_id: string | null;
   location: string;
   record_type: RecordType;
   temperature: number | null;
@@ -23,7 +24,7 @@ export interface EnvironmentRecord {
 }
 
 export interface CreateEnvironmentRecordPayload {
-  location: string;
+  location_id: string;
   record_type: RecordType;
   temperature?: number;
   humidity?: number;

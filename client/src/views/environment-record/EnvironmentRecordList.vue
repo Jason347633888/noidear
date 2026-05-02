@@ -80,8 +80,15 @@
         :rules="createRules"
         label-width="110px"
       >
-        <el-form-item label="监测位置" prop="location">
-          <el-input v-model="createForm.location" placeholder="例如：生产车间A区" />
+        <el-form-item label="监测位置" prop="location_id">
+          <el-select v-model="createForm.location_id" placeholder="请选择监测位置" filterable style="width: 100%">
+            <el-option
+              v-for="area in areas"
+              :key="area.id"
+              :label="area.name"
+              :value="area.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="记录类型" prop="record_type">
           <el-select v-model="createForm.record_type" placeholder="请选择" style="width: 100%">
@@ -153,12 +160,14 @@ import environmentRecordApi, {
   type RecordType,
   getRecordTypeText,
 } from '@/api/environment-record';
+import { workshopAreaApi, type WorkshopArea } from '@/api/workshop-area';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
 const list = ref<EnvironmentRecord[]>([]);
 const loading = ref(false);
 const dateRange = ref<[string, string] | null>(null);
+const areas = ref<WorkshopArea[]>([]);
 
 // ── Create dialog ─────────────────────────────────────────────────────────────
 
@@ -167,7 +176,7 @@ const submitting = ref(false);
 const createFormRef = ref<FormInstance>();
 
 const createForm = reactive({
-  location: '',
+  location_id: '',
   record_type: '' as RecordType | '',
   temperature: undefined as number | undefined,
   humidity: undefined as number | undefined,
@@ -178,7 +187,7 @@ const createForm = reactive({
 });
 
 const createRules: FormRules = {
-  location: [{ required: true, message: '请输入监测位置', trigger: 'blur' }],
+  location_id: [{ required: true, message: '请选择监测位置', trigger: 'change' }],
   record_type: [{ required: true, message: '请选择记录类型', trigger: 'change' }],
   is_within_spec: [{ required: true, message: '请选择是否达标', trigger: 'change' }],
   production_batch_id: [{ required: true, message: '请选择生产批次', trigger: 'change' }],
@@ -199,6 +208,15 @@ function formatDate(dateStr: string | null): string {
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 
+async function loadAreas() {
+  try {
+    const res = await workshopAreaApi.getList();
+    areas.value = (res as unknown as WorkshopArea[]) ?? [];
+  } catch {
+    ElMessage.error('加载监测位置列表失败');
+  }
+}
+
 async function loadList() {
   loading.value = true;
   try {
@@ -215,7 +233,7 @@ async function loadList() {
 // ── Create ────────────────────────────────────────────────────────────────────
 
 function openCreateDialog() {
-  createForm.location = '';
+  createForm.location_id = '';
   createForm.record_type = '';
   createForm.temperature = undefined;
   createForm.humidity = undefined;
@@ -231,7 +249,7 @@ async function handleCreate() {
   submitting.value = true;
   try {
     await environmentRecordApi.create({
-      location: createForm.location,
+      location_id: createForm.location_id,
       record_type: createForm.record_type as RecordType,
       temperature: createForm.temperature,
       humidity: createForm.humidity,
@@ -254,6 +272,7 @@ async function handleCreate() {
 
 onMounted(() => {
   loadList();
+  loadAreas();
 });
 </script>
 
