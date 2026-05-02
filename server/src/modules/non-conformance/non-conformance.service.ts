@@ -1,6 +1,22 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateNcDto, DisposeNcDto } from './dto/create-nc.dto';
+
+type CcpDeviationInput = {
+  companyId: string;
+  userId: string;
+  ccpRecord: {
+    id: string;
+    production_batch_id: string;
+    ccp_point_id: string;
+    measured_value?: unknown;
+    measured_text?: string | null;
+    unit?: string | null;
+    deviation_action?: string | null;
+    ccp_point?: { ccp_no?: string | null } | null;
+  };
+};
 
 @Injectable()
 export class NonConformanceService {
@@ -18,6 +34,36 @@ export class NonConformanceService {
         discovered_at: new Date(),
       },
     });
+  }
+
+  async createFromCcpDeviation(input: CcpDeviationInput, tx?: Prisma.TransactionClient) {
+    const db = tx ?? this.prisma;
+    const count = await db.nonConformance.count({ where: { company_id: input.companyId } });
+    const nc_no = `NC-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+
+    return db.nonConformance.create({
+      data: {
+        company_id: input.companyId,
+        nc_no,
+        source_type: 'production_batch',
+        source_id: input.ccpRecord.production_batch_id,
+        nc_type: 'ccp_deviation',
+        description: this.buildCcpDeviationDescription(input.ccpRecord),
+        discovered_by: input.userId,
+        discovered_at: new Date(),
+      },
+    });
+  }
+
+  private buildCcpDeviationDescription(record: CcpDeviationInput['ccpRecord']) {
+    const ccpNo = record.ccp_point?.ccp_no ?? record.ccp_point_id;
+    const measured =
+      record.measured_value != null
+        ? `${record.measured_value}${record.unit ? ` ${record.unit}` : ''}`
+        : record.measured_text ?? '未填写';
+    const action = record.deviation_action ? `；偏差处置：${record.deviation_action}` : '；偏差处置：未填写';
+
+    return `CCP偏差：${ccpNo} 超出临界限；实测：${measured}${action}；CCP记录ID：${record.id}`;
   }
 
   async findAll(companyId: string, status?: string) {
