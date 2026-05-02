@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateNcDto, DisposeNcDto } from './dto/create-nc.dto';
+import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
 
 type CcpDeviationInput = {
   companyId: string;
@@ -20,11 +21,13 @@ type CcpDeviationInput = {
 
 @Injectable()
 export class NonConformanceService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly numberSequence: QualityNumberSequenceService,
+  ) {}
 
   async create(dto: CreateNcDto, userId: string, companyId: string) {
-    const count = await this.prisma.nonConformance.count({ where: { company_id: companyId } });
-    const nc_no = `NC-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+    const nc_no = await this.numberSequence.generateNonConformanceNo(companyId);
     return this.prisma.nonConformance.create({
       data: {
         ...dto,
@@ -38,8 +41,7 @@ export class NonConformanceService {
 
   async createFromCcpDeviation(input: CcpDeviationInput, tx?: Prisma.TransactionClient) {
     const db = tx ?? this.prisma;
-    const count = await db.nonConformance.count({ where: { company_id: input.companyId } });
-    const nc_no = `NC-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+    const nc_no = await this.numberSequence.generateNonConformanceNo(input.companyId, new Date(), tx);
 
     return db.nonConformance.create({
       data: {

@@ -11,22 +11,32 @@ describe('NonConformanceService', () => {
       update: jest.fn(),
     },
   };
+  const numberSequence = {
+    generateNonConformanceNo: jest.fn(),
+  };
   let service: NonConformanceService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new NonConformanceService(prisma as any);
+    service = new NonConformanceService(prisma as any, numberSequence as any);
   });
 
-  it('scopes numbering and writes by company', async () => {
-    prisma.nonConformance.count.mockResolvedValue(3);
+  it('uses the shared sequence service and writes by company', async () => {
+    numberSequence.generateNonConformanceNo.mockResolvedValue('NC-2026-0004');
     prisma.nonConformance.create.mockResolvedValue({ id: 'nc1' });
 
     await service.create({ source_type: 'production_batch', source_id: 'b1', description: '偏差' }, 'u1', '2');
 
-    expect(prisma.nonConformance.count).toHaveBeenCalledWith({ where: { company_id: '2' } });
+    expect(prisma.nonConformance.count).not.toHaveBeenCalled();
+    expect(numberSequence.generateNonConformanceNo).toHaveBeenCalledWith('2');
     expect(prisma.nonConformance.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ company_id: '2', nc_no: expect.stringMatching(/-0004$/) }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          company_id: '2',
+          nc_no: 'NC-2026-0004',
+          discovered_by: 'u1',
+        }),
+      }),
     );
   });
 
@@ -40,10 +50,11 @@ describe('NonConformanceService', () => {
   it('creates an open NonConformance from a CCP deviation using production batch as source', async () => {
     const tx: any = {
       nonConformance: {
-        count: jest.fn().mockResolvedValue(8),
+        count: jest.fn(),
         create: jest.fn().mockResolvedValue({ id: 'nc-ccp-1' }),
       },
     };
+    numberSequence.generateNonConformanceNo.mockResolvedValue('NC-2026-0022');
 
     await service.createFromCcpDeviation(
       {
@@ -63,11 +74,12 @@ describe('NonConformanceService', () => {
       tx,
     );
 
-    expect(tx.nonConformance.count).toHaveBeenCalledWith({ where: { company_id: '2' } });
+    expect(tx.nonConformance.count).not.toHaveBeenCalled();
+    expect(numberSequence.generateNonConformanceNo).toHaveBeenCalledWith('2', expect.any(Date), tx);
     expect(tx.nonConformance.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         company_id: '2',
-        nc_no: expect.stringMatching(/^NC-\d{4}-0009$/),
+        nc_no: 'NC-2026-0022',
         source_type: 'production_batch',
         source_id: 'batch-1',
         nc_type: 'ccp_deviation',
@@ -84,10 +96,11 @@ describe('NonConformanceService', () => {
   it('builds a CCP deviation description from measured text when numeric value is absent', async () => {
     const tx: any = {
       nonConformance: {
-        count: jest.fn().mockResolvedValue(0),
+        count: jest.fn(),
         create: jest.fn().mockResolvedValue({ id: 'nc-ccp-2' }),
       },
     };
+    numberSequence.generateNonConformanceNo.mockResolvedValue('NC-2026-0001');
 
     await service.createFromCcpDeviation(
       {
@@ -107,6 +120,7 @@ describe('NonConformanceService', () => {
       tx,
     );
 
+    expect(tx.nonConformance.count).not.toHaveBeenCalled();
     const data = tx.nonConformance.create.mock.calls[0][0].data;
     expect(data.description).toContain('ccp-point-2');
     expect(data.description).toContain('金探测试片未通过');
