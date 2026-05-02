@@ -38,6 +38,12 @@ export interface CreateCapaPayload {
   responsible_id?: string;
 }
 
+export interface CorrectiveActionListFilters {
+  status?: string;
+  trigger_type?: CapaTriggerType;
+  trigger_id?: string;
+}
+
 // =========================================================================
 // Status / trigger display helpers
 // =========================================================================
@@ -73,10 +79,19 @@ export function getCapaTriggerTypeText(triggerType: string): string {
 // =========================================================================
 
 const correctiveActionApi = {
-  getList(status?: string) {
+  getList(filters?: string | CorrectiveActionListFilters) {
+    const params =
+      typeof filters === 'string'
+        ? { status: filters }
+        : filters ?? {};
+
     return request.get<{ data: CorrectiveAction[]; total?: number }>('/corrective-actions', {
-      params: status ? { status } : {},
+      params,
     });
+  },
+
+  getByTrigger(trigger_type: CapaTriggerType, trigger_id: string) {
+    return this.getList({ trigger_type, trigger_id });
   },
 
   create(payload: CreateCapaPayload) {

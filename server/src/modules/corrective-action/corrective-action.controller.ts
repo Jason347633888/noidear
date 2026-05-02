@@ -12,7 +12,7 @@ import {
 import { CorrectiveActionService } from './corrective-action.service';
 import { VerificationRecordService } from './verification-record.service';
 import { CapaAnalyticsService } from './capa-analytics.service';
-import { CreateCapaDto } from './dto/create-capa.dto';
+import { CapaTriggerType, CreateCapaDto } from './dto/create-capa.dto';
 import { CreateVerificationDto } from './dto/create-verification.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
@@ -35,8 +35,17 @@ export class CorrectiveActionController {
   }
 
   @Get()
-  findAll(@Request() req: AuthenticatedRequest, @Query('status') status?: string) {
-    return this.service.findAll(req.user.companyId, status);
+  findAll(
+    @Request() req: AuthenticatedRequest,
+    @Query('status') status?: string,
+    @Query('trigger_type') triggerType?: CapaTriggerType,
+    @Query('trigger_id') triggerId?: string,
+  ) {
+    return this.service.findAll(req.user.companyId, {
+      status,
+      triggerType,
+      triggerId,
+    });
   }
 
   // analytics/trends must be BEFORE :id to avoid Express shadowing
