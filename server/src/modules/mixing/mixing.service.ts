@@ -18,6 +18,7 @@ export class MixingService {
         ...(dto.recipeId && { recipeId: dto.recipeId }),
         ...(dto.areaId && { area_id: dto.areaId }),
         ...(dto.status && { status: dto.status as any }),
+        ...(dto.shiftTypeId && { shift_type_id: dto.shiftTypeId }),
         ...(dto.dateFrom || dto.dateTo
           ? {
               work_date: {
@@ -27,7 +28,11 @@ export class MixingService {
             }
           : {}),
       },
-      include: { area: true, lines: { include: { material: true, materialBatch: true } } },
+      include: {
+        area: true,
+        shift_type: true,
+        lines: { include: { material: true, materialBatch: true } },
+      },
       orderBy: { work_date: 'desc' },
       take: 100,
     });
@@ -112,6 +117,16 @@ export class MixingService {
           throw new BadRequestException('配方与产品不匹配或配方未启用');
         }
 
+        if (dto.shiftTypeId) {
+          const shiftType = await tx.shiftType.findFirst({
+            where: { id: dto.shiftTypeId, active: true },
+            select: { id: true },
+          });
+          if (!shiftType) {
+            throw new BadRequestException('班次类型不存在或已停用');
+          }
+        }
+
         const recipeLines = await tx.recipeLine.findMany({
           where: { recipe_id: dto.recipeId },
         });
@@ -123,6 +138,7 @@ export class MixingService {
             recipeId: dto.recipeId,
             productId: dto.productId,
             area_id: dto.areaId,
+            shift_type_id: dto.shiftTypeId,
             work_date: new Date(dto.workDate),
             actual_weight: dto.actualWeight,
             status: 'confirmed',
@@ -175,7 +191,7 @@ export class MixingService {
 
         return tx.mixingExecution.findUnique({
           where: { id: execution.id },
-          include: { lines: true },
+          include: { shift_type: true, lines: true },
         });
       });
     } catch (error) {

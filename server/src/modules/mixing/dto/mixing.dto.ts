@@ -53,6 +53,7 @@ export class ListMixingExecutionsDto {
   @IsOptional() @IsString() recipeId?: string;
   @IsOptional() @IsString() areaId?: string;
   @IsOptional() @IsString() status?: string;
+  @IsOptional() @IsString() shiftTypeId?: string;
   @IsOptional() @IsDateString() dateFrom?: string;
   @IsOptional() @IsDateString() dateTo?: string;
 }
@@ -69,6 +70,11 @@ export class CreateMixingExecutionDto {
   @IsString()
   @IsNotEmpty()
   areaId!: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  shiftTypeId?: string;
 
   @IsDateString()
   workDate!: string;
