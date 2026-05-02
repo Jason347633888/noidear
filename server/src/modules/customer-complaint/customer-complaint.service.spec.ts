@@ -11,6 +11,9 @@ describe('CustomerComplaintService', () => {
       update: jest.fn(),
     },
     productionBatch: {
+      findUnique: jest.fn(),
+    },
+    product: {
       findFirst: jest.fn(),
     },
   };
@@ -32,12 +35,12 @@ describe('CustomerComplaintService', () => {
       ),
     ).rejects.toThrow('生产批次不能为空');
 
-    expect(prisma.productionBatch.findFirst).not.toHaveBeenCalled();
+    expect(prisma.productionBatch.findUnique).not.toHaveBeenCalled();
     expect(prisma.customerComplaint.create).not.toHaveBeenCalled();
   });
 
   it('rejects creation when the production batch does not exist', async () => {
-    prisma.productionBatch.findFirst.mockResolvedValue(null);
+    prisma.productionBatch.findUnique.mockResolvedValue(null);
 
     await expect(
       service.create(
@@ -50,15 +53,17 @@ describe('CustomerComplaintService', () => {
       ),
     ).rejects.toThrow('生产批次不存在或不属于当前公司');
 
-    expect(prisma.productionBatch.findFirst).toHaveBeenCalledWith({
-      where: { id: 'missing-batch', product: { company_id: '2' } },
-      select: { id: true },
+    expect(prisma.productionBatch.findUnique).toHaveBeenCalledWith({
+      where: { id: 'missing-batch' },
+      select: { id: true, productId: true },
     });
+    expect(prisma.product.findFirst).not.toHaveBeenCalled();
     expect(prisma.customerComplaint.create).not.toHaveBeenCalled();
   });
 
   it('rejects creation when production batch belongs to a different company', async () => {
-    prisma.productionBatch.findFirst.mockResolvedValue(null);
+    prisma.productionBatch.findUnique.mockResolvedValue({ id: 'other-company-batch', productId: 'prod-x' });
+    prisma.product.findFirst.mockResolvedValue(null);
 
     await expect(
       service.create(
@@ -71,15 +76,20 @@ describe('CustomerComplaintService', () => {
       ),
     ).rejects.toThrow('生产批次不存在或不属于当前公司');
 
-    expect(prisma.productionBatch.findFirst).toHaveBeenCalledWith({
-      where: { id: 'other-company-batch', product: { company_id: 'company-A' } },
+    expect(prisma.productionBatch.findUnique).toHaveBeenCalledWith({
+      where: { id: 'other-company-batch' },
+      select: { id: true, productId: true },
+    });
+    expect(prisma.product.findFirst).toHaveBeenCalledWith({
+      where: { id: 'prod-x', company_id: 'company-A' },
       select: { id: true },
     });
     expect(prisma.customerComplaint.create).not.toHaveBeenCalled();
   });
 
   it('scopes complaint numbering and writes by company', async () => {
-    prisma.productionBatch.findFirst.mockResolvedValue({ id: 'batch-1' });
+    prisma.productionBatch.findUnique.mockResolvedValue({ id: 'batch-1', productId: 'prod-1' });
+    prisma.product.findFirst.mockResolvedValue({ id: 'prod-1' });
     prisma.customerComplaint.count.mockResolvedValue(5);
     prisma.customerComplaint.create.mockResolvedValue({ id: 'cc1' });
 
@@ -92,8 +102,12 @@ describe('CustomerComplaintService', () => {
       '2',
     );
 
-    expect(prisma.productionBatch.findFirst).toHaveBeenCalledWith({
-      where: { id: 'batch-1', product: { company_id: '2' } },
+    expect(prisma.productionBatch.findUnique).toHaveBeenCalledWith({
+      where: { id: 'batch-1' },
+      select: { id: true, productId: true },
+    });
+    expect(prisma.product.findFirst).toHaveBeenCalledWith({
+      where: { id: 'prod-1', company_id: '2' },
       select: { id: true },
     });
     expect(prisma.customerComplaint.count).toHaveBeenCalledWith({ where: { company_id: '2' } });

@@ -11,12 +11,21 @@ export class CustomerComplaintService {
       throw new BadRequestException('生产批次不能为空');
     }
 
-    const productionBatch = await this.prisma.productionBatch.findFirst({
-      where: { id: dto.production_batch_id, product: { company_id: companyId } },
+    const productionBatch = await this.prisma.productionBatch.findUnique({
+      where: { id: dto.production_batch_id },
+      select: { id: true, productId: true },
+    });
+
+    if (!productionBatch || !productionBatch.productId) {
+      throw new BadRequestException('生产批次不存在或不属于当前公司');
+    }
+
+    const product = await this.prisma.product.findFirst({
+      where: { id: productionBatch.productId, company_id: companyId },
       select: { id: true },
     });
 
-    if (!productionBatch) {
+    if (!product) {
       throw new BadRequestException('生产批次不存在或不属于当前公司');
     }
 
