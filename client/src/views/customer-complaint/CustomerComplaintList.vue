@@ -75,8 +75,21 @@
     <!-- 新建对话框 -->
     <el-dialog v-model="createDialogVisible" title="新建顾客投诉" width="520px" :close-on-click-modal="false">
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="100px">
-        <el-form-item label="顾客名称" prop="customer_name">
-          <el-input v-model="createForm.customer_name" placeholder="请输入顾客名称" />
+        <el-form-item label="顾客名称" prop="customer_id">
+          <el-select
+            v-model="createForm.customer_id"
+            filterable
+            placeholder="请选择顾客主数据"
+            style="width: 100%"
+            :loading="customerLoading"
+          >
+            <el-option
+              v-for="customer in customers"
+              :key="customer.id"
+              :label="customer.name"
+              :value="customer.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="投诉类型" prop="complaint_type">
           <el-input v-model="createForm.complaint_type" placeholder="例如：质量问题、包装问题等" />
@@ -132,6 +145,7 @@ import customerComplaintApi, {
   getComplaintStatusText,
   getComplaintStatusType,
 } from '@/api/customer-complaint';
+import externalPartyApi, { type ExternalParty } from '@/api/external-party';
 import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelect.vue';
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -139,6 +153,8 @@ import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelec
 const list = ref<CustomerComplaint[]>([]);
 const loading = ref(false);
 const filterStatus = ref<string>('');
+const customers = ref<ExternalParty[]>([]);
+const customerLoading = ref(false);
 
 // ── Create dialog ─────────────────────────────────────────────────────────────
 
@@ -147,14 +163,14 @@ const submitting = ref(false);
 const createFormRef = ref<FormInstance>();
 
 const createForm = reactive({
-  customer_name: '',
+  customer_id: '',
   complaint_type: '',
   production_batch_id: '',
   description: '',
 });
 
 const createRules: FormRules = {
-  customer_name: [{ required: true, message: '请输入顾客名称', trigger: 'blur' }],
+  customer_id: [{ required: true, message: '请选择顾客主数据', trigger: 'change' }],
   production_batch_id: [{ required: true, message: '请选择相关批次', trigger: 'change' }],
   description: [{ required: true, message: '请填写投诉描述', trigger: 'blur' }],
 };
@@ -203,12 +219,27 @@ async function loadList() {
 
 // ── Create ────────────────────────────────────────────────────────────────────
 
-function openCreateDialog() {
-  createForm.customer_name = '';
+async function loadCustomers() {
+  customerLoading.value = true;
+  try {
+    const res = await externalPartyApi.getList('customer');
+    customers.value = (res as unknown as ExternalParty[]).filter(
+      (customer) => customer.status === 'active' && !customer.deleted_at,
+    );
+  } catch {
+    ElMessage.error('加载顾客主数据失败');
+  } finally {
+    customerLoading.value = false;
+  }
+}
+
+async function openCreateDialog() {
+  createForm.customer_id = '';
   createForm.complaint_type = '';
   createForm.production_batch_id = '';
   createForm.description = '';
   createDialogVisible.value = true;
+  await loadCustomers();
 }
 
 async function handleCreate() {
@@ -216,7 +247,7 @@ async function handleCreate() {
   submitting.value = true;
   try {
     await customerComplaintApi.create({
-      customer_name: createForm.customer_name,
+      customer_id: createForm.customer_id,
       complaint_type: createForm.complaint_type || undefined,
       production_batch_id: createForm.production_batch_id,
       description: createForm.description,

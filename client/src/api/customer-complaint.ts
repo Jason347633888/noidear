@@ -10,6 +10,7 @@ export interface CustomerComplaint {
   id: string;
   company_id: string;
   complaint_no: string;
+  customer_id: string | null;
   customer_name: string;
   production_batch_id: string;
   received_at: string;
@@ -23,7 +24,7 @@ export interface CustomerComplaint {
 }
 
 export interface CreateComplaintPayload {
-  customer_name: string;
+  customer_id: string;
   production_batch_id: string;
   description: string;
   complaint_type?: string;
