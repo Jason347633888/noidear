@@ -21,7 +21,7 @@
             <el-tag :type="shift.status === 'open' ? 'success' : 'info'">
               {{ shift.status === 'open' ? '进行中' : '已关班' }}
             </el-tag>
-            &nbsp;{{ displayShiftType(shift) }} | {{ formatDate(shift.shift_date) }}
+            &nbsp;{{ displayShiftType(shift) }}{{ displayTeam(shift) }} | {{ formatDate(shift.shift_date) }}
           </span>
           <div>
             <el-button
@@ -123,6 +123,10 @@ function formatTime(d: string): string {
 
 function displayShiftType(shift: ShiftInstance): string {
   return shift.shift_type_ref?.name ?? shift.shift_type;
+}
+
+function displayTeam(shift: ShiftInstance): string {
+  return shift.team?.name ? ` | ${shift.team.name}` : '';
 }
 
 function openRunFor(shift: ShiftInstance) {

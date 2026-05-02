@@ -2836,8 +2836,9 @@ model Team {
   active      Boolean             @default(true)
   members     TeamMember[]
   schedules   TeamShiftSchedule[]
-  batches     ProductionBatch[]
-  stocktakes  StagingAreaStocktake[]
+  batches        ProductionBatch[]
+  stocktakes     StagingAreaStocktake[]
+  shiftInstances ShiftInstance[]
   created_at  DateTime            @default(now())
   updated_at  DateTime            @updatedAt
 
@@ -2882,6 +2883,7 @@ model TeamShiftSchedule {
   team_id       String
   shift_type_id String
   work_date     DateTime  @db.Date
+  leader_id     String?
   team          Team      @relation(fields: [team_id], references: [id])
   shift_type    ShiftType @relation(fields: [shift_type_id], references: [id])
   created_at    DateTime  @default(now())
@@ -3696,6 +3698,10 @@ model ShiftInstance {
   shift_type_id   String
   shift_type_ref  ShiftType @relation(fields: [shift_type_id], references: [id], onDelete: Restrict)
   shift_type      String   // legacy display snapshot; derived from ShiftType.name
+  team_id              String?
+  team                 Team?    @relation(fields: [team_id], references: [id], onDelete: SetNull)
+  leader_id            String?
+  team_override_reason String?
   shift_date      DateTime @db.Date
   opened_by       String
   closed_by       String?
@@ -3713,6 +3719,7 @@ model ShiftInstance {
   @@unique([company_id, shift_type_id, shift_date])
   @@index([company_id, shift_date])
   @@index([shift_type_id])
+  @@index([team_id])
   @@map("shift_instances")
 }
 

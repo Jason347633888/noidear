@@ -76,6 +76,7 @@ export class TeamShiftService {
         team_id: dto.teamId,
         shift_type_id: dto.shiftTypeId,
         work_date: new Date(dto.workDate),
+        leader_id: dto.leaderId,
       },
     });
   }

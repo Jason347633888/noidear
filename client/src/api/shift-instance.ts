@@ -14,6 +14,13 @@ export interface ShiftTypeSummary {
   active: boolean;
 }
 
+export interface TeamSummary {
+  id: string;
+  code: string;
+  name: string;
+  active: boolean;
+}
+
 export interface ShiftInstance {
   id: string;
   shift_type_id: string;
@@ -22,6 +29,10 @@ export interface ShiftInstance {
   shift_date: string;
   status: 'open' | 'closed';
   notes?: string;
+  team_id?: string | null;
+  team?: TeamSummary | null;
+  leader_id?: string | null;
+  team_override_reason?: string | null;
   production_runs: ProductionRunSummary[];
   created_at: string;
   closed_at?: string;
@@ -38,6 +49,9 @@ export interface ProductionRunSummary {
 export interface CreateShiftInstancePayload {
   shiftTypeId: string;
   shift_date: string;
+  teamId?: string;
+  leaderId?: string;
+  teamOverrideReason?: string;
   notes?: string;
 }
 
