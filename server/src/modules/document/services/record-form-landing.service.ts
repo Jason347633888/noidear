@@ -135,7 +135,7 @@ export class RecordFormLandingService {
         targetModule: suggestion.targetModule,
         targetModel: suggestion.targetModel,
         targetRoute: suggestion.targetRoute,
-        targetTemplateId: suggestion.targetTemplateId,
+        targetTemplateId: suggestion.targetTemplateId ?? undefined,
         confirmationStatus: 'confirmed',
         fieldCoverageStatus: (suggestion.fieldCoverageStatus as any) ?? 'unknown',
       }, userId);
