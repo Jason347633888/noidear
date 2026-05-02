@@ -1,4 +1,3 @@
-import type { TraceEdge, TraceNode } from '@noidear/types';
 import { TraceabilityQueryService } from './traceability-query.service';
 
 describe('TraceabilityQueryService contract', () => {
@@ -85,7 +84,7 @@ describe('TraceabilityQueryService contract', () => {
       { department: '品质', scenarioPermissions: ['forwardTrace'] } as any,
     );
 
-    expect(result.ledger.rows.map((row: TraceNode) => row.nodeType)).toEqual([
+    expect(result.ledger.rows.map((row: { nodeType: string }) => row.nodeType)).toEqual([
       'materialLot',
       'ingredientUsage',
       'productionBatch',
@@ -146,13 +145,13 @@ describe('TraceabilityQueryService contract', () => {
       traceMode: 'bidirectional',
       resultStatus: 'ok',
     });
-    expect(result.ledger.rows.map((row: TraceNode) => row.nodeType)).toEqual([
+    expect(result.ledger.rows.map((row: { nodeType: string }) => row.nodeType)).toEqual([
       'materialLot',
       'ingredientUsage',
       'productionBatch',
       'deliveryNote',
     ]);
-    expect(result.graph.edges.map((edge: TraceEdge) => edge.relationType)).toEqual([
+    expect(result.graph.edges.map((edge: { relationType: string }) => edge.relationType)).toEqual([
       'usedIn',
       'produces',
       'shippedBy',
@@ -208,7 +207,7 @@ describe('TraceabilityQueryService contract', () => {
       traceMode: 'backward',
       resultStatus: 'ok',
     });
-    expect(result.ledger.rows.map((row: TraceNode) => row.nodeType)).toEqual([
+    expect(result.ledger.rows.map((row: { nodeType: string }) => row.nodeType)).toEqual([
       'deliveryNote',
       'productionBatch',
       'ingredientUsage',
