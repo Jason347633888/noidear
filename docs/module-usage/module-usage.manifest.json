@@ -2347,26 +2347,24 @@
       "id": "GAP-603",
       "severity": "P2",
       "moduleId": "equipment-and-measuring",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
       "needsDesign": true,
-      "schemaImpact": false,
+      "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "brainstorming",
-        "grill-with-docs",
-        "writing-plans"
+        "executing-plans"
       ],
       "prRoadmapGroup": "equipment",
-      "prOrder": null,
+      "prOrder": 31,
       "recommendedPr": "equipment/GAP-603",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-603"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-02-gap-603-requisition-equipment-link-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-02-gap-603-requisition-equipment-link-implementation.md"
     },
     {
       "id": "GAP-604",
