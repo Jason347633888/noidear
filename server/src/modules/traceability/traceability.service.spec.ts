@@ -26,11 +26,14 @@ describe('TraceabilityService snapshot/export delegation', () => {
       getSnapshotResult: jest.fn().mockResolvedValue({ summary: { queryId: 'q-1' } }),
     };
     const service = new TraceabilityService(prisma as any, queryService as any, exportService as any);
+    const currentUser = { id: 'user-2', companyId: 'company-1' };
 
     await expect(
-      service.createSnapshot({ sourceQueryRef: 'hash-002', snapshotType: 'query' }, { id: 'user-2' }),
+      service.createSnapshot({ sourceQueryRef: 'hash-002', snapshotType: 'query' }, currentUser),
     ).resolves.toMatchObject({ snapshotId: 'snap-2' });
-    await expect(service.getSnapshot('snap-2')).resolves.toMatchObject({ snapshotId: 'snap-2' });
-    await expect(service.getSnapshotResult('snap-2')).resolves.toMatchObject({ summary: { queryId: 'q-1' } });
+    await expect(service.getSnapshot('snap-2', currentUser)).resolves.toMatchObject({ snapshotId: 'snap-2' });
+    await expect(service.getSnapshotResult('snap-2', currentUser)).resolves.toMatchObject({ summary: { queryId: 'q-1' } });
+    expect(exportService.getSnapshot).toHaveBeenCalledWith('snap-2', currentUser);
+    expect(exportService.getSnapshotResult).toHaveBeenCalledWith('snap-2', currentUser);
   });
 });
