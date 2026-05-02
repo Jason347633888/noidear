@@ -1,25 +1,52 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NonConformanceService } from '../non-conformance/non-conformance.service';
 import { CreateCcpRecordDto } from './dto/create-ccp-record.dto';
 
 @Injectable()
 export class CcpService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private nonConformanceService: NonConformanceService,
+  ) {}
 
   async createRecord(dto: CreateCcpRecordDto, operatorId: string, companyId: string) {
-    return this.prisma.cCPRecord.create({
-      data: {
-        company_id: companyId,
-        production_batch_id: dto.production_batch_id,
-        ccp_point_id: dto.ccp_point_id,
-        measured_value: dto.measured_value,
-        measured_text: dto.measured_text,
-        unit: dto.unit,
-        is_within_cl: dto.is_within_cl,
-        deviation_action: dto.deviation_action,
-        operator_id: operatorId,
-        monitored_at: new Date(),
-      },
+    const createData = {
+      company_id: companyId,
+      production_batch_id: dto.production_batch_id,
+      ccp_point_id: dto.ccp_point_id,
+      measured_value: dto.measured_value,
+      measured_text: dto.measured_text,
+      unit: dto.unit,
+      is_within_cl: dto.is_within_cl,
+      deviation_action: dto.deviation_action,
+      operator_id: operatorId,
+      monitored_at: new Date(),
+    };
+
+    if (dto.is_within_cl) {
+      return this.prisma.cCPRecord.create({
+        data: createData,
+        include: { ccp_point: true },
+      });
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const ccpRecord = await tx.cCPRecord.create({
+        data: createData,
+        include: { ccp_point: true },
+      });
+
+      await this.nonConformanceService.createFromCcpDeviation(
+        {
+          companyId,
+          userId: operatorId,
+          ccpRecord,
+        },
+        tx,
+      );
+
+      return ccpRecord;
     });
   }
 
