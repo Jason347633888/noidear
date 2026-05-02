@@ -19,8 +19,11 @@
 
 - `server/src/prisma/schema.prisma`
   - `TrainingPlan.year` 年度唯一，`TrainingProject.planId` 绑定年度计划。
+  - `TrainingPlan.createdBy` 保存创建人用户 ID，但当前没有 `companyId` 字段或 Prisma `User` relation；可通过 `User.company_id` 先解析当前租户用户 ID 集合，再过滤 `TrainingPlan.createdBy`。
   - `TrainingArchive.projectId` 唯一，关联 `TrainingProject`，`documentId` 可归档到文档系统。
+  - `AuditPlan.createdBy` 保存创建人用户 ID，并已有 `creator User` relation；`AuditReport` 可通过 `AuditReport.plan.createdBy` 或 `AuditReport.plan.creator.company_id` 追溯来源租户。
   - `AuditReport.planId` 唯一，关联 `AuditPlan`，`summary Json` 已保存内审统计。
+  - `User.company_id` 是当前代码中培训和内审来源可复用的租户归属事实；本 GAP 第一版不新增 `AuditPlan.companyId` 或 `TrainingPlan.companyId`，但 `collectSources()` 必须用创建人公司过滤来源。
   - `RecordTemplate` / `Record` 是动态表单引擎，适合保存表单原文和签批证据，不适合作为跨模块聚合事实源。
   - `Document` 是高复用受控文件/归档文件事实源，可被管理评审输出报告引用。
 - `server/src/modules/training/archive.service.ts`
@@ -40,6 +43,7 @@
   - `TrainingArchive`：培训项目归档和考试通过情况。
 - 新增 `ManagementReviewAction` 保存评审输出的改进措施、责任部门、责任人、期限和关闭状态。
 - 管理评审服务提供“收集输入材料”动作，从现有 `AuditReport` 和 `TrainingArchive` 生成输入快照，不复制 AuditReport 或 TrainingArchive 事实。
+- “收集输入材料”必须是租户安全的：先按 `User.company_id = ManagementReview.companyId` 解析当前租户用户 ID，再只收集 `AuditReport.plan.createdBy in 当前租户用户 ID` 和 `TrainingArchive.project.plan.createdBy in 当前租户用户 ID` 的来源；不能只按年度全局查询。
 - 前端新增管理评审列表和详情页，支持创建年度评审、触发输入收集、查看自动汇总和维护改进措施。
 - `RecordTemplate/Record` 双轨保留：GRSS-PZ-JL-50/51/52/53 这类表单原文仍保留在动态表单系统中；第一版只允许 `ManagementReview` 关联 `meetingMinutesRecordId`、`reportRecordId` 作为会议纪要和报告证据，不提供 `ManagementReviewInput.sourceType = record` 输入能力。
 - `Document` 只作为 `reportDocumentId` 输出归档证据；第一版不提供 `ManagementReviewInput.sourceType = document` 输入能力。
@@ -51,6 +55,7 @@
 - 不自动生成 GRSS-PZ-JL-52 管理评审报告 PDF；第一版只保存结构化评审对象、自动输入快照和改进措施，可在评审完成时关联已有 `Document` 或 `Record` 作为输出证据。
 - 不实现手工输入、Record 输入、Document 输入，也不实现追溯演练、ProductRecall、SupplierEvaluation、CorrectiveAction 的完整自动汇总适配器；这些来源后续在各模块稳定并另写合同后补适配器。
 - 不改 `AuditReport.summary`、`TrainingArchive`、`RecordTemplate`、`Record` 的既有语义。
+- 不在本 GAP 给 `AuditPlan` / `TrainingPlan` 新增平行 `companyId` 字段；第一版来源租户归属以创建人 `User.company_id` 为过滤合同。如果后续要把内审/培训改成显式租户字段，必须另写 GAP 和迁移计划。
 - 不触碰 `ProductionBatch / MaterialBatch / BatchMaterialUsage / InventoryMovement` 主追溯链。
 
 ## 数据、接口和页面影响
@@ -77,6 +82,7 @@
 - `GET /management-reviews`：按年度、状态查询列表。
 - `GET /management-reviews/:id`：查看详情，包含输入材料和改进措施。
 - `POST /management-reviews/:id/collect-sources`：从当前年度 `AuditReport` 和 `TrainingArchive` 收集输入快照。
+  - 租户过滤合同：服务端必须从当前 `ManagementReview.companyId` 推导当前租户用户 ID，并只收集其创建的 `AuditPlan` / `TrainingPlan` 下游报告和归档。
 - `POST /management-reviews/:id/actions`：新增改进措施。
 - `PATCH /management-reviews/:id/actions/:actionId`：更新改进措施状态和验证说明。
 - `POST /management-reviews/:id/complete`：标记评审完成，可写入 `reportDocumentId` 或 `reportRecordId`。
@@ -112,6 +118,7 @@
 - **grill-with-docs 校准结论：**
   - 与 `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md` 不冲突；该文档虽写“当前更适合 RecordTemplate/Record”，但同时要求“管理评审不是孤立文档，而是跨模块输入汇编”，冻结 model-landing 已将其收敛为新增双轨对象。
   - 不重复造主数据或事实源；`AuditReport`、`TrainingArchive` 只作为自动输入来源引用和快照，`Record`、`Document` 只作为会议纪要或输出报告证据。
+  - 不引入跨租户输入收集；`AuditReport` / `TrainingArchive` 的第一版来源归属以创建人 `User.company_id` 过滤，执行计划必须包含服务测试验证其他公司的内审报告和培训档案不会进入本公司管理评审输入。
   - 不引入平行批次链路；管理评审不直接关联 `ProductionBatch` 或 `MaterialBatch`。
   - 不破坏 `ProductionBatch / MaterialBatch / BatchMaterialUsage / InventoryMovement` 主链。
   - 不需要迁移历史数据；历史 Record/Document 保留，不自动猜测归属。
@@ -125,6 +132,7 @@
 - 同一 `companyId + year` 只能创建一个 `ManagementReview`。
 - `POST /management-reviews/:id/collect-sources` 能把该年度 `AuditReport.summary` 转为 `ManagementReviewInput`，且重复执行不产生重复输入。
 - `POST /management-reviews/:id/collect-sources` 能把该年度 `TrainingArchive` 的 `attendeeCount`、`passedCount`、通过率转为 `ManagementReviewInput`，且重复执行不产生重复输入。
+- `POST /management-reviews/:id/collect-sources` 不会收集其他 `companyId` 创建人的 `AuditReport` 或 `TrainingArchive`。
 - `ManagementReviewInput` 只保存快照和来源引用，不复制或覆盖 `AuditReport`、`TrainingArchive` 原事实。
 - 管理评审详情页能展示年度、状态、输入材料和改进措施。
 - 管理评审详情页能触发输入收集并刷新输入列表。

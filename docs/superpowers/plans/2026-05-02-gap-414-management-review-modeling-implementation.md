@@ -4,7 +4,7 @@
 
 **Goal:** Add an independent `ManagementReview` governance object that can collect annual internal-audit and training inputs, preserve source snapshots, and track management-review improvement actions.
 
-**Architecture:** Create three Prisma models: `ManagementReview`, `ManagementReviewInput`, and `ManagementReviewAction`. Add a NestJS module with create/list/detail/source-collection/action endpoints, where source collection reads existing `AuditReport.summary` and `TrainingArchive` data without copying their facts. Add Vue routes and pages for annual review management, input collection, and action tracking.
+**Architecture:** Create three Prisma models: `ManagementReview`, `ManagementReviewInput`, and `ManagementReviewAction`. Add a NestJS module with create/list/detail/source-collection/action endpoints, where source collection reads only current-tenant `AuditReport.summary` and `TrainingArchive` data by filtering source plan creators through `User.company_id`, without copying their facts. Add Vue routes and pages for annual review management, input collection, and action tracking.
 
 **Tech Stack:** Prisma schema/migration, NestJS controller/service/DTOs, class-validator, Vue 3, Element Plus, TypeScript API adapters, Jest, npm workspaces.
 
@@ -13,7 +13,8 @@
 ## Superpower 与 grill-me 校准记录
 
 - **Superpower 产出链路：** 主 agent 已按 `brainstorming -> grill-with-docs -> writing-plans` 为 GAP-414 生成 spec 和本 implementation plan。
-- **grill-with-docs 校准结论：** `ManagementReview` 是治理与闭环层的年度聚合对象；第一版只收集 `AuditReport` 和 `TrainingArchive` 自动输入快照。`RecordTemplate/Record` 和 `Document` 只保留原始表单、会议纪要、报告和附件证据，不作为 `ManagementReviewInput` 来源，也不作为管理评审事实源。
+- **grill-with-docs 校准结论：** `ManagementReview` 是治理与闭环层的年度聚合对象；第一版只收集当前租户创建人范围内的 `AuditReport` 和 `TrainingArchive` 自动输入快照。`RecordTemplate/Record` 和 `Document` 只保留原始表单、会议纪要、报告和附件证据，不作为 `ManagementReviewInput` 来源，也不作为管理评审事实源。
+- **租户安全合同：** `collectSources()` 不得只按年度全局查询来源。执行 agent 必须先按 `User.company_id = review.companyId` 查询当前租户用户 ID，然后只收集 `AuditReport.plan.createdBy in 当前租户用户 ID` 和 `TrainingArchive.project.plan.createdBy in 当前租户用户 ID` 的来源，并用 focused service tests 验证其他公司来源不会进入本公司管理评审输入。
 - **执行限制：** Multica 执行 agent 只能使用 `superpowers:executing-plans` 执行本计划；不得自行扩展到手工输入、Record 输入、Document 输入、ProductRecall、TraceabilityDrill、SupplierEvaluation、CorrectiveAction 自动汇总适配器，也不得修改追溯主链。
 - **执行隔离：** 执行本计划前必须从最新 `origin/master` 创建独立 worktree，或使用 Multica 隔离工作目录；不得在主 checkout `/Users/jiashenglin/Desktop/好玩的项目/noidear` 直接修改、提交或 push。如发现当前目录是主 checkout，必须停止并回报主 agent。
 - **停止条件：** 如果执行 agent 发现本计划与当前代码、`AGENTS.md`、`docs/AGENT_GUIDE.md`、`docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md` 或 spec 冲突，必须停止并回报主 agent，不得猜测实现。
@@ -81,6 +82,9 @@ describe('ManagementReviewService', () => {
       trainingArchive: {
         findMany: jest.fn(),
       },
+      user: {
+        findMany: jest.fn(),
+      },
     };
     return { ...prisma, ...overrides } as any;
   }
@@ -144,6 +148,7 @@ describe('ManagementReviewService', () => {
       companyId: 'company-1',
       year: 2026,
     });
+    prisma.user.findMany.mockResolvedValue([{ id: 'user-company-1' }]);
     prisma.auditReport.findMany.mockResolvedValue([
       {
         id: 'audit-report-1',
@@ -175,6 +180,41 @@ describe('ManagementReviewService', () => {
     const result = await service.collectSources('mr-1', 'company-1');
 
     expect(result).toEqual({ auditReports: 1, trainingArchives: 1 });
+    expect(prisma.user.findMany).toHaveBeenCalledWith({
+      where: { company_id: 'company-1' },
+      select: { id: true },
+    });
+    expect(prisma.auditReport.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          plan: {
+            startDate: {
+              gte: new Date(Date.UTC(2026, 0, 1)),
+              lt: new Date(Date.UTC(2027, 0, 1)),
+            },
+            createdBy: { in: ['user-company-1'] },
+          },
+        },
+      }),
+    );
+    expect(prisma.trainingArchive.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          project: {
+            plan: { createdBy: { in: ['user-company-1'] } },
+            OR: [
+              { plan: { year: 2026 } },
+              {
+                scheduledDate: {
+                  gte: new Date(Date.UTC(2026, 0, 1)),
+                  lt: new Date(Date.UTC(2027, 0, 1)),
+                },
+              },
+            ],
+          },
+        },
+      }),
+    );
     expect(prisma.managementReviewInput.upsert).toHaveBeenCalledTimes(2);
     expect(prisma.managementReviewInput.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -198,6 +238,42 @@ describe('ManagementReviewService', () => {
         },
       }),
     );
+  });
+
+  it('does not collect audit reports or training archives from another company', async () => {
+    const prisma = createPrismaMock();
+    prisma.managementReview.findUnique.mockResolvedValue({
+      id: 'mr-1',
+      companyId: 'company-1',
+      year: 2026,
+    });
+    prisma.user.findMany.mockResolvedValue([{ id: 'company-1-user' }]);
+    prisma.auditReport.findMany.mockResolvedValue([]);
+    prisma.trainingArchive.findMany.mockResolvedValue([]);
+    const service = new ManagementReviewService(prisma);
+
+    const result = await service.collectSources('mr-1', 'company-1');
+
+    expect(result).toEqual({ auditReports: 0, trainingArchives: 0 });
+    expect(prisma.auditReport.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          plan: expect.objectContaining({
+            createdBy: { in: ['company-1-user'] },
+          }),
+        }),
+      }),
+    );
+    expect(prisma.trainingArchive.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          project: expect.objectContaining({
+            plan: { createdBy: { in: ['company-1-user'] } },
+          }),
+        }),
+      }),
+    );
+    expect(prisma.managementReviewInput.upsert).not.toHaveBeenCalled();
   });
 
   it('throws NotFoundException when collecting sources for another company', async () => {
@@ -644,11 +720,17 @@ export class ManagementReviewService {
     const review = await this.findOwnedReview(id, companyId);
     const start = new Date(Date.UTC(review.year, 0, 1));
     const end = new Date(Date.UTC(review.year + 1, 0, 1));
+    const companyUsers = await this.prisma.user.findMany({
+      where: { company_id: companyId },
+      select: { id: true },
+    });
+    const companyUserIds = companyUsers.map((user) => user.id);
 
     const auditReports = await this.prisma.auditReport.findMany({
       where: {
         plan: {
           startDate: { gte: start, lt: end },
+          createdBy: { in: companyUserIds },
         },
       },
       include: {
@@ -659,6 +741,9 @@ export class ManagementReviewService {
     const trainingArchives = await this.prisma.trainingArchive.findMany({
       where: {
         project: {
+          plan: {
+            createdBy: { in: companyUserIds },
+          },
           OR: [
             { plan: { year: review.year } },
             { scheduledDate: { gte: start, lt: end } },
