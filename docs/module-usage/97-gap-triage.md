@@ -76,7 +76,7 @@
 | GAP-411 | P1 | 未验证（需要运行系统确认） | 否 | 否 | 否 | `grill-me` | | | 先运行系统确认路由冲突是否实际存在，待确认后重新分诊 |
 | GAP-412 | P2 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema 重构（trainees String[] → 桥接表），先用 brainstorming 写 spec |
 | GAP-413 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | docs/superpowers/plans/2026-05-01-gap-405-413-audit-report-document-boundary-implementation.md | 与 GAP-405 合并，plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
-| GAP-414 | P2 | 需要业务确认 | 否 | 否 | 否 | `grill-with-docs` | | | 先业务确认 ManagementReview 建模需求，待确认后重新分诊 |
+| GAP-414 | P2 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` -> `executing-plans` | docs/superpowers/specs/2026-05-02-gap-414-management-review-modeling-design.md | docs/superpowers/plans/2026-05-02-gap-414-management-review-modeling-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans，新增 ManagementReview 年度聚合对象，自动汇总 AuditReport.summary 与 TrainingArchive 培训统计，Record/Document 仅作为证据双轨 |
 | GAP-500 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-500-remove-legacy-approval-level-api-implementation.md` | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-501 | P0 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-01-gap-501-auth-profile-method-design.md | docs/superpowers/plans/2026-05-01-gap-501-auth-profile-method-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans |
 | GAP-502 | P1 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | `docs/superpowers/plans/2026-05-01-gap-502-503-504-workflow-task-governance-docs-implementation.md` | plan 已写完，可进入 PR roadmap；与 GAP-503/504 合并输出边界指南，避免同文档冲突 |

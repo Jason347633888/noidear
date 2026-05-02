@@ -1956,24 +1956,34 @@
       "id": "GAP-414",
       "severity": "P2",
       "moduleId": "training-internal-audit",
-      "triageStatus": "needs_business_confirmation",
-      "dependsOn": [],
+      "triageStatus": "ready_for_plan",
+      "dependsOn": [
+        "GAP-407",
+        "GAP-408",
+        "GAP-409",
+        "GAP-413"
+      ],
       "blocks": [],
-      "canParallelize": true,
+      "canParallelize": false,
       "needsDesign": true,
-      "schemaImpact": false,
+      "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "brainstorming",
+        "grill-with-docs",
+        "writing-plans",
+        "executing-plans"
       ],
       "prRoadmapGroup": "training",
       "prOrder": null,
       "recommendedPr": "training/GAP-414",
       "validationCommands": [
-        "pnpm test:e2e -- --grep GAP-414"
+        "(cd server && npx prisma validate --schema src/prisma/schema.prisma)",
+        "(cd server && npm test -- management-review.service.spec.ts --runInBand)",
+        "npm run build -w client"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-02-gap-414-management-review-modeling-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-02-gap-414-management-review-modeling-implementation.md"
     },
     {
       "id": "GAP-500",
