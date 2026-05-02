@@ -155,6 +155,7 @@ const createForm = reactive({
 
 const createRules: FormRules = {
   customer_name: [{ required: true, message: '请输入顾客名称', trigger: 'blur' }],
+  production_batch_id: [{ required: true, message: '请选择相关批次', trigger: 'change' }],
   description: [{ required: true, message: '请填写投诉描述', trigger: 'blur' }],
 };
 
@@ -217,7 +218,7 @@ async function handleCreate() {
     await customerComplaintApi.create({
       customer_name: createForm.customer_name,
       complaint_type: createForm.complaint_type || undefined,
-      production_batch_id: createForm.production_batch_id || undefined,
+      production_batch_id: createForm.production_batch_id,
       description: createForm.description,
     });
     ElMessage.success('新建成功');
