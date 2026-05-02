@@ -174,7 +174,7 @@ const reqStatusType = (s: string) => ({ draft: 'info', pending: 'warning', appro
 
 const fetchEquipmentOptions = async () => {
   try {
-    const res: any = await equipmentApi.getEquipmentList({ limit: 500 });
+    const res: any = await equipmentApi.getEquipmentList({ limit: 500, status: 'active' });
     equipmentOptions.value = res.data ?? res.list ?? [];
   } catch {
     equipmentOptions.value = [];

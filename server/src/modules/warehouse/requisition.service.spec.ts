@@ -157,7 +157,7 @@ describe('RequisitionService', () => {
       const result = await service.create(createDto);
 
       expect(txClient.equipment.findFirst).toHaveBeenCalledWith({
-        where: { id: 'eq-001', deletedAt: null },
+        where: { id: 'eq-001', deletedAt: null, status: 'active' },
         select: { id: true },
       });
       expect(txClient.materialRequisition.create).toHaveBeenCalledWith({
@@ -185,6 +185,26 @@ describe('RequisitionService', () => {
       })).rejects.toThrow(BadRequestException);
 
       expect(txClient.equipment.findFirst).not.toHaveBeenCalled();
+      expect(txClient.materialRequisition.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects inactive equipment for maintenance requisitions', async () => {
+      const txClient = {
+        equipment: {
+          findFirst: jest.fn().mockResolvedValue(null), // inactive equipment returns null with active filter
+        },
+        materialRequisition: { create: jest.fn() },
+        materialRequisitionItem: { createMany: jest.fn() },
+      };
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => callback(txClient));
+
+      await expect(service.create({
+        requisitionType: 'maintenance',
+        equipmentId: 'eq-inactive',
+        applicantId: 'user-001',
+        items: [],
+      })).rejects.toThrow(BadRequestException);
+
       expect(txClient.materialRequisition.create).not.toHaveBeenCalled();
     });
 

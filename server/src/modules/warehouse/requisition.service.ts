@@ -71,11 +71,11 @@ export class RequisitionService {
     }
 
     const equipment = await tx.equipment.findFirst({
-      where: { id: equipmentId, deletedAt: null },
+      where: { id: equipmentId, deletedAt: null, status: 'active' },
       select: { id: true },
     });
     if (!equipment) {
-      throw new BadRequestException('设备不存在或已删除');
+      throw new BadRequestException('设备不存在、已删除或非在用状态');
     }
   }
 
