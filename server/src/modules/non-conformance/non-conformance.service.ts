@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { NonConformance, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateNcDto, DisposeNcDto } from './dto/create-nc.dto';
+import { CreateNcDto, DisposeNcDto, NcSourceType } from './dto/create-nc.dto';
 import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
 
 type CcpDeviationInput = {
@@ -27,10 +27,13 @@ export class NonConformanceService {
   ) {}
 
   async create(dto: CreateNcDto, userId: string, companyId: string) {
+    await this.validateSourceExists(dto.source_type, dto.source_id, companyId);
+
     const nc_no = await this.numberSequence.generateNonConformanceNo(companyId);
     return this.prisma.nonConformance.create({
       data: {
         ...dto,
+        source_id: dto.source_id.trim(),
         company_id: companyId,
         nc_no,
         discovered_by: userId,
@@ -41,6 +44,8 @@ export class NonConformanceService {
 
   async createFromCcpDeviation(input: CcpDeviationInput, tx?: Prisma.TransactionClient) {
     const db = tx ?? this.prisma;
+    await this.validateSourceExists('production_batch', input.ccpRecord.production_batch_id, input.companyId, db);
+
     const nc_no = await this.numberSequence.generateNonConformanceNo(input.companyId, new Date(), tx);
 
     return db.nonConformance.create({
@@ -55,6 +60,61 @@ export class NonConformanceService {
         discovered_at: new Date(),
       },
     });
+  }
+
+  private async validateSourceExists(
+    sourceType: NcSourceType,
+    sourceId: string,
+    companyId: string,
+    db: Prisma.TransactionClient | PrismaService = this.prisma,
+  ) {
+    const trimmedSourceId = sourceId?.trim();
+    if (!trimmedSourceId) {
+      throw new BadRequestException('不合格来源不能为空');
+    }
+
+    if (sourceType === 'material_batch') {
+      const materialBatch = await db.materialBatch.findUnique({
+        where: { id: trimmedSourceId },
+        select: { id: true },
+      });
+      if (!materialBatch) {
+        throw new BadRequestException('物料批次来源不存在');
+      }
+      return;
+    }
+
+    if (sourceType === 'production_batch') {
+      const productionBatch = await db.productionBatch.findUnique({
+        where: { id: trimmedSourceId },
+        select: { id: true, productId: true },
+      });
+      if (!productionBatch?.productId) {
+        throw new BadRequestException('生产批次来源不存在');
+      }
+
+      const product = await db.product.findFirst({
+        where: { id: productionBatch.productId, company_id: companyId, deleted_at: null },
+        select: { id: true },
+      });
+      if (!product) {
+        throw new BadRequestException('生产批次来源不存在');
+      }
+      return;
+    }
+
+    if (sourceType === 'product') {
+      const product = await db.product.findFirst({
+        where: { id: trimmedSourceId, company_id: companyId, deleted_at: null },
+        select: { id: true },
+      });
+      if (!product) {
+        throw new BadRequestException('产品来源不存在');
+      }
+      return;
+    }
+
+    throw new BadRequestException('不支持的不合格来源类型');
   }
 
   private buildCcpDeviationDescription(record: CcpDeviationInput['ccpRecord']) {

@@ -21,6 +21,18 @@ export class WorkflowTriggersService {
   }) {
     if (payload.overall_result !== 'fail') return;
 
+    const materialBatch = await this.prisma.materialBatch.findUnique({
+      where: { id: payload.material_batch_id },
+      select: { id: true },
+    });
+
+    if (!materialBatch) {
+      this.logger.error(
+        `[WorkflowTrigger] 来料检验不合格未创建不合格品处置单：物料批次不存在 ${payload.material_batch_id}`,
+      );
+      return;
+    }
+
     try {
       const nc_no = await this.numberSequence.generateNonConformanceNo(payload.company_id);
 
