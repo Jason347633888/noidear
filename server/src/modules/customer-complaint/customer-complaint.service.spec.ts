@@ -16,6 +16,9 @@ describe('CustomerComplaintService', () => {
     product: {
       findFirst: jest.fn(),
     },
+    externalParty: {
+      findFirst: jest.fn(),
+    },
   };
   let service: CustomerComplaintService;
 
@@ -48,7 +51,7 @@ describe('CustomerComplaintService', () => {
           customer_name: '客户',
           production_batch_id: 'missing-batch',
           description: '投诉',
-        },
+        } as any,
         '2',
       ),
     ).rejects.toThrow('生产批次不存在或不属于当前公司');
@@ -71,7 +74,7 @@ describe('CustomerComplaintService', () => {
           customer_name: '客户',
           production_batch_id: 'other-company-batch',
           description: '投诉',
-        },
+        } as any,
         'company-A',
       ),
     ).rejects.toThrow('生产批次不存在或不属于当前公司');
@@ -87,18 +90,68 @@ describe('CustomerComplaintService', () => {
     expect(prisma.customerComplaint.create).not.toHaveBeenCalled();
   });
 
+  it('rejects creation when customer_id is missing after batch validation passes', async () => {
+    prisma.productionBatch.findUnique.mockResolvedValue({ id: 'batch-1', productId: 'prod-1' });
+    prisma.product.findFirst.mockResolvedValue({ id: 'prod-1' });
+
+    await expect(
+      service.create(
+        {
+          customer_name: '客户',
+          production_batch_id: 'batch-1',
+          description: '投诉',
+        } as any,
+        '2',
+      ),
+    ).rejects.toThrow('客户不能为空');
+
+    expect(prisma.externalParty.findFirst).not.toHaveBeenCalled();
+    expect(prisma.customerComplaint.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects creation when the customer does not belong to the current company or is unavailable', async () => {
+    prisma.productionBatch.findUnique.mockResolvedValue({ id: 'batch-1', productId: 'prod-1' });
+    prisma.product.findFirst.mockResolvedValue({ id: 'prod-1' });
+    prisma.externalParty.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.create(
+        {
+          customer_id: 'missing-customer',
+          production_batch_id: 'batch-1',
+          description: '投诉',
+        } as any,
+        '2',
+      ),
+    ).rejects.toThrow('客户不存在或不可用');
+
+    expect(prisma.externalParty.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'missing-customer',
+        company_id: '2',
+        party_type: 'customer',
+        status: 'active',
+        deleted_at: null,
+      },
+      select: { id: true, name: true },
+    });
+    expect(prisma.customerComplaint.create).not.toHaveBeenCalled();
+  });
+
   it('scopes complaint numbering and writes by company', async () => {
     prisma.productionBatch.findUnique.mockResolvedValue({ id: 'batch-1', productId: 'prod-1' });
     prisma.product.findFirst.mockResolvedValue({ id: 'prod-1' });
+    prisma.externalParty.findFirst.mockResolvedValue({ id: 'cust-1', name: '客户A' });
     prisma.customerComplaint.count.mockResolvedValue(5);
     prisma.customerComplaint.create.mockResolvedValue({ id: 'cc1' });
 
     await service.create(
       {
-        customer_name: '客户',
+        customer_id: 'cust-1',
+        customer_name: '不应信任的手填名称',
         production_batch_id: 'batch-1',
         description: '投诉',
-      },
+      } as any,
       '2',
     );
 
@@ -110,12 +163,24 @@ describe('CustomerComplaintService', () => {
       where: { id: 'prod-1', company_id: '2' },
       select: { id: true },
     });
+    expect(prisma.externalParty.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'cust-1',
+        company_id: '2',
+        party_type: 'customer',
+        status: 'active',
+        deleted_at: null,
+      },
+      select: { id: true, name: true },
+    });
     expect(prisma.customerComplaint.count).toHaveBeenCalledWith({ where: { company_id: '2' } });
     expect(prisma.customerComplaint.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           company_id: '2',
           complaint_no: expect.stringMatching(/-0006$/),
+          customer_id: 'cust-1',
+          customer_name: '客户A',
           production_batch_id: 'batch-1',
         }),
       }),

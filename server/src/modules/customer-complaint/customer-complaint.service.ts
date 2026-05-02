@@ -29,10 +29,39 @@ export class CustomerComplaintService {
       throw new BadRequestException('生产批次不存在或不属于当前公司');
     }
 
+    if (!dto.customer_id) {
+      throw new BadRequestException('客户不能为空');
+    }
+
+    const customer = await this.prisma.externalParty.findFirst({
+      where: {
+        id: dto.customer_id,
+        company_id: companyId,
+        party_type: 'customer',
+        status: 'active',
+        deleted_at: null,
+      },
+      select: { id: true, name: true },
+    });
+
+    if (!customer) {
+      throw new BadRequestException('客户不存在或不可用');
+    }
+
     const count = await this.prisma.customerComplaint.count({ where: { company_id: companyId } });
     const complaint_no = `CC-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+
     return this.prisma.customerComplaint.create({
-      data: { ...dto, company_id: companyId, complaint_no, received_at: new Date() },
+      data: {
+        company_id: companyId,
+        complaint_no,
+        customer_id: customer.id,
+        customer_name: customer.name,
+        production_batch_id: dto.production_batch_id,
+        complaint_type: dto.complaint_type,
+        description: dto.description,
+        received_at: new Date(),
+      },
     });
   }
 

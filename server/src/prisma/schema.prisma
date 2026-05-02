@@ -3112,6 +3112,8 @@ model CustomerComplaint {
   id                  String    @id @default(cuid())
   company_id          String
   complaint_no        String
+  customer_id         String?
+  customer            ExternalParty? @relation(fields: [customer_id], references: [id], onDelete: SetNull)
   customer_name       String
   production_batch_id String
   production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id], onDelete: Restrict)
@@ -3125,6 +3127,7 @@ model CustomerComplaint {
   updated_at          DateTime  @updatedAt
   @@unique([company_id, complaint_no])
   @@index([production_batch_id])
+  @@index([customer_id])
 }
 
 model ReworkRecord {
@@ -3643,6 +3646,7 @@ model ExternalParty {
   deleted_at      DateTime?
 
   product_recall_notifications ProductRecallNotification[]
+  customer_complaints CustomerComplaint[]
 }
 
 model PackagingMaterialUsage {
