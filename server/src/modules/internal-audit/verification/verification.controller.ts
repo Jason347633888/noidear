@@ -26,6 +26,7 @@ interface AuthenticatedRequest extends ExpressRequest {
     userId: string;
     username: string;
     role: string;
+    companyId: string;
   };
 }
 
@@ -79,6 +80,7 @@ export class VerificationController {
       id,
       verifyDto,
       req.user.userId,
+      req.user.companyId,
     );
 
     await this.logSensitiveOperation(

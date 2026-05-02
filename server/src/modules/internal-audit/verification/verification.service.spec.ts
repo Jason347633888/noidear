@@ -7,12 +7,14 @@ import {
 import { VerificationService } from './verification.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OperationLogService } from '../../operation-log/operation-log.service';
+import { CorrectiveActionService } from '../../corrective-action/corrective-action.service';
 import { VerifyRectificationDto, RejectRectificationDto } from './dto';
 
 describe('VerificationService', () => {
   let service: VerificationService;
   let mockPrismaService: any;
   let mockOperationLogService: any;
+  let correctiveActionService: any;
 
   const mockAuditor = {
     userId: 'auditor-1',
@@ -43,10 +45,12 @@ describe('VerificationService', () => {
       title: 'Q1 2024 Internal Audit',
       auditorId: 'auditor-1',
     },
+    document: { id: 'doc-1', title: '内审文件', number: 'DOC-001' },
   };
 
   beforeEach(async () => {
     mockPrismaService = {
+      $transaction: jest.fn(async (callback) => callback(mockPrismaService)),
       auditFinding: {
         findMany: jest.fn(),
         findUnique: jest.fn(),
@@ -55,10 +59,17 @@ describe('VerificationService', () => {
       todoTask: {
         updateMany: jest.fn(),
       },
+      correctiveAction: {
+        findFirst: jest.fn(),
+      },
     };
 
     mockOperationLogService = {
       log: jest.fn(),
+    };
+
+    correctiveActionService = {
+      create: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -66,6 +77,7 @@ describe('VerificationService', () => {
         VerificationService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: OperationLogService, useValue: mockOperationLogService },
+        { provide: CorrectiveActionService, useValue: correctiveActionService },
       ],
     }).compile();
 
@@ -110,8 +122,9 @@ describe('VerificationService', () => {
     };
 
     it('should verify rectification successfully', async () => {
-      const updatedFinding = { ...mockFinding, status: 'verified' };
-      mockPrismaService.auditFinding.findUnique.mockResolvedValue(mockFinding);
+      const compliantFinding = { ...mockFinding, auditResult: '符合' };
+      const updatedFinding = { ...compliantFinding, status: 'verified' };
+      mockPrismaService.auditFinding.findUnique.mockResolvedValue(compliantFinding);
       mockPrismaService.auditFinding.update.mockResolvedValue(updatedFinding);
       mockPrismaService.todoTask.updateMany.mockResolvedValue({ count: 1 });
 
@@ -119,6 +132,7 @@ describe('VerificationService', () => {
         'finding-1',
         verifyDto,
         'auditor-1',
+        'company-1',
       );
 
       expect(result).toEqual(updatedFinding);
@@ -139,13 +153,15 @@ describe('VerificationService', () => {
           status: 'completed',
         },
       });
+      expect(mockPrismaService.correctiveAction.findFirst).not.toHaveBeenCalled();
+      expect(correctiveActionService.create).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if finding not found', async () => {
       mockPrismaService.auditFinding.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.verifyRectification('finding-1', verifyDto, 'auditor-1'),
+        service.verifyRectification('finding-1', verifyDto, 'auditor-1', 'company-1'),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -156,7 +172,7 @@ describe('VerificationService', () => {
       });
 
       await expect(
-        service.verifyRectification('finding-1', verifyDto, 'auditor-1'),
+        service.verifyRectification('finding-1', verifyDto, 'auditor-1', 'company-1'),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -167,7 +183,7 @@ describe('VerificationService', () => {
       });
 
       await expect(
-        service.verifyRectification('finding-1', verifyDto, 'auditor-1'),
+        service.verifyRectification('finding-1', verifyDto, 'auditor-1', 'company-1'),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -178,8 +194,135 @@ describe('VerificationService', () => {
       });
 
       await expect(
-        service.verifyRectification('finding-1', verifyDto, 'auditor-1'),
+        service.verifyRectification('finding-1', verifyDto, 'auditor-1', 'company-1'),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('creates CAPA for verified non-conforming audit finding', async () => {
+      mockPrismaService.auditFinding.findUnique.mockResolvedValue({
+        ...mockFinding,
+        auditResult: '不符合',
+        issueType: '需要修改',
+        description: '受控文件培训记录缺少签字确认',
+        assigneeId: 'assignee-1',
+        dueDate: new Date('2026-05-31T00:00:00.000Z'),
+        document: { id: 'doc-1', title: '培训记录控制程序', number: 'DOC-001' },
+        plan: { auditorId: 'auditor-1' },
+      });
+      mockPrismaService.auditFinding.update.mockResolvedValue({ ...mockFinding, status: 'verified' });
+      mockPrismaService.correctiveAction.findFirst.mockResolvedValue(null);
+      correctiveActionService.create.mockResolvedValue({ id: 'capa-1' });
+
+      await service.verifyRectification(
+        'finding-1',
+        verifyDto,
+        'auditor-1',
+        'company-1',
+      );
+
+      expect(mockPrismaService.correctiveAction.findFirst).toHaveBeenCalledWith({
+        where: {
+          company_id: 'company-1',
+          trigger_type: 'internal_audit',
+          trigger_id: 'finding-1',
+        },
+        select: { id: true },
+      });
+      expect(correctiveActionService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          trigger_type: 'internal_audit',
+          trigger_id: 'finding-1',
+          description: expect.stringContaining('受控文件培训记录缺少签字确认'),
+          responsible_id: 'assignee-1',
+          due_date: '2026-05-31',
+        }),
+        'auditor-1',
+        'company-1',
+        mockPrismaService,
+      );
+    });
+
+    it('does not create duplicate CAPA when one already exists for the finding', async () => {
+      mockPrismaService.auditFinding.findUnique.mockResolvedValue({
+        ...mockFinding,
+        auditResult: '不符合',
+        description: '内审发现项已有关联 CAPA',
+        document: { id: 'doc-1', title: '内审文件', number: 'DOC-002' },
+        plan: { auditorId: 'auditor-1' },
+      });
+      mockPrismaService.auditFinding.update.mockResolvedValue({ ...mockFinding, status: 'verified' });
+      mockPrismaService.correctiveAction.findFirst.mockResolvedValue({ id: 'existing-capa' });
+
+      await service.verifyRectification(
+        'finding-1',
+        verifyDto,
+        'auditor-1',
+        'company-1',
+      );
+
+      expect(correctiveActionService.create).not.toHaveBeenCalled();
+    });
+
+    it('does not create CAPA for compliant audit finding', async () => {
+      mockPrismaService.auditFinding.findUnique.mockResolvedValue({
+        ...mockFinding,
+        auditResult: '符合',
+        document: { id: 'doc-1', title: '内审文件', number: 'DOC-003' },
+        plan: { auditorId: 'auditor-1' },
+      });
+      mockPrismaService.auditFinding.update.mockResolvedValue({ ...mockFinding, status: 'verified' });
+
+      await service.verifyRectification(
+        'finding-1',
+        verifyDto,
+        'auditor-1',
+        'company-1',
+      );
+
+      expect(mockPrismaService.correctiveAction.findFirst).not.toHaveBeenCalled();
+      expect(correctiveActionService.create).not.toHaveBeenCalled();
+    });
+
+    it('requires companyId before creating audit-triggered CAPA', async () => {
+      mockPrismaService.auditFinding.findUnique.mockResolvedValue({
+        ...mockFinding,
+        auditResult: '不符合',
+        description: '缺少内审整改证据复核记录',
+        document: { id: 'doc-1', title: '内审文件', number: 'DOC-004' },
+        plan: { auditorId: 'auditor-1' },
+      });
+
+      await expect(
+        service.verifyRectification('finding-1', verifyDto, 'auditor-1', undefined as any),
+      ).rejects.toThrow('Missing companyId for audit CAPA creation');
+
+      expect(mockPrismaService.auditFinding.update).not.toHaveBeenCalled();
+      expect(mockPrismaService.todoTask.updateMany).not.toHaveBeenCalled();
+      expect(mockPrismaService.correctiveAction.findFirst).not.toHaveBeenCalled();
+      expect(correctiveActionService.create).not.toHaveBeenCalled();
+    });
+
+    it('does not mark finding verified or complete todo when CAPA creation fails', async () => {
+      mockPrismaService.auditFinding.findUnique.mockResolvedValue({
+        ...mockFinding,
+        auditResult: '不符合',
+        description: 'CAPA 创建失败时不能完成内审验证',
+        document: { id: 'doc-1', title: '内审文件', number: 'DOC-005' },
+        plan: { auditorId: 'auditor-1' },
+      });
+      mockPrismaService.correctiveAction.findFirst.mockResolvedValue(null);
+      correctiveActionService.create.mockRejectedValue(new BadRequestException('内审发现项不存在'));
+
+      await expect(
+        service.verifyRectification('finding-1', verifyDto, 'auditor-1', 'company-1'),
+      ).rejects.toThrow('内审发现项不存在');
+
+      expect(mockPrismaService.auditFinding.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'verified' }),
+        }),
+      );
+      expect(mockPrismaService.todoTask.updateMany).not.toHaveBeenCalled();
     });
   });
 

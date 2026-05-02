@@ -46,7 +46,7 @@ describe('CorrectiveActionService', () => {
       select: { id: true },
     });
     expect(prisma.correctiveAction.count).not.toHaveBeenCalled();
-    expect(numberSequence.generateCorrectiveActionNo).toHaveBeenCalledWith('2');
+    expect(numberSequence.generateCorrectiveActionNo).toHaveBeenCalledWith('2', expect.any(Date), undefined);
     expect(prisma.correctiveAction.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
