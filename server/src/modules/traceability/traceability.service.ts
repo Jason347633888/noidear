@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { mapForwardTraceResult, SOURCE_VERSION } from './traceability-contract.mapper';
+import { TraceabilityLinkageService } from './traceability-linkage.service';
 
 interface TraceCurrentUser {
   id?: string;
+  companyId?: string;
   department?: string;
   scenarioPermissions?: string[];
 }
@@ -95,7 +97,10 @@ const MATERIAL_LOT_INCLUDE = {
 
 @Injectable()
 export class TraceabilityService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly linkageService: TraceabilityLinkageService,
+  ) {}
 
   async query(dto: TraceQueryDto, currentUser: TraceCurrentUser) {
     const isMaterialLotQuery =
@@ -148,11 +153,14 @@ export class TraceabilityService {
   }
 
   async createAction(dto: TraceActionDto, currentUser: TraceCurrentUser) {
-    const status = dto.actionType === 'recallAssessment' ? 'pendingReview' : 'created';
+    if (dto.actionType === 'recallAssessment') {
+      return this.linkageService.create(dto as any, currentUser);
+    }
+
     return {
       actionId: `action:${Date.now()}`,
       actionType: dto.actionType,
-      status: status as 'pendingReview' | 'created',
+      status: 'created' as const,
       sourceQueryRef: dto.sourceQueryRef,
       createdAt: new Date().toISOString(),
       requestedBy: currentUser?.id ?? 'system',

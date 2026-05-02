@@ -7,9 +7,10 @@ import { TraceabilityQueryService } from './traceability-query.service';
 import { TraceabilityLinkageService } from './traceability-linkage.service';
 import { TraceabilityExportService } from './traceability-export.service';
 import { TraceabilityBalanceService } from './traceability-balance.service';
+import { ProductRecallModule } from '../product-recall/product-recall.module';
 
 @Module({
-  imports: [PrismaModule, ModelLandingModule],
+  imports: [PrismaModule, ModelLandingModule, ProductRecallModule],
   controllers: [TraceabilityController],
   providers: [
     TraceabilityService,

@@ -44,6 +44,7 @@ import { TraceabilityModule } from './modules/traceability/traceability.module';
 import { NonConformanceModule } from './modules/non-conformance/non-conformance.module';
 import { CorrectiveActionModule } from './modules/corrective-action/corrective-action.module';
 import { CustomerComplaintModule } from './modules/customer-complaint/customer-complaint.module';
+import { ProductRecallModule } from './modules/product-recall/product-recall.module';
 import { CcpModule } from './modules/ccp/ccp.module';
 import { EnvironmentRecordModule } from './modules/environment-record/environment-record.module';
 import { ProcessRecordModule } from './modules/process-record/process-record.module';
@@ -135,6 +136,7 @@ import { ProductProcessChangeModule } from './modules/product-process-change/pro
     NonConformanceModule,
     CorrectiveActionModule,
     CustomerComplaintModule,
+    ProductRecallModule,
     CcpModule,
     EnvironmentRecordModule,
     ProcessRecordModule,
