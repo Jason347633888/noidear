@@ -1915,26 +1915,27 @@
       "id": "GAP-412",
       "severity": "P2",
       "moduleId": "training-internal-audit",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
-      "canParallelize": true,
+      "canParallelize": false,
       "needsDesign": true,
-      "schemaImpact": false,
-      "historicalDataImpact": false,
+      "schemaImpact": true,
+      "historicalDataImpact": true,
       "recommendedSuperpowers": [
         "brainstorming",
         "grill-with-docs",
-        "writing-plans"
+        "writing-plans",
+        "executing-plans"
       ],
       "prRoadmapGroup": "training",
-      "prOrder": null,
+      "prOrder": 39,
       "recommendedPr": "training/GAP-412",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-412"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-02-gap-412-training-project-trainee-bridge-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-02-gap-412-training-project-trainee-bridge-implementation.md"
     },
     {
       "id": "GAP-413",
