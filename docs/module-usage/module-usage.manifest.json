@@ -1501,8 +1501,10 @@
       "id": "GAP-316",
       "severity": "P1",
       "moduleId": "nonconformance-capa",
-      "triageStatus": "needs_spec",
-      "dependsOn": [],
+      "triageStatus": "ready_for_plan",
+      "dependsOn": [
+        "GAP-304"
+      ],
       "blocks": [],
       "canParallelize": true,
       "needsDesign": true,
@@ -1511,16 +1513,19 @@
       "recommendedSuperpowers": [
         "brainstorming",
         "grill-with-docs",
-        "writing-plans"
+        "writing-plans",
+        "executing-plans"
       ],
       "prRoadmapGroup": "nonconformance",
-      "prOrder": null,
+      "prOrder": 22,
       "recommendedPr": "nonconformance/GAP-316",
       "validationCommands": [
-        "pnpm test:e2e -- --grep GAP-316"
+        "(cd server && npm test -- corrective-action.service.spec.ts --runInBand)",
+        "npm run build:server",
+        "npm run build:client"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-02-gap-316-capa-trigger-source-validation-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-02-gap-316-capa-trigger-source-validation-implementation.md"
     },
     {
       "id": "GAP-317",

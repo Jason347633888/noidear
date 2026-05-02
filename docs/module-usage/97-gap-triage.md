@@ -59,7 +59,7 @@
 | GAP-313 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema spec（NC 多态关联校验+索引） |
 | GAP-314 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（安全序列号生成机制） |
 | GAP-315 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（NC dispose→ReworkRecord 自动创建） |
-| GAP-316 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写跨模块 spec（CAPA 触发来源校验） |
+| GAP-316 | P1 | 已验证 | 是 | 是 | 是 | `executing-plans` | docs/superpowers/specs/2026-05-02-gap-316-capa-trigger-source-validation-design.md | docs/superpowers/plans/2026-05-02-gap-316-capa-trigger-source-validation-implementation.md | spec 和 plan 已写完；执行时只使用 executing-plans，CAPA 创建校验 trigger_type + trigger_id 来源并支持来源反查 |
 | GAP-317 | P2 | 已验证 | 是 | 否 | 是 | `executing-plans` | 不需要 | docs/superpowers/plans/2026-05-01-gap-317-nonconformance-indexes-implementation.md | plan 已写完，可进入 PR roadmap；执行时只使用 executing-plans |
 | GAP-318 | P2 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | P2 schema FK，先用 brainstorming 写轻量 spec（ReworkRecord→NC FK） |
 | GAP-400 | P1 | 已验证 | 是 | 是 | 是 | `brainstorming` -> `grill-with-docs` -> `writing-plans` | | | 先用 brainstorming 写 schema/migration spec（Document version 字段类型变更） |
