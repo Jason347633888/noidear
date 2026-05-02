@@ -27,6 +27,24 @@ export class ProductRecallService {
     const recall_no = `RC-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
 
     return this.prisma.$transaction(async (tx: any) => {
+      if (dto.source_complaint_id) {
+        const complaint = await tx.customerComplaint.findFirst({
+          where: { id: dto.source_complaint_id, company_id: companyId },
+        });
+        if (!complaint) {
+          throw new BadRequestException(`投诉记录不属于当前企业: ${dto.source_complaint_id}`);
+        }
+      }
+
+      if (dto.source_traceability_snapshot_id) {
+        const snapshot = await tx.traceabilitySnapshot.findFirst({
+          where: { id: dto.source_traceability_snapshot_id, company_id: companyId },
+        });
+        if (!snapshot) {
+          throw new BadRequestException(`追溯快照不属于当前企业: ${dto.source_traceability_snapshot_id}`);
+        }
+      }
+
       const recall = await tx.productRecall.create({
         data: {
           company_id: companyId,

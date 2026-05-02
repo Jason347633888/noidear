@@ -9,7 +9,7 @@ describe('TraceabilityService recall actions', () => {
         productRecall: { id: 'recall-1', recall_no: 'RC-2026-0001' },
       }),
     };
-    const service = new TraceabilityService({} as any, linkageService as any);
+    const service = new TraceabilityService({} as any, {} as any, linkageService as any);
 
     const result = await service.createAction(
       { actionType: 'recallAssessment', sourceQueryRef: 'hash-xyz' },

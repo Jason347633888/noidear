@@ -14,6 +14,8 @@ describe('ProductRecallService', () => {
     productRecallNotification: { create: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
     productionBatch: { findFirst: jest.fn() },
     externalParty: { findFirst: jest.fn() },
+    customerComplaint: { findFirst: jest.fn() },
+    traceabilitySnapshot: { findFirst: jest.fn() },
     $transaction: jest.fn(),
   };
 
@@ -154,5 +156,89 @@ describe('ProductRecallService', () => {
       where: { id: 'party-1', company_id: 'company-1' },
     });
     expect(prisma.productRecallNotification.create).toHaveBeenCalled();
+  });
+
+  it('rejects source_complaint_id belonging to a different company', async () => {
+    prisma.productRecall.count.mockResolvedValue(0);
+    prisma.customerComplaint.findFirst.mockResolvedValue(null); // not found → cross-tenant
+    prisma.$transaction.mockImplementation(async (fn: any) => fn(prisma));
+
+    await expect(
+      service.create(
+        {
+          title: '跨企业投诉来源召回',
+          reason: '测试',
+          source_complaint_id: 'complaint-other-company',
+        },
+        { id: 'user-1', companyId: 'company-1' },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.customerComplaint.findFirst).toHaveBeenCalledWith({
+      where: { id: 'complaint-other-company', company_id: 'company-1' },
+    });
+    expect(prisma.productRecall.create).not.toHaveBeenCalled();
+  });
+
+  it('allows source_complaint_id belonging to the same company', async () => {
+    prisma.productRecall.count.mockResolvedValue(0);
+    prisma.customerComplaint.findFirst.mockResolvedValue({ id: 'complaint-1', company_id: 'company-1' });
+    prisma.productRecall.create.mockResolvedValue({ id: 'recall-1', recall_no: 'RC-2026-0001' });
+    prisma.$transaction.mockImplementation(async (fn: any) => fn(prisma));
+
+    await service.create(
+      {
+        title: '正常投诉来源召回',
+        reason: '测试',
+        source_complaint_id: 'complaint-1',
+      },
+      { id: 'user-1', companyId: 'company-1' },
+    );
+
+    expect(prisma.productRecall.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ source_complaint_id: 'complaint-1' }),
+    }));
+  });
+
+  it('rejects source_traceability_snapshot_id belonging to a different company', async () => {
+    prisma.productRecall.count.mockResolvedValue(0);
+    prisma.traceabilitySnapshot.findFirst.mockResolvedValue(null); // not found → cross-tenant
+    prisma.$transaction.mockImplementation(async (fn: any) => fn(prisma));
+
+    await expect(
+      service.create(
+        {
+          title: '跨企业快照来源召回',
+          reason: '测试',
+          source_traceability_snapshot_id: 'snapshot-other-company',
+        },
+        { id: 'user-1', companyId: 'company-1' },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.traceabilitySnapshot.findFirst).toHaveBeenCalledWith({
+      where: { id: 'snapshot-other-company', company_id: 'company-1' },
+    });
+    expect(prisma.productRecall.create).not.toHaveBeenCalled();
+  });
+
+  it('allows source_traceability_snapshot_id belonging to the same company', async () => {
+    prisma.productRecall.count.mockResolvedValue(0);
+    prisma.traceabilitySnapshot.findFirst.mockResolvedValue({ id: 'snapshot-1', company_id: 'company-1' });
+    prisma.productRecall.create.mockResolvedValue({ id: 'recall-1', recall_no: 'RC-2026-0001' });
+    prisma.$transaction.mockImplementation(async (fn: any) => fn(prisma));
+
+    await service.create(
+      {
+        title: '正常快照来源召回',
+        reason: '测试',
+        source_traceability_snapshot_id: 'snapshot-1',
+      },
+      { id: 'user-1', companyId: 'company-1' },
+    );
+
+    expect(prisma.productRecall.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ source_traceability_snapshot_id: 'snapshot-1' }),
+    }));
   });
 });

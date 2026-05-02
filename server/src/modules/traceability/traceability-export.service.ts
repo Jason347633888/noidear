@@ -17,6 +17,7 @@ export class TraceabilityExportService {
 
     return this.prisma.traceabilitySnapshot.create({
       data: {
+        company_id: currentUser.companyId ?? null,
         sourceQueryHash: dto.sourceQueryRef,
         exportMode: dto.exportMode,
         requesterId: currentUser.id,
