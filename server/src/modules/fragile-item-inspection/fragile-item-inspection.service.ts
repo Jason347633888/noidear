@@ -6,8 +6,7 @@ import { CreateFragileItemInspectionDto } from './dto/create-fragile-item-inspec
 export class FragileItemInspectionService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateFragileItemInspectionDto) {
-    const companyId = '1';
+  async create(dto: CreateFragileItemInspectionDto, companyId: string) {
     const productionBatch = await this.prisma.productionBatch.findUnique({
       where: { id: dto.production_batch_id },
       select: { id: true, productId: true },
