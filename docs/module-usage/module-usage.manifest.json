@@ -1311,28 +1311,33 @@
       "id": "GAP-309",
       "severity": "P1",
       "moduleId": "traceability-complaint-recall",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [
         "GAP-306"
       ],
       "blocks": [],
       "canParallelize": false,
       "needsDesign": true,
-      "schemaImpact": false,
+      "schemaImpact": true,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
         "brainstorming",
         "grill-with-docs",
-        "writing-plans"
+        "writing-plans",
+        "executing-plans"
       ],
       "prRoadmapGroup": "traceability",
-      "prOrder": null,
+      "prOrder": 21,
       "recommendedPr": "traceability/GAP-309",
       "validationCommands": [
-        "pnpm test:e2e -- --grep GAP-309"
+        "(cd server && npx prisma validate --schema src/prisma/schema.prisma)",
+        "(cd server && npm test -- external-party.service.spec.ts --runInBand)",
+        "(cd server && npm test -- customer-complaint.service.spec.ts --runInBand)",
+        "npm run build:server",
+        "npm run build:client"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-02-gap-309-customer-complaint-customer-fk-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-02-gap-309-customer-complaint-customer-fk-implementation.md"
     },
     {
       "id": "GAP-310",
