@@ -38,4 +38,37 @@ describe('traceability contract mapper', () => {
     ]);
     expect(result.graph.nodes).toHaveLength(4);
   });
+
+  it('uses current Prisma field names when building labels', () => {
+    const result = mapForwardTraceResult({
+      id: 'mb-1',
+      batchNumber: 'RM-001',
+      batchMaterialUsages: [
+        {
+          id: 'use-1',
+          quantity: 10,
+          productionBatch: {
+            id: 'pb-1',
+            batchNumber: 'PB-001',
+            delivery_notes: [{ id: 10, dn_no: 'DN-001' }],
+          },
+        },
+      ],
+    } as any, {
+      departmentScope: '品质',
+      scenarioPermissions: ['forwardTrace'],
+      canViewSummary: true,
+      canViewDetail: true,
+      canViewEvidence: true,
+      canInitiateLinkage: true,
+      canExportSimple: true,
+      canExportFullPackage: true,
+      canUseAsOfPlayback: true,
+      canExecuteHighRiskAction: false,
+    });
+
+    expect(result.ledger.rows.map((row: any) => row.label)).toContain('RM-001');
+    expect(result.ledger.rows.map((row: any) => row.label)).toContain('PB-001');
+    expect(result.ledger.rows.map((row: any) => row.label)).toContain('DN-001');
+  });
 });
