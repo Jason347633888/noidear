@@ -16,9 +16,27 @@ export class EnvironmentRecordService {
       throw new BadRequestException('生产批次不存在');
     }
 
+    const location = await this.prisma.workshopArea.findFirst({
+      where: {
+        id: dto.location_id,
+        company_id: '1',
+        status: 'active',
+        deleted_at: null,
+      },
+      select: { id: true, name: true },
+    });
+
+    if (!location) {
+      throw new BadRequestException('监测位置不存在或已停用');
+    }
+
+    const { location: _ignoredLocation, location_id, ...recordData } = dto;
+
     return this.prisma.environmentRecord.create({
       data: {
-        ...dto,
+        ...recordData,
+        location_id,
+        location: location.name,
         company_id: '1',
         operator_id: userId,
         measured_at: new Date(),

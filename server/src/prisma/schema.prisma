@@ -2814,11 +2814,12 @@ model WorkshopArea {
   updated_at  DateTime @updatedAt
   deleted_at  DateTime?
 
-  recipeLines      RecipeLine[]          @relation("RecipeLineArea")
-  materialUsages   BatchMaterialUsage[]  @relation("BatchUsageArea")
-  stagingStocks    StagingAreaStock[]
-  stocktakes       StagingAreaStocktake[]
-  mixingExecutions MixingExecution[]
+  recipeLines        RecipeLine[]          @relation("RecipeLineArea")
+  materialUsages     BatchMaterialUsage[]  @relation("BatchUsageArea")
+  stagingStocks      StagingAreaStock[]
+  stocktakes         StagingAreaStocktake[]
+  mixingExecutions   MixingExecution[]
+  environmentRecords EnvironmentRecord[]   @relation("EnvironmentRecordLocation")
 
   @@unique([company_id, code])
   @@unique([company_id, name])
@@ -3190,6 +3191,8 @@ model EnvironmentRecord {
   company_id          String
   production_batch_id String
   production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id], onDelete: Restrict)
+  location_id         String?
+  location_ref        WorkshopArea?   @relation("EnvironmentRecordLocation", fields: [location_id], references: [id], onDelete: Restrict)
   location            String
   record_type         String          // 'temperature_humidity'|'pressure_differential'|'other'
   temperature         Decimal?        @db.Decimal(8,2)
@@ -3202,6 +3205,8 @@ model EnvironmentRecord {
   created_at          DateTime        @default(now())
 
   @@index([production_batch_id])
+  @@index([location_id])
+  @@index([company_id, location_id, measured_at])
 }
 
 model ProcessMonitorRecord {
