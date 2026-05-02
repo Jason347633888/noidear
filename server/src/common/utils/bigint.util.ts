@@ -1,7 +1,9 @@
 /**
- * 将对象中的 BigInt 类型转换为 Number 类型
- * 用于解决 Prisma BigInt 字段序列化问题
+ * 将对象中的 BigInt 类型转换为 Number 类型。
+ * Prisma Decimal 对象保留为稳定字符串，避免被递归成不可读结构。
  */
+import { Decimal } from '@prisma/client/runtime/library';
+
 export function convertBigIntToNumber<T>(obj: T): T {
   if (obj === null || obj === undefined) {
     return obj;
@@ -11,12 +13,15 @@ export function convertBigIntToNumber<T>(obj: T): T {
     return Number(obj) as unknown as T;
   }
 
+  if (obj instanceof Decimal) {
+    return obj.toString() as unknown as T;
+  }
+
   if (Array.isArray(obj)) {
     return obj.map(item => convertBigIntToNumber(item)) as unknown as T;
   }
 
   if (typeof obj === 'object') {
-    // 跳过特殊对象类型（Date, RegExp 等）
     if (obj instanceof Date || obj instanceof RegExp) {
       return obj;
     }

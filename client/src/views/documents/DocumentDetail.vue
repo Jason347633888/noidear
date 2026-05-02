@@ -465,8 +465,9 @@ interface Document {
   fileSize: string;
   filePath: string;
   status: string;
-  version: number;
+  version?: number | string;
   versionNo?: number;
+  versionLabel?: string;
   creatorId: string;
   creator: { name: string } | null;
   approver: { name: string } | null;
@@ -518,10 +519,24 @@ const ownerUserLabel = computed(() =>
   document.value?.ownerUser?.name || document.value?.owner_user_id || '-',
 );
 
-const displayVersion = computed(() => {
-  const versionNo = Number(document.value?.versionNo || document.value?.version || 1);
-  return `V${Number.isFinite(versionNo) ? Math.trunc(versionNo) : 1}`;
-});
+const formatCurrentVersionLabel = (doc: Document | null) => {
+  if (!doc) return 'V1';
+  if (doc.versionLabel) return doc.versionLabel;
+
+  const rawVersionNo = Number(doc.versionNo);
+  if (Number.isFinite(rawVersionNo) && rawVersionNo >= 1) {
+    return `V${Math.trunc(rawVersionNo)}`;
+  }
+
+  const rawLegacyVersion = Number(doc.version);
+  if (Number.isFinite(rawLegacyVersion) && rawLegacyVersion >= 1) {
+    return `V${Math.trunc(rawLegacyVersion)}`;
+  }
+
+  return 'V1';
+};
+
+const displayVersion = computed(() => formatCurrentVersionLabel(document.value));
 
 const fileCategory = computed(() => {
   const sourceFolder = document.value?.source_folder || document.value?.sourceFolder;

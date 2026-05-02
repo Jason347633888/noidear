@@ -74,7 +74,7 @@ export class OperationLogService {
       this.prisma.permissionLog.count({ where }),
     ]);
 
-    const list = logs.map((log) => ({
+    const list = logs.map((log: any) => ({
       id: log.id,
       createdAt: log.createdAt,
       operator: log.operator,
