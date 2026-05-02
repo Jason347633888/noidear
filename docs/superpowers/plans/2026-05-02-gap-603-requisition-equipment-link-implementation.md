@@ -18,6 +18,7 @@
 - **执行隔离：** 执行本计划前必须从最新 `origin/master` 创建独立 worktree，或使用 Multica 隔离工作目录；不得在主 checkout `/Users/jiashenglin/Desktop/好玩的项目/noidear` 直接修改、提交或 push。如发现当前目录是主 checkout，必须停止并回报主 agent。
 - **停止条件：** 如果执行 agent 发现本计划与当前代码、`AGENTS.md`、`docs/AGENT_GUIDE.md`、`docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md` 或 spec 冲突，必须停止并回报主 agent，不得猜测实现。
 - **历史数据停止条件：** 本计划不回填历史维修领料。如果业务要求历史 `maintenance` 领料必须补设备，执行 agent 必须停止并回报需要业务提供可靠映射表。
+- **PR #166 blocker 校准：** 当前全局 `ValidationPipe` 使用 `whitelist: true` 和 `forbidNonWhitelisted: true`。因此本计划必须同时更新 `CreateRequisitionDto` 的 `targetZone`、`equipmentId`、`requisitionType` 和 `items` 字段；`requisitionType` 与 `items` 必须保持可选，以兼容旧调用方只提交 `{ targetZone }` 且 service 默认 `production`、空明细草稿可创建的现有行为。
 
 ## File Map
 
@@ -189,7 +190,43 @@ Inside `describe('create', ...)`, add:
     });
 ```
 
-- [ ] **Step 5: Run the focused test and verify current failure**
+- [ ] **Step 5: Add a test that the legacy target-zone-only payload stays compatible**
+
+Inside `describe('create', ...)`, add:
+
+```ts
+    it('keeps legacy targetZone-only requisition creation compatible', async () => {
+      const txClient = {
+        equipment: { findFirst: jest.fn() },
+        materialRequisition: {
+          create: jest.fn().mockResolvedValue({
+            id: 'req-legacy',
+            requisitionNo: 'REQ-20260502-legacy',
+            requisitionType: 'production',
+            targetZone: '小料房',
+            status: 'draft',
+          }),
+        },
+        materialRequisitionItem: { createMany: jest.fn() },
+      };
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => callback(txClient));
+
+      const result = await service.create({ targetZone: '小料房', applicantId: 'user-001' });
+
+      expect(txClient.equipment.findFirst).not.toHaveBeenCalled();
+      expect(txClient.materialRequisition.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          requisitionType: 'production',
+          targetZone: '小料房',
+          applicantId: 'user-001',
+        }),
+      });
+      expect(txClient.materialRequisitionItem.createMany).not.toHaveBeenCalled();
+      expect(result.requisitionType).toBe('production');
+    });
+```
+
+- [ ] **Step 6: Run the focused test and verify current failure**
 
 Run:
 
@@ -285,16 +322,52 @@ Expected: PASS with `The schema at src/prisma/schema.prisma is valid`.
 - Modify: `server/src/modules/warehouse/requisition.service.ts`
 - Modify: `server/src/modules/warehouse/requisition.service.spec.ts`
 
-- [ ] **Step 1: Add `equipmentId` to the create DTO**
+- [ ] **Step 1: Make the create DTO match the global ValidationPipe contract**
 
-In `CreateRequisitionDto`, after `requisitionType`, add:
+Replace the full `CreateRequisitionDto` class in `server/src/modules/warehouse/dto/requisition.dto.ts` with:
 
 ```ts
+export class CreateRequisitionDto {
+  @ApiPropertyOptional({
+    description: '领料类型；省略时保持旧行为，服务端默认 production',
+    enum: ['production', 'maintenance', 'other'],
+  })
+  @IsOptional()
+  @IsEnum(['production', 'maintenance', 'other'], {
+    message: '领料类型必须为 production、maintenance 或 other',
+  })
+  requisitionType?: string;
+
   @ApiPropertyOptional({ description: '维修领料关联设备ID，仅 requisitionType=maintenance 时允许' })
   @IsOptional()
   @IsString()
   equipmentId?: string;
+
+  @ApiPropertyOptional({ description: '目标区域' })
+  @IsOptional()
+  @IsString()
+  targetZone?: string;
+
+  @ApiPropertyOptional({ description: '领料明细；允许省略或传空数组以创建草稿领料单', type: [CreateRequisitionItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateRequisitionItemDto)
+  items?: CreateRequisitionItemDto[];
+
+  @ApiPropertyOptional({ description: '部门ID' })
+  @IsOptional()
+  @IsString()
+  departmentId?: string;
+
+  @ApiPropertyOptional({ description: '备注' })
+  @IsOptional()
+  @IsString()
+  remark?: string;
+}
 ```
+
+Expected: with global `ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })`, payloads containing `targetZone` and `equipmentId` are no longer rejected as non-whitelisted. Payloads that omit `requisitionType` or `items` still pass validation so the service can preserve `requisitionType ?? 'production'` and `items?.length` behavior.
 
 - [ ] **Step 2: Type the controller with existing DTOs**
 
@@ -685,12 +758,12 @@ node tools/check-module-usage-docs.mjs
 
 Expected: PASS.
 
-- [ ] **Step 5: Check whitespace**
+- [ ] **Step 5: Check whitespace against the PR diff**
 
 Run:
 
 ```bash
-git diff --check
+git diff --check origin/master...HEAD
 ```
 
 Expected: no output and exit code 0.

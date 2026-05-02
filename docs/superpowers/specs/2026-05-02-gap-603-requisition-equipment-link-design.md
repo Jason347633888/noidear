@@ -20,9 +20,12 @@
   - `MaterialRequisition` 有 `requisitionType RequisitionType`、`targetZone`、`items`，没有设备字段。
   - `Equipment` 是设备台账事实源，已有 `maintenancePlans`、`maintenanceRecords`、`equipmentFaults` 反向关系。
   - `MaintenanceRecord` 和 `EquipmentFault` 均通过 `equipmentId` 关联 `Equipment`，说明设备域现有关系命名使用 camelCase 字段和 snake_case 映射由 Prisma 默认处理或 `@@map` 控制。
-- `server/src/modules/warehouse/dto/requisition.dto.ts`：`CreateRequisitionDto` 没有 `equipmentId`，`requisitionType` 已支持 `maintenance`。
+- `server/src/main.ts`：全局 `ValidationPipe` 启用 `whitelist: true`、`transform: true`、`forbidNonWhitelisted: true`；一旦 `RequisitionController.create()` 使用 `CreateRequisitionDto`，DTO 未声明字段会在进入 service 前被拒绝。
+- `server/src/modules/warehouse/dto/requisition.dto.ts`：`CreateRequisitionDto` 没有 `equipmentId` 和 `targetZone`；`requisitionType` 已支持 `maintenance` 但当前是必填；`items` 当前也是必填。
 - `server/src/modules/warehouse/requisition.service.ts`：
   - `create()` 创建 `materialRequisition` 时未写设备。
+  - `create()` 使用 `createDto.requisitionType ?? 'production'`，说明旧调用方省略 `requisitionType` 时必须继续默认生产领料。
+  - `create()` 只在 `createDto.items?.length` 存在时创建明细，说明旧 UI/API 允许先创建只有目标区域的草稿领料单，再后续处理明细。
   - `findAll()` 和 `findOne()` 只 include `items`，不 include 设备。
   - `complete()` 当前统一记录 `issue_to_production` 和 notes `生产领料`，本 GAP 只补关联设备，不重构库存移动类型枚举。
 - `client/src/views/warehouse/RequisitionList.vue`：创建领料单弹窗只有目标区域，没有领料类型和设备选择；创建时直接 `request.post('/warehouse/requisitions', { targetZone })`。
@@ -39,6 +42,7 @@
 - 当 `requisitionType != maintenance` 时，服务端不得接受 `equipmentId`；避免生产领料或其他领料错误挂到设备台账。
 - `findAll()`、`findOne()` include `equipment`，用于列表/详情展示设备编号和名称。
 - 前端领料单创建弹窗提供领料类型选择；选择维修领料时显示必填设备选择器。
+- 后端 DTO 必须与全局 `ValidationPipe` 一致：`targetZone`、`equipmentId`、`requisitionType`、`items` 都要显式声明；其中 `requisitionType` 和 `items` 必须保持可选，以兼容旧调用方和现有 service 的默认/空明细行为。
 
 ## 不做什么
 
@@ -92,6 +96,8 @@
 - `requisitionType = maintenance` 且 `equipmentId` 不存在或设备已软删：返回 400，不创建领料单。
 - `requisitionType = production` 或 `other` 且传入 `equipmentId`：返回 400，不创建领料单。
 - 不传 `requisitionType` 时保留现有默认值 `production`，兼容旧调用方。
+- 不传 `items` 或传空数组时继续创建无明细草稿领料单，兼容现有 UI/API 的先建单流程。
+- 仅传 `{ "targetZone": "小料房" }` 的旧 payload 必须通过 DTO validation，并由 service 默认成 `production`。
 - `GET /warehouse/requisitions` 和 `GET /warehouse/requisitions/:id` 返回 `equipment` 摘要，至少包含 `id`、`code`、`name`、`status`。
 
 ### 页面影响
@@ -121,6 +127,7 @@
   - 不破坏 `ProductionBatch / MaterialBatch / BatchMaterialUsage / InventoryMovement` 主链；只给维修领料增加设备锚点。
   - 需要 schema migration，但不需要历史数据回填。
   - 不需要新的业务确认；GAP-603 已在模块文档中验证为 schema 层面缺口。
+  - PR #166 blocker 校准：计划必须把 `CreateRequisitionDto`、controller typing、client payload 和全局 `ValidationPipe` 同步处理；否则 `targetZone` 会被 `forbidNonWhitelisted` 拒绝，必填 `requisitionType/items` 也会破坏旧调用方。
   - 可拆成独立 schema/API/frontend PR。
   - 可由执行 agent 按 `superpowers:executing-plans` 独立完成。
 
@@ -129,7 +136,9 @@
 - Prisma schema 中 `MaterialRequisition` 有可选 `equipmentId` relation 到 `Equipment.id`。
 - `Equipment` 有 `materialRequisitions` 反向关系。
 - migration 添加 nullable 设备列、索引和 FK，不回填历史数据。
-- `CreateRequisitionDto` 支持可选 `equipmentId`，并保持 `requisitionType` 兼容旧默认值。
+- `CreateRequisitionDto` 显式支持可选 `targetZone`、`equipmentId`、`requisitionType` 和 `items`；`targetZone` 不会被全局 `ValidationPipe` 当作非白名单字段拒绝。
+- `CreateRequisitionDto.requisitionType` 可选，并保持 service 的 `requisitionType ?? 'production'` 兼容旧默认值。
+- `CreateRequisitionDto.items` 可选且允许空数组，兼容现有先创建无明细草稿领料单的 UI/API 流程。
 - `RequisitionService.create()` 校验维修领料必须关联未软删设备。
 - `RequisitionService.create()` 拒绝非维修领料携带 `equipmentId`。
 - `findAll()` 和 `findOne()` 返回设备摘要。
