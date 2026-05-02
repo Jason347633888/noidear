@@ -5,6 +5,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { StorageService } from '../../common/services';
 import { Snowflake, convertBigIntToNumber } from '../../common/utils';
+import { withDocumentVersionLabel, withDocumentVersionLabels } from './document-version.presenter';
+import { Decimal } from '@prisma/client/runtime/library';
 import { BusinessException, ErrorCode } from '../../common/exceptions/business.exception';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, UpdateMarkdownDto } from './dto';
 import { NotificationService } from '../notification/notification.service';
@@ -122,7 +124,7 @@ export class DocumentService {
       details: { title: dto.title, level: dto.level, fileName: file.originalname },
     });
 
-    return convertBigIntToNumber(result);
+    return withDocumentVersionLabel(convertBigIntToNumber(result));
   }
 
   async findAll(query: DocumentQueryDto, userId: string, role: string) {
@@ -204,7 +206,7 @@ export class DocumentService {
       select: { id: true, name: true },
     });
 
-    const userMap = new Map(users.map(u => [u.id, u]));
+    const userMap = new Map(users.map((u: { id: string; name: string }) => [u.id, u]));
 
     // 附加创建人和审批人信息
     const enrichedList = list.map(doc => ({
@@ -213,7 +215,7 @@ export class DocumentService {
       approver: doc.approverId ? userMap.get(doc.approverId) || null : null,
     }));
 
-    return { list: convertBigIntToNumber(enrichedList), total, page, limit };
+    return { list: withDocumentVersionLabels(convertBigIntToNumber(enrichedList)), total, page, limit };
   }
 
   async findOne(id: string, userId: string, role: string) {
@@ -243,7 +245,7 @@ export class DocumentService {
       );
     }
 
-    return convertBigIntToNumber(document);
+    return withDocumentVersionLabel(convertBigIntToNumber(document));
   }
 
   async update(id: string, dto: UpdateDocumentDto, file: Express.Multer.File | undefined, userId: string) {
@@ -289,12 +291,12 @@ export class DocumentService {
           fileName: file.originalname,
           fileSize: Number(file.size),
           fileType: file.mimetype,
-          version: { increment: new Prisma.Decimal(0.1) },
+          version: { increment: new Decimal(0.1) },
           ...(controlData as any),
         },
       });
       this.eventEmitter.emit('document.updated', { documentId: id });
-      return convertBigIntToNumber(result);
+      return withDocumentVersionLabel(convertBigIntToNumber(result));
     }
 
     const result = await this.prisma.document.update({
@@ -302,7 +304,7 @@ export class DocumentService {
       data: { title: dto.title ?? document.title, ...(controlData as any) },
     });
     this.eventEmitter.emit('document.updated', { documentId: id });
-    return convertBigIntToNumber(result);
+    return withDocumentVersionLabel(convertBigIntToNumber(result));
   }
 
   async updateMarkdown(id: string, userId: string, role: string, dto: UpdateMarkdownDto) {
@@ -310,7 +312,7 @@ export class DocumentService {
       throw new BusinessException(ErrorCode.VALIDATION_ERROR, 'contentMd 必须是字符串');
     }
 
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx: any) => {
       const document = await tx.document.findUnique({
         where: { id, deletedAt: null },
       });
@@ -332,7 +334,7 @@ export class DocumentService {
 
       await this.markdownWikilinkService.syncDocumentWikilinks(id, dto.contentMd, tx);
       return updated;
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    }, { isolationLevel: 'Serializable' });
 
     this.eventEmitter.emit('document.updated', { documentId: id });
     return convertBigIntToNumber(result);
@@ -369,7 +371,7 @@ export class DocumentService {
     });
 
     const nextVersionNo = ((latest as any)?.versionNo ?? (current as any).versionNo ?? 1) + 1;
-    return this.prisma.document.create({
+    const revisionDraft = await this.prisma.document.create({
       data: {
         id: this.snowflake.nextId(),
         level: (current as any).level,
@@ -400,6 +402,8 @@ export class DocumentService {
         content_md: (current as any).content_md,
       } as any,
     });
+
+    return withDocumentVersionLabel(convertBigIntToNumber(revisionDraft));
   }
 
   private assertEditableDraft(document: { status: string; revisionStatus?: string | null }) {
@@ -567,7 +571,7 @@ export class DocumentService {
           where: { departmentId: user.departmentId },
           select: { id: true },
         });
-        where.creatorId = { in: departmentUsers.map(u => u.id) };
+        where.creatorId = { in: departmentUsers.map((u: { id: string }) => u.id) };
       }
     }
 
@@ -587,7 +591,7 @@ export class DocumentService {
       where: { id: { in: creatorIds } },
       select: { id: true, name: true },
     });
-    const creatorMap = new Map(creators.map(u => [u.id, u]));
+    const creatorMap = new Map(creators.map((u: { id: string; name: string }) => [u.id, u]));
 
     // 附加创建人信息
     const enrichedList = list.map(doc => ({
@@ -1144,7 +1148,7 @@ export class DocumentService {
 
     const targetVersionDecimal = this.parseVersionParam(targetVersion);
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       const document = await tx.document.findUnique({
         where: { id: documentId, deletedAt: null },
       });
@@ -1177,7 +1181,7 @@ export class DocumentService {
         );
       }
 
-      const currentVersion = new Prisma.Decimal((document as any).version);
+      const currentVersion = new Decimal((document as any).version);
       const newVersion = currentVersion.add(0.1);
       const rollbackFileType = this.inferFileTypeFromHistoricalFile(
         version.fileName,
@@ -1334,9 +1338,9 @@ export class DocumentService {
     }
   }
 
-  private parseVersionParam(version: string): Prisma.Decimal {
+  private parseVersionParam(version: string): Decimal {
     try {
-      return new Prisma.Decimal(version);
+      return new Decimal(version);
     } catch {
       throw new BusinessException(ErrorCode.VALIDATION_ERROR, `版本参数无效: ${version}`);
     }

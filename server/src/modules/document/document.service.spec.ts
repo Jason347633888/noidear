@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Prisma } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 import { DocumentService } from './document.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services/storage.service';
@@ -324,6 +324,41 @@ describe('document status compatibility', () => {
     });
   });
 
+  it('adds versionLabel to document list responses', async () => {
+    prisma.document.findMany.mockResolvedValue([{ id: 'doc1', creatorId: null, approverId: null, versionNo: 2, version: new Decimal('2.0') }]);
+    prisma.document.count.mockResolvedValue(1);
+    prisma.user.findMany.mockResolvedValue([]);
+
+    const result = await service.findAll({} as any, 'admin1', 'admin');
+
+    expect(result.list[0]).toEqual(expect.objectContaining({
+      versionNo: 2,
+      versionLabel: 'V2',
+      version: '2',
+    }));
+  });
+
+  it('adds versionLabel to document detail responses', async () => {
+    prisma.document.findUnique.mockResolvedValue({
+      id: 'doc1',
+      number: 'DOC-001',
+      creatorId: 'admin1',
+      deletedAt: null,
+      versionNo: 3,
+      version: new Decimal('3.0'),
+      sourceReferences: [],
+      targetReferences: [],
+    });
+
+    const result = await service.findOne('doc1', 'admin1', 'admin');
+
+    expect(result).toEqual(expect.objectContaining({
+      versionNo: 3,
+      versionLabel: 'V3',
+      version: '3',
+    }));
+  });
+
   it('filters missing metadata documents when requested', async () => {
     prisma.document.findMany.mockResolvedValue([{ id: 'doc1', creatorId: null, approverId: null }]);
     prisma.document.count.mockResolvedValue(1);
@@ -388,7 +423,7 @@ describe('document version operations', () => {
     prisma.$transaction.mockImplementation(async (cb) => cb(prisma));
     prisma.document.findUnique.mockResolvedValue({
       id: 'doc1',
-      version: new Prisma.Decimal('1.2'),
+      version: new Decimal('1.2'),
       filePath: 'documents/current.docx',
       fileName: 'current.docx',
       fileSize: 200,
@@ -397,7 +432,7 @@ describe('document version operations', () => {
       deletedAt: null,
     });
     prisma.documentVersion.findFirst.mockResolvedValue({
-      version: new Prisma.Decimal('1.0'),
+      version: new Decimal('1.0'),
       filePath: 'documents/old.pdf',
       fileName: 'old.pdf',
       fileSize: 100,
@@ -411,13 +446,13 @@ describe('document version operations', () => {
     expect(prisma.documentVersion.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         documentId: 'doc1',
-        version: new Prisma.Decimal('1.2'),
+        version: new Decimal('1.2'),
         filePath: 'documents/current.docx',
         fileName: 'current.docx',
       }),
     });
     expect(prisma.document.updateMany).toHaveBeenCalledWith({
-      where: { id: 'doc1', version: new Prisma.Decimal('1.2') },
+      where: { id: 'doc1', version: new Decimal('1.2') },
       data: expect.objectContaining({
         filePath: 'documents/old.pdf',
         fileName: 'old.pdf',
@@ -439,7 +474,7 @@ describe('document version operations', () => {
     prisma.$transaction.mockImplementation(async (cb) => cb(prisma));
     prisma.document.findUnique.mockResolvedValue({
       id: 'doc1',
-      version: new Prisma.Decimal('1.2'),
+      version: new Decimal('1.2'),
       filePath: 'documents/current.pdf',
       fileName: 'current.pdf',
       fileSize: 200,
@@ -447,7 +482,7 @@ describe('document version operations', () => {
       deletedAt: null,
     });
     prisma.documentVersion.findFirst.mockResolvedValue({
-      version: new Prisma.Decimal('1.0'),
+      version: new Decimal('1.0'),
       filePath: 'documents/old.pdf',
       fileName: 'old.pdf',
       fileSize: 100,
@@ -483,7 +518,7 @@ describe('document version operations', () => {
       deletedAt: null,
     });
     prisma.documentVersion.findFirst.mockResolvedValue({
-      version: new Prisma.Decimal('1.0'),
+      version: new Decimal('1.0'),
       filePath: 'documents/old.pdf',
       fileName: 'old.pdf',
       fileSize: 100,
@@ -525,7 +560,7 @@ describe('document version operations', () => {
       deletedAt: null,
     });
     prisma.documentVersion.findFirst.mockResolvedValue({
-      version: new Prisma.Decimal('1.0'),
+      version: new Decimal('1.0'),
       filePath: 'documents/old.pdf',
       fileName: '旧版本.pdf',
       fileSize: 123,
@@ -628,6 +663,7 @@ describe('document revision draft', () => {
       }),
     }));
     expect(result.id).toBe('doc-v2');
+    expect(result.versionLabel).toBe('V2');
   });
 });
 

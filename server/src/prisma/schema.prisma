@@ -287,6 +287,7 @@ model Document {
   fileName   String
   fileSize   Int
   fileType   String
+  // Legacy compatibility field for historical upload/rollback routes. Current display uses versionNo/versionLabel.
   version    Decimal   @default(1.0) @db.Decimal(3, 1)
   status     String
   creatorId  String

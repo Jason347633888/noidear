@@ -155,6 +155,32 @@ describe('DocumentDetail', () => {
     expect((c.vm as any).document.id).toBe('doc-1');
   });
 
+  it('renders current version from versionLabel', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url.includes('/versions')) return Promise.resolve({ versions: [] });
+      return Promise.resolve(makeDocument({ version: { bad: 'decimal-object' } as any, versionNo: 2, versionLabel: 'V2' } as any));
+    });
+
+    const wrapper = w();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('V2');
+    expect(wrapper.text()).not.toContain('decimal-object');
+  });
+
+  it('falls back to versionNo for current version display', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url.includes('/versions')) return Promise.resolve({ versions: [] });
+      return Promise.resolve(makeDocument({ version: { bad: 'decimal-object' } as any, versionNo: 3 } as any));
+    });
+
+    const wrapper = w();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('V3');
+    expect(wrapper.text()).not.toContain('decimal-object');
+  });
+
   it('handles API error on mount', async () => {
     const { ElMessage } = await import('element-plus');
     mockGet.mockRejectedValue(new Error('Network error'));

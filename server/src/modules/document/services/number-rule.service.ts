@@ -18,7 +18,7 @@ export class NumberRuleService {
   constructor(private readonly prisma: PrismaService) {}
 
   async generate(input: GenerateNumberInput): Promise<string> {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       const pending = await tx.pendingNumber.findFirst({
         where: {
           scope: input.scope,

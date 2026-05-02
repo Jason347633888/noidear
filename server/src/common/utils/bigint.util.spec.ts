@@ -1,3 +1,4 @@
+import { Decimal } from '@prisma/client/runtime/library';
 import { convertBigIntToNumber } from './bigint.util';
 
 describe('convertBigIntToNumber', () => {
@@ -47,6 +48,22 @@ describe('convertBigIntToNumber', () => {
       nested: {
         value: 2,
         array: [3, 4],
+      },
+    });
+  });
+
+  it('应该将 Prisma Decimal 转换为稳定字符串', () => {
+    const input = {
+      version: new Decimal('1.0'),
+      nested: {
+        amount: new Decimal('2.5'),
+      },
+    };
+
+    expect(convertBigIntToNumber(input)).toEqual({
+      version: '1',
+      nested: {
+        amount: '2.5',
       },
     });
   });
