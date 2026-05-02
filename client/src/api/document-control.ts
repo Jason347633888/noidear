@@ -15,6 +15,7 @@ export interface DocumentControlDocument {
   title: string;
   level: number;
   status: string;
+  doc_code?: string | null;
   document_type?: DocumentType;
   source_folder?: string;
   owner_department?: string;
