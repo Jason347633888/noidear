@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ProductRecallService } from '../product-recall/product-recall.service';
 import { CreateTraceabilityActionDto as CreateTraceabilityLinkageDto } from './dto/create-traceability-linkage.dto';
 
@@ -11,6 +11,9 @@ export class TraceabilityLinkageService {
     let productRecall: { id: string; recall_no: string } | null = null;
 
     if (dto.actionType === 'recallAssessment') {
+      if (!currentUser?.companyId) {
+        throw new BadRequestException('recallAssessment requires authenticated user with companyId');
+      }
       productRecall = await this.productRecallService.create(
         {
           title: '追溯召回评估',
@@ -18,7 +21,7 @@ export class TraceabilityLinkageService {
           source_query_ref: dto.sourceQueryRef,
           risk_level: 'high',
         },
-        { id: currentUser?.id ?? 'system', companyId: currentUser?.companyId ?? '1' },
+        { id: currentUser.id ?? 'system', companyId: currentUser.companyId },
       );
     }
 

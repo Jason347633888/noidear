@@ -45,9 +45,12 @@ export class ProductRecallService {
       for (const batch of dto.batches ?? []) {
         const productionBatch = await tx.productionBatch.findFirst({
           where: { id: batch.production_batch_id },
-          select: { id: true, batchNumber: true, productName: true },
+          select: { id: true, batchNumber: true, productName: true, product: { select: { company_id: true } } },
         });
         if (!productionBatch) throw new BadRequestException(`生产批次不存在: ${batch.production_batch_id}`);
+        if (productionBatch.product.company_id !== companyId) {
+          throw new BadRequestException(`生产批次不属于当前企业: ${batch.production_batch_id}`);
+        }
 
         await tx.productRecallBatch.create({
           data: {

@@ -20,6 +20,6 @@ describe('TraceabilityService recall actions', () => {
       { actionType: 'recallAssessment', sourceQueryRef: 'hash-xyz' },
       { id: 'user-1', companyId: 'company-1' },
     );
-    expect(result.productRecall).toEqual({ id: 'recall-1', recall_no: 'RC-2026-0001' });
+    expect((result as any).productRecall).toEqual({ id: 'recall-1', recall_no: 'RC-2026-0001' });
   });
 });

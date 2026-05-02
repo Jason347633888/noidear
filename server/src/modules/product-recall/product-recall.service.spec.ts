@@ -26,6 +26,7 @@ describe('ProductRecallService', () => {
       id: 'batch-1',
       batchNumber: 'PB-001',
       productName: '蛋糕',
+      product: { company_id: 'company-1' },
     });
     prisma.$transaction.mockImplementation(async (fn: any) => fn(prisma));
     prisma.productRecall.create.mockResolvedValue({ id: 'recall-1', recall_no: 'RC-2026-0001' });
@@ -52,6 +53,31 @@ describe('ProductRecallService', () => {
         product_name_snapshot: '蛋糕',
       }),
     }));
+  });
+
+  it('rejects batch that belongs to a different company', async () => {
+    prisma.productRecall.count.mockResolvedValue(0);
+    prisma.productionBatch.findFirst.mockResolvedValue({
+      id: 'batch-x',
+      batchNumber: 'PB-999',
+      productName: '外企产品',
+      product: { company_id: 'company-other' },
+    });
+    prisma.$transaction.mockImplementation(async (fn: any) => fn(prisma));
+    prisma.productRecall.create.mockResolvedValue({ id: 'recall-1', recall_no: 'RC-2026-0001' });
+
+    await expect(
+      service.create(
+        {
+          title: '跨企业召回',
+          reason: '测试',
+          batches: [{ production_batch_id: 'batch-x', affected_qty: 5, unit: '箱' }],
+        },
+        { id: 'user-1', companyId: 'company-1' },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.productRecallBatch.create).not.toHaveBeenCalled();
   });
 
   it('rejects invalid state transition', async () => {
