@@ -7,6 +7,9 @@ describe('FragileItemInspectionService', () => {
       productionBatch: {
         findUnique: jest.fn().mockResolvedValue(null),
       },
+      product: {
+        findUnique: jest.fn(),
+      },
       fragileItemInspection: {
         create: jest.fn(),
       },
@@ -26,7 +29,40 @@ describe('FragileItemInspectionService', () => {
 
     expect(prisma.productionBatch.findUnique).toHaveBeenCalledWith({
       where: { id: 'missing-batch' },
-      select: { id: true },
+      select: { id: true, productId: true },
+    });
+    expect(prisma.product.findUnique).not.toHaveBeenCalled();
+    expect(prisma.fragileItemInspection.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects creation when the production batch belongs to a different company', async () => {
+    const prisma: any = {
+      productionBatch: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'batch-other', productId: 'prod-other' }),
+      },
+      product: {
+        findUnique: jest.fn().mockResolvedValue({ company_id: 'other-company' }),
+      },
+      fragileItemInspection: {
+        create: jest.fn(),
+      },
+    };
+    const service = new FragileItemInspectionService(prisma);
+
+    await expect(
+      service.create({
+        production_batch_id: 'batch-other',
+        item_name: '玻璃量杯',
+        total_qty: 10,
+        intact_qty: 10,
+        is_pass: true,
+        inspected_at: '2026-05-01T09:00:00',
+      }),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(prisma.product.findUnique).toHaveBeenCalledWith({
+      where: { id: 'prod-other' },
+      select: { company_id: true },
     });
     expect(prisma.fragileItemInspection.create).not.toHaveBeenCalled();
   });
@@ -34,7 +70,10 @@ describe('FragileItemInspectionService', () => {
   it('creates an inspection linked to an existing production batch', async () => {
     const prisma: any = {
       productionBatch: {
-        findUnique: jest.fn().mockResolvedValue({ id: 'batch-1' }),
+        findUnique: jest.fn().mockResolvedValue({ id: 'batch-1', productId: 'prod-1' }),
+      },
+      product: {
+        findUnique: jest.fn().mockResolvedValue({ company_id: '1' }),
       },
       fragileItemInspection: {
         create: jest.fn().mockResolvedValue({ id: 'fii-1' }),

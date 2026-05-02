@@ -7,19 +7,29 @@ export class FragileItemInspectionService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateFragileItemInspectionDto) {
+    const companyId = '1';
     const productionBatch = await this.prisma.productionBatch.findUnique({
       where: { id: dto.production_batch_id },
-      select: { id: true },
+      select: { id: true, productId: true },
     });
 
-    if (!productionBatch) {
+    if (!productionBatch || !productionBatch.productId) {
+      throw new BadRequestException('生产批次不存在');
+    }
+
+    const product = await this.prisma.product.findUnique({
+      where: { id: productionBatch.productId },
+      select: { company_id: true },
+    });
+
+    if (!product || product.company_id !== companyId) {
       throw new BadRequestException('生产批次不存在');
     }
 
     return this.prisma.fragileItemInspection.create({
       data: {
         ...dto,
-        company_id: '1',
+        company_id: companyId,
         inspected_at: new Date(dto.inspected_at),
       },
     });
