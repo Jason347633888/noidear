@@ -4,7 +4,7 @@
 
 **Goal:** Automatically create an idempotent CAPA record when an internal audit non-conformance is verified.
 
-**Architecture:** Keep `AuditFinding` as the internal audit fact source and `CorrectiveAction` as the CAPA fact source. On the `verifyRectification()` success path, detect verified non-conforming findings and create a CAPA with `trigger_type='internal_audit'` and `trigger_id=AuditFinding.id`, skipping creation when the CAPA already exists.
+**Architecture:** Keep `AuditFinding` as the internal audit fact source and `CorrectiveAction` as the CAPA fact source. On the `verifyRectification()` success path, detect verified non-conforming findings and create a CAPA with `trigger_type='internal_audit'` and `trigger_id=AuditFinding.id`, skipping creation when the CAPA already exists. CAPA creation, `AuditFinding.status='verified'`, and `audit_rectification` Todo completion must run in one Prisma transaction so missing `companyId` or CAPA creation failures cannot leave a verified finding without CAPA.
 
 **Tech Stack:** NestJS, Prisma Client, Jest, npm workspaces.
 
@@ -24,6 +24,7 @@
 All commands below assume the execution agent is at the root of its isolated `noidear` worktree or Multica checkout.
 
 - Modify: `server/src/modules/internal-audit/verification/verification.service.spec.ts`
+- Modify: `server/src/modules/corrective-action/corrective-action.service.ts`
 - Modify: `server/src/modules/internal-audit/verification/verification.service.ts`
 - Modify: `server/src/modules/internal-audit/verification/verification.controller.ts`
 - Modify: `server/src/modules/internal-audit/verification/verification.module.ts`
@@ -47,14 +48,25 @@ sed -n '1,280p' server/src/modules/internal-audit/verification/verification.serv
 
 Expected: the file defines a Prisma mock, an `OperationLogService` mock, creates `VerificationService`, and already covers successful verify/reject paths.
 
-- [ ] **Step 2: Add CAPA mock dependencies**
+- [ ] **Step 2: Add CAPA and transaction mock dependencies**
 
-In `verification.service.spec.ts`, extend the local Prisma mock with `correctiveAction.findFirst` if it is missing:
+In `verification.service.spec.ts`, keep the existing Nest `Test.createTestingModule({ providers: [...] })` setup. Extend `mockPrismaService` with a `$transaction` callback mock and `correctiveAction.findFirst`:
 
 ```ts
-correctiveAction: {
-  findFirst: jest.fn(),
-},
+    mockPrismaService = {
+      $transaction: jest.fn(async (callback) => callback(mockPrismaService)),
+      auditFinding: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
+      todoTask: {
+        updateMany: jest.fn(),
+      },
+      correctiveAction: {
+        findFirst: jest.fn(),
+      },
+    };
 ```
 
 Add a `correctiveActionService` mock near the existing service mocks:
@@ -65,26 +77,62 @@ const correctiveActionService = {
 };
 ```
 
-Construct `VerificationService` with the new dependency:
+Register `CorrectiveActionService` in the TestingModule providers. Do not instantiate `VerificationService` with `new VerificationService(...)`; this spec currently uses Nest dependency injection.
 
 ```ts
-service = new VerificationService(
-  prisma as any,
-  operationLogService as any,
-  correctiveActionService as any,
-  approvalEngine as any,
+import { CorrectiveActionService } from '../../corrective-action/corrective-action.service';
+
+const module: TestingModule = await Test.createTestingModule({
+  providers: [
+    VerificationService,
+    { provide: PrismaService, useValue: mockPrismaService },
+    { provide: OperationLogService, useValue: mockOperationLogService },
+    { provide: CorrectiveActionService, useValue: correctiveActionService },
+  ],
+}).compile();
+```
+
+The current test file does not provide `ApprovalEngineService`; keep that unchanged unless the implementation branch already added it before this plan is executed.
+
+- [ ] **Step 3: Update the existing happy path to cover compliant findings and the new companyId argument**
+
+In the existing `it('should verify rectification successfully', ...)` test, make the finding compliant so the original status/Todo behavior remains covered without forcing CAPA creation in that test:
+
+```ts
+const compliantFinding = { ...mockFinding, auditResult: '符合' };
+const updatedFinding = { ...compliantFinding, status: 'verified' };
+mockPrismaService.auditFinding.findUnique.mockResolvedValue(compliantFinding);
+mockPrismaService.auditFinding.update.mockResolvedValue(updatedFinding);
+mockPrismaService.todoTask.updateMany.mockResolvedValue({ count: 1 });
+
+const result = await service.verifyRectification(
+  'finding-1',
+  verifyDto,
+  'auditor-1',
+  'company-1',
 );
 ```
 
-If the current constructor does not include `approvalEngine` in the test, keep the existing optional approval argument position and insert `correctiveActionService` before it, matching the implementation in Task 2.
+Add these assertions at the end of that same test:
 
-- [ ] **Step 3: Add a non-conformance CAPA creation test**
+```ts
+expect(mockPrismaService.correctiveAction.findFirst).not.toHaveBeenCalled();
+expect(correctiveActionService.create).not.toHaveBeenCalled();
+```
+
+Update every existing `verifyRectification(...)` call in `verification.service.spec.ts` to pass the fourth `companyId` argument:
+
+```ts
+service.verifyRectification('finding-1', verifyDto, 'auditor-1', 'company-1')
+```
+
+- [ ] **Step 4: Add a non-conformance CAPA creation test**
 
 Add this test inside `describe('verifyRectification', () => {` after the existing successful verification test:
 
 ```ts
 it('creates CAPA for verified non-conforming audit finding', async () => {
-  prisma.auditFinding.findUnique.mockResolvedValue({
+  mockPrismaService.auditFinding.findUnique.mockResolvedValue({
     ...mockFinding,
     auditResult: '不符合',
     issueType: '需要修改',
@@ -94,8 +142,8 @@ it('creates CAPA for verified non-conforming audit finding', async () => {
     document: { id: 'doc-1', title: '培训记录控制程序', number: 'DOC-001' },
     plan: { auditorId: 'auditor-1' },
   });
-  prisma.auditFinding.update.mockResolvedValue({ ...mockFinding, status: 'verified' });
-  prisma.correctiveAction.findFirst.mockResolvedValue(null);
+  mockPrismaService.auditFinding.update.mockResolvedValue({ ...mockFinding, status: 'verified' });
+  mockPrismaService.correctiveAction.findFirst.mockResolvedValue(null);
   correctiveActionService.create.mockResolvedValue({ id: 'capa-1' });
 
   await service.verifyRectification(
@@ -105,7 +153,7 @@ it('creates CAPA for verified non-conforming audit finding', async () => {
     'company-1',
   );
 
-  expect(prisma.correctiveAction.findFirst).toHaveBeenCalledWith({
+  expect(mockPrismaService.correctiveAction.findFirst).toHaveBeenCalledWith({
     where: {
       company_id: 'company-1',
       trigger_type: 'internal_audit',
@@ -123,25 +171,26 @@ it('creates CAPA for verified non-conforming audit finding', async () => {
     }),
     'auditor-1',
     'company-1',
+    mockPrismaService,
   );
 });
 ```
 
-- [ ] **Step 4: Add idempotency coverage**
+- [ ] **Step 5: Add idempotency coverage**
 
 Add this test after the CAPA creation test:
 
 ```ts
 it('does not create duplicate CAPA when one already exists for the finding', async () => {
-  prisma.auditFinding.findUnique.mockResolvedValue({
+  mockPrismaService.auditFinding.findUnique.mockResolvedValue({
     ...mockFinding,
     auditResult: '不符合',
     description: '内审发现项已有关联 CAPA',
     document: { id: 'doc-1', title: '内审文件', number: 'DOC-002' },
     plan: { auditorId: 'auditor-1' },
   });
-  prisma.auditFinding.update.mockResolvedValue({ ...mockFinding, status: 'verified' });
-  prisma.correctiveAction.findFirst.mockResolvedValue({ id: 'existing-capa' });
+  mockPrismaService.auditFinding.update.mockResolvedValue({ ...mockFinding, status: 'verified' });
+  mockPrismaService.correctiveAction.findFirst.mockResolvedValue({ id: 'existing-capa' });
 
   await service.verifyRectification(
     'finding-1',
@@ -154,19 +203,19 @@ it('does not create duplicate CAPA when one already exists for the finding', asy
 });
 ```
 
-- [ ] **Step 5: Add skip and company guard coverage**
+- [ ] **Step 6: Add skip, company guard, and CAPA failure atomicity coverage**
 
 Add these tests after the idempotency test:
 
 ```ts
 it('does not create CAPA for compliant audit finding', async () => {
-  prisma.auditFinding.findUnique.mockResolvedValue({
+  mockPrismaService.auditFinding.findUnique.mockResolvedValue({
     ...mockFinding,
     auditResult: '符合',
     document: { id: 'doc-1', title: '内审文件', number: 'DOC-003' },
     plan: { auditorId: 'auditor-1' },
   });
-  prisma.auditFinding.update.mockResolvedValue({ ...mockFinding, status: 'verified' });
+  mockPrismaService.auditFinding.update.mockResolvedValue({ ...mockFinding, status: 'verified' });
 
   await service.verifyRectification(
     'finding-1',
@@ -175,29 +224,54 @@ it('does not create CAPA for compliant audit finding', async () => {
     'company-1',
   );
 
-  expect(prisma.correctiveAction.findFirst).not.toHaveBeenCalled();
+  expect(mockPrismaService.correctiveAction.findFirst).not.toHaveBeenCalled();
   expect(correctiveActionService.create).not.toHaveBeenCalled();
 });
 
 it('requires companyId before creating audit-triggered CAPA', async () => {
-  prisma.auditFinding.findUnique.mockResolvedValue({
+  mockPrismaService.auditFinding.findUnique.mockResolvedValue({
     ...mockFinding,
     auditResult: '不符合',
     description: '缺少内审整改证据复核记录',
     document: { id: 'doc-1', title: '内审文件', number: 'DOC-004' },
     plan: { auditorId: 'auditor-1' },
   });
-  prisma.auditFinding.update.mockResolvedValue({ ...mockFinding, status: 'verified' });
 
   await expect(
     service.verifyRectification('finding-1', verifyDto, 'auditor-1', undefined as any),
   ).rejects.toThrow('Missing companyId for audit CAPA creation');
 
+  expect(mockPrismaService.auditFinding.update).not.toHaveBeenCalled();
+  expect(mockPrismaService.todoTask.updateMany).not.toHaveBeenCalled();
+  expect(mockPrismaService.correctiveAction.findFirst).not.toHaveBeenCalled();
   expect(correctiveActionService.create).not.toHaveBeenCalled();
+});
+
+it('does not mark finding verified or complete todo when CAPA creation fails', async () => {
+  mockPrismaService.auditFinding.findUnique.mockResolvedValue({
+    ...mockFinding,
+    auditResult: '不符合',
+    description: 'CAPA 创建失败时不能完成内审验证',
+    document: { id: 'doc-1', title: '内审文件', number: 'DOC-005' },
+    plan: { auditorId: 'auditor-1' },
+  });
+  mockPrismaService.correctiveAction.findFirst.mockResolvedValue(null);
+  correctiveActionService.create.mockRejectedValue(new BadRequestException('内审发现项不存在'));
+
+  await expect(
+    service.verifyRectification('finding-1', verifyDto, 'auditor-1', 'company-1'),
+  ).rejects.toThrow('内审发现项不存在');
+
+  expect(mockPrismaService.auditFinding.update).not.toHaveBeenCalledWith(
+    expect.objectContaining({
+      data: expect.objectContaining({ status: 'verified' }),
+    }),
+  );
+  expect(mockPrismaService.todoTask.updateMany).not.toHaveBeenCalled();
 });
 ```
 
-- [ ] **Step 6: Run the focused test and confirm it fails**
+- [ ] **Step 7: Run the focused test and confirm it fails**
 
 Run:
 
@@ -207,7 +281,101 @@ cd server && npm test -- verification.service.spec.ts --runInBand
 
 Expected: FAIL because `VerificationService` does not yet accept `companyId` or create CAPA.
 
-## Task 2: Implement CAPA creation on verification
+## Task 2: Allow CAPA creation inside caller transaction
+
+**Files:**
+- Modify: `server/src/modules/corrective-action/corrective-action.service.ts`
+
+- [ ] **Step 1: Import Prisma types**
+
+At the top of `corrective-action.service.ts`, add `Prisma` to the existing imports if it is not already imported:
+
+```ts
+import { Prisma } from '@prisma/client';
+```
+
+- [ ] **Step 2: Add an optional transaction client to create()**
+
+Change the `create()` signature from:
+
+```ts
+  async create(dto: CreateCapaDto, userId: string, companyId: string) {
+```
+
+to:
+
+```ts
+  async create(
+    dto: CreateCapaDto,
+    userId: string,
+    companyId: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+```
+
+Replace the body with:
+
+```ts
+    const client = tx ?? this.prisma;
+    await this.validateTriggerSource(dto, companyId, client);
+
+    const capa_no = await this.numberSequence.generateCorrectiveActionNo(
+      companyId,
+      new Date(),
+      tx,
+    );
+    return client.correctiveAction.create({
+      data: { ...dto, company_id: companyId, capa_no },
+    });
+```
+
+- [ ] **Step 3: Make trigger validation use the same client**
+
+Change the helper signature from:
+
+```ts
+  private async validateTriggerSource(dto: CreateCapaDto, companyId: string) {
+```
+
+to:
+
+```ts
+  private async validateTriggerSource(
+    dto: CreateCapaDto,
+    companyId: string,
+    client: PrismaService | Prisma.TransactionClient,
+  ) {
+```
+
+Inside `validateTriggerSource()`, replace only these Prisma calls:
+
+```ts
+this.prisma.nonConformance.findFirst
+this.prisma.customerComplaint.findFirst
+this.prisma.auditFinding.findUnique
+```
+
+with:
+
+```ts
+client.nonConformance.findFirst
+client.customerComplaint.findFirst
+client.auditFinding.findUnique
+```
+
+Do not change the validation messages or supported trigger types.
+
+- [ ] **Step 4: Run CAPA service tests**
+
+Run:
+
+```bash
+cd server && npm test -- corrective-action.service.spec.ts --runInBand
+```
+
+Expected: PASS. The existing tests still call `create(dto, userId, companyId)` without a transaction client, and the optional fourth argument must not change that behavior.
+
+## Task 3: Implement CAPA creation on verification
 
 **Files:**
 - Modify: `server/src/modules/internal-audit/verification/verification.service.ts`
@@ -267,13 +435,38 @@ Replace the `include` block in the `auditFinding.findUnique()` call with:
       },
 ```
 
-- [ ] **Step 5: Create CAPA after the finding is marked verified**
+- [ ] **Step 5: Wrap CAPA creation, finding verification, and Todo completion in one transaction**
 
-Immediately after the `updatedFinding` assignment and before updating `TodoTask`, insert:
+Replace the current `updatedFinding` assignment and following `todoTask.updateMany()` block with:
 
 ```ts
-    await this.createCapaForVerifiedFinding(finding, userId, companyId);
+    const updatedFinding = await this.prisma.$transaction(async (tx) => {
+      await this.createCapaForVerifiedFinding(finding, userId, companyId, tx);
+
+      const verifiedFinding = await tx.auditFinding.update({
+        where: { id: findingId },
+        data: {
+          status: 'verified',
+          verifiedBy: userId,
+          verifiedAt: new Date(),
+        },
+      });
+
+      await tx.todoTask.updateMany({
+        where: {
+          type: 'audit_rectification',
+          relatedId: findingId,
+        },
+        data: {
+          status: 'completed',
+        },
+      });
+
+      return verifiedFinding;
+    });
 ```
+
+This transaction is the required no-partial-write boundary. If `companyId` is missing or CAPA creation fails, neither `AuditFinding.status='verified'` nor `audit_rectification` Todo completion may be committed.
 
 - [ ] **Step 6: Add the private CAPA helper**
 
@@ -284,6 +477,7 @@ Add this method inside `VerificationService`, before `rejectRectification()`:
     finding: any,
     userId: string,
     companyId: string,
+    tx: Prisma.TransactionClient,
   ) {
     if (finding.auditResult !== '不符合') {
       return;
@@ -293,7 +487,7 @@ Add this method inside `VerificationService`, before `rejectRectification()`:
       throw new BadRequestException('Missing companyId for audit CAPA creation');
     }
 
-    const existing = await this.prisma.correctiveAction.findFirst({
+    const existing = await tx.correctiveAction.findFirst({
       where: {
         company_id: companyId,
         trigger_type: 'internal_audit',
@@ -328,8 +522,15 @@ Add this method inside `VerificationService`, before `rejectRectification()`:
       },
       userId,
       companyId,
+      tx,
     );
   }
+```
+
+Also add this import near the top of `verification.service.ts`:
+
+```ts
+import { Prisma } from '@prisma/client';
 ```
 
 - [ ] **Step 7: Keep reject behavior unchanged**
@@ -340,9 +541,9 @@ Run:
 git diff -- server/src/modules/internal-audit/verification/verification.service.ts
 ```
 
-Expected: only `verifyRectification()` and the new private helper changed; `rejectRectification()` status behavior remains `rectifying`.
+Expected: only `verifyRectification()` and the new private helper changed; `rejectRectification()` status behavior remains `rectifying`, and the `AuditFinding` status update plus Todo completion are inside the same `$transaction` callback as CAPA creation.
 
-## Task 3: Pass companyId from the controller
+## Task 4: Pass companyId from the controller
 
 **Files:**
 - Modify: `server/src/modules/internal-audit/verification/verification.controller.ts`
@@ -393,7 +594,7 @@ git diff -- server/src/modules/internal-audit/verification/verification.controll
 
 Expected: only request typing and the added `companyId` argument changed.
 
-## Task 4: Wire module dependency
+## Task 5: Wire module dependency
 
 **Files:**
 - Modify: `server/src/modules/internal-audit/verification/verification.module.ts`
@@ -426,7 +627,7 @@ rg -n "VerificationModule|CorrectiveActionModule" server/src/modules/internal-au
 
 Expected: `VerificationModule` imports `CorrectiveActionModule`; `CorrectiveActionModule` does not import `VerificationModule`.
 
-## Task 5: Verify focused behavior and build
+## Task 6: Verify focused behavior and build
 
 **Files:**
 - No source edits unless tests or build reveal a mismatch with this plan.
@@ -441,7 +642,7 @@ cd server && npm test -- verification.service.spec.ts --runInBand
 
 Expected: PASS.
 
-- [ ] **Step 2: Run CAPA service tests**
+- [ ] **Step 2: Re-run CAPA service tests**
 
 Run:
 
@@ -480,9 +681,9 @@ git status --short
 git diff --stat
 ```
 
-Expected: only the four files listed in this plan changed unless a test-driven mismatch required a reported stop.
+Expected: only the five files listed in this plan changed unless a test-driven mismatch required a reported stop.
 
-## Task 6: Commit
+## Task 7: Commit
 
 **Files:**
 - Commit only files changed by this plan.
@@ -494,6 +695,7 @@ Run:
 ```bash
 git add \
   server/src/modules/internal-audit/verification/verification.service.spec.ts \
+  server/src/modules/corrective-action/corrective-action.service.ts \
   server/src/modules/internal-audit/verification/verification.service.ts \
   server/src/modules/internal-audit/verification/verification.controller.ts \
   server/src/modules/internal-audit/verification/verification.module.ts

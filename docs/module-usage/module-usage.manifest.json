@@ -1860,6 +1860,9 @@
       "prOrder": 28,
       "recommendedPr": "training/GAP-410",
       "validationCommands": [
+        "cd server && npm test -- verification.service.spec.ts --runInBand",
+        "cd server && npm test -- corrective-action.service.spec.ts --runInBand",
+        "npm run build:server",
         "pnpm test:e2e -- --grep GAP-410"
       ],
       "specPath": "docs/superpowers/specs/2026-05-02-gap-410-audit-finding-capa-linkage-design.md",

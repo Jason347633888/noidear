@@ -89,7 +89,7 @@ GAP-410 关注内部审核不符合项与 CAPA 闭环之间的断链。当前内
 - 自动 CAPA 的 `description` 能定位内审发现项的问题描述、问题类型和文档。
 - 同一公司、同一 `AuditFinding.id` 重复验证或重复调用服务时不会创建重复 CAPA。
 - `auditResult = '符合'` 的发现项不会触发 CAPA。
-- 缺失 `companyId` 时服务返回明确错误，不写入 CAPA。
+- 缺失 `companyId` 或 CAPA 创建失败时服务返回明确错误，不写入 CAPA，不把 `AuditFinding` 标记为 `verified`，也不完成 `audit_rectification` 待办。
 - 既有响应仍返回 `AuditFinding`，前端验证页面无需改合同。
 - `(cd server && npm test -- verification.service.spec.ts corrective-action.service.spec.ts --runInBand)` 通过。
 - `npm run build:server` 通过。
