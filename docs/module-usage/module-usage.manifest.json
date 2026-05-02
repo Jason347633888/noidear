@@ -1627,17 +1627,18 @@
       "id": "GAP-401",
       "severity": "P1",
       "moduleId": "document-control-and-record-forms",
-      "triageStatus": "needs_spec",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
       "needsDesign": true,
       "schemaImpact": true,
-      "historicalDataImpact": false,
+      "historicalDataImpact": true,
       "recommendedSuperpowers": [
         "brainstorming",
         "grill-with-docs",
-        "writing-plans"
+        "writing-plans",
+        "executing-plans"
       ],
       "prRoadmapGroup": "documents",
       "prOrder": null,
@@ -1645,8 +1646,8 @@
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-401"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-02-gap-401-document-issuance-document-fk-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-02-gap-401-document-issuance-document-fk-implementation.md"
     },
     {
       "id": "GAP-402",
