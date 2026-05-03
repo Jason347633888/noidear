@@ -36,6 +36,7 @@ import { BackupModule } from './modules/backup/backup.module';
 import { HealthModule } from './modules/health/health.module';
 import { TrainingModule } from './modules/training/training.module';
 import { InternalAuditModule } from './modules/internal-audit/internal-audit.module';
+import { ManagementReviewModule } from './modules/management-review/management-review.module';
 import { SearchModule } from './modules/search/search.module';
 import { ImportModule } from './modules/import/import.module';
 import { RecordTaskModule } from './modules/record-task/record-task.module';
@@ -128,6 +129,7 @@ import { ProductProcessChangeModule } from './modules/product-process-change/pro
     HealthModule,
     TrainingModule,
     InternalAuditModule,
+    ManagementReviewModule,
     SearchModule,
     ImportModule,
     RecordTaskModule,

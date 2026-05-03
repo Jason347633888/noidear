@@ -200,6 +200,9 @@ model User {
 
   ownedDocuments Document[] @relation("DocumentOwnerUser")
 
+  managementReviewsCreated ManagementReview[]       @relation("ManagementReviewCreator")
+  managementReviewActions  ManagementReviewAction[] @relation("ManagementReviewActionOwner")
+
   @@map("users")
 }
 
@@ -375,6 +378,8 @@ model Document {
   revisionOf     Document?  @relation("DocumentRevisions", fields: [revisionOfId], references: [id], onDelete: SetNull)
   revisions      Document[] @relation("DocumentRevisions")
   revisionStatus String     @default("current")
+
+  managementReviewReports ManagementReview[] @relation("ManagementReviewReportDocument")
 
   @@index([number])
   @@index([lineage_key])
@@ -881,6 +886,8 @@ model Record {
   changeEvent    ChangeEvent? @relation("ChangeEventRecords", fields: [changeEventId], references: [id], onDelete: SetNull)
   changeFormTasks ChangeEventFormTask[]
   product_recall_evidence ProductRecallEvidence[]
+  managementReviewMeetingMinutes ManagementReview[] @relation("ManagementReviewMeetingMinutes")
+  managementReviewReports        ManagementReview[] @relation("ManagementReviewReportRecord")
 
   @@index([templateId])
   @@index([number])
@@ -2277,6 +2284,82 @@ model AuditReport {
 
   @@index([documentId])
   @@map("audit_reports")
+}
+
+model ManagementReview {
+  id                 String   @id @default(cuid())
+  companyId          String
+  year               Int
+  title              String
+  status             String   @default("draft")
+  reviewDate         DateTime?
+  location           String?
+  materialDueDate    DateTime?
+  purpose            String   @default("评审质量和食品安全管理体系的适宜性、充分性和有效性。")
+  scope              Json     @default("[]")
+  participants       Json     @default("[]")
+  createdBy          String
+  completedAt        DateTime?
+  reportDocumentId   String?
+  reportRecordId     String?
+  meetingMinutesRecordId String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  creator              User      @relation("ManagementReviewCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  reportDocument       Document? @relation("ManagementReviewReportDocument", fields: [reportDocumentId], references: [id], onDelete: SetNull)
+  reportRecord         Record?   @relation("ManagementReviewReportRecord", fields: [reportRecordId], references: [id], onDelete: SetNull)
+  meetingMinutesRecord Record?   @relation("ManagementReviewMeetingMinutes", fields: [meetingMinutesRecordId], references: [id], onDelete: SetNull)
+  inputs               ManagementReviewInput[]
+  actions              ManagementReviewAction[]
+
+  @@unique([companyId, year])
+  @@index([companyId, status])
+  @@index([year])
+  @@index([reportDocumentId])
+  @@index([reportRecordId])
+  @@index([meetingMinutesRecordId])
+  @@map("management_reviews")
+}
+
+model ManagementReviewInput {
+  id         String   @id @default(cuid())
+  reviewId   String
+  sourceType String
+  sourceId   String
+  department String?
+  title      String
+  summary    Json
+  included   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  review ManagementReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, sourceType, sourceId])
+  @@index([reviewId, sourceType])
+  @@map("management_review_inputs")
+}
+
+model ManagementReviewAction {
+  id                    String   @id @default(cuid())
+  reviewId              String
+  action                String
+  responsibleDepartment String
+  ownerId               String?
+  dueDate               DateTime?
+  status                String   @default("open")
+  verificationNote      String?
+  completedAt           DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  review ManagementReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  owner  User?            @relation("ManagementReviewActionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([reviewId, status])
+  @@index([ownerId])
+  @@map("management_review_actions")
 }
 
 // TASK-379: 用户文档访问日志表（智能推荐基础数据）
