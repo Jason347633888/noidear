@@ -856,21 +856,22 @@
         "GAP-102"
       ],
       "blocks": [],
-      "canParallelize": false,
-      "needsDesign": true,
+      "canParallelize": true,
+      "needsDesign": false,
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
-        "writing-plans"
+        "writing-plans",
+        "executing-plans"
       ],
       "prRoadmapGroup": "warehouse",
-      "prOrder": null,
+      "prOrder": 37,
       "recommendedPr": "warehouse/GAP-110",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-110"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-03-gap-110-fifo-batch-selector-requisition-implementation.md"
     },
     {
       "id": "GAP-200",
