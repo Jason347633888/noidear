@@ -1,8 +1,26 @@
 import request from './request';
 
+export interface DocumentRevisionItem {
+  id: string;
+  number: string;
+  title: string;
+  versionNo: number;
+  versionLabel: string;
+  status: string;
+  revisionStatus?: string | null;
+  revisionOfId?: string | null;
+  superseded_by_id?: string | null;
+  isCurrentVersion?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface DocumentVersionItem {
   id: string;
-  version: number;
+  version: number | string;
+  documentVersionNo?: number;
+  documentVersionLabel?: string;
+  snapshotVersionLabel?: string;
   fileName: string;
   fileSize: string | number;
   createdAt: string;
@@ -19,7 +37,7 @@ export interface VersionCompareResult {
 
 export const documentManagementApi = {
   getVersions(id: string) {
-    return request.get<{ versions: DocumentVersionItem[] }>(`/documents/${id}/versions`);
+    return request.get<{ revisions: DocumentRevisionItem[]; versions: DocumentVersionItem[] }>(`/documents/${id}/versions`);
   },
   compareVersions(id: string, v1: number | string, v2: number | string) {
     return request.get<VersionCompareResult>(`/documents/${id}/versions/${v1}/compare/${v2}`);

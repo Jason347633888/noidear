@@ -118,6 +118,7 @@ declare module 'vue' {
     LogDetailDialog: typeof import('./src/components/audit/LogDetailDialog.vue')['default']
     MarkdownEditor: typeof import('./src/components/documents/MarkdownEditor.vue')['default']
     MarkdownViewer: typeof import('./src/components/documents/MarkdownViewer.vue')['default']
+    MaterialBatchSelect: typeof import('./src/components/master-data/MaterialBatchSelect.vue')['default']
     MaterialSelect: typeof import('./src/components/master-data/MaterialSelect.vue')['default']
     MetricCard: typeof import('./src/components/monitoring/MetricCard.vue')['default']
     NumberField: typeof import('./src/components/fields/NumberField.vue')['default']

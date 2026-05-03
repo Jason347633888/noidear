@@ -290,13 +290,37 @@
       </section>
     </el-card>
 
+    <el-card class="version-card" v-if="revisionHistory.length">
+      <template #header>
+        <span>修订链</span>
+      </template>
+      <el-table :data="revisionHistory" stripe>
+        <el-table-column prop="versionLabel" label="受控版本" width="100" />
+        <el-table-column prop="title" label="文件名称" min-width="160" />
+        <el-table-column label="状态" width="120">
+          <template #default="{ row }">
+            <el-tag :type="getStatusType(row.status)">
+              {{ getStatusText(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="修订状态" width="140">
+          <template #default="{ row }">
+            {{ revisionStatusText(row) }}
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
     <el-card class="version-card" v-if="versionHistory.length">
       <template #header>
         <span>版本历史</span>
       </template>
       <el-table :data="versionHistory" stripe>
-        <el-table-column prop="version" label="版本" width="80">
-          <template #default="{ row }">v{{ row.version }}</template>
+        <el-table-column prop="version" label="版本" width="180">
+          <template #default="{ row }">
+            {{ row.documentVersionLabel || displayVersion }} / {{ row.snapshotVersionLabel || `文件快照 ${row.version}` }}
+          </template>
         </el-table-column>
         <el-table-column prop="fileName" label="文件名" min-width="150" />
         <el-table-column prop="fileSize" label="大小" width="100">
@@ -419,17 +443,10 @@ import MarkdownEditor from '@/components/documents/MarkdownEditor.vue';
 import MarkdownViewer from '@/components/documents/MarkdownViewer.vue';
 import { useUserStore } from '@/stores/user';
 import filePreviewApi from '@/api/file-preview';
-import { documentManagementApi } from '@/api/document-management';
+import { documentManagementApi, type DocumentRevisionItem, type DocumentVersionItem } from '@/api/document-management';
 import { documentControlApi, type DocumentReferenceHealthIssue, type DocumentReferenceHealthResult, type ReferenceHealthStatus } from '@/api/document-control';
 
-interface VersionItem {
-  id: string;
-  version: number;
-  fileName: string;
-  fileSize: string | number;
-  createdAt: string;
-  creator: { name: string } | null;
-}
+type VersionItem = DocumentVersionItem;
 
 interface Approval {
   id: string;
@@ -499,6 +516,7 @@ const router = useRouter();
 const userStore = useUserStore();
 const loading = ref(false);
 const document = ref<Document | null>(null);
+const revisionHistory = ref<DocumentRevisionItem[]>([]);
 const versionHistory = ref<VersionItem[]>([]);
 const showPreview = ref(false);
 const previewLoading = ref(false);
@@ -700,6 +718,13 @@ const referenceHealthActionText = (status: ReferenceHealthStatus): string => {
   return map[status];
 };
 
+const revisionStatusText = (row: DocumentRevisionItem): string => {
+  if (row.isCurrentVersion || row.revisionStatus === 'current') return '当前有效';
+  if (row.revisionStatus === 'revision_draft') return '修订草稿';
+  if (row.revisionStatus === 'superseded' || row.superseded_by_id) return '已被替代';
+  return row.revisionStatus || '-';
+};
+
 const getStatusType = (status: string): string => {
   const map: Record<string, string> = {
     draft: 'info',
@@ -747,9 +772,11 @@ const fetchData = async () => {
 const fetchVersionHistory = async () => {
   try {
     const res = await documentManagementApi.getVersions(String(route.params.id));
+    revisionHistory.value = res.revisions || [];
     versionHistory.value = res.versions || [];
   } catch (error) {
-    // 版本历史获取失败不影响主流程
+    revisionHistory.value = [];
+    versionHistory.value = [];
   }
 };
 

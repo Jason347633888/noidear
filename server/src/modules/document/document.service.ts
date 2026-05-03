@@ -602,6 +602,38 @@ export class DocumentService {
     return { list: convertBigIntToNumber(enrichedList), total, page, limit };
   }
 
+  private async supersedePreviousEffectiveRevision(
+    tx: PrismaService | Prisma.TransactionClient,
+    document: { id: string; number: string; lineage_key?: string | null; revisionOfId?: string | null },
+  ) {
+    if (!document.revisionOfId) return;
+
+    const lineageKey = document.lineage_key ?? document.number;
+    const previous = await tx.document.findFirst({
+      where: {
+        id: { not: document.id },
+        deletedAt: null,
+        status: { in: [...EFFECTIVE_COMPAT_STATUSES] },
+        OR: [
+          { lineage_key: lineageKey } as any,
+          { id: document.revisionOfId },
+          { number: document.number },
+        ],
+      },
+    });
+
+    if (!previous) return;
+
+    await tx.document.update({
+      where: { id: previous.id },
+      data: {
+        status: 'superseded',
+        revisionStatus: 'superseded',
+        superseded_by_id: document.id,
+      } as any,
+    });
+  }
+
   async approve(id: string, status: string, comment: string | undefined, approverId: string) {
     const document = await this.findOne(id, approverId, 'leader');
 
@@ -651,24 +683,37 @@ export class DocumentService {
       );
     }
 
-    // 更新待处理的审批记录状态
-    await this.prisma.approval.update({
-      where: { id: pendingApproval.id },
-      data: {
-        status: status === 'approved' ? 'approved' : 'rejected',
-        comment: comment ?? null,
-      },
-    });
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.approval.update({
+        where: { id: pendingApproval.id },
+        data: {
+          status: status === 'approved' ? 'approved' : 'rejected',
+          comment: comment ?? null,
+        },
+      });
 
-    const result = await this.prisma.document.update({
-      where: { id },
-      data: {
-        status: status === 'approved'
-          ? CANONICAL_DOCUMENT_STATUS.EFFECTIVE
-          : CANONICAL_DOCUMENT_STATUS.REJECTED,
-        approverId,
-        approvedAt: new Date(),
-      },
+      const updated = await tx.document.update({
+        where: { id },
+        data: {
+          status: status === 'approved'
+            ? CANONICAL_DOCUMENT_STATUS.EFFECTIVE
+            : CANONICAL_DOCUMENT_STATUS.REJECTED,
+          revisionStatus: status === 'approved' ? 'current' : (document as any).revisionStatus,
+          approverId,
+          approvedAt: new Date(),
+        } as any,
+      });
+
+      if (status === 'approved') {
+        await this.supersedePreviousEffectiveRevision(tx, {
+          id,
+          number: document.number,
+          lineage_key: (document as any).lineage_key,
+          revisionOfId: (document as any).revisionOfId,
+        });
+      }
+
+      return updated;
     });
 
     // 发送通知给文档创建人
@@ -706,20 +751,91 @@ export class DocumentService {
     return convertBigIntToNumber(result);
   }
 
+  private snapshotLabel(version: unknown): string {
+    const value =
+      typeof version === 'object' &&
+      version !== null &&
+      typeof (version as { toString?: unknown }).toString === 'function'
+        ? (version as { toString: () => string }).toString()
+        : String(version);
+    return `文件快照 ${value}`;
+  }
+
   async getVersionHistory(id: string, userId: string, role: string) {
-    const document = await this.findOne(id, userId, role);
+    const document = (await this.findOne(id, userId, role)) as any;
+    const lineageKey = document.lineage_key ?? document.number;
 
-    const versions = await this.prisma.documentVersion.findMany({
-      where: { documentId: id },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        creator: {
-          select: { id: true, name: true },
+    const [revisionRows, versionRows] = await Promise.all([
+      this.prisma.document.findMany({
+        where: {
+          deletedAt: null,
+          OR: [
+            { id },
+            { revisionOfId: id },
+            { lineage_key: lineageKey },
+            { number: document.number },
+          ] as any,
         },
-      },
-    }) as unknown as any[];
+        orderBy: [{ versionNo: 'desc' }, { createdAt: 'desc' }],
+        select: {
+          id: true,
+          number: true,
+          title: true,
+          version: true,
+          versionNo: true,
+          status: true,
+          revisionStatus: true,
+          revisionOfId: true,
+          superseded_by_id: true,
+          lineage_key: true,
+          createdAt: true,
+          updatedAt: true,
+        } as any,
+      }) as unknown as any[],
+      this.prisma.documentVersion.findMany({
+        where: { documentId: id },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          creator: {
+            select: { id: true, name: true },
+          },
+        },
+      }) as unknown as any[],
+    ]);
 
-    return { document, versions: convertBigIntToNumber(versions) };
+    const seenRevisionIds = new Set<string>();
+    const revisions = revisionRows
+      .filter((row) => {
+        if (seenRevisionIds.has(row.id)) return false;
+        seenRevisionIds.add(row.id);
+        return true;
+      })
+      .map((row) => {
+        const decorated = withDocumentVersionLabel(row);
+        return { ...decorated, isCurrentVersion: row.revisionStatus === 'current' };
+      });
+
+    const versions = versionRows.map((row) => {
+      const versionStr =
+        row.version != null &&
+        typeof row.version === 'object' &&
+        typeof (row.version as { toString?: unknown }).toString === 'function'
+          ? (row.version as { toString: () => string }).toString()
+          : String(row.version);
+      return {
+        ...row,
+        version: versionStr,
+        documentVersionNo: document.versionNo,
+        documentVersionLabel: document.versionLabel,
+        snapshotVersionLabel: this.snapshotLabel(row.version),
+      };
+    });
+
+    return {
+      document,
+      revisions: convertBigIntToNumber(revisions),
+      versions: convertBigIntToNumber(versions),
+    };
   }
 
   async deactivate(id: string, userId: string, role: string) {
