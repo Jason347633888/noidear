@@ -307,7 +307,7 @@ BEGIN
     SELECT 1
     FROM "training_projects" tp
     CROSS JOIN LATERAL unnest(COALESCE(tp."trainees", ARRAY[]::TEXT[])) AS trainee("userId")
-    LEFT JOIN "User" u ON u."id" = trainee."userId"
+    LEFT JOIN "users" u ON u."id" = trainee."userId"
     WHERE u."id" IS NULL
   ) THEN
     RAISE EXCEPTION 'Cannot migrate TrainingProject.trainees: orphan user ids exist';
@@ -342,7 +342,7 @@ ALTER TABLE "training_project_trainees"
 
 ALTER TABLE "training_project_trainees"
   ADD CONSTRAINT "training_project_trainees_userId_fkey"
-  FOREIGN KEY ("userId") REFERENCES "User"("id")
+  FOREIGN KEY ("userId") REFERENCES "users"("id")
   ON DELETE RESTRICT ON UPDATE CASCADE;
 
 ALTER TABLE "training_projects" DROP COLUMN "trainees";
