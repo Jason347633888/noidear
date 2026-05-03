@@ -17,6 +17,18 @@ export class CreateShiftInstanceDto {
 
   @IsOptional()
   @IsString()
+  teamId?: string;
+
+  @IsOptional()
+  @IsString()
+  leaderId?: string;
+
+  @IsOptional()
+  @IsString()
+  teamOverrideReason?: string;
+
+  @IsOptional()
+  @IsString()
   notes?: string;
 }
 

@@ -79,20 +79,26 @@ describe('TeamShiftService', () => {
         id: 'new-schedule',
         team_id: 'team-1',
         shift_type_id: 'shift-1',
-        work_date: new Date('2024-01-15'),
+        work_date: new Date('2026-05-02'),
+        leader_id: 'employee-leader-1',
       });
 
-      await service.createSchedule({
+      const dto = {
         teamId: 'team-1',
         shiftTypeId: 'shift-1',
-        workDate: '2024-01-15',
-      });
+        workDate: '2026-05-02',
+        leaderId: 'employee-leader-1',
+      };
+
+      await service.createSchedule(dto);
 
       expect(mockPrisma.teamShiftSchedule.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+        data: {
           team_id: 'team-1',
           shift_type_id: 'shift-1',
-        }),
+          work_date: new Date('2026-05-02'),
+          leader_id: 'employee-leader-1',
+        },
       });
     });
   });

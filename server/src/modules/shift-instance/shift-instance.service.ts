@@ -27,6 +27,66 @@ export class ShiftInstanceService {
     return shiftType;
   }
 
+  private async findSchedules(shiftTypeId: string, shiftDate: Date) {
+    return this.prisma.teamShiftSchedule.findMany({
+      where: {
+        shift_type_id: shiftTypeId,
+        work_date: shiftDate,
+      },
+      include: { team: true },
+      orderBy: { team_id: 'asc' },
+    });
+  }
+
+  private async assertTeamActive(teamId: string) {
+    const team = await this.prisma.team.findFirst({
+      where: { id: teamId, active: true },
+    });
+
+    if (!team) {
+      throw new BadRequestException('班组不存在或已停用');
+    }
+  }
+
+  private resolveTeamBinding(
+    dto: CreateShiftInstanceDto,
+    schedules: Array<{ team_id: string; leader_id?: string | null }>,
+  ) {
+    const hasAmbiguousSchedules = schedules.length > 1;
+
+    if (hasAmbiguousSchedules && !dto.teamId) {
+      throw new BadRequestException('同一日期和班次存在多个排班，请指定班组');
+    }
+
+    if (hasAmbiguousSchedules && !dto.teamOverrideReason) {
+      throw new BadRequestException('同一日期和班次存在多个排班，指定班组时必须填写原因');
+    }
+
+    const selectedSchedule = dto.teamId
+      ? schedules.find((schedule) => schedule.team_id === dto.teamId) ?? null
+      : schedules[0] ?? null;
+    const scheduledTeamId = selectedSchedule?.team_id;
+    const scheduledLeaderId = selectedSchedule?.leader_id ?? undefined;
+    const finalTeamId = dto.teamId ?? scheduledTeamId;
+    const finalLeaderId = dto.leaderId ?? scheduledLeaderId;
+    const overridesTeam =
+      dto.teamId != null && (scheduledTeamId == null || dto.teamId !== scheduledTeamId);
+    const overridesLeader = dto.leaderId != null && dto.leaderId !== scheduledLeaderId;
+
+    if ((overridesTeam || overridesLeader) && !dto.teamOverrideReason) {
+      throw new BadRequestException('覆盖排班班组或负责人时必须填写原因');
+    }
+
+    return {
+      teamId: finalTeamId,
+      leaderId: finalLeaderId,
+      overrideReason:
+        hasAmbiguousSchedules || overridesTeam || overridesLeader
+          ? dto.teamOverrideReason
+          : undefined,
+    };
+  }
+
   async create(dto: CreateShiftInstanceDto, userId: string) {
     const shiftType = await this.resolveShiftType(dto);
     const shiftDate = new Date(dto.shift_date);
@@ -42,16 +102,26 @@ export class ShiftInstanceService {
     });
     if (existing) throw new ConflictException('该班次已开班');
 
+    const schedules = await this.findSchedules(shiftType.id, shiftDate);
+    const teamBinding = this.resolveTeamBinding(dto, schedules);
+
+    if (teamBinding.teamId) {
+      await this.assertTeamActive(teamBinding.teamId);
+    }
+
     return this.prisma.shiftInstance.create({
       data: {
         company_id: '1',
         shift_type_id: shiftType.id,
         shift_type: shiftType.name,
         shift_date: shiftDate,
+        team_id: teamBinding.teamId,
+        leader_id: teamBinding.leaderId,
+        team_override_reason: teamBinding.overrideReason,
         opened_by: userId,
         notes: dto.notes,
       },
-      include: { shift_type_ref: true },
+      include: { shift_type_ref: true, team: true },
     });
   }
 
@@ -63,6 +133,7 @@ export class ShiftInstanceService {
       },
       include: {
         shift_type_ref: true,
+        team: true,
         production_runs: {
           include: { product: true },
           orderBy: { started_at: 'asc' },
@@ -77,6 +148,7 @@ export class ShiftInstanceService {
       where: { id, company_id: '1' },
       include: {
         shift_type_ref: true,
+        team: true,
         production_runs: {
           include: { product: true, recipe: true },
           orderBy: { started_at: 'asc' },

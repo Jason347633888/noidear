@@ -17,4 +17,8 @@ export class CreateTeamScheduleDto {
   @IsString() @IsNotEmpty() teamId!: string;
   @IsString() @IsNotEmpty() shiftTypeId!: string;
   @IsDateString() workDate!: string;
+
+  @IsOptional()
+  @IsString()
+  leaderId?: string;
 }
