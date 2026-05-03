@@ -38,7 +38,8 @@ roleObj  Role?  @relation("UserRole", ...)
 
 **不需要修改的文件**（这些文件的 `role` 来自 JWT `req.user`，只要 JWT 修复即可）：
 - `roles.guard.ts`、`permission.guard.ts` — 从 `req.user.role` 读取，JWT 修复后自动正确
-- `task.service.ts`、`document.service.ts`（多数 role 参数）、`document.controller.ts`、`document-query.service.ts`、`file-preview.service.ts`、`record-task.controller.ts`、`export.service.ts`、`recycle-bin.service.ts`、`workflow-instance.controller.ts` — 均从 JWT `req.user.role` 传入，JWT 修复后行为不变
+- `document.service.ts`（除第 645 行 approver 检查和第 978 行 permanentDelete 检查之外的其他 role 参数）、`document.controller.ts`、`document-query.service.ts`、`file-preview.service.ts`、`record-task.controller.ts`、`export.service.ts`、`recycle-bin.service.ts`、`workflow-instance.controller.ts` — 均从 JWT `req.user.role` 传入，JWT 修复后行为不变
+- `task.service.ts`（`getUserContext()` 的 DB 直接查询部分需修复，见 Task 6；但其他从 `req.user.role` 传入 role 参数的方法不需要修改）
 
 ---
 
@@ -48,7 +49,7 @@ roleObj  Role?  @relation("UserRole", ...)
 - **grill-me 校准结论：**
   - Role.code 与 User.role 字符串值完全一致（admin/leader/user），迁移不改变运行时角色语义。
   - JWT role 字段名保持不变（仍为 `role`），所有下游守卫与业务模块无需感知变更。
-  - 仅 2 处 DB 直接查 User 后检查 `.role`，需专项修复。
+  - 共 5 处 DB 直接查 User 后检查 `.role`，需专项修复（原计划遗漏 task.service.ts × 7 处、document.service.ts:978、approval.service.ts:71，已在本次修订补入）。
   - 需要在 login/SSO 时用 `include: { roleObj: true }` 拉取角色关系。
   - 无 schema migration，无历史数据迁移，无前端变更，风险极低。
 - **执行限制：** 执行 agent 只能使用 `superpowers:executing-plans`；不得扩展范围、重写 spec、修改 schema。
@@ -59,11 +60,13 @@ roleObj  Role?  @relation("UserRole", ...)
 
 ## File Map
 
-修改文件（共 4 个）：
+修改文件（共 7 个）：
 - `server/src/modules/auth/auth.service.ts` — login 查询加 include roleObj，JWT payload 改用 `roleObj?.code ?? role`
 - `server/src/modules/auth/sso.service.ts` — 同上（3 处 JWT 构造）
-- `server/src/modules/document/document.service.ts` — 第 645 行 approver 查询加 include roleObj，改读 `approver.roleObj?.code ?? approver.role`
+- `server/src/modules/document/document.service.ts` — 第 645 行 approver 查询加 include roleObj，改读 `approver.roleObj?.code ?? approver.role`；第 978 行 permanentDelete 查询加 include roleObj，改读 `user.roleObj?.code ?? user.role`
 - `server/src/modules/user-permission/user-permission.service.ts` — 第 127 行 revoker 查询加 include roleObj，改读 `revoker.roleObj?.code ?? revoker.role`
+- `server/src/modules/task/task.service.ts` — `getUserContext()` 的 select 改为 include roleObj，`UserContext` 类型扩展包含 roleObj，所有调用处改用 `roleObj?.code ?? role` fallback（共 7 处 isAdminOrLeader / role !== 'admin' 判断）
+- `server/src/modules/approval/approval.service.ts` — 第 71 行 user 查询加 include roleObj，改读 `user.roleObj?.code ?? user.role`
 
 不修改文件：
 - `server/src/prisma/schema.prisma`（不删字段、不加字段、不加 migration）
@@ -150,7 +153,7 @@ const payload = {
 
 ---
 
-## Task 4: 修复 document.service.ts — approver DB 查询用 Role.code
+## Task 4: 修复 document.service.ts — approver DB 查询用 Role.code（第 645 行）
 
 **File:** `server/src/modules/document/document.service.ts`
 
@@ -179,7 +182,45 @@ const isAdmin = approver?.role === 'admin';  // ← 弃用字段
 - [ ] 不改同文件其他 role 参数（它们从 JWT `req.user.role` 传入，由 Task 2 修复覆盖）。
 
 **Acceptance:**
-- 该函数不再直接读 `approver.role` 做判断。
+- 第 645 行附近的 `approver.role` 判断不再直接读弃用字段。
+- TypeScript 编译通过。
+
+---
+
+## Task 4b: 修复 document.service.ts — permanentDelete DB 查询用 Role.code（第 978 行）
+
+**File:** `server/src/modules/document/document.service.ts`
+
+**当前代码（约第 972-983 行）：**
+```typescript
+async permanentDelete(id: string, userId: string) {
+  // 权限检查：只有管理员可以物理删除
+  const user = await this.prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user || user.role !== 'admin') {   // ← 直接从 DB 读 User.role
+    throw new BusinessException(ErrorCode.FORBIDDEN, '只有管理员可以物理删除文档');
+  }
+```
+
+- [ ] 将 user 查询改为：
+  ```typescript
+  const user = await this.prisma.user.findUnique({
+    where: { id: userId },
+    include: { roleObj: true },
+  });
+  ```
+- [ ] 将权限判断改为：
+  ```typescript
+  const userRoleCode = user?.roleObj?.code ?? user?.role;
+  if (!user || userRoleCode !== 'admin') {
+    throw new BusinessException(ErrorCode.FORBIDDEN, '只有管理员可以物理删除文档');
+  }
+  ```
+
+**Acceptance:**
+- 第 978 行的 `user.role` 判断不再直接读弃用字段。
 - TypeScript 编译通过。
 
 ---
@@ -220,7 +261,100 @@ if (revoker && revoker.role !== 'admin' && userPermission.grantedBy !== revokedB
 
 ---
 
-## Task 6: 验证与回归
+## Task 6: 修复 task.service.ts — getUserContext DB 查询用 Role.code
+
+**File:** `server/src/modules/task/task.service.ts`
+
+**当前代码（约第 51-58 行）：**
+```typescript
+private async getUserContext(userId: string): Promise<UserContext> {
+  const user = await this.prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, departmentId: true },  // ← 直接从 DB select User.role
+  });
+  if (!user) throw new NotFoundException('User not found');
+  return user;
+}
+```
+
+此函数结果的 `.role` 字段在 7 处业务判断中使用（第 62、119、168、183、226、296、343 行）。
+
+- [ ] 将 `getUserContext()` 的查询改为使用 `include` 而非 `select`（因为 `select` 不支持同时 include 关联），并在 `UserContext` 类型中加入 `roleObj`：
+  ```typescript
+  private async getUserContext(userId: string): Promise<UserContext> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, departmentId: true, roleObj: { select: { code: true } } },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+  ```
+  > **注意：** Prisma 的 `select` 支持嵌套关联 select，故可在原 `select` 块中加 `roleObj: { select: { code: true } }`，无需改为 `include`。
+
+- [ ] 检查 `UserContext` 类型定义（如有），加入 `roleObj?: { code: string } | null`。
+
+- [ ] 在 `isAdminOrLeader()` 的所有调用处，改传 fallback 后的 role 值：
+  ```typescript
+  const roleCode = user.roleObj?.code ?? user.role;
+  if (!this.isAdminOrLeader(roleCode)) { ... }
+  ```
+  涉及行号：62、119、168、226、296（共 5 处 `isAdminOrLeader(user.role)` 调用）
+
+- [ ] 在直接比较 `user.role !== 'admin'` 处同样改用 fallback：
+  ```typescript
+  const roleCode = user.roleObj?.code ?? user.role;
+  if (roleCode !== 'admin' && ...) { ... }
+  ```
+  涉及行号：183、343（共 2 处）
+
+- [ ] 不改 `isAdminOrLeader()` 函数本身（参数类型 `string` 不变）。
+- [ ] 不改从 `req.user.role` 传入 role 参数的其他方法。
+
+**Acceptance:**
+- `getUserContext()` 的 select 包含 `roleObj.code`。
+- 所有 7 处 `user.role` 调用改为 `user.roleObj?.code ?? user.role` fallback。
+- TypeScript 编译通过。
+
+---
+
+## Task 7: 修复 approval.service.ts — approver DB 查询用 Role.code（第 71 行）
+
+**File:** `server/src/modules/approval/approval.service.ts`
+
+**当前代码（约第 67-73 行）：**
+```typescript
+const user = await this.prisma.user.findUnique({
+  where: { id: approverId },
+});
+
+if (!user || user.role !== 'admin') {   // ← 直接从 DB 读 User.role
+  throw new BusinessException(ErrorCode.FORBIDDEN, '无权审批此记录');
+}
+```
+
+- [ ] 将 user 查询改为：
+  ```typescript
+  const user = await this.prisma.user.findUnique({
+    where: { id: approverId },
+    include: { roleObj: true },
+  });
+  ```
+- [ ] 将权限判断改为：
+  ```typescript
+  const userRoleCode = user?.roleObj?.code ?? user?.role;
+  if (!user || userRoleCode !== 'admin') {
+    throw new BusinessException(ErrorCode.FORBIDDEN, '无权审批此记录');
+  }
+  ```
+
+**Acceptance:**
+- 第 71 行的 `user.role` 判断不再直接读弃用字段。
+- TypeScript 编译通过。
+
+---
+
+## Task 8: 验证与回归
 
 - [ ] 运行 TypeScript 编译检查：
   ```bash
@@ -228,7 +362,7 @@ if (revoker && revoker.role !== 'admin' && userPermission.grantedBy !== revokedB
   ```
 - [ ] 运行现有单元测试：
   ```bash
-  cd server && npm test -- --testPathPattern="auth|sso|document|user-permission" --passWithNoTests
+  cd server && npm test -- --testPathPattern="auth|sso|document|user-permission|task|approval" --passWithNoTests
   ```
 - [ ] 搜索确认弃用字段使用已全部处理：
   ```bash
@@ -236,6 +370,13 @@ if (revoker && revoker.role !== 'admin' && userPermission.grantedBy !== revokedB
   grep -rn "\.role\b" server/src/modules --include="*.ts" | grep -v ".spec.ts" | grep -v "roleId\|roleObj\|roleCode\|?? \|RolesGuard\|roles.decorator\|role:" | grep "=== '\|!== '\|includes(user"
   ```
   预期：无输出（或只剩守卫/装饰器中已审查过的合理用法）。
+- [ ] 额外确认 Type-B 裸用法已全部消除（参见 issue 验证命令）：
+  ```bash
+  grep -rn "\.role\b" server/src/modules --include="*.ts" \
+    | grep -v "\.spec\.ts\|roleId\|roleObj\|roleCode\|RolesGuard\|roles\.decorator\|req\.user\.\|allowedRoles\|@deprecated\|?? \|role:" \
+    | grep "prisma\.\|findUnique\|findFirst"
+  ```
+  预期：只剩 `role.service.ts` 和 `document-read-requirement.service.ts` 中对 Role 模型本身的操作（非 User.role），无 User.role 的裸读取。
 - [ ] 运行 git diff --check 确认无空白字符错误。
 
 **Final report must include:**
@@ -260,7 +401,8 @@ if (revoker && revoker.role !== 'admin' && userPermission.grantedBy !== revokedB
 - 不修改任何 Prisma migration 文件
 - 不改 `AuthenticatedUser` 接口（`role: string` 语义不变）
 - 不改 `roles.guard.ts` / `permission.guard.ts`（已通过 JWT role 正确工作）
-- 不改任何从 `req.user.role` 透传 role 参数的控制器/服务文件
+- 不改任何从 `req.user.role` 透传 role 参数的控制器/服务文件（包括 `document.controller.ts`、`document-query.service.ts`、`file-preview.service.ts`、`record-task.controller.ts`、`export.service.ts`、`recycle-bin.service.ts`、`workflow-instance.controller.ts`）
+- 不改 `task.service.ts` 中从 `req.user.role` 传入的 role 参数（只改 `getUserContext()` 的 DB 直查部分）
 - 不改前端代码
 - 不增加新 API 端点
 - 不改 seed 数据
