@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CapaTriggerType, CreateCapaDto } from './dto/create-capa.dto';
 import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
@@ -16,11 +17,21 @@ export class CorrectiveActionService {
     private readonly numberSequence: QualityNumberSequenceService,
   ) {}
 
-  async create(dto: CreateCapaDto, userId: string, companyId: string) {
-    await this.validateTriggerSource(dto, companyId);
+  async create(
+    dto: CreateCapaDto,
+    userId: string,
+    companyId: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client = tx ?? this.prisma;
+    await this.validateTriggerSource(dto, companyId, client);
 
-    const capa_no = await this.numberSequence.generateCorrectiveActionNo(companyId);
-    return this.prisma.correctiveAction.create({
+    const capa_no = await this.numberSequence.generateCorrectiveActionNo(
+      companyId,
+      new Date(),
+      tx,
+    );
+    return client.correctiveAction.create({
       data: { ...dto, company_id: companyId, capa_no },
     });
   }
@@ -44,7 +55,11 @@ export class CorrectiveActionService {
     });
   }
 
-  private async validateTriggerSource(dto: CreateCapaDto, companyId: string) {
+  private async validateTriggerSource(
+    dto: CreateCapaDto,
+    companyId: string,
+    client: PrismaService | Prisma.TransactionClient,
+  ) {
     if (dto.trigger_type === 'other') {
       return;
     }
@@ -54,7 +69,7 @@ export class CorrectiveActionService {
     }
 
     if (dto.trigger_type === 'non_conformance') {
-      const source = await this.prisma.nonConformance.findFirst({
+      const source = await client.nonConformance.findFirst({
         where: { id: dto.trigger_id, company_id: companyId },
         select: { id: true },
       });
@@ -65,7 +80,7 @@ export class CorrectiveActionService {
     }
 
     if (dto.trigger_type === 'customer_complaint') {
-      const source = await this.prisma.customerComplaint.findFirst({
+      const source = await client.customerComplaint.findFirst({
         where: { id: dto.trigger_id, company_id: companyId },
         select: { id: true },
       });
@@ -76,7 +91,7 @@ export class CorrectiveActionService {
     }
 
     if (dto.trigger_type === 'internal_audit') {
-      const source = await this.prisma.auditFinding.findUnique({
+      const source = await client.auditFinding.findUnique({
         where: { id: dto.trigger_id },
         select: { id: true },
       });

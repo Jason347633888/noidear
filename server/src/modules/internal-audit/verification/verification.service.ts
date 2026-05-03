@@ -5,9 +5,11 @@ import {
   BadRequestException,
   Optional,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OperationLogService } from '../../operation-log/operation-log.service';
 import { ApprovalEngineService } from '../../unified-approval/approval-engine.service';
+import { CorrectiveActionService } from '../../corrective-action/corrective-action.service';
 import { VerifyRectificationDto, RejectRectificationDto } from './dto';
 
 @Injectable()
@@ -15,6 +17,7 @@ export class VerificationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly operationLogService: OperationLogService,
+    private readonly correctiveActionService: CorrectiveActionService,
     @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {}
 
@@ -36,12 +39,14 @@ export class VerificationService {
     findingId: string,
     dto: VerifyRectificationDto,
     userId: string,
+    companyId: string,
   ) {
     // 1. Validate finding exists
     const finding = await this.prisma.auditFinding.findUnique({
       where: { id: findingId },
       include: {
         plan: { select: { auditorId: true } },
+        document: { select: { id: true, title: true, number: true } },
       },
     });
 
@@ -83,27 +88,44 @@ export class VerificationService {
       }
     } catch { /* no definition = skip */ }
 
-    const updatedFinding = await this.prisma.auditFinding.update({
-      where: { id: findingId },
-      data: {
-        status: 'verified',
-        verifiedBy: userId,
-        verifiedAt: new Date(),
-      },
+    const now = new Date();
+    const updatedFinding = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Atomically claim the finding by conditionally updating its status.
+      // Only one concurrent caller can win this update; the loser gets count=0.
+      const { count } = await tx.auditFinding.updateMany({
+        where: {
+          id: findingId,
+          status: 'pending_verification',
+        },
+        data: {
+          status: 'verified',
+          verifiedBy: userId,
+          verifiedAt: now,
+        },
+      });
+
+      if (count === 0) {
+        throw new BadRequestException(
+          'Finding has already been verified or is no longer pending verification',
+        );
+      }
+
+      await this.createCapaForVerifiedFinding(finding, userId, companyId, tx);
+
+      await tx.todoTask.updateMany({
+        where: {
+          type: 'audit_rectification',
+          relatedId: findingId,
+        },
+        data: {
+          status: 'completed',
+        },
+      });
+
+      return { ...finding, status: 'verified' as const, verifiedBy: userId, verifiedAt: now };
     });
 
-    // 6. Update TodoTask status (audit_rectification → completed)
-    await this.prisma.todoTask.updateMany({
-      where: {
-        type: 'audit_rectification',
-        relatedId: findingId,
-      },
-      data: {
-        status: 'completed',
-      },
-    });
-
-    // 7. Log operation
+    // 6. Log operation
     await this.operationLogService.log({
       userId,
       action: 'verify_rectification',
@@ -116,6 +138,59 @@ export class VerificationService {
     });
 
     return updatedFinding;
+  }
+
+  private async createCapaForVerifiedFinding(
+    finding: any,
+    userId: string,
+    companyId: string,
+    tx: Prisma.TransactionClient,
+  ) {
+    if (finding.auditResult !== '不符合') {
+      return;
+    }
+
+    if (!companyId) {
+      throw new BadRequestException('Missing companyId for audit CAPA creation');
+    }
+
+    const existing = await tx.correctiveAction.findFirst({
+      where: {
+        company_id: companyId,
+        trigger_type: 'internal_audit',
+        trigger_id: finding.id,
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      return;
+    }
+
+    const documentLabel = [finding.document?.number, finding.document?.title]
+      .filter(Boolean)
+      .join(' ');
+    const descriptionParts = [
+      '内审不符合项CAPA',
+      finding.issueType ? `问题类型：${finding.issueType}` : undefined,
+      documentLabel ? `文件：${documentLabel}` : undefined,
+      finding.description ? `描述：${finding.description}` : undefined,
+    ].filter(Boolean);
+
+    await this.correctiveActionService.create(
+      {
+        trigger_type: 'internal_audit',
+        trigger_id: finding.id,
+        description: descriptionParts.join('；'),
+        responsible_id: finding.assigneeId ?? undefined,
+        due_date: finding.dueDate
+          ? finding.dueDate.toISOString().slice(0, 10)
+          : undefined,
+      },
+      userId,
+      companyId,
+      tx,
+    );
   }
 
   async rejectRectification(

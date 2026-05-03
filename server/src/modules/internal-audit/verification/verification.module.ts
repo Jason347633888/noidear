@@ -7,6 +7,7 @@ import { AuditModule } from '../../audit/audit.module';
 import { UserPermissionModule } from '../../user-permission/user-permission.module';
 import { RedisModule } from '../../redis/redis.module';
 import { UnifiedApprovalModule } from '../../unified-approval/unified-approval.module';
+import { CorrectiveActionModule } from '../../corrective-action/corrective-action.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { UnifiedApprovalModule } from '../../unified-approval/unified-approval.m
     UserPermissionModule,
     RedisModule,
     UnifiedApprovalModule,
+    CorrectiveActionModule,
   ],
   controllers: [VerificationController],
   providers: [VerificationService],
