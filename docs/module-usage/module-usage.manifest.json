@@ -821,24 +821,29 @@
       "id": "GAP-109",
       "severity": "P3",
       "moduleId": "warehouse-inventory",
-      "triageStatus": "defer",
+      "triageStatus": "ready_for_plan",
       "dependsOn": [
         "GAP-102"
       ],
       "blocks": [],
-      "canParallelize": false,
-      "needsDesign": false,
+      "canParallelize": true,
+      "needsDesign": true,
       "schemaImpact": false,
       "historicalDataImpact": false,
-      "recommendedSuperpowers": [],
+      "recommendedSuperpowers": [
+        "brainstorming",
+        "grill-with-docs",
+        "writing-plans",
+        "executing-plans"
+      ],
       "prRoadmapGroup": "warehouse",
-      "prOrder": null,
+      "prOrder": 32,
       "recommendedPr": "warehouse/GAP-109",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-109"
       ],
-      "specPath": "",
-      "planPath": ""
+      "specPath": "docs/superpowers/specs/2026-05-02-gap-109-staging-zone-configurable-design.md",
+      "planPath": "docs/superpowers/plans/2026-05-02-gap-109-staging-zone-configurable-implementation.md"
     },
     {
       "id": "GAP-110",
