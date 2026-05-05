@@ -241,6 +241,7 @@ describe('document status compatibility', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    prisma.$transaction.mockImplementation(async (callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma));
     const module = await Test.createTestingModule({
       providers: [
         DocumentService,
@@ -303,6 +304,40 @@ describe('document status compatibility', () => {
       where: { id: 'doc1' },
       data: expect.objectContaining({ status: 'effective' }),
     });
+  });
+
+  it('supersedes the previous effective document when approving a revision draft', async () => {
+    const pendingRevision = {
+      id: 'doc-v2',
+      number: 'CX-01',
+      title: '程序文件',
+      status: 'pending',
+      creatorId: 'creator-1',
+      revisionOfId: 'doc-v1',
+      lineage_key: 'CX-01',
+      deletedAt: null,
+    };
+    prisma.document.findUnique.mockResolvedValue(pendingRevision);
+    prisma.approval.findFirst.mockResolvedValue({ id: 'approval-1', documentId: 'doc-v2', approverId: 'admin-1', status: 'pending' });
+    prisma.user.findUnique
+      .mockResolvedValueOnce({ id: 'admin-1', role: 'admin' })
+      .mockResolvedValueOnce({ id: 'creator-1', role: 'user' });
+    prisma.document.findFirst.mockResolvedValue({ id: 'doc-v1', number: 'CX-01', status: 'effective', lineage_key: 'CX-01' });
+    prisma.approval.update.mockResolvedValue({ id: 'approval-1', status: 'approved' });
+    prisma.document.update
+      .mockResolvedValueOnce({ id: 'doc-v2', status: 'effective', revisionStatus: 'current' })
+      .mockResolvedValueOnce({ id: 'doc-v1', status: 'superseded', revisionStatus: 'superseded', superseded_by_id: 'doc-v2' });
+
+    await service.approve('doc-v2', 'approved', '通过', 'admin-1');
+
+    expect(prisma.document.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'doc-v1' },
+      data: expect.objectContaining({
+        status: 'superseded',
+        revisionStatus: 'superseded',
+        superseded_by_id: 'doc-v2',
+      }),
+    }));
   });
 
   it.each(['approved', 'effective'])('treats %s list filter as effective-compatible', async (status) => {
@@ -592,6 +627,7 @@ describe('document revision draft', () => {
     },
     approval: { findFirst: jest.fn(), update: jest.fn() },
     department: { findUnique: jest.fn() },
+    documentVersion: { findMany: jest.fn() },
     pendingNumber: { findFirst: jest.fn() },
     numberRule: { create: jest.fn(), update: jest.fn() },
     $transaction: jest.fn(),
@@ -664,6 +700,68 @@ describe('document revision draft', () => {
     }));
     expect(result.id).toBe('doc-v2');
     expect(result.versionLabel).toBe('V2');
+  });
+
+  it('returns controlled revision chain with Vn labels and legacy snapshot labels', async () => {
+    const currentDoc = {
+      id: 'doc-v2',
+      number: 'GRSS-PZ-ZD-08',
+      title: '原物料及产品放行制度',
+      level: 3,
+      versionNo: 2,
+      versionLabel: 'V2',
+      version: '2.0',
+      status: 'effective',
+      revisionStatus: 'current',
+      revisionOfId: 'doc-v1',
+      superseded_by_id: null,
+      lineage_key: 'GRSS-PZ-ZD-08',
+      creatorId: 'user-1',
+      deletedAt: null,
+    };
+    prisma.document.findUnique.mockResolvedValue(currentDoc);
+    prisma.document.findMany.mockResolvedValue([
+      { ...currentDoc },
+      {
+        ...currentDoc,
+        id: 'doc-v1',
+        versionNo: 1,
+        versionLabel: 'V1',
+        version: '1.0',
+        status: 'superseded',
+        revisionStatus: 'superseded',
+        revisionOfId: null,
+        superseded_by_id: 'doc-v2',
+      },
+    ]);
+    prisma.documentVersion.findMany.mockResolvedValue([
+      {
+        id: 'snapshot-1',
+        documentId: 'doc-v2',
+        version: { toString: () => '2.0' },
+        filePath: 'documents/v2-old.pdf',
+        fileName: '放行制度-v2-old.pdf',
+        fileSize: 1024,
+        creatorId: 'user-1',
+        creator: { id: 'user-1', name: '文控员' },
+        createdAt: new Date('2026-05-02T00:00:00.000Z'),
+      },
+    ]);
+
+    const result = await service.getVersionHistory('doc-v2', 'user-1', 'admin');
+
+    expect(result.revisions).toEqual([
+      expect.objectContaining({ id: 'doc-v2', versionNo: 2, versionLabel: 'V2', isCurrentVersion: true }),
+      expect.objectContaining({ id: 'doc-v1', versionNo: 1, versionLabel: 'V1', isCurrentVersion: false }),
+    ]);
+    expect(result.versions).toEqual([
+      expect.objectContaining({
+        id: 'snapshot-1',
+        version: '2.0',
+        documentVersionLabel: 'V2',
+        snapshotVersionLabel: '文件快照 2.0',
+      }),
+    ]);
   });
 });
 

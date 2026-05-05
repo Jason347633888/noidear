@@ -131,7 +131,7 @@ describe('DocumentDetail', () => {
       ],
     });
     mockGet.mockImplementation((url: string) => {
-      if (url.includes('/versions')) return Promise.resolve([]);
+      if (url.includes('/versions')) return Promise.resolve({ revisions: [], versions: [] });
       return Promise.resolve(mockDocument);
     });
   });
@@ -307,10 +307,35 @@ describe('DocumentDetail', () => {
     expect((c.vm as any).document.sourceReferences).toHaveLength(1);
   });
 
+  it('renders controlled revision chain and legacy file snapshot labels', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url.includes('/versions')) {
+        return Promise.resolve({
+          revisions: [
+            { id: 'doc-v2', title: 'SOP', number: 'CX-01', versionNo: 2, versionLabel: 'V2', status: 'effective', revisionStatus: 'current', isCurrentVersion: true },
+            { id: 'doc-v1', title: 'SOP', number: 'CX-01', versionNo: 1, versionLabel: 'V1', status: 'superseded', revisionStatus: 'superseded', superseded_by_id: 'doc-v2' },
+          ],
+          versions: [
+            { id: 'snapshot-1', version: '2.0', documentVersionLabel: 'V2', snapshotVersionLabel: '文件快照 2.0', fileName: 'old.pdf', fileSize: 100, createdAt: '2026-05-02T00:00:00.000Z', creator: { name: '文控员' } },
+          ],
+        });
+      }
+      return Promise.resolve(mockDocument);
+    });
+    const c = w();
+    await flushPromises();
+
+    expect(c.text()).toContain('修订链');
+    expect(c.text()).toContain('V2');
+    expect(c.text()).toContain('V1');
+    expect(c.text()).toContain('文件快照 2.0');
+  });
+
   it('shows version action buttons for historical versions', async () => {
     mockGet.mockImplementation((url: string) => {
       if (url.endsWith('/versions')) {
         return Promise.resolve({
+          revisions: [],
           versions: [
             {
               id: 'v1',
@@ -341,6 +366,7 @@ describe('DocumentDetail', () => {
       }
       if (url.endsWith('/versions')) {
         return Promise.resolve({
+          revisions: [],
           versions: [
             {
               id: 'v1',
