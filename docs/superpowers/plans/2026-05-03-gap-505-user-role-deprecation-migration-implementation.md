@@ -33,7 +33,10 @@ roleObj  Role?  @relation("UserRole", ...)
 - `sso.service.ts` — 同上（3 处）
 
 **类型 B：从数据库直接查 User 后读取 `user.role`（弃用字段）**
+- `task.service.ts:62,119,168,183,226,296,343` — `getUserContext()` 从 DB 查询 User 后用 `user.role` 做权限判断
 - `document.service.ts:645` — `approver?.role === 'admin'`（DB 查询 approver）
+- `document.service.ts:978` — `user.role !== 'admin'`（DB 查询 permanentDelete user）
+- `approval.service.ts:71` — `user.role !== 'admin'`（DB 查询 approver）
 - `user-permission.service.ts:127` — `revoker.role !== 'admin'`（DB 查询 revoker）
 
 **不需要修改的文件**（这些文件的 `role` 来自 JWT `req.user`，只要 JWT 修复即可）：
@@ -49,7 +52,7 @@ roleObj  Role?  @relation("UserRole", ...)
 - **grill-me 校准结论：**
   - Role.code 与 User.role 字符串值完全一致（admin/leader/user），迁移不改变运行时角色语义。
   - JWT role 字段名保持不变（仍为 `role`），所有下游守卫与业务模块无需感知变更。
-  - 共 5 处 DB 直接查 User 后检查 `.role`，需专项修复（原计划遗漏 task.service.ts × 7 处、document.service.ts:978、approval.service.ts:71，已在本次修订补入）。
+  - 共 11 处 DB 直查 User / getUserContext 后检查 `.role` 的 Type-B 权限判断需专项修复（task.service.ts × 7、document.service.ts × 2、approval.service.ts × 1、user-permission.service.ts × 1）。
   - 需要在 login/SSO 时用 `include: { roleObj: true }` 拉取角色关系。
   - 无 schema migration，无历史数据迁移，无前端变更，风险极低。
 - **执行限制：** 执行 agent 只能使用 `superpowers:executing-plans`；不得扩展范围、重写 spec、修改 schema。
@@ -364,19 +367,26 @@ if (!user || user.role !== 'admin') {   // ← 直接从 DB 读 User.role
   ```bash
   cd server && npm test -- --testPathPattern="auth|sso|document|user-permission|task|approval" --passWithNoTests
   ```
-- [ ] 搜索确认弃用字段使用已全部处理：
+- [ ] 搜索确认目标 Type-B 裸权限判断已全部消除（这是硬门槛，必须无输出）：
   ```bash
-  # 应只剩 fallback 用法（?? user.role）和 schema 本身的定义；不应有裸的 user.role / revoker.role / approver.role 作为唯一判断源
-  grep -rn "\.role\b" server/src/modules --include="*.ts" | grep -v ".spec.ts" | grep -v "roleId\|roleObj\|roleCode\|?? \|RolesGuard\|roles.decorator\|role:" | grep "=== '\|!== '\|includes(user"
+  ! rg -n "isAdminOrLeader\(user\.role\)|user\.role !== 'admin'|approver\?\.role === 'admin'|revoker\.role !== 'admin'" \
+    server/src/modules/task/task.service.ts \
+    server/src/modules/document/document.service.ts \
+    server/src/modules/approval/approval.service.ts \
+    server/src/modules/user-permission/user-permission.service.ts
   ```
-  预期：无输出（或只剩守卫/装饰器中已审查过的合理用法）。
-- [ ] 额外确认 Type-B 裸用法已全部消除（参见 issue 验证命令）：
+  预期：无输出，命令退出码为 0。
+
+  说明：该命令直接匹配本计划锁定的 11 个 DB 直查 / getUserContext Type-B 裸 `User.role` 判断。执行本计划前它应命中 `task.service.ts`、`document.service.ts`、`approval.service.ts`、`user-permission.service.ts` 中的目标行；执行完成后，这些判断应改为 `roleObj?.code ?? role` fallback，因此命令必须无输出。
+- [ ] 运行 broad audit，确认剩余 `.role` 用法都属于允许范围：
   ```bash
-  grep -rn "\.role\b" server/src/modules --include="*.ts" \
-    | grep -v "\.spec\.ts\|roleId\|roleObj\|roleCode\|RolesGuard\|roles\.decorator\|req\.user\.\|allowedRoles\|@deprecated\|?? \|role:" \
-    | grep "prisma\.\|findUnique\|findFirst"
+  rg -n "\.role\b" server/src/modules --glob "*.ts" --glob "!*.spec.ts" \
+    | rg -v "roleId|roleObj|roleCode|RoleCode|RolesGuard|roles\.decorator|req\.user\.|allowedRoles|@deprecated|\?\? |role:|enum UserRole|interface .*Role|type .*Role"
   ```
-  预期：只剩 `role.service.ts` 和 `document-read-requirement.service.ts` 中对 Role 模型本身的操作（非 User.role），无 User.role 的裸读取。
+  预期：允许保留以下类别，需在最终报告中按类别说明；若出现新的 DB 直查 User 后裸 `User.role` 权限判断，必须停止并回报。
+  - JWT-sourced / request-sourced role 透传或判断：例如 `record-task.controller.ts`、`export.service.ts`、`recycle-bin.service.ts`、`workflow-instance.controller.ts` 等从 `req.user.role` 或方法参数传入的 role，已由 Task 2/3 修复 JWT 源头覆盖。
+  - Role 模型自身或权限模型字段：例如 `role.service.ts`、`document-read-requirement.service.ts` 中对 Role / UserRole / approval row `role` 字段的操作，不是 `User.role` 弃用字段。
+  - fallback：`roleObj?.code ?? user.role` / `?? approver?.role` / `?? revoker?.role`，用于兼容 `roleId` 为空的历史数据。
 - [ ] 运行 git diff --check 确认无空白字符错误。
 
 **Final report must include:**
