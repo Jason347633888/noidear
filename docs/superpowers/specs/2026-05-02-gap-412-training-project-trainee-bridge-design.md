@@ -11,8 +11,8 @@ GAP-412 已验证：培训模块当前把 `TrainingProject.trainees` 存为 `Str
 ## 当前代码事实源
 
 - `docs/module-usage/11-training-internal-audit.md`：GAP-412 标记为 P2、已验证，建议为 TrainingProject 学员关系引入桥接表，替代 `trainees String[]`，并注明需要数据迁移。
-- `docs/module-usage/97-gap-triage.md`：GAP-412 当前为 `needs_spec`，推荐 `brainstorming -> grill-with-docs -> writing-plans`。
-- `docs/module-usage/module-usage.manifest.json`：GAP-412 当前 `triageStatus = needs_spec`，`specPath` 与 `planPath` 为空。
+- `docs/module-usage/97-gap-triage.md`：GAP-412 已回写为可执行计划，推荐 `brainstorming -> grill-with-docs -> writing-plans -> executing-plans`。
+- `docs/module-usage/module-usage.manifest.json`：GAP-412 当前 `triageStatus = ready_for_plan`，`specPath` 与 `planPath` 指向本 spec 和配套 plan。
 - `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md`：`Employee` 是跨模块高复用基础实体；下游不应重复维护人员事实源。当前 noidear 代码中培训学员实际引用 `User.id`。
 - `server/src/prisma/schema.prisma`：`TrainingProject` 当前含 `trainees String[]`，`User` 模型有 `status`、`deletedAt`、`departmentId` 等可用于人员状态与展示。
 - `server/src/modules/training/dto/create-project.dto.ts`：创建培训项目时 `trainees: string[]` 必填，限制 1-100 人。
@@ -24,7 +24,7 @@ GAP-412 已验证：培训模块当前把 `TrainingProject.trainees` 存为 `Str
 
 ## 任务类型判断
 
-GAP-412 是 `needs_spec`。它影响 Prisma schema、历史数据迁移、培训事实源和 User 主数据引用完整性，必须先写 spec，再做 grill-with-docs 校准，最后输出 implementation plan。
+GAP-412 原始任务类型是 `needs_spec`；本次 PR #168 返修类型是 `needs_validation` / `ready_for_plan` 修正。它影响 Prisma schema、历史数据迁移、培训事实源和 User 主数据引用完整性，因此保留已完成的 spec、grill-with-docs 校准和 implementation plan 链路，只修正 migration 原子性与服务事务边界。
 
 ## Brainstorming 方案比较
 
@@ -81,7 +81,7 @@ GAP-412 是 `needs_spec`。它影响 Prisma schema、历史数据迁移、培训
   - `@@map("training_project_trainees")`
 - `TrainingProject` 删除持久字段 `trainees String[]`，新增 `traineeLinks TrainingProjectTrainee[]`。
 - `User` 新增反向关系 `trainingProjectTrainees TrainingProjectTrainee[]`。
-- migration 在删除旧列前：
+- migration 在任何 DDL 前先做 preflight，避免 fail-fast 后遗留半成品结构：
   - 检查 `training_projects.trainees` 是否存在 orphan user id。
   - 检查是否存在空学员数组的项目；如果业务要求每个项目至少一名学员，应 fail-fast。
   - 将每个数组元素 `DISTINCT` 后插入 `training_project_trainees`。
@@ -108,13 +108,14 @@ GAP-412 是 `needs_spec`。它影响 Prisma schema、历史数据迁移、培训
 
 本 GAP 需要数据库迁移，但不自动修复业务不明的历史脏数据：
 
-1. migration 先创建桥接表。
-2. migration 检查 `training_projects.trainees` 中是否存在找不到 `User.id` 的 orphan ID；发现则抛错并停止。
+1. migration 在任何 `CREATE TABLE`、`CREATE INDEX`、`ALTER TABLE`、`INSERT` 或 `DROP COLUMN` 前执行 preflight。
+2. migration 检查 `training_projects.trainees` 中是否存在找不到 `User.id` 的 orphan ID；发现则抛错并停止，且不得留下新表或索引。
 3. migration 检查是否存在空学员数组；如果存在，执行 agent 必须停止并回报，因为当前 DTO 要求至少一名学员，是否允许历史空项目需要业务确认。
-4. migration 将旧数组展开并插入 `training_project_trainees`，同一项目重复 userId 只保留一条。
-5. migration 删除 `training_projects.trainees` 列。
-6. 不基于姓名、部门、学习记录、待办任务或考试记录猜测修复 orphan 学员。
-7. 历史已停用但仍存在的 User 不阻断迁移；它是历史培训证据的一部分。新建和新增学员路径必须阻止 inactive 或 deleted user。
+4. preflight 通过后再创建桥接表和索引。
+5. migration 将旧数组展开并插入 `training_project_trainees`，同一项目重复 userId 只保留一条。
+6. migration 删除 `training_projects.trainees` 列。
+7. 不基于姓名、部门、学习记录、待办任务或考试记录猜测修复 orphan 学员。
+8. 历史已停用但仍存在的 User 不阻断迁移；它是历史培训证据的一部分。新建和新增学员路径必须阻止 inactive 或 deleted user。
 
 ## Superpower 与 grill-me 校准记录
 
@@ -133,9 +134,9 @@ GAP-412 是 `needs_spec`。它影响 Prisma schema、历史数据迁移、培训
 
 - Prisma schema 中存在 `TrainingProjectTrainee` 模型，`TrainingProject` 与 `User` 均有对应 relation。
 - Prisma schema 中 `TrainingProject.trainees String[]` 被移除，不再作为持久事实源。
-- migration 能从 `training_projects.trainees` 展开迁移到 `training_project_trainees`，并在 orphan 用户或空学员历史数据出现时 fail-fast。
-- `POST /training/projects` 使用桥接表写入学员关系，并同步创建 `LearningRecord` 和 `TodoTask`。
-- `PUT /training/projects/:id` 或添加/移除学员接口通过桥接表维护名单，并同步学习记录和待办。
+- migration 能从 `training_projects.trainees` 展开迁移到 `training_project_trainees`，并在任何 DDL 前对 orphan 用户或空学员历史数据 fail-fast。
+- `POST /training/projects` 使用桥接表写入学员关系，并在同一个 Prisma transaction 内同步创建 `TrainingProject`、`TrainingProjectTrainee`、`LearningRecord` 和 `TodoTask`。
+- `PUT /training/projects/:id` 或添加/移除学员接口通过桥接表维护名单，并在同一个 Prisma transaction 内同步桥接行、学习记录和待办。
 - `GET /training/projects`、`GET /training/projects/:id` 返回兼容的 `trainees: string[]`、`traineeCount`，详情可返回 `traineeList`。
 - `ExamService` 不再调用 `project.trainees.includes()`，考试准入通过桥接表判断。
 - `ArchiveService` 不再读取数据库列 `project.trainees`。

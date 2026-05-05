@@ -1916,6 +1916,7 @@
       "severity": "P2",
       "moduleId": "training-internal-audit",
       "triageStatus": "ready_for_plan",
+      "description": "Plan corrected: migration preflight runs before DDL; create/update/add/remove trainee writes use one Prisma transaction for TrainingProjectTrainee, LearningRecord, and TodoTask consistency.",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": false,
