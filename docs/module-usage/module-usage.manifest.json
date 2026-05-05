@@ -851,7 +851,7 @@
       "severity": "P2",
       "moduleId": "warehouse-inventory",
       "triageStatus": "ready_for_plan",
-      "description": "2026-05-02 code verification: server exposes `GET /warehouse/batches/fifo` via BatchController.getFIFO and BatchService.getFIFO, but RequisitionList creates/completes requisitions without material/batch selection or FIFO recommendation, and `batchApi` has no getFIFO wrapper. Requirement is clear enough for a plan.",
+      "description": "2026-05-02 code verification: server exposes `GET /warehouse/batches/fifo` via BatchController.getFIFO and BatchService.getFIFO, but RequisitionList creates/completes requisitions without material/batch selection or FIFO recommendation, and `batchApi` has no getFIFO wrapper. Requirement is clear enough for a plan. No schema change; BR-308 is planned via addItemsByFifo merge-on-write for existing requisitionId + batchId rows.",
       "dependsOn": [
         "GAP-102"
       ],
@@ -865,7 +865,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "warehouse",
-      "prOrder": 37,
+      "prOrder": 39,
       "recommendedPr": "warehouse/GAP-110",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-110"

@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Wire the existing `GET /warehouse/batches/fifo` server endpoint into the requisition item-add flow so that when a user adds a material line to a draft requisition, the UI shows FIFO-recommended batches and the server auto-allocates them, enforcing BR-307 (先入先出) and BR-308 (同一领料单不重复关联同一批次).
+**Goal:** Wire the existing `GET /warehouse/batches/fifo` server endpoint into the requisition item-add flow so that when a user adds a material line to a draft requisition, the UI shows FIFO-recommended batches and the server auto-allocates them, enforcing BR-307 (先入先出) and BR-308 (同一领料单不重复关联同一批次) for this service path.
 
-**Architecture:** Server-side FIFO allocation — `RequisitionService.addItemsByFifo(id, materialId, quantity)` calls `BatchService.getFIFO()` and runs the `allocateByFIFO` logic (ported from `batch.fifo.spec.ts`) to create `MaterialRequisitionItem` rows. The client calls `GET /warehouse/batches/fifo?materialId=X` to preview the allocation, then calls the new `POST /warehouse/requisitions/:id/items/fifo` endpoint to commit it. No schema changes required — `MaterialRequisitionItem.batchId` is already a required FK.
+**Architecture:** Server-side FIFO allocation — `RequisitionService.addItemsByFifo(id, materialId, quantity)` calls `BatchService.getFIFO()` and runs the `allocateByFIFO` logic (ported from `batch.fifo.spec.ts`) inside a transaction. Before writing, it reads existing `MaterialRequisitionItem` rows for the same `requisitionId + batchId`; existing batch lines are incremented and only new batch IDs are inserted. No schema changes are required in this PR because BR-308 is enforced in the new service path by merge-on-write, not by a `(requisitionId,batchId)` unique constraint.
 
 **Tech Stack:** NestJS (server), Vue 3 + Element Plus (client), Prisma (ORM), Jest (unit tests).
 
@@ -27,13 +27,13 @@ git status --short --branch
 
 ## Superpower 与 grill-me 校准记录
 
-- **brainstorming：** 不适用（纯 UI + server endpoint，无 schema 变更，不影响事实源）
-- **grill-with-docs：** 未找到 grill-with-docs skill；以下为等价校准清单手工执行：
+- **brainstorming：** 已读取 skill；本次为 review blocker 修正，不新增 spec，仅校准既有 plan 的实现策略。
+- **grill-with-docs：** 已读取 skill；以下按项目批次/追溯模型校准：
   - ✅ 与 `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md`：不引入平行批次链，`MaterialRequisitionItem.batchId` 已是正式 FK，FIFO endpoint 仅读取 `MaterialBatch`
   - ✅ 不复制主数据：`Material`、`MaterialBatch` 均使用现有表，不新建平行事实源
-  - ✅ 不引入平行批次链路：`allocateByFIFO` 结果通过现有 `MaterialRequisitionItem` 写入，与 `ProductionBatch / BatchMaterialUsage` 主链无冲突
+  - ✅ 不引入平行批次链路：`allocateByFIFO` 结果通过现有 `MaterialRequisitionItem` 写入，并在同一 requisition 内合并已有同批次行，与 `ProductionBatch / BatchMaterialUsage` 主链无冲突
   - ✅ 无历史数据迁移：schema 无变更，无迁移脚本
-  - ✅ 无业务确认项：FIFO 规则（BR-307/308）已在 `batch.fifo.spec.ts` 中明确
+  - ✅ 无业务确认项：FIFO 规则（BR-307/308）已在 `batch.fifo.spec.ts` 中明确；但该测试文件关于“唯一索引保证 BR-308”的注释与当前 schema 不一致，本 plan 改为服务层合并策略
   - ✅ 可拆为独立 PR：纯增量，不改已有接口
   - ✅ 执行 agent 可独立完成：无跨 plan 依赖
 
@@ -174,7 +174,7 @@ git commit -m "feat(warehouse): expose allocateByFIFO on BatchService (BR-307)"
 
 ## Task 2: 新增服务端 `addItemsByFifo` 方法
 
-**目标：** `RequisitionService` 新增 `addItemsByFifo(id, materialId, quantity)` 方法，调用 `BatchService.getFIFO` + `allocateByFIFO`，事务内创建 `MaterialRequisitionItem` 行。
+**目标：** `RequisitionService` 新增 `addItemsByFifo(id, materialId, quantity)` 方法，调用 `BatchService.getFIFO` + `allocateByFIFO`，事务内合并已有同批次行并创建缺失的 `MaterialRequisitionItem` 行。
 
 **Files:**
 - Modify: `server/src/modules/warehouse/requisition.service.ts`
@@ -209,6 +209,16 @@ let batchService: BatchService;
 batchService = module.get<BatchService>(BatchService);
 ```
 
+把 Prisma mock 中已有的 `materialRequisitionItem` 扩展为：
+
+```typescript
+materialRequisitionItem: {
+  findMany: jest.fn(),
+  update: jest.fn(),
+  createMany: jest.fn(),
+},
+```
+
 在 `requisition.service.spec.ts` 末尾新增测试套件：
 
 ```typescript
@@ -238,17 +248,41 @@ describe('RequisitionService.addItemsByFifo()', () => {
     (prisma.$transaction as jest.Mock).mockImplementation((fn: any) =>
       fn(prisma),
     );
-    (prisma.materialRequisitionItem as any) = { createMany: jest.fn().mockResolvedValue({ count: 1 }) };
+    (prisma.materialRequisitionItem.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.materialRequisitionItem.update as jest.Mock).mockResolvedValue({ id: 'item-1' });
+    (prisma.materialRequisitionItem.createMany as jest.Mock).mockResolvedValue({ count: 1 });
   });
 
-  it('应在事务内创建 MaterialRequisitionItem', async () => {
+  it('无已有同批次行时，应在事务内创建 MaterialRequisitionItem', async () => {
     await service.addItemsByFifo(REQUISITION_ID, MATERIAL_ID, 30);
 
     expect(batchService.getFIFO).toHaveBeenCalledWith(MATERIAL_ID);
     expect(batchService.allocateByFIFO).toHaveBeenCalledWith(expect.any(Array), 30);
+    expect(prisma.materialRequisitionItem.findMany).toHaveBeenCalledWith({
+      where: {
+        requisitionId: REQUISITION_ID,
+        batchId: { in: ['batch-1'] },
+      },
+      select: { id: true, batchId: true },
+    });
     expect(prisma.materialRequisitionItem.createMany).toHaveBeenCalledWith({
       data: [{ requisitionId: REQUISITION_ID, batchId: 'batch-1', quantity: 30 }],
     });
+    expect(prisma.materialRequisitionItem.update).not.toHaveBeenCalled();
+  });
+
+  it('同一 requisition 已存在 FIFO 最早批次时，再次 addItemsByFifo 应合并数量而不是创建重复 batchId 行', async () => {
+    (prisma.materialRequisitionItem.findMany as jest.Mock).mockResolvedValue([
+      { id: 'existing-item-1', batchId: 'batch-1' },
+    ]);
+
+    await service.addItemsByFifo(REQUISITION_ID, MATERIAL_ID, 30);
+
+    expect(prisma.materialRequisitionItem.update).toHaveBeenCalledWith({
+      where: { id: 'existing-item-1' },
+      data: { quantity: { increment: 30 } },
+    });
+    expect(prisma.materialRequisitionItem.createMany).not.toHaveBeenCalled();
   });
 
   it('非 draft 状态时抛出 BadRequestException', async () => {
@@ -319,14 +353,46 @@ async addItemsByFifo(id: string, materialId: string, quantity: number) {
 
   const fifoBatches = await this.batchService.getFIFO(materialId);
   const allocations = this.batchService.allocateByFIFO(fifoBatches, quantity);
+  const batchIds = allocations.map((a) => a.batchId);
 
   return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    await tx.materialRequisitionItem.createMany({
-      data: allocations.map((a) => ({
+    const existingItems = await tx.materialRequisitionItem.findMany({
+      where: {
         requisitionId: id,
-        batchId: a.batchId,
-        quantity: a.quantity,
-      })),
+        batchId: { in: batchIds },
+      },
+      select: { id: true, batchId: true },
+    });
+
+    const existingByBatchId = new Map(existingItems.map((item) => [item.batchId, item.id]));
+    const rowsToCreate: Array<{ requisitionId: string; batchId: string; quantity: number }> = [];
+
+    for (const allocation of allocations) {
+      const existingItemId = existingByBatchId.get(allocation.batchId);
+      if (existingItemId) {
+        await tx.materialRequisitionItem.update({
+          where: { id: existingItemId },
+          data: { quantity: { increment: allocation.quantity } },
+        });
+        continue;
+      }
+
+      rowsToCreate.push({
+        requisitionId: id,
+        batchId: allocation.batchId,
+        quantity: allocation.quantity,
+      });
+    }
+
+    if (rowsToCreate.length > 0) {
+      await tx.materialRequisitionItem.createMany({
+        data: rowsToCreate,
+      });
+    }
+
+    return tx.materialRequisition.findUnique({
+      where: { id },
+      include: { items: true },
     });
   });
 }
@@ -736,15 +802,15 @@ git commit -m "feat(warehouse): FIFO batch selector in RequisitionList (GAP-110)
 
 - [ ] **Step 6.2: 更新 `96-pr-roadmap.md`**
 
-在 PR 路线图表末尾新增一行（在最后一行 GAP-414 之后）：
+在 PR 路线图表末尾新增一行（在 GAP-104 之后；GAP-110 为当前第 39 条 PR）：
 
 ```
-| 37 | warehouse/GAP-110 | GAP-110 | 无 | 不需要 | `docs/superpowers/plans/2026-05-03-gap-110-fifo-batch-selector-requisition-implementation.md` | `executing-plans` | 是 | RequisitionList 新增物料行时调用 FIFO 端点，服务端 allocateByFIFO 自动分配 MaterialRequisitionItem，强制 BR-307/308 |
+| 39 | warehouse/GAP-110 | GAP-110 | GAP-102 | 不需要 | `docs/superpowers/plans/2026-05-03-gap-110-fifo-batch-selector-requisition-implementation.md` | `executing-plans` | 是 | RequisitionList 新增物料行时调用 FIFO 端点，服务端 FIFO 分配后合并已有同批次 MaterialRequisitionItem，强制 BR-307/308；不改 schema |
 ```
 
 - [ ] **Step 6.3: 更新 `module-usage.manifest.json`**
 
-在 `"supplier-procurement-incoming"` 文档的 `gapIds` 数组中，若 `"GAP-110"` 不存在则新增。同时确认文件可被 `jq` 解析：
+确认 `"warehouse-inventory"` 文档的 `gapIds` 数组包含 `"GAP-110"`，并将 GAP-110 的 `prOrder` 与 roadmap 同步为 `39`。同时确认文件可被 `jq` 解析：
 
 ```bash
 jq empty docs/module-usage/module-usage.manifest.json
@@ -795,15 +861,15 @@ gh pr create \
 
 ### 是否使用 Superpower
 
-- brainstorming：否（纯 UI + 端点增量，无 schema/事实源变更）
-- grill-with-docs：否（未找到 skill；已用等价校准清单手工执行，结论见 plan 头部）
+- brainstorming：已读取 skill；本次修正既有 plan，不新增 spec
+- grill-with-docs：已读取 skill；校准结论见 plan 头部
 - writing-plans：是
 
 ### Roadmap 回写
 
 - `97-gap-triage.md`：GAP-110 状态更新为"已验证"，plan 路径已填入
-- `96-pr-roadmap.md`：GAP-110 新增为第 37 条 PR
-- `module-usage.manifest.json`：GAP-110 已加入 supplier-procurement-incoming 模块
+- `96-pr-roadmap.md`：GAP-110 新增为第 39 条 PR
+- `module-usage.manifest.json`：GAP-110 已加入 warehouse-inventory 模块，`prOrder=39`
 
 ### 校验
 
@@ -830,10 +896,10 @@ EOF
   - 客户端无物料行选择 UI → Task 5 新增
   - 无 schema 变更 → 无 migration task（正确）
   - BR-307 FIFO 顺序 → Task 1+2 覆盖
-  - BR-308 无重复批次 → server 端 `allocateByFIFO` 天然保证（每批次只出现一次）；`MaterialRequisitionItem` 层无唯一索引约束，但单次 FIFO 分配结果不会重复同一批次
+  - BR-308 无重复批次 → Task 2 在事务内读取当前 requisition 已有同批次行；存在则 `increment` 数量，不存在才 `createMany`，覆盖重复调用 `addItemsByFifo` 的场景
 
-- [x] **占位符扫描：** 无 TBD/TODO/后续补充
+- [x] **占位符扫描：** 无占位符或待补充步骤
 - [x] **类型一致性：**
   - `FifoBatch` 定义于 Task 4，在 Task 5 的 `fifoPreview` 使用 ✓
-  - `allocateByFIFO` 返回 `{ batchId, batchNumber, quantity }[]`，Task 2 的 `createMany` data 使用 `batchId` 和 `quantity` ✓
+  - `allocateByFIFO` 返回 `{ batchId, batchNumber, quantity }[]`，Task 2 的 `findMany/update/createMany` 均使用 `batchId` 和 `quantity` ✓
   - `requisitionApi.getById` 在 Task 5 使用，`warehouse.ts` 中已有 `getById` ✓
