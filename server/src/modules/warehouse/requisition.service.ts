@@ -19,14 +19,18 @@ export class RequisitionService {
     const requisitionNo = this.generateRequisitionNo();
 
     return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const requisitionType = createDto.requisitionType ?? 'production';
+      await this.validateEquipmentLink(tx, requisitionType, createDto.equipmentId);
+
       const requisition = await tx.materialRequisition.create({
         data: {
           requisitionNo,
-          requisitionType: createDto.requisitionType ?? 'production',
+          requisitionType,
           applicantId: createDto.applicantId ?? 'system',
           departmentId: createDto.departmentId,
           remark: createDto.remark,
           targetZone: createDto.targetZone,
+          equipmentId: createDto.equipmentId,
           status: 'draft',
         },
       });
@@ -53,6 +57,28 @@ export class RequisitionService {
     return Number(value);
   }
 
+  private async validateEquipmentLink(tx: Prisma.TransactionClient, requisitionType: string, equipmentId?: string) {
+    if (requisitionType === 'maintenance' && !equipmentId) {
+      throw new BadRequestException('维修领料必须关联设备');
+    }
+
+    if (requisitionType !== 'maintenance' && equipmentId) {
+      throw new BadRequestException('只有维修领料可以关联设备');
+    }
+
+    if (!equipmentId) {
+      return;
+    }
+
+    const equipment = await tx.equipment.findFirst({
+      where: { id: equipmentId, deletedAt: null, status: 'active' },
+      select: { id: true },
+    });
+    if (!equipment) {
+      throw new BadRequestException('设备不存在、已删除或非在用状态');
+    }
+  }
+
   private generateRequisitionNo(): string {
     const today = dayjs().format('YYYYMMDD');
     const seq = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
@@ -75,7 +101,10 @@ export class RequisitionService {
         where,
         skip,
         take: limit,
-        include: { items: true },
+        include: {
+          items: true,
+          equipment: { select: { id: true, code: true, name: true, status: true } },
+        },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.materialRequisition.count({ where }),
@@ -87,7 +116,10 @@ export class RequisitionService {
   async findOne(id: string) {
     const requisition = await this.prisma.materialRequisition.findUnique({
       where: { id },
-      include: { items: true },
+      include: {
+        items: true,
+        equipment: { select: { id: true, code: true, name: true, status: true } },
+      },
     });
 
     if (!requisition || requisition.deletedAt) {

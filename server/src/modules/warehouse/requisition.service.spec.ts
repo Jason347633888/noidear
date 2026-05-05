@@ -18,6 +18,9 @@ describe('RequisitionService', () => {
         {
           provide: PrismaService,
           useValue: {
+            equipment: {
+              findFirst: jest.fn(),
+            },
             materialRequisition: {
               create: jest.fn(),
               findMany: jest.fn(),
@@ -102,6 +105,137 @@ describe('RequisitionService', () => {
 
       expect(result.requisitionNo).toContain('REQ-');
       expect(prisma.$transaction).toHaveBeenCalled();
+    });
+
+    it('requires equipmentId for maintenance requisitions', async () => {
+      const txClient = {
+        equipment: { findFirst: jest.fn() },
+        materialRequisition: { create: jest.fn() },
+        materialRequisitionItem: { createMany: jest.fn() },
+      };
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => callback(txClient));
+
+      await expect(service.create({
+        requisitionType: 'maintenance',
+        applicantId: 'user-001',
+        items: [],
+      })).rejects.toThrow(BadRequestException);
+
+      expect(txClient.equipment.findFirst).not.toHaveBeenCalled();
+      expect(txClient.materialRequisition.create).not.toHaveBeenCalled();
+    });
+
+    it('validates and persists equipmentId for maintenance requisitions', async () => {
+      const createDto = {
+        requisitionType: 'maintenance',
+        equipmentId: 'eq-001',
+        applicantId: 'user-001',
+        items: [{ batchId: 'batch-001', quantity: 2 }],
+      };
+
+      const mockRequisition = {
+        id: 'req-001',
+        requisitionNo: 'REQ-20260502-001',
+        requisitionType: 'maintenance',
+        equipmentId: 'eq-001',
+        status: 'draft',
+      };
+
+      const txClient = {
+        equipment: {
+          findFirst: jest.fn().mockResolvedValue({ id: 'eq-001', deletedAt: null }),
+        },
+        materialRequisition: {
+          create: jest.fn().mockResolvedValue(mockRequisition),
+        },
+        materialRequisitionItem: {
+          createMany: jest.fn(),
+        },
+      };
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => callback(txClient));
+
+      const result = await service.create(createDto);
+
+      expect(txClient.equipment.findFirst).toHaveBeenCalledWith({
+        where: { id: 'eq-001', deletedAt: null, status: 'active' },
+        select: { id: true },
+      });
+      expect(txClient.materialRequisition.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          requisitionType: 'maintenance',
+          equipmentId: 'eq-001',
+        }),
+      });
+      expect(result.equipmentId).toBe('eq-001');
+    });
+
+    it('rejects equipmentId for non-maintenance requisitions', async () => {
+      const txClient = {
+        equipment: { findFirst: jest.fn() },
+        materialRequisition: { create: jest.fn() },
+        materialRequisitionItem: { createMany: jest.fn() },
+      };
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => callback(txClient));
+
+      await expect(service.create({
+        requisitionType: 'production',
+        equipmentId: 'eq-001',
+        applicantId: 'user-001',
+        items: [],
+      })).rejects.toThrow(BadRequestException);
+
+      expect(txClient.equipment.findFirst).not.toHaveBeenCalled();
+      expect(txClient.materialRequisition.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects inactive equipment for maintenance requisitions', async () => {
+      const txClient = {
+        equipment: {
+          findFirst: jest.fn().mockResolvedValue(null), // inactive equipment returns null with active filter
+        },
+        materialRequisition: { create: jest.fn() },
+        materialRequisitionItem: { createMany: jest.fn() },
+      };
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => callback(txClient));
+
+      await expect(service.create({
+        requisitionType: 'maintenance',
+        equipmentId: 'eq-inactive',
+        applicantId: 'user-001',
+        items: [],
+      })).rejects.toThrow(BadRequestException);
+
+      expect(txClient.materialRequisition.create).not.toHaveBeenCalled();
+    });
+
+    it('keeps legacy targetZone-only requisition creation compatible', async () => {
+      const txClient = {
+        equipment: { findFirst: jest.fn() },
+        materialRequisition: {
+          create: jest.fn().mockResolvedValue({
+            id: 'req-legacy',
+            requisitionNo: 'REQ-20260502-legacy',
+            requisitionType: 'production',
+            targetZone: '小料房',
+            status: 'draft',
+          }),
+        },
+        materialRequisitionItem: { createMany: jest.fn() },
+      };
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => callback(txClient));
+
+      const result = await service.create({ targetZone: '小料房', applicantId: 'user-001' });
+
+      expect(txClient.equipment.findFirst).not.toHaveBeenCalled();
+      expect(txClient.materialRequisition.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          requisitionType: 'production',
+          targetZone: '小料房',
+          applicantId: 'user-001',
+        }),
+      });
+      expect(txClient.materialRequisitionItem.createMany).not.toHaveBeenCalled();
+      expect(result.requisitionType).toBe('production');
     });
   });
 

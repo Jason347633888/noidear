@@ -18,20 +18,32 @@ export class CreateRequisitionItemDto {
 }
 
 export class CreateRequisitionDto {
-  @ApiProperty({
-    description: '领料类型',
+  @ApiPropertyOptional({
+    description: '领料类型；省略时保持旧行为，服务端默认 production',
     enum: ['production', 'maintenance', 'other'],
   })
+  @IsOptional()
   @IsEnum(['production', 'maintenance', 'other'], {
     message: '领料类型必须为 production、maintenance 或 other',
   })
-  requisitionType: string;
+  requisitionType?: string;
 
-  @ApiProperty({ description: '领料明细', type: [CreateRequisitionItemDto] })
+  @ApiPropertyOptional({ description: '维修领料关联设备ID，仅 requisitionType=maintenance 时允许' })
+  @IsOptional()
+  @IsString()
+  equipmentId?: string;
+
+  @ApiPropertyOptional({ description: '目标区域' })
+  @IsOptional()
+  @IsString()
+  targetZone?: string;
+
+  @ApiPropertyOptional({ description: '领料明细；允许省略或传空数组以创建草稿领料单', type: [CreateRequisitionItemDto] })
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateRequisitionItemDto)
-  items: CreateRequisitionItemDto[];
+  items?: CreateRequisitionItemDto[];
 
   @ApiPropertyOptional({ description: '部门ID' })
   @IsOptional()

@@ -59,10 +59,16 @@ export interface SupplierControlledDocument {
 
 export interface Requisition {
   id: string;
-  number: string;
-  requesterId: string;
-  departmentId: string;
-  status: 'draft' | 'submitted' | 'approved' | 'rejected' | 'completed';
+  requisitionNo?: string;
+  number?: string;
+  requisitionType: 'production' | 'maintenance' | 'other';
+  requesterId?: string;
+  applicantId?: string;
+  departmentId?: string;
+  targetZone?: string;
+  equipmentId?: string;
+  equipment?: { id: string; code: string; name: string; status: string };
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'completed';
   items: RequisitionItem[];
   createdAt: string;
   requester?: { id: string; name: string };
@@ -201,7 +207,14 @@ export const requisitionApi = {
     return request.get<Requisition>(`/warehouse/requisitions/${id}`);
   },
 
-  create(payload: { departmentId: string; items: { materialId: string; quantity: number }[] }) {
+  create(payload: {
+    requisitionType?: 'production' | 'maintenance' | 'other';
+    equipmentId?: string;
+    departmentId?: string;
+    targetZone?: string;
+    remark?: string;
+    items?: { batchId: string; quantity: number }[];
+  }) {
     return request.post<Requisition>('/warehouse/requisitions', payload);
   },
 
