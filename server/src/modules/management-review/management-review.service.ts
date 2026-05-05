@@ -63,6 +63,10 @@ export class ManagementReviewService {
 
   async collectSources(id: string, companyId: string) {
     const review = await this.findOwnedReview(id, companyId);
+    if (review.status === 'completed' || review.status === 'archived') {
+      throw new BadRequestException('管理评审已完成或归档，无法重新收集输入材料');
+    }
+
     const start = new Date(Date.UTC(review.year, 0, 1));
     const end = new Date(Date.UTC(review.year + 1, 0, 1));
     const companyUsers = await this.prisma.user.findMany({

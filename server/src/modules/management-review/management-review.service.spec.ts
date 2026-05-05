@@ -1,5 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { validate } from 'class-validator';
 import { ManagementReviewService } from './management-review.service';
+import { UpdateManagementReviewActionDto } from './dto/update-management-review-action.dto';
 
 describe('ManagementReviewService', () => {
   function createPrismaMock(overrides: Record<string, any> = {}) {
@@ -230,6 +232,43 @@ describe('ManagementReviewService', () => {
 
     await expect(service.collectSources('mr-1', 'company-1')).rejects.toThrow(
       NotFoundException,
+    );
+  });
+
+  it('throws BadRequestException when collecting sources for a completed review', async () => {
+    const prisma = createPrismaMock();
+    prisma.managementReview.findUnique.mockResolvedValue({
+      id: 'mr-1',
+      companyId: 'company-1',
+      year: 2026,
+      status: 'completed',
+    });
+    const service = new ManagementReviewService(prisma);
+
+    await expect(service.collectSources('mr-1', 'company-1')).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(prisma.user.findMany).not.toHaveBeenCalled();
+    expect(prisma.managementReviewInput.upsert).not.toHaveBeenCalled();
+    expect(prisma.managementReview.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid management review action status values', async () => {
+    const dto = Object.assign(new UpdateManagementReviewActionDto(), {
+      status: 'invalid-status',
+    });
+
+    const errors = await validate(dto);
+
+    expect(errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          property: 'status',
+          constraints: expect.objectContaining({
+            isIn: expect.any(String),
+          }),
+        }),
+      ]),
     );
   });
 

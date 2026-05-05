@@ -1,8 +1,8 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString } from 'class-validator';
 
 export class UpdateManagementReviewActionDto {
   @IsOptional()
-  @IsString()
+  @IsIn(['open', 'in_progress', 'completed', 'cancelled'])
   status?: 'open' | 'in_progress' | 'completed' | 'cancelled';
 
   @IsOptional()
