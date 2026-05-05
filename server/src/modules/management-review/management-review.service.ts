@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateManagementReviewDto } from './dto/create-management-review.dto';
 import { QueryManagementReviewDto } from './dto/query-management-review.dto';
@@ -6,6 +7,38 @@ import { CreateManagementReviewActionDto } from './dto/create-management-review-
 import { UpdateManagementReviewActionDto } from './dto/update-management-review-action.dto';
 
 type Actor = { id: string; companyId: string };
+
+function toInputJsonArray(values: readonly unknown[], fieldName: string): Prisma.InputJsonArray {
+  return values.map((value) => toInputJsonValue(value, fieldName));
+}
+
+function toInputJsonValue(value: unknown, fieldName: string): Prisma.InputJsonValue | null {
+  if (value === null) {
+    return null;
+  }
+  if (typeof value === 'string' || typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      throw new BadRequestException(`${fieldName} 必须是有效 JSON`);
+    }
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return toInputJsonArray(value, fieldName);
+  }
+  if (typeof value === 'object') {
+    const jsonObject: Record<string, Prisma.InputJsonValue | null> = {};
+    for (const [key, nestedValue] of Object.entries(value)) {
+      if (nestedValue !== undefined) {
+        jsonObject[key] = toInputJsonValue(nestedValue, fieldName);
+      }
+    }
+    return jsonObject;
+  }
+  throw new BadRequestException(`${fieldName} 必须是有效 JSON`);
+}
 
 @Injectable()
 export class ManagementReviewService {
@@ -20,6 +53,9 @@ export class ManagementReviewService {
       throw new BadRequestException('该年度管理评审已存在');
     }
 
+    const scope = toInputJsonArray(dto.scope ?? [], 'scope');
+    const participants = toInputJsonArray(dto.participants ?? [], 'participants');
+
     return this.prisma.managementReview.create({
       data: {
         companyId: actor.companyId,
@@ -30,8 +66,8 @@ export class ManagementReviewService {
         location: dto.location,
         materialDueDate: dto.materialDueDate ? new Date(dto.materialDueDate) : undefined,
         purpose: dto.purpose ?? '评审质量和食品安全管理体系的适宜性、充分性和有效性。',
-        scope: dto.scope ?? [],
-        participants: dto.participants ?? [],
+        scope,
+        participants,
         createdBy: actor.id,
       },
       include: { inputs: true, actions: true },

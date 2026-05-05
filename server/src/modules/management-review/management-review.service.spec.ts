@@ -86,6 +86,42 @@ describe('ManagementReviewService', () => {
     });
   });
 
+  it('preserves management review scope and participants as JSON input', async () => {
+    const prisma = createPrismaMock();
+    prisma.managementReview.findFirst.mockResolvedValue(null);
+    prisma.managementReview.create.mockResolvedValue({ id: 'mr-1', year: 2026 });
+    const service = new ManagementReviewService(prisma);
+    const participants = [
+      {
+        userId: 'user-2',
+        name: '张三',
+        department: '品质部',
+        role: '主持人',
+        attended: true,
+        note: null,
+      },
+    ];
+
+    await service.create(
+      {
+        year: 2026,
+        title: '2026 年管理评审',
+        scope: ['质量管理体系', '食品安全管理体系'],
+        participants,
+      } as any,
+      { id: 'user-1', companyId: 'company-1' },
+    );
+
+    expect(prisma.managementReview.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          scope: ['质量管理体系', '食品安全管理体系'],
+          participants,
+        }),
+      }),
+    );
+  });
+
   it('collects audit reports and training archives as idempotent review inputs', async () => {
     const prisma = createPrismaMock();
     prisma.managementReview.findUnique.mockResolvedValue({
