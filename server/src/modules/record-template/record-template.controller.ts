@@ -16,6 +16,7 @@ import { RecordTemplateService } from './record-template.service';
 import { CreateRecordTemplateDto } from './dto/create-record-template.dto';
 import { UpdateRecordTemplateDto } from './dto/update-record-template.dto';
 import { QueryRecordTemplateDto } from './dto/query-record-template.dto';
+import { UpdateFieldsBodyDto } from './dto/update-fields-body.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 
@@ -93,7 +94,7 @@ export class RecordTemplateController {
   @Put(':id/fields')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '更新草稿模板字段' })
-  updateFields(@Param('id') id: string, @Body() body: { fields: Array<Record<string, unknown>> }) {
+  updateFields(@Param('id') id: string, @Body() body: UpdateFieldsBodyDto) {
     return this.templateService.updateFields(id, body.fields);
   }
 
