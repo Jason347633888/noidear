@@ -124,7 +124,7 @@ last_verified_commit: 12aec17
   - 仓储模块（05）：`MaterialRequisition.requisitionType = 'maintenance'` 表示维修领料，关联设备维修场景，但当前 schema 无 equipmentId 外键约束（见 GAP-603）
   - 统一审批平台（12）：MaintenanceRecord 通过 UnifiedApprovalModule 审批回调
   - 通知模块：保养到期提醒
-- **与 QC 记录的关系**：MeasuringEquipment 为品质检验所用量器（如温度计、称重仪），校准有效期影响检验结果的合规性，但当前无 FK 关联 CCPRecord 或 IncomingInspection（见 GAP-604）
+- **与 QC 记录的关系**：MeasuringEquipment 为品质检验所用量器（如温度计、称重仪），校准有效期影响检验结果的合规性；业务已确认检验记录不要求逐条关联量器，当前无 FK 关联 CCPRecord 或 IncomingInspection 的现状接受（GAP-604 no_action）
 
 ## 7. 当前系统差距
 
@@ -134,7 +134,7 @@ last_verified_commit: 12aec17
 | GAP-601 | `EquipmentController`（`@Controller('equipment')`）及 `RecordController`（`@Controller('maintenance-records')`）、`PlanController`（`@Controller('maintenance-plans')`）均未声明 `@UseGuards(JwtAuthGuard)`，而 `MeasuringEquipmentController` 已加 guard | 设备模块控制器开发时遗漏认证守卫 | 设备台账、保养计划、保养记录接口无需登录即可访问，存在未授权写入风险 | P1 | 已验证 | `server/src/modules/equipment/equipment.controller.ts` 无 `@UseGuards`；`server/src/modules/measuring-equipment/measuring-equipment.controller.ts` 第 8 行已有 `@UseGuards(JwtAuthGuard)` |
 | GAP-602 | `MeasuringEquipmentService.findAllEquipment()` 过滤条件为 `status: { not: 'scrapped' }`，但 `findOverdue()` 无 company_id 过滤，返回所有公司逾期量器 | findOverdue 与 findAllEquipment 过滤逻辑不一致，且均受 GAP-600 影响 | 逾期预警接口暴露所有租户数据，无隔离 | P1 | 已验证 | `server/src/modules/measuring-equipment/measuring-equipment.service.ts` 第 20-28 行 `findOverdue()` 无 where company_id 条件 |
 | GAP-603 | `MaterialRequisition.requisitionType = 'maintenance'` 的领料单无 `equipmentId` 外键关联 `Equipment`，无法追踪维修领料对应哪台设备 | 仓储模块（05）与设备模块设计时未做关联 | 维修领料台账与设备维修记录脱节，无法核查设备维修物料用量 | P2 | 已验证（schema 层面）| `server/src/prisma/schema.prisma` MaterialRequisition 模型（约第 1057 行）无 equipmentId 字段 |
-| GAP-604 | `MeasuringEquipment`（计量器具）与 `IncomingInspection`、`CCPRecord` 等检验记录无外键关联，无法追踪某次检验使用了哪台量器、该量器校准状态是否有效 | 模块间无跨模块关联设计 | 无法满足 BRCGS 等认证对"检验使用量器须有效校准"的可追溯要求 | P2 | 需要运行系统确认 | `server/src/prisma/schema.prisma` IncomingInspection 和 CCPRecord 模型无 measuring_equipment_id 字段（需确认） |
+| GAP-604 | `MeasuringEquipment`（计量器具）与 `IncomingInspection`、`CCPRecord` 等检验记录无外键关联 | 业务决定 C：检验记录不要求关联量器，现状接受 | 不作为 implementation gap；不新增检验记录到量器的 FK，也不补历史关联 | P2 | no_action（已业务确认） | PR #176 业务确认结论：C = 不需要在检验记录上关联量器，现状接受 |
 | GAP-605 | 计量器具模块（`MeasuringEquipmentModule`）无审批流程，校准记录由管理员直接录入即生效，无二级确认或签核机制 | 模块设计简化，未接入 UnifiedApprovalModule | 校准记录篡改风险；高风险量器（如金属检测仪）的检定记录无法满足审计要求 | P2 | 已验证（模块定义无审批） | `server/src/modules/measuring-equipment/measuring-equipment.module.ts` 无 UnifiedApprovalModule import |
 
 ## 8. 整改建议
@@ -145,7 +145,7 @@ last_verified_commit: 12aec17
 | GAP-601 | 在 `EquipmentController`、`PlanController`、`RecordController`、`FaultController`、`StatsController`、`UploadController` 上添加 `@UseGuards(JwtAuthGuard)` 装饰器 | auth 模块 | 否 | fix/equipment-controller-auth-guard | 是 |
 | GAP-602 | 在 `findOverdue()` 中增加 company_id 参数（待 GAP-600 修复后同步处理） | auth 模块 | 否，与 GAP-600 合并 | fix/measuring-equipment-company-id-from-jwt | 是（合并进 GAP-600 PR） |
 | GAP-603 | 在 `MaterialRequisition` 增加可选字段 `equipment_id String?`，加 @relation 到 Equipment；在前端维修领料单填写时提供设备选择器 | 仓储模块（05）、设备模块 | 否，字段增量 | feat/requisition-equipment-link | 是 |
-| GAP-604 | 业务确认是否需要在检验记录上关联量器；若需要，在 `IncomingInspection` 和 `CCPRecord` 增加 `measuring_equipment_id String?` 外键 | 品质模块（07）、计量模块 | 需要业务确认后设计 | feat/inspection-measuring-instrument-link | 否（依赖业务决策） |
+| GAP-604 | 不整改；业务决定不在检验记录上关联量器，不新增 `measuring_equipment_id` 外键，不进入实现队列 | 品质模块（07）、计量模块 | 否 | 不适用（no_action） | 不适用 |
 | GAP-605 | 评估是否将计量器具校准记录纳入 UnifiedApprovalModule 审批流；如需接入，参考 MaintenanceRecord 审批模式 | UnifiedApprovalModule | 需要业务确认 | feat/calibration-record-approval-flow | 否（依赖业务决策） |
 
 ## 9. 证据索引
@@ -189,5 +189,5 @@ last_verified_commit: 12aec17
 | P1 | GAP-601 | fix/equipment-controller-auth-guard | 无 | 是 | `curl -X GET /api/v1/equipment` 无 Authorization header 返回 401 |
 | P1 | GAP-602 | fix/measuring-equipment-company-id-from-jwt | GAP-600 | 是（合并进 GAP-600 PR） | `GET /api/v1/measuring-equipment/overdue` 仅返回当前公司逾期量器 |
 | P2 | GAP-603 | feat/requisition-equipment-link | 仓储模块 05 | 是 | 维修领料单可选关联设备，schema 迁移通过 |
-| P2 | GAP-604 | feat/inspection-measuring-instrument-link | 业务确认 | 否 | 需要业务确认后定义验收标准 |
+| P2 | GAP-604 | 不适用（no_action） | 业务决定 C：现状接受 | 不适用 | 不进入实现队列；不新增检验记录量器 FK |
 | P2 | GAP-605 | feat/calibration-record-approval-flow | 业务确认 | 否 | 需要业务确认后定义验收标准 |
