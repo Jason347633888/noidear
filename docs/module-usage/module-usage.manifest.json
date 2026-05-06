@@ -700,24 +700,25 @@
       "severity": "P2",
       "moduleId": "supplier-procurement-incoming",
       "triageStatus": "ready_for_plan",
-      "description": "2026-05-02 code verification: `/warehouse/batches` route and BatchManagement page exist, but `client/src/views/Layout.vue` visible warehouse menu only exposes `/warehouse/materials` and `/warehouse/suppliers`; no visible batch-management entry was found. Requirement is clear enough for a plan.",
+      "description": "2026-05-02 code verification: `/warehouse/batches` route and BatchManagement page exist, but `client/src/views/Layout.vue` visible warehouse menu only exposes `/warehouse/materials` and `/warehouse/suppliers`; no visible batch-management entry was found. Plan written 2026-05-03.",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
-      "needsDesign": true,
+      "needsDesign": false,
       "schemaImpact": false,
       "historicalDataImpact": false,
       "recommendedSuperpowers": [
         "writing-plans"
       ],
-      "prRoadmapGroup": "supplier",
-      "prOrder": null,
-      "recommendedPr": "supplier/GAP-104",
+      "prRoadmapGroup": "warehouse",
+      "prOrder": 38,
+      "recommendedPr": "warehouse/GAP-104",
       "validationCommands": [
-        "pnpm test:e2e -- --grep GAP-104"
+        "cd client && npx vitest run src/views/__tests__/Layout.spec.ts",
+        "cd client && npx vitest run src/views/warehouse/__tests__/BatchManagement.spec.ts"
       ],
       "specPath": "",
-      "planPath": ""
+      "planPath": "docs/superpowers/plans/2026-05-03-gap-104-warehouse-batch-menu-visibility-implementation.md"
     },
     {
       "id": "GAP-105",
