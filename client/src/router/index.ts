@@ -607,6 +607,18 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/internal-audit/ReportDetail.vue'),
         meta: { title: '内审报告详情' },
       },
+      {
+        path: 'management-reviews',
+        name: 'ManagementReviewList',
+        component: () => import('@/views/management-review/ReviewList.vue'),
+        meta: { title: '管理评审' },
+      },
+      {
+        path: 'management-reviews/:id',
+        name: 'ManagementReviewDetail',
+        component: () => import('@/views/management-review/ReviewDetail.vue'),
+        meta: { title: '管理评审详情' },
+      },
       // 系统运维监控模块
       {
         path: 'monitoring/dashboard',
