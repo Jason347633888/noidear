@@ -1930,7 +1930,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "training",
-      "prOrder": 39,
+      "prOrder": 40,
       "recommendedPr": "training/GAP-412",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-412"
