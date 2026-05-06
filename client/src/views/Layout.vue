@@ -207,6 +207,7 @@ const menuItems = [
     children: [
       { path: '/warehouse/materials', title: '物料管理', icon: Goods },
       { path: '/warehouse/suppliers', title: '供应商', icon: Goods },
+      { path: '/warehouse/batches', title: '批次管理', icon: Goods },
     ],
   },
   {
