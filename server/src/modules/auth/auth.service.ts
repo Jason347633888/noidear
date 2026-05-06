@@ -24,6 +24,7 @@ export class AuthService {
     const lockoutDisabled = process.env.AUTH_LOCKOUT_DISABLED === 'true';
     const user = await this.prisma.user.findUnique({
       where: { username: dto.username },
+      include: { roleObj: true },
     });
 
     if (!user) {
@@ -52,10 +53,12 @@ export class AuthService {
       data:  { loginAttempts: 0, firstFailedAt: null, lockedUntil: null },
     });
 
+    const roleCode = user.roleObj?.code ?? user.role;
+
     const payload = {
       sub: user.id,
       username: user.username,
-      role: user.role,
+      role: roleCode,
       name: user.name,
       companyId: user.company_id,
     };
@@ -67,7 +70,7 @@ export class AuthService {
         id: user.id,
         username: user.username,
         name: user.name,
-        role: user.role,
+        role: roleCode,
         companyId: user.company_id,
       },
     };

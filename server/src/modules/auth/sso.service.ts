@@ -53,7 +53,7 @@ export class SsoService {
         id: user.id,
         username: user.username,
         name: user.name,
-        role: user.role,
+        role: user.roleObj?.code ?? user.role,
         companyId: user.company_id,
       },
     };
@@ -82,7 +82,7 @@ export class SsoService {
         id: user.id,
         username: user.username,
         name: user.name,
-        role: user.role,
+        role: user.roleObj?.code ?? user.role,
         companyId: user.company_id,
       },
     };
@@ -190,7 +190,10 @@ export class SsoService {
   }
 
   private async findOrCreateUser(username: string, name: string, provider: string) {
-    const existing = await this.prisma.user.findUnique({ where: { username } });
+    const existing = await this.prisma.user.findUnique({
+      where: { username },
+      include: { roleObj: true },
+    });
     if (existing) return existing;
 
     // 首次登录自动创建账号（BR-SSO-1）
@@ -201,6 +204,7 @@ export class SsoService {
 
     return this.prisma.user.create({
       data: { id, username, name, password: defaultPassword, role: 'user', status: 'active', company_id: '1' },
+      include: { roleObj: true },
     });
   }
 
@@ -208,7 +212,7 @@ export class SsoService {
     return this.jwtService.sign({
       sub: user.id,
       username: user.username,
-      role: user.role,
+      role: user.roleObj?.code ?? user.role,
       name: user.name,
       companyId: user.company_id,
     });
