@@ -2393,22 +2393,19 @@
       "id": "GAP-604",
       "severity": "P2",
       "moduleId": "equipment-and-measuring",
-      "triageStatus": "needs_business_confirmation",
+      "triageStatus": "no_action",
+      "description": "2026-05-06 business decision C: inspection records do not need to reference measuring equipment. Current absence of measuring_equipment_id on IncomingInspection, CCPRecord, EnvironmentRecord, ProcessMonitorRecord, MetalDetectionLog, and FragileItemInspection is accepted; GAP-604 does not enter the implementation queue.",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
-      "needsDesign": true,
+      "needsDesign": false,
       "schemaImpact": false,
       "historicalDataImpact": false,
-      "recommendedSuperpowers": [
-        "writing-plans"
-      ],
+      "recommendedSuperpowers": [],
       "prRoadmapGroup": "equipment",
       "prOrder": null,
       "recommendedPr": "equipment/GAP-604",
-      "validationCommands": [
-        "pnpm test:e2e -- --grep GAP-604"
-      ],
+      "validationCommands": [],
       "specPath": "",
       "planPath": ""
     },
