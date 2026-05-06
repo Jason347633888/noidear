@@ -66,9 +66,11 @@ export class ApprovalService {
       // Admin 角色可以覆盖审批权限
       const user = await this.prisma.user.findUnique({
         where: { id: approverId },
+        include: { roleObj: true },
       });
 
-      if (!user || user.role !== 'admin') {
+      const userRoleCode = user?.roleObj?.code ?? user?.role;
+      if (!user || userRoleCode !== 'admin') {
         throw new BusinessException(ErrorCode.FORBIDDEN, '无权审批此记录');
       }
     }

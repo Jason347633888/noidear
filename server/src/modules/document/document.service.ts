@@ -661,6 +661,7 @@ export class DocumentService {
     // 获取审批人信息用于权限检查
     const approver = await this.prisma.user.findUnique({
       where: { id: approverId },
+      include: { roleObj: true },
     });
 
     if (!approver) {
@@ -674,7 +675,8 @@ export class DocumentService {
 
     // 权限控制：验证是否为指定的审批人
     const isDesignatedApprover = pendingApproval.approverId === approverId;
-    const isAdmin = approver?.role === 'admin';
+    const approverRoleCode = approver?.roleObj?.code ?? approver?.role;
+    const isAdmin = approverRoleCode === 'admin';
 
     if (!isDesignatedApprover && !isAdmin) {
       throw new BusinessException(
@@ -1089,9 +1091,11 @@ export class DocumentService {
     // 权限检查：只有管理员可以物理删除
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
+      include: { roleObj: true },
     });
 
-    if (!user || user.role !== 'admin') {
+    const userRoleCode = user?.roleObj?.code ?? user?.role;
+    if (!user || userRoleCode !== 'admin') {
       throw new BusinessException(
         ErrorCode.FORBIDDEN,
         '只有管理员可以物理删除文档',

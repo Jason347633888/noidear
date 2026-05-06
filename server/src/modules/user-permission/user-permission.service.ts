@@ -122,9 +122,11 @@ export class UserPermissionService {
       if (revokedBy) {
         const revoker = await this.prisma.user.findUnique({
           where: { id: revokedBy },
+          include: { roleObj: true },
         });
 
-        if (revoker && revoker.role !== 'admin' && userPermission.grantedBy !== revokedBy) {
+        const revokerRoleCode = revoker?.roleObj?.code ?? revoker?.role;
+        if (revoker && revokerRoleCode !== 'admin' && userPermission.grantedBy !== revokedBy) {
           throw new ForbiddenException('仅原授权人或管理员可撤销此权限');
         }
       }

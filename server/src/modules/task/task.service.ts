@@ -29,6 +29,7 @@ interface TemplateField {
 interface UserContext {
   id: string;
   role: string;
+  roleObj?: { code: string } | null;
   departmentId: string | null;
 }
 
@@ -51,7 +52,7 @@ export class TaskService {
   private async getUserContext(userId: string): Promise<UserContext> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, role: true, departmentId: true },
+      select: { id: true, role: true, departmentId: true, roleObj: { select: { code: true } } },
     });
     if (!user) throw new NotFoundException('User not found');
     return user;
@@ -59,7 +60,8 @@ export class TaskService {
 
   async create(dto: CreateTaskDto, userId: string) {
     const user = await this.getUserContext(userId);
-    if (!this.isAdminOrLeader(user.role)) {
+    const roleCode = user.roleObj?.code ?? user.role;
+    if (!this.isAdminOrLeader(roleCode)) {
       throw new ForbiddenException('Only admin or leader can create tasks');
     }
 
@@ -115,8 +117,9 @@ export class TaskService {
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};
+    const roleCode = user.roleObj?.code ?? user.role;
 
-    if (!this.isAdminOrLeader(user.role)) {
+    if (!this.isAdminOrLeader(roleCode)) {
       // Regular members only see their own department
       where['departmentId'] = user.departmentId;
     } else if (query.departmentId) {
@@ -165,7 +168,8 @@ export class TaskService {
     if (!task) {
       throw new NotFoundException('Task not found');
     }
-    if (!this.isAdminOrLeader(user.role)) {
+    const roleCode = user.roleObj?.code ?? user.role;
+    if (!this.isAdminOrLeader(roleCode)) {
       if (task.departmentId !== user.departmentId) {
         throw new ForbiddenException('Access denied: different department');
       }
@@ -180,7 +184,8 @@ export class TaskService {
     if (!task) {
       throw new NotFoundException('Task not found');
     }
-    if (user.role !== 'admin' && task.creatorId !== userId) {
+    const roleCode = user.roleObj?.code ?? user.role;
+    if (roleCode !== 'admin' && task.creatorId !== userId) {
       throw new ForbiddenException('Only admin or task creator can update');
     }
     if (task.status !== 'pending') {
@@ -223,7 +228,8 @@ export class TaskService {
     }
 
     // Department check for non-admin/leader
-    if (!this.isAdminOrLeader(user.role)) {
+    const roleCode = user.roleObj?.code ?? user.role;
+    if (!this.isAdminOrLeader(roleCode)) {
       if (task.departmentId !== user.departmentId) {
         throw new ForbiddenException('Access denied: different department');
       }
@@ -293,7 +299,8 @@ export class TaskService {
       throw new NotFoundException('Task not found');
     }
 
-    if (!this.isAdminOrLeader(user.role)) {
+    const roleCode = user.roleObj?.code ?? user.role;
+    if (!this.isAdminOrLeader(roleCode)) {
       if (task.departmentId !== user.departmentId) {
         throw new ForbiddenException('Access denied: different department');
       }
@@ -340,7 +347,8 @@ export class TaskService {
     if (!task) {
       throw new NotFoundException('Task not found');
     }
-    if (user.role !== 'admin' && task.creatorId !== userId) {
+    const roleCode = user.roleObj?.code ?? user.role;
+    if (roleCode !== 'admin' && task.creatorId !== userId) {
       throw new ForbiddenException('Only admin or task creator can cancel');
     }
     if (task.status !== 'pending') {
