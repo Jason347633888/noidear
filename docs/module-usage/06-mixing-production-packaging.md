@@ -151,7 +151,7 @@ PackagingMaterialUsage:
 | GAP-203 | `PackagingMaterialUsage.production_batch_id` 字段存在但**未声明 FK 关系到 `ProductionBatch`**，也无外键约束 | schema 中 `production_batch_id String?` 仅为裸字符串字段，未写 `@relation` | 包材用量无法通过 Prisma 关联查询到产品批次；包材追溯链断裂；删除产品批次时无级联约束 | P1 | 已验证 | `server/src/prisma/schema.prisma` L3621-3639；`ProductionBatch` model 中不含 `packagingMaterialUsages` 反向关系声明 |
 | GAP-204 | `MixingExecution.shift_type_id` 字段存在（`String?`）但**未声明 FK 关系到 `ShiftType`** | schema 中 `shift_type_id String?` 无 `@relation`；`MixingService.createExecution` 也未填写该字段 | 配料执行无法关联到班次类型主数据；配料记录的班次来源无法追溯 | P2 | 已验证 | `server/src/prisma/schema.prisma` L1241；`server/src/modules/mixing/mixing.service.ts` L120-131（无 shift_type_id 赋值） |
 | GAP-205 | `FinishedGoodsBatch` 已从 Prisma model 层移除，但 `Record.batchLinkType` 字段仍有 `"finished_goods"` 字符串值，`InventoryMovement.movement_type` 枚举中仍有 `"finished_goods_in"/"finished_goods_out"` | 迁移计划（TASK-9）要求逐步迁移，尚未完成全链路清理 | 旧追溯代码中引用 `finished_goods_batch_id` 或 `batchLinkType = "finished_goods"` 的查询可能产生空结果或需要特殊处理；产生维护负担 | P2 | 已验证 | `server/src/prisma/schema.prisma` L790；L2672；`docs/superpowers/plans/2026-04-30-staging-area-mixing-product-batch-implementation.md` §0 Scope Guard |
-| GAP-206 | 班前/接班盘点未完成时，`MixingWorkbench` 未强制阻断配料操作；盘点校验逻辑未在后端 `MixingService.createExecution` 中实现 | 设计文档要求"盘点差异未处理时禁止开班配料"，但代码中无该校验 | 配料区库存未盘点就配料，FIFO 准确性无法保证；差异无法被发现和处理 | P2 | 需要运行系统确认 | `server/src/modules/mixing/mixing.service.ts` 全文无 stocktake 校验；`docs/superpowers/specs/2026-04-29-staging-area-mixing-and-batch-aggregation-design.md` §6.1 |
+| GAP-206 | 配料执行前的班前/接班盘点校验已实现，未满足盘点状态时阻断创建 MixingExecution | 旧实现未把盘点状态接入 `MixingService.createExecution` | 旧版本存在未盘点先配料的风险 | P2 | 已实现（PR #188 已合并） | PR #188 `GAP-206: Block mixing execution without shift-start stocktake` |
 | GAP-207 | `TeamShiftSchedule` 主数据和 `ShiftInstance` 之间无自动关联；`ShiftInstance` 开班时不从排班表带出班组和负责人 | `ShiftInstanceService.create` 未查询 `TeamShiftSchedule`；`ShiftInstance` model 也无 `team_id` 字段 | 开班记录无法追溯责任班组；生产班次追溯时责任班组归属不明 | P2 | 已验证 | `server/src/modules/shift-instance/shift-instance.service.ts` L14-35；`server/src/prisma/schema.prisma` L3641-3658（ShiftInstance 无 team_id 字段） |
 
 ## 8. 整改建议
@@ -164,7 +164,7 @@ PackagingMaterialUsage:
 | GAP-203 | 在 schema 中为 `PackagingMaterialUsage.production_batch_id` 添加 `@relation` 到 `ProductionBatch`，同时在 `ProductionBatch` model 中添加 `packagingMaterialUsages PackagingMaterialUsage[]` 反向关系；运行迁移 | packaging-material-usage 模块 | 否 | PR: fix/packaging-material-usage-fk | 是 |
 | GAP-204 | 在 `MixingExecution` schema 中添加 `shift_type ShiftType? @relation(...)` FK；在 `MixingService.createExecution` DTO 和写入逻辑中增加 `shiftTypeId` 可选字段 | mixing 模块、team-shift 模块 | 否 | PR: fix/mixing-execution-shift-type-fk | 是 |
 | GAP-205 | 按迁移计划清理 `Record.batchLinkType = "finished_goods"` 的历史数据；将 `InventoryMovement.movement_type` 中的 `finished_goods_in/out` 文本替换为 `production_in/out` 或等效业务语义；发布 TASK-9 清理 PR | record 模块、warehouse 模块 | 否（已有计划）| PR: chore/remove-finished-goods-batch-residuals | 是 |
-| GAP-206 | 在 `MixingService.createExecution` 中加入对配料区当日盘点状态的校验逻辑；查询该 `area_id` 当日是否存在 `StagingAreaStocktake.status = 'balanced'` 记录；若无，抛出 `BadRequestException` | warehouse/staging-area 模块、mixing 模块 | 否 | PR: feat/mixing-stocktake-gate | 是（独立校验逻辑）|
+| GAP-206 | 已完成：配料执行前置盘点校验已合并，无需继续排期 | warehouse/staging-area 模块、mixing 模块 | 否 | 已合并 | 否 |
 | GAP-207 | 在 `ShiftInstance` 中增加 `team_id` FK 字段；`ShiftInstanceService.create` 时根据 `shift_type_id` 和 `shift_date` 查询 `TeamShiftSchedule` 自动带出班组，允许人工覆盖但须留原因 | shift-instance 模块、team-shift 模块 | 否 | PR: feat/shift-instance-team-binding | 否（依赖 GAP-1 先完成）|
 
 ## 9. 证据索引
@@ -206,6 +206,6 @@ PackagingMaterialUsage:
 | P1 | GAP-200 | fix/shift-instance-shift-type-fk | 无 | 是 | `npx prisma validate`；ShiftInstance.shift_type_id FK 通过；旧 shift_type 字段兼容保留 |
 | P1 | GAP-201 | clarify/mixing-aggregation-many-to-many | 需业务决策 | 否 | 业务确认邮件/决策记录存档；若移除 unique 约束，需补充物料平衡防双计数测试 |
 | P1 | GAP-204 | fix/mixing-execution-shift-type-fk | GAP-200 完成后更清晰 | 是 | `npx prisma validate`；MixingExecution.shift_type_id 有 @relation |
-| P2 | GAP-206 | feat/mixing-stocktake-gate | 无 | 是 | E2E：未完成盘点时创建 MixingExecution 返回 400 |
+| P2 | GAP-206 | 已合并 | 无 | 否 | PR #188 已合并；未完成盘点时创建 MixingExecution 被阻断 |
 | P2 | GAP-207 | feat/shift-instance-team-binding | GAP-200 完成后 | 否 | E2E：开班时自动带出排班班组，可人工覆盖 |
 | P3 | GAP-205 | chore/remove-finished-goods-batch-residuals | 追溯链清理完成 | 是 | grep "finished_goods_batch\|batchLinkType.*finished" 返回空结果 |

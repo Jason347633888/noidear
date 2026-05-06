@@ -1,28 +1,38 @@
-# noidear 质量管理系统 - Agent 入口
+# noidear Agent 快速入口
 
-## 系统能力
-- 产品研发9步流程（含 HACCP 审批）：POST /process/instances 创建，逐步推进
-- 仓库管理（物料/入库/出库/批次追溯/FIFO）
-- 文档三级管理（创建/审批/归档/作废）
-- 审批工作流（多步骤、角色分配）
-- 权限管理（角色 + 细粒度字段权限）
-- 批次追溯、偏差检测、统计分析、数据导出
+## 首先读取
+1. `AGENTS.md`
+2. `docs/AGENT_GUIDE.md`
+3. 若涉及主数据、批次、追溯、召回、投诉、仓储、生产、QA/QC、研发、CAPA、食品安全：继续读取 `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md`
+
+## 当前权威文档
+- 系统总览：`README.md`
+- Agent 协议：`AGENTS.md`、`docs/AGENT_GUIDE.md`
+- 主数据与追溯 hard gate：`docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md`
+- 模块边界与 GAP 事实源：`docs/module-usage/00-index.md`
+- 当前 GAP 总表：`docs/module-usage/99-current-gap-register.md`
+- GAP 分诊：`docs/module-usage/97-gap-triage.md`
+- 可执行 PR 排期：`docs/module-usage/96-pr-roadmap.md`
+- 机器可读索引：`docs/module-usage/module-usage.manifest.json`
 
 ## API 入口
-REST API:    http://localhost:3000/api/v1
-完整文档:    http://localhost:3000/api/docs（Swagger UI）
-JSON 规范:   http://localhost:3000/api/docs-json
-认证方式:    POST /api/v1/auth/login { username, password } → { access_token }
-Token 用法:  Header: Authorization: Bearer <token>
-Token 有效期: 7天
+REST API:  http://localhost:3000/api/v1
+Swagger UI: http://localhost:3000/api/docs
+Swagger JSON: http://localhost:3000/api/docs-json
+认证方式: POST /api/v1/auth/login { username, password } -> { access_token }
+Token 用法: Authorization: Bearer <token>
 
-## MCP 工具（Claude Code 专用）
+## MCP 工具
 Server ID: noidear-mcp
-配置位置:   ~/.claude/settings.json
-工具列表:   见 /docs/AGENT_GUIDE.md
+工具与运行约束: 见 `docs/AGENT_GUIDE.md`
 
-## 关键约束（详见 /docs/BUSINESS_RULES.md）
-- 研发流程步骤必须顺序提交（stepNumber === currentStep）
-- Step7/8 需 HACCP/admin/manager 角色审批才能推进
-- 物料出库遵循 FIFO，通过出库申请流程（requisitions）触发，系统自动按批次扣减
-- 不可逆操作调用前需确认（见 BUSINESS_RULES.md）
+## 当前高频能力
+- 受控文件与记录表单治理
+- 供应商、来料、仓储、批次与 FIFO
+- 配料执行、产品批次、追溯
+- 设备、维保、计量器具
+- 培训、内审、CAPA、统一审批
+
+## 说明
+- `docs/REQUIREMENTS.md` 与 `docs/PROJECT_STRUCTURE.md` 现作为历史快照/导航补充，不再是排期事实源。
+- 任何 GAP、计划、排期、已完成状态，以 `docs/module-usage/*` 为准。

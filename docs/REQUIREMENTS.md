@@ -1,11 +1,14 @@
 # 需求积压文档
 
-> **源表单口径**: 当前四级记录表单口径以 `/Users/jiashenglin/Desktop/mybrain/文件管理体系/当前公司/04-记录表单` 为唯一事实源；截至2026-04-23，源表单为283张。`SaaS产品构思` 是字段映射和产品语义参考层，项目实现以 `noidear` 为落地点。
+> 历史说明：本文档保留早期需求沉淀与方案背景，不再作为当前排期、GAP 状态或执行队列的权威事实源。
 >
-> 用于持续记录待实现功能、正在开发中的需求以及已完成的变更。
-> 每次新增或完成需求时请同步更新本文档。
+> 当前权威入口：
+> - `docs/module-usage/97-gap-triage.md`
+> - `docs/module-usage/96-pr-roadmap.md`
+> - `docs/module-usage/99-current-gap-register.md`
+> - `docs/module-usage/module-usage.manifest.json`
 >
-> **最后审计**：2026-04-23（同步源表单最新口径）
+> **最后转为历史快照**：2026-05-06
 
 ---
 
@@ -672,4 +675,3 @@ _当前无进行中任务。_
 | 炉温/风机：DigitRoller 滚轮 | el-input-number 直接输入 | 用户反馈滚轮不便 |
 | 原料清单：autocomplete 搜索 | 弹窗选料（分类展示全部）| 用户需要看到全部物料 |
 | 协作部门职责：简单列表 | 6部门详细职责编号列表 | 用户提供完整内容 |
-

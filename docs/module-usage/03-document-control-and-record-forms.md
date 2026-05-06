@@ -150,9 +150,9 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | GAP-401 | DocumentIssuance 模型（`server/src/prisma/schema.prisma` 第 3485 行）无 `documentId` 外键，无法与 Document 关联 | 早期实现将发放记录作为独立登记表，未关联受控文件 | 文件发放台账（GRSS-XZ-JL-02、GRSS-XZ-JL-23）与受控文件版本脱节，无法验证发放的是否为有效版本 | P1 | 已验证 | `server/src/prisma/schema.prisma` 第 3485-3498 行无 documentId 字段 |
 | GAP-402 | `documents/operations/training-needs` 页面（TrainingNeedCenter）展示的是文控派生培训需求（DocumentTrainingNeed），与培训模块的 TrainingProject 是两套入口，用户容易混淆两者定位 | 文控派生需求与培训模块实体语义相近，但入口独立 | 文控专员和培训负责人可能在两处重复维护培训信息，产生平行事实风险 | P2 | 已验证 | `client/src/api/document-operations.ts` 第 10-29 行；`client/src/router/index.ts` 第 90-93 行（documents/operations/training-needs）；`client/src/router/index.ts` 第 513-565 行（独立培训模块路由） |
 | GAP-403 | 04 记录表单索引（RecordFormLandingIndex.vue）目前是手工维护入口，landingStatus 大量为 unimplemented，文控工作台报告大量 missingLandingTargets 和 unconfirmedLandingTargets 类型问题 | 283 张表单未全部完成落地映射确认 | 无法向监管机构证明所有源表单均有数字化落地入口 | P2 | 已验证 | `client/src/api/document-control.ts` WorkbenchIssueType 枚举包含 `missingLandingTargets`、`unconfirmedLandingTargets`；`RecordFormLandingEntry.landingStatus @default("unimplemented")` |
-| GAP-404 | 动态表单 RecordTemplate 版本管理中 `templateFamilyId + version` 的唯一约束已实现，但前端 `TemplateEdit.vue` 的 `updateFields` 调用与后端接口字段存在不一致风险 | 前端改版过程中接口版本演进不同步 | 模板字段更新可能静默失败，影响表单填写 | P2 | 未验证（需运行系统确认） | spec 文件 `docs/superpowers/specs/2026-04-28-document-control-and-record-form-governance-design.md` 第 77 行：「前端 updateFields 与后端接口存在不一致风险」 |
+| GAP-404 | RecordTemplate 字段更新合同已修复并合并，`TemplateEdit` 与后端字段更新路径已对齐 | 历史上模板编辑与 `updateFields` 合同演进不同步 | 旧版本存在模板字段更新静默失败风险 | P2 | 已实现（PR #191 已合并） | PR #191 `GAP-404: align record template fields update contract` |
 | GAP-405 | AuditReport 完成后生成 PDF 并存入 Document（`AuditReport.documentId` 关联 Document），等于内审报告被归入文控文件体系。但体系文件中心的 document_type 枚举不包含 AUDIT_REPORT 类型，导致内审报告与受控文件混在同一个列表 | AuditReport 设计时将归档文件引用了 Document 模型，但未对 document_type 进行分类区分 | 内审报告出现在受控文件列表中，干扰文控专员查阅，也不符合内审文件应由内审模块管理的边界原则 | P2 | 已验证 | `server/src/prisma/schema.prisma` 第 2255-2260 行 `AuditReport.documentId String`；`document-control.constants.ts` 第 1-8 行 DOCUMENT_TYPES 枚举无 AUDIT_REPORT 类型 |
-| GAP-406 | `DocumentVersion` 的 version 字段也是 Decimal，与 Document 主表版本号问题一致，且缺少 V1/V2/V3 语义的修订版本号展示规则 | 版本设计决策问题 | 用户无法区分文件是"1.1 小修"还是"V2 大修"，影响体系文件管理规范性 | P2 | 已验证 | `server/src/prisma/schema.prisma` 第 386 行 `model DocumentVersion` |
+| GAP-406 | Document 修订链生命周期已补齐，前端按修订语义展示版本，旧 effective 文件在新版生效后进入 superseded | 旧版以 Decimal version 为主，修订语义不清 | 旧实现难以区分版本修订层级 | P2 | 已实现（PR #181 已合并） | PR #181 `feat(GAP-406): document version lifecycle` |
 
 ## 8. 整改建议
 
@@ -162,9 +162,9 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | GAP-401 | 为 DocumentIssuance 增加 `documentId String?` 外键关联 Document，迁移现有发放记录做关联 | DocumentIssuance 模块 | 否 | feat/document-issuance-link | 是 |
 | GAP-402 | 在培训需求中心页面增加"关联到培训项目"快捷操作（现已有 linkTrainingNeed API），并在文控工作台的培训需求问题卡片上清晰标注这是"派生需求入口"而非"培训记录入口" | 文控模块、培训模块 | 否 | fix/training-need-ux-clarification | 是 |
 | GAP-403 | 优先批量处理 RecordFormLandingEntry unimplemented 条目，配合 model-landing 生成脚本完成自动建议，再由文控专员逐批确认 | RecordFormLandingService、model-landing 模块 | 否，基础设施已存在 | feat/record-form-landing-batch-confirm | 否（需要人工确认） |
-| GAP-404 | 在服务端增加对 `updateFields` 操作的接口版本校验或字段 schema 校验，防止字段定义错位提交 | RecordTemplate 模块 | 否 | fix/record-template-field-update-guard | 是 |
+| GAP-404 | 已完成：字段更新合同已统一并合并，无需继续排期 | RecordTemplate 模块 | 否 | 已合并 | 否 |
 | GAP-405 | 为 AuditReport 归档的 Document 设置 `document_type = 'AUDIT_REPORT'` 或更合适的 `source_folder = 'audit'`，并在文控列表前端过滤时默认排除内审归档类文件 | Document 模块、内审模块 | 否 | fix/audit-report-document-type-tag | 是 |
-| GAP-406 | 统一前端版本展示规则：使用 `versionNo` 字段展示为 V1/V2/V3，并在发起修订草稿时自动预填 `versionNo+1` | Document 模块 | 否 | fix/document-revision-version-ux | 是（与 GAP-1 可合并为同一 PR） |
+| GAP-406 | 已完成：修订链生命周期与版本展示合同已落地，无需继续排期 | Document 模块 | 否 | 已合并 | 否 |
 
 ## 9. 证据索引
 
@@ -207,5 +207,5 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | P2 | GAP-402 | fix/training-need-ux-clarification | 无 | 是 | 在 TrainingNeedCenter 页面有明确"派生需求"标注，点击关联跳转到 /training/projects 而非文控入口 |
 | P2 | GAP-403 | feat/record-form-landing-batch-confirm | model-landing 生成脚本 | 否 | `SELECT COUNT(*) FROM record_form_landing_entries WHERE landing_status = 'unimplemented'` 接近 0 |
 | P2 | GAP-405 | fix/audit-report-document-type-tag | 内审模块 | 是 | /documents 文件列表不出现内审报告条目 |
-| P2 | GAP-404 | fix/record-template-field-update-guard | 无 | 是 | 服务端对 fieldsJson 的 schema 校验测试通过 |
-| P2 | GAP-406 | fix/document-revision-version-ux | GAP-1 | 是（合并进 GAP-1 PR） | 修订草稿创建后版本号自动递增展示 |
+| P2 | GAP-404 | 已合并 | 无 | 否 | PR #191 已合并；字段更新合同已统一 |
+| P2 | GAP-406 | 已合并 | 无 | 否 | PR #181 已合并；修订链与 superseded 生命周期已落地 |

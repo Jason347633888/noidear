@@ -163,9 +163,9 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | GAP-409 | 前端培训 API（`client/src/api/training.ts`）调用 `POST /training/projects/:id/start`、`POST /training/projects/:id/complete`、`POST /training/projects/:id/cancel`，但服务端 `TrainingController` 没有这三个端点（只有 `PUT /projects/:id/status`） | 前后端开发未对齐，前端先行于服务端实现，或服务端重构后未更新前端 | 培训项目状态变更（启动/完成/取消）功能全部失败（404 Not Found），培训项目卡在 planned 状态无法推进 | P0 | 已验证 | `client/src/api/training.ts` 第 130-146 行（startTrainingProject/completeTrainingProject/cancelTrainingProject）；`server/src/modules/training/training.controller.ts` 第 82-118 行（无对应端点，仅有 `PUT /projects/:id/status`） |
 | GAP-410 | 内审不符合项（AuditFinding）整改完成后，当前系统无自动触发 `CorrectiveAction`（CAPA）的逻辑。业务上不符合项应进入 CAPA 闭环，但验证通过路径没有写入 `CorrectiveAction.trigger_type = 'internal_audit'` + `trigger_id = AuditFinding.id` | 内审模块实现时未与 CAPA 模块设计整合 | 内审不符合项整改完成只在内审内部闭环（verified 状态），不进入全厂 CAPA 系统追踪，管理评审无法汇总"内审触发的 CAPA 数量" | P1 | 已验证 | `server/src/prisma/schema.prisma` 第 2192-2236 行 `AuditFinding` 模型无 `correctiveActionId` 字段；`server/src/prisma/schema.prisma` 第 3068-3073 行 CorrectiveAction 已有 `trigger_type` 和 `trigger_id` |
 | GAP-411 | 内审计划（AuditPlan）的 `@Controller('audit/plans')` 和内审执行（AuditExecutionController）的 `@Controller('audit')` 路径存在前缀碰撞风险：`GET /audit/plans/:id/progress`（AuditExecutionController）与 `GET /audit/plans/:id`（AuditPlanController）在 NestJS 路由解析中可能产生冲突，取决于注册顺序 | 两个 controller 使用了部分重叠的前缀 `audit` 和 `audit/plans`，且同时在 `audit/plans/:id` 前缀下提供不同子路径 | 路由解析时 `GET /audit/plans/:id/progress` 可能被 `GET /audit/plans/:id` 捕获，导致 404 或数据错误 | P1 | 未验证（需要运行系统确认） | `server/src/modules/internal-audit/audit-plan/audit-plan.controller.ts` 第 22 行 `@Controller('audit/plans')`；`server/src/modules/internal-audit/audit-execution/audit-execution.controller.ts` 第 29 行 `@Controller('audit')` |
-| GAP-412 | 培训模块的 `TrainingProject.trainees` 字段为 `String[]`（员工 ID 数组），无 Prisma 关系外键约束，员工主数据变更（如 User 删除/停用）不会自动更新 trainees 数组 | 使用 JSON 数组存储关联而非桥接表 | 培训参与人名单可能包含已离职员工 ID，前端渲染时需要额外查询 User 状态，存在脏数据风险 | P2 | 已验证 | `server/src/prisma/schema.prisma` 第 2056 行 `trainees String[]` |
+| GAP-412 | 培训模块的 `TrainingProject.trainees` 仍为 `String[]`，桥接表迁移方案已完成设计并进入执行排期 | 现状仍使用数组存储关联而非桥接表 | 培训参与人名单仍可能包含已离职员工 ID，存在脏数据风险 | P2 | 已验证，待执行 | `server/src/prisma/schema.prisma` 第 2056 行 `trainees String[]`；计划 PR #168 已合并 |
 | GAP-413 | 内审报告归档时，`AuditReport.documentId` 将报告关联到 Document 体系，但 Document 的 `document_type` 枚举中无 AUDIT_REPORT 类型（见 GAP-6），且 AuditReport 生成的 Document 条目会出现在文控受控文件列表中 | 内审与文控边界未明确隔离（同 GAP-405） | 内审报告混入受控文件列表，干扰文控专员，与 GAP-6 共享根因 | P2 | 已验证 | 与 GAP-405 证据相同 |
-| GAP-414 | 管理评审（ManagementReview）当前在 MASTER_DATA_AND_TRACEABILITY_MODEL.md 中标记为"未独立建模，当前更适合 RecordTemplate/Record"，但 AuditReport.summary（Json）和 TrainingArchive 中有应汇入管理评审的统计数据，尚无自动汇总链路 | ManagementReview 尚未作为独立业务模型实现 | 管理评审必须人工收集内审报告摘要、培训完成率，无系统化汇总入口；GRSS-PZ-JL-50 管理评审表单落地不完整 | P2 | 需要业务确认 | `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md` 第 78 行："ManagementReview / 管理评审 | 未独立建模，当前更适合 RecordTemplate/Record | 待收敛" |
+| GAP-414 | ManagementReview 第一版已独立建模，并自动汇总 AuditReport.summary 与 TrainingArchive 统计 | 旧版管理评审仅依赖动态表单承接 | 旧流程需要人工收集汇总证据 | P2 | 已实现（PR #182 已合并） | PR #182 `feat: GAP-414 management review modeling` |
 
 ## 8. 整改建议
 
@@ -176,9 +176,9 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | GAP-409 | 在服务端 `TrainingController` 增加 `POST /projects/:id/start`、`POST /projects/:id/complete`、`POST /projects/:id/cancel` 端点，或在前端 training.ts 将这三个函数改用 `PUT /projects/:id/status` + body | 无 | 否（推荐统一为 status 端点） | fix/training-project-status-endpoints | 是 |
 | GAP-410 | 不新增 `AuditFinding.correctiveActionId`；复用 `CorrectiveAction.trigger_type = 'internal_audit'` + `trigger_id = AuditFinding.id`，在内审不符合项整改验证通过（verified）时幂等创建 CAPA | CorrectiveAction 模块；依赖 GAP-316 CAPA 来源校验与反查合同 | 是 | feat/audit-finding-to-capa-linkage | 是（GAP-316 后执行） |
 | GAP-411 | 将 AuditExecutionController 的 `@Controller('audit')` 改为 `@Controller('audit/executions')` 或合并到 AuditPlanController，消除路径前缀碰撞 | 内审模块 | 否 | fix/audit-controller-prefix-conflict | 否（需先运行系统确认实际是否冲突） |
-| GAP-412 | 为 TrainingProject 的学员关系引入桥接表 `TrainingProjectTrainee(projectId, userId)` 替代 `trainees String[]`，支持级联删除和引用完整性 | 培训模块、User 模块 | 是（schema 变更） | refactor/training-project-trainee-table | 否（需数据迁移） |
+| GAP-412 | 保持既有设计：将 TrainingProject 学员关系迁移为 `TrainingProjectTrainee(projectId, userId)` 桥接表，待执行 | 培训模块、User 模块 | 是（schema 变更） | refactor/training-project-trainee-table | 否（需数据迁移） |
 | GAP-413 | 同 GAP-405 整改方案：为内审归档的 Document 设置专属 document_type 标签 | 内审模块、文控模块 | 否 | 合并至 fix/audit-report-document-type-tag | 是 |
-| GAP-414 | 设计 ManagementReview 独立业务模型，提供 AuditReport 和 TrainingArchive 的汇总接口；短期可使用 RecordTemplate 落地管理评审记录，长期建议独立建模 | 内审模块、培训模块、文控模块 | 是（ManagementReview 需独立建模） | feat/management-review-module | 否（需业务需求确认） |
+| GAP-414 | 已完成：ManagementReview 第一版独立模型与聚合接口已落地，无需继续排期 | 内审模块、培训模块、文控模块 | 是 | 已合并 | 否 |
 
 ## 9. 证据索引
 
@@ -228,6 +228,6 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | P0 | GAP-409 | fix/training-project-status-endpoints | 无 | 是 | 调用前端 `startTrainingProject` 后，项目状态变为 ongoing（200 而非 404） |
 | P1 | GAP-410 | feat/audit-finding-to-capa-linkage | GAP-316 CAPA 来源校验与反查合同 | 是（GAP-316 后） | 验证内审不符合项 verified 后，CorrectiveAction 表中出现对应记录，`trigger_type = 'internal_audit'`，`trigger_id = AuditFinding.id` |
 | P1 | GAP-411 | fix/audit-controller-prefix-conflict | 需先运行系统确认实际冲突 | 否 | `GET /api/v1/audit/plans/:id/progress` 返回正确进度数据，而非被 `GET /api/v1/audit/plans/:id` 拦截 |
-| P2 | GAP-412 | refactor/training-project-trainee-table | 无 | 否（需数据迁移） | 学员关系通过 training_project_trainees 表存储，`SELECT * FROM training_projects WHERE trainees IS NOT NULL` 应迁移为空 |
+| P2 | GAP-412 | refactor/training-project-trainee-table | 无 | 否（需数据迁移） | 计划已合并，待实现；学员关系最终应迁移为 training_project_trainees |
 | P2 | GAP-413 | 合并至 fix/audit-report-document-type-tag | 内审模块 | 是 | /documents 文件列表不出现 AuditReport 来源的条目 |
-| P2 | GAP-414 | feat/management-review-module | 内审、培训、文控模块 GAP 均先完成 | 否 | ManagementReview 页面能自动汇总最近一期内审摘要和培训完成率 |
+| P2 | GAP-414 | 已合并 | 无 | 否 | PR #182 已合并；ManagementReview 已可聚合内审摘要和培训统计 |

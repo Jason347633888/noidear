@@ -1,10 +1,15 @@
 # 项目结构导航
 
-> 文档版本: 6.5
-> 最后更新: 2026-04-27
-> 用途: AI Agent 快速定位文件 + 项目结构参考
-> 项目状态: 全部 22 个功能模块已开发，总体完成度 **85.6%**（154/180 任务）
-> 最新进展: Agent 入口与权威链完成对齐（AGENTS.md 短根入口 + AGENT_GUIDE.md 补充协议 + MASTER_DATA hard gate），Model Landing 层完成（283张表单/59组 冻结为可查询 TypeScript artifact）
+> 历史说明：本文档保留目录结构和旧阶段盘点，不再作为项目状态、模块完成度或当前排期的权威事实源。
+> 当前结构与排期请优先读取：
+> - `README.md`
+> - `AGENTS.md`
+> - `docs/AGENT_GUIDE.md`
+> - `docs/module-usage/00-index.md`
+> - `docs/module-usage/99-current-gap-register.md`
+> - `docs/module-usage/module-usage.manifest.json`
+>
+> **最后转为历史快照**：2026-05-06
 
 ---
 

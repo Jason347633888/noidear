@@ -699,8 +699,8 @@
       "id": "GAP-104",
       "severity": "P2",
       "moduleId": "supplier-procurement-incoming",
-      "triageStatus": "ready_for_plan",
-      "description": "2026-05-02 code verification: `/warehouse/batches` route and BatchManagement page exist, but `client/src/views/Layout.vue` visible warehouse menu only exposes `/warehouse/materials` and `/warehouse/suppliers`; no visible batch-management entry was found. Plan written 2026-05-03.",
+      "triageStatus": "implemented",
+      "description": "2026-05-06 implemented and merged via PR #189: `/warehouse/batches` is now exposed in the warehouse sidebar menu. GAP-104 is closed and no longer belongs in the execution queue.",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -711,7 +711,7 @@
         "writing-plans"
       ],
       "prRoadmapGroup": "warehouse",
-      "prOrder": 38,
+      "prOrder": null,
       "recommendedPr": "warehouse/GAP-104",
       "validationCommands": [
         "cd client && npx vitest run src/views/__tests__/Layout.spec.ts",
@@ -1032,8 +1032,8 @@
       "id": "GAP-206",
       "severity": "P2",
       "moduleId": "mixing-production-packaging",
-      "triageStatus": "ready_for_plan",
-      "description": "2026-05-02 code verification: StagingAreaStocktake submission exists, but MixingService.createExecution only validates recipe, staging stock, material match and quantity; it does not check same-day shift stocktake status before creating MixingExecution. Requirement is clear enough for a plan.",
+      "triageStatus": "implemented",
+      "description": "2026-05-06 implemented and merged via PR #188: MixingExecution creation is now gated by shift-start stocktake status. GAP-206 is closed and no longer belongs in the execution queue.",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -1716,8 +1716,8 @@
       "id": "GAP-404",
       "severity": "P2",
       "moduleId": "document-control-and-record-forms",
-      "triageStatus": "ready_for_plan",
-      "description": "2026-05-02 code verification: RecordTemplateDesigner uses recordTemplateApi.updateFields and the backend validates `{ fields }` on `PUT /record-templates/:id/fields`, but the still-routed TemplateEdit page saves to `/templates/:id` with `{ title, fields }` while UpdateRecordTemplateDto expects `name` and `fieldsJson`. Requirement is clear enough for a plan.",
+      "triageStatus": "implemented",
+      "description": "2026-05-06 implemented and merged via PR #191: record-template field update contracts are aligned across TemplateEdit, RecordTemplateDesigner, and backend validation. GAP-404 is closed.",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -1740,7 +1740,7 @@
       "id": "GAP-405",
       "severity": "P2",
       "moduleId": "document-control-and-record-forms",
-      "triageStatus": "ready_for_plan",
+      "triageStatus": "implemented",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -1930,7 +1930,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "training",
-      "prOrder": 40,
+      "prOrder": 36,
       "recommendedPr": "training/GAP-412",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-412"
@@ -1942,7 +1942,7 @@
       "id": "GAP-413",
       "severity": "P2",
       "moduleId": "training-internal-audit",
-      "triageStatus": "ready_for_plan",
+      "triageStatus": "implemented",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -2113,8 +2113,8 @@
       "id": "GAP-505",
       "severity": "P1",
       "moduleId": "system-admin-ops",
-      "triageStatus": "ready_for_plan",
-      "description": "2026-05-02 code verification: `User.role` is deprecated in Prisma, but string role checks remain in permission/roles guards, record-task, task, document, export, recycle-bin and related modules. Requirement is clear enough for a plan.",
+      "triageStatus": "implemented",
+      "description": "2026-05-06 implemented and merged via PR #190: string `User.role` permission checks were migrated to `Role.code` paths. GAP-505 is closed.",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -2161,7 +2161,7 @@
       "id": "GAP-507",
       "severity": "P1",
       "moduleId": "system-admin-ops",
-      "triageStatus": "ready_for_plan",
+      "triageStatus": "implemented",
       "dependsOn": [],
       "blocks": [],
       "canParallelize": true,
@@ -2381,7 +2381,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "equipment",
-      "prOrder": 31,
+      "prOrder": null,
       "recommendedPr": "equipment/GAP-603",
       "validationCommands": [
         "pnpm test:e2e -- --grep GAP-603"
@@ -2427,7 +2427,7 @@
         "executing-plans"
       ],
       "prRoadmapGroup": "equipment",
-      "prOrder": 41,
+      "prOrder": 37,
       "recommendedPr": "equipment/GAP-605",
       "validationCommands": [
         "(cd server && npm test -- approval-engine.service.spec.ts measuring-equipment.service.spec.ts --runInBand)",
