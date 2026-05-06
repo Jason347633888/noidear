@@ -127,6 +127,26 @@ export class MixingService {
           }
         }
 
+        if (dto.shiftTypeId) {
+          const uniqueBatchIds = [...new Set(dto.lines.map((l) => l.materialBatchId))];
+          for (const batchId of uniqueBatchIds) {
+            const stocktake = await tx.stagingAreaStocktake.findFirst({
+              where: {
+                area_id: dto.areaId,
+                batchId,
+                kind: 'shift_start',
+                work_date: new Date(dto.workDate),
+                shift_type_id: dto.shiftTypeId,
+                status: { in: ['confirmed', 'exception'] },
+              },
+              select: { id: true },
+            });
+            if (!stocktake) {
+              throw new BadRequestException(`物料批次 ${batchId} 缺少班前盘点，请先完成班前盘点再执行配料`);
+            }
+          }
+        }
+
         const recipeLines = await tx.recipeLine.findMany({
           where: { recipe_id: dto.recipeId },
         });
