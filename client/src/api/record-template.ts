@@ -4,11 +4,43 @@ import request from './request';
 // Types
 // =========================================================================
 
+export type RecordTemplateFieldType =
+  | 'text' | 'textarea' | 'number'
+  | 'date' | 'time' | 'datetime' | 'daterange' | 'timerange'
+  | 'email' | 'phone' | 'url' | 'password'
+  | 'boolean' | 'switch'
+  | 'enum' | 'multi-enum' | 'select' | 'radio' | 'checkbox' | 'multiselect'
+  | 'cascader' | 'slider' | 'rate' | 'color'
+  | 'file' | 'image' | 'photo'
+  | 'inspection-table'
+  | 'table-input'
+  | 'checklist'
+  | 'signature'
+  | 'entity-link'
+  | 'richtext'
+  | 'range-select'
+  | 'constrained-number'
+  | 'checkbox-text'
+  | 'auto-username'
+  | 'auto-date'
+  | 'auto-display'
+  | 'section-header'
+  | 'static-content'
+  | 'template-content'
+  | 'approval-step'
+  | 'location'
+  | 'qrcode'
+  | 'barcode'
+  | 'tree';
+
 export interface RecordTemplateField {
   name: string;
   label: string;
-  type: string;
+  type: RecordTemplateFieldType;
   required?: boolean;
+  disabled?: boolean;
+  unit?: string;
+  defaultValue?: unknown;
   min?: number;
   max?: number;
   tolerance?: {
@@ -20,6 +52,10 @@ export interface RecordTemplateField {
   placeholder?: string;
   pattern?: string;
   patternMessage?: string;
+  entity?: string;
+  autoFill?: boolean;
+  inspectionRows?: Array<{ item: string; standard: string }>;
+  checklistItems?: string[];
 }
 
 export interface RecordTemplate {

@@ -1,8 +1,10 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateRecordTemplateDto } from './dto/create-record-template.dto';
 import { UpdateRecordTemplateDto } from './dto/update-record-template.dto';
 import { QueryRecordTemplateDto } from './dto/query-record-template.dto';
+import { FieldDef } from './types/fields-json.types';
 
 @Injectable()
 export class RecordTemplateService {
@@ -145,7 +147,7 @@ export class RecordTemplateService {
     const baseCode = (existing as any).baseCode || existing.code.replace(/-v\d+$/, '');
     const templateFamilyId = (existing as any).templateFamilyId || baseCode;
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Compute next version from the family's current max to avoid conflicts
       // with any draft created via createRevision() in the same family.
       const latest = await tx.recordTemplate.findFirst({
@@ -183,7 +185,7 @@ export class RecordTemplateService {
   /**
    * 更新草稿模板字段（已启用模板禁止原地修改）
    */
-  async updateFields(id: string, fields: Array<Record<string, unknown>>) {
+  async updateFields(id: string, fields: FieldDef[]) {
     const template = await this.findOne(id);
     if (template.status === 'active' || (template as any).versionStatus === 'active') {
       throw new BadRequestException('已启用模板不能原地修改字段，请发起模板改版');
@@ -240,7 +242,7 @@ export class RecordTemplateService {
     if ((template as any).versionStatus !== 'draft') {
       throw new BadRequestException('只有草稿模板版本可以启用');
     }
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.recordTemplate.updateMany({
         where: {
           templateFamilyId: (template as any).templateFamilyId || (template as any).baseCode || template.code,
