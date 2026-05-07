@@ -42,7 +42,14 @@
               :index="child.path"
             >
               <el-icon><component :is="child.icon" /></el-icon>
-              <template #title>{{ child.title }}</template>
+              <template #title>
+                <el-badge
+                  v-if="child.badge && todoStore.pendingTodoCount > 0"
+                  :value="todoStore.pendingTodoCount"
+                  :max="99"
+                >{{ child.title }}</el-badge>
+                <span v-else>{{ child.title }}</span>
+              </template>
             </el-menu-item>
           </el-sub-menu>
         </template>
