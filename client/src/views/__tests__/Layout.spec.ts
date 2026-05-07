@@ -29,3 +29,21 @@ describe('Layout navigation grouping', () => {
     expect(source).toContain("title: '系统管理'");
   });
 });
+
+describe('Layout shell primitives', () => {
+  it('references shared shell primitives instead of page-local headings only', () => {
+    const layoutSource = readFileSync(
+      resolve(process.cwd(), 'src/views/Layout.vue'),
+      'utf-8',
+    );
+    const styleSource = readFileSync(
+      resolve(process.cwd(), 'src/styles/index.css'),
+      'utf-8',
+    );
+
+    expect(layoutSource).toContain('app-shell');
+    expect(styleSource).toContain('--shell-bg');
+    expect(styleSource).toContain('.app-page-header');
+    expect(styleSource).toContain('.app-panel');
+  });
+});

@@ -1,5 +1,5 @@
 <template>
-  <el-container class="layout-container">
+  <el-container class="layout-container app-shell">
     <el-aside :width="isCollapsed ? '72px' : '260px'" class="aside">
       <div class="logo">
         <div class="logo-icon">

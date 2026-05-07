@@ -10,6 +10,76 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Shell Design Tokens */
+:root {
+  --shell-bg: #f3efe8;
+  --shell-surface: rgba(255, 255, 255, 0.82);
+  --shell-surface-strong: #ffffff;
+  --shell-ink: #1f2328;
+  --shell-muted: #66707a;
+  --shell-border: rgba(31, 35, 40, 0.08);
+  --shell-brand: #a46a2a;
+  --shell-brand-soft: rgba(164, 106, 42, 0.12);
+  --shell-danger: #b42318;
+  --shell-warning: #b26a00;
+  --shell-success: #2f6f52;
+  --shell-radius-lg: 20px;
+  --shell-radius-md: 16px;
+  --shell-shadow: 0 18px 40px rgba(24, 31, 36, 0.06);
+}
+
+.app-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, rgba(164, 106, 42, 0.08), transparent 28%),
+    linear-gradient(180deg, #f7f3ec 0%, #f1efe9 100%);
+}
+
+.app-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.app-page-header__eyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--shell-muted);
+  margin-bottom: 4px;
+}
+
+.app-page-header__title {
+  margin: 0;
+  font-family: "Songti SC", "STSong", "Noto Serif SC", serif;
+  font-size: 32px;
+  line-height: 1.12;
+}
+
+.app-page-header__description {
+  font-size: 14px;
+  color: var(--shell-muted);
+  margin-top: 6px;
+}
+
+.app-page-header__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.app-panel {
+  border: 1px solid var(--shell-border);
+  border-radius: var(--shell-radius-lg);
+  background: var(--shell-surface);
+  box-shadow: var(--shell-shadow);
+  backdrop-filter: blur(14px);
+}
+
 /* Element Plus Custom Theme */
 :root {
   --el-color-primary: #c9a227;
