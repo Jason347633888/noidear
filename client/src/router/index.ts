@@ -208,6 +208,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/UserList.vue'),
       },
       {
+        path: 'departments',
+        name: 'Departments',
+        component: () => import('@/views/DepartmentList.vue'),
+        meta: { title: '部门管理' },
+      },
+      {
         path: 'roles',
         name: 'Roles',
         component: () => import('@/views/role/RoleList.vue'),
