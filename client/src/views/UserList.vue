@@ -328,13 +328,13 @@ const handleCreate = async () => {
   if (!createFormRef.value) return;
   await createFormRef.value.validate();
 
-  if (editingUser.value && isManager(editingUser.value)) {
-    const nextRole = systemRoles.value.find((item) => item.id === createForm.roleId)?.code;
-    if (nextRole !== 'leader') {
+  if (editingUser.value) {
+    const nextRole = systemRoles.value.find((item) => item.id === createForm.roleId)?.code || '';
+    if (!canChangeRoleForManager(editingUser.value, nextRole)) {
       ElMessage.error('请先在部门管理中更换负责人');
       return;
     }
-    if (createForm.departmentId !== editingUser.value.departmentId) {
+    if (isManager(editingUser.value) && createForm.departmentId !== editingUser.value.departmentId) {
       ElMessage.error('请先在部门管理中更换负责人');
       return;
     }
