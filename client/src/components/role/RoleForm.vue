@@ -74,7 +74,11 @@ const emit = defineEmits<{
 const formRef = ref<FormInstance>();
 const submitting = ref(false);
 
+const SYSTEM_ROLE_CODES = ['admin', 'leader', 'user'];
+const SYSTEM_ROLE_NAMES = ['系统管理员', '部门负责人', '普通用户'];
+
 const isEdit = computed(() => !!props.role);
+const isSystemRole = computed(() => !!props.role && SYSTEM_ROLE_CODES.includes(props.role.code));
 
 const form = reactive<FormData>({
   code: '',
@@ -119,6 +123,17 @@ const handleClose = () => {
 
 const handleSubmit = async () => {
   if (!formRef.value) return;
+
+  if (isSystemRole.value) {
+    ElMessage.error('系统角色不可编辑');
+    return;
+  }
+
+  const normalizedName = form.name.trim();
+  if (SYSTEM_ROLE_NAMES.includes(normalizedName)) {
+    ElMessage.error('不能与系统角色同名');
+    return;
+  }
 
   try {
     await formRef.value.validate();
