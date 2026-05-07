@@ -124,6 +124,7 @@ declare module 'vue' {
     NumberField: typeof import('./src/components/fields/NumberField.vue')['default']
     OfficePreview: typeof import('./src/components/OfficePreview.vue')['default']
     OvenZoneTable: typeof import('./src/components/process/OvenZoneTable.vue')['default']
+    PageHeaderBlock: typeof import('./src/components/layout/PageHeaderBlock.vue')['default']
     PasswordField: typeof import('./src/components/fields/PasswordField.vue')['default']
     PdfPreview: typeof import('./src/components/PdfPreview.vue')['default']
     PdfViewer: typeof import('./src/components/PdfViewer.vue')['default']

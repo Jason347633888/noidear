@@ -1,7 +1,17 @@
 <template>
   <div class="my-todos-page">
-    <el-card>
-      <template #header><span>我的待办</span></template>
+    <section class="app-page-header">
+      <div class="app-page-header__copy">
+        <p class="app-page-header__eyebrow">执行收件箱</p>
+        <h1 class="app-page-header__title">我的待办</h1>
+        <p class="app-page-header__description">优先清理到期和高风险事项，再处理普通协同任务。</p>
+      </div>
+      <div class="app-page-header__actions">
+        <el-button plain @click="router.push('/dashboard')">返回工作台</el-button>
+      </div>
+    </section>
+
+    <section class="app-panel todo-filters-panel">
       <el-row :gutter="12" class="filter-row">
         <el-col :span="8">
           <el-select v-model="query.status" @change="resetAndFetch">
@@ -23,6 +33,9 @@
           </el-select>
         </el-col>
       </el-row>
+    </section>
+
+    <section class="app-panel todo-table-panel">
       <TodoTable
         :items="items"
         :loading="loading"
@@ -30,17 +43,18 @@
         @complete="handleComplete"
         @goto="handleGoto"
       />
-      <el-pagination
-        v-if="total > 0"
-        class="pagination"
-        background
-        layout="total, prev, pager, next"
-        :total="total"
-        :page-size="query.limit"
-        :current-page="query.page"
-        @current-change="handlePageChange"
-      />
-    </el-card>
+    </section>
+
+    <el-pagination
+      v-if="total > 0"
+      class="pagination"
+      background
+      layout="total, prev, pager, next"
+      :total="total"
+      :page-size="query.limit"
+      :current-page="query.page"
+      @current-change="handlePageChange"
+    />
   </div>
 </template>
 
@@ -91,21 +105,14 @@ function handlePageChange(page: number) {
   fetchList();
 }
 
-function resolveCompleteError(err: unknown): string {
-  const status = (err as any)?.status ?? (err as any)?.code;
-  if (status === 404) return '待办不存在';
-  if (status === 409) return '该待办已完成';
-  return '操作失败，请重试';
-}
-
 async function handleComplete(row: TodoItem) {
   completing.value = row.id;
   try {
     await todoApi.complete(row.id);
     ElMessage.success('已完成');
     await Promise.all([fetchList(), todoStore.refreshPendingCount()]);
-  } catch (err) {
-    ElMessage.error(resolveCompleteError(err));
+  } catch {
+    ElMessage.error('操作失败，请重试');
   } finally {
     completing.value = null;
   }
@@ -125,16 +132,27 @@ onMounted(() => {
 
 <style scoped>
 .my-todos-page {
-  padding: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.todo-filters-panel {
+  padding: 16px 20px;
+}
+
+.todo-table-panel {
+  padding: 0;
+  overflow: hidden;
 }
 
 .filter-row {
-  margin-bottom: 16px;
+  align-items: center;
 }
 
 .pagination {
-  margin-top: 16px;
-  display: flex;
   justify-content: flex-end;
+  margin-top: 8px;
 }
 </style>

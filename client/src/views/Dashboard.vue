@@ -1,481 +1,1012 @@
 <template>
-  <div class="dashboard">
-    <!-- Header -->
-    <div class="dashboard-header">
-      <div class="header-content">
-        <div class="greeting">
-          <span class="greeting-text">工作台</span>
-          <span class="greeting-sub">Quality Management System</span>
+  <div class="dashboard-page">
+    <section class="hero-panel">
+      <div class="hero-copy">
+        <p class="eyebrow">执行门户</p>
+        <div class="hero-title-row">
+          <h1>今天先把到期任务清掉</h1>
+          <el-tag class="shift-chip" effect="plain" round>{{ currentDateLabel }}</el-tag>
         </div>
-        <div class="header-meta">
-          <span class="date">{{ currentDate }}</span>
-          <span class="welcome">欢迎回来，{{ userStore.user?.name }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Stats Grid -->
-    <div class="stats-grid">
-      <div class="stat-card" v-for="stat in stats" :key="stat.label" :style="{ '--accent': stat.color }">
-        <div class="stat-icon">
-          <el-icon><component :is="stat.icon" /></el-icon>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stat.value }}</div>
-          <div class="stat-label">{{ stat.label }}</div>
-        </div>
-        <div class="stat-decoration"></div>
-      </div>
-    </div>
-
-    <!-- Main Content -->
-    <div class="dashboard-content">
-      <!-- Quick Actions -->
-      <el-card class="quick-actions">
-        <template #header>
-          <div class="card-header">
-            <span class="card-title">快捷操作</span>
-          </div>
-        </template>
-        <div class="action-grid">
-          <div class="action-item" v-for="action in quickActions" :key="action.path" @click="$router.push(action.path)">
-            <div class="action-icon" :style="{ background: action.color }">
-              <el-icon><component :is="action.icon" /></el-icon>
-            </div>
-            <span class="action-text">{{ action.label }}</span>
-          </div>
-        </div>
-      </el-card>
-
-      <!-- Recent Documents -->
-      <el-card class="recent-docs">
-        <template #header>
-          <div class="card-header">
-            <span class="card-title">最近文档</span>
-            <el-button text type="primary" @click="$router.push('/documents')">查看全部</el-button>
-          </div>
-        </template>
-        <div class="doc-list" v-if="recentDocs.length">
-          <div class="doc-item" v-for="doc in recentDocs" :key="doc.id" @click="$router.push(`/documents/${doc.id}`)">
-            <div class="doc-icon" :class="`level-${doc.level}`">
-              <el-icon><Document /></el-icon>
-            </div>
-            <div class="doc-info">
-              <div class="doc-title">{{ doc.title }}</div>
-              <div class="doc-meta">{{ doc.number }} · {{ formatDate(doc.createdAt) }}</div>
-            </div>
-            <el-tag :type="getStatusType(doc.status)" size="small">{{ getStatusText(doc.status) }}</el-tag>
-          </div>
-        </div>
-        <el-empty v-else description="暂无文档" :image-size="80" />
-      </el-card>
-    </div>
-
-    <!-- Pending Approvals -->
-    <el-card class="pending-approvals" v-if="pendingApprovals.length">
-      <template #header>
-        <div class="card-header">
-          <span class="card-title">待审批</span>
-          <el-badge :value="pendingApprovals.length" :max="99" class="approval-badge">
-            <el-button text type="primary" @click="$router.push('/approvals')">查看全部</el-button>
-          </el-badge>
-        </div>
-      </template>
-      <div class="approval-list">
-        <div class="approval-item" v-for="doc in pendingApprovals.slice(0, 5)" :key="doc.id">
-          <div class="approval-avatar">
-            {{ doc.creator?.name?.charAt(0) || 'U' }}
-          </div>
-          <div class="approval-info">
-            <div class="approval-title">{{ doc.title }}</div>
-            <div class="approval-meta">
-              <span>{{ doc.creator?.name }}</span>
-              <span class="dot">·</span>
-              <span>{{ formatDate(doc.createdAt) }}</span>
-            </div>
-          </div>
-          <el-button type="primary" size="small" @click="$router.push(`/documents/${doc.id}`)">审批</el-button>
+        <p class="hero-description">
+          首页只保留执行者真正需要的视角：先处理到期项，再处理高风险项，最后回看协同和资料。
+        </p>
+        <div class="hero-actions">
+          <el-button type="primary" @click="router.push('/my-todos')">进入全部待办</el-button>
+          <el-button plain @click="router.push('/record-tasks/my')">查看待填任务</el-button>
         </div>
       </div>
-    </el-card>
+
+      <div class="hero-brief">
+        <div class="brief-label">当前班次</div>
+        <div class="brief-value">{{ userStore.user?.name || '当前用户' }}</div>
+        <div class="brief-meta">
+          <span>{{ pendingTodos.length }} 个待处理</span>
+          <span>{{ overdueTodos.length }} 个已逾期</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="summary-grid">
+      <article v-for="item in summaryCards" :key="item.label" class="summary-card">
+        <div class="summary-icon" :class="`tone-${item.tone}`">
+          <el-icon><component :is="item.icon" /></el-icon>
+        </div>
+        <div class="summary-body">
+          <p class="summary-label">{{ item.label }}</p>
+          <p class="summary-value">{{ item.value }}</p>
+          <p class="summary-note">{{ item.note }}</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="content-grid">
+      <div class="primary-column">
+        <article v-loading="loading" class="panel queue-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">主队列</p>
+              <h2>混合任务队列</h2>
+            </div>
+            <el-radio-group v-model="queueFilter" size="small" class="queue-filter">
+              <el-radio-button label="all">全部</el-radio-button>
+              <el-radio-button label="due">到期优先</el-radio-button>
+              <el-radio-button label="risk">高风险</el-radio-button>
+            </el-radio-group>
+          </div>
+
+          <div v-if="queueItems.length" class="queue-list">
+            <article v-for="todo in queueItems" :key="todo.id" class="queue-item">
+              <div class="queue-main">
+                <div class="queue-meta">
+                  <el-tag size="small" effect="plain">{{ todoTypeLabels[todo.type] ?? todo.type }}</el-tag>
+                  <el-tag size="small" :type="priorityTagTypes[todo.priority]">
+                    {{ priorityText[todo.priority] ?? todo.priority }}
+                  </el-tag>
+                  <span class="queue-deadline" :class="deadlineClass(todo)">
+                    {{ formatDueLabel(todo.dueDate) }}
+                  </span>
+                </div>
+
+                <h3>{{ todo.title }}</h3>
+                <p>{{ todo.description || '该任务暂无补充说明，进入详情后继续处理。' }}</p>
+
+                <div class="queue-submeta">
+                  <span>创建于 {{ formatDate(todo.createdAt) }}</span>
+                  <span v-if="todo.actionRoute">入口 {{ todo.actionRoute }}</span>
+                </div>
+              </div>
+
+              <div class="queue-actions">
+                <el-button
+                  v-if="todo.status === 'pending' && todo.type !== 'approval_task'"
+                  type="primary"
+                  :loading="completingId === todo.id"
+                  @click="handleComplete(todo)"
+                >
+                  完成
+                </el-button>
+                <el-button
+                  plain
+                  :disabled="!todo.actionRoute"
+                  @click="handleGoto(todo)"
+                >
+                  去处理
+                </el-button>
+              </div>
+            </article>
+          </div>
+
+          <el-empty v-else description="当前没有待处理任务" :image-size="72" />
+        </article>
+
+        <article class="panel recent-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">辅助信息</p>
+              <h2>最近完成与资料</h2>
+            </div>
+            <el-button text @click="router.push('/documents')">打开文档中心</el-button>
+          </div>
+
+          <div class="secondary-grid">
+            <section class="mini-block">
+              <div class="mini-block-header">
+                <h3>最近文档</h3>
+                <span>{{ recentDocs.length }} 条</span>
+              </div>
+              <div v-if="recentDocs.length" class="doc-list">
+                <button
+                  v-for="doc in recentDocs"
+                  :key="doc.id"
+                  class="doc-row"
+                  type="button"
+                  @click="router.push(`/documents/${doc.id}`)"
+                >
+                  <span class="doc-row-title">{{ doc.title }}</span>
+                  <span class="doc-row-meta">{{ doc.number || '未编号' }} · {{ formatDate(doc.createdAt) }}</span>
+                </button>
+              </div>
+              <el-empty v-else description="暂无文档" :image-size="52" />
+            </section>
+
+            <section class="mini-block">
+              <div class="mini-block-header">
+                <h3>最近完成</h3>
+                <span>{{ completedPreview.length }} 条</span>
+              </div>
+              <div v-if="completedPreview.length" class="done-list">
+                <div v-for="todo in completedPreview" :key="todo.id" class="done-row">
+                  <div>
+                    <p class="done-title">{{ todo.title }}</p>
+                    <p class="done-meta">{{ todoTypeLabels[todo.type] ?? todo.type }}</p>
+                  </div>
+                  <span class="done-date">{{ formatDate(todo.completedAt || todo.createdAt) }}</span>
+                </div>
+              </div>
+              <el-empty v-else description="暂无已完成记录" :image-size="52" />
+            </section>
+          </div>
+        </article>
+      </div>
+
+      <aside class="side-column">
+        <article class="panel alert-panel">
+          <div class="panel-header compact">
+            <div>
+              <p class="panel-kicker">异常提醒</p>
+              <h2>先处理这些</h2>
+            </div>
+            <el-button text @click="router.push('/my-todos')">全部查看</el-button>
+          </div>
+
+          <div v-if="focusAlerts.length" class="alert-list">
+            <div v-for="alert in focusAlerts" :key="alert.id" class="alert-row">
+              <div class="alert-marker"></div>
+              <div class="alert-body">
+                <p class="alert-title">{{ alert.title }}</p>
+                <p class="alert-meta">
+                  {{ todoTypeLabels[alert.type] ?? alert.type }} · {{ formatDueLabel(alert.dueDate) }}
+                </p>
+              </div>
+            </div>
+          </div>
+          <el-empty v-else description="暂无异常提醒" :image-size="52" />
+        </article>
+
+        <article class="panel shortcuts-panel">
+          <div class="panel-header compact">
+            <div>
+              <p class="panel-kicker">高频入口</p>
+              <h2>常用动作</h2>
+            </div>
+          </div>
+
+          <div class="shortcut-list">
+            <button
+              v-for="action in quickActions"
+              :key="action.path"
+              type="button"
+              class="shortcut-item"
+              @click="router.push(action.path)"
+            >
+              <span class="shortcut-icon" :class="`tone-${action.tone}`">
+                <el-icon><component :is="action.icon" /></el-icon>
+              </span>
+              <span class="shortcut-copy">
+                <span class="shortcut-title">{{ action.label }}</span>
+                <span class="shortcut-desc">{{ action.description }}</span>
+              </span>
+            </button>
+          </div>
+        </article>
+
+        <article class="panel approval-panel">
+          <div class="panel-header compact">
+            <div>
+              <p class="panel-kicker">协同压力</p>
+              <h2>待审批</h2>
+            </div>
+            <span class="panel-count">{{ pendingApprovals.length }}</span>
+          </div>
+
+          <div v-if="pendingApprovals.length" class="approval-list">
+            <div v-for="doc in pendingApprovals.slice(0, 4)" :key="doc.id" class="approval-row">
+              <div class="approval-avatar">{{ doc.creator?.name?.charAt(0) || 'U' }}</div>
+              <div class="approval-copy">
+                <p>{{ doc.title }}</p>
+                <span>{{ doc.creator?.name || '未知提交人' }} · {{ formatDate(doc.createdAt) }}</span>
+              </div>
+            </div>
+          </div>
+          <el-empty v-else description="当前无待审批" :image-size="52" />
+        </article>
+      </aside>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { ElMessage } from 'element-plus';
 import { useUserStore } from '@/stores/user';
+import { useTodoStore } from '@/stores/todo';
 import request from '@/api/request';
+import { todoApi } from '@/api/todo';
+import type { TodoItem, TodoPriority, TodoType } from '@/types/todo';
 import {
-  Document, List, CircleCheckFilled,
-  Upload, Files, CircleCheck, Bell
+  todoTypeLabels,
+  priorityWeights,
+  priorityTagTypes,
+  priorityText,
+  formatDueLabel,
+  compareTodosByDueThenRisk,
+} from '@/utils/todoPresentation';
+import {
+  AlarmClock,
+  ArrowRight,
+  CircleCheckFilled,
+  Clock,
+  EditPen,
+  Files,
+  Finished,
+  List,
+  Notification,
 } from '@element-plus/icons-vue';
 
-const userStore = useUserStore();
-const currentDate = new Date().toLocaleDateString('zh-CN', { weekday: 'long', month: 'long', day: 'numeric' });
+interface DocumentItem {
+  id: string;
+  title: string;
+  number?: string | null;
+  createdAt: string;
+}
 
-const stats = ref([
-  { label: '文档总数', value: '128', icon: Document, color: '#c9a227' },
-  { label: '待审批', value: '5', icon: CircleCheck, color: '#e74c3c' },
-  { label: '进行中任务', value: '12', icon: List, color: '#3498db' },
-  { label: '已完成', value: '89', icon: CircleCheckFilled, color: '#27ae60' },
-]);
+interface ApprovalItem {
+  id: string;
+  title: string;
+  createdAt: string;
+  creator?: { name?: string | null } | null;
+}
+
+type QueueFilter = 'all' | 'due' | 'risk';
+
+const router = useRouter();
+const userStore = useUserStore();
+const todoStore = useTodoStore();
+
+const currentDateLabel = new Date().toLocaleDateString('zh-CN', {
+  month: 'long',
+  day: 'numeric',
+  weekday: 'long',
+});
+
+const queueFilter = ref<QueueFilter>('all');
+const loading = ref(false);
+const completingId = ref<string | null>(null);
+
+const pendingTodos = ref<TodoItem[]>([]);
+const completedPreview = ref<TodoItem[]>([]);
+const recentDocs = ref<DocumentItem[]>([]);
+const pendingApprovals = ref<ApprovalItem[]>([]);
+
 
 const quickActions = [
-  { path: '/documents/upload/1', label: '上传一级文件', icon: Upload, color: 'linear-gradient(135deg, #c9a227 0%, #d4af37 100%)' },
-  { path: '/tasks/create', label: '创建任务', icon: List, color: 'linear-gradient(135deg, #3498db 0%, #5dade2 100%)' },
-  { path: '/templates', label: '模板管理', icon: Files, color: 'linear-gradient(135deg, #9b59b6 0%, #a569bd 100%)' },
-  { path: '/notifications', label: '消息中心', icon: Bell, color: 'linear-gradient(135deg, #e74c3c 0%, #ec7063 100%)' },
+  {
+    path: '/record-tasks/my',
+    label: '待填记录',
+    description: '直接进入记录任务列表',
+    icon: EditPen,
+    tone: 'amber',
+  },
+  {
+    path: '/my-todos',
+    label: '全部待办',
+    description: '查看完整混合任务队列',
+    icon: List,
+    tone: 'blue',
+  },
+  {
+    path: '/approvals/pending',
+    label: '待我审批',
+    description: '处理审批与复核任务',
+    icon: Finished,
+    tone: 'red',
+  },
+  {
+    path: '/traceability',
+    label: '追溯查询',
+    description: '定位批次与链路问题',
+    icon: ArrowRight,
+    tone: 'ink',
+  },
+  {
+    path: '/documents',
+    label: '体系文件',
+    description: '快速打开常用制度文件',
+    icon: Files,
+    tone: 'green',
+  },
+  {
+    path: '/notifications',
+    label: '消息中心',
+    description: '查看系统提醒与通知',
+    icon: Notification,
+    tone: 'slate',
+  },
 ];
 
-const recentDocs = ref<any[]>([]);
-const pendingApprovals = ref<any[]>([]);
+const overdueTodos = computed(() => pendingTodos.value.filter((todo) => isOverdue(todo.dueDate)));
+const dueTodayTodos = computed(() => pendingTodos.value.filter((todo) => isToday(todo.dueDate)));
+const urgentTodos = computed(() => pendingTodos.value.filter((todo) => priorityWeights[todo.priority] >= 2));
 
-const formatDate = (date: string) => new Date(date).toLocaleDateString('zh-CN');
-const getStatusType = (status: string) => ({ draft: 'info', pending: 'warning', approved: 'success', rejected: 'danger' }[status] || 'info');
-const getStatusText = (status: string) => ({ draft: '草稿', pending: '待审批', approved: '已发布', rejected: '已驳回' }[status] || status);
+const summaryCards = computed(() => [
+  {
+    label: '待处理',
+    value: String(pendingTodos.value.length),
+    note: '当前挂在你名下的执行项',
+    icon: List,
+    tone: 'blue',
+  },
+  {
+    label: '今天到期',
+    value: String(dueTodayTodos.value.length),
+    note: '优先清理今天必须完成的事项',
+    icon: Clock,
+    tone: 'amber',
+  },
+  {
+    label: '已逾期',
+    value: String(overdueTodos.value.length),
+    note: '需要立即处理或说明阻塞原因',
+    icon: AlarmClock,
+    tone: 'red',
+  },
+  {
+    label: '高风险项',
+    value: String(urgentTodos.value.length),
+    note: '风险等级高于常规的待办',
+    icon: CircleCheckFilled,
+    tone: 'ink',
+  },
+]);
 
-const fetchData = async () => {
+const sortedTodos = computed(() =>
+  [...pendingTodos.value].sort(compareTodosByDueThenRisk),
+);
+
+const queueItems = computed(() => {
+  if (queueFilter.value === 'risk') {
+    return sortedTodos.value.filter((todo) => priorityWeights[todo.priority] >= 2).slice(0, 8);
+  }
+  if (queueFilter.value === 'due') {
+    return sortedTodos.value.filter((todo) => todo.dueDate).slice(0, 8);
+  }
+  return sortedTodos.value.slice(0, 8);
+});
+
+const focusAlerts = computed(() =>
+  sortedTodos.value
+    .filter((todo) => isOverdue(todo.dueDate) || priorityWeights[todo.priority] >= 2)
+    .slice(0, 4),
+);
+
+function startOfDay(value: Date): Date {
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+}
+
+function parseDate(input: string | null): Date | null {
+  if (!input) return null;
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return null;
+  return date;
+}
+
+function dayDiff(input: string | null): number | null {
+  const date = parseDate(input);
+  if (!date) return null;
+  const today = startOfDay(new Date()).getTime();
+  const target = startOfDay(date).getTime();
+  return Math.round((target - today) / 86400000);
+}
+
+function isOverdue(input: string | null): boolean {
+  const diff = dayDiff(input);
+  return diff !== null && diff < 0;
+}
+
+function isToday(input: string | null): boolean {
+  return dayDiff(input) === 0;
+}
+
+function formatDate(input: string): string {
+  return new Date(input).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
+}
+
+function deadlineClass(todo: TodoItem): string {
+  if (isOverdue(todo.dueDate)) return 'danger';
+  if (isToday(todo.dueDate)) return 'warning';
+  return 'muted';
+}
+
+function resolveCompleteError(err: unknown): string {
+  const status = (err as { status?: number; code?: number } | undefined)?.status
+    ?? (err as { status?: number; code?: number } | undefined)?.code;
+  if (status === 404) return '待办不存在';
+  if (status === 409) return '该待办已完成';
+  return '操作失败，请重试';
+}
+
+async function handleComplete(todo: TodoItem) {
+  completingId.value = todo.id;
   try {
-    const docsRes = await request.get<{ list: any[]; total?: number }>('/documents', { params: { limit: 5 } });
-    recentDocs.value = docsRes.list || [];
-    const approvalsRes = await request.get<any>('/documents/pending-approvals');
-    pendingApprovals.value = approvalsRes.list || [];
-    stats.value[1].value = String(approvalsRes.total ?? 0);
-  } catch { /* silent fail */ }
-};
+    await todoApi.complete(todo.id);
+    ElMessage.success('已完成');
+    await fetchDashboard();
+    await todoStore.refreshPendingCount();
+  } catch (err) {
+    ElMessage.error(resolveCompleteError(err));
+  } finally {
+    completingId.value = null;
+  }
+}
 
-onMounted(fetchData);
+function handleGoto(todo: TodoItem) {
+  if (todo.actionRoute) {
+    router.push(todo.actionRoute);
+  }
+}
+
+async function fetchDashboard() {
+  loading.value = true;
+  const [pendingTodosRes, completedTodosRes, docsRes, approvalsRes] = await Promise.allSettled([
+    todoApi.list({ status: 'pending', type: 'all', page: 1, limit: 50 }),
+    todoApi.list({ status: 'completed', type: 'all', page: 1, limit: 6 }),
+    request.get<{ list: DocumentItem[] }>('/documents', { params: { limit: 4 } }),
+    request.get<{ list: ApprovalItem[] }>('/documents/pending-approvals'),
+  ]);
+
+  if (pendingTodosRes.status === 'fulfilled') {
+    pendingTodos.value = pendingTodosRes.value.items || [];
+  } else {
+    pendingTodos.value = [];
+    ElMessage.error('获取待办失败');
+  }
+
+  if (completedTodosRes.status === 'fulfilled') {
+    completedPreview.value = completedTodosRes.value.items || [];
+  } else {
+    completedPreview.value = [];
+  }
+
+  if (docsRes.status === 'fulfilled') {
+    recentDocs.value = docsRes.value.list || [];
+  } else {
+    recentDocs.value = [];
+  }
+
+  if (approvalsRes.status === 'fulfilled') {
+    pendingApprovals.value = approvalsRes.value.list || [];
+  } else {
+    pendingApprovals.value = [];
+  }
+
+  loading.value = false;
+}
+
+onMounted(async () => {
+  await fetchDashboard();
+  todoStore.refreshPendingCount();
+});
 </script>
 
 <style scoped>
-.dashboard {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --bg: #f8f9fa;
-  --card-bg: #ffffff;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
-}
-
-.dashboard {
-  min-height: calc(100vh - 100px);
-  background: var(--bg);
+.dashboard-page {
+  min-height: calc(100vh - 64px);
   padding: 24px;
+  background:
+    radial-gradient(circle at top right, rgba(196, 154, 74, 0.08), transparent 28%),
+    linear-gradient(180deg, #f7f3ec 0%, #f1efe9 100%);
+  color: #1f2328;
 }
 
-.dashboard-header {
-  margin-bottom: 24px;
+.hero-panel,
+.panel,
+.summary-card {
+  border: 1px solid rgba(39, 47, 54, 0.08);
+  box-shadow: 0 18px 40px rgba(24, 31, 36, 0.06);
 }
 
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-}
-
-.greeting-text {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 32px;
-  font-weight: 600;
-  color: var(--primary);
-  display: block;
-}
-
-.greeting-sub {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  color: var(--text-light);
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
-
-.header-meta {
-  text-align: right;
-  font-family: 'Inter', sans-serif;
-}
-
-.header-meta .date {
-  display: block;
-  font-size: 14px;
-  color: var(--text);
-  font-weight: 500;
-}
-
-.header-meta .welcome {
-  font-size: 12px;
-  color: var(--text-light);
-}
-
-.stats-grid {
+.hero-panel {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.8fr);
   gap: 20px;
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  background: var(--card-bg);
-  border-radius: 12px;
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: var(--accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  color: white;
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-value {
-  font-family: 'Inter', sans-serif;
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--primary);
-  line-height: 1.2;
-}
-
-.stat-label {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  color: var(--text-light);
-  margin-top: 4px;
-}
-
-.stat-decoration {
-  position: absolute;
-  right: -20px;
-  bottom: -20px;
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: var(--accent);
-  opacity: 0.1;
-}
-
-.dashboard-content {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 20px;
+  padding: 28px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #fcfbf8 0%, #f1ece2 100%);
   margin-bottom: 20px;
 }
 
-.card-header {
+.eyebrow,
+.panel-kicker,
+.brief-label {
+  font-size: 12px;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8b7355;
+}
+
+.hero-title-row {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
+  gap: 16px;
+  margin: 8px 0 12px;
 }
 
-.card-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--primary);
+.hero-title-row h1 {
+  margin: 0;
+  font-family: "Songti SC", "STSong", "Noto Serif SC", serif;
+  font-size: 36px;
+  line-height: 1.12;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: #22252a;
 }
 
-.quick-actions {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+.shift-chip {
+  flex-shrink: 0;
+  border-color: rgba(139, 115, 85, 0.2);
+  color: #6f5841;
+  background: rgba(255, 255, 255, 0.72);
 }
 
-.action-grid {
+.hero-description {
+  max-width: 720px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #59626b;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.hero-brief {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  border-radius: 18px;
+  background: #1d252d;
+  color: #f8f3ea;
+}
+
+.brief-value {
+  margin-top: 12px;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.brief-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: rgba(248, 243, 234, 0.72);
+  font-size: 14px;
+}
+
+.summary-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
 }
 
-.action-item {
+.summary-card,
+.panel {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(14px);
+}
+
+.summary-card {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 16px 12px;
-  border-radius: 10px;
-  background: #f8f9fa;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 18px;
+  border-radius: 18px;
 }
 
-.action-item:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.action-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  display: flex;
+.summary-icon,
+.shortcut-icon {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: 18px;
-  margin-bottom: 8px;
+  border-radius: 14px;
+  flex-shrink: 0;
 }
 
-.action-text {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  color: var(--text);
+.summary-icon {
+  width: 46px;
+  height: 46px;
+  font-size: 20px;
 }
 
-.recent-docs {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+.summary-label,
+.summary-note,
+.summary-value,
+.panel-header h2,
+.queue-item h3,
+.queue-item p,
+.queue-submeta,
+.doc-row-title,
+.doc-row-meta,
+.done-title,
+.done-meta,
+.done-date,
+.alert-title,
+.alert-meta,
+.shortcut-title,
+.shortcut-desc,
+.approval-copy p,
+.approval-copy span {
+  margin: 0;
 }
 
-.doc-list {
+.summary-label {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.summary-value {
+  margin-top: 6px;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f2328;
+}
+
+.summary-note {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #7c8690;
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.85fr);
+  gap: 20px;
+}
+
+.primary-column,
+.side-column {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 20px;
 }
 
-.doc-item {
+.panel {
+  border-radius: 20px;
+  padding: 20px;
+}
+
+.panel-header {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s ease;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
-.doc-item:hover {
-  background: #f8f9fa;
+.panel-header.compact {
+  margin-bottom: 14px;
 }
 
-.doc-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+.panel-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2328;
+}
+
+.queue-filter :deep(.el-radio-button__inner) {
+  min-width: 72px;
+}
+
+.queue-list {
   display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.queue-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  border: 1px solid rgba(31, 35, 40, 0.08);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 245, 239, 0.94) 100%);
+}
+
+.queue-meta,
+.queue-submeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   align-items: center;
-  justify-content: center;
-  color: white;
+}
+
+.queue-meta {
+  margin-bottom: 10px;
+}
+
+.queue-item h3 {
   font-size: 18px;
+  line-height: 1.35;
+  color: #1f2328;
 }
 
-.doc-icon.level-1 { background: linear-gradient(135deg, #c9a227 0%, #d4af37 100%); }
-.doc-icon.level-2 { background: linear-gradient(135deg, #3498db 0%, #5dade2 100%); }
-.doc-icon.level-3 { background: linear-gradient(135deg, #9b59b6 0%, #a569bd 100%); }
-
-.doc-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.doc-title {
-  font-family: 'Inter', sans-serif;
+.queue-item p {
+  margin-top: 8px;
   font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.7;
+  color: #5c6670;
 }
 
-.doc-meta {
-  font-family: 'Inter', sans-serif;
+.queue-submeta {
+  margin-top: 12px;
   font-size: 12px;
-  color: var(--text-light);
-  margin-top: 2px;
+  color: #8a949e;
 }
 
-.pending-approvals {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-}
-
-.approval-list {
+.queue-actions {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  min-width: 104px;
 }
 
-.approval-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 8px;
-  background: #f8f9fa;
-}
-
-.approval-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--primary);
-  color: var(--accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 16px;
+.queue-deadline {
+  font-size: 12px;
   font-weight: 600;
 }
 
-.approval-info {
-  flex: 1;
+.queue-deadline.danger {
+  color: #b42318;
 }
 
-.approval-title {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
+.queue-deadline.warning {
+  color: #b26a00;
 }
 
-.approval-meta {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  color: var(--text-light);
-  margin-top: 2px;
+.queue-deadline.muted {
+  color: #6b7280;
 }
 
-.approval-meta .dot {
-  margin: 0 6px;
+.secondary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
 
-.approval-badge :deep(.el-badge__content) {
-  background: var(--accent);
+.mini-block {
+  padding: 16px;
+  border-radius: 18px;
+  background: #f8f5ef;
+  border: 1px solid rgba(31, 35, 40, 0.06);
 }
 
-@media (max-width: 1200px) {
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
-  .dashboard-content { grid-template-columns: 1fr; }
-}
-
-.section-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--primary);
+.mini-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 12px;
 }
 
-@media (max-width: 768px) {
-  .stats-grid { grid-template-columns: 1fr; }
-  .header-content { flex-direction: column; align-items: flex-start; gap: 12px; }
-  .header-meta { text-align: left; }
+.mini-block-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #252b31;
+}
+
+.mini-block-header span {
+  font-size: 12px;
+  color: #7c8690;
+}
+
+.doc-list,
+.done-list,
+.alert-list,
+.approval-list,
+.shortcut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.doc-row,
+.shortcut-item {
+  width: 100%;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.doc-row {
+  padding: 12px;
+  border-radius: 14px;
+  background: #ffffff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.doc-row:hover,
+.shortcut-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(24, 31, 36, 0.08);
+}
+
+.doc-row-title,
+.done-title,
+.alert-title,
+.approval-copy p,
+.shortcut-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2328;
+}
+
+.doc-row-meta,
+.done-meta,
+.done-date,
+.alert-meta,
+.approval-copy span,
+.shortcut-desc {
+  margin-top: 4px;
+  display: block;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #7c8690;
+}
+
+.done-row,
+.approval-row,
+.alert-row,
+.shortcut-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #f8f5ef;
+}
+
+.done-row {
+  justify-content: space-between;
+}
+
+.alert-marker {
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: #c54b34;
+  flex-shrink: 0;
+}
+
+.shortcut-icon {
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+}
+
+.shortcut-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.approval-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #1d252d;
+  color: #f8f3ea;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.panel-count {
+  min-width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #f3e9d7;
+  color: #7f5a24;
+  font-weight: 700;
+}
+
+.tone-blue {
+  background: rgba(58, 110, 165, 0.12);
+  color: #295b90;
+}
+
+.tone-amber {
+  background: rgba(191, 131, 32, 0.14);
+  color: #9b6200;
+}
+
+.tone-red {
+  background: rgba(197, 75, 52, 0.13);
+  color: #b42318;
+}
+
+.tone-ink {
+  background: rgba(29, 37, 45, 0.1);
+  color: #1d252d;
+}
+
+.tone-green {
+  background: rgba(56, 121, 92, 0.12);
+  color: #2f6f52;
+}
+
+.tone-slate {
+  background: rgba(104, 119, 136, 0.14);
+  color: #52606f;
+}
+
+@media (max-width: 1280px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .content-grid,
+  .hero-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .dashboard-page {
+    padding: 16px;
+  }
+
+  .hero-title-row,
+  .panel-header,
+  .queue-item,
+  .secondary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-title-row,
+  .panel-header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .queue-actions {
+    min-width: 0;
+    flex-direction: row;
+    width: 100%;
+  }
+
+  .queue-actions :deep(.el-button) {
+    flex: 1;
+  }
 }
 </style>
