@@ -1,30 +1,43 @@
 import request from './request';
+import type { Department, DepartmentListResponse } from '@noidear/types';
 
-export interface Department {
-  id: string;
-  name: string;
+export type { Department, DepartmentListResponse };
+
+export interface DepartmentListParams {
+  page?: number;
+  limit?: number;
+  keyword?: string;
+  status?: 'active' | 'inactive';
+}
+
+export interface CreateDepartmentPayload {
   code: string;
-  parentId?: string | null;
-  managerId?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  name: string;
+  managerId: string;
 }
 
-export interface DepartmentListResponse {
-  list: Department[];
-  total: number;
+export interface UpdateDepartmentPayload {
+  name?: string;
+  managerId?: string;
+  status?: 'active' | 'inactive';
 }
 
-/**
- * 获取部门列表
- */
-export const getDepartments = (params?: { limit?: number }) => {
+export const getDepartments = (params: DepartmentListParams = {}) => {
   return request.get<DepartmentListResponse>('/departments', { params });
 };
 
-/**
- * 获取部门详情
- */
 export const getDepartmentById = (id: string) => {
   return request.get<Department>(`/departments/${id}`);
+};
+
+export const createDepartment = (payload: CreateDepartmentPayload) => {
+  return request.post<Department>('/departments', payload);
+};
+
+export const updateDepartment = (id: string, payload: UpdateDepartmentPayload) => {
+  return request.put<Department>(`/departments/${id}`, payload);
+};
+
+export const deleteDepartment = (id: string) => {
+  return request.delete(`/departments/${id}`);
 };
