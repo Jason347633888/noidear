@@ -15,19 +15,38 @@ export class UserService {
     this.snowflake = new Snowflake(1, 1);
   }
 
+  private readonly userInclude = {
+    roleObj: { select: { id: true, code: true, name: true } },
+    department: { select: { id: true, name: true, status: true } },
+  };
+
   async findAll(page = 1, limit = 20, keyword?: string) {
     const where = keyword ? { OR: [{ name: { contains: keyword } }, { username: { contains: keyword } }] } : {};
     const [list, total] = await Promise.all([
-      this.prisma.user.findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: { createdAt: 'desc' } }),
+      this.prisma.user.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: this.userInclude,
+      }),
       this.prisma.user.count({ where }),
     ]);
     return { list, total, page, limit };
   }
 
   async findOne(id: string) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+    const user = await this.prisma.user.findUnique({ where: { id }, include: this.userInclude });
     if (!user) throw new NotFoundException('用户不存在');
     return user;
+  }
+
+  private async resolveRoleCode(roleId?: string, fallbackRole?: string): Promise<string> {
+    if (roleId) {
+      const role = await this.prisma.role.findUnique({ where: { id: roleId }, select: { code: true } });
+      if (role) return role.code;
+    }
+    return fallbackRole ?? 'user';
   }
 
   async create(dto: CreateUserDTO) {
@@ -36,6 +55,7 @@ export class UserService {
       throw new BusinessException(ErrorCode.CONFLICT, '用户名已存在');
     }
     const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const role = await this.resolveRoleCode(dto.roleId, dto.role);
     return this.prisma.user.create({
       data: {
         id: this.snowflake.nextId(),
@@ -43,15 +63,30 @@ export class UserService {
         password: hashedPassword,
         name: dto.name,
         departmentId: dto.departmentId,
-        role: dto.role,
+        roleId: dto.roleId,
+        role,
         superiorId: dto.superiorId,
       },
+      include: this.userInclude,
     });
   }
 
   async update(id: string, dto: UpdateUserDTO) {
     await this.findOne(id);
-    const updated = await this.prisma.user.update({ where: { id }, data: dto });
+    const data: Record<string, unknown> = {
+      name: dto.name,
+      departmentId: dto.departmentId,
+      superiorId: dto.superiorId,
+      status: dto.status,
+    };
+    if (dto.roleId !== undefined) {
+      data.roleId = dto.roleId;
+      data.role = await this.resolveRoleCode(dto.roleId, dto.role);
+    } else if (dto.role !== undefined) {
+      data.role = dto.role;
+    }
+    Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
+    const updated = await this.prisma.user.update({ where: { id }, data, include: this.userInclude });
 
     // BR-319: 用户离职数据转交 — 状态变为 inactive 时转交未完成工作流任务给直属上级
     if (dto.status === 'inactive') {

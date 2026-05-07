@@ -8,6 +8,9 @@ export class UpdateDepartmentDTO {
   @ApiProperty({ required: false, description: '上级部门ID' })
   @IsOptional() @IsString() parentId?: string;
 
+  @ApiProperty({ required: false, description: '部门负责人用户ID' })
+  @IsOptional() @IsString() managerId?: string;
+
   @ApiProperty({ enum: ['active', 'inactive'], required: false, description: '部门状态' })
   @IsOptional() @IsEnum(['active', 'inactive']) status?: string;
 }

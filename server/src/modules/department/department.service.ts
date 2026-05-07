@@ -7,12 +7,26 @@ import { UpdateDepartmentDTO } from './dto/update-department.dto';
 export class DepartmentService {
   constructor(private prisma: PrismaService) {}
 
+  private readonly departmentInclude = {
+    manager: {
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        status: true,
+        roleId: true,
+        roleObj: { select: { id: true, code: true, name: true } },
+      },
+    },
+  };
+
   async findAll(limit = 100) {
     const [list, total] = await Promise.all([
       this.prisma.department.findMany({
         where: { deletedAt: null },
         take: limit,
         orderBy: { createdAt: 'desc' },
+        include: this.departmentInclude,
       }),
       this.prisma.department.count({ where: { deletedAt: null } }),
     ]);
@@ -22,6 +36,7 @@ export class DepartmentService {
   async findOne(id: string) {
     const department = await this.prisma.department.findUnique({
       where: { id, deletedAt: null },
+      include: this.departmentInclude,
     });
     if (!department) {
       throw new NotFoundException('部门不存在');
@@ -36,8 +51,10 @@ export class DepartmentService {
         code: dto.code,
         name: dto.name,
         parentId: dto.parentId || null,
+        managerId: dto.managerId || null,
         status: 'active',
       },
+      include: this.departmentInclude,
     });
   }
 
@@ -48,8 +65,10 @@ export class DepartmentService {
       data: {
         name: dto.name,
         parentId: dto.parentId,
+        managerId: dto.managerId,
         status: dto.status,
       },
+      include: this.departmentInclude,
     });
   }
 

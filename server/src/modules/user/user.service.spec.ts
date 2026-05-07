@@ -17,8 +17,11 @@ describe('UserService', () => {
     password: 'hashed-password',
     name: '测试用户',
     role: 'user',
+    roleId: 'r-user',
+    roleObj: { id: 'r-user', code: 'user', name: '普通用户' },
     status: 'active',
     departmentId: 'dept-1',
+    department: { id: 'dept-1', name: '品质部', status: 'active' },
   };
 
   beforeEach(async () => {
@@ -29,6 +32,9 @@ describe('UserService', () => {
         create: jest.fn(),
         update: jest.fn(),
         count: jest.fn(),
+      },
+      role: {
+        findUnique: jest.fn(),
       },
     };
 
@@ -95,7 +101,28 @@ describe('UserService', () => {
   });
 
   describe('create', () => {
-    it('应该成功创建用户', async () => {
+    it('应该成功创建用户（通过 roleId）', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+      prisma.user.create.mockResolvedValue(mockUser);
+      prisma.role.findUnique.mockResolvedValue({ code: 'user' });
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
+
+      const result = await service.create({
+        username: 'newuser',
+        password: '123456',
+        name: '新用户',
+        roleId: 'r-user',
+      });
+
+      expect(result).toEqual(mockUser);
+      expect(prisma.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ roleId: 'r-user', role: 'user' }),
+        }),
+      );
+    });
+
+    it('应该成功创建用户（旧口径 role）', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
       prisma.user.create.mockResolvedValue(mockUser);
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
@@ -108,7 +135,11 @@ describe('UserService', () => {
       });
 
       expect(result).toEqual(mockUser);
-      expect(prisma.user.create).toHaveBeenCalled();
+      expect(prisma.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ role: 'user' }),
+        }),
+      );
     });
 
     it('用户名已存在时应该抛出 BusinessException', async () => {
@@ -118,7 +149,7 @@ describe('UserService', () => {
         username: 'testuser',
         password: '123456',
         name: '新用户',
-        role: 'user',
+        roleId: 'r-user',
       })).rejects.toThrow(BusinessException);
     });
   });
