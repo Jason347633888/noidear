@@ -279,6 +279,7 @@ const menuItems = [
     icon: Setting,
     children: [
       { path: '/users', title: '用户管理', icon: UserFilled },
+      { path: '/departments', title: '部门管理', icon: Connection },
       { path: '/roles', title: '角色管理', icon: Key },
       { path: '/permissions', title: '权限管理', icon: Setting },
       { path: '/admin/user-permissions', title: '用户权限授予', icon: Key },

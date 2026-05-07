@@ -18,8 +18,11 @@ export class UserController {
     @Query('page') page: string,
     @Query('limit') limit: string,
     @Query('keyword') keyword?: string,
+    @Query('departmentId') departmentId?: string,
+    @Query('role') role?: string,
+    @Query('status') status?: string,
   ) {
-    return this.userService.findAll(Number(page) || 1, Number(limit) || 20, keyword);
+    return this.userService.findAll(Number(page) || 1, Number(limit) || 20, keyword, departmentId, role, status);
   }
 
   @Get(':id')

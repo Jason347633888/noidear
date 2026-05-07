@@ -1,12 +1,28 @@
 // 用户相关类型
 
+export interface UserRoleRef {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+}
+
+export interface UserDepartmentRef {
+  id: string;
+  name: string;
+  status?: 'active' | 'inactive';
+}
+
 export interface User {
   id: string;
   username: string;
   name: string;
   departmentId: string | null;
+  department?: UserDepartmentRef | null;
   departmentName?: string;
-  role: 'user' | 'leader' | 'admin';
+  roleId: string | null;
+  roleObj?: UserRoleRef | null;
+  role?: 'user' | 'leader' | 'admin';
   superiorId: string | null;
   superiorName?: string;
   status: 'active' | 'inactive';
@@ -21,16 +37,16 @@ export interface CreateUserDTO {
   username: string;
   password: string;
   name: string;
-  departmentId: string;
-  role: 'user' | 'leader' | 'admin';
-  superiorId: string;
+  departmentId?: string | null;
+  roleId: string;
+  superiorId?: string | null;
 }
 
 export interface UpdateUserDTO {
   name?: string;
-  departmentId?: string;
-  role?: 'user' | 'leader' | 'admin';
-  superiorId?: string;
+  departmentId?: string | null;
+  roleId?: string;
+  superiorId?: string | null;
   status?: 'active' | 'inactive';
 }
 

@@ -77,6 +77,15 @@ export interface Department {
   name: string;
   parentId: string | null;
   parentName?: string;
+  managerId: string | null;
+  manager?: {
+    id: string;
+    username: string;
+    name: string;
+    status: 'active' | 'inactive';
+    roleId?: string | null;
+    roleObj?: { id: string; code: string; name: string } | null;
+  } | null;
   status: 'active' | 'inactive';
   createdAt: string;
   updatedAt: string;

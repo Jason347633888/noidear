@@ -22,7 +22,17 @@
         </div>
       </template>
 
-      <el-table :data="tableData" v-loading="loading" stripe>
+      <el-alert
+        v-if="missingSystemRoles.length"
+        type="warning"
+        show-icon
+        :closable="false"
+        :title="`初始化未完成：缺少系统角色 ${missingSystemRoles.join('、')}`"
+        description="请先恢复系统角色，初始化主流程依赖 admin、leader、user 三个系统角色。"
+        style="margin-bottom: 16px"
+      />
+
+      <el-table :data="sortedRoles" v-loading="loading" stripe>
         <el-table-column prop="code" label="角色代码" width="150" />
         <el-table-column prop="name" label="角色名称" width="150" />
         <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
@@ -36,16 +46,13 @@
             <el-button link type="primary" @click="handlePermissions(row)">
               权限配置
             </el-button>
-            <el-button link type="primary" @click="handleEdit(row)">
+            <el-button v-if="!isSystemRole(row)" link type="primary" @click="handleEdit(row)">
               编辑
             </el-button>
-            <el-button
-              link
-              type="danger"
-              @click="handleDelete(row)"
-            >
+            <el-button v-if="!isSystemRole(row)" link type="danger" @click="handleDelete(row)">
               删除
             </el-button>
+            <el-tag v-if="isSystemRole(row)" size="small" effect="plain">系统内置</el-tag>
           </template>
         </el-table-column>
       </el-table>
@@ -80,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import request from '@/api/request';
 import RoleForm from '@/components/role/RoleForm.vue';
@@ -94,8 +101,26 @@ interface Role {
   createdAt: string;
 }
 
+const SYSTEM_ROLE_CODES = ['admin', 'leader', 'user'];
+
 const loading = ref(false);
 const tableData = ref<Role[]>([]);
+
+const sortedRoles = computed(() => {
+  const weight = new Map(SYSTEM_ROLE_CODES.map((code, index) => [code, index]));
+  return [...tableData.value].sort((a, b) => {
+    const aWeight = weight.has(a.code) ? weight.get(a.code)! : 99;
+    const bWeight = weight.has(b.code) ? weight.get(b.code)! : 99;
+    if (aWeight !== bWeight) return aWeight - bWeight;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+});
+
+const missingSystemRoles = computed(() =>
+  SYSTEM_ROLE_CODES.filter((code) => !tableData.value.some((role) => role.code === code)),
+);
+
+const isSystemRole = (role: Role) => SYSTEM_ROLE_CODES.includes(role.code);
 const formVisible = ref(false);
 const permissionsVisible = ref(false);
 const currentRole = ref<Role | null>(null);

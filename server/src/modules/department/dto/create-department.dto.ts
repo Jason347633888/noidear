@@ -10,4 +10,7 @@ export class CreateDepartmentDTO {
 
   @ApiProperty({ required: false, description: '上级部门ID' })
   @IsOptional() @IsString() parentId?: string;
+
+  @ApiProperty({ required: false, description: '部门负责人用户ID' })
+  @IsOptional() @IsString() managerId?: string;
 }
