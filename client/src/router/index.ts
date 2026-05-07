@@ -31,6 +31,7 @@ const routes: RouteRecordRaw[] = [
         path: 'dashboard',
         name: 'Dashboard',
         component: () => import('@/views/Dashboard.vue'),
+        meta: { title: '工作台' },
       },
       {
         path: 'documents',
@@ -161,6 +162,7 @@ const routes: RouteRecordRaw[] = [
         path: 'approvals/pending',
         name: 'ApprovalPending',
         component: () => import('@/views/approvals/ApprovalPending.vue'),
+        meta: { title: '待我审批' },
       },
       {
         path: 'approvals/detail/:id',
