@@ -20,8 +20,23 @@ export class UserService {
     department: { select: { id: true, name: true, status: true } },
   };
 
-  async findAll(page = 1, limit = 20, keyword?: string) {
-    const where = keyword ? { OR: [{ name: { contains: keyword } }, { username: { contains: keyword } }] } : {};
+  async findAll(page = 1, limit = 20, keyword?: string, departmentId?: string, role?: string, status?: string) {
+    const conditions: object[] = [];
+    if (keyword) {
+      conditions.push({ OR: [{ name: { contains: keyword } }, { username: { contains: keyword } }] });
+    }
+    if (departmentId === 'unassigned') {
+      conditions.push({ departmentId: null });
+    } else if (departmentId) {
+      conditions.push({ departmentId });
+    }
+    if (role) {
+      conditions.push({ role });
+    }
+    if (status) {
+      conditions.push({ status });
+    }
+    const where = conditions.length > 0 ? { AND: conditions } : {};
     const [list, total] = await Promise.all([
       this.prisma.user.findMany({
         where,

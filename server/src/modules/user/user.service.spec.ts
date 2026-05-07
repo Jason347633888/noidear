@@ -74,11 +74,75 @@ describe('UserService', () => {
       expect(prisma.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
-            OR: [
-              { name: { contains: 'test' } },
-              { username: { contains: 'test' } },
+            AND: [
+              { OR: [{ name: { contains: 'test' } }, { username: { contains: 'test' } }] },
             ],
           },
+        }),
+      );
+    });
+
+    it('应该支持按部门 ID 筛选', async () => {
+      prisma.user.findMany.mockResolvedValue([mockUser]);
+      prisma.user.count.mockResolvedValue(1);
+
+      await service.findAll(1, 20, undefined, 'dept-1');
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { AND: [{ departmentId: 'dept-1' }] },
+        }),
+      );
+    });
+
+    it('unassigned 应筛选出未分配部门的用户', async () => {
+      prisma.user.findMany.mockResolvedValue([mockUser]);
+      prisma.user.count.mockResolvedValue(1);
+
+      await service.findAll(1, 20, undefined, 'unassigned');
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { AND: [{ departmentId: null }] },
+        }),
+      );
+    });
+
+    it('应该支持按 role 筛选', async () => {
+      prisma.user.findMany.mockResolvedValue([mockUser]);
+      prisma.user.count.mockResolvedValue(1);
+
+      await service.findAll(1, 20, undefined, undefined, 'leader');
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { AND: [{ role: 'leader' }] },
+        }),
+      );
+    });
+
+    it('应该支持按 status 筛选', async () => {
+      prisma.user.findMany.mockResolvedValue([mockUser]);
+      prisma.user.count.mockResolvedValue(1);
+
+      await service.findAll(1, 20, undefined, undefined, undefined, 'active');
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { AND: [{ status: 'active' }] },
+        }),
+      );
+    });
+
+    it('应该支持组合筛选：部门 + 状态', async () => {
+      prisma.user.findMany.mockResolvedValue([mockUser]);
+      prisma.user.count.mockResolvedValue(1);
+
+      await service.findAll(1, 20, undefined, 'dept-1', undefined, 'active');
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { AND: [{ departmentId: 'dept-1' }, { status: 'active' }] },
         }),
       );
     });

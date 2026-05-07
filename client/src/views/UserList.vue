@@ -20,6 +20,12 @@
         <el-form-item label="关键词" class="filter-item">
           <el-input v-model="filterForm.keyword" placeholder="搜索用户名/姓名" clearable class="filter-input" />
         </el-form-item>
+        <el-form-item label="部门" class="filter-item">
+          <el-select v-model="filterForm.departmentId" clearable placeholder="全部" class="filter-select">
+            <el-option label="未分配部门" value="unassigned" />
+            <el-option v-for="dept in departments" :key="dept.id" :label="dept.name" :value="dept.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="角色" class="filter-item">
           <el-select v-model="filterForm.roleCode" clearable placeholder="全部" class="filter-select">
             <el-option v-for="role in systemRoles" :key="role.id" :label="role.name" :value="role.code" />
@@ -149,6 +155,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import request from '@/api/request';
 import { Search, RefreshRight, Plus, Edit, Key } from '@element-plus/icons-vue';
@@ -186,6 +193,7 @@ interface DepartmentItem {
   managerId: string | null;
 }
 
+const route = useRoute();
 const loading = ref(false);
 const creating = ref(false);
 const showCreateDialog = ref(false);
@@ -201,6 +209,7 @@ const filterForm = reactive({
   keyword: '',
   roleCode: '',
   departmentId: '',
+  status: '',
 });
 const pagination = reactive({ page: 1, limit: 20, total: 0 });
 const createForm = reactive({
@@ -276,6 +285,7 @@ const fetchData = async () => {
     };
     if (filterForm.roleCode) params.role = filterForm.roleCode;
     if (filterForm.departmentId) params.departmentId = filterForm.departmentId;
+    if (filterForm.status) params.status = filterForm.status;
     const res = await request.get<{ list: UserRow[]; total: number }>('/users', { params });
     tableData.value = res.list;
     pagination.total = res.total;
@@ -301,6 +311,7 @@ const handleReset = () => {
   filterForm.keyword = '';
   filterForm.roleCode = '';
   filterForm.departmentId = '';
+  filterForm.status = '';
   pagination.page = 1;
   fetchData();
 };
@@ -379,6 +390,8 @@ const closeDialog = () => {
 };
 
 onMounted(async () => {
+  if (route.query.departmentId) filterForm.departmentId = route.query.departmentId as string;
+  if (route.query.status) filterForm.status = route.query.status as string;
   await Promise.all([fetchData(), fetchDepartments(), loadSystemRoles()]);
 });
 </script>

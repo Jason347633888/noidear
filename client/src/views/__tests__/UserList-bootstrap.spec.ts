@@ -4,6 +4,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 const mockGet = vi.fn();
 const mockPost = vi.fn();
 const mockPut = vi.fn();
+const mockRouteQuery = vi.fn(() => ({}));
 
 vi.mock('@/api/request', () => ({
   default: {
@@ -15,6 +16,10 @@ vi.mock('@/api/request', () => ({
 
 vi.mock('element-plus', () => ({
   ElMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
+}));
+
+vi.mock('vue-router', () => ({
+  useRoute: () => ({ query: mockRouteQuery() }),
 }));
 
 import UserList from '../UserList.vue';
@@ -46,7 +51,8 @@ const users = [
   },
 ];
 
-function mountView() {
+function mountView(routeQuery: Record<string, string> = {}) {
+  mockRouteQuery.mockReturnValue(routeQuery);
   return mount(UserList, {
     global: {
       stubs: {
@@ -72,6 +78,7 @@ function mountView() {
 describe('UserList bootstrap rules', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRouteQuery.mockReturnValue({});
     mockGet.mockImplementation((url: string) => {
       if (url === '/users') return Promise.resolve({ list: users, total: users.length, page: 1, limit: 20 });
       if (url === '/departments') return Promise.resolve({ list: departments, total: departments.length });
@@ -109,5 +116,29 @@ describe('UserList bootstrap rules', () => {
     await flushPromises();
     expect((wrapper.vm as any).missingSystemRoles).toEqual(['leader']);
     expect((wrapper.vm as any).userEditingBlocked).toBe(true);
+  });
+
+  it('从 route query 初始化部门筛选条件', async () => {
+    const wrapper = mountView({ departmentId: 'd-1', status: 'active' });
+    await flushPromises();
+    expect((wrapper.vm as any).filterForm.departmentId).toBe('d-1');
+    expect((wrapper.vm as any).filterForm.status).toBe('active');
+  });
+
+  it('从 route query 初始化后，fetchData 带 departmentId 参数请求', async () => {
+    mountView({ departmentId: 'd-1', status: 'active' });
+    await flushPromises();
+    const usersCall = mockGet.mock.calls.find((call: string[]) => call[0] === '/users');
+    expect(usersCall).toBeDefined();
+    expect(usersCall[1].params.departmentId).toBe('d-1');
+    expect(usersCall[1].params.status).toBe('active');
+  });
+
+  it('部门筛选支持 unassigned（未分配部门）选项', async () => {
+    const wrapper = mountView({ departmentId: 'unassigned' });
+    await flushPromises();
+    expect((wrapper.vm as any).filterForm.departmentId).toBe('unassigned');
+    const usersCall = mockGet.mock.calls.find((call: string[]) => call[0] === '/users');
+    expect(usersCall[1].params.departmentId).toBe('unassigned');
   });
 });
