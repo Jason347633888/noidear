@@ -161,6 +161,8 @@ services:
       - MINIO_SECRET_KEY=noidear123
       - NODE_ENV=production
       - SWAGGER_ENABLED=true
+    command: >
+      sh -c "node dist/main"
     depends_on:
       postgres:
         condition: service_healthy
