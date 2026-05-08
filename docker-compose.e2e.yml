@@ -79,6 +79,7 @@ services:
     command: >
       sh -c "
         npx prisma db push --accept-data-loss --schema=src/prisma/schema.prisma &&
+        node dist/prisma/seed-baseline.js &&
         node dist/main
       "
     depends_on:
@@ -116,7 +117,7 @@ services:
       server-e2e:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:80/ || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:80/ || exit 1"]
       interval: 10s
       timeout: 10s
       retries: 10
