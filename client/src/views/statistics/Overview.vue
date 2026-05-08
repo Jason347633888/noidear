@@ -1,9 +1,6 @@
 <template>
   <div class="statistics-overview">
-    <el-card class="page-header">
-      <h2>统计概览</h2>
-      <p class="subtitle">查看系统关键指标和运营数据</p>
-    </el-card>
+    <PageHeaderBlock eyebrow="数据分析" title="概览" description="查看系统关键指标和运营数据" />
 
     <!-- 关键指标卡片 -->
     <el-row :gutter="20" class="metrics-row">
@@ -59,10 +56,11 @@
     <!-- 关键指标详情 -->
     <el-row :gutter="20" class="details-row">
       <el-col :span="8">
-        <el-card>
-          <template #header>
-            <span>任务完成情况</span>
-          </template>
+        <div class="app-panel">
+          <div class="app-panel-header">
+            <h3 class="app-panel-header__title">任务完成情况</h3>
+          </div>
+          <div class="app-panel--padded">
           <div class="detail-item">
             <span>完成率</span>
             <span class="detail-value">{{ taskCompletionRate }}%</span>
@@ -71,14 +69,16 @@
             <span>本月新增任务</span>
             <span class="detail-value">{{ overviewData.monthly?.tasks || 0 }}</span>
           </div>
-        </el-card>
+          </div>
+        </div>
       </el-col>
 
       <el-col :span="8">
-        <el-card>
-          <template #header>
-            <span>审批效率</span>
-          </template>
+        <div class="app-panel">
+          <div class="app-panel-header">
+            <h3 class="app-panel-header__title">审批效率</h3>
+          </div>
+          <div class="app-panel--padded">
           <div class="detail-item">
             <span>审批通过率</span>
             <span class="detail-value success">{{ approvalRate }}%</span>
@@ -87,38 +87,43 @@
             <span>本月新增审批</span>
             <span class="detail-value">{{ overviewData.monthly?.approvals || 0 }}</span>
           </div>
-        </el-card>
+          </div>
+        </div>
       </el-col>
 
       <el-col :span="8">
-        <el-card>
-          <template #header>
-            <span>本月新增</span>
-          </template>
+        <div class="app-panel">
+          <div class="app-panel-header">
+            <h3 class="app-panel-header__title">本月新增</h3>
+          </div>
+          <div class="app-panel--padded">
           <div class="detail-item" v-for="item in monthlyItems" :key="item.label">
             <span>{{ item.label }}</span>
             <span class="detail-value">{{ item.count }}</span>
           </div>
-        </el-card>
+          </div>
+        </div>
       </el-col>
     </el-row>
 
     <!-- 趋势图表 -->
     <el-row :gutter="20" class="chart-row">
       <el-col :span="24">
-        <el-card>
-          <template #header>
-            <div class="chart-header">
-              <span>数据趋势</span>
+        <div class="app-panel">
+          <div class="app-panel-header">
+            <h3 class="app-panel-header__title">数据趋势</h3>
+            <div class="app-panel-header__actions">
               <el-select v-model="timeRange" @change="fetchData" style="width: 150px">
                 <el-option label="本月" value="month" />
                 <el-option label="本季度" value="quarter" />
                 <el-option label="本年" value="year" />
               </el-select>
             </div>
-          </template>
-          <div ref="chartRef" style="width: 100%; height: 400px"></div>
-        </el-card>
+          </div>
+          <div class="app-panel--padded">
+            <div ref="chartRef" style="width: 100%; height: 400px"></div>
+          </div>
+        </div>
       </el-col>
     </el-row>
   </div>
@@ -248,23 +253,10 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .statistics-overview {
-  padding: 20px;
-}
-
-.page-header {
-  margin-bottom: 20px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 24px;
-  color: #303133;
-}
-
-.subtitle {
-  margin: 8px 0 0 0;
-  color: #909399;
-  font-size: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .metrics-row {

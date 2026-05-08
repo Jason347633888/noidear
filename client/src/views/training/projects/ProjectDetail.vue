@@ -1,15 +1,15 @@
 <template>
   <div class="project-detail">
-    <el-card v-loading="loading">
-      <template #header>
-        <div class="card-header">
-          <span>培训项目详情</span>
-          <div>
-            <el-button @click="handleBack">返回</el-button>
-          </div>
-        </div>
-      </template>
+    <PageHeaderBlock eyebrow="培训与内审" title="培训项目详情" />
 
+    <div class="app-panel" v-loading="loading">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">培训项目详情</h3>
+        <div class="app-panel-header__actions">
+          <el-button @click="handleBack">返回</el-button>
+        </div>
+      </div>
+      <div class="app-panel--padded">
       <div v-if="project">
         <!-- 基本信息 -->
         <el-descriptions title="基本信息" :column="2" border>
@@ -130,7 +130,8 @@
           </el-button>
         </div>
       </div>
-    </el-card>
+      </div>
+    </div>
 
     <!-- 添加学员对话框 -->
     <el-dialog v-model="traineeDialogVisible" title="添加学员" width="600px">
@@ -373,7 +374,10 @@ onMounted(() => {
 
 <style scoped>
 .project-detail {
-  padding: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .card-header {

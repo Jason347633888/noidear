@@ -1,19 +1,17 @@
 <template>
   <div class="plan-detail-container">
-    <el-page-header @back="handleBack" title="返回" content="培训计划详情" />
+    <PageHeaderBlock eyebrow="培训与内审" title="培训计划详情" />
 
-    <el-card v-loading="loading" class="detail-card">
-      <template #header>
-        <div class="card-header">
-          <span class="title">基本信息</span>
-          <div class="actions">
-            <el-button type="primary" @click="handleAddProject">添加培训项目</el-button>
-            <el-button type="success" @click="handleSubmit" v-if="canSubmit">提交审批</el-button>
-            <el-button type="warning" @click="handleEdit" v-if="canEdit">编辑</el-button>
-          </div>
+    <div class="app-panel detail-card">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">基本信息</h3>
+        <div class="app-panel-header__actions">
+          <el-button type="primary" @click="handleAddProject">添加培训项目</el-button>
+          <el-button type="success" @click="handleSubmit" v-if="canSubmit">提交审批</el-button>
+          <el-button type="warning" @click="handleEdit" v-if="canEdit">编辑</el-button>
         </div>
-      </template>
-
+      </div>
+      <div class="app-panel--padded" v-loading="loading">
       <el-descriptions :column="2" border v-if="plan">
         <el-descriptions-item label="年度">{{ plan.year }}年</el-descriptions-item>
         <el-descriptions-item label="计划标题">{{ plan.title }}</el-descriptions-item>
@@ -28,13 +26,14 @@
           {{ formatDate(plan.updatedAt) }}
         </el-descriptions-item>
       </el-descriptions>
-    </el-card>
+      </div>
+    </div>
 
-    <el-card class="projects-card" v-loading="loading">
-      <template #header>
-        <span class="title">培训项目列表 ({{ projects.length }}个)</span>
-      </template>
-
+    <div class="app-panel projects-card" v-loading="loading">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">培训项目列表 ({{ projects.length }}个)</h3>
+      </div>
+      <div class="app-panel--padded">
       <el-table :data="projects" stripe>
         <el-table-column prop="title" label="项目标题" min-width="200" />
         <el-table-column prop="department" label="部门" width="120" />
@@ -70,7 +69,8 @@
       </el-table>
 
       <el-empty v-if="projects.length === 0" description="暂无培训项目" />
-    </el-card>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -220,7 +220,10 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .plan-detail-container {
-  padding: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .el-page-header {

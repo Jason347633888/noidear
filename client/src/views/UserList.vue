@@ -1,9 +1,6 @@
 <template>
   <div class="user-page">
-    <div class="page-header">
-      <h1 class="page-title">用户管理</h1>
-      <p class="page-subtitle">管理系统用户账户和权限</p>
-    </div>
+    <PageHeaderBlock eyebrow="系统治理" title="用户管理" description="管理系统用户账户和权限" />
 
     <el-alert
       v-if="missingSystemRoles.length"
@@ -159,6 +156,7 @@ import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import request from '@/api/request';
 import { Search, RefreshRight, Plus, Edit, Key } from '@element-plus/icons-vue';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 interface RoleRef {
   id: string;
@@ -398,22 +396,17 @@ onMounted(async () => {
 
 <style scoped>
 .user-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
-  --bg: #f5f6fa;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-family: 'Inter', sans-serif;
 }
 
-.user-page { font-family: 'Inter', sans-serif; }
-.page-header { margin-bottom: 24px; }
-.page-title { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 600; color: var(--primary); margin: 0 0 4px; }
-.page-subtitle { font-size: 14px; color: var(--text-light); margin: 0; }
-
-.filter-card { margin-bottom: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); border: none; }
+.filter-card { border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); border: none; }
 .filter-form { display: flex; align-items: flex-end; gap: 16px; }
 .filter-item { margin-bottom: 0; margin-right: 0; }
-.filter-item :deep(.el-form-item__label) { font-size: 13px; color: var(--text-light); }
+.filter-item :deep(.el-form-item__label) { font-size: 13px; color: var(--shell-muted); }
 .filter-input { width: 180px; }
 .filter-select { width: 140px; }
 .filter-actions { margin-left: auto; }
@@ -421,17 +414,17 @@ onMounted(async () => {
 .table-card { border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); border: none; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .card-title-wrap { display: flex; align-items: baseline; gap: 12px; }
-.card-title { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 600; color: var(--primary); }
-.card-count { font-size: 12px; color: var(--text-light); }
-.create-btn { border-radius: 8px; background: linear-gradient(135deg, var(--accent) 0%, #d4af37 100%); border: none; font-weight: 500; }
+.card-title { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 600; color: var(--shell-ink); }
+.card-count { font-size: 12px; color: var(--shell-muted); }
+.create-btn { border-radius: 8px; background: linear-gradient(135deg, var(--el-color-primary) 0%, #d4af37 100%); border: none; font-weight: 500; }
 .create-btn:hover { box-shadow: 0 4px 12px rgba(201, 162, 39, 0.3); }
 
-.user-table :deep(th) { background: #fafafa; font-weight: 500; color: var(--text-light); font-size: 12px; }
+.user-table :deep(th) { background: #fafafa; font-weight: 500; color: var(--shell-muted); font-size: 12px; }
 .user-info { display: flex; align-items: center; gap: 10px; }
-.user-avatar { width: 36px; height: 36px; border-radius: 8px; background: var(--primary); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; }
-.username { font-size: 13px; font-weight: 500; color: var(--text); }
+.user-avatar { width: 36px; height: 36px; border-radius: 8px; background: var(--shell-ink); color: var(--el-color-primary); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; }
+.username { font-size: 13px; font-weight: 500; color: var(--shell-ink); }
 .role-tag { border-radius: 6px; }
-.time-text { font-size: 12px; color: var(--text-light); }
+.time-text { font-size: 12px; color: var(--shell-muted); }
 .action-btns { display: flex; gap: 4px; }
 .action-btn { font-size: 12px; display: flex; align-items: center; gap: 4px; }
 

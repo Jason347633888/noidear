@@ -1,11 +1,12 @@
 <template>
   <div class="report-list">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <h2>内审报告</h2>
-        </div>
-      </template>
+    <PageHeaderBlock eyebrow="培训与内审" title="审计报告" />
+
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">内审报告</h3>
+      </div>
+      <div class="app-panel--padded">
 
       <!-- 筛选 -->
       <el-form :inline="true" :model="queryForm" class="filter-form">
@@ -74,7 +75,8 @@
         @current-change="handleQuery"
         class="pagination"
       />
-    </el-card>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -146,7 +148,10 @@ onMounted(() => {
 
 <style scoped>
 .report-list {
-  padding: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .header {
