@@ -87,6 +87,7 @@ import { WorkshopAreaModule } from './modules/workshop-area/workshop-area.module
 import { TeamShiftModule } from './modules/team-shift/team-shift.module';
 import { MixingModule } from './modules/mixing/mixing.module';
 import { ProductProcessChangeModule } from './modules/product-process-change/product-process-change.module';
+import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module';
 
 @Module({
   imports: [
@@ -180,6 +181,7 @@ import { ProductProcessChangeModule } from './modules/product-process-change/pro
     TeamShiftModule,
     MixingModule,
     ProductProcessChangeModule,
+    OrgBootstrapModule,
   ],
   providers: [],
 })
