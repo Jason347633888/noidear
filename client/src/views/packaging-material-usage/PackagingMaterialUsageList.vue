@@ -1,9 +1,6 @@
 <template>
   <div class="pmu-list-page">
-    <div class="page-header">
-      <h1 class="page-title">包装材料用量记录</h1>
-      <p class="page-subtitle">记录生产过程中包装材料使用量与废料量</p>
-    </div>
+    <PageHeaderBlock eyebrow="设备与现场" title="包装材料用量记录" description="记录生产过程中包装材料使用量与废料量" />
 
     <el-card class="table-card">
       <template #header>

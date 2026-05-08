@@ -1,54 +1,59 @@
 <template>
   <div class="material-balance">
-    <el-card class="filter-card">
-      <el-form :model="filterForm" inline>
-        <el-form-item label="日期范围">
-          <el-date-picker
-            v-model="filterForm.dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="fetchData">查询</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+    <PageHeaderBlock eyebrow="追溯与批次" title="物料平衡" />
 
-    <el-card class="table-card">
-      <template #header>
-        <span>物料平衡报表</span>
-      </template>
-
-      <el-table :data="tableData" v-loading="loading" stripe show-summary>
-        <el-table-column prop="materialCode" label="物料编码" width="120" />
-        <el-table-column prop="materialName" label="物料名称" min-width="180" />
-        <el-table-column prop="inputQuantity" label="投入量" width="100" />
-        <el-table-column prop="outputQuantity" label="产出量" width="100" />
-        <el-table-column prop="wasteQuantity" label="损耗量" width="100" />
-        <el-table-column prop="balance" label="平衡差" width="100">
-          <template #default="{ row }">
-            <span :class="{ 'text-danger': row.balance < 0, 'text-success': row.balance >= 0 }">
-              {{ row.balance }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="yieldRate" label="收率(%)" width="100">
-          <template #default="{ row }">
-            <el-progress
-              :percentage="row.yieldRate"
-              :color="row.yieldRate >= 95 ? '#67c23a' : row.yieldRate >= 90 ? '#e6a23c' : '#f56c6c'"
-              :stroke-width="6"
-              :show-text="false"
+    <div class="app-panel" style="margin-bottom: 16px">
+      <div class="app-panel--padded">
+        <el-form :model="filterForm" inline>
+          <el-form-item label="日期范围">
+            <el-date-picker
+              v-model="filterForm.dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              value-format="YYYY-MM-DD"
             />
-            <span class="yield-text">{{ row.yieldRate }}%</span>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="fetchData">查询</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+    </div>
+
+    <div class="app-panel" style="margin-bottom: 16px">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">物料平衡报表</h3>
+      </div>
+      <div class="app-panel--padded">
+        <el-table :data="tableData" v-loading="loading" stripe show-summary>
+          <el-table-column prop="materialCode" label="物料编码" width="120" />
+          <el-table-column prop="materialName" label="物料名称" min-width="180" />
+          <el-table-column prop="inputQuantity" label="投入量" width="100" />
+          <el-table-column prop="outputQuantity" label="产出量" width="100" />
+          <el-table-column prop="wasteQuantity" label="损耗量" width="100" />
+          <el-table-column prop="balance" label="平衡差" width="100">
+            <template #default="{ row }">
+              <span :class="{ 'text-danger': row.balance < 0, 'text-success': row.balance >= 0 }">
+                {{ row.balance }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="yieldRate" label="收率(%)" width="100">
+            <template #default="{ row }">
+              <el-progress
+                :percentage="row.yieldRate"
+                :color="row.yieldRate >= 95 ? '#67c23a' : row.yieldRate >= 90 ? '#e6a23c' : '#f56c6c'"
+                :stroke-width="6"
+                :show-text="false"
+              />
+              <span class="yield-text">{{ row.yieldRate }}%</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -82,8 +87,6 @@ onMounted(() => { fetchData(); });
 </script>
 
 <style scoped>
-.filter-card { margin-bottom: 16px; }
-.table-card { margin-bottom: 16px; }
 .text-danger { color: #f56c6c; font-weight: 600; }
 .text-success { color: #67c23a; font-weight: 600; }
 .yield-text { font-size: 12px; margin-left: 4px; }

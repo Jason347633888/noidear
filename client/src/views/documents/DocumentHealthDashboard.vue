@@ -1,9 +1,12 @@
 <template>
   <div class="document-health-dashboard">
-    <el-card v-for="item in items" :key="item.key">
-      <template #header>{{ item.label }}</template>
-      <strong>{{ health?.[item.key] ?? 0 }}</strong>
-    </el-card>
+    <PageHeaderBlock title="文控健康仪表盘" eyebrow="文控与审批" />
+    <div class="health-grid">
+      <div class="app-panel" v-for="item in items" :key="item.key">
+        <div class="app-panel-header"><h3 class="app-panel-header__title">{{ item.label }}</h3></div>
+        <div class="app-panel--padded"><strong>{{ health?.[item.key] ?? 0 }}</strong></div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -34,7 +37,7 @@ onMounted(load);
 </script>
 
 <style scoped>
-.document-health-dashboard {
+.health-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;

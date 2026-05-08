@@ -1,12 +1,12 @@
 <template>
   <div class="document-detail" v-loading="loading">
-    <el-page-header @back="$router.back()">
-      <template #content>
-        <span class="page-title">{{ document?.title }}</span>
+    <PageHeaderBlock title="文档详情" eyebrow="体系文件">
+      <template #actions>
+        <el-button @click="$router.back()">返回</el-button>
       </template>
-    </el-page-header>
+    </PageHeaderBlock>
 
-    <el-card class="info-card" v-if="document">
+    <div class="app-panel" v-if="document">
       <el-descriptions :column="2" border>
         <el-descriptions-item label="文档编号">{{ document.number }}</el-descriptions-item>
         <el-descriptions-item label="文档级别">
@@ -125,7 +125,7 @@
           查看证据链
         </el-button>
       </div>
-    </el-card>
+    </div>
 
     <!-- 归档/作废原因提示 -->
     <el-alert
@@ -143,8 +143,9 @@
       style="margin-top: 16px;"
     />
 
-    <el-card class="control-card" v-if="document">
-      <template #header>文控信息</template>
+    <div class="app-panel control-card" v-if="document">
+      <div class="app-panel-header"><h3 class="app-panel-header__title">文控信息</h3></div>
+      <div class="app-panel--padded">
       <el-descriptions :column="2" border>
         <el-descriptions-item label="文件类型">{{ document.document_type || '-' }}</el-descriptions-item>
         <el-descriptions-item label="来源分类">{{ fileCategory }}</el-descriptions-item>
@@ -152,13 +153,13 @@
         <el-descriptions-item label="负责人">{{ ownerUserLabel }}</el-descriptions-item>
         <el-descriptions-item label="复审日期">{{ document.review_due_date ? formatControlDate(document.review_due_date) : '-' }}</el-descriptions-item>
       </el-descriptions>
-    </el-card>
+      </div>
+    </div>
 
-    <el-card ref="markdownCardRef" class="markdown-card" v-if="document && document.content_md != null">
-      <template #header>
-        <div class="card-header">
-          <span>Markdown 正文</span>
-          <div v-if="canEditMarkdown" class="header-actions">
+    <div ref="markdownCardRef" class="app-panel markdown-card" v-if="document && document.content_md != null">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">Markdown 正文</h3>
+        <div v-if="canEditMarkdown" class="app-panel-header__actions">
             <el-button
               v-if="!markdownEditing"
               type="primary"
@@ -172,9 +173,9 @@
                 保存正文
               </el-button>
             </template>
-          </div>
         </div>
-      </template>
+      </div>
+      <div class="app-panel--padded">
       <el-alert
         v-if="activeReferenceLabel"
         type="warning"
@@ -192,10 +193,12 @@
         :wikilink-status-by-target="wikilinkStatusByTarget"
         @wikilink-click="handleMarkdownWikilinkClick"
       />
-    </el-card>
+      </div>
+    </div>
 
-    <el-card class="reference-card" v-if="hasReferences">
-      <template #header>引用关系</template>
+    <div class="app-panel reference-card" v-if="hasReferences">
+      <div class="app-panel-header"><h3 class="app-panel-header__title">引用关系</h3></div>
+      <div class="app-panel--padded">
       <section v-if="referenceHealth" class="reference-section">
         <h3>引用健康概览</h3>
         <div class="reference-health-summary">
@@ -288,12 +291,12 @@
           </el-table-column>
         </el-table>
       </section>
-    </el-card>
+      </div>
+    </div>
 
-    <el-card class="version-card" v-if="revisionHistory.length">
-      <template #header>
-        <span>修订链</span>
-      </template>
+    <div class="app-panel version-card" v-if="revisionHistory.length">
+      <div class="app-panel-header"><h3 class="app-panel-header__title">修订链</h3></div>
+      <div class="app-panel--padded">
       <el-table :data="revisionHistory" stripe>
         <el-table-column prop="versionLabel" label="受控版本" width="100" />
         <el-table-column prop="title" label="文件名称" min-width="160" />
@@ -310,12 +313,12 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+      </div>
+    </div>
 
-    <el-card class="version-card" v-if="versionHistory.length">
-      <template #header>
-        <span>版本历史</span>
-      </template>
+    <div class="app-panel version-card" v-if="versionHistory.length">
+      <div class="app-panel-header"><h3 class="app-panel-header__title">版本历史</h3></div>
+      <div class="app-panel--padded">
       <el-table :data="versionHistory" stripe>
         <el-table-column prop="version" label="版本" width="180">
           <template #default="{ row }">
@@ -338,7 +341,8 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+      </div>
+    </div>
 
     <!-- 文件预览对话框（使用 OfficePreview 支持多格式） -->
     <el-dialog

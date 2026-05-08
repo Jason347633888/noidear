@@ -1,5 +1,6 @@
 <template>
-  <div style="padding:20px">
+  <div style="padding:24px;display:flex;flex-direction:column;gap:16px">
+    <PageHeaderBlock eyebrow="质量与合规" title="CAPA 详情" />
     <el-page-header @back="$router.back()" :content="`CAPA — ${capa?.capa_no ?? ''}`" />
 
     <el-descriptions :column="2" border style="margin-top:16px">

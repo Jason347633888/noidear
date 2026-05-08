@@ -1,79 +1,76 @@
 <template>
   <div class="ii-list-page">
-    <div class="page-header">
-      <h1 class="page-title">来料检验</h1>
-      <p class="page-subtitle">管理原料及包材的来料检验记录</p>
-    </div>
-
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <div class="card-title-wrap">
-            <span class="card-title">检验记录列表</span>
-            <span class="card-count">共 {{ list.length }} 条记录</span>
-          </div>
-          <div class="header-actions">
-            <el-button type="primary" @click="openCreateDialog">
-              <el-icon><Plus /></el-icon>新建检验单
-            </el-button>
-          </div>
-        </div>
+    <PageHeaderBlock eyebrow="追溯与批次" title="来料检验">
+      <template #actions>
+        <el-button type="primary" @click="openCreateDialog">
+          <el-icon><Plus /></el-icon>新建检验单
+        </el-button>
       </template>
+    </PageHeaderBlock>
 
-      <el-table :data="list" v-loading="loading" stripe>
-        <el-table-column label="物料名称" min-width="140" show-overflow-tooltip>
-          <template #default="{ row }">
-            {{ row.material_batch?.material?.name ?? '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="批次号" width="160" show-overflow-tooltip>
-          <template #default="{ row }">
-            {{ row.material_batch?.lot_number ?? '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="供应商" min-width="140" show-overflow-tooltip>
-          <template #default="{ row }">
-            {{ row.material_batch?.supplier?.name ?? '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="抽样数量" width="120">
-          <template #default="{ row }">
-            {{ row.sample_qty != null ? `${row.sample_qty} ${row.sample_unit ?? ''}`.trim() : '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="总体结论" width="130">
-          <template #default="{ row }">
-            <el-tag
-              :type="getOverallResultTagType(row.overall_result)"
-              effect="light"
-              size="small"
-            >
-              {{ getOverallResultText(row.overall_result) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="检验项通过率" width="130">
-          <template #default="{ row }">
-            {{ calcPassRate(row.results) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="检验时间" width="160">
-          <template #default="{ row }">
-            {{ formatDate(row.inspected_at) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="备注" min-width="160" show-overflow-tooltip>
-          <template #default="{ row }">
-            {{ row.notes || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="openReports(row)">报告</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+    <div class="app-panel" style="margin-bottom: 16px">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">检验记录列表</h3>
+        <div class="app-panel-header__actions">
+          <span class="card-count">共 {{ list.length }} 条记录</span>
+        </div>
+      </div>
+      <div class="app-panel--padded">
+        <el-table :data="list" v-loading="loading" stripe>
+          <el-table-column label="物料名称" min-width="140" show-overflow-tooltip>
+            <template #default="{ row }">
+              {{ row.material_batch?.material?.name ?? '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="批次号" width="160" show-overflow-tooltip>
+            <template #default="{ row }">
+              {{ row.material_batch?.lot_number ?? '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="供应商" min-width="140" show-overflow-tooltip>
+            <template #default="{ row }">
+              {{ row.material_batch?.supplier?.name ?? '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="抽样数量" width="120">
+            <template #default="{ row }">
+              {{ row.sample_qty != null ? `${row.sample_qty} ${row.sample_unit ?? ''}`.trim() : '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="总体结论" width="130">
+            <template #default="{ row }">
+              <el-tag
+                :type="getOverallResultTagType(row.overall_result)"
+                effect="light"
+                size="small"
+              >
+                {{ getOverallResultText(row.overall_result) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="检验项通过率" width="130">
+            <template #default="{ row }">
+              {{ calcPassRate(row.results) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="检验时间" width="160">
+            <template #default="{ row }">
+              {{ formatDate(row.inspected_at) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="备注" min-width="160" show-overflow-tooltip>
+            <template #default="{ row }">
+              {{ row.notes || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="openReports(row)">报告</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </div>
 
     <!-- 新建检验单对话框 -->
     <el-dialog
@@ -487,49 +484,9 @@ onMounted(() => {
   padding: 24px;
 }
 
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #909399;
-  margin: 0;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.card-title-wrap {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
 .card-count {
   font-size: 13px;
   color: #909399;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
 }
 
 .result-row {

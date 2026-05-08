@@ -1,6 +1,6 @@
 <template>
   <div class="user-permissions">
-    <el-page-header @back="router.back()" content="用户权限管理" />
+    <PageHeaderBlock eyebrow="系统治理" title="用户权限" />
 
     <el-card class="info-card" v-loading="loading">
       <template #header>

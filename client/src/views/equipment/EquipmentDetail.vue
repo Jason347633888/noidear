@@ -1,26 +1,27 @@
 <template>
   <div class="equipment-detail-page" v-loading="loading">
-    <div class="page-header">
-      <el-button @click="$router.back()" class="back-btn">
+    <PageHeaderBlock eyebrow="设备与现场" :title="equipment?.name || '设备详情'" />
+    <div class="page-actions-bar">
+      <el-button @click="$router.back()">
         <el-icon><ArrowLeft /></el-icon>返回
       </el-button>
-      <h1 class="page-title">{{ equipment?.name || '设备详情' }}</h1>
       <el-tag :type="getEquipmentStatusType(equipment?.status || '')" effect="light" size="large">
         {{ getEquipmentStatusText(equipment?.status || '') }}
       </el-tag>
     </div>
 
     <template v-if="equipment">
-      <!-- Basic Info Card -->
-      <el-card class="info-card">
-        <template #header>
-          <div class="card-header">
-            <span class="card-title">基本信息</span>
+      <!-- Basic Info Panel -->
+      <div class="app-panel" style="margin-bottom:20px">
+        <div class="app-panel-header">
+          <h3 class="app-panel-header__title">基本信息</h3>
+          <div class="app-panel-header__actions">
             <el-button type="primary" link @click="$router.push(`/equipment`)">
               <el-icon><Edit /></el-icon>编辑
             </el-button>
           </div>
-        </template>
+        </div>
+        <div class="app-panel--padded">
         <el-descriptions :column="3" border>
           <el-descriptions-item label="设备编号">
             <span class="code-text">{{ equipment.code }}</span>
@@ -45,13 +46,15 @@
             {{ equipment.description || '无' }}
           </el-descriptions-item>
         </el-descriptions>
-      </el-card>
+        </div>
+      </div>
 
-      <!-- Maintenance Config -->
-      <el-card class="info-card">
-        <template #header>
-          <span class="card-title">保养配置</span>
-        </template>
+      <!-- Maintenance Config Panel -->
+      <div class="app-panel" style="margin-bottom:20px">
+        <div class="app-panel-header">
+          <h3 class="app-panel-header__title">保养配置</h3>
+        </div>
+        <div class="app-panel--padded">
         <div class="maintenance-levels">
           <div
             v-for="levelKey in maintenanceLevels"
@@ -71,10 +74,12 @@
             <el-tag v-else size="small" type="info" effect="plain">未启用</el-tag>
           </div>
         </div>
-      </el-card>
+        </div>
+      </div>
 
       <!-- Tabs: Plans / Records / Faults -->
-      <el-card class="info-card">
+      <div class="app-panel" style="margin-bottom:20px">
+        <div class="app-panel--padded">
         <el-tabs v-model="activeTab">
           <el-tab-pane label="维护计划" name="plans">
             <el-table :data="plans" v-loading="plansLoading" stripe>
@@ -181,7 +186,8 @@
             </el-table>
           </el-tab-pane>
         </el-tabs>
-      </el-card>
+        </div>
+      </div>
     </template>
   </div>
 </template>
@@ -311,55 +317,21 @@ onMounted(() => {
 
 <style scoped>
 .equipment-detail-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
-  font-family: 'Inter', sans-serif;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.page-header {
+.page-actions-bar {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 24px;
-}
-
-.back-btn {
-  border-radius: 8px;
-}
-
-.page-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--primary);
-  margin: 0;
-}
-
-.info-card {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: none;
-  margin-bottom: 20px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.card-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--primary);
 }
 
 .code-text {
   font-family: 'SF Mono', monospace;
-  color: var(--text-light);
+  color: #909399;
 }
 
 .maintenance-levels {
@@ -396,7 +368,7 @@ onMounted(() => {
 
 .level-detail {
   font-size: 13px;
-  color: var(--text-light);
+  color: #909399;
   margin-left: auto;
 }
 </style>

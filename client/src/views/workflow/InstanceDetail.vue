@@ -1,16 +1,21 @@
 <template>
   <div class="instance-detail" v-loading="loading">
-    <el-page-header @back="router.back()" content="工作流实例详情" />
+    <PageHeaderBlock title="工作流实例详情" eyebrow="工作流">
+      <template #actions>
+        <el-button @click="router.back()">返回</el-button>
+      </template>
+    </PageHeaderBlock>
 
-    <el-card class="info-card" v-if="instance">
-      <template #header>
-        <div class="card-header">
-          <span>基本信息</span>
+    <div class="app-panel info-card" v-if="instance">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">基本信息</h3>
+        <div class="app-panel-header__actions">
           <el-tag :type="statusTypeMap[instance.status]">
             {{ statusTextMap[instance.status] }}
           </el-tag>
         </div>
-      </template>
+      </div>
+      <div class="app-panel--padded">
       <el-descriptions :column="3" border>
         <el-descriptions-item label="实例ID">{{ instance.id }}</el-descriptions-item>
         <el-descriptions-item label="工作流模板">{{ instance.template?.name || '-' }}</el-descriptions-item>
@@ -24,12 +29,12 @@
           {{ new Date(instance.completedAt).toLocaleString('zh-CN') }}
         </el-descriptions-item>
       </el-descriptions>
-    </el-card>
+      </div>
+    </div>
 
-    <el-card class="timeline-card" v-if="instance?.tasks?.length">
-      <template #header>
-        <span>审批进度</span>
-      </template>
+    <div class="app-panel timeline-card" v-if="instance?.tasks?.length">
+      <div class="app-panel-header"><h3 class="app-panel-header__title">审批进度</h3></div>
+      <div class="app-panel--padded">
       <el-timeline>
         <el-timeline-item
           v-for="task in instance.tasks"
@@ -57,7 +62,8 @@
           </el-card>
         </el-timeline-item>
       </el-timeline>
-    </el-card>
+      </div>
+    </div>
   </div>
 </template>
 

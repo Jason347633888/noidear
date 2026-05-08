@@ -1,28 +1,20 @@
 <template>
   <div class="fault-list-page">
-    <div class="page-header">
-      <h1 class="page-title">报修管理</h1>
-      <p class="page-subtitle">查看和处理设备报修单</p>
-    </div>
+    <PageHeaderBlock eyebrow="设备与现场" title="报修管理" description="查看和处理设备报修单" />
 
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <div class="card-title-wrap">
-            <span class="card-title">报修单列表</span>
-            <span class="card-count">共 {{ pagination.total }} 条报修</span>
-          </div>
-          <div class="header-actions">
-            <el-button @click="$router.push('/equipment/faults/stats')">
-              <el-icon><DataAnalysis /></el-icon>报修统计
-            </el-button>
-            <el-button type="primary" @click="$router.push('/equipment/faults/create')" class="create-btn">
-              <el-icon><Plus /></el-icon>发起报修
-            </el-button>
-          </div>
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">报修单列表<span class="card-count">共 {{ pagination.total }} 条报修</span></h3>
+        <div class="app-panel-header__actions">
+          <el-button @click="$router.push('/equipment/faults/stats')">
+            <el-icon><DataAnalysis /></el-icon>报修统计
+          </el-button>
+          <el-button type="primary" @click="$router.push('/equipment/faults/create')">
+            <el-icon><Plus /></el-icon>发起报修
+          </el-button>
         </div>
-      </template>
-
+      </div>
+      <div class="app-panel--padded">
       <!-- Filters -->
       <div class="filter-bar">
         <el-select v-model="filters.status" placeholder="报修状态" clearable @change="handleSearch">
@@ -120,7 +112,8 @@
           @current-change="fetchData"
         />
       </div>
-    </el-card>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -220,52 +213,13 @@ onMounted(() => {
 
 <style scoped>
 .fault-list-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
-  font-family: 'Inter', sans-serif;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.page-header { margin-bottom: 24px; }
-
-.page-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--primary);
-  margin: 0 0 4px;
-}
-
-.page-subtitle { font-size: 14px; color: var(--text-light); margin: 0; }
-
-.table-card {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: none;
-}
-
-.card-header { display: flex; justify-content: space-between; align-items: center; }
-
-.card-title-wrap { display: flex; align-items: baseline; gap: 12px; }
-
-.card-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--primary);
-}
-
-.card-count { font-size: 12px; color: var(--text-light); }
-
-.header-actions { display: flex; gap: 8px; }
-
-.create-btn {
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent) 0%, #d4af37 100%);
-  border: none;
-  font-weight: 500;
-}
+.card-count { font-size: 12px; color: #909399; margin-left: 12px; font-weight: 400; }
 
 .filter-bar {
   display: flex;
@@ -278,7 +232,7 @@ onMounted(() => {
 .fault-code {
   font-family: 'SF Mono', monospace;
   font-size: 12px;
-  color: var(--text-light);
+  color: #909399;
 }
 
 .action-btns { display: flex; gap: 4px; align-items: center; }

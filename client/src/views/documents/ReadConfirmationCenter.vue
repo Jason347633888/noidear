@@ -1,5 +1,6 @@
 <template>
   <div class="read-confirmation-center">
+    <PageHeaderBlock title="阅读确认中心" eyebrow="文控与审批" />
     <div class="toolbar">
       <el-input v-model="documentId" placeholder="输入文档ID查看阅读状态" clearable />
       <el-button type="primary" @click="load">查询</el-button>
@@ -46,10 +47,16 @@ const load = async () => {
 </script>
 
 <style scoped>
+.read-confirmation-center {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .toolbar {
   display: grid;
   grid-template-columns: minmax(260px, 1fr) auto;
   gap: 10px;
-  margin-bottom: 12px;
 }
 </style>

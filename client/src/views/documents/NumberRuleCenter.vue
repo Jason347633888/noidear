@@ -1,11 +1,12 @@
 <template>
   <div class="number-rule-center">
-    <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px">
-      <h2 style="margin: 0">编号规则</h2>
-      <el-button type="primary" @click="openCreate">新建规则</el-button>
-    </div>
+    <PageHeaderBlock eyebrow="文控与审批" title="编号规则">
+      <template #actions>
+        <el-button type="primary" @click="openCreate">新建规则</el-button>
+      </template>
+    </PageHeaderBlock>
 
-    <el-card>
+    <div class="app-panel">
       <el-table :data="rules" border>
         <el-table-column prop="scope" label="适用对象" width="130" />
         <el-table-column prop="sourceFolder" label="分类" width="100" />
@@ -25,7 +26,7 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+    </div>
 
     <el-dialog v-model="dialogVisible" title="编号规则" width="640px">
       <el-form :model="form" label-width="110px">
@@ -62,6 +63,7 @@
 import { onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { documentControlApi } from '@/api/document-control';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 const rules = ref<any[]>([]);
 const dialogVisible = ref(false);
@@ -117,3 +119,18 @@ async function deactivate(row: any) {
 
 onMounted(loadRules);
 </script>
+
+<style scoped>
+.number-rule-center {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+</style>

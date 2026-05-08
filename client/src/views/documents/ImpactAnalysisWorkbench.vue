@@ -1,5 +1,6 @@
 <template>
   <div class="impact-analysis-workbench">
+    <PageHeaderBlock title="影响分析工作台" eyebrow="文控与审批" />
     <div class="toolbar">
       <el-select v-model="sourceType" placeholder="来源类型">
         <el-option value="document" label="文件" />
@@ -54,10 +55,16 @@ const createReview = async () => {
 </script>
 
 <style scoped>
+.impact-analysis-workbench {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .toolbar {
   display: grid;
   grid-template-columns: 160px 1fr 1fr auto;
   gap: 10px;
-  margin-bottom: 12px;
 }
 </style>

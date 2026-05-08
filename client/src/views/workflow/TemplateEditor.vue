@@ -1,8 +1,12 @@
 <template>
   <div class="template-editor">
-    <el-page-header @back="router.back()" :content="isEdit ? '编辑工作流模板' : '创建工作流模板'" />
+    <PageHeaderBlock eyebrow="工作流" :title="isEdit ? '编辑工作流模板' : '创建工作流模板'">
+      <template #actions>
+        <el-button @click="router.back()">返回</el-button>
+      </template>
+    </PageHeaderBlock>
 
-    <el-card class="editor-card" v-loading="loading">
+    <div class="app-panel editor-card" v-loading="loading">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
         <el-form-item label="模板名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入模板名称" />
@@ -69,7 +73,7 @@
           </el-button>
         </div>
       </el-form>
-    </el-card>
+    </div>
 
     <div class="actions">
       <el-button @click="router.back()">取消</el-button>

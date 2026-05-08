@@ -1,9 +1,6 @@
 <template>
   <div class="ccp-list-page">
-    <div class="page-header">
-      <h1 class="page-title">CCP 监控记录</h1>
-      <p class="page-subtitle">关键控制点监控数据录入与查看</p>
-    </div>
+    <PageHeaderBlock eyebrow="质量与合规" title="CCP 监控记录" description="关键控制点监控数据录入与查看" />
 
     <el-card class="filter-card" style="margin-bottom: 16px">
       <div class="filter-row">
@@ -42,19 +39,16 @@
       </template>
     </el-alert>
 
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <div class="card-title-wrap">
-            <span class="card-title">监控记录列表</span>
-            <span class="card-count">共 {{ list.length }} 条记录</span>
-          </div>
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">监控记录列表<span class="card-count">共 {{ list.length }} 条记录</span></h3>
+        <div class="app-panel-header__actions">
           <el-button type="primary" :disabled="!batchId" @click="openCreateDialog">
             <el-icon><Plus /></el-icon>新建记录
           </el-button>
         </div>
-      </template>
-
+      </div>
+      <div class="app-panel--padded">
       <el-table :data="list" v-loading="loading" stripe>
         <el-table-column prop="ccp_point.ccp_no" label="CCP 编号" width="140" />
         <el-table-column prop="ccp_point.hazard_type" label="危害类型" width="120">
@@ -93,7 +87,8 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+      </div>
+    </div>
 
     <!-- 新建记录对话框 -->
     <el-dialog
@@ -300,23 +295,9 @@ onMounted(() => {
 <style scoped>
 .ccp-list-page {
   padding: 24px;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #909399;
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .filter-row {
@@ -324,26 +305,10 @@ onMounted(() => {
   align-items: center;
 }
 
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.card-title-wrap {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
 .card-count {
   font-size: 13px;
   color: #909399;
+  margin-left: 12px;
+  font-weight: 400;
 }
 </style>

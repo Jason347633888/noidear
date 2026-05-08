@@ -1,100 +1,104 @@
 <template>
   <div class="requisition-list">
-    <el-card class="filter-card">
-      <el-form :model="filterForm" inline>
-        <el-form-item label="状态">
-          <el-select v-model="filterForm.status" clearable placeholder="全部">
-            <el-option value="draft" label="草稿" />
-            <el-option value="pending" label="已提交" />
-            <el-option value="approved" label="已批准" />
-            <el-option value="rejected" label="已驳回" />
-            <el-option value="completed" label="已完成" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
-          <el-button @click="handleReset">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <span>领料单管理</span>
-          <el-button type="primary" @click="openCreateDialog">
-            创建领料单
-          </el-button>
-        </div>
+    <PageHeaderBlock eyebrow="生产执行" title="领料管理">
+      <template #actions>
+        <el-button type="primary" @click="openCreateDialog">创建领料单</el-button>
       </template>
+    </PageHeaderBlock>
 
-      <el-table :data="tableData" v-loading="loading" stripe>
-        <el-table-column prop="number" label="单号" width="160" />
-        <el-table-column label="申请人" width="120">
-          <template #default="{ row }">{{ row.requester?.name || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="部门" width="120">
-          <template #default="{ row }">{{ row.department?.name || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="类型" width="110">
-          <template #default="{ row }">
-            <el-tag size="small" type="info">{{ reqTypeText(row.requisitionType || 'production') }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="设备" min-width="160">
-          <template #default="{ row }">
-            <span v-if="row.equipment">{{ row.equipment.code }} / {{ row.equipment.name }}</span>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="目标区域" width="110">
-          <template #default="{ row }">
-            <el-tag v-if="row.targetZone" size="small" type="info">{{ row.targetZone }}</el-tag>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="reqStatusType(row.status)" size="small">{{ reqStatusText(row.status) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" width="180">
-          <template #default="{ row }">{{ new Date(row.createdAt).toLocaleString('zh-CN') }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="260" fixed="right">
-          <template #default="{ row }">
-            <el-button
-              v-if="row.status === 'draft'"
-              link type="primary" @click="handleSubmit(row)"
-            >提交</el-button>
-            <el-button
-              v-if="row.status === 'pending'"
-              link type="success" @click="handleApprove(row, 'approved')"
-            >批准</el-button>
-            <el-button
-              v-if="row.status === 'pending'"
-              link type="danger" @click="handleApprove(row, 'rejected')"
-            >驳回</el-button>
-            <el-button
-              v-if="row.status === 'approved'"
-              link type="warning" @click="handleDispatch(row)"
-            >发放</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="pagination.page"
-          v-model:page-size="pagination.limit"
-          :page-sizes="[10, 20, 50]"
-          :total="pagination.total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSearch"
-          @current-change="handleSearch"
-        />
+    <div class="app-panel" style="margin-bottom: 16px">
+      <div class="app-panel--padded">
+        <el-form :model="filterForm" inline>
+          <el-form-item label="状态">
+            <el-select v-model="filterForm.status" clearable placeholder="全部">
+              <el-option value="draft" label="草稿" />
+              <el-option value="pending" label="已提交" />
+              <el-option value="approved" label="已批准" />
+              <el-option value="rejected" label="已驳回" />
+              <el-option value="completed" label="已完成" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">搜索</el-button>
+            <el-button @click="handleReset">重置</el-button>
+          </el-form-item>
+        </el-form>
       </div>
-    </el-card>
+    </div>
+
+    <div class="app-panel" style="margin-bottom: 16px">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">领料单管理</h3>
+      </div>
+      <div class="app-panel--padded">
+        <el-table :data="tableData" v-loading="loading" stripe>
+          <el-table-column prop="number" label="单号" width="160" />
+          <el-table-column label="申请人" width="120">
+            <template #default="{ row }">{{ row.requester?.name || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="部门" width="120">
+            <template #default="{ row }">{{ row.department?.name || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="类型" width="110">
+            <template #default="{ row }">
+              <el-tag size="small" type="info">{{ reqTypeText(row.requisitionType || 'production') }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="设备" min-width="160">
+            <template #default="{ row }">
+              <span v-if="row.equipment">{{ row.equipment.code }} / {{ row.equipment.name }}</span>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="目标区域" width="110">
+            <template #default="{ row }">
+              <el-tag v-if="row.targetZone" size="small" type="info">{{ row.targetZone }}</el-tag>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="status" label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="reqStatusType(row.status)" size="small">{{ reqStatusText(row.status) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="createdAt" label="创建时间" width="180">
+            <template #default="{ row }">{{ new Date(row.createdAt).toLocaleString('zh-CN') }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="260" fixed="right">
+            <template #default="{ row }">
+              <el-button
+                v-if="row.status === 'draft'"
+                link type="primary" @click="handleSubmit(row)"
+              >提交</el-button>
+              <el-button
+                v-if="row.status === 'pending'"
+                link type="success" @click="handleApprove(row, 'approved')"
+              >批准</el-button>
+              <el-button
+                v-if="row.status === 'pending'"
+                link type="danger" @click="handleApprove(row, 'rejected')"
+              >驳回</el-button>
+              <el-button
+                v-if="row.status === 'approved'"
+                link type="warning" @click="handleDispatch(row)"
+              >发放</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pagination-wrap">
+          <el-pagination
+            v-model:current-page="pagination.page"
+            v-model:page-size="pagination.limit"
+            :page-sizes="[10, 20, 50]"
+            :total="pagination.total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSearch"
+            @current-change="handleSearch"
+          />
+        </div>
+      </div>
+    </div>
 
     <!-- 创建领料单对话框 -->
     <el-dialog v-model="createVisible" title="创建领料单" width="480px">
@@ -264,8 +268,6 @@ onMounted(() => { fetchData(); });
 </script>
 
 <style scoped>
-.filter-card { margin-bottom: 16px; }
-.table-card { margin-bottom: 16px; }
-.card-header { display: flex; justify-content: space-between; align-items: center; }
+.requisition-list { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; }
 </style>

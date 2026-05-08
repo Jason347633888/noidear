@@ -16,8 +16,6 @@
         router
         class="aside-menu"
         background-color="transparent"
-        text-color="#4a5568"
-        active-text-color="#c9a227"
       >
         <template v-for="item in menuItems" :key="item.title">
           <el-menu-item v-if="!item.children" :index="item.path">
@@ -180,28 +178,11 @@ router.afterEach(() => {
 </script>
 
 <style scoped>
-.layout-container {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --accent-light: #d4af37;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
-  --bg: #f5f6fa;
-  --white: #ffffff;
-  --aside-bg: #ffffff;
-  --aside-border: #e8eaed;
-  --menu-text: #4a5568;
-  --menu-text-hover: #1a1a2e;
-  --menu-hover: rgba(201, 162, 39, 0.07);
-  --menu-active: rgba(201, 162, 39, 0.12);
-  --menu-active-bar: #c9a227;
-}
-
 .layout-container { height: 100vh; font-family: -apple-system, sans-serif; }
 
 .aside {
-  background: var(--aside-bg);
-  border-right: 1px solid var(--aside-border);
+  background: var(--shell-surface-strong);
+  border-right: 1px solid var(--shell-border);
   transition: width 0.3s ease;
   display: flex;
   flex-direction: column;
@@ -215,7 +196,7 @@ router.afterEach(() => {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  border-bottom: 1px solid var(--aside-border);
+  border-bottom: 1px solid var(--shell-border);
   padding: 0 16px;
 }
 
@@ -223,11 +204,11 @@ router.afterEach(() => {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: rgba(201, 162, 39, 0.15);
+  background: var(--shell-brand-soft);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent);
+  color: var(--el-color-primary);
   flex-shrink: 0;
 }
 
@@ -235,7 +216,7 @@ router.afterEach(() => {
   font-family: 'Cormorant Garamond', serif;
   font-size: 20px;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--shell-ink);
   letter-spacing: 1px;
   white-space: nowrap;
 }
@@ -256,19 +237,19 @@ router.afterEach(() => {
   line-height: 40px;
   margin-bottom: 2px;
   border-radius: 6px;
-  color: var(--menu-text);
+  color: var(--shell-muted);
   transition: all 0.2s ease;
   position: relative;
 }
 
 .aside-menu :deep(.el-menu-item:hover) {
-  background: var(--menu-hover);
-  color: var(--menu-text-hover);
+  background: var(--shell-brand-soft);
+  color: var(--shell-ink);
 }
 
 .aside-menu :deep(.el-menu-item.is-active) {
-  background: var(--menu-active);
-  color: var(--accent);
+  background: var(--shell-brand-soft);
+  color: var(--el-color-primary);
 }
 
 .aside-menu :deep(.el-menu-item.is-active)::before {
@@ -279,7 +260,7 @@ router.afterEach(() => {
   bottom: 4px;
   width: 3px;
   border-radius: 0 2px 2px 0;
-  background: var(--menu-active-bar);
+  background: var(--el-color-primary);
 }
 
 .aside-menu :deep(.el-menu-item .el-icon) {
@@ -290,14 +271,14 @@ router.afterEach(() => {
 .aside-menu :deep(.el-sub-menu__title) {
   height: 40px;
   line-height: 40px;
-  color: var(--menu-text);
+  color: var(--shell-muted);
   border-radius: 6px;
   transition: all 0.2s ease;
 }
 
 .aside-menu :deep(.el-sub-menu__title:hover) {
-  background: var(--menu-hover);
-  color: var(--menu-text-hover);
+  background: var(--shell-brand-soft);
+  color: var(--shell-ink);
 }
 
 .aside-menu :deep(.el-sub-menu__title .el-icon) {
@@ -310,7 +291,7 @@ router.afterEach(() => {
 
 .aside-footer {
   padding: 16px;
-  border-top: 1px solid var(--aside-border);
+  border-top: 1px solid var(--shell-border);
 }
 
 .version {
@@ -323,8 +304,8 @@ router.afterEach(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--white);
-  border-bottom: 1px solid #e8e8e8;
+  background: var(--shell-surface-strong);
+  border-bottom: 1px solid var(--shell-border);
   padding: 0 24px;
   height: 64px;
 }
@@ -343,22 +324,22 @@ router.afterEach(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--text-light);
+  color: var(--shell-muted);
   transition: all 0.2s ease;
 }
 
 .collapse-btn:hover {
-  background: var(--bg);
-  color: var(--primary);
+  background: var(--shell-bg);
+  color: var(--shell-ink);
 }
 
 .breadcrumb :deep(.el-breadcrumb__inner) {
-  color: var(--text-light);
+  color: var(--shell-muted);
   font-size: 14px;
 }
 
 .breadcrumb :deep(.el-breadcrumb__inner.is-link:hover) {
-  color: var(--primary);
+  color: var(--shell-ink);
 }
 
 .header-right {
@@ -375,17 +356,17 @@ router.afterEach(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--text-light);
+  color: var(--shell-muted);
   transition: all 0.2s ease;
 }
 
 .icon-btn:hover {
-  background: var(--bg);
-  color: var(--primary);
+  background: var(--shell-bg);
+  color: var(--shell-ink);
 }
 
 .notification-badge :deep(.el-badge__content) {
-  background: var(--accent);
+  background: var(--el-color-primary);
 }
 
 .user-dropdown { cursor: pointer; }
@@ -399,17 +380,17 @@ router.afterEach(() => {
   transition: background 0.2s ease;
 }
 
-.user-info:hover { background: var(--bg); }
+.user-info:hover { background: var(--shell-bg); }
 
 .user-avatar {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+  background: linear-gradient(135deg, var(--el-color-primary) 0%, var(--el-color-primary-light-3) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--white);
+  color: var(--shell-surface-strong);
   font-family: 'Cormorant Garamond', serif;
   font-size: 14px;
   font-weight: 600;
@@ -418,7 +399,7 @@ router.afterEach(() => {
 .user-name {
   font-size: 14px;
   font-weight: 500;
-  color: var(--text);
+  color: var(--shell-ink);
   max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -427,12 +408,12 @@ router.afterEach(() => {
 
 .dropdown-arrow {
   font-size: 12px;
-  color: var(--text-light);
+  color: var(--shell-muted);
 }
 
 .user-dropdown-menu {
-  --el-dropdown-menuItem-hover-fill: var(--menu-hover);
-  --el-dropdown-menuItem-hover-color: var(--primary);
+  --el-dropdown-menuItem-hover-fill: var(--shell-brand-soft);
+  --el-dropdown-menuItem-hover-color: var(--shell-ink);
   min-width: 160px;
   padding: 8px;
   border-radius: 10px;
@@ -455,7 +436,7 @@ router.afterEach(() => {
 .logout-item { color: #e74c3c; }
 
 .main {
-  background: var(--bg);
+  background: var(--shell-bg);
   padding: 24px;
   overflow-y: auto;
   min-height: 0; /* flexbox 内滚动必须 */

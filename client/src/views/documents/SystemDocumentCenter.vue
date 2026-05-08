@@ -1,5 +1,6 @@
 <template>
   <div class="system-document-center">
+    <PageHeaderBlock eyebrow="文控与审批" title="体系文件中心" description="管理体系文件的发布、版本与引用关系" />
     <el-tabs v-model="activeView">
       <el-tab-pane label="文件库" name="library">
         <SystemFileLibrary />
@@ -120,6 +121,10 @@ onMounted(() => {
 <style scoped>
 .system-document-center {
   min-width: 0;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .reference-issues {

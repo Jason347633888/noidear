@@ -1,10 +1,10 @@
 <template>
   <div class="fault-stats-page">
-    <div class="page-header">
-      <el-button @click="$router.back()" class="back-btn">
+    <PageHeaderBlock eyebrow="设备与现场" title="报修统计" />
+    <div class="page-actions-bar">
+      <el-button @click="$router.back()">
         <el-icon><ArrowLeft /></el-icon>返回
       </el-button>
-      <h1 class="page-title">报修统计</h1>
     </div>
 
     <!-- Date Range Filter -->
@@ -64,20 +64,24 @@
     <!-- Charts -->
     <el-row :gutter="20">
       <el-col :span="14">
-        <el-card class="chart-card">
-          <template #header>
-            <span class="card-title">报修趋势（按月）</span>
-          </template>
-          <div ref="trendChartRef" class="chart-container"></div>
-        </el-card>
+        <div class="app-panel">
+          <div class="app-panel-header">
+            <h3 class="app-panel-header__title">报修趋势（按月）</h3>
+          </div>
+          <div class="app-panel--padded">
+            <div ref="trendChartRef" class="chart-container"></div>
+          </div>
+        </div>
       </el-col>
       <el-col :span="10">
-        <el-card class="chart-card">
-          <template #header>
-            <span class="card-title">故障率排行（按设备）</span>
-          </template>
-          <div ref="rankChartRef" class="chart-container"></div>
-        </el-card>
+        <div class="app-panel">
+          <div class="app-panel-header">
+            <h3 class="app-panel-header__title">故障率排行（按设备）</h3>
+          </div>
+          <div class="app-panel--padded">
+            <div ref="rankChartRef" class="chart-container"></div>
+          </div>
+        </div>
       </el-col>
     </el-row>
   </div>
@@ -208,35 +212,16 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .fault-stats-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
-  font-family: 'Inter', sans-serif;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.page-header {
+.page-actions-bar {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 24px;
-}
-
-.back-btn { border-radius: 8px; }
-
-.page-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--primary);
-  margin: 0;
-}
-
-.filter-card {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: none;
-  margin-bottom: 20px;
 }
 
 .filter-bar {
@@ -247,7 +232,7 @@ onBeforeUnmount(() => {
 
 .filter-label {
   font-size: 14px;
-  color: var(--text-light);
+  color: #909399;
   white-space: nowrap;
 }
 
@@ -303,20 +288,6 @@ onBeforeUnmount(() => {
 .metric-label {
   font-size: 14px;
   color: #909399;
-}
-
-.chart-card {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: none;
-  margin-bottom: 20px;
-}
-
-.card-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--primary);
 }
 
 .chart-container {

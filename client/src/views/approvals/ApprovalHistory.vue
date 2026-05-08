@@ -1,26 +1,18 @@
 <template>
   <div class="approval-history-page">
-    <div class="page-header">
-      <h1 class="page-title">审批历史</h1>
-      <p class="page-subtitle">查看已处理的审批记录</p>
-    </div>
+    <PageHeaderBlock eyebrow="文控与审批" title="审批历史" description="查看已处理的审批记录" />
 
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <div class="title-wrap">
-            <span class="card-title">已处理审批</span>
-            <span class="total-text">共 {{ actions.length }} 条</span>
-          </div>
-          <div class="filter-wrap">
+    <div class="app-panel table-card">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">已处理审批<span class="total-text">共 {{ actions.length }} 条</span></h3>
+        <div class="app-panel-header__actions">
             <el-select v-model="filterAction" placeholder="全部结果" clearable style="width: 140px" size="default">
               <el-option label="全部结果" value="" />
               <el-option label="已通过" value="approve" />
               <el-option label="已驳回" value="reject" />
             </el-select>
-          </div>
         </div>
-      </template>
+      </div>
 
       <el-table :data="filteredActions" v-loading="loading" stripe class="history-table">
         <el-table-column label="审批事项" min-width="200">
@@ -66,7 +58,7 @@
       </el-table>
 
       <el-empty v-if="!loading && !filteredActions.length" description="暂无已处理的审批记录" :image-size="120" />
-    </el-card>
+    </div>
   </div>
 </template>
 
@@ -107,26 +99,11 @@ onMounted(load);
 
 <style scoped>
 .approval-history-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --success: #27ae60;
-  --danger: #e74c3c;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
-  font-family: 'Inter', sans-serif;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
-
-.page-header { margin-bottom: 24px; }
-
-.page-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--primary);
-  margin: 0 0 4px;
-}
-
-.page-subtitle { font-size: 14px; color: var(--text-light); margin: 0; }
 
 .table-card {
   border-radius: 12px;
@@ -143,26 +120,25 @@ onMounted(load);
 .title-wrap { display: flex; align-items: center; gap: 12px; }
 
 .card-title {
-  font-family: 'Cormorant Garamond', serif;
   font-size: 18px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--shell-ink);
 }
 
-.total-text { font-size: 13px; color: var(--text-light); }
+.total-text { font-size: 13px; color: var(--shell-muted); }
 
 .filter-wrap { display: flex; gap: 12px; align-items: center; }
 
 .history-table :deep(th) {
   background: #fafafa;
   font-weight: 500;
-  color: var(--text-light);
+  color: var(--shell-muted);
   font-size: 12px;
 }
 
-.source-text { font-size: 14px; color: var(--text); }
+.source-text { font-size: 14px; color: var(--shell-ink); }
 
-.comment-text { font-size: 13px; color: var(--text-light); }
+.comment-text { font-size: 13px; color: var(--shell-muted); }
 .empty-text { font-size: 13px; color: #ccc; }
-.time-text { font-size: 12px; color: var(--text-light); }
+.time-text { font-size: 12px; color: var(--shell-muted); }
 </style>

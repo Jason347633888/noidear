@@ -1,11 +1,12 @@
 <template>
   <div class="verification-list">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <h2>复审验证</h2>
-        </div>
-      </template>
+    <PageHeaderBlock eyebrow="培训与内审" title="验证列表" />
+
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">复审验证</h3>
+      </div>
+      <div class="app-panel--padded">
 
       <el-table :data="tableData" v-loading="loading" border>
         <el-table-column label="问题描述" min-width="200">
@@ -55,7 +56,8 @@
         @current-change="fetchData"
         class="pagination"
       />
-    </el-card>
+      </div>
+    </div>
 
     <!-- 驳回对话框 -->
     <el-dialog v-model="rejectDialogVisible" title="驳回整改" width="500px">

@@ -1,34 +1,27 @@
 <template>
   <div class="er-list-page">
-    <div class="page-header">
-      <h1 class="page-title">环境温湿度记录</h1>
-      <p class="page-subtitle">监控生产环境温度、湿度及压差数据</p>
-    </div>
+    <PageHeaderBlock eyebrow="设备与现场" title="环境温湿度记录" description="监控生产环境温度、湿度及压差数据" />
 
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <div class="card-title-wrap">
-            <span class="card-title">环境记录列表</span>
-            <span class="card-count">共 {{ list.length }} 条记录</span>
-          </div>
-          <div class="header-actions">
-            <el-date-picker
-              v-model="dateRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              value-format="YYYY-MM-DD"
-              style="margin-right: 12px"
-              @change="loadList"
-            />
-            <el-button type="primary" @click="openCreateDialog">
-              <el-icon><Plus /></el-icon>新建记录
-            </el-button>
-          </div>
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">环境记录列表<span class="card-count">共 {{ list.length }} 条记录</span></h3>
+        <div class="app-panel-header__actions">
+          <el-date-picker
+            v-model="dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            style="margin-right: 12px"
+            @change="loadList"
+          />
+          <el-button type="primary" @click="openCreateDialog">
+            <el-icon><Plus /></el-icon>新建记录
+          </el-button>
         </div>
-      </template>
+      </div>
+      <div class="app-panel--padded">
 
       <el-table :data="list" v-loading="loading" stripe>
         <el-table-column prop="location" label="监测位置" min-width="140" show-overflow-tooltip />
@@ -65,7 +58,8 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+      </div>
+    </div>
 
     <!-- 新建对话框 -->
     <el-dialog
@@ -281,48 +275,4 @@ onMounted(() => {
   padding: 24px;
 }
 
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #909399;
-  margin: 0;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.card-title-wrap {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.card-count {
-  font-size: 13px;
-  color: #909399;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-}
 </style>

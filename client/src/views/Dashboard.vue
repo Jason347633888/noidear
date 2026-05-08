@@ -41,7 +41,7 @@
 
     <section class="content-grid">
       <div class="primary-column">
-        <article v-loading="loading" class="panel queue-panel">
+        <article v-loading="loading" class="panel app-panel queue-panel">
           <div class="panel-header">
             <div>
               <p class="panel-kicker">主队列</p>
@@ -72,7 +72,6 @@
 
                 <div class="queue-submeta">
                   <span>创建于 {{ formatDate(todo.createdAt) }}</span>
-                  <span v-if="todo.actionRoute">入口 {{ todo.actionRoute }}</span>
                 </div>
               </div>
 

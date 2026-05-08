@@ -1,5 +1,10 @@
 <template>
   <div class="workflow-template-list">
+    <PageHeaderBlock title="工作流模板" eyebrow="工作流">
+      <template #actions>
+        <el-button type="primary" @click="router.push('/workflow/templates/create')">创建模板</el-button>
+      </template>
+    </PageHeaderBlock>
     <el-card class="filter-card">
       <el-form :model="filterForm" inline>
         <el-form-item label="状态">
@@ -165,8 +170,13 @@ onMounted(() => { fetchData(); });
 </script>
 
 <style scoped>
-.filter-card { margin-bottom: 16px; }
-.table-card { margin-bottom: 16px; }
+.workflow-template-list {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; }
 </style>

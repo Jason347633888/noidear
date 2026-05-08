@@ -156,16 +156,6 @@ onMounted(fetchData);
 
 <style scoped>
 .approval-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --success: #27ae60;
-  --danger: #e74c3c;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
-  --bg: #f5f6fa;
-}
-
-.approval-page {
   font-family: 'Inter', sans-serif;
 }
 
@@ -175,11 +165,11 @@ onMounted(fetchData);
   font-family: 'Cormorant Garamond', serif;
   font-size: 28px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--shell-ink);
   margin: 0 0 4px;
 }
 
-.page-subtitle { font-size: 14px; color: var(--text-light); margin: 0; }
+.page-subtitle { font-size: 14px; color: var(--shell-muted); margin: 0; }
 
 .table-card {
   border-radius: 12px;
@@ -195,22 +185,22 @@ onMounted(fetchData);
   font-family: 'Cormorant Garamond', serif;
   font-size: 18px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--shell-ink);
 }
 
-.approval-badge :deep(.el-badge__content) { background: var(--danger); }
+.approval-badge :deep(.el-badge__content) { background: var(--shell-danger); }
 
 .approval-table :deep(th) {
   background: #fafafa;
   font-weight: 500;
-  color: var(--text-light);
+  color: var(--shell-muted);
   font-size: 12px;
 }
 
 .doc-number {
   font-family: 'SF Mono', monospace;
   font-size: 12px;
-  color: var(--text-light);
+  color: var(--shell-muted);
 }
 
 .doc-info { display: flex; align-items: center; gap: 10px; }

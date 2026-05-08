@@ -1,32 +1,25 @@
 <template>
   <div class="violation-list-page">
-    <div class="page-header">
-      <h1 class="page-title">员工违规记录</h1>
-      <p class="page-subtitle">登记并追踪员工违规行为</p>
-    </div>
+    <PageHeaderBlock eyebrow="设备与现场" title="员工违规记录" description="登记并追踪员工违规行为" />
 
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <div class="card-title-wrap">
-            <span class="card-title">违规记录列表</span>
-            <span class="card-count">共 {{ list.length }} 条记录</span>
-          </div>
-          <div class="header-actions">
-            <el-input
-              v-model="filterEmployeeId"
-              placeholder="按员工 ID 筛选"
-              clearable
-              style="width: 200px; margin-right: 12px"
-              @change="loadList"
-              @clear="loadList"
-            />
-            <el-button type="primary" @click="openCreateDialog">
-              <el-icon><Plus /></el-icon>新建违规记录
-            </el-button>
-          </div>
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">违规记录列表<span class="card-count">共 {{ list.length }} 条记录</span></h3>
+        <div class="app-panel-header__actions">
+          <el-input
+            v-model="filterEmployeeId"
+            placeholder="按员工 ID 筛选"
+            clearable
+            style="width: 200px; margin-right: 12px"
+            @change="loadList"
+            @clear="loadList"
+          />
+          <el-button type="primary" @click="openCreateDialog">
+            <el-icon><Plus /></el-icon>新建违规记录
+          </el-button>
         </div>
-      </template>
+      </div>
+      <div class="app-panel--padded">
 
       <el-table :data="list" v-loading="loading" stripe>
         <el-table-column prop="employee_id" label="员工 ID" width="150" />
@@ -48,7 +41,8 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+      </div>
+    </div>
 
     <!-- 新建对话框 -->
     <el-dialog
@@ -184,48 +178,4 @@ onMounted(() => {
   padding: 24px;
 }
 
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #909399;
-  margin: 0;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.card-title-wrap {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.card-count {
-  font-size: 13px;
-  color: #909399;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-}
 </style>

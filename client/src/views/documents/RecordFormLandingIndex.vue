@@ -1,5 +1,6 @@
 <template>
   <div class="record-form-landing-index">
+    <PageHeaderBlock title="记录表单索引" eyebrow="文控与审批" />
     <div class="toolbar">
       <el-input v-model="keyword" placeholder="搜索表单编号或名称" clearable @keyup.enter="fetchRows" />
       <el-button type="primary" @click="fetchRows">搜索</el-button>
@@ -205,10 +206,16 @@ onMounted(fetchRows);
 </script>
 
 <style scoped>
+.record-form-landing-index {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .toolbar {
   display: grid;
   grid-template-columns: minmax(240px, 1fr) auto auto;
   gap: 10px;
-  margin-bottom: 12px;
 }
 </style>

@@ -1,42 +1,35 @@
 <template>
   <div class="medication-list-page">
-    <div class="page-header">
-      <h1 class="page-title">员工用药记录</h1>
-      <p class="page-subtitle">登记员工用药情况并评估适岗性</p>
-    </div>
+    <PageHeaderBlock eyebrow="设备与现场" title="员工用药记录" description="登记员工用药情况并评估适岗性" />
 
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <div class="card-title-wrap">
-            <span class="card-title">用药记录列表</span>
-            <span class="card-count">共 {{ list.length }} 条记录</span>
-          </div>
-          <div class="header-actions">
-            <el-input
-              v-model="filterEmployeeId"
-              placeholder="按员工 ID 筛选"
-              clearable
-              style="width: 180px; margin-right: 12px"
-              @change="loadList"
-              @clear="loadList"
-            />
-            <el-select
-              v-model="filterFitForDuty"
-              placeholder="适岗性筛选"
-              clearable
-              style="width: 140px; margin-right: 12px"
-              @change="loadList"
-            >
-              <el-option label="适合上班" :value="true" />
-              <el-option label="不适合上班" :value="false" />
-            </el-select>
-            <el-button type="primary" @click="openCreateDialog">
-              <el-icon><Plus /></el-icon>新建用药记录
-            </el-button>
-          </div>
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">用药记录列表<span class="card-count">共 {{ list.length }} 条记录</span></h3>
+        <div class="app-panel-header__actions">
+          <el-input
+            v-model="filterEmployeeId"
+            placeholder="按员工 ID 筛选"
+            clearable
+            style="width: 180px; margin-right: 12px"
+            @change="loadList"
+            @clear="loadList"
+          />
+          <el-select
+            v-model="filterFitForDuty"
+            placeholder="适岗性筛选"
+            clearable
+            style="width: 140px; margin-right: 12px"
+            @change="loadList"
+          >
+            <el-option label="适合上班" :value="true" />
+            <el-option label="不适合上班" :value="false" />
+          </el-select>
+          <el-button type="primary" @click="openCreateDialog">
+            <el-icon><Plus /></el-icon>新建用药记录
+          </el-button>
         </div>
-      </template>
+      </div>
+      <div class="app-panel--padded">
 
       <el-table :data="list" v-loading="loading" stripe>
         <el-table-column prop="employee_id" label="员工 ID" width="150" />
@@ -66,7 +59,8 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+      </div>
+    </div>
 
     <!-- 新建对话框 -->
     <el-dialog
@@ -120,6 +114,7 @@ import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import medicationRecordApi, { type MedicationRecord } from '@/api/medication-record';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 const list = ref<MedicationRecord[]>([]);
 const loading = ref(false);
@@ -212,23 +207,9 @@ onMounted(() => {
 <style scoped>
 .medication-list-page {
   padding: 24px;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #909399;
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .card-header {

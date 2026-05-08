@@ -177,12 +177,6 @@ onMounted(load);
 
 <style scoped>
 .approval-detail-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --success: #27ae60;
-  --danger: #e74c3c;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
   font-family: 'Inter', sans-serif;
 }
 
@@ -199,7 +193,7 @@ onMounted(load);
   font-family: 'Cormorant Garamond', serif;
   font-size: 28px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--shell-ink);
   margin: 0;
 }
 
@@ -226,8 +220,8 @@ onMounted(load);
 }
 
 .status-badge.pending { background: #f39c12; }
-.status-badge.approved { background: var(--success); }
-.status-badge.rejected { background: var(--danger); }
+.status-badge.approved { background: var(--shell-success); }
+.status-badge.rejected { background: var(--shell-danger); }
 .status-badge.cancelled { background: #bdc3c7; }
 
 .status-meta {
@@ -236,7 +230,7 @@ onMounted(load);
   gap: 16px;
 }
 
-.meta-item { font-size: 13px; color: var(--text-light); }
+.meta-item { font-size: 13px; color: var(--shell-muted); }
 
 .card-title {
   font-family: 'Cormorant Garamond', serif;

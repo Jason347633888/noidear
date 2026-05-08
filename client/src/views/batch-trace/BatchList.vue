@@ -1,80 +1,84 @@
 <template>
   <div class="batch-list">
-    <el-card class="filter-card">
-      <el-form :model="filterForm" inline>
-        <el-form-item label="关键词">
-          <el-input v-model="filterForm.keyword" clearable placeholder="批次号/产品名" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="filterForm.status" clearable placeholder="全部">
-            <el-option value="planned" label="已计划" />
-            <el-option value="in_progress" label="进行中" />
-            <el-option value="completed" label="已完成" />
-            <el-option value="cancelled" label="已取消" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
-          <el-button @click="handleReset">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <span>生产批次列表</span>
-          <el-button type="primary" @click="createDialogVisible = true">
-            创建批次
-          </el-button>
-        </div>
+    <PageHeaderBlock eyebrow="追溯与批次" title="批次追溯">
+      <template #actions>
+        <el-button type="primary" @click="createDialogVisible = true">创建批次</el-button>
       </template>
+    </PageHeaderBlock>
 
-      <el-table :data="tableData" v-loading="loading" stripe>
-        <el-table-column prop="batchNumber" label="批次号" width="160" />
-        <el-table-column prop="productName" label="产品名称" min-width="180" />
-        <el-table-column prop="productCode" label="产品代码" width="120" />
-        <el-table-column prop="quantity" label="数量" width="100">
-          <template #default="{ row }">
-            {{ row.quantity }} {{ row.unit }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="statusTypeMap[row.status]" size="small">
-              {{ statusTextMap[row.status] }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" width="180">
-          <template #default="{ row }">
-            {{ new Date(row.createdAt).toLocaleString('zh-CN') }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="router.push(`/batch-trace/${row.id}`)">
-              详情
-            </el-button>
-            <el-button link type="success" @click="router.push(`/batch-trace/${row.id}/trace`)">
-              追溯
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="pagination.page"
-          v-model:page-size="pagination.limit"
-          :page-sizes="[10, 20, 50]"
-          :total="pagination.total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSearch"
-          @current-change="handleSearch"
-        />
+    <div class="app-panel" style="margin-bottom: 16px">
+      <div class="app-panel--padded">
+        <el-form :model="filterForm" inline>
+          <el-form-item label="关键词">
+            <el-input v-model="filterForm.keyword" clearable placeholder="批次号/产品名" />
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select v-model="filterForm.status" clearable placeholder="全部">
+              <el-option value="planned" label="已计划" />
+              <el-option value="in_progress" label="进行中" />
+              <el-option value="completed" label="已完成" />
+              <el-option value="cancelled" label="已取消" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">搜索</el-button>
+            <el-button @click="handleReset">重置</el-button>
+          </el-form-item>
+        </el-form>
       </div>
-    </el-card>
+    </div>
+
+    <div class="app-panel" style="margin-bottom: 16px">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">生产批次列表</h3>
+      </div>
+      <div class="app-panel--padded">
+        <el-table :data="tableData" v-loading="loading" stripe>
+          <el-table-column prop="batchNumber" label="批次号" width="160" />
+          <el-table-column prop="productName" label="产品名称" min-width="180" />
+          <el-table-column prop="productCode" label="产品代码" width="120" />
+          <el-table-column prop="quantity" label="数量" width="100">
+            <template #default="{ row }">
+              {{ row.quantity }} {{ row.unit }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="status" label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="statusTypeMap[row.status]" size="small">
+                {{ statusTextMap[row.status] }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="createdAt" label="创建时间" width="180">
+            <template #default="{ row }">
+              {{ new Date(row.createdAt).toLocaleString('zh-CN') }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="200" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="router.push(`/batch-trace/${row.id}`)">
+                详情
+              </el-button>
+              <el-button link type="success" @click="router.push(`/batch-trace/${row.id}/trace`)">
+                追溯
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pagination-wrap">
+          <el-pagination
+            v-model:current-page="pagination.page"
+            v-model:page-size="pagination.limit"
+            :page-sizes="[10, 20, 50]"
+            :total="pagination.total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSearch"
+            @current-change="handleSearch"
+          />
+        </div>
+      </div>
+    </div>
 
     <!-- 创建批次对话框 -->
     <el-dialog v-model="createDialogVisible" title="创建生产批次" width="600px">
@@ -198,8 +202,5 @@ onMounted(() => { fetchData(); });
 </script>
 
 <style scoped>
-.filter-card { margin-bottom: 16px; }
-.table-card { margin-bottom: 16px; }
-.card-header { display: flex; justify-content: space-between; align-items: center; }
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; }
 </style>

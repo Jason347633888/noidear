@@ -1,10 +1,7 @@
 <template>
   <div class="management-review-detail" v-loading="loading">
-    <div class="page-header">
-      <div>
-        <h2>{{ review?.title || '管理评审详情' }}</h2>
-        <p>{{ review?.year }} 年 · {{ review?.status }}</p>
-      </div>
+    <PageHeaderBlock eyebrow="质量与合规" :title="review?.title || '管理评审详情'" :description="`${review?.year ?? ''} 年 · ${review?.status ?? ''}`" />
+    <div class="detail-actions">
       <el-button type="primary" :loading="collecting" @click="collectSources">收集输入材料</el-button>
     </div>
 
@@ -61,6 +58,7 @@ import { onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { managementReviewApi, type ManagementReview } from '@/api/management-review';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 const route = useRoute();
 const reviewId = route.params.id as string;
@@ -129,17 +127,14 @@ onMounted(loadReview);
 
 <style scoped>
 .management-review-detail {
-  padding: 16px;
-}
-.page-header {
+  padding: 24px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
+  flex-direction: column;
+  gap: 16px;
 }
-.page-header p {
-  margin: 4px 0 0;
-  color: #606266;
+.detail-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 .action-bar {
   margin-bottom: 12px;

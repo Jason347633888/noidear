@@ -1,23 +1,22 @@
 <template>
   <div class="report-detail">
-    <el-card v-loading="loading">
-      <template #header>
-        <div class="header">
-          <div class="header-left">
-            <el-button link @click="router.back()">
-              <el-icon><ArrowLeft /></el-icon>
-              返回
-            </el-button>
-            <h2>内审报告详情</h2>
-          </div>
-          <div v-if="report?.pdfUrl" class="header-right">
-            <el-button type="primary" @click="handleDownload">
-              <el-icon><Download /></el-icon>
-              下载 PDF
-            </el-button>
-          </div>
+    <PageHeaderBlock eyebrow="培训与内审" title="审计报告详情" />
+
+    <div class="app-panel" v-loading="loading">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">内审报告详情</h3>
+        <div class="app-panel-header__actions">
+          <el-button link @click="router.back()">
+            <el-icon><ArrowLeft /></el-icon>
+            返回
+          </el-button>
+          <el-button v-if="report?.pdfUrl" type="primary" @click="handleDownload">
+            <el-icon><Download /></el-icon>
+            下载 PDF
+          </el-button>
         </div>
-      </template>
+      </div>
+      <div class="app-panel--padded">
 
       <template v-if="report">
         <el-descriptions title="报告基本信息" :column="3" border class="info-section">
@@ -67,7 +66,8 @@
 
         <el-empty v-if="!report.pdfUrl" description="暂无 PDF 报告，请联系管理员生成" />
       </template>
-    </el-card>
+      </div>
+    </div>
   </div>
 </template>
 

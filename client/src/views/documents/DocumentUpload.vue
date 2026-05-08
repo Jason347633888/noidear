@@ -1,14 +1,12 @@
 <template>
   <div class="upload-page">
-    <div class="page-header">
-      <el-page-header @back="$router.back()" class="page-header-inner">
-        <template #content>
-          <span class="page-title">上传{{ levelMap[level] || '文档' }}</span>
-        </template>
-      </el-page-header>
-    </div>
+    <PageHeaderBlock eyebrow="体系文件" :title="`上传${levelMap[level] || '文档'}`">
+      <template #actions>
+        <el-button @click="$router.back()">返回</el-button>
+      </template>
+    </PageHeaderBlock>
 
-    <el-card class="upload-card">
+    <div class="app-panel upload-card">
       <el-form ref="formRef" :model="formData" :rules="rules" label-width="100px" class="upload-form">
         <el-form-item label="文档级别">
           <el-tag type="warning" effect="light" size="large" class="level-tag">
@@ -79,7 +77,7 @@
           <el-button @click="$router.back()" class="cancel-btn">取消</el-button>
         </el-form-item>
       </el-form>
-    </el-card>
+    </div>
   </div>
 </template>
 
@@ -196,32 +194,8 @@ onMounted(() => {
 
 <style scoped>
 .upload-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
-  --bg: #f5f6fa;
-  --white: #ffffff;
-}
-
-.upload-page {
   font-family: 'Inter', sans-serif;
   max-width: 720px;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-header-inner :deep(.el-page-header__content) {
-  font-size: 18px;
-}
-
-.page-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--primary);
 }
 
 .upload-card {
@@ -263,14 +237,14 @@ onMounted(() => {
 }
 
 .upload-area :deep(.el-upload-dragger:hover) {
-  border-color: var(--accent);
+  border-color: var(--color-primary);
   background: #fff;
 }
 
 .upload-area.has-file :deep(.el-upload-dragger) {
   padding: 24px;
   border-style: solid;
-  border-color: var(--accent);
+  border-color: var(--color-primary);
   background: #fff;
 }
 
@@ -289,7 +263,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent);
+  color: var(--color-primary);
 }
 
 .upload-text {
@@ -301,18 +275,18 @@ onMounted(() => {
 
 .primary-text {
   font-size: 15px;
-  color: var(--text);
+  color: var(--color-text);
 }
 
 .primary-text em {
-  color: var(--accent);
+  color: var(--color-primary);
   font-style: normal;
   cursor: pointer;
 }
 
 .secondary-text {
   font-size: 12px;
-  color: var(--text-light);
+  color: var(--color-text-secondary);
 }
 
 .file-info {
@@ -328,7 +302,7 @@ onMounted(() => {
   width: 56px;
   height: 56px;
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--accent) 0%, #d4af37 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #d4af37 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -345,13 +319,13 @@ onMounted(() => {
 .file-name {
   font-size: 14px;
   font-weight: 500;
-  color: var(--text);
+  color: var(--color-text);
   word-break: break-all;
 }
 
 .file-size {
   font-size: 12px;
-  color: var(--text-light);
+  color: var(--color-text-secondary);
 }
 
 .form-actions {
@@ -360,7 +334,7 @@ onMounted(() => {
 
 .submit-btn {
   border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent) 0%, #d4af37 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #d4af37 100%);
   border: none;
   padding: 12px 32px;
   font-weight: 500;

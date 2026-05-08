@@ -1,10 +1,10 @@
 <template>
   <div class="record-form-page">
-    <div class="page-header">
-      <el-button @click="$router.back()" class="back-btn">
+    <PageHeaderBlock eyebrow="设备与现场" :title="isEdit ? '编辑维保记录' : '新建维保记录'" />
+    <div class="page-actions-bar">
+      <el-button @click="$router.back()">
         <el-icon><ArrowLeft /></el-icon>返回
       </el-button>
-      <h1 class="page-title">{{ isEdit ? '编辑维保记录' : '新建维保记录' }}</h1>
     </div>
 
     <el-form
@@ -16,10 +16,11 @@
       v-loading="pageLoading"
     >
       <!-- Equipment Info -->
-      <el-card class="form-card">
-        <template #header>
-          <span class="card-title">设备信息</span>
-        </template>
+      <div class="app-panel" style="margin-bottom:20px">
+        <div class="app-panel-header">
+          <h3 class="app-panel-header__title">设备信息</h3>
+        </div>
+        <div class="app-panel--padded">
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="选择设备" prop="equipmentId">
@@ -72,13 +73,15 @@
             </div>
           </el-col>
         </el-row>
-      </el-card>
+        </div>
+      </div>
 
       <!-- Maintenance Content -->
-      <el-card class="form-card">
-        <template #header>
-          <span class="card-title">维保内容</span>
-        </template>
+      <div class="app-panel" style="margin-bottom:20px">
+        <div class="app-panel-header">
+          <h3 class="app-panel-header__title">维保内容</h3>
+        </div>
+        <div class="app-panel--padded">
         <el-form-item label="维保前状态" prop="beforeStatus">
           <el-input
             v-model="form.beforeStatus"
@@ -103,16 +106,18 @@
             placeholder="请描述维保后设备状态"
           />
         </el-form-item>
-      </el-card>
+        </div>
+      </div>
 
       <!-- Photo Upload -->
-      <el-card class="form-card">
-        <template #header>
-          <div class="card-header">
-            <span class="card-title">现场照片</span>
-            <span class="card-hint">最多上传9张照片</span>
+      <div class="app-panel" style="margin-bottom:20px">
+        <div class="app-panel-header">
+          <h3 class="app-panel-header__title">现场照片</h3>
+          <div class="app-panel-header__actions">
+            <span style="font-size:12px;color:#909399">最多上传9张照片</span>
           </div>
-        </template>
+        </div>
+        <div class="app-panel--padded">
         <FileUploader
           v-model="form.photos"
           :uploadFn="equipmentApi.uploadPhoto"
@@ -123,13 +128,15 @@
           :enableDrag="true"
           customTip="支持拖拽上传，单张不超过10MB"
         />
-      </el-card>
+        </div>
+      </div>
 
       <!-- Signature -->
-      <el-card class="form-card">
-        <template #header>
-          <span class="card-title">维保人签名</span>
-        </template>
+      <div class="app-panel" style="margin-bottom:20px">
+        <div class="app-panel-header">
+          <h3 class="app-panel-header__title">维保人签名</h3>
+        </div>
+        <div class="app-panel--padded">
         <div class="signature-wrapper">
           <div v-if="form.operatorSignature" class="signature-preview">
             <img :src="form.operatorSignature" alt="维保人签名" class="signature-img" />
@@ -156,7 +163,8 @@
             <div class="signature-hint">请在上方区域手写签名</div>
           </div>
         </div>
-      </el-card>
+        </div>
+      </div>
 
       <!-- Submit Actions -->
       <div class="form-actions">
@@ -423,53 +431,16 @@ onMounted(async () => {
 
 <style scoped>
 .record-form-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
-  font-family: 'Inter', sans-serif;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.page-header {
+.page-actions-bar {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 24px;
-}
-
-.back-btn { border-radius: 8px; }
-
-.page-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--primary);
-  margin: 0;
-}
-
-.form-card {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: none;
-  margin-bottom: 20px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.card-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--primary);
-}
-
-.card-hint {
-  font-size: 12px;
-  color: var(--text-light);
 }
 
 .equipment-info-preview {
@@ -484,7 +455,7 @@ onMounted(async () => {
 }
 
 .info-label {
-  color: var(--text-light);
+  color: #909399;
   font-weight: 500;
 }
 

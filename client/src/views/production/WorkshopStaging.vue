@@ -1,9 +1,6 @@
 <template>
   <div class="workshop-staging">
-    <div class="page-header">
-      <h2>车间暂存区</h2>
-      <p class="sub">筛粉间 · 称油间 · 小料房 物料流转管理</p>
-    </div>
+    <PageHeaderBlock eyebrow="生产执行" title="车间暂存区" description="筛粉间 · 称油间 · 小料房 物料流转管理" />
 
     <el-tabs v-model="activeZone" @tab-change="loadStock" class="zone-tabs">
       <el-tab-pane v-for="zone in ZONES" :key="zone" :label="zone" :name="zone" />
@@ -98,6 +95,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import request from '@/api/request';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 const ZONES = ['筛粉间', '称油间', '小料房'] as const;
 
@@ -192,11 +190,8 @@ onMounted(loadStock);
 </script>
 
 <style scoped>
-.workshop-staging { padding: 24px; }
-.page-header { margin-bottom: 20px; }
-.page-header h2 { margin: 0 0 4px; font-size: 22px; color: #1a1a2e; }
-.sub { margin: 0; font-size: 13px; color: #7f8c8d; }
-.zone-tabs { margin-bottom: 16px; }
-.toolbar { margin-bottom: 16px; display: flex; gap: 8px; }
+.workshop-staging { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.zone-tabs { margin-bottom: 0; }
+.toolbar { display: flex; gap: 8px; }
 .pagination { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>

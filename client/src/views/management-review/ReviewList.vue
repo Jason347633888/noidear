@@ -1,7 +1,7 @@
 <template>
   <div class="management-review-list">
-    <div class="page-header">
-      <h2>管理评审</h2>
+    <PageHeaderBlock eyebrow="质量与合规" title="管理评审" />
+    <div class="list-header-actions">
       <el-button type="primary" @click="dialogVisible = true">新建年度评审</el-button>
     </div>
 
@@ -56,6 +56,7 @@ import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { managementReviewApi, type ManagementReview } from '@/api/management-review';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 const router = useRouter();
 const loading = ref(false);
@@ -107,12 +108,13 @@ onMounted(loadReviews);
 
 <style scoped>
 .management-review-list {
-  padding: 16px;
-}
-.page-header {
+  padding: 24px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
+  flex-direction: column;
+  gap: 16px;
+}
+.list-header-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

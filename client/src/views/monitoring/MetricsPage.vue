@@ -1,16 +1,6 @@
 <template>
   <div class="metrics-page">
-    <el-card class="page-header">
-      <div class="header-content">
-        <div>
-          <h2>性能指标监控</h2>
-          <p class="subtitle">查看系统、应用和业务指标趋势</p>
-        </div>
-        <div class="header-actions">
-          <el-button :icon="Refresh" :loading="loading" @click="fetchData">刷新</el-button>
-        </div>
-      </div>
-    </el-card>
+    <PageHeaderBlock eyebrow="系统治理" title="运行指标" description="查看系统、应用和业务指标趋势" />
 
     <el-card class="filter-card">
       <el-form :model="filterForm" label-width="100px">

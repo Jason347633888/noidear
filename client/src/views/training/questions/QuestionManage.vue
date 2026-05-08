@@ -1,15 +1,16 @@
 <template>
   <div class="question-manage">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>考试题目管理</span>
-          <div>
-            <el-button type="primary" @click="handleCreate">创建题目</el-button>
-            <el-button @click="handleBack">返回</el-button>
-          </div>
+    <PageHeaderBlock eyebrow="培训与内审" title="题库管理" />
+
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">考试题目管理</h3>
+        <div class="app-panel-header__actions">
+          <el-button type="primary" @click="handleCreate">创建题目</el-button>
+          <el-button @click="handleBack">返回</el-button>
         </div>
-      </template>
+      </div>
+      <div class="app-panel--padded">
 
       <div v-if="project" class="project-info">
         <el-descriptions :column="3" border>
@@ -89,7 +90,8 @@
 
         <el-empty v-if="questions.length === 0" description="暂无题目，请创建题目" />
       </div>
-    </el-card>
+      </div>
+    </div>
 
     <QuestionForm
       v-model="formVisible"

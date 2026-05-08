@@ -1,13 +1,14 @@
 <template>
   <div class="fault-create-page">
-    <div class="page-header">
-      <el-button @click="$router.back()" class="back-btn">
+    <PageHeaderBlock eyebrow="设备与现场" title="设备报修" />
+    <div class="page-actions-bar">
+      <el-button @click="$router.back()">
         <el-icon><ArrowLeft /></el-icon>返回
       </el-button>
-      <h1 class="page-title">设备报修</h1>
     </div>
 
-    <el-card class="form-card">
+    <div class="app-panel">
+      <div class="app-panel--padded">
       <el-steps :active="currentStep" finish-status="success" class="steps-bar">
         <el-step title="选择设备" />
         <el-step title="描述故障" />
@@ -118,7 +119,8 @@
           </el-button>
         </div>
       </el-form>
-    </el-card>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -223,35 +225,16 @@ onMounted(async () => {
 
 <style scoped>
 .fault-create-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
-  font-family: 'Inter', sans-serif;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.page-header {
+.page-actions-bar {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 24px;
-}
-
-.back-btn { border-radius: 8px; }
-
-.page-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--primary);
-  margin: 0;
-}
-
-.form-card {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: none;
-  padding: 24px;
 }
 
 .steps-bar { margin-bottom: 32px; }
@@ -263,12 +246,6 @@ onMounted(async () => {
   padding: 16px;
   background: #fafafa;
   border-radius: 8px;
-}
-
-.upload-tip {
-  font-size: 12px;
-  color: var(--text-light);
-  margin-top: 8px;
 }
 
 .step-actions {

@@ -1,9 +1,6 @@
 <template>
   <div class="process-step-list-page">
-    <div class="page-header">
-      <h1 class="page-title">工序步骤管理</h1>
-      <p class="page-subtitle">管理生产工序步骤及关键控制点（CCP）</p>
-    </div>
+    <PageHeaderBlock eyebrow="生产执行" title="工序步骤管理" description="管理生产工序步骤及关键控制点（CCP）" />
 
     <el-card class="table-card">
       <template #header>
@@ -189,6 +186,7 @@ import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import { processStepApi, type ProcessStep } from '@/api/process-step';
 import { productApi, type Product } from '@/api/product';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -378,23 +376,9 @@ onMounted(() => {
 <style scoped>
 .process-step-list-page {
   padding: 24px;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #909399;
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .card-header {

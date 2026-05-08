@@ -1,25 +1,17 @@
 <template>
   <div class="record-list-page">
-    <div class="page-header">
-      <h1 class="page-title">维保记录</h1>
-      <p class="page-subtitle">查看和管理设备维保记录</p>
-    </div>
+    <PageHeaderBlock eyebrow="设备与现场" title="维保记录" description="查看和管理设备维保记录" />
 
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <div class="card-title-wrap">
-            <span class="card-title">记录列表</span>
-            <span class="card-count">共 {{ pagination.total }} 条记录</span>
-          </div>
-          <div class="header-actions">
-            <el-button type="primary" @click="$router.push('/equipment/records/create')" class="create-btn">
-              <el-icon><Plus /></el-icon>新建记录
-            </el-button>
-          </div>
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">记录列表<span class="card-count">共 {{ pagination.total }} 条记录</span></h3>
+        <div class="app-panel-header__actions">
+          <el-button type="primary" @click="$router.push('/equipment/records/create')">
+            <el-icon><Plus /></el-icon>新建记录
+          </el-button>
         </div>
-      </template>
-
+      </div>
+      <div class="app-panel--padded">
       <!-- Filters -->
       <div class="filter-bar">
         <el-select v-model="filters.equipmentId" placeholder="选择设备" clearable filterable @change="handleSearch">
@@ -121,7 +113,8 @@
           @current-change="fetchData"
         />
       </div>
-    </el-card>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -129,6 +122,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Plus, View, Edit } from '@element-plus/icons-vue';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 import equipmentApi, {
   type MaintenanceRecord,
   type Equipment,
@@ -207,50 +201,13 @@ onMounted(() => {
 
 <style scoped>
 .record-list-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
-  font-family: 'Inter', sans-serif;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.page-header { margin-bottom: 24px; }
-
-.page-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--primary);
-  margin: 0 0 4px;
-}
-
-.page-subtitle { font-size: 14px; color: var(--text-light); margin: 0; }
-
-.table-card {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: none;
-}
-
-.card-header { display: flex; justify-content: space-between; align-items: center; }
-
-.card-title-wrap { display: flex; align-items: baseline; gap: 12px; }
-
-.card-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--primary);
-}
-
-.card-count { font-size: 12px; color: var(--text-light); }
-
-.create-btn {
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent) 0%, #d4af37 100%);
-  border: none;
-  font-weight: 500;
-}
+.card-count { font-size: 12px; color: #909399; margin-left: 12px; font-weight: 400; }
 
 .filter-bar {
   display: flex;
@@ -263,7 +220,7 @@ onMounted(() => {
 .record-code {
   font-family: 'SF Mono', monospace;
   font-size: 12px;
-  color: var(--text-light);
+  color: #909399;
 }
 
 .action-btns { display: flex; gap: 4px; align-items: center; }

@@ -46,7 +46,7 @@ export const menuGroups: MenuEntry[] = [
     ],
   },
   {
-    title: '生产与批次',
+    title: '生产执行',
     icon: List,
     children: [
       { path: '/records', title: '记录管理', icon: Document },
@@ -146,7 +146,7 @@ export const menuGroups: MenuEntry[] = [
     ],
   },
   {
-    title: '系统管理',
+    title: '系统治理',
     icon: Setting,
     children: [
       { path: '/users', title: '用户管理', icon: UserFilled },
@@ -155,6 +155,10 @@ export const menuGroups: MenuEntry[] = [
       { path: '/permissions', title: '权限管理', icon: Setting },
       { path: '/admin/user-permissions', title: '用户权限授予', icon: Key },
       { path: '/admin/permissions', title: '权限定义', icon: Setting },
+      { path: '/monitoring/dashboard', title: '监控大屏', icon: Monitor },
+      { path: '/monitoring/metrics', title: '运行指标', icon: DataAnalysis },
+      { path: '/monitoring/alert-rules', title: '告警规则', icon: WarnTriangleFilled },
+      { path: '/monitoring/alert-history', title: '告警历史', icon: WarnTriangleFilled },
       { path: '/notifications', title: '消息中心', icon: Message },
       { path: '/search', title: '高级搜索', icon: Search },
       { path: '/audit/search', title: '审计日志', icon: Odometer },
@@ -162,7 +166,6 @@ export const menuGroups: MenuEntry[] = [
       { path: '/backup/manage', title: '备份管理', icon: Cloudy },
       { path: '/admin/import', title: '批量导入', icon: DataAnalysis },
       { path: '/admin/export', title: '批量导出', icon: DataAnalysis },
-      { path: '/monitoring/dashboard', title: '监控大屏', icon: Monitor },
     ],
   },
 ];

@@ -1,5 +1,6 @@
 <template>
   <div class="department-permission">
+    <PageHeaderBlock eyebrow="系统治理" title="部门权限" />
     <el-card class="filter-card">
       <el-form :model="filterForm" inline>
         <el-form-item label="部门">

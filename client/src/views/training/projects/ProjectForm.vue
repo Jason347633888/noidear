@@ -1,13 +1,15 @@
 <template>
   <div class="project-form">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>{{ isEdit ? '编辑培训项目' : '创建培训项目' }}</span>
+    <PageHeaderBlock eyebrow="培训与内审" title="培训项目表单" />
+
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">{{ isEdit ? '编辑培训项目' : '创建培训项目' }}</h3>
+        <div class="app-panel-header__actions">
           <el-button @click="handleBack">返回</el-button>
         </div>
-      </template>
-
+      </div>
+      <div class="app-panel--padded">
       <el-form
         ref="formRef"
         :model="form"
@@ -162,7 +164,8 @@
           <el-button @click="handleBack">取消</el-button>
         </el-form-item>
       </el-form>
-    </el-card>
+      </div>
+    </div>
   </div>
 </template>
 

@@ -1,5 +1,6 @@
 <template>
   <div class="archive-list">
+    <PageHeaderBlock eyebrow="培训与内审" title="培训档案" />
     <el-card class="filter-card">
       <el-form :inline="true" :model="filters">
         <el-form-item label="部门">

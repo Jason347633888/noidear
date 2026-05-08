@@ -1,37 +1,29 @@
 <template>
   <div class="capa-list-page">
-    <div class="page-header">
-      <h1 class="page-title">纠正措施管理</h1>
-      <p class="page-subtitle">登记并追踪纠正与预防措施（CAPA）</p>
-    </div>
+    <PageHeaderBlock eyebrow="质量与合规" title="纠正措施管理" description="登记并追踪纠正与预防措施（CAPA）" />
 
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <div class="card-title-wrap">
-            <span class="card-title">CAPA 列表</span>
-            <span class="card-count">共 {{ list.length }} 条记录</span>
-          </div>
-          <div class="header-actions">
-            <el-select
-              v-model="filterStatus"
-              placeholder="全部状态"
-              clearable
-              style="width: 140px; margin-right: 12px"
-              @change="loadList"
-            >
-              <el-option label="待处理" value="open" />
-              <el-option label="实施中" value="implementing" />
-              <el-option label="验证中" value="verifying" />
-              <el-option label="已关闭" value="closed" />
-            </el-select>
-            <el-button type="primary" @click="openCreateDialog">
-              <el-icon><Plus /></el-icon>新建 CAPA
-            </el-button>
-          </div>
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">CAPA 列表<span class="card-count">共 {{ list.length }} 条记录</span></h3>
+        <div class="app-panel-header__actions">
+          <el-select
+            v-model="filterStatus"
+            placeholder="全部状态"
+            clearable
+            style="width: 140px; margin-right: 12px"
+            @change="loadList"
+          >
+            <el-option label="待处理" value="open" />
+            <el-option label="实施中" value="implementing" />
+            <el-option label="验证中" value="verifying" />
+            <el-option label="已关闭" value="closed" />
+          </el-select>
+          <el-button type="primary" @click="openCreateDialog">
+            <el-icon><Plus /></el-icon>新建 CAPA
+          </el-button>
         </div>
-      </template>
-
+      </div>
+      <div class="app-panel--padded">
       <el-table :data="list" v-loading="loading" stripe>
         <el-table-column prop="capa_no" label="编号" width="200" />
         <el-table-column label="触发来源" width="120">
@@ -76,7 +68,8 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+      </div>
+    </div>
 
     <!-- 新建对话框 -->
     <el-dialog
@@ -283,51 +276,16 @@ onMounted(() => {
 <style scoped>
 .capa-list-page {
   padding: 24px;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #909399;
-  margin: 0;
-}
-
-.card-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.card-title-wrap {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .card-count {
   font-size: 13px;
   color: #909399;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
+  margin-left: 12px;
+  font-weight: 400;
 }
 
 .text-secondary {

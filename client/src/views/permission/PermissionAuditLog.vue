@@ -1,5 +1,6 @@
 <template>
   <div class="permission-audit-log">
+    <PageHeaderBlock eyebrow="系统治理" title="权限审计日志" />
     <el-card class="filter-card">
       <el-form :model="filterForm" inline>
         <el-form-item label="用户">
