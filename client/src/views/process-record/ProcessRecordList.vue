@@ -204,6 +204,13 @@ onMounted(() => {
 <style scoped>
 .process-record-page {
   padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
+.card-count {
+  font-size: 13px;
+  color: #909399;
+}
 </style>

@@ -128,6 +128,7 @@ import packagingMaterialUsageApi, {
 } from '@/api/packaging-material-usage';
 import MaterialSelect from '@/components/master-data/MaterialSelect.vue';
 import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelect.vue';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -252,23 +253,9 @@ onMounted(() => {
 <style scoped>
 .pmu-list-page {
   padding: 24px;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #909399;
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .card-header {

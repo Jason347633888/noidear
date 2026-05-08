@@ -208,11 +208,15 @@ onMounted(loadDetail);
 </script>
 
 <style scoped>
-.recall-detail-page { padding: 20px; }
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.recall-detail-page {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.page-header { display: flex; justify-content: space-between; align-items: center; }
 .header-left { display: flex; align-items: center; gap: 12px; }
 .recall-no { font-weight: 600; color: #409eff; }
 .recall-title { font-size: 16px; font-weight: 500; }
-.section-card { margin-bottom: 16px; }
 .ml-8 { margin-left: 8px; }
 </style>

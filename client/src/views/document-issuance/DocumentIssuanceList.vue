@@ -1,9 +1,6 @@
 <template>
   <div class="di-list-page">
-    <div class="page-header">
-      <h1 class="page-title">表单领用记录</h1>
-      <p class="page-subtitle">记录受控文件、表单的发放与领用情况</p>
-    </div>
+    <PageHeaderBlock eyebrow="设备与现场" title="表单领用记录" description="记录受控文件、表单的发放与领用情况" />
 
     <el-card class="table-card">
       <template #header>
@@ -143,6 +140,7 @@ import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import documentIssuanceApi, { type DocumentIssuance } from '@/api/document-issuance';
 import { documentControlApi, type DocumentControlDocument } from '@/api/document-control';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -274,23 +272,9 @@ onMounted(() => {
 <style scoped>
 .di-list-page {
   padding: 24px;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #909399;
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .card-header {

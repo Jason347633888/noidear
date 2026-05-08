@@ -1,12 +1,7 @@
 <template>
   <div class="import-page">
+    <PageHeaderBlock eyebrow="系统治理" title="批量导入" description="上传 Excel 文件批量导入数据，请先下载标准模板" />
     <el-card>
-      <template #header>
-        <div class="page-header">
-          <h2>批量导入</h2>
-          <p class="subtitle">上传 Excel 文件批量导入数据，请先下载标准模板</p>
-        </div>
-      </template>
 
       <el-steps :active="currentStep" align-center class="steps">
         <el-step title="选择类型" />
@@ -114,6 +109,7 @@ import { ElMessage } from 'element-plus';
 import type { UploadFile } from 'element-plus';
 import * as XLSX from 'xlsx';
 import { importApi } from '@/api/import';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 type ImportType = 'documents' | 'users';
 
@@ -229,18 +225,10 @@ function resetImport() {
 
 <style scoped>
 .import-page {
-  padding: 0;
-}
-
-.page-header h2 {
-  margin: 0 0 4px;
-  font-size: 18px;
-}
-
-.subtitle {
-  margin: 0;
-  color: #888;
-  font-size: 13px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .steps {

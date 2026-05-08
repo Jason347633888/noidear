@@ -1,7 +1,7 @@
 <template>
   <div class="advanced-search">
+    <PageHeaderBlock eyebrow="系统治理" title="高级搜索" />
     <el-card class="search-header">
-      <h2 class="page-title">高级搜索</h2>
       <div class="search-input-wrap">
         <el-input
           v-model="keyword"
@@ -60,6 +60,7 @@ import SearchFilter from '@/components/SearchFilter.vue';
 import SearchResult from '@/components/SearchResult.vue';
 import searchApi from '@/api/search';
 import type { SearchResult as SearchResultType } from '@/api/search';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 const HISTORY_KEY = 'search_history';
 const MAX_HISTORY = 10;
@@ -173,17 +174,10 @@ function clearHistory() {
 
 <style scoped>
 .advanced-search {
-  padding: 0;
-}
-
-.search-header {
-  margin-bottom: 16px;
-}
-
-.page-title {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0 0 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .search-input-wrap {
