@@ -24,7 +24,7 @@ test.describe('Alert Rule Management', () => {
   });
 
   test('should load alert rules page successfully', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/alerts/rules');
+    await page.goto('/monitoring/alerts/rules');
     await page.waitForLoadState('networkidle');
 
     // Verify page title
@@ -41,7 +41,7 @@ test.describe('Alert Rule Management', () => {
   });
 
   test('should open create alert rule dialog', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/alerts/rules');
+    await page.goto('/monitoring/alerts/rules');
     await page.waitForLoadState('networkidle');
 
     // Wait for page to load
@@ -66,7 +66,7 @@ test.describe('Alert Rule Management', () => {
   });
 
   test('should create new alert rule', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/alerts/rules');
+    await page.goto('/monitoring/alerts/rules');
     await page.waitForLoadState('networkidle');
 
     // Wait for page to load
@@ -136,7 +136,7 @@ test.describe('Alert Rule Management', () => {
   });
 
   test('should toggle alert rule status', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/alerts/rules');
+    await page.goto('/monitoring/alerts/rules');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -172,7 +172,7 @@ test.describe('Alert Rule Management', () => {
   });
 
   test('should filter alert rules by severity', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/alerts/rules');
+    await page.goto('/monitoring/alerts/rules');
     await page.waitForLoadState('networkidle');
 
     // Wait for page to load
@@ -202,7 +202,7 @@ test.describe('Alert Rule Management', () => {
   });
 
   test('should delete alert rule', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/alerts/rules');
+    await page.goto('/monitoring/alerts/rules');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -250,7 +250,7 @@ test.describe('Alert History', () => {
   });
 
   test('should load alert history page successfully', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/alerts/history');
+    await page.goto('/monitoring/alerts/history');
     await page.waitForLoadState('networkidle');
 
     // Verify page title
@@ -267,7 +267,7 @@ test.describe('Alert History', () => {
   });
 
   test('should filter alert history by status', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/alerts/history');
+    await page.goto('/monitoring/alerts/history');
     await page.waitForLoadState('networkidle');
 
     // Wait for page to load
@@ -296,7 +296,7 @@ test.describe('Alert History', () => {
   });
 
   test('should filter alert history by time range', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/alerts/history');
+    await page.goto('/monitoring/alerts/history');
     await page.waitForLoadState('networkidle');
 
     // Wait for page to load
@@ -327,7 +327,7 @@ test.describe('Alert History', () => {
   });
 
   test('should acknowledge alert', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/alerts/history');
+    await page.goto('/monitoring/alerts/history');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -365,7 +365,7 @@ test.describe('Alert History', () => {
   });
 
   test('should view alert detail', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/alerts/history');
+    await page.goto('/monitoring/alerts/history');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -397,7 +397,7 @@ test.describe('Alert History', () => {
   });
 
   test('should paginate through alert history', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/alerts/history');
+    await page.goto('/monitoring/alerts/history');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -426,7 +426,7 @@ test.describe('Alert History', () => {
   });
 
   test('should export alert history to Excel', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/alerts/history');
+    await page.goto('/monitoring/alerts/history');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load

@@ -24,7 +24,7 @@ test.describe('Monitoring Dashboard', () => {
 
   test('should load monitoring dashboard successfully', async ({ page }) => {
     // Navigate to monitoring dashboard
-    await page.goto('http://localhost:5173/monitoring/dashboard');
+    await page.goto('/monitoring/dashboard');
     await page.waitForLoadState('networkidle');
 
     // Verify page title
@@ -47,7 +47,7 @@ test.describe('Monitoring Dashboard', () => {
   });
 
   test('should display health status cards for all services', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/dashboard');
+    await page.goto('/monitoring/dashboard');
     await page.waitForLoadState('networkidle');
 
     // Wait for health data to load
@@ -74,7 +74,7 @@ test.describe('Monitoring Dashboard', () => {
   });
 
   test('should display business metrics cards', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/dashboard');
+    await page.goto('/monitoring/dashboard');
     await page.waitForLoadState('networkidle');
 
     // Wait for metrics data to load
@@ -92,7 +92,7 @@ test.describe('Monitoring Dashboard', () => {
   });
 
   test('should toggle auto-refresh functionality', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/dashboard');
+    await page.goto('/monitoring/dashboard');
     await page.waitForLoadState('networkidle');
 
     // Initially auto-refresh should be enabled
@@ -116,7 +116,7 @@ test.describe('Monitoring Dashboard', () => {
   });
 
   test('should manually refresh data', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/dashboard');
+    await page.goto('/monitoring/dashboard');
     await page.waitForLoadState('networkidle');
 
     // Wait for initial load
@@ -144,7 +144,7 @@ test.describe('Monitoring Dashboard', () => {
   });
 
   test('should toggle full-screen mode', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/dashboard');
+    await page.goto('/monitoring/dashboard');
     await page.waitForLoadState('networkidle');
 
     // Click full-screen button
@@ -159,7 +159,7 @@ test.describe('Monitoring Dashboard', () => {
   });
 
   test('should display alert list section', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/dashboard');
+    await page.goto('/monitoring/dashboard');
     await page.waitForLoadState('networkidle');
 
     // Wait for content to load
@@ -174,7 +174,7 @@ test.describe('Monitoring Dashboard', () => {
   });
 
   test('should display last update time and countdown', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/dashboard');
+    await page.goto('/monitoring/dashboard');
     await page.waitForLoadState('networkidle');
 
     // Wait for data to load
@@ -202,7 +202,7 @@ test.describe('Metrics Page', () => {
   });
 
   test('should load metrics page successfully', async ({ page }) => {
-    await page.goto('http://localhost:5173/monitoring/metrics');
+    await page.goto('/monitoring/metrics');
     await page.waitForLoadState('networkidle');
 
     // Verify page title

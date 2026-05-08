@@ -24,7 +24,7 @@ test.describe('Login Logs', () => {
   });
 
   test('should load login logs page successfully', async ({ page }) => {
-    await page.goto('http://localhost:5173/audit/login-logs');
+    await page.goto('/audit/login-logs');
     await page.waitForLoadState('networkidle');
 
     // Verify page title
@@ -42,7 +42,7 @@ test.describe('Login Logs', () => {
   });
 
   test('should filter login logs by username', async ({ page }) => {
-    await page.goto('http://localhost:5173/audit/login-logs');
+    await page.goto('/audit/login-logs');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -68,7 +68,7 @@ test.describe('Login Logs', () => {
   });
 
   test('should filter login logs by action', async ({ page }) => {
-    await page.goto('http://localhost:5173/audit/login-logs');
+    await page.goto('/audit/login-logs');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -96,7 +96,7 @@ test.describe('Login Logs', () => {
   });
 
   test('should filter login logs by status', async ({ page }) => {
-    await page.goto('http://localhost:5173/audit/login-logs');
+    await page.goto('/audit/login-logs');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -124,7 +124,7 @@ test.describe('Login Logs', () => {
   });
 
   test('should reset filters', async ({ page }) => {
-    await page.goto('http://localhost:5173/audit/login-logs');
+    await page.goto('/audit/login-logs');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -142,7 +142,7 @@ test.describe('Login Logs', () => {
   });
 
   test('should export login logs to Excel', async ({ page }) => {
-    await page.goto('http://localhost:5173/audit/login-logs');
+    await page.goto('/audit/login-logs');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -171,7 +171,7 @@ test.describe('Login Logs', () => {
   });
 
   test('should open log detail dialog', async ({ page }) => {
-    await page.goto('http://localhost:5173/audit/login-logs');
+    await page.goto('/audit/login-logs');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -198,7 +198,7 @@ test.describe('Login Logs', () => {
   });
 
   test('should paginate through login logs', async ({ page }) => {
-    await page.goto('http://localhost:5173/audit/login-logs');
+    await page.goto('/audit/login-logs');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -241,7 +241,7 @@ test.describe('Permission Logs', () => {
   });
 
   test('should load permission logs page successfully', async ({ page }) => {
-    await page.goto('http://localhost:5173/audit/permission-logs');
+    await page.goto('/audit/permission-logs');
     await page.waitForLoadState('networkidle');
 
     // Verify page title
@@ -258,7 +258,7 @@ test.describe('Permission Logs', () => {
   });
 
   test('should filter permission logs by operator', async ({ page }) => {
-    await page.goto('http://localhost:5173/audit/permission-logs');
+    await page.goto('/audit/permission-logs');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -289,7 +289,7 @@ test.describe('Sensitive Operation Logs', () => {
   });
 
   test('should load sensitive logs page successfully', async ({ page }) => {
-    await page.goto('http://localhost:5173/audit/sensitive-logs');
+    await page.goto('/audit/sensitive-logs');
     await page.waitForLoadState('networkidle');
 
     // Verify page title
@@ -306,7 +306,7 @@ test.describe('Sensitive Operation Logs', () => {
   });
 
   test('should filter sensitive logs by action', async ({ page }) => {
-    await page.goto('http://localhost:5173/audit/sensitive-logs');
+    await page.goto('/audit/sensitive-logs');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -338,7 +338,7 @@ test.describe('Sensitive Operation Logs', () => {
   });
 
   test('should export sensitive logs to Excel', async ({ page }) => {
-    await page.goto('http://localhost:5173/audit/sensitive-logs');
+    await page.goto('/audit/sensitive-logs');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
