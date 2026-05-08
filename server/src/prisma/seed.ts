@@ -34,6 +34,7 @@ async function main() {
   // 2. 创建管理员用户
   const adminPassword = process.env.ADMIN_PASSWORD || 'ChangeMe123!';
   const hashedPassword = await bcrypt.hash(adminPassword, 10);
+  const adminRole = await prisma.role.findFirstOrThrow({ where: { code: 'admin', deletedAt: null } });
   const adminUser = await prisma.user.upsert({
     where: { username: 'admin' },
     update: {},
@@ -42,7 +43,7 @@ async function main() {
       username: 'admin',
       password: hashedPassword,
       name: '系统管理员',
-      role: 'admin',
+      roleId: adminRole.id,
       status: 'active',
     },
   });

@@ -175,6 +175,9 @@ export class ImportService {
     const defaultPassword = await bcrypt.hash('12345678', 10);
     const id = crypto.randomBytes(16).toString('hex');
     const username = String(row.username);
+    const roleCode = String(row.role || 'user');
+    const roleRecord = await this.prisma.role.findFirst({ where: { code: roleCode, deletedAt: null } });
+    if (!roleRecord) throw new BadRequestException(`角色代码不存在: ${roleCode}`);
     await this.prisma.user.upsert({
       where: { username },
       create: {
@@ -182,12 +185,12 @@ export class ImportService {
         username,
         name: String(row.name),
         password: defaultPassword,
-        role: String(row.role || 'user'),
+        roleId: roleRecord.id,
         departmentId: row.departmentId ? String(row.departmentId) : null,
       },
       update: {
         name: String(row.name),
-        role: String(row.role || 'user'),
+        roleId: roleRecord.id,
         departmentId: row.departmentId ? String(row.departmentId) : null,
       },
     });

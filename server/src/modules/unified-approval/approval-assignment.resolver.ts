@@ -28,7 +28,7 @@ export class ApprovalAssignmentResolver {
       const users = await this.prisma.user.findMany({
         where: {
           status: 'active',
-          OR: [{ role: assignment.roleCode }, { roleObj: { code: assignment.roleCode } }],
+          roleObj: { code: assignment.roleCode },
         },
         select: { id: true },
       });
