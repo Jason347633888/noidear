@@ -20,6 +20,11 @@ vi.mock('element-plus', () => ({
 
 vi.mock('vue-router', () => ({
   useRoute: () => ({ query: mockRouteQuery() }),
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
+vi.mock('@/stores/bootstrap', () => ({
+  useBootstrapStore: () => ({ refresh: vi.fn() }),
 }));
 
 import UserList from '../UserList.vue';

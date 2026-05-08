@@ -123,10 +123,11 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import request from '@/api/request';
 import { createDepartment, updateDepartment } from '@/api/department';
+import { useBootstrapStore } from '@/stores/bootstrap';
 import type { Department } from '@noidear/types';
 
 interface UserItem {
@@ -140,6 +141,8 @@ interface UserItem {
 }
 
 const router = useRouter();
+const route = useRoute();
+const bootstrapStore = useBootstrapStore();
 const loading = ref(false);
 const saving = ref(false);
 const dialogVisible = ref(false);
@@ -305,6 +308,10 @@ const handleSubmit = async () => {
     }
     dialogVisible.value = false;
     await Promise.all([fetchData(), fetchUsers()]);
+    if (route.query.from === 'bootstrap') {
+      await bootstrapStore.refresh();
+      await router.push('/bootstrap/org');
+    }
   } catch {
     ElMessage.error('操作失败');
   } finally {

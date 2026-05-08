@@ -7,6 +7,15 @@ vi.mock('@/api/request', () => ({
   default: { get: (...args: unknown[]) => mockGet(...args), delete: vi.fn() },
 }));
 
+vi.mock('vue-router', () => ({
+  useRoute: () => ({ query: {} }),
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
+vi.mock('@/stores/bootstrap', () => ({
+  useBootstrapStore: () => ({ refresh: vi.fn() }),
+}));
+
 import RoleList from '../RoleList.vue';
 
 const roles = [
