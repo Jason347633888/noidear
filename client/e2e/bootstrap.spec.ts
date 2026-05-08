@@ -56,7 +56,8 @@ async function getRoleId(request: APIRequestContext, token: string, code: 'admin
   });
   expect(resp.ok(), `GET /roles failed: ${resp.status()}`).toBe(true);
   const body = await resp.json();
-  const roles: Array<{ id: string; code: string }> = body.data ?? body;
+  // API returns { code, data: { success, data: [...roles], meta } } — extract the inner array
+  const roles: Array<{ id: string; code: string }> = body.data?.data ?? body.data ?? body;
   const role = roles.find((r) => r.code === code);
   if (!role) throw new Error(`Role with code "${code}" not found in response`);
   return role.id;
@@ -204,11 +205,12 @@ test.describe.serial('Bootstrap Guard – First-Login E2E', () => {
     expect(completed, 'Bootstrap should report completed after org setup').toBe(true);
 
     // Step F: Clear session and re-login via UI; should now reach /dashboard
+    // Navigate first to ensure we're on a same-origin page before touching localStorage
+    await page.goto('/login');
     await page.evaluate(() => {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     });
-    await page.goto('/login');
     await page.waitForLoadState('networkidle');
     await page.locator('.el-form .el-input').first().locator('input').fill(ADMIN_USER);
     await page.locator('.el-form input[type="password"]').fill(ADMIN_PASS);
