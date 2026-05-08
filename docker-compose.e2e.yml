@@ -18,6 +18,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - e2e-net
 
   redis-e2e:
     image: redis:7-alpine
@@ -30,6 +32,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - e2e-net
 
   minio-e2e:
     image: minio/minio:latest
@@ -46,6 +50,8 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
+    networks:
+      - e2e-net
 
   server-e2e:
     build:
@@ -73,7 +79,6 @@ services:
     command: >
       sh -c "
         npx prisma migrate deploy --schema=src/prisma/schema.prisma &&
-        npx ts-node --project tsconfig.json src/prisma/seed-baseline.ts &&
         node dist/main
       "
     depends_on:
@@ -84,11 +89,21 @@ services:
       minio-e2e:
         condition: service_started
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      # Hits GET /api/v1/liveness — the unauthenticated liveness endpoint added
+      # in liveness.controller.ts. The old path /api/health did not exist (global
+      # prefix is api/v1) and was behind JwtAuthGuard; this endpoint has no guard.
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/v1/liveness || exit 1"]
       interval: 10s
       timeout: 10s
       retries: 12
       start_period: 30s
+    networks:
+      e2e-net:
+        aliases:
+          # nginx.conf uses proxy_pass http://server:3000. The alias lets the
+          # client-e2e nginx container resolve server-e2e by the name "server"
+          # inside the e2e-net bridge without modifying the production image.
+          - server
 
   client-e2e:
     build:
@@ -101,7 +116,13 @@ services:
       server-e2e:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/ || exit 1"]
       interval: 10s
       timeout: 10s
       retries: 10
+    networks:
+      - e2e-net
+
+networks:
+  e2e-net:
+    driver: bridge
