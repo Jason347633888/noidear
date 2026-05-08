@@ -16,7 +16,8 @@ import { getCredentials } from './fixtures/task-fixtures';
  * See .env.e2e.example for required variables.
  */
 
-const API_BASE = process.env.API_BASE_URL || 'http://localhost:3000/api/v1';
+import { apiBaseUrl } from './support/urls';
+const API_BASE = apiBaseUrl();
 
 async function fetchFirstApprovalId(request: APIRequestContext): Promise<string | null> {
   const { adminUser, adminPass } = getCredentials();

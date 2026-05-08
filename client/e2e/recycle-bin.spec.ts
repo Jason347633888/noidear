@@ -15,7 +15,8 @@ import { getCredentials } from './fixtures/task-fixtures';
  * - Filter by deletedBy field
  */
 
-const API_BASE = process.env.API_BASE_URL || 'http://localhost:3000/api/v1';
+import { apiBaseUrl } from './support/urls';
+const API_BASE = apiBaseUrl();
 
 async function softDeleteDocument(
   request: APIRequestContext,

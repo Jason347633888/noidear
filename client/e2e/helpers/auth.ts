@@ -1,6 +1,7 @@
 import { type Page } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
+import { apiBaseUrl } from '../support/urls';
 
 // Load .env.e2e if not already loaded
 const envFile = path.resolve(process.cwd(), '.env.e2e');
@@ -25,7 +26,7 @@ if (fs.existsSync(envFile) && !process.env._E2E_ENV_LOADED) {
  * every time.
  */
 
-const API_BASE = process.env.API_BASE_URL || 'http://localhost:3000/api/v1';
+const API_BASE = apiBaseUrl();
 
 interface LoginApiResponse {
   code: number;

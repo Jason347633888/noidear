@@ -1,10 +1,11 @@
 import { type APIRequestContext } from '@playwright/test';
+import { apiBaseUrl } from '../support/urls';
 
 /**
  * Training API helpers for E2E test data setup and teardown.
  */
 
-const API_BASE = process.env.API_BASE_URL || 'http://localhost:3000/api/v1';
+const API_BASE = apiBaseUrl();
 
 interface ApiResponse<T> {
   code: number;

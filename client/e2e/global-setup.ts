@@ -1,6 +1,7 @@
 import { request } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
+import { apiBaseUrl } from './support/urls';
 
 // Load .env.e2e before accessing process.env
 const envFile = path.resolve(process.cwd(), '.env.e2e');
@@ -20,7 +21,7 @@ if (fs.existsSync(envFile)) {
  * Logs in once and saves storage state to avoid 429 rate limiting.
  */
 
-const API_BASE = process.env.API_BASE_URL || 'http://localhost:3000/api/v1';
+const API_BASE = apiBaseUrl();
 
 export default async function globalSetup() {
   const adminUser = process.env.E2E_ADMIN_USER;
