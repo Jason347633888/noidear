@@ -34,6 +34,7 @@ export class OrgBootstrapService {
           status: 'active',
           username: { not: 'admin' },
           departmentId: { not: null },
+          roleObj: { code: 'user', deletedAt: null },
         },
       }),
     ]);
