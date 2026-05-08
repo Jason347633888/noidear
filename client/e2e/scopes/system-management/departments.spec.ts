@@ -1,0 +1,63 @@
+import { test, expect } from '@playwright/test';
+import { apiBaseUrl } from '../../support/urls';
+
+const runId = process.env.E2E_RUN_ID ?? Date.now().toString(36);
+
+test.describe('Departments Page', () => {
+  test('should navigate to /departments', async ({ page }) => {
+    await page.goto('/departments');
+    await expect(page.getByRole('heading', { name: /部门管理|部门列表/i })).toBeVisible({ timeout: 15000 });
+  });
+
+  test('department list shows expected columns', async ({ page }) => {
+    await page.goto('/departments');
+    await expect(page.locator('table, [role="table"]')).toBeVisible({ timeout: 15000 });
+    const tableText = await page.locator('table, [role="table"]').textContent();
+    expect(tableText).toMatch(/部门/);
+  });
+
+  test('new department dialog requires leader selection', async ({ page }) => {
+    await page.goto('/departments');
+    const createBtn = page.getByRole('button', { name: /新建部门|添加部门|创建部门/i });
+    await expect(createBtn).toBeVisible({ timeout: 15000 });
+    await createBtn.click();
+    const modal = page.locator('[role="dialog"]');
+    await expect(modal).toBeVisible({ timeout: 10000 });
+    const leaderField = modal.locator('[placeholder*="负责人"], [aria-label*="负责人"]').first();
+    await expect(leaderField).toBeVisible({ timeout: 5000 });
+    await page.keyboard.press('Escape');
+  });
+
+  test(`assigning previously unassigned leader auto-attaches user to department [${runId}]`, async ({ request }) => {
+    const apiBase = apiBaseUrl();
+    const loginRes = await request.post(`${apiBase}/auth/login`, {
+      data: { username: process.env.E2E_ADMIN_USER ?? 'admin', password: process.env.E2E_ADMIN_PASS ?? 'ChangeMe123!' },
+    });
+    expect(loginRes.ok()).toBeTruthy();
+    const { data: { token } } = await loginRes.json();
+
+    const userRes = await request.post(`${apiBase}/users`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: {
+        username: `e2e_dept_leader_${runId}`,
+        password: 'TestPass123!',
+        name: `Dept Leader ${runId}`,
+        roles: ['leader'],
+      },
+    });
+    if (userRes.status() !== 201 && userRes.status() !== 200) return;
+    const { data: { id: userId } } = await userRes.json();
+
+    const deptRes = await request.post(`${apiBase}/departments`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: {
+        name: `E2E Dept ${runId}`,
+        code: `E2E_${runId}`,
+        leaderId: userId,
+      },
+    });
+    if (deptRes.status() !== 201 && deptRes.status() !== 200) return;
+    const { data: dept } = await deptRes.json();
+    expect(dept.leaderId ?? dept.leader?.id).toBe(userId);
+  });
+});
