@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Snowflake } from '../../common/utils/snowflake';
 import { CreateUserDTO } from './dto/create-user.dto';
@@ -31,7 +31,7 @@ export class UserService {
       conditions.push({ departmentId });
     }
     if (role) {
-      conditions.push({ role });
+      conditions.push({ roleObj: { code: role } });
     }
     if (status) {
       conditions.push({ status });
@@ -56,12 +56,15 @@ export class UserService {
     return user;
   }
 
-  private async resolveRoleCode(roleId?: string, fallbackRole?: string): Promise<string> {
-    if (roleId) {
-      const role = await this.prisma.role.findUnique({ where: { id: roleId }, select: { code: true } });
-      if (role) return role.code;
+  private async validateRole(roleId: string) {
+    const role = await this.prisma.role.findUnique({
+      where: { id: roleId },
+      select: { id: true, code: true, deletedAt: true },
+    });
+    if (!role || role.deletedAt) {
+      throw new BadRequestException('角色不存在或已停用');
     }
-    return fallbackRole ?? 'user';
+    return role;
   }
 
   async create(dto: CreateUserDTO) {
@@ -69,8 +72,8 @@ export class UserService {
     if (existing) {
       throw new BusinessException(ErrorCode.CONFLICT, '用户名已存在');
     }
+    await this.validateRole(dto.roleId);
     const hashedPassword = await bcrypt.hash(dto.password, 10);
-    const role = await this.resolveRoleCode(dto.roleId, dto.role);
     return this.prisma.user.create({
       data: {
         id: this.snowflake.nextId(),
@@ -79,7 +82,6 @@ export class UserService {
         name: dto.name,
         departmentId: dto.departmentId,
         roleId: dto.roleId,
-        role,
         superiorId: dto.superiorId,
       },
       include: this.userInclude,
@@ -95,10 +97,8 @@ export class UserService {
       status: dto.status,
     };
     if (dto.roleId !== undefined) {
+      await this.validateRole(dto.roleId);
       data.roleId = dto.roleId;
-      data.role = await this.resolveRoleCode(dto.roleId, dto.role);
-    } else if (dto.role !== undefined) {
-      data.role = dto.role;
     }
     Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
     const updated = await this.prisma.user.update({ where: { id }, data, include: this.userInclude });

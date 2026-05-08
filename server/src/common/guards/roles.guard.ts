@@ -1,4 +1,4 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
@@ -19,11 +19,15 @@ export class RolesGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    // Admin 角色拥有所有权限（与 PermissionGuard 逻辑统一）
-    if (user?.role === 'admin') {
+    const roleCode = user?.role;
+    if (!roleCode) {
+      throw new UnauthorizedException('用户缺少正式角色');
+    }
+
+    if (roleCode === 'admin') {
       return true;
     }
 
-    return requiredRoles.includes(user?.role);
+    return requiredRoles.includes(roleCode);
   }
 }

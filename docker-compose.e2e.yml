@@ -1,0 +1,129 @@
+# Isolated E2E compose stack.
+# NEVER share this with docker-compose.yml — it uses separate ports and ephemeral volumes.
+# Always run via scripts/e2e/docker-run.sh which sets COMPOSE_PROJECT_NAME automatically.
+version: '3.8'
+
+services:
+  postgres-e2e:
+    image: postgres:15-alpine
+    restart: 'no'
+    environment:
+      POSTGRES_USER: noidear
+      POSTGRES_PASSWORD: noidear123
+      POSTGRES_DB: noidear_e2e
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U noidear -d noidear_e2e"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - e2e-net
+
+  redis-e2e:
+    image: redis:7-alpine
+    restart: 'no'
+    ports:
+      - "6380:6379"
+    command: redis-server --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - e2e-net
+
+  minio-e2e:
+    image: minio/minio:latest
+    restart: 'no'
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: noidear123
+    ports:
+      - "9010:9000"
+      - "9011:9001"
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - e2e-net
+
+  server-e2e:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    restart: 'no'
+    ports:
+      - "3100:3000"
+    environment:
+      DATABASE_URL: postgresql://noidear:noidear123@postgres-e2e:5432/noidear_e2e
+      JWT_SECRET: e2e-test-jwt-secret-not-for-production
+      JWT_EXPIRES_IN: 1d
+      REDIS_HOST: redis-e2e
+      REDIS_PORT: 6379
+      REDIS_URL: redis://redis-e2e:6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 0
+      MINIO_ENDPOINT: minio-e2e
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: admin
+      MINIO_SECRET_KEY: noidear123
+      NODE_ENV: test
+      SWAGGER_ENABLED: "false"
+    command: >
+      sh -c "
+        npx prisma db push --accept-data-loss --schema=src/prisma/schema.prisma &&
+        node dist/prisma/seed-baseline.js &&
+        node dist/main
+      "
+    depends_on:
+      postgres-e2e:
+        condition: service_healthy
+      redis-e2e:
+        condition: service_healthy
+      minio-e2e:
+        condition: service_started
+    healthcheck:
+      # Hits GET /api/v1/liveness — the unauthenticated liveness endpoint added
+      # in liveness.controller.ts. The old path /api/health did not exist (global
+      # prefix is api/v1) and was behind JwtAuthGuard; this endpoint has no guard.
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/v1/liveness || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+    networks:
+      e2e-net:
+        aliases:
+          # nginx.conf uses proxy_pass http://server:3000. The alias lets the
+          # client-e2e nginx container resolve server-e2e by the name "server"
+          # inside the e2e-net bridge without modifying the production image.
+          - server
+
+  client-e2e:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    restart: 'no'
+    ports:
+      - "8080:80"
+    depends_on:
+      server-e2e:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:80/ || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    networks:
+      - e2e-net
+
+networks:
+  e2e-net:
+    driver: bridge

@@ -148,7 +148,7 @@ export class AlertScheduleService {
   ) {
     try {
       const adminUsers = await this.prisma.user.findMany({
-        where: { role: { in: ['ADMIN', 'admin'] } },
+        where: { roleObj: { code: 'admin' } },
         select: { id: true },
         take: 5,
       });

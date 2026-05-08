@@ -106,10 +106,8 @@ model User {
   name          String
   departmentId  String?
   department    Department? @relation("UserDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
-  /// @deprecated 请使用 roleId 外键代替此字段。此字段将在后续版本删除。
-  role          String      @default("user") // 保留（向后兼容）
-  roleId        String? // P1-2: 新增角色外键
-  roleObj       Role?       @relation("UserRole", fields: [roleId], references: [id], onDelete: SetNull)
+  roleId        String
+  roleObj       Role        @relation("UserRole", fields: [roleId], references: [id], onDelete: Restrict)
   superiorId    String?
   superior      User?       @relation("UserSuperior", fields: [superiorId], references: [id], onDelete: SetNull)
   subordinates  User[]      @relation("UserSuperior")

@@ -12,6 +12,12 @@ async function main() {
   }
   const pwd = await bcrypt.hash(testPassword, 10);
 
+  const [adminRole, leaderRole, userRole] = await Promise.all([
+    prisma.role.findFirstOrThrow({ where: { code: 'admin', deletedAt: null } }),
+    prisma.role.findFirstOrThrow({ where: { code: 'leader', deletedAt: null } }),
+    prisma.role.findFirstOrThrow({ where: { code: 'user', deletedAt: null } }),
+  ]);
+
   // ────────────────────────────────────────────
   // 1. 部门
   // ────────────────────────────────────────────
@@ -47,7 +53,7 @@ async function main() {
       username: 'ceo',
       password: pwd,
       name:     '王建华',
-      role:     'admin',
+      roleId:   adminRole.id,
       status:   'active',
     },
   });
@@ -127,7 +133,7 @@ async function main() {
         username:     item.leader.username,
         password:     pwd,
         name:         item.leader.name,
-        role:         'leader',
+        roleId:       leaderRole.id,
         departmentId: dept.id,
         superiorId:   ceo.id,
         status:       'active',
@@ -143,7 +149,7 @@ async function main() {
         username:     item.staff.username,
         password:     pwd,
         name:         item.staff.name,
-        role:         'user',
+        roleId:       userRole.id,
         departmentId: dept.id,
         superiorId:   leader.id,
         status:       'active',

@@ -415,7 +415,7 @@ export class WorkflowTaskService {
     return await this.prisma.user.findFirst({
       where: {
         departmentId: initiator.departmentId,
-        role: roleName,
+        roleObj: { code: roleName },
         status: 'active',
       },
     });
@@ -437,7 +437,7 @@ export class WorkflowTaskService {
     return await this.prisma.user.findMany({
       where: {
         departmentId: initiator.departmentId,
-        role: { in: roleNames },
+        roleObj: { code: { in: roleNames } },
         status: 'active',
       },
     });

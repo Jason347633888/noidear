@@ -18,7 +18,10 @@ describe('AuthService', () => {
     password: 'hashed-password',
     name: '管理员',
     role: 'admin',
+    roleId: 'role-admin-id',
+    roleObj: { id: 'role-admin-id', code: 'admin' },
     company_id: '2',
+    departmentId: null,
     status: 'active',
     loginAttempts: 0,
     lockedUntil: null,
@@ -64,13 +67,13 @@ describe('AuthService', () => {
 
       expect(result.token).toBe('mock-token');
       expect(result.user.username).toBe('admin');
-      expect(jwtService.sign).toHaveBeenCalledWith({
+      expect(jwtService.sign).toHaveBeenCalledWith(expect.objectContaining({
         sub: 'user-1',
         username: 'admin',
         role: 'admin',
         name: '管理员',
         companyId: '2',
-      });
+      }));
       expect(result.user.companyId).toBe('2');
     });
 

@@ -4,7 +4,7 @@ import { Type } from 'class-transformer';
 export class ExportUsersDto {
   @IsOptional()
   @IsString()
-  role?: string;
+  roleId?: string;
 
   @IsOptional()
   @IsString()

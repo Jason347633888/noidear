@@ -20,9 +20,8 @@ export interface User {
   departmentId: string | null;
   department?: UserDepartmentRef | null;
   departmentName?: string;
-  roleId: string | null;
+  roleId: string;
   roleObj?: UserRoleRef | null;
-  role?: 'user' | 'leader' | 'admin';
   superiorId: string | null;
   superiorName?: string;
   status: 'active' | 'inactive';
@@ -31,6 +30,15 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+}
+
+export interface CurrentUser {
+  id: string;
+  username: string;
+  name: string;
+  role: 'admin' | 'leader' | 'user';
+  roleId: string;
+  departmentId?: string | null;
 }
 
 export interface CreateUserDTO {

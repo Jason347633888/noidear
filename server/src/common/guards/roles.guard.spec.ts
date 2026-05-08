@@ -50,11 +50,11 @@ describe('RolesGuard', () => {
     expect(guard.canActivate(context)).toBe(false);
   });
 
-  it('should deny access when user role is empty string', () => {
+  it('should deny access (throw) when user role is empty string', () => {
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['admin']);
     const context = createMockContext('');
 
-    expect(guard.canActivate(context)).toBe(false);
+    expect(() => guard.canActivate(context)).toThrow('用户缺少正式角色');
   });
 
   it('should handle single role requirement', () => {
@@ -64,5 +64,18 @@ describe('RolesGuard', () => {
 
     expect(guard.canActivate(adminCtx)).toBe(true);
     expect(guard.canActivate(userCtx)).toBe(false);
+  });
+
+  it('active 用户缺少正式角色时拒绝通过', () => {
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['admin']);
+    const context = {
+      switchToHttp: () => ({
+        getRequest: () => ({ user: { id: 'u-1', username: 'bad-user', role: undefined } }),
+      }),
+      getHandler: () => jest.fn(),
+      getClass: () => jest.fn(),
+    } as unknown as ExecutionContext;
+
+    expect(() => guard.canActivate(context)).toThrow('用户缺少正式角色');
   });
 });

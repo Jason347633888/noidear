@@ -35,7 +35,7 @@ describe('ApprovalAssignmentResolver', () => {
     expect(prisma.user.findMany).toHaveBeenCalledWith({
       where: {
         status: 'active',
-        OR: [{ role: 'quality_manager' }, { roleObj: { code: 'quality_manager' } }],
+        roleObj: { code: 'quality_manager' },
       },
       select: { id: true },
     });

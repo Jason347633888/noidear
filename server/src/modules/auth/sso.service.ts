@@ -53,7 +53,7 @@ export class SsoService {
         id: user.id,
         username: user.username,
         name: user.name,
-        role: user.roleObj?.code ?? user.role,
+        role: user.roleObj?.code,
         companyId: user.company_id,
       },
     };
@@ -82,7 +82,7 @@ export class SsoService {
         id: user.id,
         username: user.username,
         name: user.name,
-        role: user.roleObj?.code ?? user.role,
+        role: user.roleObj?.code,
         companyId: user.company_id,
       },
     };
@@ -202,19 +202,30 @@ export class SsoService {
 
     this.logger.log(`SSO 首次登录，创建用户: ${username} (provider: ${provider})`);
 
+    const userRole = await this.prisma.role.findUnique({ where: { code: 'user' } });
+    if (!userRole) {
+      throw new UnauthorizedException('系统角色基线未初始化，缺少 user 角色');
+    }
+
     return this.prisma.user.create({
-      data: { id, username, name, password: defaultPassword, role: 'user', status: 'active', company_id: '1' },
+      data: { id, username, name, password: defaultPassword, status: 'active', company_id: '1', roleId: userRole.id },
       include: { roleObj: true },
     });
   }
 
   private generateToken(user: any) {
+    const roleCode = user.roleObj?.code;
+    if (!roleCode) {
+      throw new UnauthorizedException('用户缺少正式角色');
+    }
     return this.jwtService.sign({
       sub: user.id,
       username: user.username,
-      role: user.roleObj?.code ?? user.role,
+      role: roleCode,
+      roleId: user.roleId,
       name: user.name,
       companyId: user.company_id,
+      departmentId: user.departmentId,
     });
   }
 }

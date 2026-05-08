@@ -210,7 +210,7 @@ export class ExportService {
   private buildUserWhere(dto: ExportUsersDto): any {
     const where: any = { deletedAt: null };
 
-    if (dto.role) where.role = dto.role;
+    if (dto.roleId) where.roleId = dto.roleId;
     if (dto.status) where.status = dto.status;
     if (dto.departmentId) where.departmentId = dto.departmentId;
 
@@ -235,14 +235,21 @@ export class ExportService {
         orderBy: { createdAt: 'desc' },
         include: {
           department: { select: { name: true } },
+          roleObj: { select: { code: true } },
         },
       });
+
+      const roleNameMap: Record<string, string> = {
+        admin: '管理员',
+        leader: '部门主管',
+        user: '普通用户',
+      };
 
       users.forEach((user: any) => {
         const row = {
           username: user.username,
           name: user.name,
-          role: this.formatUserRole(user.role),
+          role: roleNameMap[user.roleObj?.code] ?? (user.roleObj?.code || ''),
           departmentName: user.department?.name || '未分配',
           status: this.formatStatus(user.status),
           createdAt: this.formatDate(user.createdAt),

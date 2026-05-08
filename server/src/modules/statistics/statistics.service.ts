@@ -669,7 +669,7 @@ export class StatisticsService {
           where: activeWhere,
         }),
         this.prisma.user.groupBy({
-          by: ['role'],
+          by: ['roleId'],
           _count: { id: true },
           where: activeWhere,
         }),
@@ -700,7 +700,7 @@ export class StatisticsService {
         total,
         byDepartment,
         byRole: byRole.map((item) => ({
-          role: item.role,
+          roleId: item.roleId,
           count: item._count.id,
         })),
       };

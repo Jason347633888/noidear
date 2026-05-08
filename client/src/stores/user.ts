@@ -1,22 +1,23 @@
 import { defineStore } from 'pinia';
 import request from '@/api/request';
 
-interface User {
+interface CurrentUser {
   id: string;
   username: string;
   name: string;
-  role: string;
-  departmentId: string | null;
+  role: 'admin' | 'leader' | 'user';
+  roleId: string;
+  departmentId?: string | null;
 }
 
 interface LoginResponse {
   token: string;
-  user: User;
+  user: CurrentUser;
 }
 
 export const useUserStore = defineStore('user', {
   state: () => ({
-    user: null as User | null,
+    user: null as CurrentUser | null,
     token: localStorage.getItem('token') || '',
     error: '',
   }),
@@ -42,10 +43,9 @@ export const useUserStore = defineStore('user', {
     async fetchUser() {
       if (!this.token) return;
       try {
-        const user = await request.get<User>('/auth/profile');
+        const user = await request.get<CurrentUser>('/auth/profile');
         this.user = user;
       } catch {
-        // 后端未运行或token无效，清除token
         this.token = '';
         this.user = null;
         localStorage.removeItem('token');

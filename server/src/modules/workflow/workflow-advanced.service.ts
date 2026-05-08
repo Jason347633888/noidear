@@ -225,7 +225,7 @@ export class WorkflowAdvancedService {
     if (!initiator) return null;
 
     return prisma.user.findFirst({
-      where: { departmentId: initiator.departmentId, role: roleName, status: 'active' },
+      where: { departmentId: initiator.departmentId, roleObj: { code: roleName }, status: 'active' },
     });
   }
 

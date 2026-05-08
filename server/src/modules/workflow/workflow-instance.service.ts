@@ -329,7 +329,7 @@ export class WorkflowInstanceService {
     return await this.prisma.user.findFirst({
       where: {
         departmentId: initiator.departmentId,
-        role: roleName,
+        roleObj: { code: roleName },
         status: 'active',
       },
     });

@@ -88,10 +88,12 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import request from '@/api/request';
 import RoleForm from '@/components/role/RoleForm.vue';
 import RolePermissions from '@/components/role/RolePermissions.vue';
+import { useBootstrapStore } from '@/stores/bootstrap';
 
 interface Role {
   id: string;
@@ -103,6 +105,9 @@ interface Role {
 
 const SYSTEM_ROLE_CODES = ['admin', 'leader', 'user'];
 
+const route = useRoute();
+const router = useRouter();
+const bootstrapStore = useBootstrapStore();
 const loading = ref(false);
 const tableData = ref<Role[]>([]);
 
@@ -196,8 +201,12 @@ const handleDelete = async (row: Role) => {
   }
 };
 
-const handleSuccess = () => {
-  fetchData();
+const handleSuccess = async () => {
+  await fetchData();
+  if (route.query.from === 'bootstrap') {
+    await bootstrapStore.refresh();
+    await router.push('/bootstrap/org');
+  }
 };
 
 onMounted(() => {
