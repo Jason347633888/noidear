@@ -78,7 +78,7 @@ services:
       SWAGGER_ENABLED: "false"
     command: >
       sh -c "
-        npx prisma migrate deploy --schema=src/prisma/schema.prisma &&
+        npx prisma db push --accept-data-loss --schema=src/prisma/schema.prisma &&
         node dist/main
       "
     depends_on:
