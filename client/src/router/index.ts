@@ -1018,7 +1018,7 @@ router.beforeEach(async (to, _from, next) => {
           // bootstrap API 失败不阻断导航
         }
       }
-      if (!bootstrapStore.completed && to.path !== '/bootstrap/org' && !publicPaths.includes(to.path) && userStore.isAdmin) {
+      if (bootstrapStore.loaded && !bootstrapStore.completed && to.path !== '/bootstrap/org' && !publicPaths.includes(to.path) && userStore.isAdmin) {
         next('/bootstrap/org');
         return;
       }

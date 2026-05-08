@@ -1,21 +1,27 @@
 import { defineStore } from 'pinia';
 import { getOrgBootstrapStatus } from '@/api/bootstrap';
 
+interface BootstrapStatus {
+  completed: boolean;
+  step: string;
+  reasons: string[];
+}
+
 export const useBootstrapStore = defineStore('bootstrap', {
   state: () => ({
-    completed: true,
-    step: 'completed' as string,
+    completed: false,
+    step: '' as string,
     reasons: [] as string[],
     loaded: false,
   }),
   actions: {
     async refresh() {
-      const { data } = await getOrgBootstrapStatus();
-      this.completed = data.completed;
-      this.step = data.step;
-      this.reasons = data.reasons;
+      const status = await getOrgBootstrapStatus() as BootstrapStatus;
+      this.completed = status.completed;
+      this.step = status.step;
+      this.reasons = status.reasons;
       this.loaded = true;
-      return data;
+      return status;
     },
   },
 });
