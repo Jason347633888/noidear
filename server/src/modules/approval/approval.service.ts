@@ -69,7 +69,7 @@ export class ApprovalService {
         include: { roleObj: true },
       });
 
-      const userRoleCode = user?.roleObj?.code ?? user?.role;
+      const userRoleCode = user?.roleObj?.code;
       if (!user || userRoleCode !== 'admin') {
         throw new BusinessException(ErrorCode.FORBIDDEN, '无权审批此记录');
       }

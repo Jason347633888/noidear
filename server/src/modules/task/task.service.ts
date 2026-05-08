@@ -60,7 +60,7 @@ export class TaskService {
 
   async create(dto: CreateTaskDto, userId: string) {
     const user = await this.getUserContext(userId);
-    const roleCode = user.roleObj?.code ?? user.role;
+    const roleCode = user.role;
     if (!this.isAdminOrLeader(roleCode)) {
       throw new ForbiddenException('Only admin or leader can create tasks');
     }
@@ -117,7 +117,7 @@ export class TaskService {
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};
-    const roleCode = user.roleObj?.code ?? user.role;
+    const roleCode = user.role;
 
     if (!this.isAdminOrLeader(roleCode)) {
       // Regular members only see their own department
@@ -168,7 +168,7 @@ export class TaskService {
     if (!task) {
       throw new NotFoundException('Task not found');
     }
-    const roleCode = user.roleObj?.code ?? user.role;
+    const roleCode = user.role;
     if (!this.isAdminOrLeader(roleCode)) {
       if (task.departmentId !== user.departmentId) {
         throw new ForbiddenException('Access denied: different department');
@@ -184,7 +184,7 @@ export class TaskService {
     if (!task) {
       throw new NotFoundException('Task not found');
     }
-    const roleCode = user.roleObj?.code ?? user.role;
+    const roleCode = user.role;
     if (roleCode !== 'admin' && task.creatorId !== userId) {
       throw new ForbiddenException('Only admin or task creator can update');
     }
@@ -228,7 +228,7 @@ export class TaskService {
     }
 
     // Department check for non-admin/leader
-    const roleCode = user.roleObj?.code ?? user.role;
+    const roleCode = user.role;
     if (!this.isAdminOrLeader(roleCode)) {
       if (task.departmentId !== user.departmentId) {
         throw new ForbiddenException('Access denied: different department');
@@ -299,7 +299,7 @@ export class TaskService {
       throw new NotFoundException('Task not found');
     }
 
-    const roleCode = user.roleObj?.code ?? user.role;
+    const roleCode = user.role;
     if (!this.isAdminOrLeader(roleCode)) {
       if (task.departmentId !== user.departmentId) {
         throw new ForbiddenException('Access denied: different department');
@@ -347,7 +347,7 @@ export class TaskService {
     if (!task) {
       throw new NotFoundException('Task not found');
     }
-    const roleCode = user.roleObj?.code ?? user.role;
+    const roleCode = user.role;
     if (roleCode !== 'admin' && task.creatorId !== userId) {
       throw new ForbiddenException('Only admin or task creator can cancel');
     }

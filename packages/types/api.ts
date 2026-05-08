@@ -25,8 +25,9 @@ export interface LoginResponse {
     id: string;
     username: string;
     name: string;
-    role: string;
-    departmentId: string | null;
+    role: 'admin' | 'leader' | 'user';
+    roleId: string;
+    companyId?: string;
   };
 }
 

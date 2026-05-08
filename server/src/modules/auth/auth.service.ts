@@ -9,8 +9,10 @@ interface AuthTokenPayload {
   sub: string;
   username: string;
   role: string;
+  roleId?: string;
   name: string;
   companyId?: string;
+  departmentId?: string | null;
 }
 
 @Injectable()
@@ -53,14 +55,19 @@ export class AuthService {
       data:  { loginAttempts: 0, firstFailedAt: null, lockedUntil: null },
     });
 
-    const roleCode = user.roleObj?.code ?? user.role;
+    const roleCode = user.roleObj?.code;
+    if (!roleCode) {
+      throw new UnauthorizedException('用户缺少正式角色');
+    }
 
     const payload = {
       sub: user.id,
       username: user.username,
       role: roleCode,
+      roleId: user.roleId,
       name: user.name,
       companyId: user.company_id,
+      departmentId: user.departmentId,
     };
     const token = this.jwtService.sign(payload);
 
@@ -71,6 +78,7 @@ export class AuthService {
         username: user.username,
         name: user.name,
         role: roleCode,
+        roleId: user.roleId,
         companyId: user.company_id,
       },
     };
@@ -98,11 +106,14 @@ export class AuthService {
 
   validateUser(payload: AuthTokenPayload) {
     return {
+      id: payload.sub,
       userId: payload.sub,
       username: payload.username,
       role: payload.role,
+      roleId: payload.roleId ?? '',
       name: payload.name,
       companyId: payload.companyId ?? '1',
+      departmentId: payload.departmentId,
     };
   }
 

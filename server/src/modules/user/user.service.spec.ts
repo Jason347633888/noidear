@@ -116,7 +116,7 @@ describe('UserService', () => {
 
       expect(prisma.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { AND: [{ role: 'leader' }] },
+          where: { AND: [{ roleObj: { code: 'leader' } }] },
         }),
       );
     });
@@ -168,7 +168,7 @@ describe('UserService', () => {
     it('应该成功创建用户（通过 roleId）', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
       prisma.user.create.mockResolvedValue(mockUser);
-      prisma.role.findUnique.mockResolvedValue({ code: 'user' });
+      prisma.role.findUnique.mockResolvedValue({ id: 'r-user', code: 'user', deletedAt: null });
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
 
       const result = await service.create({
@@ -181,29 +181,22 @@ describe('UserService', () => {
       expect(result).toEqual(mockUser);
       expect(prisma.user.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ roleId: 'r-user', role: 'user' }),
+          data: expect.objectContaining({ roleId: 'r-user' }),
         }),
       );
     });
 
-    it('应该成功创建用户（旧口径 role）', async () => {
+    it('角色不存在时应该抛出 BadRequestException', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
-      prisma.user.create.mockResolvedValue(mockUser);
+      prisma.role.findUnique.mockResolvedValue(null);
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
 
-      const result = await service.create({
+      await expect(service.create({
         username: 'newuser',
         password: '123456',
         name: '新用户',
-        role: 'user',
-      });
-
-      expect(result).toEqual(mockUser);
-      expect(prisma.user.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ role: 'user' }),
-        }),
-      );
+        roleId: 'invalid-role',
+      })).rejects.toThrow('角色不存在或已停用');
     });
 
     it('用户名已存在时应该抛出 BusinessException', async () => {

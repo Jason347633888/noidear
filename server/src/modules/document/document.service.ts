@@ -675,7 +675,7 @@ export class DocumentService {
 
     // 权限控制：验证是否为指定的审批人
     const isDesignatedApprover = pendingApproval.approverId === approverId;
-    const approverRoleCode = approver?.roleObj?.code ?? approver?.role;
+    const approverRoleCode = approver?.roleObj?.code;
     const isAdmin = approverRoleCode === 'admin';
 
     if (!isDesignatedApprover && !isAdmin) {
@@ -1094,7 +1094,7 @@ export class DocumentService {
       include: { roleObj: true },
     });
 
-    const userRoleCode = user?.roleObj?.code ?? user?.role;
+    const userRoleCode = user?.roleObj?.code;
     if (!user || userRoleCode !== 'admin') {
       throw new BusinessException(
         ErrorCode.FORBIDDEN,

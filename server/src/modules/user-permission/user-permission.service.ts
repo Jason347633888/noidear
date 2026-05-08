@@ -125,7 +125,7 @@ export class UserPermissionService {
           include: { roleObj: true },
         });
 
-        const revokerRoleCode = revoker?.roleObj?.code ?? revoker?.role;
+        const revokerRoleCode = revoker?.roleObj?.code;
         if (revoker && revokerRoleCode !== 'admin' && userPermission.grantedBy !== revokedBy) {
           throw new ForbiddenException('仅原授权人或管理员可撤销此权限');
         }

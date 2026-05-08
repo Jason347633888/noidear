@@ -99,7 +99,8 @@ export class ApprovalAssignmentResolver {
     })) as any;
     if (!user) throw new ForbiddenException('用户不存在');
 
-    const roleCode = (user.roleObj as any)?.code ?? (user.role as string);
+    const roleCode = (user.roleObj as any)?.code as string;
+    if (!roleCode) throw new ForbiddenException('用户缺少正式角色');
     if (roleCode === 'admin') return;
     if (input.task.assigneeUserId && input.task.assigneeUserId === input.userId) return;
     if (input.task.assigneeRoleCode && input.task.assigneeRoleCode === roleCode) return;

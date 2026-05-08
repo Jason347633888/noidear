@@ -114,7 +114,7 @@ export class ProcessStepApprovalService {
   }
 
   private resolveAllowedRoles(user: any, required: RequiredApproval[]): Set<string> {
-    const roleCode = user.roleObj?.code ?? user.role ?? '';
+    const roleCode = user.roleObj?.code ?? '';
     const deptName = user.department?.name ?? '';
     if (roleCode === 'admin') return new Set(required.map((r) => r.role));
 
