@@ -236,7 +236,7 @@ onMounted(load);
   font-family: 'Cormorant Garamond', serif;
   font-size: 16px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--el-color-primary);
 }
 
 .action-section {

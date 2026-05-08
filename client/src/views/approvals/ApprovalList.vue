@@ -220,7 +220,7 @@ onMounted(fetchData);
 .doc-icon.level-2 { background: linear-gradient(135deg, #3498db 0%, #5dade2 100%); }
 .doc-icon.level-3 { background: linear-gradient(135deg, #9b59b6 0%, #a569bd 100%); }
 
-.doc-title { font-size: 14px; color: var(--text); font-weight: 500; }
+.doc-title { font-size: 14px; color: var(--shell-ink); font-weight: 500; }
 
 .creator-info { display: flex; align-items: center; gap: 8px; }
 
@@ -228,8 +228,8 @@ onMounted(fetchData);
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  background: var(--primary);
-  color: var(--accent);
+  background: var(--el-color-primary);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -237,14 +237,14 @@ onMounted(fetchData);
   font-weight: 600;
 }
 
-.time-text { font-size: 12px; color: var(--text-light); }
+.time-text { font-size: 12px; color: var(--shell-muted); }
 
 .action-btns { display: flex; gap: 4px; }
 
 .action-btn { font-size: 12px; display: flex; align-items: center; gap: 4px; }
 
-.approve-btn { color: var(--success); }
-.reject-btn { color: var(--danger); }
+.approve-btn { color: var(--shell-success); }
+.reject-btn { color: var(--shell-danger); }
 
 .reject-dialog :deep(.el-dialog__header) { padding-bottom: 16px; border-bottom: 1px solid #f0f0f0; }
 
@@ -257,7 +257,7 @@ onMounted(fetchData);
   margin-bottom: 16px;
   font-size: 15px;
   font-weight: 500;
-  color: var(--danger);
+  color: var(--shell-danger);
 }
 
 .reject-icon {
