@@ -95,8 +95,8 @@ const loading = ref(false);
 const record = ref<any>(null);
 const changeLogs = ref<RecordChangeLog[]>([]);
 
-const statusTextMap: Record<string, string> = { draft: '草稿', submitted: '已提交', approved: '已通过', rejected: '已驳回' };
-const statusTypeMap: Record<string, string> = { draft: 'info', submitted: 'warning', approved: 'success', rejected: 'danger' };
+const statusTextMap: Record<string, string> = { draft: '草稿', submitted: '已提交', signed: '已签署', approved: '已通过', rejected: '已驳回' };
+const statusTypeMap: Record<string, string> = { draft: 'info', submitted: 'warning', signed: 'success', approved: 'success', rejected: 'danger' };
 
 const formatValue = (value: unknown): string => {
   if (value === null || value === undefined) return '-';

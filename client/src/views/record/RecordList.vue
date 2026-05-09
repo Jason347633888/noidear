@@ -94,8 +94,8 @@ const router = useRouter();
 const loading = ref(false);
 const tableData = ref<any[]>([]);
 
-const statusTextMap: Record<string, string> = { draft: '草稿', submitted: '已提交', approved: '已通过', rejected: '已驳回' };
-const statusTypeMap: Record<string, string> = { draft: 'info', submitted: 'warning', approved: 'success', rejected: 'danger' };
+const statusTextMap: Record<string, string> = { draft: '草稿', submitted: '已提交', signed: '已签署', approved: '已通过', rejected: '已驳回' };
+const statusTypeMap: Record<string, string> = { draft: 'info', submitted: 'warning', signed: 'success', approved: 'success', rejected: 'danger' };
 
 const filterForm = reactive({ status: '' });
 const pagination = reactive({ page: 1, limit: 20, total: 0 });
