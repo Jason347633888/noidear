@@ -480,6 +480,40 @@ async function main() {
       ],
     },
     {
+      module: 'document',
+      resourceType: 'document',
+      triggerKey: 'publish.level2',
+      name: '二级文件发布审批',
+      version: 1,
+      steps: [
+        {
+          stepKey: 'document-level2',
+          stepName: '二级文件审批',
+          mode: 'sequential',
+          assignments: [{ type: 'role', roleCode: 'leader', label: '部门负责人' }],
+          rejectPolicy: 'reject_instance',
+          onApproved: 'document.approvalApproved',
+        },
+      ],
+    },
+    {
+      module: 'document',
+      resourceType: 'document',
+      triggerKey: 'publish.level3',
+      name: '三级文件发布审批',
+      version: 1,
+      steps: [
+        {
+          stepKey: 'document-level3',
+          stepName: '三级文件审批',
+          mode: 'sequential',
+          assignments: [{ type: 'role', roleCode: 'leader', label: '部门负责人' }],
+          rejectPolicy: 'reject_instance',
+          onApproved: 'document.approvalApproved',
+        },
+      ],
+    },
+    {
       module: 'process',
       resourceType: 'process_instance',
       triggerKey: 'step:4',
