@@ -1,5 +1,6 @@
 import { Body, Controller, Get, NotFoundException, Param, Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalEngineService } from './approval-engine.service';
 import { StartApprovalDto } from './dto';
@@ -13,8 +14,8 @@ export class ApprovalInstanceController {
   ) {}
 
   @Post()
-  start(@Body() dto: StartApprovalDto, @Request() req: any) {
-    return this.engine.startApproval({ ...dto, createdById: req.user?.id ?? req.user?.userId ?? req.user?.sub });
+  start(@Body() dto: StartApprovalDto, @Request() req: AuthenticatedRequest) {
+    return this.engine.startApproval({ ...dto, createdById: req.user.id });
   }
 
   @Get()

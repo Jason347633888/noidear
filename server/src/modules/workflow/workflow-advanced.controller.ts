@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { WorkflowAdvancedService } from './workflow-advanced.service';
 import { DelegateTaskDto } from './dto/delegate-task.dto';
 import { RollbackTaskDto } from './dto/rollback-task.dto';
@@ -27,9 +28,9 @@ export class WorkflowAdvancedController {
   async delegate(
     @Param('id') id: string,
     @Body() dto: DelegateTaskDto,
-    @Request() req: { user: { sub: string } },
+    @Request() req: AuthenticatedRequest,
   ) {
-    return this.service.delegateTask(id, dto, req.user.sub);
+    return this.service.delegateTask(id, dto, req.user.id);
   }
 
   @Post('tasks/:id/rollback')
@@ -37,9 +38,9 @@ export class WorkflowAdvancedController {
   async rollback(
     @Param('id') id: string,
     @Body() dto: RollbackTaskDto,
-    @Request() req: { user: { sub: string } },
+    @Request() req: AuthenticatedRequest,
   ) {
-    return this.service.rollbackTask(id, dto, req.user.sub);
+    return this.service.rollbackTask(id, dto, req.user.id);
   }
 
   @Post('tasks/:id/transfer')
@@ -47,9 +48,9 @@ export class WorkflowAdvancedController {
   async transfer(
     @Param('id') id: string,
     @Body() dto: TransferTaskDto,
-    @Request() req: { user: { sub: string } },
+    @Request() req: AuthenticatedRequest,
   ) {
-    return this.service.transferTask(id, dto, req.user.sub);
+    return this.service.transferTask(id, dto, req.user.id);
   }
 
   @Get('delegation-logs')

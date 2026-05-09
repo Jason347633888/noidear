@@ -8,19 +8,22 @@ import {
   HttpCode,
   HttpStatus,
   Request,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { InboundService } from './inbound.service';
 import { CreateInboundDto, QueryInboundDto } from './dto/inbound.dto';
 
 @Controller('warehouse/inbound')
+@UseGuards(JwtAuthGuard)
 export class InboundController {
   constructor(private readonly inboundService: InboundService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createInboundDto: CreateInboundDto, @Request() req: any) {
-    const userId = req?.user?.id ?? req?.user?.userId ?? req?.user?.sub;
-    return this.inboundService.create(createInboundDto, userId);
+  create(@Body() createInboundDto: CreateInboundDto, @Request() req: AuthenticatedRequest) {
+    return this.inboundService.create(createInboundDto, req.user.id);
   }
 
   @Get()
@@ -34,14 +37,12 @@ export class InboundController {
   }
 
   @Post(':id/approve')
-  approve(@Param('id') id: string, @Request() req: any) {
-    const approverId = req.user?.id || 'system';
-    return this.inboundService.approve(id, approverId);
+  approve(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.inboundService.approve(id, req.user.id);
   }
 
   @Post(':id/complete')
-  complete(@Param('id') id: string, @Request() req: any) {
-    const operatorId = req.user?.id || 'system';
-    return this.inboundService.complete(id, operatorId);
+  complete(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.inboundService.complete(id, req.user.id);
   }
 }

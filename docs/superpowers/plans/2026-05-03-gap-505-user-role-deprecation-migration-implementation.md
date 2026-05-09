@@ -1,5 +1,9 @@
 # GAP-505 User.role 弃用 — 迁移字符串角色检查至 Role 模型 实现计划
 
+> **⚠️ SUPERSEDED（已作废）**
+> 本计划已被 `docs/superpowers/plans/2026-05-09-domain-source-of-truth-and-semantic-dedup-implementation.md` 全面覆盖并取代。
+> 所有 GAP-505 范围内的修复已作为该总计划的 Task 1 完成。请勿再执行本计划。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to execute this plan task-by-task. Start every execution reply with: `I'm using the executing-plans skill to implement this plan.`
 > If you discover any conflict between this plan and the current code / AGENTS.md / docs/AGENT_GUIDE.md, stop immediately and report back to the main agent. Do NOT guess or expand scope.
 

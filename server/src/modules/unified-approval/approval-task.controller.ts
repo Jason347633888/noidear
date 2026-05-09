@@ -1,5 +1,6 @@
 import { Body, Controller, ForbiddenException, Get, NotFoundException, Param, Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalEngineService } from './approval-engine.service';
 import { ApprovalAssignmentResolver } from './approval-assignment.resolver';
@@ -15,8 +16,8 @@ export class ApprovalTaskController {
   ) {}
 
   @Get('my-pending')
-  async findMyPending(@Request() req: any) {
-    const userId = req.user?.id ?? req.user?.userId ?? req.user?.sub;
+  async findMyPending(@Request() req: AuthenticatedRequest) {
+    const userId = req.user.id;
     const rows = await this.prisma.approvalTask.findMany({
       where: { status: 'PENDING' },
       include: { instance: true },
@@ -35,8 +36,8 @@ export class ApprovalTaskController {
   }
 
   @Get('history')
-  history(@Request() req: any) {
-    const userId = req.user?.id ?? req.user?.userId ?? req.user?.sub;
+  history(@Request() req: AuthenticatedRequest) {
+    const userId = req.user.id;
     return this.prisma.approvalAction.findMany({
       where: { actorId: userId },
       include: { instance: true, task: true },
@@ -45,8 +46,8 @@ export class ApprovalTaskController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string, @Request() req: any) {
-    const userId = req.user?.id ?? req.user?.userId ?? req.user?.sub;
+  async findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    const userId = req.user.id;
     const record = await this.prisma.approvalTask.findUnique({
       where: { id },
       include: { instance: { include: { tasks: true, actions: true } } },
@@ -64,12 +65,12 @@ export class ApprovalTaskController {
   }
 
   @Post(':id/approve')
-  approve(@Param('id') id: string, @Body() dto: ApprovalTaskActionDto, @Request() req: any) {
-    return this.engine.approveTask(id, req.user?.id ?? req.user?.userId ?? req.user?.sub, dto.comment ?? '');
+  approve(@Param('id') id: string, @Body() dto: ApprovalTaskActionDto, @Request() req: AuthenticatedRequest) {
+    return this.engine.approveTask(id, req.user.id, dto.comment ?? '');
   }
 
   @Post(':id/reject')
-  reject(@Param('id') id: string, @Body() dto: RejectApprovalTaskDto, @Request() req: any) {
-    return this.engine.rejectTask(id, req.user?.id ?? req.user?.userId ?? req.user?.sub, dto.comment);
+  reject(@Param('id') id: string, @Body() dto: RejectApprovalTaskDto, @Request() req: AuthenticatedRequest) {
+    return this.engine.rejectTask(id, req.user.id, dto.comment);
   }
 }
