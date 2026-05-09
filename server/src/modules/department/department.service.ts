@@ -45,30 +45,48 @@ export class DepartmentService {
   }
 
   async create(dto: CreateDepartmentDTO) {
-    return this.prisma.department.create({
-      data: {
-        id: crypto.randomUUID(),
-        code: dto.code,
-        name: dto.name,
-        parentId: dto.parentId || null,
-        managerId: dto.managerId || null,
-        status: 'active',
-      },
-      include: this.departmentInclude,
+    return this.prisma.$transaction(async (tx) => {
+      const department = await tx.department.create({
+        data: {
+          id: crypto.randomUUID(),
+          code: dto.code,
+          name: dto.name,
+          parentId: dto.parentId || null,
+          managerId: dto.managerId || null,
+          status: 'active',
+        },
+        include: this.departmentInclude,
+      });
+      if (dto.managerId) {
+        await tx.user.updateMany({
+          where: { id: dto.managerId, departmentId: null },
+          data: { departmentId: department.id },
+        });
+      }
+      return department;
     });
   }
 
   async update(id: string, dto: UpdateDepartmentDTO) {
     await this.findOne(id);
-    return this.prisma.department.update({
-      where: { id },
-      data: {
-        name: dto.name,
-        parentId: dto.parentId,
-        managerId: dto.managerId,
-        status: dto.status,
-      },
-      include: this.departmentInclude,
+    return this.prisma.$transaction(async (tx) => {
+      const department = await tx.department.update({
+        where: { id },
+        data: {
+          name: dto.name,
+          parentId: dto.parentId,
+          managerId: dto.managerId,
+          status: dto.status,
+        },
+        include: this.departmentInclude,
+      });
+      if (dto.managerId) {
+        await tx.user.updateMany({
+          where: { id: dto.managerId, departmentId: null },
+          data: { departmentId: department.id },
+        });
+      }
+      return department;
     });
   }
 

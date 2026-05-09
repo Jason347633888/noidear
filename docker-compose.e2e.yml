@@ -124,6 +124,44 @@ services:
     networks:
       - e2e-net
 
+  e2e-runner:
+    image: mcr.microsoft.com/playwright:v1.59.1-jammy
+    working_dir: /work
+    environment:
+      PLAYWRIGHT_BASE_URL: http://client-e2e
+      API_BASE_URL: http://client-e2e/api/v1
+      E2E_ADMIN_USER: admin
+      E2E_ADMIN_PASS: ChangeMe123!
+      E2E_USER_USER: user1
+      E2E_USER_PASS: "12345678"
+      CI: "1"
+    volumes:
+      - .:/work
+      - e2e_node_modules:/work/node_modules
+      - e2e_client_node_modules:/work/client/node_modules
+      - e2e_server_node_modules:/work/server/node_modules
+      - e2e_mobile_node_modules:/work/mobile/node_modules
+      - e2e_types_node_modules:/work/packages/types/node_modules
+      - e2e_mcp_node_modules:/work/tools/noidear-mcp/node_modules
+      - npm_cache:/root/.npm
+    depends_on:
+      client-e2e:
+        condition: service_healthy
+    networks:
+      - e2e-net
+    command: >
+      sh -c "npm ci --workspace client --include-workspace-root=false &&
+             npm run test:e2e --workspace client -- ${E2E_ARGS:-}"
+
+volumes:
+  npm_cache:
+  e2e_node_modules:
+  e2e_client_node_modules:
+  e2e_server_node_modules:
+  e2e_mobile_node_modules:
+  e2e_types_node_modules:
+  e2e_mcp_node_modules:
+
 networks:
   e2e-net:
     driver: bridge

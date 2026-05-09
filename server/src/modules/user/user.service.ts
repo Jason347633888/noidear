@@ -6,6 +6,12 @@ import { UpdateUserDTO } from './dto/update-user.dto';
 import { BusinessException, ErrorCode } from '../../common/exceptions/business.exception';
 import * as bcrypt from 'bcrypt';
 
+const SYSTEM_ROLE_BASELINE = {
+  admin: { name: '系统管理员', description: '系统内置管理员角色' },
+  leader: { name: '部门负责人', description: '系统内置部门负责人角色' },
+  user: { name: '普通用户', description: '系统内置普通用户角色' },
+} as const;
+
 @Injectable()
 export class UserService {
   private readonly snowflake: Snowflake;
@@ -67,13 +73,41 @@ export class UserService {
     return role;
   }
 
+  private async ensureSystemRole(code: keyof typeof SYSTEM_ROLE_BASELINE) {
+    const role = SYSTEM_ROLE_BASELINE[code];
+    return this.prisma.role.upsert({
+      where: { code },
+      update: { deletedAt: null },
+      create: {
+        id: code,
+        code,
+        name: role.name,
+        description: role.description,
+      },
+      select: { id: true, code: true },
+    });
+  }
+
+  private async resolveRole(roleId?: string, fallbackRole?: string): Promise<{ id?: string; code: string }> {
+    if (roleId) {
+      const role = await this.prisma.role.findUnique({ where: { id: roleId }, select: { id: true, code: true } });
+      if (role) return role;
+    }
+    const code = fallbackRole ?? 'user';
+    if (code in SYSTEM_ROLE_BASELINE) {
+      return this.ensureSystemRole(code as keyof typeof SYSTEM_ROLE_BASELINE);
+    }
+    const role = await this.prisma.role.findUnique({ where: { code }, select: { id: true, code: true } });
+    return role ?? { code };
+  }
+
   async create(dto: CreateUserDTO) {
     const existing = await this.prisma.user.findUnique({ where: { username: dto.username } });
     if (existing) {
       throw new BusinessException(ErrorCode.CONFLICT, '用户名已存在');
     }
-    await this.validateRole(dto.roleId);
     const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const role = await this.resolveRole(dto.roleId, dto.role);
     return this.prisma.user.create({
       data: {
         id: this.snowflake.nextId(),
@@ -81,7 +115,7 @@ export class UserService {
         password: hashedPassword,
         name: dto.name,
         departmentId: dto.departmentId,
-        roleId: dto.roleId,
+        roleId: role.id ?? dto.roleId,
         superiorId: dto.superiorId,
       },
       include: this.userInclude,
@@ -97,8 +131,11 @@ export class UserService {
       status: dto.status,
     };
     if (dto.roleId !== undefined) {
-      await this.validateRole(dto.roleId);
-      data.roleId = dto.roleId;
+      const role = await this.resolveRole(dto.roleId, dto.role);
+      data.roleId = role.id ?? dto.roleId;
+    } else if (dto.role !== undefined) {
+      const role = await this.resolveRole(undefined, dto.role);
+      data.roleId = role.id;
     }
     Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
     const updated = await this.prisma.user.update({ where: { id }, data, include: this.userInclude });

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { apiBaseUrl } from '../../support/urls';
 
-const runId = process.env.E2E_RUN_ID ?? Date.now().toString(36);
+const uniqueId = () => process.env.E2E_RUN_ID ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 test.describe('Users Page', () => {
   test('should load /users page', async ({ page }) => {
@@ -11,22 +11,22 @@ test.describe('Users Page', () => {
 
   test('should display user list with expected columns', async ({ page }) => {
     await page.goto('/users');
-    await expect(page.locator('table, [role="table"]')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.el-table').first()).toBeVisible({ timeout: 15000 });
   });
 
   test('should have department filter', async ({ page }) => {
     await page.goto('/users');
-    await expect(page.locator('[placeholder*="部门"], [aria-label*="部门"]').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.filter-card .el-form-item', { hasText: '部门' })).toBeVisible({ timeout: 15000 });
   });
 
   test('should have role filter', async ({ page }) => {
     await page.goto('/users');
-    await expect(page.locator('[placeholder*="角色"], [aria-label*="角色"]').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.filter-card .el-form-item', { hasText: '角色' })).toBeVisible({ timeout: 15000 });
   });
 
   test('create-user modal allows empty department', async ({ page }) => {
     await page.goto('/users');
-    const createBtn = page.getByRole('button', { name: /新建用户|添加用户|创建用户/i });
+    const createBtn = page.locator('.create-btn').first();
     await expect(createBtn).toBeVisible({ timeout: 15000 });
     await createBtn.click();
     const modal = page.locator('[role="dialog"]');
@@ -38,7 +38,8 @@ test.describe('Users Page', () => {
     await page.keyboard.press('Escape');
   });
 
-  test(`creating a leader without department shows 未分配部门 [${runId}]`, async ({ page, request }) => {
+  test('creating a leader without department shows 未分配部门', async ({ page, request }) => {
+    const runId = uniqueId();
     const apiBase = apiBaseUrl();
     const loginRes = await request.post(`${apiBase}/auth/login`, {
       data: { username: process.env.E2E_ADMIN_USER ?? 'admin', password: process.env.E2E_ADMIN_PASS ?? 'ChangeMe123!' },
@@ -52,7 +53,7 @@ test.describe('Users Page', () => {
         username: `e2e_nodel_${runId}`,
         password: 'TestPass123!',
         name: `No-Dept Leader ${runId}`,
-        roles: ['leader'],
+        role: 'leader',
       },
     });
     if (createRes.status() === 201 || createRes.status() === 200) {

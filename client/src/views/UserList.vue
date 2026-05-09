@@ -18,13 +18,13 @@
           <el-input v-model="filterForm.keyword" placeholder="搜索用户名/姓名" clearable class="filter-input" />
         </el-form-item>
         <el-form-item label="部门" class="filter-item">
-          <el-select v-model="filterForm.departmentId" clearable placeholder="全部" class="filter-select">
+          <el-select v-model="filterForm.departmentId" clearable placeholder="全部部门" class="filter-select">
             <el-option label="未分配部门" value="unassigned" />
             <el-option v-for="dept in departments" :key="dept.id" :label="dept.name" :value="dept.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="角色" class="filter-item">
-          <el-select v-model="filterForm.roleCode" clearable placeholder="全部" class="filter-select">
+          <el-select v-model="filterForm.roleCode" clearable placeholder="全部角色" class="filter-select">
             <el-option v-for="role in systemRoles" :key="role.id" :label="role.name" :value="role.code" />
           </el-select>
         </el-form-item>
