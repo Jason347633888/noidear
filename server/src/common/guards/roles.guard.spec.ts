@@ -11,8 +11,8 @@ describe('RolesGuard', () => {
     guard = new RolesGuard(reflector);
   });
 
-  function createMockContext(userRole: string): ExecutionContext {
-    const request = { user: { id: 'user-1', username: 'testuser', role: userRole } };
+  function createMockContext(userRoleCode: string): ExecutionContext {
+    const request = { user: { id: 'user-1', username: 'testuser', roleCode: userRoleCode } };
     return {
       switchToHttp: () => ({
         getRequest: () => request,
@@ -70,7 +70,7 @@ describe('RolesGuard', () => {
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['admin']);
     const context = {
       switchToHttp: () => ({
-        getRequest: () => ({ user: { id: 'u-1', username: 'bad-user', role: undefined } }),
+        getRequest: () => ({ user: { id: 'u-1', username: 'bad-user', roleCode: undefined } }),
       }),
       getHandler: () => jest.fn(),
       getClass: () => jest.fn(),
