@@ -253,19 +253,31 @@ export class FilePreviewService {
 
     // 待审批的文档：创建者和审批人可以下载
     if (document.status === 'pending') {
-      // 获取审批记录
-      const approval = await this.prisma.approval.findFirst({
-        where: {
-          documentId: document.id,
-          status: 'pending',
-        },
-      });
-
-      if (
-        document.creatorId === userId ||
-        approval?.approverId === userId
-      ) {
+      if (document.creatorId === userId) {
         return;
+      }
+
+      // 优先从新系统查询审批人（有 approvalInstanceId 的文档）
+      if (document.approvalInstanceId) {
+        const pendingTask = await this.prisma.approvalTask.findFirst({
+          where: { instanceId: document.approvalInstanceId, status: 'PENDING' },
+        });
+        if (pendingTask?.assigneeUserId === userId) {
+          return;
+        }
+        // 若 task 按角色分配（assigneeUserId 为空），允许具有对应角色的用户下载
+        // 角色校验由上层 role 参数保障，此处宽松放行有 PENDING task 的同角色人员
+        if (pendingTask?.assigneeRoleCode && pendingTask.assigneeRoleCode === role) {
+          return;
+        }
+      } else {
+        // LEGACY: 旧 Approval 表兼容路径（历史文档 approvalInstanceId = null）
+        const approval = await this.prisma.approval.findFirst({
+          where: { documentId: document.id, status: 'pending' },
+        });
+        if (approval?.approverId === userId) {
+          return;
+        }
       }
 
       throw new BusinessException(
