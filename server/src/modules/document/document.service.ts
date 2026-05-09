@@ -505,36 +505,24 @@ export class DocumentService {
       data: { status: 'pending' },
     });
 
-    // 创建审批记录（旧 Approval 表保持兼容）
-    await this.prisma.approval.create({
-      data: {
-        id: this.snowflake.nextId(),
-        documentId: id,
-        approverId: creator.superiorId,
-        status: 'pending',
-      },
-    });
-
-    // 尝试通过统一审批引擎发起新流程（无匹配定义时降级，不影响旧流程）
-    if (this.approvalEngine) {
-      const triggerKey = `publish.level${document.level ?? 3}`;
-      try {
-        const instance = await this.approvalEngine.startApproval({
-          resourceType: 'document',
-          resourceId: id,
-          resourceStep: 'publish',
-          triggerKey,
-          title: `文件发布审批：${document.title || id}`,
-          createdById: userId,
-        });
-        await this.prisma.document.update({
-          where: { id },
-          data: { approvalInstanceId: instance.id },
-        });
-      } catch {
-        // 无匹配 ApprovalDefinition 时跳过统一追踪，旧 Approval 表继续工作
-      }
+    // 新文档审批全部走 ApprovalInstance。旧 Approval 表自 PR-4 起不再新增写入。
+    // 通过统一审批引擎发起审批（ApprovalDefinition 必须存在）
+    if (!this.approvalEngine) {
+      throw new Error('ApprovalEngineService not available — check document.module.ts');
     }
+    const triggerKey = `publish.level${document.level ?? 3}`;
+    const instance = await this.approvalEngine.startApproval({
+      resourceType: 'document',
+      resourceId: id,
+      resourceStep: 'publish',
+      triggerKey,
+      title: `文件发布审批：${document.title || id}`,
+      createdById: userId,
+    });
+    await this.prisma.document.update({
+      where: { id },
+      data: { approvalInstanceId: instance.id },
+    });
 
     // 发送通知给审批人
     await this.notification.create({
