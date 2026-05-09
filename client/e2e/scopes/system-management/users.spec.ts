@@ -1,9 +1,14 @@
 import { test, expect } from '@playwright/test';
 import { apiBaseUrl } from '../../support/urls';
+import { ensureOrgBootstrapCompleted } from '../../support/bootstrap';
 
 const uniqueId = () => process.env.E2E_RUN_ID ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 test.describe('Users Page', () => {
+  test.beforeEach(async ({ request }) => {
+    await ensureOrgBootstrapCompleted(request);
+  });
+
   test('should load /users page', async ({ page }) => {
     await page.goto('/users');
     await expect(page.getByRole('heading', { name: /用户管理|用户列表/i })).toBeVisible({ timeout: 15000 });
@@ -41,11 +46,7 @@ test.describe('Users Page', () => {
   test('creating a leader without department shows 未分配部门', async ({ page, request }) => {
     const runId = uniqueId();
     const apiBase = apiBaseUrl();
-    const loginRes = await request.post(`${apiBase}/auth/login`, {
-      data: { username: process.env.E2E_ADMIN_USER ?? 'admin', password: process.env.E2E_ADMIN_PASS ?? 'ChangeMe123!' },
-    });
-    expect(loginRes.ok()).toBeTruthy();
-    const { data: { token } } = await loginRes.json();
+    const { token, roleIds } = await ensureOrgBootstrapCompleted(request);
 
     const createRes = await request.post(`${apiBase}/users`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -53,7 +54,7 @@ test.describe('Users Page', () => {
         username: `e2e_nodel_${runId}`,
         password: 'TestPass123!',
         name: `No-Dept Leader ${runId}`,
-        role: 'leader',
+        roleId: roleIds.leader,
       },
     });
     if (createRes.status() === 201 || createRes.status() === 200) {

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { apiBaseUrl } from '../../support/urls';
+import { ensureOrgBootstrapCompleted } from '../../support/bootstrap';
 
 const uniqueId = () => process.env.E2E_RUN_ID ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -7,19 +8,20 @@ test.describe('System Management Cross-Page Linkage', () => {
   test.describe.configure({ mode: 'serial' });
 
   let token: string;
+  let leaderRoleId: string;
   let userId: string;
   let deptId: string;
   let runId: string;
 
+  test.beforeAll(async ({ request }) => {
+    const bootstrap = await ensureOrgBootstrapCompleted(request);
+    token = bootstrap.token;
+    leaderRoleId = bootstrap.roleIds.leader;
+  });
+
   test('setup: create unassigned leader via API', async ({ request }) => {
     runId = uniqueId();
     const apiBase = apiBaseUrl();
-    const loginRes = await request.post(`${apiBase}/auth/login`, {
-      data: { username: process.env.E2E_ADMIN_USER ?? 'admin', password: process.env.E2E_ADMIN_PASS ?? 'ChangeMe123!' },
-    });
-    expect(loginRes.ok()).toBeTruthy();
-    const body = await loginRes.json();
-    token = body.data.token;
 
     const userRes = await request.post(`${apiBase}/users`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -27,7 +29,7 @@ test.describe('System Management Cross-Page Linkage', () => {
         username: `e2e_link_leader_${runId}`,
         password: 'TestPass123!',
         name: `Linkage Leader ${runId}`,
-        role: 'leader',
+        roleId: leaderRoleId,
       },
     });
     expect([200, 201]).toContain(userRes.status());
