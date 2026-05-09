@@ -16,7 +16,7 @@ RUN npm ci --workspace server --include-workspace-root=false
 COPY server ./server
 WORKDIR /app/server
 RUN npx prisma generate --schema=src/prisma/schema.prisma
-RUN npm run build
+RUN npm run build:seed
 
 # ---- Stage 2: Runtime ----
 FROM node:20-alpine
@@ -43,4 +43,4 @@ ENV NODE_ENV=production
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy --schema=src/prisma/schema.prisma && node dist/main"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=src/prisma/schema.prisma && node dist/prisma/seed-baseline.js && node dist/main"]
