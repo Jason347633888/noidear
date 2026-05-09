@@ -5,7 +5,7 @@ interface CurrentUser {
   id: string;
   username: string;
   name: string;
-  role: 'admin' | 'leader' | 'user';
+  roleCode: 'admin' | 'leader' | 'user';
   roleId: string;
   departmentId?: string | null;
 }
@@ -23,8 +23,8 @@ export const useUserStore = defineStore('user', {
   }),
   getters: {
     isLoggedIn: (state) => !!state.token,
-    isAdmin: (state) => state.user?.role === 'admin',
-    isLeader: (state) => state.user?.role === 'leader' || state.user?.role === 'admin',
+    isAdmin: (state) => state.user?.roleCode === 'admin',
+    isLeader: (state) => state.user?.roleCode === 'leader' || state.user?.roleCode === 'admin',
   },
   actions: {
     async login(username: string, password: string): Promise<boolean> {

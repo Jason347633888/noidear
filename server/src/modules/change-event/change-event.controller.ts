@@ -37,7 +37,7 @@ export class ChangeEventController {
     @Body() body: { dataJson?: object; existingRecordId?: string },
     @Request() req: { user: { id?: string; userId?: string } },
   ) {
-    const userId = req.user.id ?? req.user.userId;
+    const userId = req.user.id;
     if (!userId) throw new BadRequestException('Unable to resolve userId from token');
     return this.formTaskService.fillTask(taskId, body.dataJson ?? {}, userId, body.existingRecordId);
   }

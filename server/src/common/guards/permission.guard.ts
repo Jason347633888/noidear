@@ -103,7 +103,7 @@ export class PermissionGuard implements CanActivate {
     }
 
     // 管理员跳过权限检查
-    if (user.role === 'admin') {
+    if (user.roleCode === 'admin') {
       return true;
     }
 

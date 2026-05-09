@@ -75,7 +75,7 @@ export class WorkflowInstanceController {
     @Body() cancelDto: CancelWorkflowInstanceDto,
     @Request() req: any,
   ) {
-    return this.instanceService.cancel(id, cancelDto, req.user.id, req.user.role);
+    return this.instanceService.cancel(id, cancelDto, req.user.id, req.user.roleCode);
   }
 
   @Get(':id')

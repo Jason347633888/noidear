@@ -25,7 +25,7 @@ export interface LoginResponse {
     id: string;
     username: string;
     name: string;
-    role: 'admin' | 'leader' | 'user';
+    roleCode: 'admin' | 'leader' | 'user';
     roleId: string;
     companyId?: string;
   };
@@ -76,8 +76,6 @@ export interface Department {
   id: string;
   code: string;
   name: string;
-  parentId: string | null;
-  parentName?: string;
   managerId: string | null;
   manager?: {
     id: string;

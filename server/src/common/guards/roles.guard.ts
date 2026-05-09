@@ -19,7 +19,7 @@ export class RolesGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    const roleCode = user?.role;
+    const roleCode = user?.roleCode;
     if (!roleCode) {
       throw new UnauthorizedException('用户缺少正式角色');
     }

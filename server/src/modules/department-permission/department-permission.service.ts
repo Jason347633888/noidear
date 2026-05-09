@@ -7,7 +7,7 @@ export interface ResourcePermConfig {
 }
 
 export interface DeptPermissionConfig {
-  isolationLevel: 'none' | 'department' | 'subdepartment';
+  isolationLevel: 'none' | 'department';
   allowedDeptIds: string[];
   resources: ResourcePermConfig[];
 }

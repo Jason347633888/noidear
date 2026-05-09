@@ -77,7 +77,7 @@ export class AuthService {
         id: user.id,
         username: user.username,
         name: user.name,
-        role: roleCode,
+        roleCode,
         roleId: user.roleId,
         companyId: user.company_id,
       },
@@ -107,9 +107,8 @@ export class AuthService {
   validateUser(payload: AuthTokenPayload) {
     return {
       id: payload.sub,
-      userId: payload.sub,
       username: payload.username,
-      role: payload.role,
+      roleCode: payload.role,
       roleId: payload.roleId ?? '',
       name: payload.name,
       companyId: payload.companyId ?? '1',

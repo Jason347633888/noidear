@@ -20,7 +20,7 @@ export class RecycleBinController {
       query.limit ?? 10,
       query.keyword,
       req.user.id,
-      req.user.role,
+      req.user.roleCode,
     );
   }
 
@@ -30,7 +30,7 @@ export class RecycleBinController {
     @Body() dto: BatchOperationDto,
     @Req() req: any,
   ) {
-    await this.service.batchRestore(type, dto.ids, req.user.id, req.user.role);
+    await this.service.batchRestore(type, dto.ids, req.user.id, req.user.roleCode);
     return { success: true, message: `成功恢复 ${dto.ids.length} 项` };
   }
 
@@ -40,7 +40,7 @@ export class RecycleBinController {
     @Body() dto: BatchOperationDto,
     @Req() req: any,
   ) {
-    await this.service.batchPermanentDelete(type, dto.ids, req.user.id, req.user.role);
+    await this.service.batchPermanentDelete(type, dto.ids, req.user.id, req.user.roleCode);
     return { success: true, message: `成功删除 ${dto.ids.length} 项` };
   }
 
@@ -50,7 +50,7 @@ export class RecycleBinController {
     @Param('id') id: string,
     @Req() req: any,
   ) {
-    await this.service.restore(type, id, req.user.id, req.user.role);
+    await this.service.restore(type, id, req.user.id, req.user.roleCode);
     return { success: true, message: '恢复成功' };
   }
 
@@ -60,7 +60,7 @@ export class RecycleBinController {
     @Param('id') id: string,
     @Req() req: any,
   ) {
-    await this.service.permanentDelete(type, id, req.user.id, req.user.role);
+    await this.service.permanentDelete(type, id, req.user.id, req.user.roleCode);
     return { success: true, message: '永久删除成功' };
   }
 }

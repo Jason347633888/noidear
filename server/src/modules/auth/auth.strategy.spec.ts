@@ -12,11 +12,12 @@ describe('JwtStrategy', () => {
       strategy.validate({ sub: 'u1', username: 'admin', role: 'admin', name: '管理员', companyId: '2' }),
     ).resolves.toEqual({
       id: 'u1',
-      userId: 'u1',
       username: 'admin',
-      role: 'admin',
+      roleCode: 'admin',
+      roleId: '',
       name: '管理员',
       companyId: '2',
+      departmentId: undefined,
     });
   });
 

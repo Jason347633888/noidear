@@ -13,6 +13,13 @@ export class OrgBootstrapService {
   }
 
   async getStatus(): Promise<OrgBootstrapStatusDto> {
+    const completedFlag = await this.prisma.systemConfig.findUnique({
+      where: { key: BOOTSTRAP_CONFIG_KEY },
+    });
+    if (completedFlag?.value === 'true') {
+      return { completed: true, step: 'completed', reasons: [] };
+    }
+
     const [systemRoles, departments, managedDepartments, businessMembers] = await Promise.all([
       this.prisma.role.count({
         where: { code: { in: ['admin', 'leader', 'user'] }, deletedAt: null },

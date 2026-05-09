@@ -20,7 +20,6 @@ describe('DepartmentService', () => {
     id: 'dept-1',
     code: 'QA',
     name: '品质部',
-    parentId: null,
     managerId: 'u-1',
     manager: mockManager,
     status: 'active',
@@ -28,6 +27,8 @@ describe('DepartmentService', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
   };
+
+  const validManagerCandidate = { status: 'active', roleObj: { code: 'leader' } };
 
   beforeEach(async () => {
     const mockPrisma = {
@@ -40,6 +41,7 @@ describe('DepartmentService', () => {
       },
       user: {
         updateMany: jest.fn(),
+        findUnique: jest.fn().mockResolvedValue(validManagerCandidate),
       },
       $transaction: jest.fn(async (cb) => cb(mockPrisma)),
     };
@@ -110,6 +112,27 @@ describe('DepartmentService', () => {
       );
       expect(prisma.user.updateMany).not.toHaveBeenCalled();
     });
+
+    it('managerId 对应用户不存在时应拒绝创建', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(service.create({ code: 'QA', name: '品质部', managerId: 'invalid-id' }))
+        .rejects.toThrow('负责人用户 invalid-id 不存在');
+    });
+
+    it('managerId 对应用户非 active 时应拒绝创建', async () => {
+      prisma.user.findUnique.mockResolvedValue({ status: 'disabled', roleObj: { code: 'leader' } });
+
+      await expect(service.create({ code: 'QA', name: '品质部', managerId: 'u-inactive' }))
+        .rejects.toThrow('负责人必须为 active 状态的用户');
+    });
+
+    it('managerId 对应用户非 leader 角色时应拒绝创建', async () => {
+      prisma.user.findUnique.mockResolvedValue({ status: 'active', roleObj: { code: 'admin' } });
+
+      await expect(service.create({ code: 'QA', name: '品质部', managerId: 'u-not-leader' }))
+        .rejects.toThrow('负责人必须为 leader 角色的用户');
+    });
   });
 
   describe('update', () => {
@@ -132,12 +155,12 @@ describe('DepartmentService', () => {
   });
 
   describe('findOne', () => {
-    it('应该返回部门详情', async () => {
+    it('应该返回部门详情（含 managerStatus）', async () => {
       prisma.department.findUnique.mockResolvedValue(mockDepartment);
 
       const result = await service.findOne('dept-1');
 
-      expect(result).toEqual(mockDepartment);
+      expect(result).toEqual({ ...mockDepartment, managerStatus: 'valid' });
     });
 
     it('部门不存在时应该抛出 NotFoundException', async () => {

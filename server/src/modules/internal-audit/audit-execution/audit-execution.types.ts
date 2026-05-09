@@ -1,12 +1,6 @@
 import { Request as ExpressRequest } from 'express';
+import { AuthenticatedUser } from '../../auth/authenticated-user';
 
-/**
- * Authenticated request interface with JWT user payload
- */
 export interface AuthenticatedRequest extends ExpressRequest {
-  user: {
-    userId: string;
-    username: string;
-    role: string;
-  };
+  user: AuthenticatedUser;
 }

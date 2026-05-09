@@ -1,8 +1,7 @@
 export interface AuthenticatedUser {
   id: string;
-  userId: string;
   username: string;
-  role: 'admin' | 'leader' | 'user';
+  roleCode: string;
   roleId: string;
   name: string;
   companyId: string;

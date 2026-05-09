@@ -20,14 +20,10 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { PermissionGuard } from '../../../common/guards/permission.guard';
 import { CheckPermission } from '../../../common/decorators/permission.decorator';
 import { AuditService } from '../../audit/audit.service';
+import { AuthenticatedUser } from '../../auth/authenticated-user';
 
 interface AuthenticatedRequest extends ExpressRequest {
-  user: {
-    userId: string;
-    username: string;
-    role: string;
-    companyId: string;
-  };
+  user: AuthenticatedUser;
 }
 
 @ApiTags('Audit Verification')
@@ -46,7 +42,7 @@ export class VerificationController {
   @ApiResponse({ status: 200, description: 'Pending verifications retrieved' })
   async getPendingVerifications(@Request() req: AuthenticatedRequest) {
     const results = await this.verificationService.getPendingVerifications(
-      req.user.userId,
+      req.user.id,
     );
 
     await this.logSensitiveOperation(
@@ -79,7 +75,7 @@ export class VerificationController {
     const result = await this.verificationService.verifyRectification(
       id,
       verifyDto,
-      req.user.userId,
+      req.user.id,
       req.user.companyId,
     );
 
@@ -110,7 +106,7 @@ export class VerificationController {
     const result = await this.verificationService.rejectRectification(
       id,
       rejectDto,
-      req.user.userId,
+      req.user.id,
     );
 
     await this.logSensitiveOperation(
@@ -135,7 +131,7 @@ export class VerificationController {
   ) {
     try {
       await this.auditService.createSensitiveLog({
-        userId: req.user.userId,
+        userId: req.user.id,
         username: req.user.username,
         action,
         resourceType,

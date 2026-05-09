@@ -24,10 +24,11 @@ describe('AuthController', () => {
 
   it('returns the authenticated user profile', async () => {
     const user = {
-      userId: 'user-1',
       id: 'user-1',
       username: 'admin',
-      role: 'admin',
+      roleCode: 'admin',
+      roleId: 'role-admin-id',
+      name: '管理员',
       companyId: '1',
     };
 
