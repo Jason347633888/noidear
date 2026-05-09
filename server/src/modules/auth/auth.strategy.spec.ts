@@ -21,11 +21,11 @@ describe('JwtStrategy', () => {
     });
   });
 
-  it('defaults old JWT payloads to company 1', async () => {
+  it('throws InternalServerErrorException when companyId is missing from JWT payload', async () => {
     const strategy = new JwtStrategy();
 
     await expect(
       strategy.validate({ sub: 'u1', username: 'admin', role: 'admin', name: '管理员' }),
-    ).resolves.toEqual(expect.objectContaining({ companyId: '1' }));
+    ).rejects.toThrow('JWT payload 缺少 companyId，认证上下文契约被破坏');
   });
 });

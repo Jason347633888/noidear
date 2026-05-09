@@ -14,6 +14,7 @@ import {
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { ProcessStepApprovalService } from './process-step-approval.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 
@@ -38,8 +39,8 @@ export class ProcessInstanceController {
 
   @Get('approvals/pending')
   @ApiOperation({ summary: '查我的待签任务' })
-  async getPendingApprovals(@Request() req: any) {
-    const userId = req.user?.sub || req.user?.id;
+  async getPendingApprovals(@Request() req: AuthenticatedRequest) {
+    const userId = req.user.id;
     const list = await this.approvalService.listPendingForUser(userId);
     return { code: 0, data: list, message: 'success' };
   }
@@ -59,8 +60,8 @@ export class ProcessInstanceController {
 
   @Post()
   @ApiOperation({ summary: '创建流程实例' })
-  async create(@Body() data: any, @Request() req: any) {
-    const userId = req.user?.sub || req.user?.id;
+  async create(@Body() data: any, @Request() req: AuthenticatedRequest) {
+    const userId = req.user.id;
 
     const productId = typeof data.productId === 'string' && data.productId.trim()
       ? data.productId.trim()
@@ -93,9 +94,9 @@ export class ProcessInstanceController {
   async submitStep(
     @Param('id') id: string,
     @Body() body: any,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
-    const userId = req.user?.sub || req.user?.id;
+    const userId = req.user.id;
 
     const instance = await this.prisma.processInstance.findUnique({
       where: { id },
@@ -194,9 +195,9 @@ export class ProcessInstanceController {
     @Param('id') id: string,
     @Param('stepNumber') stepNumber: string,
     @Body() body: any,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
-    const userId = req.user?.sub || req.user?.id;
+    const userId = req.user.id;
     const { action, comment = '' } = body;
     // Never trust role from client — omit requestedRole entirely
     const result = await this.approvalService.submitApproval(

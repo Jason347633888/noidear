@@ -14,6 +14,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ImportService } from './import.service';
@@ -42,9 +43,9 @@ export class ImportController {
   @UseGuards(RolesGuard)
   @Roles('admin')
   @UseInterceptors(FileInterceptor('file'))
-  async importDocuments(@UploadedFile() file: Express.Multer.File, @Request() req: { user: { sub: string } }) {
+  async importDocuments(@UploadedFile() file: Express.Multer.File, @Request() req: AuthenticatedRequest) {
     this.validateFile(file);
-    return this.service.importDocuments(file.buffer, req.user.sub);
+    return this.service.importDocuments(file.buffer, req.user.id);
   }
 
   @Get('templates/users')

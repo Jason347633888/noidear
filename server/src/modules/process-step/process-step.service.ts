@@ -16,23 +16,23 @@ export class ProcessStepService {
     }
   }
 
-  async findAll() {
+  async findAll(companyId: string) {
     return this.prisma.processStep.findMany({
-      where: { company_id: '1', deleted_at: null },
+      where: { company_id: companyId, deleted_at: null },
       orderBy: [{ step_no: 'asc' }, { created_at: 'desc' }],
     });
   }
 
-  async findByProduct(productId: string) {
+  async findByProduct(productId: string, companyId: string) {
     return this.prisma.processStep.findMany({
-      where: { company_id: '1', product_id: productId, deleted_at: null },
+      where: { company_id: companyId, product_id: productId, deleted_at: null },
       orderBy: { step_no: 'asc' },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, companyId: string) {
     const step = await this.prisma.processStep.findFirst({
-      where: { id, company_id: '1', deleted_at: null },
+      where: { id, company_id: companyId, deleted_at: null },
     });
     if (!step) {
       throw new NotFoundException(`ProcessStep ${id} not found`);
@@ -40,12 +40,12 @@ export class ProcessStepService {
     return step;
   }
 
-  async create(dto: CreateProcessStepDto) {
+  async create(dto: CreateProcessStepDto, companyId: string) {
     this.assertHasProductOrRecipe(dto.product_id, dto.recipe_id);
 
     return this.prisma.processStep.create({
       data: {
-        company_id: '1',
+        company_id: companyId,
         product_id: dto.product_id,
         recipe_id: dto.recipe_id,
         step_no: dto.step_no,
@@ -64,10 +64,9 @@ export class ProcessStepService {
     });
   }
 
-  async update(id: string, dto: UpdateProcessStepDto) {
-    await this.findOne(id);
-    return this.prisma.processStep.update({
-      where: { id },
+  async update(id: string, dto: UpdateProcessStepDto, companyId: string) {
+    const result = await this.prisma.processStep.updateMany({
+      where: { id, company_id: companyId, deleted_at: null },
       data: {
         ...(dto.product_id !== undefined && { product_id: dto.product_id }),
         ...(dto.recipe_id !== undefined && { recipe_id: dto.recipe_id }),
@@ -83,13 +82,20 @@ export class ProcessStepService {
         ...(dto.responsible_person !== undefined && { responsible_person: dto.responsible_person }),
       },
     });
+    if (result.count === 0) {
+      throw new NotFoundException(`ProcessStep ${id} not found`);
+    }
+    return this.findOne(id, companyId);
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
-    return this.prisma.processStep.update({
-      where: { id },
+  async remove(id: string, companyId: string) {
+    const result = await this.prisma.processStep.updateMany({
+      where: { id, company_id: companyId, deleted_at: null },
       data: { deleted_at: new Date() },
     });
+    if (result.count === 0) {
+      throw new NotFoundException(`ProcessStep ${id} not found`);
+    }
+    return { success: true };
   }
 }

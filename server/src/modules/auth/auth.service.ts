@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -105,13 +105,16 @@ export class AuthService {
   }
 
   validateUser(payload: AuthTokenPayload) {
+    if (!payload.companyId) {
+      throw new InternalServerErrorException('JWT payload 缺少 companyId，认证上下文契约被破坏');
+    }
     return {
       id: payload.sub,
       username: payload.username,
       roleCode: payload.role,
       roleId: payload.roleId ?? '',
       name: payload.name,
-      companyId: payload.companyId ?? '1',
+      companyId: payload.companyId,
       departmentId: payload.departmentId,
     };
   }
