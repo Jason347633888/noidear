@@ -39,7 +39,7 @@ describe('SupplierAccessService', () => {
         id: 'supplier-1',
         name: '合格供应商',
         status: 'active',
-        supplier_status: 'approved',
+        evaluationStatus: 'approved',
         deletedAt: null,
       } as any);
 
@@ -51,7 +51,7 @@ describe('SupplierAccessService', () => {
         id: 'supplier-1',
         name: '停用供应商',
         status: 'disabled',
-        supplier_status: 'approved',
+        evaluationStatus: 'approved',
         deletedAt: null,
       } as any);
 
@@ -65,7 +65,7 @@ describe('SupplierAccessService', () => {
         id: 'supplier-1',
         name: '淘汰供应商',
         status: 'active',
-        supplier_status: 'eliminated',
+        evaluationStatus: 'eliminated',
         deletedAt: null,
       } as any);
 
@@ -79,7 +79,7 @@ describe('SupplierAccessService', () => {
         id: 'supplier-1',
         name: '暂停供应商',
         status: 'active',
-        supplier_status: 'suspended',
+        evaluationStatus: 'suspended',
         deletedAt: null,
       } as any);
 
@@ -116,7 +116,7 @@ describe('SupplierAccessService', () => {
           id: 'supplier-1',
           name: '淘汰供应商',
           status: 'active',
-          supplier_status: 'eliminated',
+          evaluationStatus: 'eliminated',
           deletedAt: null,
         },
       } as any);
