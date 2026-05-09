@@ -107,7 +107,7 @@ export class UserService {
       throw new BusinessException(ErrorCode.CONFLICT, '用户名已存在');
     }
     const hashedPassword = await bcrypt.hash(dto.password, 10);
-    const role = await this.resolveRole(dto.roleId, dto.role);
+    const role = await this.resolveRole(dto.roleId);
     return this.prisma.user.create({
       data: {
         id: this.snowflake.nextId(),
@@ -131,11 +131,8 @@ export class UserService {
       status: dto.status,
     };
     if (dto.roleId !== undefined) {
-      const role = await this.resolveRole(dto.roleId, dto.role);
+      const role = await this.resolveRole(dto.roleId);
       data.roleId = role.id ?? dto.roleId;
-    } else if (dto.role !== undefined) {
-      const role = await this.resolveRole(undefined, dto.role);
-      data.roleId = role.id;
     }
     Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
     const updated = await this.prisma.user.update({ where: { id }, data, include: this.userInclude });
