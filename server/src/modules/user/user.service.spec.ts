@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UserService } from './user.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -199,6 +199,19 @@ describe('UserService', () => {
       })).rejects.toThrow('角色不存在或已停用');
     });
 
+    it('角色已软删除时应该抛出 BadRequestException', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+      prisma.role.findUnique.mockResolvedValue({ id: 'r-del', code: 'user', deletedAt: new Date() });
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
+
+      await expect(service.create({
+        username: 'newuser',
+        password: '123456',
+        name: '新用户',
+        roleId: 'r-del',
+      })).rejects.toThrow(BadRequestException);
+    });
+
     it('用户名已存在时应该抛出 BusinessException', async () => {
       prisma.user.findUnique.mockResolvedValue(mockUser);
 
@@ -212,13 +225,42 @@ describe('UserService', () => {
   });
 
   describe('update', () => {
-    it('应该成功更新用户', async () => {
+    it('应该成功更新用户（不含 roleId）', async () => {
       prisma.user.findUnique.mockResolvedValue(mockUser);
       prisma.user.update.mockResolvedValue({ ...mockUser, name: '更新后' });
 
       const result = await service.update('user-1', { name: '更新后' });
 
       expect(result.name).toBe('更新后');
+    });
+
+    it('传入有效 roleId 时应该更新角色', async () => {
+      prisma.user.findUnique.mockResolvedValueOnce(mockUser);
+      prisma.role.findUnique.mockResolvedValue({ id: 'r-leader', code: 'leader', deletedAt: null });
+      prisma.user.update.mockResolvedValue({ ...mockUser, roleId: 'r-leader' });
+
+      const result = await service.update('user-1', { roleId: 'r-leader' });
+
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ roleId: 'r-leader' }),
+        }),
+      );
+      expect(result.roleId).toBe('r-leader');
+    });
+
+    it('传入不存在的 roleId 时应该抛出 BadRequestException', async () => {
+      prisma.user.findUnique.mockResolvedValueOnce(mockUser);
+      prisma.role.findUnique.mockResolvedValue(null);
+
+      await expect(service.update('user-1', { roleId: 'bad-role' })).rejects.toThrow('角色不存在或已停用');
+    });
+
+    it('传入已软删除的 roleId 时应该抛出 BadRequestException', async () => {
+      prisma.user.findUnique.mockResolvedValueOnce(mockUser);
+      prisma.role.findUnique.mockResolvedValue({ id: 'r-del', code: 'user', deletedAt: new Date() });
+
+      await expect(service.update('user-1', { roleId: 'r-del' })).rejects.toThrow(BadRequestException);
     });
   });
 

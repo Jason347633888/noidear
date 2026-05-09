@@ -38,6 +38,10 @@ describe('DepartmentService', () => {
         update: jest.fn(),
         count: jest.fn(),
       },
+      user: {
+        updateMany: jest.fn(),
+      },
+      $transaction: jest.fn(async (cb) => cb(mockPrisma)),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -83,6 +87,17 @@ describe('DepartmentService', () => {
       );
     });
 
+    it('创建部门时应把未分配部门的负责人归入该部门', async () => {
+      prisma.department.create.mockResolvedValue(mockDepartment);
+
+      await service.create({ code: 'QA', name: '品质部', managerId: 'u-1' });
+
+      expect(prisma.user.updateMany).toHaveBeenCalledWith({
+        where: { id: 'u-1', departmentId: null },
+        data: { departmentId: 'dept-1' },
+      });
+    });
+
     it('managerId 为空时应设为 null', async () => {
       prisma.department.create.mockResolvedValue({ ...mockDepartment, managerId: null, manager: null });
 
@@ -93,6 +108,7 @@ describe('DepartmentService', () => {
           data: expect.objectContaining({ managerId: null }),
         }),
       );
+      expect(prisma.user.updateMany).not.toHaveBeenCalled();
     });
   });
 
@@ -108,6 +124,10 @@ describe('DepartmentService', () => {
           data: expect.objectContaining({ managerId: 'u-2' }),
         }),
       );
+      expect(prisma.user.updateMany).toHaveBeenCalledWith({
+        where: { id: 'u-2', departmentId: null },
+        data: { departmentId: 'dept-1' },
+      });
     });
   });
 

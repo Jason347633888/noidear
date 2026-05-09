@@ -24,7 +24,7 @@ test.describe('Health Check Page', () => {
   });
 
   test('should load health check page successfully', async ({ page }) => {
-    await page.goto('http://localhost:5173/health');
+    await page.goto('/health');
     await page.waitForLoadState('networkidle');
 
     // Verify page title
@@ -38,7 +38,7 @@ test.describe('Health Check Page', () => {
   });
 
   test('should display overall system health status', async ({ page }) => {
-    await page.goto('http://localhost:5173/health');
+    await page.goto('/health');
     await page.waitForLoadState('networkidle');
 
     // Wait for health data to load
@@ -63,7 +63,7 @@ test.describe('Health Check Page', () => {
   });
 
   test('should display PostgreSQL health status', async ({ page }) => {
-    await page.goto('http://localhost:5173/health');
+    await page.goto('/health');
     await page.waitForLoadState('networkidle');
 
     // Wait for health data to load
@@ -94,7 +94,7 @@ test.describe('Health Check Page', () => {
   });
 
   test('should display Redis health status', async ({ page }) => {
-    await page.goto('http://localhost:5173/health');
+    await page.goto('/health');
     await page.waitForLoadState('networkidle');
 
     // Wait for health data to load
@@ -125,7 +125,7 @@ test.describe('Health Check Page', () => {
   });
 
   test('should display MinIO health status', async ({ page }) => {
-    await page.goto('http://localhost:5173/health');
+    await page.goto('/health');
     await page.waitForLoadState('networkidle');
 
     // Wait for health data to load
@@ -156,7 +156,7 @@ test.describe('Health Check Page', () => {
   });
 
   test('should display disk space health status', async ({ page }) => {
-    await page.goto('http://localhost:5173/health');
+    await page.goto('/health');
     await page.waitForLoadState('networkidle');
 
     // Wait for health data to load
@@ -186,7 +186,7 @@ test.describe('Health Check Page', () => {
   });
 
   test('should identify degraded service', async ({ page }) => {
-    await page.goto('http://localhost:5173/health');
+    await page.goto('/health');
     await page.waitForLoadState('networkidle');
 
     // Wait for health data to load
@@ -214,7 +214,7 @@ test.describe('Health Check Page', () => {
   });
 
   test('should view detailed service information', async ({ page }) => {
-    await page.goto('http://localhost:5173/health');
+    await page.goto('/health');
     await page.waitForLoadState('networkidle');
 
     // Wait for health data to load
@@ -250,7 +250,7 @@ test.describe('Health Check Page', () => {
   });
 
   test('should display service latency metrics', async ({ page }) => {
-    await page.goto('http://localhost:5173/health');
+    await page.goto('/health');
     await page.waitForLoadState('networkidle');
 
     // Wait for health data to load
@@ -275,7 +275,7 @@ test.describe('Health Check Page', () => {
   });
 
   test('should display error messages for unhealthy services', async ({ page }) => {
-    await page.goto('http://localhost:5173/health');
+    await page.goto('/health');
     await page.waitForLoadState('networkidle');
 
     // Wait for health data to load
@@ -303,7 +303,7 @@ test.describe('Health Check Page', () => {
   });
 
   test('should refresh health status', async ({ page }) => {
-    await page.goto('http://localhost:5173/health');
+    await page.goto('/health');
     await page.waitForLoadState('networkidle');
 
     // Wait for initial load
@@ -340,7 +340,7 @@ test.describe('Health Check Page', () => {
   });
 
   test('should display timestamp of last health check', async ({ page }) => {
-    await page.goto('http://localhost:5173/health');
+    await page.goto('/health');
     await page.waitForLoadState('networkidle');
 
     // Wait for health data to load
@@ -372,7 +372,7 @@ test.describe('Health Check Page', () => {
       });
     });
 
-    await page.goto('http://localhost:5173/health');
+    await page.goto('/health');
     await page.waitForLoadState('networkidle');
 
     // Wait for error to be displayed
@@ -393,7 +393,7 @@ test.describe('Health Check Page', () => {
   });
 
   test('should display health status color coding', async ({ page }) => {
-    await page.goto('http://localhost:5173/health');
+    await page.goto('/health');
     await page.waitForLoadState('networkidle');
 
     // Wait for health data to load
@@ -430,7 +430,7 @@ test.describe('Health Check Page', () => {
   });
 
   test('should navigate from health page to monitoring dashboard', async ({ page }) => {
-    await page.goto('http://localhost:5173/health');
+    await page.goto('/health');
     await page.waitForLoadState('networkidle');
 
     // Look for navigation link to monitoring dashboard

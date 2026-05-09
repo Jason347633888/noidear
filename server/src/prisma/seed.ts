@@ -31,13 +31,37 @@ async function main() {
 
   console.log('✅ 部门创建完成');
 
-  // 2. 创建管理员用户
+  // 2. 创建系统角色与一个可选部门负责人，保证系统管理页在新库中可直接操作。
+  const systemRoles = [
+    { id: 'admin', code: 'admin', name: '系统管理员', description: '系统内置管理员角色' },
+    { id: 'leader', code: 'leader', name: '部门负责人', description: '系统内置部门负责人角色' },
+    { id: 'user', code: 'user', name: '普通用户', description: '系统内置普通用户角色' },
+  ];
+
+  for (const role of systemRoles) {
+    await prisma.role.upsert({
+      where: { code: role.code },
+      update: {
+        name: role.name,
+        description: role.description,
+        deletedAt: null,
+      },
+      create: role,
+    });
+  }
+
+  const adminRole = await prisma.role.findFirstOrThrow({ where: { code: 'admin', deletedAt: null } });
+  const leaderRole = await prisma.role.findFirstOrThrow({ where: { code: 'leader', deletedAt: null } });
+
+  // 3. 创建管理员用户
   const adminPassword = process.env.ADMIN_PASSWORD || 'ChangeMe123!';
   const hashedPassword = await bcrypt.hash(adminPassword, 10);
-  const adminRole = await prisma.role.findFirstOrThrow({ where: { code: 'admin', deletedAt: null } });
-  const adminUser = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { username: 'admin' },
-    update: {},
+    update: {
+      roleId: adminRole.id,
+      status: 'active',
+    },
     create: {
       id: 'user_admin',
       username: 'admin',
@@ -54,7 +78,29 @@ async function main() {
 
   console.log('✅ 管理员用户创建完成');
 
-  // 3. 创建细粒度权限定义（TASK-235）
+  const leaderPassword = await bcrypt.hash('ChangeMe123!', 10);
+  await prisma.user.upsert({
+    where: { username: 'seed_leader' },
+    update: {
+      name: '种子负责人',
+      roleId: leaderRole.id,
+      departmentId: null,
+      status: 'active',
+    },
+    create: {
+      id: 'user_seed_leader',
+      username: 'seed_leader',
+      password: leaderPassword,
+      name: '种子负责人',
+      roleId: leaderRole.id,
+      status: 'active',
+      departmentId: null,
+    },
+  });
+
+  console.log('✅ 系统角色与默认负责人创建完成');
+
+  // 4. 创建细粒度权限定义（TASK-235）
   const permissions = [
     // 文档权限
     {

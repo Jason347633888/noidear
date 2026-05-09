@@ -12,7 +12,8 @@ import { ApprovalDetailPage } from './pages/ApprovalDetailPage';
  * - Backend running with seeded data
  */
 
-const API_BASE = process.env.API_BASE_URL || 'http://localhost:3000/api/v1';
+import { apiBaseUrl } from './support/urls';
+const API_BASE = apiBaseUrl();
 
 test.describe('Sequential Approval Flow', () => {
   test('S-SEQ-1: sequential type shown in pending list', async ({ page }) => {

@@ -1,6 +1,7 @@
 import { request } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
+import { apiBaseUrl, appBaseUrl } from './support/urls';
 
 // Load .env.e2e before accessing process.env
 const envFile = path.resolve(process.cwd(), '.env.e2e');
@@ -20,7 +21,18 @@ if (fs.existsSync(envFile)) {
  * Logs in once and saves storage state to avoid 429 rate limiting.
  */
 
-const API_BASE = process.env.API_BASE_URL || 'http://localhost:3000/api/v1';
+const API_BASE = apiBaseUrl();
+const APP_BASE = appBaseUrl();
+
+function stateHasAppToken(statePath: string): boolean {
+  try {
+    const state = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
+    const origin = state.origins?.find((item: { origin: string }) => item.origin === APP_BASE);
+    return Boolean(origin?.localStorage?.some((item: { name: string; value: string }) => item.name === 'token' && item.value));
+  } catch {
+    return false;
+  }
+}
 
 export default async function globalSetup() {
   const adminUser = process.env.E2E_ADMIN_USER;
@@ -36,7 +48,7 @@ export default async function globalSetup() {
   const statePath = path.join(authDir, 'admin.json');
 
   // Reuse cached token if exists and not expired (< 1 hour)
-  if (fs.existsSync(tokenPath) && fs.existsSync(statePath)) {
+  if (fs.existsSync(tokenPath) && fs.existsSync(statePath) && stateHasAppToken(statePath)) {
     const stats = fs.statSync(tokenPath);
     const ageMs = Date.now() - stats.mtimeMs;
     if (ageMs < 60 * 60 * 1000) {
@@ -66,10 +78,18 @@ export default async function globalSetup() {
       fs.mkdirSync(authDir, { recursive: true });
     }
 
-    // Save storage state with token in localStorage
-    await context.storageState({
-      path: statePath,
-    });
+    const storageState = await context.storageState();
+    storageState.origins = [
+      ...storageState.origins.filter((origin) => origin.origin !== APP_BASE),
+      {
+        origin: APP_BASE,
+        localStorage: [
+          { name: 'token', value: token },
+          { name: 'user', value: JSON.stringify(user) },
+        ],
+      },
+    ];
+    fs.writeFileSync(statePath, JSON.stringify(storageState, null, 2));
 
     // Also save a custom auth file with the token for direct injection
     fs.writeFileSync(

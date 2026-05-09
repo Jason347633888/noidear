@@ -2,6 +2,7 @@ import { type APIRequestContext, type Page } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
 import { TaskCreatePage } from '../pages/TaskCreatePage';
+import { apiBaseUrl } from '../support/urls';
 
 /**
  * API helper for E2E test data setup and teardown.
@@ -10,7 +11,7 @@ import { TaskCreatePage } from '../pages/TaskCreatePage';
  * without going through the UI.
  */
 
-const API_BASE = process.env.API_BASE_URL || 'http://localhost:3000/api/v1';
+const API_BASE = apiBaseUrl();
 
 // Token cache to avoid 429 rate limiting
 const tokenCache: Map<string, string> = new Map();

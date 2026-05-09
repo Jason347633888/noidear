@@ -1,5 +1,6 @@
 import { type APIRequestContext } from '@playwright/test';
 import { getAuthToken } from './api';
+import { apiBaseUrl } from '../support/urls';
 
 /**
  * Process helper for E2E tests.
@@ -8,7 +9,7 @@ import { getAuthToken } from './api';
  * product R&D process instances without going through the UI.
  */
 
-const API_BASE = process.env.API_BASE_URL || 'http://localhost:3000/api/v1';
+const API_BASE = apiBaseUrl();
 
 interface ApiResponse<T> {
   code: number;

@@ -25,7 +25,7 @@ test.describe('Backup Management', () => {
   });
 
   test('should load backup management page successfully', async ({ page }) => {
-    await page.goto('http://localhost:5173/backup/manage');
+    await page.goto('/backup/manage');
     await page.waitForLoadState('networkidle');
 
     // Verify page title
@@ -42,7 +42,7 @@ test.describe('Backup Management', () => {
   });
 
   test('should display backup trigger buttons', async ({ page }) => {
-    await page.goto('http://localhost:5173/backup/manage');
+    await page.goto('/backup/manage');
     await page.waitForLoadState('networkidle');
 
     // Wait for page to load
@@ -63,7 +63,7 @@ test.describe('Backup Management', () => {
   });
 
   test('should trigger PostgreSQL backup', async ({ page }) => {
-    await page.goto('http://localhost:5173/backup/manage');
+    await page.goto('/backup/manage');
     await page.waitForLoadState('networkidle');
 
     // Wait for page to load
@@ -114,7 +114,7 @@ test.describe('Backup Management', () => {
   });
 
   test('should trigger MinIO backup if button exists', async ({ page }) => {
-    await page.goto('http://localhost:5173/backup/manage');
+    await page.goto('/backup/manage');
     await page.waitForLoadState('networkidle');
 
     // Wait for page to load
@@ -166,7 +166,7 @@ test.describe('Backup Management', () => {
   });
 
   test('should display backup history with correct columns', async ({ page }) => {
-    await page.goto('http://localhost:5173/backup/manage');
+    await page.goto('/backup/manage');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -189,7 +189,7 @@ test.describe('Backup Management', () => {
   });
 
   test('should filter backups by type', async ({ page }) => {
-    await page.goto('http://localhost:5173/backup/manage');
+    await page.goto('/backup/manage');
     await page.waitForLoadState('networkidle');
 
     // Wait for page to load
@@ -221,7 +221,7 @@ test.describe('Backup Management', () => {
   });
 
   test('should filter backups by status', async ({ page }) => {
-    await page.goto('http://localhost:5173/backup/manage');
+    await page.goto('/backup/manage');
     await page.waitForLoadState('networkidle');
 
     // Wait for page to load
@@ -253,7 +253,7 @@ test.describe('Backup Management', () => {
   });
 
   test('should verify backup status badges', async ({ page }) => {
-    await page.goto('http://localhost:5173/backup/manage');
+    await page.goto('/backup/manage');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -279,7 +279,7 @@ test.describe('Backup Management', () => {
   });
 
   test('should delete old backup', async ({ page }) => {
-    await page.goto('http://localhost:5173/backup/manage');
+    await page.goto('/backup/manage');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -326,7 +326,7 @@ test.describe('Backup Management', () => {
   });
 
   test('should display backup file size and date', async ({ page }) => {
-    await page.goto('http://localhost:5173/backup/manage');
+    await page.goto('/backup/manage');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -357,7 +357,7 @@ test.describe('Backup Management', () => {
   });
 
   test('should refresh backup list', async ({ page }) => {
-    await page.goto('http://localhost:5173/backup/manage');
+    await page.goto('/backup/manage');
     await page.waitForLoadState('networkidle');
 
     // Wait for initial load
@@ -384,7 +384,7 @@ test.describe('Backup Management', () => {
   });
 
   test('should paginate through backup history', async ({ page }) => {
-    await page.goto('http://localhost:5173/backup/manage');
+    await page.goto('/backup/manage');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
@@ -421,7 +421,7 @@ test.describe('Backup Management', () => {
   });
 
   test('should handle backup in progress status', async ({ page }) => {
-    await page.goto('http://localhost:5173/backup/manage');
+    await page.goto('/backup/manage');
     await page.waitForLoadState('networkidle');
 
     // Wait for table to load
