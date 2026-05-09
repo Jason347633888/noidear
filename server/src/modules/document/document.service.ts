@@ -634,7 +634,24 @@ export class DocumentService {
       throw new BusinessException(ErrorCode.VALIDATION_ERROR, '驳回时必须填写原因');
     }
 
-    // 验证是否有待处理的审批记录
+    // 新系统路由：有 approvalInstanceId 时走 ApprovalInstance
+    // document 状态由 document.approvalApproved 回调更新，无需手动修改
+    if ((document as any).approvalInstanceId && this.approvalEngine) {
+      const pendingTask = await this.prisma.approvalTask.findFirst({
+        where: { instanceId: (document as any).approvalInstanceId, status: 'PENDING' },
+      });
+      if (!pendingTask) {
+        throw new BusinessException(ErrorCode.CONFLICT, '该文档审批流程中无待处理任务');
+      }
+      if (status === 'approved') {
+        return this.approvalEngine.approveTask(pendingTask.id, approverId, comment ?? '');
+      } else {
+        return this.approvalEngine.rejectTask(pendingTask.id, approverId, comment ?? '');
+      }
+    }
+
+    // LEGACY: 旧 Approval 表自 PR-4 起不再新增写入。
+    // 以下 findFirst/update 仅用于历史文档（approvalInstanceId = null）的审批兼容路径。
     const pendingApproval = await this.prisma.approval.findFirst({
       where: {
         documentId: id,
