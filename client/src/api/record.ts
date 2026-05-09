@@ -10,7 +10,7 @@ export interface Record {
   templateId: string;
   dataJson: globalThis.Record<string, unknown>;
   submitterId: string;
-  status: 'draft' | 'submitted' | 'approved' | 'rejected';
+  status: 'draft' | 'submitted' | 'signed' | 'approved' | 'rejected';
   submittedAt?: string;
   approvedAt?: string;
   createdAt: string;

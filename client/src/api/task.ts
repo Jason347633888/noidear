@@ -1,16 +1,10 @@
 import request from './request';
+import type { TaskStatus } from '@noidear/types';
+export type { TaskStatus };
 
 // =========================================================================
 // Types
 // =========================================================================
-
-export type TaskStatus =
-  | 'pending'
-  | 'submitted'
-  | 'approved'
-  | 'rejected'
-  | 'cancelled'
-  | 'overdue';
 
 export interface TaskTemplate {
   id: string;
