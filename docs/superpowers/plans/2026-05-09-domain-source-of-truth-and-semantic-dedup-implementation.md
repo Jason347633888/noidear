@@ -15,6 +15,7 @@
 - 不改文档阅读范围里的 role 语义
 - 不修改 JWT 载荷字段名；token 内部继续使用 `role`，`validate()` 输出层统一映射为 `roleCode`
 - 不保留 `AuthenticatedUser.userId` 兼容字段，所有服务端消费统一使用 `req.user.id`
+- MYL-536 认证上下文与 `process-step` 租户隔离残留并入本 PR 返修补丁，不拆单独 hotfix
 
 ---
 
@@ -434,6 +435,97 @@ rg -n "leader.*负责人|负责人.*leader" docs server/src client/src packages 
 
 ---
 
+## MYL-536 PR1 返修补丁：认证上下文与 process-step 租户隔离残留
+
+本节按 [MYL-536](mention://issue/aec637e0-b698-4d90-8584-f3e0d26ee65d) / Orion Final Digest 并入 PR1 返修，不拆紧邻 hotfix。它是 PR1 “认证上下文字段一次性定死为 `id + roleCode`，不保留兼容字段”与租户隔离边界的未完成项。
+
+### 返修边界
+
+- `sub` 只允许存在于 JWT payload 与 `JwtStrategy.validate()` 映射层；业务 controller / service 只消费 `req.user.id`。
+- `userId` / `sub` 不作为 `AuthenticatedUser` 或业务层兼容字段，不新增、不恢复、不 fallback。
+- `companyId` 从 `AuthenticatedRequest.user.companyId` 取得，是业务租户隔离事实源；不得 fallback 到 `company_id: '1'`。
+- 如需对缺失 `companyId` 做 runtime assertion，异常类型使用 `InternalServerErrorException`，表示认证上下文契约被破坏；不得使用 `BadRequestException`。
+- 本 PR 只强制清除 `server/src/modules/process-step/process-step.service.ts` 的 `company_id: '1'`。测试 / seed 不纳入本轮；除 process-step 外的 29 个业务文件登记为后续 GAP / 专项 issue。
+- `incoming-inspection.controller.ts` 与 `document.controller.ts` 中 Guard 到位后的 `|| 'system'` 死代码登记后续清理，不作为 PR1 blocker。
+- `audit/interceptors/sensitive-log.interceptor.ts` 的 `user?.id || 'system'` 属于未认证请求审计占位设计，明确排除。
+
+### 必须修改的代码范围
+
+- `server/src/modules/workflow/workflow-advanced.controller.ts`
+- `server/src/modules/import/import.controller.ts`
+- `server/src/modules/process/process-instance.controller.ts`
+- `server/src/modules/process-step/process-step.controller.ts`
+- `server/src/modules/process-step/process-step.service.ts`
+- `server/src/modules/unified-approval/approval-task.controller.ts`
+- `server/src/modules/unified-approval/approval-instance.controller.ts`
+- `server/src/modules/warehouse/inbound.controller.ts`
+
+### 认证上下文返修要求
+
+- 上述 controller 的请求类型必须收口为 `AuthenticatedRequest`；不得保留 `@Request() req: any` 或 `{ user: { sub: string } }`。
+- `workflow-advanced.controller.ts` 的 delegate / rollback / transfer 均使用 `req.user.id`。
+- `import.controller.ts` 的 document import 使用 `req.user.id`。
+- `process-instance.controller.ts` 的 pending / create / submitStep / submitApproval 四处删除 `req.user?.sub || req.user?.id`，改为 `req.user.id`。
+- `unified-approval/approval-task.controller.ts` 与 `approval-instance.controller.ts` 删除 `req.user?.id ?? req.user?.userId ?? req.user?.sub` 等兼容链，统一使用 `req.user.id`。
+- `warehouse/inbound.controller.ts` 必须补 `JwtAuthGuard` 类级或等价保护；create / approve / complete 均使用 `AuthenticatedRequest` + `req.user.id`，删除 `userId/sub` fallback 与 `req.user?.id || 'system'` 静默降级。
+
+### process-step 租户隔离返修要求
+
+- `ProcessStepController` 的 findAll / findByProduct / findOne / create / update / remove 六个方法均从 `req.user.companyId` 读取 companyId，并显式传入 service。
+- `ProcessStepService` public 方法签名必须要求 `companyId`。
+- list / detail / create / update / remove 均按 `company_id: companyId` 过滤或写入，不能继续硬编码 `company_id: '1'`。
+- `process-step.update/remove` 必须使用 scoped write：
+
+```typescript
+updateMany({
+  where: { id, company_id: companyId, deleted_at: null },
+  data,
+})
+```
+
+- `updateMany().count === 0` 时抛 `NotFoundException`。不得采用先 `findOne(id, companyId)` 再 `update({ where: { id } })` 的两步归属校验。
+
+### MYL-536 返修验收扫描
+
+- [ ] 业务代码中不再读取 `req.user.sub` / `req.user.userId`：
+```bash
+rg "req\\.user\\.sub|req\\?\\.user\\?\\.sub|req\\.user\\.userId|req\\?\\.user\\?\\.userId" server/src
+```
+
+- [ ] 本轮业务身份兼容链命中为 0；非身份语义命中需人工说明：
+```bash
+rg "userId\\s*\\?\\?|sub\\s*\\|\\|" server/src
+```
+
+- [ ] 本轮纳入范围内不再用 `system` 作为认证缺失静默降级：
+```bash
+rg "req\\.user\\?\\.id \\|\\| 'system'|req\\.user\\?\\.id \\|\\| \\\"system\\\"" server/src/modules/warehouse server/src/modules/workflow server/src/modules/import server/src/modules/process server/src/modules/unified-approval server/src/modules/process-step
+```
+
+- [ ] `process-step` 不再硬编码租户：
+```bash
+rg "company_id:\\s*'1'|company_id:\\s*\\\"1\\\"" server/src/modules/process-step
+```
+
+- [ ] 本轮纳入 controller 不再保留 `req: any` 或错误的 `sub` 类型：
+```bash
+rg "@Request\\(\\) req: any|user: \\{ sub: string \\}" server/src/modules/workflow server/src/modules/import server/src/modules/process server/src/modules/unified-approval server/src/modules/warehouse server/src/modules/process-step
+```
+
+- [ ] 验证 `server/src/modules/warehouse/inbound.controller.ts` 存在 `JwtAuthGuard` 保护，且 create / approve / complete 均使用 `AuthenticatedRequest` + `req.user.id`。
+- [ ] 验证 `process-step.update/remove` 使用 scoped `updateMany({ where: { id, company_id: companyId, deleted_at: null } })` 并检查 `count`，不是两步 `findOne` + `update({ where: { id } })`。
+
+### MYL-536 返修测试要求
+
+- [ ] workflow delegate / rollback / transfer 调 service 时使用 `req.user.id`。
+- [ ] import controller 使用 `req.user.id`。
+- [ ] process instance pending / create / submitStep / submitApproval 不再读取 `sub`。
+- [ ] unified approval 相关 controller 不再读取 `userId/sub`。
+- [ ] warehouse inbound 有 `JwtAuthGuard`，create / approve / complete 不写入 `system` 假用户。
+- [ ] process-step 使用非 `'1'` companyId 覆盖 list / detail / create / update / remove 隔离；update / remove 覆盖 scoped `updateMany` 写入。
+
+---
+
 ## 完成定义
 
 本计划完成时，必须同时满足：
@@ -449,4 +541,5 @@ rg -n "leader.*负责人|负责人.*leader" docs server/src client/src packages 
 9. 组织治理异常与初始化状态彻底分层
 10. `/bootstrap/org` 仅保留为未完成初始化时的受控入口
 11. `AuthenticatedUser.userId` / `req.user.userId` 被删除，服务端统一消费 `req.user.id`
-12. 文档、共享类型、后端、前端对这四点表述一致
+12. MYL-536 纳入范围内的 `req.user.sub`、`req.user.userId`、身份兼容链、`warehouse` 的 `|| 'system'` 静默降级、`process-step` 的 `company_id: '1'` 均按本计划清除
+13. 文档、共享类型、后端、前端对这四点表述一致

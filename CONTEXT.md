@@ -153,7 +153,8 @@ _Avoid_: 默认作为普通盘盈盘亏处理
 
 **公司 ID**:
 系统中用于隔离不同公司数据的租户边界标识。业务表使用 `company_id` 存储，认证上下文对外暴露为 `companyId`。
-_Avoid_: 在业务服务中硬编码 company_id、把操作人 ID 当成公司边界
+JWT payload 内部字段可以继续使用 `sub` / `role`，但业务运行时只能消费 `AuthenticatedUser.id`、`AuthenticatedUser.roleCode`、`AuthenticatedUser.companyId`；`sub` / `userId` 不能作为业务层兼容字段。`companyId` 是租户隔离事实源，业务查询和写入不得硬编码 `company_id: '1'`。
+_Avoid_: 在业务服务中硬编码 company_id、把操作人 ID 当成公司边界、在业务层读取 `req.user.sub` 或 `req.user.userId`
 
 **追溯主链**:
 从原辅料批次经投料关系到产品批次、发货和客户影响范围的正式关系链。
