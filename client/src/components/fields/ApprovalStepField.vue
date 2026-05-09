@@ -61,6 +61,6 @@ const userStore = useUserStore();
 const canApprove = computed(() => {
   const allowed = props.field.approverRoles as string[] | undefined;
   if (!allowed || allowed.length === 0) return true;
-  return allowed.includes(userStore.user?.role ?? '');
+  return allowed.includes(userStore.user?.roleCode ?? '');
 });
 </script>

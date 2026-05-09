@@ -576,7 +576,7 @@ async function createRevision() {
 
 // 权限判断
 const isCreator = computed(() => document.value?.creatorId === userStore.user?.id);
-const isAdmin = computed(() => userStore.user?.role === 'admin');
+const isAdmin = computed(() => userStore.user?.roleCode === 'admin');
 const isDirectMarkdownEditableStatus = (status: string) => ['draft', 'rejected'].includes(status);
 const canEditMarkdown = computed(() => {
   if (!document.value) return false;

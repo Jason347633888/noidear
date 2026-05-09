@@ -58,7 +58,7 @@ describe('PermissionGuard', () => {
     return {
       switchToHttp: () => ({
         getRequest: () => ({
-          user: user || { id: 'user-1', role: 'user' },
+          user: user || { id: 'user-1', roleCode: 'user' },
           params: params || {},
         }),
       }),
@@ -78,14 +78,27 @@ describe('PermissionGuard', () => {
       expect(mockUserPermissionService.findUserPermissions).not.toHaveBeenCalled();
     });
 
-    it('应该允许管理员跳过权限检查', async () => {
+    it('应该允许管理员跳过权限检查（基于 roleCode）', async () => {
       mockReflector.getAllAndOverride.mockReturnValue('view:department:document');
-      const context = createMockExecutionContext({ id: 'admin-1', role: 'admin' });
+      const context = createMockExecutionContext({ id: 'admin-1', roleCode: 'admin' });
 
       const result = await guard.canActivate(context);
 
       expect(result).toBe(true);
       expect(mockUserPermissionService.findUserPermissions).not.toHaveBeenCalled();
+    });
+
+    it('旧 role 字段不能触发管理员 bypass', async () => {
+      mockReflector.getAllAndOverride
+        .mockReturnValueOnce('view:department:document')
+        .mockReturnValueOnce(undefined)
+        .mockReturnValueOnce(undefined)
+        .mockReturnValueOnce(undefined)
+        .mockReturnValueOnce(undefined);
+      mockUserPermissionService.findUserPermissions.mockResolvedValue({ data: [] });
+      const context = createMockExecutionContext({ id: 'admin-1', role: 'admin' });
+
+      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
     });
 
     it('应该拒绝未登录的请求', async () => {
