@@ -28,12 +28,11 @@ const stubs: Record<string, any> = {
   'el-button': { template: '<button @click="$emit(\'click\')"><slot /></button>' },
   'el-row': { template: '<div><slot /></div>', props: ['gutter'] },
   'el-col': { template: '<div><slot /></div>', props: ['span'] },
-  'el-tree': {
-    template: '<div class="el-tree"><slot name="default" :node="{label:\'test\'}" :data="data[0]||{}" /></div>',
-    props: ['data', 'props', 'highlightCurrent', 'nodeKey'],
-    emits: ['node-click'],
+  'el-table': {
+    template: '<div class="el-table"><slot /></div>',
+    props: ['data', 'highlightCurrentRow'],
+    emits: ['current-change'],
   },
-  'el-table': { template: '<div><slot /></div>', props: ['data'] },
   'el-table-column': { template: '<div />', props: ['prop', 'label', 'width', 'align'] },
   'el-checkbox': {
     template: '<input type="checkbox" />',
@@ -54,9 +53,9 @@ const stubs: Record<string, any> = {
 import DepartmentPermission from '../DepartmentPermission.vue';
 
 const mockDepartments = [
-  { id: 'd-1', name: '研发部', parentId: null, permissionCount: 0 },
-  { id: 'd-2', name: '测试部', parentId: null, permissionCount: 2 },
-  { id: 'd-3', name: '前端组', parentId: 'd-1', permissionCount: 0 },
+  { id: 'd-1', name: '研发部', permissionCount: 0 },
+  { id: 'd-2', name: '测试部', permissionCount: 2 },
+  { id: 'd-3', name: '前端组', permissionCount: 0 },
 ];
 
 const mockDeptPermissions = {
@@ -90,27 +89,14 @@ describe('DepartmentPermission', () => {
     expect(mockGet).toHaveBeenCalledWith('/departments', expect.any(Object));
   });
 
-  it('stores departments data', async () => {
+  it('stores departments as flat list', async () => {
     mockGet.mockResolvedValue({ list: mockDepartments });
     const c = w();
     await flushPromises();
     expect((c.vm as any).departments).toHaveLength(3);
   });
 
-  it('builds department tree correctly', async () => {
-    mockGet.mockResolvedValue({ list: mockDepartments });
-    const c = w();
-    await flushPromises();
-    // Root departments should be d-1 and d-2
-    const tree = (c.vm as any).departmentTree;
-    expect(tree).toHaveLength(2);
-    // d-3 should be a child of d-1
-    const root1 = tree.find((d: any) => d.id === 'd-1');
-    expect(root1.children).toHaveLength(1);
-    expect(root1.children[0].id).toBe('d-3');
-  });
-
-  it('loads department permissions when node clicked', async () => {
+  it('loads department permissions when row clicked', async () => {
     mockGet.mockImplementation((url: string) => {
       if (url === '/departments') return Promise.resolve({ list: mockDepartments });
       return Promise.resolve(mockDeptPermissions);
@@ -120,7 +106,7 @@ describe('DepartmentPermission', () => {
     mockGet.mockClear();
     mockGet.mockResolvedValue(mockDeptPermissions);
 
-    await (c.vm as any).handleNodeClick(mockDepartments[0]);
+    await (c.vm as any).handleRowClick(mockDepartments[0]);
     await flushPromises();
 
     expect(mockGet).toHaveBeenCalledWith('/department-permissions/d-1');
@@ -136,7 +122,7 @@ describe('DepartmentPermission', () => {
     mockGet.mockClear();
     mockGet.mockResolvedValue(mockDeptPermissions);
 
-    await (c.vm as any).handleNodeClick(mockDepartments[0]);
+    await (c.vm as any).handleRowClick(mockDepartments[0]);
     await flushPromises();
 
     const docPerm = (c.vm as any).resourcePermissions.find((r: any) => r.resource === 'document');
@@ -211,7 +197,7 @@ describe('DepartmentPermission', () => {
     mockGet.mockClear();
     mockGet.mockRejectedValue(new Error('Not found'));
 
-    await (c.vm as any).handleNodeClick(mockDepartments[0]);
+    await (c.vm as any).handleRowClick(mockDepartments[0]);
     await flushPromises();
 
     expect((c.vm as any).deptConfig.isolationLevel).toBe('none');
@@ -226,5 +212,14 @@ describe('DepartmentPermission', () => {
     (c.vm as any).selectedDept = mockDepartments[0];
     const others = (c.vm as any).otherDepartments;
     expect(others.every((d: any) => d.id !== 'd-1')).toBe(true);
+  });
+
+  it('isolation level does not include subdepartment option', async () => {
+    mockGet.mockResolvedValue({ list: mockDepartments });
+    const c = w();
+    await flushPromises();
+    const validLevels = ['none', 'department'];
+    const level = (c.vm as any).deptConfig.isolationLevel;
+    expect(validLevels).toContain(level);
   });
 });

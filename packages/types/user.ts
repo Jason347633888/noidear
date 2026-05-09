@@ -36,7 +36,7 @@ export interface CurrentUser {
   id: string;
   username: string;
   name: string;
-  role: 'admin' | 'leader' | 'user';
+  roleCode: 'admin' | 'leader' | 'user';
   roleId: string;
   departmentId?: string | null;
 }

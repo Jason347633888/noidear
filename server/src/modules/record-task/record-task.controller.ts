@@ -36,8 +36,8 @@ export class RecordTaskController {
   @Get('record-task-assignments')
   @ApiOperation({ summary: '列表（管理员看全部；员工看本部门）' })
   findAll(@Req() req: any) {
-    const isAdmin = req.user?.role === 'admin';
-    return this.assignmentService.findAll(req.user.userId, isAdmin);
+    const isAdmin = req.user?.roleCode === 'admin';
+    return this.assignmentService.findAll(req.user.id, isAdmin);
   }
 
   @Get('record-task-assignments/:id')
@@ -71,7 +71,7 @@ export class RecordTaskController {
   @ApiOperation({ summary: '员工查看本部门待填实例' })
   findPending(@Req() req: any, @Query() query: { page?: string; limit?: string }) {
     return this.instanceService.findPending(
-      req.user.userId ?? req.user.id,
+      req.user.id,
       query.page ? Number(query.page) : 1,
       query.limit ? Number(query.limit) : 20,
     );

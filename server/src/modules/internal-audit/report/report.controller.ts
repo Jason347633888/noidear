@@ -21,13 +21,10 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { PermissionGuard } from '../../../common/guards/permission.guard';
 import { CheckPermission } from '../../../common/decorators/permission.decorator';
 import { AuditService } from '../../audit/audit.service';
+import { AuthenticatedUser } from '../../auth/authenticated-user';
 
 interface AuthenticatedRequest extends ExpressRequest {
-  user: {
-    userId: string;
-    username: string;
-    role: string;
-  };
+  user: AuthenticatedUser;
 }
 
 @ApiTags('Audit Report')
@@ -55,7 +52,7 @@ export class ReportController {
   ) {
     const result = await this.reportService.completePlanAndGenerateReport(
       id,
-      req.user.userId,
+      req.user.id,
     );
 
     await this.logSensitiveOperation(
@@ -127,7 +124,7 @@ export class ReportController {
   ) {
     try {
       await this.auditService.createSensitiveLog({
-        userId: req.user.userId,
+        userId: req.user.id,
         username: req.user.username,
         action,
         resourceType,

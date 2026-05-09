@@ -40,7 +40,7 @@ export class RecordController {
   @ApiResponse({ status: 404, description: '模板不存在' })
   @ApiResponse({ status: 400, description: '数据验证失败' })
   create(@Body() createDto: CreateRecordDto, @Req() req: any) {
-    return this.recordService.create(createDto, req.user.userId);
+    return this.recordService.create(createDto, req.user.id);
   }
 
   @Get()
@@ -66,7 +66,7 @@ export class RecordController {
   @ApiResponse({ status: 404, description: '记录不存在' })
   @ApiResponse({ status: 400, description: '数据验证失败' })
   update(@Param('id') id: string, @Body() updateDto: UpdateRecordDto, @Req() req: any) {
-    return this.recordService.update(id, updateDto, req.user.userId);
+    return this.recordService.update(id, updateDto, req.user.id);
   }
 
   @Delete(':id')
@@ -97,7 +97,7 @@ export class RecordController {
   @ApiResponse({ status: 400, description: '状态不允许提交' })
   @ApiResponse({ status: 404, description: '记录不存在' })
   submit(@Param('id') id: string, @Body() dto: SubmitRecordDto, @Req() req: any) {
-    return this.recordService.submit(id, req.user.userId, dto.deviationReasons);
+    return this.recordService.submit(id, req.user.id, dto.deviationReasons);
   }
 
   /**
@@ -117,7 +117,7 @@ export class RecordController {
     if (!body.password) {
       throw new BadRequestException('电子签名需要密码验证');
     }
-    return this.recordService.signRecord(id, req.user.userId, body);
+    return this.recordService.signRecord(id, req.user.id, body);
   }
 
   /**
@@ -137,7 +137,7 @@ export class RecordController {
     if (!body.reason || body.reason.length < 10) {
       throw new BadRequestException('变更原因至少 10 个字符');
     }
-    return this.recordService.updateApproved(id, { dataJson: body.dataJson }, req.user.userId, body.reason);
+    return this.recordService.updateApproved(id, { dataJson: body.dataJson }, req.user.id, body.reason);
   }
 
   /**

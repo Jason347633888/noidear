@@ -29,7 +29,7 @@ export class ApprovalController {
   @Get('pending')
   @ApiOperation({ summary: '获取当前用户的待审批列表' })
   async getPendingApprovals(@Request() req: any) {
-    return this.approvalService.getPendingApprovals(req.user.userId);
+    return this.approvalService.getPendingApprovals(req.user.id);
   }
 
   @Get('detail/:id')
@@ -49,7 +49,7 @@ export class ApprovalController {
   ) {
     const page = query.page ? Number(query.page) : 1;
     const limit = query.limit ? Number(query.limit) : 20;
-    return this.approvalService.getApprovalHistory(req.user.userId, page, limit);
+    return this.approvalService.getApprovalHistory(req.user.id, page, limit);
   }
 
   @Post(':id/approve')
@@ -58,7 +58,7 @@ export class ApprovalController {
   async approveUnified(@Param('id') id: string, @Body() dto: ApproveDto, @Request() req: any) {
     return this.approvalService.approveUnified(
       id,
-      req.user.userId,
+      req.user.id,
       dto.action,
       dto.comment || dto.rejectionReason,
     );
@@ -70,7 +70,7 @@ export class ApprovalController {
   async rejectUnified(@Param('id') id: string, @Body() dto: ApproveDto, @Request() req: any) {
     return this.approvalService.approveUnified(
       id,
-      req.user.userId,
+      req.user.id,
       'rejected',
       dto.rejectionReason || dto.comment,
     );

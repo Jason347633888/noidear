@@ -53,7 +53,7 @@ export class SsoService {
         id: user.id,
         username: user.username,
         name: user.name,
-        role: user.roleObj?.code,
+        roleCode: user.roleObj?.code,
         companyId: user.company_id,
       },
     };
@@ -82,7 +82,7 @@ export class SsoService {
         id: user.id,
         username: user.username,
         name: user.name,
-        role: user.roleObj?.code,
+        roleCode: user.roleObj?.code,
         companyId: user.company_id,
       },
     };

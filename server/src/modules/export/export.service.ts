@@ -76,10 +76,10 @@ export class ExportService {
 
     // HIGH-1: 服务层权限过滤（BR-028, BR-313）
     if (user) {
-      if (user.role === 'user') {
+      if (user.roleCode === 'user') {
         // 普通用户：只能导出自己创建的
         where.creatorId = user.id;
-      } else if (user.role === 'leader') {
+      } else if (user.roleCode === 'leader') {
         // 部门领导：只能导出本部门的
         where.creator = { departmentId: user.departmentId };
       }
@@ -100,7 +100,7 @@ export class ExportService {
   async exportTasks(dto: ExportTasksDto, user?: any): Promise<Buffer> {
     const where = this.buildTaskWhere(dto);
 
-    if (user && user.role === 'user') {
+    if (user && user.roleCode === 'user') {
       where.createdBy = user.id;
     }
 
@@ -118,7 +118,7 @@ export class ExportService {
   async exportTaskRecords(dto: ExportTaskRecordsDto, user?: any): Promise<Buffer> {
     const where = this.buildTaskRecordWhere(dto);
 
-    if (user && user.role === 'user') {
+    if (user && user.roleCode === 'user') {
       where.createdBy = user.id;
     }
 
@@ -136,10 +136,10 @@ export class ExportService {
 
     // HIGH-1: 服务层权限过滤（BR-028, BR-313）
     if (user) {
-      if (user.role === 'user') {
+      if (user.roleCode === 'user') {
         // 普通用户：只能导出自己创建的偏离报告
         where.creatorId = user.id;
-      } else if (user.role === 'leader') {
+      } else if (user.roleCode === 'leader') {
         // 部门领导：只能导出本部门的偏离报告
         where.creator = { departmentId: user.departmentId };
       }
@@ -162,13 +162,13 @@ export class ExportService {
 
     // HIGH-1: 服务层权限过滤（BR-028, BR-313）
     if (user) {
-      if (user.role === 'user') {
+      if (user.roleCode === 'user') {
         // 普通用户：只能导出与自己相关的审批（作为审批人或文档创建人）
         where.OR = [
           { approverId: user.id },
           { document: { creatorId: user.id } },
         ];
-      } else if (user.role === 'leader') {
+      } else if (user.roleCode === 'leader') {
         // 部门领导：只能导出本部门的审批
         where.approver = { departmentId: user.departmentId };
       }

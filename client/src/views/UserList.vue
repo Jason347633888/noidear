@@ -177,7 +177,6 @@ interface UserRow {
   name: string;
   roleId: string | null;
   roleObj?: RoleRef | null;
-  role?: string;
   status: 'active' | 'inactive';
   departmentId: string | null;
   department?: DepartmentRef | null;
@@ -254,9 +253,7 @@ const formatDate = (date: string) => new Date(date).toLocaleString('zh-CN');
 const getRoleType = (code?: string) =>
   ({ admin: 'danger', leader: 'warning', user: 'info' } as Record<string, string>)[code || ''] || 'info';
 const roleDisplay = (row: UserRow) =>
-  row.roleObj?.name ||
-  ({ admin: '管理员', leader: '部门负责人', user: '普通用户' } as Record<string, string>)[row.role || ''] ||
-  '未知角色';
+  row.roleObj?.name || '未知角色';
 
 const departmentDisplay = (row: UserRow) => {
   if (!row.departmentId) return '未分配部门';

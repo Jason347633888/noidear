@@ -4,8 +4,8 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
 
 function assertAdmin(req: any) {
-  const role = req?.user?.role ?? req?.user?.roleObj?.code;
-  if (role !== 'admin') throw new ForbiddenException('仅管理员可操作审批定义');
+  const roleCode = req?.user?.roleCode;
+  if (roleCode !== 'admin') throw new ForbiddenException('仅管理员可操作审批定义');
 }
 
 class CreateApprovalDefinitionDto {

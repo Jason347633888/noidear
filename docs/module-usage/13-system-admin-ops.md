@@ -95,7 +95,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 
 | 对象 | 当前实现 | 说明 |
 |------|----------|------|
-| Role | `roles` 表，code 唯一 | 三个预置角色：admin/leader/user；User.role 字段已废弃，应使用 User.roleId |
+| Role | `roles` 表，code 唯一 | 三个预置角色：admin/leader/user；运行时角色通过 JWT 签发 `role: roleCode`，`JwtStrategy.validate()` 输出 `roleCode`；服务端统一消费 `req.user.roleCode` |
 | Permission | `permissions` 表，resource+action 唯一 | RBAC 粗粒度权限定义 |
 | RolePermission | `role_permissions` 桥接表 | 角色-权限多对多 |
 | FineGrainedPermission | `fine_grained_permissions` 表，code 唯一 | ABAC 细粒度权限定义，含 category/scope |
@@ -156,7 +156,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 
 | GAP 编号 | 当前问题 | 根因 | 影响后果 | 严重级别 | 验证状态 | 证据 |
 |----------|----------|------|----------|----------|----------|------|
-| GAP-505 | `User.role`（String 字段）已被标注 `@deprecated` 应使用 `User.roleId`，但无法确认全部业务代码是否已迁移 | 向后兼容保留了双字段 | 如果仍有代码读取 `User.role` String，角色判断结果可能与 `User.roleId` 不一致 | P1（高） | 需要运行系统确认 | `schema.prisma:L110` 注释 `@deprecated`；`record-task.controller.ts:L36` 中 `req.user?.role === 'admin'` 仍在使用 String role |
+| GAP-505 | ~~`User.role` 字符串残留角色判断~~ | **已修复**（本 PR：domain-source-of-truth-semantic-dedup-pr1）| 全部 `req.user.role` / `req.user.userId` 已收口，认证边界统一输出 `roleCode`；`CurrentUser.role` / `AuthenticatedUser.userId` / `LoginResponse.user.role` 已删除 | P1（高） | **已修复** | 见 `authenticated-user.ts`、`auth.strategy.ts`、`roles.guard.ts` |
 | GAP-506 | `/permissions/audit-log` 页面（PermissionAuditLog.vue）调用的前端 API 端点未在前端 API 文件中找到明确定义，后端 permission-log 控制器是否存在需要确认 | 权限审计日志功能可能未完整实现 | 审计日志页面可能无法正常展示 | P2（中） | 未验证 | `client/src/views/permission/PermissionAuditLog.vue` 存在，但 `client/src/api/permission.ts` 无 permissionLog 方法 |
 | GAP-507 | 前端 `queryMetrics` 调用 `GET /monitoring/metrics/query`，后端定义为 `@Post('metrics/query')` | 前端使用 GET，后端要求 POST + 请求体 | 指标查询返回 404/405，监控图表无数据 | P1（高） | 已验证 | `client/src/api/monitoring.ts:L76`；`server/src/modules/monitoring/monitoring.controller.ts:L56` |
 | GAP-508 | 前端 `queryAlertHistory` 调用 `GET /monitoring/alerts/history`，后端路由为 `POST /monitoring/alerts/history/query` | 路径不同（history vs history/query）且方法不同（GET vs POST） | 告警历史列表无数据 | P1（高） | 已验证 | `client/src/api/monitoring.ts:L116`；`server/src/modules/monitoring/monitoring.controller.ts:L138` |
@@ -169,7 +169,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 
 | GAP 编号 | 建议整改 | 依赖模块 | 是否需要新设计 | 建议 PR | 是否可并行 |
 |----------|----------|----------|----------------|---------|-----------|
-| GAP-505 | 全局搜索 `req.user?.role === 'admin'` 等 String role 判断，统一改为基于 `req.user?.roleId` 和角色对象；完成后可删除 `User.role` 字符串字段 | auth, user | 否 | fix/migrate-user-role-string-to-roleid | 否（需全量扫描） |
+| GAP-505 | **已修复**（domain-source-of-truth-semantic-dedup-pr1）：全部 `req.user.role` / `req.user.userId` 改为 `req.user.roleCode` / `req.user.id`；认证边界统一输出 `roleCode` | auth, user | 否 | 已合并 | 已完成 |
 | GAP-506 | 在后端补充 `/permission-logs` 路由（或确认现有路由路径），前端补充对应 API 适配器 | permission | 需要确认 | fix/permission-audit-log-endpoint | 是 |
 | GAP-507 | 将前端 `queryMetrics` 改为 `POST /monitoring/metrics/query`，或后端新增 `GET /monitoring/metrics/query` 查询参数支持 | monitoring | 否 | fix/monitoring-metrics-query-method | 是 |
 | GAP-508 | 将前端 `queryAlertHistory` 改为调用 `POST /monitoring/alerts/history/query`，并修改参数为请求体格式 | monitoring, alert | 否 | fix/monitoring-alert-history-path | 是 |
@@ -201,13 +201,13 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 - `server/src/prisma/schema.prisma:L2349`：DepartmentPermission 模型
 - `server/src/prisma/schema.prisma:L1824`：PermissionLog 模型
 - `server/src/prisma/schema.prisma:L1877`：SystemMetric 模型
-- `server/src/modules/record-task/record-task.controller.ts:L36`：`req.user?.role === 'admin'` String role 仍在使用
+
 
 ## 10. 禁止重复实现与事实源边界
 
 | 对象 | 当前事实源 | 允许展示字段 | 禁止新增的平行事实源 | 旧字段或旧模块处理 |
 |------|-----------|-------------|---------------------|-------------------|
-| 用户角色 | `User.roleId` → `roles` | 角色名称/code 展示 | 禁止在业务代码中用 `User.role` String 新建角色判断逻辑 | `User.role` String 字段废弃，待全量迁移后删除 |
+| 用户角色 | `User.roleId` → `roles`；运行时 `req.user.roleCode` | 角色名称/code 展示 | 禁止在业务代码中用 `req.user.role` 或 `req.user.userId` | 已迁移完成：`AuthenticatedUser` 不再含 `role`/`userId` 字段 |
 | 功能权限 | `permissions` + `role_permissions` | 权限描述展示 | 禁止在各业务模块自建权限枚举表 | 无旧版本 |
 | 细粒度权限 | `fine_grained_permissions` + `user_permissions` | 权限码/分类/范围展示 | 禁止绕过 FineGrainedPermissionGuard 在 controller 层手动判断权限码 | 无旧版本 |
 | 部门数据隔离 | `department_permissions` | 部门名称/允许操作展示 | 禁止在 service 层直接 hardcode 部门 ID 做数据过滤 | 无旧版本 |
@@ -222,7 +222,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 | P1 | GAP-507 | fix/monitoring-metrics-query-method | 无 | 是 | 前端监控页面指标图表有数据渲染 |
 | P1 | GAP-508 | fix/monitoring-alert-history-path | 无 | 是 | 告警历史列表可以加载数据 |
 | P1 | GAP-509 | fix/backup-available-endpoint | 无 | 是 | `GET /backup/available` 返回 200 + 列表 |
-| P1 | GAP-505 | fix/migrate-user-role-string-to-roleid | 无 | 否 | 全局 `grep "req.user?.role"` 无 String 比较 |
+| ~~P1~~ | ~~GAP-505~~ | **已完成**（domain-source-of-truth-semantic-dedup-pr1）| — | — | `grep "req.user.role"` 全仓清零 |
 | P2 | GAP-510 | fix/backup-status-endpoint | 无 | 是 | `GET /backup/:id/status` 返回 200 + BackupHistory |
 | P2 | GAP-511 | fix/alert-route-dedup | GAP-508 前 | 是 | 确认唯一一套告警路由路径 |
 | P2 | GAP-506 | fix/permission-audit-log-endpoint | 需确认 | 是 | `/permissions/audit-log` 页面可加载数据 |

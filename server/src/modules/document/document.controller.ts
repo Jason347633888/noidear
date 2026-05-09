@@ -102,7 +102,7 @@ export class DocumentController {
   @Get()
   @ApiOperation({ summary: '查询文档列表' })
   async findAll(@Query() query: DocumentQueryDto, @Req() req: any) {
-    return this.documentService.findAll(query, req.user.id, req.user.role);
+    return this.documentService.findAll(query, req.user.id, req.user.roleCode);
   }
 
   @Get('pending-approvals')
@@ -116,7 +116,7 @@ export class DocumentController {
     const limitNum = Math.min(Number(limit) || 20, 100);
     return this.documentService.findPendingApprovals(
       req.user.id,
-      req.user.role,
+      req.user.roleCode,
       pageNum,
       limitNum,
     );
@@ -369,7 +369,7 @@ export class DocumentController {
   @Get(':id')
   @ApiOperation({ summary: '查询文档详情' })
   async findOne(@Param('id') id: string, @Req() req: any) {
-    const document = await this.documentService.findOne(id, req.user.id, req.user.role);
+    const document = await this.documentService.findOne(id, req.user.id, req.user.roleCode);
 
     // BR-356: 部门边界检查
     // BR-357: 跨部门权限验证
@@ -390,7 +390,7 @@ export class DocumentController {
   @Get(':id/reference-health')
   @ApiOperation({ summary: '查询单个文档引用健康度' })
   async getDocumentReferenceHealth(@Param('id') id: string, @Req() req: any) {
-    const document = await this.documentService.findOne(id, req.user.id, req.user.role);
+    const document = await this.documentService.findOne(id, req.user.id, req.user.roleCode);
     const canAccess = await this.departmentPermissionService.canAccessDepartmentResource(
       req.user.id,
       document.departmentId,
@@ -408,7 +408,7 @@ export class DocumentController {
   @Get(':id/versions')
   @ApiOperation({ summary: '查询文档版本历史' })
   async getVersionHistory(@Param('id') id: string, @Req() req: any) {
-    return this.documentService.getVersionHistory(id, req.user.id, req.user.role);
+    return this.documentService.getVersionHistory(id, req.user.id, req.user.roleCode);
   }
 
   @Get(':id/versions/:v1/compare/:v2')
@@ -442,7 +442,7 @@ export class DocumentController {
     @Param('version') version: string,
     @Req() req: any,
   ) {
-    return this.documentService.getVersionPreview(id, version, req.user.id, req.user.role);
+    return this.documentService.getVersionPreview(id, version, req.user.id, req.user.roleCode);
   }
 
   @Get(':id/versions/:version/download')
@@ -453,13 +453,13 @@ export class DocumentController {
     @Req() req: any,
     @Res() res: Response,
   ) {
-    return this.documentService.downloadVersion(id, version, req.user.id, req.user.role, res);
+    return this.documentService.downloadVersion(id, version, req.user.id, req.user.roleCode, res);
   }
 
   @Post(':id/deactivate')
   @ApiOperation({ summary: '停用文档' })
   async deactivate(@Param('id') id: string, @Req() req: any) {
-    return this.documentService.deactivate(id, req.user.id, req.user.role);
+    return this.documentService.deactivate(id, req.user.id, req.user.roleCode);
   }
 
   @Post(':id/archive')
@@ -471,7 +471,7 @@ export class DocumentController {
     @Body() dto: ArchiveDocumentDto,
     @Req() req: any,
   ) {
-    return this.documentService.archive(id, dto.reason, req.user.id, req.user.role);
+    return this.documentService.archive(id, dto.reason, req.user.id, req.user.roleCode);
   }
 
   @Post(':id/obsolete')
@@ -483,7 +483,7 @@ export class DocumentController {
     @Body() dto: ObsoleteDocumentDto,
     @Req() req: any,
   ) {
-    return this.documentService.obsolete(id, dto.reason, req.user.id, req.user.role);
+    return this.documentService.obsolete(id, dto.reason, req.user.id, req.user.roleCode);
   }
 
   @Post(':id/restore')
@@ -493,7 +493,7 @@ export class DocumentController {
     @Body() dto: RestoreDocumentDto,
     @Req() req: any,
   ) {
-    return this.documentService.restore(id, dto.reason, req.user.id, req.user.role);
+    return this.documentService.restore(id, dto.reason, req.user.id, req.user.roleCode);
   }
 
   @Put(':id')
@@ -512,7 +512,7 @@ export class DocumentController {
   @Patch(':id/markdown')
   @ApiOperation({ summary: '更新 Markdown 正文' })
   updateMarkdown(@Param('id') id: string, @Body() dto: UpdateMarkdownDto, @Req() req: any) {
-    return this.documentService.updateMarkdown(id, req.user.id, req.user.role, dto);
+    return this.documentService.updateMarkdown(id, req.user.id, req.user.roleCode, dto);
   }
 
   @Delete(':id')
@@ -560,13 +560,13 @@ export class DocumentController {
     @Req() req: any,
     @Res() res: Response,
   ) {
-    return this.filePreviewService.downloadFile(id, req.user.id, req.user.role, res);
+    return this.filePreviewService.downloadFile(id, req.user.id, req.user.roleCode, res);
   }
 
   @Get(':id/preview')
   @ApiOperation({ summary: '获取文档预览信息' })
   async getPreviewUrl(@Param('id') id: string, @Req() req: any) {
-    return this.filePreviewService.getPreviewUrl(id, req.user.id, req.user.role);
+    return this.filePreviewService.getPreviewUrl(id, req.user.id, req.user.roleCode);
   }
 
   // =============================

@@ -29,22 +29,21 @@
           <template #header>
             <span>部门列表</span>
           </template>
-          <el-tree
-            :data="departmentTree"
-            :props="treeProps"
-            highlight-current
-            node-key="id"
-            @node-click="handleNodeClick"
+          <el-table
+            :data="departments"
+            highlight-current-row
+            @current-change="handleRowClick"
+            size="small"
           >
-            <template #default="{ node, data }">
-              <div class="tree-node">
-                <span>{{ node.label }}</span>
-                <el-tag v-if="data.permissionCount > 0" size="small" type="info">
-                  {{ data.permissionCount }}
+            <el-table-column prop="name" label="部门名称" />
+            <el-table-column label="权限" width="60" align="center">
+              <template #default="{ row }">
+                <el-tag v-if="row.permissionCount > 0" size="small" type="info">
+                  {{ row.permissionCount }}
                 </el-tag>
-              </div>
-            </template>
-          </el-tree>
+              </template>
+            </el-table-column>
+          </el-table>
         </el-card>
       </el-col>
 
@@ -78,7 +77,6 @@
               <el-radio-group v-model="deptConfig.isolationLevel">
                 <el-radio value="none">无隔离（可查看全部数据）</el-radio>
                 <el-radio value="department">部门隔离（仅本部门数据）</el-radio>
-                <el-radio value="subdepartment">子部门隔离（本部门及下级）</el-radio>
               </el-radio-group>
             </el-form-item>
 
@@ -146,9 +144,7 @@ import request from '@/api/request';
 interface Department {
   id: string;
   name: string;
-  parentId: string | null;
   permissionCount: number;
-  children?: Department[];
 }
 
 interface ResourcePermission {
@@ -162,7 +158,7 @@ interface ResourcePermission {
 }
 
 interface DeptConfig {
-  isolationLevel: 'none' | 'department' | 'subdepartment';
+  isolationLevel: 'none' | 'department';
   allowedDeptIds: string[];
 }
 
@@ -182,10 +178,7 @@ const permLoading = ref(false);
 const saving = ref(false);
 
 const departments = ref<Department[]>([]);
-const departmentTree = ref<Department[]>([]);
 const selectedDept = ref<Department | null>(null);
-
-const treeProps = { children: 'children', label: 'name' };
 
 const deptConfig = reactive<DeptConfig>({
   isolationLevel: 'none',
@@ -208,21 +201,6 @@ const otherDepartments = computed(() =>
   departments.value.filter((d) => d.id !== selectedDept.value?.id),
 );
 
-const buildTree = (depts: Department[]): Department[] => {
-  const map = new Map<string, Department>();
-  depts.forEach((d) => map.set(d.id, { ...d, children: [] }));
-  const roots: Department[] = [];
-  depts.forEach((d) => {
-    const node = map.get(d.id)!;
-    if (d.parentId && map.has(d.parentId)) {
-      map.get(d.parentId)!.children!.push(node);
-    } else {
-      roots.push(node);
-    }
-  });
-  return roots;
-};
-
 const fetchDepartments = async () => {
   deptLoading.value = true;
   try {
@@ -230,7 +208,6 @@ const fetchDepartments = async () => {
       params: { page: 1, limit: 200 },
     });
     departments.value = res.list;
-    departmentTree.value = buildTree(res.list);
   } catch {
     ElMessage.error('获取部门列表失败');
   } finally {
@@ -247,10 +224,10 @@ const fetchDeptPermissions = async (deptId: string) => {
       resources: Array<{ resource: string; actions: string[] }>;
     }>(`/department-permissions/${deptId}`);
 
-    deptConfig.isolationLevel = (res.isolationLevel as DeptConfig['isolationLevel']) || 'none';
+    const level = res.isolationLevel as DeptConfig['isolationLevel'];
+    deptConfig.isolationLevel = (level === 'none' || level === 'department') ? level : 'none';
     deptConfig.allowedDeptIds = res.allowedDeptIds || [];
 
-    // Reset permissions
     resourcePermissions.value = RESOURCES.map((r) => {
       const found = (res.resources || []).find((rp) => rp.resource === r.value);
       const actions = found?.actions ?? [];
@@ -265,7 +242,6 @@ const fetchDeptPermissions = async (deptId: string) => {
       };
     });
   } catch {
-    // If not found, show empty config
     deptConfig.isolationLevel = 'none';
     deptConfig.allowedDeptIds = [];
     resourcePermissions.value = RESOURCES.map((r) => ({
@@ -282,7 +258,8 @@ const fetchDeptPermissions = async (deptId: string) => {
   }
 };
 
-const handleNodeClick = (data: Department) => {
+const handleRowClick = (data: Department | null) => {
+  if (!data) return;
   selectedDept.value = data;
   fetchDeptPermissions(data.id);
 };
@@ -347,13 +324,5 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.tree-node {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding-right: 8px;
 }
 </style>

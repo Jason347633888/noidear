@@ -37,9 +37,9 @@ export class AuditPlanController {
   @ApiOperation({ summary: 'Create audit plan' })
   @ApiResponse({ status: 201, description: 'Plan created successfully' })
   async create(@Body() createDto: CreateAuditPlanDto, @Request() req: any) {
-    const result = await this.auditPlanService.create(createDto, req.user.userId);
+    const result = await this.auditPlanService.create(createDto, req.user.id);
     await this.auditService.createSensitiveLog({
-      userId: req.user.userId,
+      userId: req.user.id,
       username: req.user.username,
       action: 'create_audit_plan',
       resourceType: 'AuditPlan',
@@ -87,7 +87,7 @@ export class AuditPlanController {
   ) {
     const result = await this.auditPlanService.update(id, updateDto);
     await this.auditService.createSensitiveLog({
-      userId: req.user.userId,
+      userId: req.user.id,
       username: req.user.username,
       action: 'update_audit_plan',
       resourceType: 'AuditPlan',
@@ -107,7 +107,7 @@ export class AuditPlanController {
   async remove(@Param('id') id: string, @Request() req: any) {
     const result = await this.auditPlanService.remove(id);
     await this.auditService.createSensitiveLog({
-      userId: req.user.userId,
+      userId: req.user.id,
       username: req.user.username,
       action: 'delete_audit_plan',
       resourceType: 'AuditPlan',
@@ -127,7 +127,7 @@ export class AuditPlanController {
   async start(@Param('id') id: string, @Request() req: any) {
     const result = await this.auditPlanService.execute(id);
     await this.auditService.createSensitiveLog({
-      userId: req.user.userId,
+      userId: req.user.id,
       username: req.user.username,
       action: 'start_audit_plan',
       resourceType: 'AuditPlan',
@@ -146,9 +146,9 @@ export class AuditPlanController {
   @ApiResponse({ status: 201, description: 'Plan copied successfully' })
   @ApiResponse({ status: 404, description: 'Original plan not found' })
   async copyPlan(@Param('id') id: string, @Request() req: any) {
-    const result = await this.auditPlanService.copyPlan(id, req.user.userId);
+    const result = await this.auditPlanService.copyPlan(id, req.user.id);
     await this.auditService.createSensitiveLog({
-      userId: req.user.userId,
+      userId: req.user.id,
       username: req.user.username,
       action: 'copy_audit_plan',
       resourceType: 'AuditPlan',

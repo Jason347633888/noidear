@@ -23,6 +23,6 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Patch('change-password')
   async changePassword(@Request() req: AuthenticatedRequest, @Body() dto: ChangePasswordDTO) {
-    return this.authService.changePassword(req.user.userId, dto);
+    return this.authService.changePassword(req.user.id, dto);
   }
 }

@@ -42,7 +42,7 @@ export class AuditExecutionController {
   async create(@Body() createDto: CreateAuditFindingDto, @Request() req: AuthenticatedRequest) {
     const result = await this.auditExecutionService.create(
       createDto,
-      req.user.userId,
+      req.user.id,
     );
 
     const details = {
@@ -78,7 +78,7 @@ export class AuditExecutionController {
     const result = await this.auditExecutionService.update(
       id,
       updateDto,
-      req.user.userId,
+      req.user.id,
     );
 
     await this.logSensitiveOperation(
@@ -121,7 +121,7 @@ export class AuditExecutionController {
   ) {
     try {
       await this.auditService.createSensitiveLog({
-        userId: req.user.userId,
+        userId: req.user.id,
         username: req.user.username,
         action,
         resourceType,
