@@ -4,6 +4,7 @@
   "description": "Document Management System Backend",
   "scripts": {
     "build": "nest build",
+    "build:seed": "tsc --noCheck",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
