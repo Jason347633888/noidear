@@ -14,7 +14,13 @@
         </div>
       </div>
 
-      <el-table :data="filteredActions" v-loading="loading" stripe class="history-table">
+      <el-table
+        v-if="loading || filteredActions.length"
+        :data="filteredActions"
+        v-loading="loading"
+        stripe
+        class="history-table"
+      >
         <el-table-column label="审批事项" min-width="200">
           <template #default="{ row }">
             <span class="source-text">{{ row.task?.stepName ?? '-' }}</span>

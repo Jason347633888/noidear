@@ -14,7 +14,14 @@
         </h3>
       </div>
 
-      <el-table :data="tasks" v-loading="loading" stripe class="approval-table" row-key="id">
+      <el-table
+        v-if="loading || tasks.length"
+        :data="tasks"
+        v-loading="loading"
+        stripe
+        class="approval-table"
+        row-key="id"
+      >
         <el-table-column label="审批事项" min-width="200">
           <template #default="{ row }">
             <span class="doc-title">{{ row.stepName ?? '-' }}</span>

@@ -15,7 +15,13 @@
         </div>
       </template>
 
-      <el-table :data="tableData" v-loading="loading" stripe class="approval-table">
+      <el-table
+        v-if="loading || tableData.length"
+        :data="tableData"
+        v-loading="loading"
+        stripe
+        class="approval-table"
+      >
         <el-table-column prop="number" label="文档编号" width="180">
           <template #default="{ row }">
             <span class="doc-number">{{ row.number }}</span>
