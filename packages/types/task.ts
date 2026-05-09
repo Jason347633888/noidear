@@ -1,6 +1,12 @@
 // 任务相关类型
 
-export type TaskStatus = 'pending' | 'completed' | 'cancelled';
+export type TaskStatus =
+  | 'pending'
+  | 'submitted'
+  | 'approved'
+  | 'rejected'
+  | 'cancelled'
+  | 'overdue';
 export type TaskRecordStatus = 'pending' | 'submitted' | 'approved' | 'rejected';
 
 export interface Task {
