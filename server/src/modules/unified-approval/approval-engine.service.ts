@@ -140,6 +140,23 @@ export class ApprovalEngineService {
           data: { status: 'REJECTED', completedAt: new Date() },
         });
         await this.todoBridge.cancelInstanceTodos(tx, task.instanceId, actorId);
+
+        const steps = task.instance.definition.steps as ApprovalStepDefinition[];
+        const currentStep = steps.find((s) => s.stepKey === task.stepKey);
+        if (currentStep?.onRejected) {
+          await this.callbackRegistry.invoke(currentStep.onRejected, {
+            tx,
+            instanceId: task.instanceId,
+            resourceType: task.instance.resourceType,
+            resourceId: task.instance.resourceId,
+            resourceStep: task.instance.resourceStep,
+            triggerKey: task.instance.triggerKey,
+            actorId,
+            taskId: task.id,
+            comment,
+          });
+        }
+
         await this.notificationBridge.notifyRequester(task.instance.createdById, 'rejected', task.instance.title);
         return updated;
       }

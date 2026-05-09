@@ -486,7 +486,7 @@ export class DocumentService {
       );
     }
 
-    // 获取创建人的信息（包含上级ID）
+    // 获取创建人信息（仅用于日志，不再强制要求 superiorId）
     const creator = await this.prisma.user.findUnique({
       where: { id: document.creatorId },
     });
@@ -495,41 +495,30 @@ export class DocumentService {
       throw new BusinessException(ErrorCode.NOT_FOUND, '文档创建人不存在');
     }
 
-    if (!creator.superiorId) {
-      throw new BusinessException(ErrorCode.VALIDATION_ERROR, '文档创建人未设置上级，无法提交审批');
-    }
-
-    // 更新文档状态
-    await this.prisma.document.update({
-      where: { id },
-      data: { status: 'pending' },
-    });
-
     // 新文档审批全部走 ApprovalInstance。旧 Approval 表自 PR-4 起不再新增写入。
     // 通过统一审批引擎发起审批（ApprovalDefinition 必须存在）
     if (!this.approvalEngine) {
       throw new Error('ApprovalEngineService not available — check document.module.ts');
     }
     const triggerKey = `publish.level${document.level ?? 3}`;
-    const instance = await this.approvalEngine.startApproval({
-      resourceType: 'document',
-      resourceId: id,
-      resourceStep: 'publish',
-      triggerKey,
-      title: `文件发布审批：${document.title || id}`,
-      createdById: userId,
-    });
-    await this.prisma.document.update({
-      where: { id },
-      data: { approvalInstanceId: instance.id },
-    });
 
-    // 发送通知给审批人
-    await this.notification.create({
-      userId: creator.superiorId,
-      type: 'approval',
-      title: '您有新的文档待审批',
-      content: `${creator.name} 提交了文档《${document.title}》等待您的审批`,
+    // 原子性：先成功创建 ApprovalInstance，再落文档 pending + approvalInstanceId。
+    // 避免引擎异常时文档陷入无 approvalInstanceId 的 pending 半状态。
+    const instance = await this.prisma.$transaction(async (tx) => {
+      const inst = await this.approvalEngine!.startApproval({
+        resourceType: 'document',
+        resourceId: id,
+        resourceStep: 'publish',
+        triggerKey,
+        title: `文件发布审批：${document.title || id}`,
+        createdById: userId,
+        tx,
+      });
+      await tx.document.update({
+        where: { id },
+        data: { status: 'pending', approvalInstanceId: inst.id },
+      });
+      return inst;
     });
 
     // 记录操作日志
@@ -590,7 +579,7 @@ export class DocumentService {
     return { list: convertBigIntToNumber(enrichedList), total, page, limit };
   }
 
-  private async supersedePreviousEffectiveRevision(
+  async supersedePreviousEffectiveRevision(
     tx: PrismaService | Prisma.TransactionClient,
     document: { id: string; number: string; lineage_key?: string | null; revisionOfId?: string | null },
   ) {

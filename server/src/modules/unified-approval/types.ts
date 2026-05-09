@@ -25,6 +25,7 @@ export interface ApprovalStepDefinition {
   assignments: ApprovalAssignmentDefinition[];
   rejectPolicy?: RejectPolicy;
   onApproved: string;
+  onRejected?: string;
   dueHours?: number;
 }
 

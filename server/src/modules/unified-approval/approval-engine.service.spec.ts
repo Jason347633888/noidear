@@ -59,7 +59,7 @@ describe('ApprovalEngineService', () => {
     ).rejects.toThrow(NotFoundException);
   });
 
-  it('approves a single task and invokes callback', async () => {
+  it('approves a single task and invokes onApproved callback', async () => {
     const deps = makeDeps();
     deps.tx.approvalTask.findUnique.mockResolvedValue({
       id: 'task-1',
@@ -96,5 +96,69 @@ describe('ApprovalEngineService', () => {
     const service = new ApprovalEngineService(deps.prisma, deps.resolver, deps.todo, deps.notification, deps.callbacks);
 
     await expect(service.approveTask('task-1', 'u1')).rejects.toThrow(BadRequestException);
+  });
+
+  it('invokes onRejected callback when step defines one', async () => {
+    const deps = makeDeps();
+    deps.tx.approvalTask.findUnique.mockResolvedValue({
+      id: 'task-1',
+      status: 'PENDING',
+      stepKey: 's1',
+      approvalMode: 'single',
+      instanceId: 'inst-1',
+      instance: {
+        id: 'inst-1',
+        title: '标题',
+        resourceType: 'document',
+        resourceId: 'doc-1',
+        resourceStep: null,
+        triggerKey: 'publish.level2',
+        createdById: 'creator',
+        definition: {
+          steps: [{ stepKey: 's1', onApproved: 'document.approvalApproved', onRejected: 'document.approvalRejected' }],
+        },
+      },
+    });
+
+    const service = new ApprovalEngineService(deps.prisma, deps.resolver, deps.todo, deps.notification, deps.callbacks);
+    await service.rejectTask('task-1', 'approver', '不符合要求');
+
+    expect(deps.tx.approvalInstance.update).toHaveBeenCalledWith({
+      where: { id: 'inst-1' },
+      data: { status: 'REJECTED', completedAt: expect.any(Date) },
+    });
+    expect(deps.callbacks.invoke).toHaveBeenCalledWith(
+      'document.approvalRejected',
+      expect.objectContaining({ resourceId: 'doc-1', actorId: 'approver', comment: '不符合要求' }),
+    );
+    expect(deps.notification.notifyRequester).toHaveBeenCalledWith('creator', 'rejected', '标题');
+  });
+
+  it('does not invoke any callback when onRejected is absent', async () => {
+    const deps = makeDeps();
+    deps.tx.approvalTask.findUnique.mockResolvedValue({
+      id: 'task-1',
+      status: 'PENDING',
+      stepKey: 's1',
+      approvalMode: 'single',
+      instanceId: 'inst-1',
+      instance: {
+        id: 'inst-1',
+        title: '标题',
+        resourceType: 'document',
+        resourceId: 'doc-1',
+        resourceStep: null,
+        triggerKey: 'publish.level2',
+        createdById: 'creator',
+        definition: {
+          steps: [{ stepKey: 's1', onApproved: 'document.approvalApproved' }],
+        },
+      },
+    });
+
+    const service = new ApprovalEngineService(deps.prisma, deps.resolver, deps.todo, deps.notification, deps.callbacks);
+    await service.rejectTask('task-1', 'approver', '不符合要求');
+
+    expect(deps.callbacks.invoke).not.toHaveBeenCalled();
   });
 });

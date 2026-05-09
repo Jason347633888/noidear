@@ -46,7 +46,10 @@ import { CANONICAL_DOCUMENT_STATUS } from './constants/document-control.constant
   exports: [DocumentService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, BusinessDocumentLinkService, DocumentExpiryService],
 })
 export class DocumentModule implements OnModuleInit {
-  constructor(private readonly callbackRegistry: ApprovalCallbackRegistry) {}
+  constructor(
+    private readonly callbackRegistry: ApprovalCallbackRegistry,
+    private readonly documentService: DocumentService,
+  ) {}
 
   onModuleInit() {
     this.callbackRegistry.register(
@@ -56,9 +59,27 @@ export class DocumentModule implements OnModuleInit {
           where: { id: resourceId },
           data: {
             status: CANONICAL_DOCUMENT_STATUS.EFFECTIVE,
+            revisionStatus: 'current',
             approverId: actorId,
             approvedAt: new Date(),
           },
+        });
+        const doc = await (tx as any).document.findUnique({
+          where: { id: resourceId },
+          select: { id: true, number: true, lineage_key: true, revisionOfId: true },
+        });
+        if (doc) {
+          await this.documentService.supersedePreviousEffectiveRevision(tx, doc);
+        }
+      },
+    );
+
+    this.callbackRegistry.register(
+      'document.approvalRejected',
+      async ({ tx, resourceId }: ApprovalCallbackContext) => {
+        await (tx as any).document.update({
+          where: { id: resourceId },
+          data: { status: CANONICAL_DOCUMENT_STATUS.REJECTED },
         });
       },
     );
