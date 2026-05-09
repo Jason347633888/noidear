@@ -5,7 +5,7 @@ type SupplierLike = {
   id: string;
   name?: string | null;
   status?: string | null;
-  supplier_status?: string | null;
+  evaluationStatus?: string | null;
   deletedAt?: Date | null;
 };
 
@@ -20,7 +20,7 @@ export class SupplierAccessService {
         id: true,
         name: true,
         status: true,
-        supplier_status: true,
+        evaluationStatus: true,
         deletedAt: true,
       },
     });
@@ -40,7 +40,7 @@ export class SupplierAccessService {
             id: true,
             name: true,
             status: true,
-            supplier_status: true,
+            evaluationStatus: true,
             deletedAt: true,
           },
         },
@@ -69,7 +69,7 @@ export class SupplierAccessService {
       throw new BadRequestException(`供应商 ${displayName} 已停用，不能${actionLabel}`);
     }
 
-    if (supplier.supplier_status === 'eliminated') {
+    if (supplier.evaluationStatus === 'eliminated') {
       throw new BadRequestException(`供应商 ${displayName} 已淘汰，不能${actionLabel}`);
     }
   }

@@ -33,7 +33,7 @@ export class SupplierEvaluationService {
     await this.prisma.supplier.update({
       where: { id: dto.supplier_id },
       data: {
-        supplier_status:
+        evaluationStatus:
           dto.verdict === 'eliminated'
             ? 'eliminated'
             : dto.verdict === 'conditional'

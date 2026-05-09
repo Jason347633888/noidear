@@ -49,6 +49,21 @@ enum BalanceStatus {
   alert
 }
 
+enum SupplierEvaluationStatus {
+  pending
+  approved
+  suspended
+  eliminated
+}
+
+enum LotInventoryStatus {
+  in_stock
+  consumed
+  nonconforming
+  quarantined
+  disposed
+}
+
 enum ProductionStatus {
   pending
   in_progress
@@ -1021,7 +1036,9 @@ model MaterialBatch {
   // 食品安全扩展字段
   supplier_lot_no   String?  // 供应商批号
   storage_confirmed Boolean  @default(false)
-  lot_status        String   @default("in_stock") // 'in_stock'|'consumed'|'nonconforming'|'quarantined'|'disposed'
+  // 库存流向状态（仓储操作触发），独立于质量状态 status(BatchStatus)
+  // BatchStatus = QC 质量/锁定状态；LotInventoryStatus = 库存流向状态
+  lotStatus         LotInventoryStatus @default(in_stock) @map("lot_status")
 
   // 追溯链支撑
   incoming_inspections IncomingInspection[]
@@ -1120,7 +1137,8 @@ model Supplier {
   inbounds       MaterialInbound[]
 
   // 食品安全扩展字段
-  supplier_status   String    @default("approved") // 'approved'|'suspended'|'eliminated'|'pending'
+  // 资质评估状态（QC/采购评估流程写入），独立于运营状态 status
+  evaluationStatus  SupplierEvaluationStatus @default(approved) @map("supplier_status")
   last_evaluated_at DateTime?
 
   // 追溯链支撑
