@@ -1,12 +1,7 @@
 <template>
   <div class="export-page">
+    <PageHeaderBlock eyebrow="系统治理" title="批量导出" description="支持导出文档和用户数据，最多10000条记录" />
     <el-card>
-      <template #header>
-        <div class="page-header">
-          <h2>批量导出</h2>
-          <p class="subtitle">支持导出文档和用户数据，最多10000条记录</p>
-        </div>
-      </template>
 
       <el-form :model="form" label-width="120px">
         <el-form-item label="导出类型" required>
@@ -74,6 +69,7 @@ import { ref, reactive } from 'vue';
 import { Download } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import exportApi from '@/api/export';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 interface ExportForm {
   exportType: 'documents' | 'users';
@@ -146,18 +142,10 @@ async function handleExport() {
 
 <style scoped>
 .export-page {
-  padding: 0;
-}
-
-.page-header h2 {
-  margin: 0 0 4px;
-  font-size: 18px;
-}
-
-.subtitle {
-  margin: 0;
-  color: #888;
-  font-size: 13px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .export-progress {

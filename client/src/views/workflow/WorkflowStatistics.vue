@@ -1,5 +1,6 @@
 <template>
   <div class="workflow-statistics">
+    <PageHeaderBlock title="工作流统计" eyebrow="工作流" />
     <el-row :gutter="16">
       <el-col :span="6">
         <StatCard
@@ -35,10 +36,9 @@
       </el-col>
     </el-row>
 
-    <el-card class="chart-card">
-      <template #header>
-        <span>工作流模板使用统计</span>
-      </template>
+    <div class="app-panel chart-card">
+      <div class="app-panel-header"><h3 class="app-panel-header__title">工作流模板使用统计</h3></div>
+      <div class="app-panel--padded">
       <el-table :data="templateStats" v-loading="loading" stripe>
         <el-table-column prop="templateName" label="模板名称" min-width="200" />
         <el-table-column prop="totalInstances" label="总实例" width="100" />
@@ -58,7 +58,8 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -117,14 +118,9 @@ onMounted(() => { fetchStats(); });
 
 <style scoped>
 .workflow-statistics {
-  padding: 20px;
-}
-
-.workflow-statistics .el-row {
-  margin-bottom: 16px;
-}
-
-.chart-card {
-  margin-bottom: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 </style>

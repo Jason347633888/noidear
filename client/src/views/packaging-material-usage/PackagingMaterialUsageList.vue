@@ -1,9 +1,6 @@
 <template>
   <div class="pmu-list-page">
-    <div class="page-header">
-      <h1 class="page-title">包装材料用量记录</h1>
-      <p class="page-subtitle">记录生产过程中包装材料使用量与废料量</p>
-    </div>
+    <PageHeaderBlock eyebrow="设备与现场" title="包装材料用量记录" description="记录生产过程中包装材料使用量与废料量" />
 
     <el-card class="table-card">
       <template #header>
@@ -131,6 +128,7 @@ import packagingMaterialUsageApi, {
 } from '@/api/packaging-material-usage';
 import MaterialSelect from '@/components/master-data/MaterialSelect.vue';
 import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelect.vue';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -255,23 +253,9 @@ onMounted(() => {
 <style scoped>
 .pmu-list-page {
   padding: 24px;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #909399;
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .card-header {

@@ -1,6 +1,6 @@
 <template>
   <div class="statistics-index">
-    <el-page-header title="统计分析" @back="$router.back()" />
+    <PageHeaderBlock eyebrow="数据分析" title="统计中心" />
     <el-empty description="请选择统计模块" />
   </div>
 </template>

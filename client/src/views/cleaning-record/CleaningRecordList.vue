@@ -1,36 +1,29 @@
 <template>
   <div class="cleaning-record-page">
-    <div class="page-header">
-      <h1 class="page-title">清洁消毒记录</h1>
-      <p class="page-subtitle">记录和追踪清洁消毒作业执行情况</p>
-    </div>
+    <PageHeaderBlock eyebrow="设备与现场" title="清洁消毒记录" description="记录和追踪清洁消毒作业执行情况" />
 
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <div class="card-title-wrap">
-            <span class="card-title">清洁记录列表</span>
-            <span class="card-count">共 {{ list.length }} 条记录</span>
-          </div>
-          <div class="header-actions">
-            <el-select
-              v-model="filterTargetType"
-              placeholder="全部类型"
-              clearable
-              style="width: 140px; margin-right: 12px"
-              @change="loadList"
-            >
-              <el-option label="区域" value="area" />
-              <el-option label="设备" value="equipment" />
-              <el-option label="器具" value="utensil" />
-              <el-option label="设施" value="facility" />
-            </el-select>
-            <el-button type="primary" @click="openCreateDialog">
-              <el-icon><Plus /></el-icon>新建记录
-            </el-button>
-          </div>
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">清洁记录列表<span class="card-count">共 {{ list.length }} 条记录</span></h3>
+        <div class="app-panel-header__actions">
+          <el-select
+            v-model="filterTargetType"
+            placeholder="全部类型"
+            clearable
+            style="width: 140px; margin-right: 12px"
+            @change="loadList"
+          >
+            <el-option label="区域" value="area" />
+            <el-option label="设备" value="equipment" />
+            <el-option label="器具" value="utensil" />
+            <el-option label="设施" value="facility" />
+          </el-select>
+          <el-button type="primary" @click="openCreateDialog">
+            <el-icon><Plus /></el-icon>新建记录
+          </el-button>
         </div>
-      </template>
+      </div>
+      <div class="app-panel--padded">
 
       <el-table :data="list" v-loading="loading" stripe>
         <el-table-column label="清洁对象类型" width="120">
@@ -59,7 +52,8 @@
           <template #default="{ row }">{{ formatDate(row.cleaning_date) }}</template>
         </el-table-column>
       </el-table>
-    </el-card>
+      </div>
+    </div>
 
     <!-- 新建对话框 -->
     <el-dialog v-model="createDialogVisible" title="新建清洁消毒记录" width="520px" :close-on-click-modal="false">
@@ -209,50 +203,13 @@ onMounted(() => {
 <style scoped>
 .cleaning-record-page {
   padding: 24px;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #909399;
-  margin: 0;
-}
-
-.card-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.card-title-wrap {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .card-count {
   font-size: 13px;
   color: #909399;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
 }
 </style>

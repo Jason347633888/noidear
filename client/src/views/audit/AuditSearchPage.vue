@@ -1,9 +1,6 @@
 <template>
   <div class="audit-search-page">
-    <el-card class="page-header">
-      <h2>综合日志搜索</h2>
-      <p class="subtitle">跨类型搜索系统审计日志</p>
-    </el-card>
+    <PageHeaderBlock eyebrow="系统治理" title="审计日志" description="跨类型搜索系统审计日志" />
 
     <!-- 搜索表单 -->
     <el-card class="filter-card">
@@ -296,21 +293,6 @@ const formatSensitiveAction = (action: string) => {
 <style scoped>
 .audit-search-page {
   padding: 20px;
-}
-
-.page-header {
-  margin-bottom: 20px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 24px;
-}
-
-.subtitle {
-  margin: 4px 0 0;
-  color: var(--el-text-color-secondary);
-  font-size: 14px;
 }
 
 .filter-card {

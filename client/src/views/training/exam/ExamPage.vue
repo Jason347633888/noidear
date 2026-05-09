@@ -1,12 +1,15 @@
 <template>
   <div class="exam-page">
-    <el-card v-loading="loading">
-      <template #header>
-        <div class="card-header">
-          <span>在线考试</span>
+    <PageHeaderBlock eyebrow="培训与内审" title="考试" />
+
+    <div class="app-panel" v-loading="loading">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">在线考试</h3>
+        <div class="app-panel-header__actions">
           <el-button @click="handleBack">返回</el-button>
         </div>
-      </template>
+      </div>
+      <div class="app-panel--padded">
 
       <!-- 考试说明 -->
       <div v-if="!examStarted && !examResult" class="exam-intro">
@@ -84,7 +87,8 @@
         @retry="handleRetry"
         @back="handleBack"
       />
-    </el-card>
+      </div>
+    </div>
   </div>
 </template>
 

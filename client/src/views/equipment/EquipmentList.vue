@@ -1,25 +1,17 @@
 <template>
   <div class="equipment-list-page">
-    <div class="page-header">
-      <h1 class="page-title">设备台账</h1>
-      <p class="page-subtitle">管理企业所有设备资产信息</p>
-    </div>
+    <PageHeaderBlock eyebrow="设备与现场" title="设备台账" description="管理企业所有设备资产信息" />
 
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <div class="card-title-wrap">
-            <span class="card-title">设备列表</span>
-            <span class="card-count">共 {{ pagination.total }} 台设备</span>
-          </div>
-          <div class="header-actions">
-            <el-button type="primary" @click="showFormDialog()" class="create-btn">
-              <el-icon><Plus /></el-icon>新增设备
-            </el-button>
-          </div>
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">设备列表<span class="card-count">共 {{ pagination.total }} 台设备</span></h3>
+        <div class="app-panel-header__actions">
+          <el-button type="primary" @click="showFormDialog()">
+            <el-icon><Plus /></el-icon>新增设备
+          </el-button>
         </div>
-      </template>
-
+      </div>
+      <div class="app-panel--padded">
       <!-- Filters -->
       <AdvancedFilter
         v-model="filters"
@@ -104,7 +96,8 @@
           @current-change="fetchData"
         />
       </div>
-    </el-card>
+      </div>
+    </div>
 
     <!-- Create/Edit Dialog -->
     <EquipmentForm
@@ -272,65 +265,17 @@ onMounted(() => {
 
 <style scoped>
 .equipment-list-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
-  --bg: #f5f6fa;
-  font-family: 'Inter', sans-serif;
-}
-
-.page-header { margin-bottom: 24px; }
-
-.page-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--primary);
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: var(--text-light);
-  margin: 0;
-}
-
-.table-card {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: none;
-}
-
-.card-header {
+  padding: 24px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.card-title-wrap {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.card-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--primary);
+  flex-direction: column;
+  gap: 16px;
 }
 
 .card-count {
   font-size: 12px;
-  color: var(--text-light);
-}
-
-.create-btn {
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent) 0%, #d4af37 100%);
-  border: none;
-  font-weight: 500;
+  color: #909399;
+  margin-left: 12px;
+  font-weight: 400;
 }
 
 .equipment-table {
@@ -341,14 +286,14 @@ onMounted(() => {
 .equipment-table :deep(th) {
   background: #fafafa;
   font-weight: 500;
-  color: var(--text-light);
+  color: var(--shell-muted);
   font-size: 12px;
 }
 
 .equipment-code {
   font-family: 'SF Mono', monospace;
   font-size: 12px;
-  color: var(--text-light);
+  color: var(--shell-muted);
 }
 
 .action-btns {

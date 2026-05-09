@@ -1,6 +1,6 @@
 <template>
   <div class="audit-chain-explorer">
-    <h2 class="page-title">证据链</h2>
+    <PageHeaderBlock eyebrow="文控与审批" title="证据链" />
     <div class="toolbar">
       <select v-model="sourceType" class="source-type-select">
         <option value="document">文件</option>
@@ -38,6 +38,7 @@ import { useRoute } from 'vue-router';
 import { documentControlApi } from '@/api/document-control';
 import EvidenceChainGraph from '@/components/document/EvidenceChainGraph.vue';
 import type { EvidenceChainResult, EvidenceSourceType } from '@noidear/types';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 const route = useRoute();
 
@@ -94,9 +95,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-title {
-  margin: 0 0 12px;
-  font-size: 1.25rem;
+.audit-chain-explorer {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .toolbar {

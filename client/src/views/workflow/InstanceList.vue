@@ -1,5 +1,6 @@
 <template>
   <div class="workflow-instance-list">
+    <PageHeaderBlock title="工作流实例" eyebrow="工作流" />
     <el-card class="filter-card">
       <el-form :model="filterForm" inline>
         <el-form-item label="状态">
@@ -148,8 +149,13 @@ onMounted(() => { fetchData(); });
 </script>
 
 <style scoped>
-.filter-card { margin-bottom: 16px; }
-.table-card { margin-bottom: 16px; }
+.workflow-instance-list {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; }
 </style>

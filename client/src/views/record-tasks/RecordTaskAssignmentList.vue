@@ -1,82 +1,86 @@
 <template>
   <div class="assignment-list">
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <span>任务配置</span>
-          <el-button type="primary" @click="openCreateDialog">新建任务</el-button>
-        </div>
+    <PageHeaderBlock eyebrow="生产执行" title="任务配置">
+      <template #actions>
+        <el-button type="primary" @click="openCreateDialog">新建任务</el-button>
       </template>
+    </PageHeaderBlock>
 
-      <el-table :data="tableData" v-loading="loading" stripe>
-        <el-table-column prop="title" label="标题" min-width="160" show-overflow-tooltip />
-        <el-table-column label="关联模板" width="160">
-          <template #default="{ row }">{{ row.template?.name || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="目标部门" width="140">
-          <template #default="{ row }">{{ row.department?.name || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="是否周期" width="90">
-          <template #default="{ row }">
-            <el-tag :type="row.isPeriodic ? 'primary' : 'info'" size="small">
-              {{ row.isPeriodic ? '周期' : '一次' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="周期类型" width="100">
-          <template #default="{ row }">
-            {{ periodTypeTextMap[row.periodType] || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="90">
-          <template #default="{ row }">
-            <el-tag :type="assignStatusTypeMap[row.status]" size="small">
-              {{ assignStatusTextMap[row.status] }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
-          <template #default="{ row }">
-            <el-button
-              v-if="row.status === 'active'"
-              link
-              type="warning"
-              @click="handlePause(row.id)"
-            >
-              暂停
-            </el-button>
-            <el-button
-              v-if="row.status === 'paused'"
-              link
-              type="success"
-              @click="handleResume(row.id)"
-            >
-              恢复
-            </el-button>
-            <el-button
-              v-if="row.status !== 'closed'"
-              link
-              type="danger"
-              @click="handleClose(row.id)"
-            >
-              关闭
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="pagination.page"
-          v-model:page-size="pagination.limit"
-          :page-sizes="[10, 20, 50]"
-          :total="pagination.total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="fetchData"
-          @current-change="fetchData"
-        />
+    <div class="app-panel" style="margin-bottom: 16px">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">任务配置列表</h3>
       </div>
-    </el-card>
+      <div class="app-panel--padded">
+        <el-table :data="tableData" v-loading="loading" stripe>
+          <el-table-column prop="title" label="标题" min-width="160" show-overflow-tooltip />
+          <el-table-column label="关联模板" width="160">
+            <template #default="{ row }">{{ row.template?.name || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="目标部门" width="140">
+            <template #default="{ row }">{{ row.department?.name || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="是否周期" width="90">
+            <template #default="{ row }">
+              <el-tag :type="row.isPeriodic ? 'primary' : 'info'" size="small">
+                {{ row.isPeriodic ? '周期' : '一次' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="周期类型" width="100">
+            <template #default="{ row }">
+              {{ periodTypeTextMap[row.periodType] || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="90">
+            <template #default="{ row }">
+              <el-tag :type="assignStatusTypeMap[row.status]" size="small">
+                {{ assignStatusTextMap[row.status] }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="160" fixed="right">
+            <template #default="{ row }">
+              <el-button
+                v-if="row.status === 'active'"
+                link
+                type="warning"
+                @click="handlePause(row.id)"
+              >
+                暂停
+              </el-button>
+              <el-button
+                v-if="row.status === 'paused'"
+                link
+                type="success"
+                @click="handleResume(row.id)"
+              >
+                恢复
+              </el-button>
+              <el-button
+                v-if="row.status !== 'closed'"
+                link
+                type="danger"
+                @click="handleClose(row.id)"
+              >
+                关闭
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pagination-wrap">
+          <el-pagination
+            v-model:current-page="pagination.page"
+            v-model:page-size="pagination.limit"
+            :page-sizes="[10, 20, 50]"
+            :total="pagination.total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="fetchData"
+            @current-change="fetchData"
+          />
+        </div>
+      </div>
+    </div>
 
     <!-- 新建任务对话框 -->
     <el-dialog
@@ -367,8 +371,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.table-card { margin-bottom: 16px; }
-.card-header { display: flex; justify-content: space-between; align-items: center; }
+.assignment-list { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; }
 .dialog-footer { display: flex; justify-content: flex-end; gap: 12px; }
 </style>

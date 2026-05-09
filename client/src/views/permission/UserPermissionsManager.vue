@@ -1,5 +1,6 @@
 <template>
   <div class="user-permissions-manager">
+    <PageHeaderBlock eyebrow="系统治理" title="用户权限管理" />
     <el-card class="filter-card">
       <template #header>
         <div class="card-header">

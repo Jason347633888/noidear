@@ -1,9 +1,6 @@
 <template>
   <div class="department-page">
-    <div class="page-header">
-      <h1 class="page-title">部门管理</h1>
-      <p class="page-subtitle">管理组织架构与部门负责人</p>
-    </div>
+    <PageHeaderBlock eyebrow="系统治理" title="部门管理" description="管理组织架构与部门负责人" />
 
     <el-alert
       v-if="leaderCandidatesBlocked"
@@ -129,6 +126,7 @@ import request from '@/api/request';
 import { createDepartment, updateDepartment } from '@/api/department';
 import { useBootstrapStore } from '@/stores/bootstrap';
 import type { Department } from '@noidear/types';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 interface UserItem {
   id: string;
@@ -326,17 +324,12 @@ onMounted(async () => {
 
 <style scoped>
 .department-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
-
-.page-header { margin-bottom: 24px; }
-.page-title { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 600; color: var(--primary); margin: 0 0 4px; }
-.page-subtitle { font-size: 14px; color: var(--text-light); margin: 0; }
-.bootstrap-alert { margin-bottom: 20px; }
-.filter-card { margin-bottom: 20px; border-radius: 12px; }
+.filter-card { border-radius: 12px; }
 .filter-form { display: flex; align-items: flex-end; gap: 16px; }
 .filter-item { margin-bottom: 0; margin-right: 0; }
 .filter-input { width: 180px; }
@@ -345,8 +338,8 @@ onMounted(async () => {
 .table-card { border-radius: 12px; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .card-title-wrap { display: flex; align-items: baseline; gap: 12px; }
-.card-title { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 600; color: var(--primary); }
-.card-count { font-size: 12px; color: var(--text-light); }
+.card-title { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 600; color: var(--shell-ink); }
+.card-count { font-size: 12px; color: var(--shell-muted); }
 .create-btn { border-radius: 8px; }
 .ml-4 { margin-left: 4px; }
 .full-select { width: 100%; }

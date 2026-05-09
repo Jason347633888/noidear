@@ -1,14 +1,11 @@
 <template>
   <div class="workflow-designer">
-    <div class="designer-toolbar">
-      <div class="toolbar-left">
-        <span class="designer-title">可视化工作流设计器</span>
-      </div>
-      <div class="toolbar-right">
+    <PageHeaderBlock title="可视化工作流设计器" eyebrow="工作流">
+      <template #actions>
         <el-button :icon="View" @click="previewVisible = true">预览</el-button>
         <el-button type="primary" :loading="saving" @click="handleSave">保存模板</el-button>
-      </div>
-    </div>
+      </template>
+    </PageHeaderBlock>
 
     <div class="designer-body">
       <!-- Node palette (left panel) -->

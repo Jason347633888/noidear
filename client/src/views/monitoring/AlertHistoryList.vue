@@ -1,9 +1,6 @@
 <template>
   <div class="alert-history-list">
-    <el-card class="page-header">
-      <h2>告警历史</h2>
-      <p class="subtitle">查看系统告警触发历史</p>
-    </el-card>
+    <PageHeaderBlock eyebrow="系统治理" title="告警历史" description="查看系统告警触发历史" />
 
     <el-card class="filter-card">
       <el-form :model="filterForm" label-width="80px">
@@ -81,6 +78,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 import dayjs from 'dayjs';
 import { queryAlertHistory, acknowledgeAlert, type AlertHistory } from '@/api/monitoring';
 
@@ -148,22 +146,10 @@ onMounted(() => {
 
 <style scoped>
 .alert-history-list {
-  padding: 20px;
-}
-
-.page-header {
-  margin-bottom: 20px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 24px;
-}
-
-.subtitle {
-  margin: 4px 0 0;
-  color: var(--el-text-color-secondary);
-  font-size: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .filter-card {

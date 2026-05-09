@@ -1,16 +1,12 @@
 <template>
   <div class="document-control-issue-list">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <div>
-            <strong>{{ issueTitle }}</strong>
-            <span class="total">共 {{ total }} 条</span>
-          </div>
-          <el-button size="small" @click="fetchIssues">刷新</el-button>
-        </div>
+    <PageHeaderBlock :title="issueTitle" eyebrow="文控工作台">
+      <template #compact-summary>共 {{ total }} 条</template>
+      <template #actions>
+        <el-button size="small" @click="fetchIssues">刷新</el-button>
       </template>
-
+    </PageHeaderBlock>
+    <div class="app-panel">
       <el-empty v-if="!loading && items.length === 0" description="暂无问题" />
 
       <el-table v-else :data="items" v-loading="loading" stripe>
@@ -43,7 +39,7 @@
         layout="prev, pager, next, total"
         @current-change="handlePageChange"
       />
-    </el-card>
+    </div>
   </div>
 </template>
 
@@ -145,7 +141,10 @@ onMounted(fetchIssues);
 
 <style scoped>
 .document-control-issue-list {
-  padding: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 .header {
   display: flex;

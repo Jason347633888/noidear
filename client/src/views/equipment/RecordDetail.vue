@@ -1,10 +1,10 @@
 <template>
   <div class="record-detail-page" v-loading="loading">
-    <div class="page-header">
-      <el-button @click="$router.back()" class="back-btn">
+    <PageHeaderBlock eyebrow="设备与现场" title="维保记录详情" />
+    <div class="page-actions-bar">
+      <el-button @click="$router.back()">
         <el-icon><ArrowLeft /></el-icon>返回
       </el-button>
-      <h1 class="page-title">维保记录详情</h1>
       <el-tag v-if="record" :type="getRecordStatusType(record.status)" effect="light" size="large">
         {{ getRecordStatusText(record.status) }}
       </el-tag>
@@ -12,10 +12,11 @@
 
     <template v-if="record">
       <!-- Basic Info -->
-      <el-card class="info-card">
-        <template #header>
-          <span class="card-title">基本信息</span>
-        </template>
+      <div class="app-panel" style="margin-bottom:20px">
+        <div class="app-panel-header">
+          <h3 class="app-panel-header__title">基本信息</h3>
+        </div>
+        <div class="app-panel--padded">
         <el-descriptions :column="3" border>
           <el-descriptions-item label="记录编号">
             <span class="code-text">{{ record.recordCode }}</span>
@@ -57,13 +58,15 @@
             {{ record.comment }}
           </el-descriptions-item>
         </el-descriptions>
-      </el-card>
+        </div>
+      </div>
 
       <!-- Photos -->
-      <el-card v-if="record.photos && record.photos.length > 0" class="info-card">
-        <template #header>
-          <span class="card-title">现场照片</span>
-        </template>
+      <div v-if="record.photos && record.photos.length > 0" class="app-panel" style="margin-bottom:20px">
+        <div class="app-panel-header">
+          <h3 class="app-panel-header__title">现场照片</h3>
+        </div>
+        <div class="app-panel--padded">
         <div class="photo-gallery">
           <el-image
             v-for="(photo, index) in record.photos"
@@ -75,13 +78,15 @@
             class="photo-item"
           />
         </div>
-      </el-card>
+        </div>
+      </div>
 
       <!-- Signatures -->
-      <el-card class="info-card">
-        <template #header>
-          <span class="card-title">电子签名</span>
-        </template>
+      <div class="app-panel" style="margin-bottom:20px">
+        <div class="app-panel-header">
+          <h3 class="app-panel-header__title">电子签名</h3>
+        </div>
+        <div class="app-panel--padded">
         <el-row :gutter="40">
           <el-col :span="12">
             <div class="signature-section">
@@ -102,13 +107,15 @@
             </div>
           </el-col>
         </el-row>
-      </el-card>
+        </div>
+      </div>
 
       <!-- Actions -->
-      <el-card v-if="record.status === 'draft' || record.status === 'submitted'" class="info-card">
-        <template #header>
-          <span class="card-title">操作</span>
-        </template>
+      <div v-if="record.status === 'draft' || record.status === 'submitted'" class="app-panel" style="margin-bottom:20px">
+        <div class="app-panel-header">
+          <h3 class="app-panel-header__title">操作</h3>
+        </div>
+        <div class="app-panel--padded">
         <div class="action-bar">
           <el-button
             v-if="record.status === 'draft'"
@@ -133,7 +140,8 @@
             审批驳回
           </el-button>
         </div>
-      </el-card>
+        </div>
+      </div>
     </template>
 
     <!-- Approve Dialog -->
@@ -269,47 +277,21 @@ onMounted(() => {
 
 <style scoped>
 .record-detail-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
-  font-family: 'Inter', sans-serif;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.page-header {
+.page-actions-bar {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 24px;
-}
-
-.back-btn { border-radius: 8px; }
-
-.page-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--primary);
-  margin: 0;
-}
-
-.info-card {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: none;
-  margin-bottom: 20px;
-}
-
-.card-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--primary);
 }
 
 .code-text {
   font-family: 'SF Mono', monospace;
-  color: var(--text-light);
+  color: #909399;
 }
 
 .photo-gallery {
@@ -332,7 +314,7 @@ onMounted(() => {
 
 .signature-label {
   font-size: 14px;
-  color: var(--text-light);
+  color: #909399;
   margin: 0 0 12px;
 }
 

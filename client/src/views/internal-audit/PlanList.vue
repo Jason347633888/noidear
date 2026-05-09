@@ -1,15 +1,18 @@
 <template>
   <div class="audit-plan-list">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <h2>内审计划管理</h2>
+    <PageHeaderBlock eyebrow="培训与内审" title="内审计划" />
+
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">内审计划管理</h3>
+        <div class="app-panel-header__actions">
           <el-button type="primary" @click="handleCreate">
             <el-icon><Plus /></el-icon>
             创建计划
           </el-button>
         </div>
-      </template>
+      </div>
+      <div class="app-panel--padded">
 
       <!-- 筛选 -->
       <el-form :inline="true" :model="queryForm" class="filter-form">
@@ -117,7 +120,8 @@
         @current-change="handleQuery"
         class="pagination"
       />
-    </el-card>
+      </div>
+    </div>
 
     <!-- 创建/编辑对话框 -->
     <el-dialog
@@ -388,17 +392,10 @@ onMounted(() => {
 
 <style scoped>
 .audit-plan-list {
-  padding: 20px;
-}
-
-.header {
+  padding: 24px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.header h2 {
-  margin: 0;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .filter-form {

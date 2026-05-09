@@ -1,15 +1,18 @@
 <template>
   <div class="archive-detail">
-    <el-card v-loading="loading">
-      <template #header>
-        <div class="header">
-          <h2>{{ archive.projectTitle }}</h2>
+    <PageHeaderBlock eyebrow="培训与内审" title="培训档案详情" />
+
+    <div class="app-panel" v-loading="loading">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">{{ archive.projectTitle }}</h3>
+        <div class="app-panel-header__actions">
           <el-button type="primary" @click="downloadPdf">
             <el-icon><Download /></el-icon>
             下载PDF
           </el-button>
         </div>
-      </template>
+      </div>
+      <div class="app-panel--padded">
 
       <el-descriptions :column="2" border>
         <el-descriptions-item label="培训项目">
@@ -31,7 +34,8 @@
           {{ archive.passedCount }} 人
         </el-descriptions-item>
       </el-descriptions>
-    </el-card>
+      </div>
+    </div>
 
     <!-- PDF 预览 -->
     <PdfViewer
@@ -43,10 +47,11 @@
     />
 
     <!-- 关联文档记录 -->
-    <el-card v-if="relatedDocuments.length > 0">
-      <template #header>
-        <h3>关联文档记录</h3>
-      </template>
+    <div class="app-panel" v-if="relatedDocuments.length > 0">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">关联文档记录</h3>
+      </div>
+      <div class="app-panel--padded">
       <el-table :data="relatedDocuments">
         <el-table-column prop="title" label="文档标题" />
         <el-table-column prop="type" label="文档类型" width="120" />
@@ -63,7 +68,8 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+      </div>
+    </div>
   </div>
 </template>
 

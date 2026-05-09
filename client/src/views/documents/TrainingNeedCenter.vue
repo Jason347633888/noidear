@@ -1,5 +1,6 @@
 <template>
   <div class="training-need-center">
+    <PageHeaderBlock title="培训需求中心" eyebrow="文控与审批" />
     <el-alert
       class="page-note"
       type="info"
@@ -125,13 +126,15 @@ onMounted(load);
 </script>
 
 <style scoped>
-.page-note {
-  margin-bottom: 12px;
+.training-need-center {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .toolbar {
   display: flex;
   gap: 10px;
-  margin-bottom: 12px;
 }
 </style>

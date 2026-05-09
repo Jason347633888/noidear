@@ -1,11 +1,15 @@
 <template>
   <div class="instance-list">
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <span>待填任务</span>
-        </div>
-      </template>
+    <PageHeaderBlock
+      eyebrow="工作执行"
+      title="待填任务"
+      description="截止时间优先，先处理到期和逾期的记录任务。"
+    />
+
+    <div class="app-panel table-card">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">任务列表</h3>
+      </div>
 
       <el-table :data="tableData" v-loading="loading" stripe>
         <el-table-column label="任务标题" min-width="180">
@@ -42,7 +46,7 @@
               :disabled="row.status !== 'pending'"
               @click="router.push(`/records/task/${row.id}`)"
             >
-              填写
+              去处理
             </el-button>
           </template>
         </el-table-column>
@@ -59,7 +63,7 @@
           @current-change="fetchData"
         />
       </div>
-    </el-card>
+    </div>
   </div>
 </template>
 
@@ -69,6 +73,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { instanceApi } from '@/api/record-task';
 import dayjs from 'dayjs';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 const router = useRouter();
 const loading = ref(false);
@@ -113,8 +118,14 @@ onMounted(() => { fetchData(); });
 </script>
 
 <style scoped>
-.table-card { margin-bottom: 16px; }
-.card-header { display: flex; justify-content: space-between; align-items: center; }
-.pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; }
-.overdue-text { color: #f56c6c; font-weight: 500; }
+.instance-list {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.table-card { overflow: hidden; }
+.pagination-wrap { display: flex; justify-content: flex-end; padding: 16px 20px; }
+.overdue-text { color: var(--shell-danger); font-weight: 500; }
 </style>

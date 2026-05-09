@@ -1,9 +1,6 @@
 <template>
   <div class="equipment-stats-page">
-    <div class="page-header">
-      <h1 class="page-title">设备统计分析</h1>
-      <p class="page-subtitle">设备运行状态与维保分析</p>
-    </div>
+    <PageHeaderBlock eyebrow="设备与现场" title="设备统计分析" description="设备运行状态与维保分析" />
 
     <!-- Overview Cards -->
     <el-row :gutter="20" class="metrics-row">
@@ -48,18 +45,20 @@
     <!-- Maintenance by Level Chart -->
     <el-row :gutter="20">
       <el-col :span="12">
-        <el-card class="chart-card">
-          <template #header>
-            <span class="card-title">维保统计（按保养级别）</span>
-          </template>
-          <div ref="levelChartRef" class="chart-container"></div>
-        </el-card>
+        <div class="app-panel">
+          <div class="app-panel-header">
+            <h3 class="app-panel-header__title">维保统计（按保养级别）</h3>
+          </div>
+          <div class="app-panel--padded">
+            <div ref="levelChartRef" class="chart-container"></div>
+          </div>
+        </div>
       </el-col>
       <el-col :span="12">
-        <el-card class="chart-card">
-          <template #header>
-            <div class="card-header-row">
-              <span class="card-title">维保成本分析（按月）</span>
+        <div class="app-panel">
+          <div class="app-panel-header">
+            <h3 class="app-panel-header__title">维保成本分析（按月）</h3>
+            <div class="app-panel-header__actions">
               <el-date-picker
                 v-model="costYear"
                 type="year"
@@ -69,21 +68,25 @@
                 @change="fetchCostData"
               />
             </div>
-          </template>
-          <div ref="costChartRef" class="chart-container"></div>
-        </el-card>
+          </div>
+          <div class="app-panel--padded">
+            <div ref="costChartRef" class="chart-container"></div>
+          </div>
+        </div>
       </el-col>
     </el-row>
 
     <!-- Fault Rate Chart -->
     <el-row :gutter="20" style="margin-top: 20px">
       <el-col :span="24">
-        <el-card class="chart-card">
-          <template #header>
-            <span class="card-title">故障率分析（按设备分类）</span>
-          </template>
-          <div ref="faultRateChartRef" class="chart-container"></div>
-        </el-card>
+        <div class="app-panel">
+          <div class="app-panel-header">
+            <h3 class="app-panel-header__title">故障率分析（按设备分类）</h3>
+          </div>
+          <div class="app-panel--padded">
+            <div ref="faultRateChartRef" class="chart-container"></div>
+          </div>
+        </div>
       </el-col>
     </el-row>
   </div>
@@ -243,17 +246,11 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .equipment-stats-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --text-light: #7f8c8d;
-  font-family: 'Inter', sans-serif;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
-.page-header { margin-bottom: 24px; }
-.page-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px; font-weight: 600; color: var(--primary); margin: 0 0 4px;
-}
-.page-subtitle { font-size: 14px; color: var(--text-light); margin: 0; }
 .metrics-row { margin-bottom: 20px; }
 .metric-card {
   border-radius: 12px;
@@ -278,17 +275,5 @@ onBeforeUnmount(() => {
   line-height: 1; margin-bottom: 8px;
 }
 .metric-label { font-size: 14px; color: #909399; }
-.chart-card {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  border: none;
-}
-.card-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 16px; font-weight: 600; color: var(--primary);
-}
-.card-header-row {
-  display: flex; justify-content: space-between; align-items: center;
-}
 .chart-container { width: 100%; height: 350px; }
 </style>

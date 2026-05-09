@@ -1,15 +1,18 @@
 <template>
   <div class="plan-list-container">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span class="title">年度培训计划</span>
+    <PageHeaderBlock eyebrow="培训与内审" title="培训计划" />
+
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">年度培训计划</h3>
+        <div class="app-panel-header__actions">
           <el-button type="primary" @click="handleCreate">
             <el-icon><Plus /></el-icon>
             新建计划
           </el-button>
         </div>
-      </template>
+      </div>
+      <div class="app-panel--padded">
 
       <!-- Filters -->
       <el-form :inline="true" :model="filters" class="filter-form">
@@ -100,7 +103,8 @@
           @size-change="fetchPlans"
         />
       </div>
-    </el-card>
+      </div>
+    </div>
 
     <!-- Create/Edit Dialog -->
     <el-dialog
@@ -375,7 +379,10 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .plan-list-container {
-  padding: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .card-header {

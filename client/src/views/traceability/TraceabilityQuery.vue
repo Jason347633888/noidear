@@ -1,9 +1,10 @@
 <template>
   <div class="traceability-shell">
-    <div class="page-header">
-      <h1 class="page-title">追溯查询</h1>
-      <p class="page-subtitle">对象查询 · 场景工作台 · 台账视图 · 链路图视图</p>
-    </div>
+    <PageHeaderBlock
+      eyebrow="追溯与批次"
+      title="追溯查询"
+      description="按关系链查询影响范围与证据"
+    />
 
     <div class="toolbar-row">
       <div class="toolbar-group">
@@ -110,28 +111,7 @@ const createExport = async (exportMode: 'simple' | 'fullPackage') => {
 
 <style scoped>
 .traceability-shell {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --text-light: #7f8c8d;
   font-family: 'Inter', sans-serif;
-}
-
-.page-header {
-  margin-bottom: 20px;
-}
-
-.page-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--primary);
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 13px;
-  color: var(--text-light);
-  margin: 0;
 }
 
 .toolbar-row {
@@ -149,6 +129,6 @@ const createExport = async (exportMode: 'simple' | 'fullPackage') => {
 
 .toolbar-label {
   font-size: 12px;
-  color: var(--text-light);
+  color: #7f8c8d;
 }
 </style>

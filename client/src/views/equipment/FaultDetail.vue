@@ -1,10 +1,10 @@
 <template>
   <div class="fault-detail-page" v-loading="loading">
-    <div class="page-header">
-      <el-button @click="$router.back()" class="back-btn">
+    <PageHeaderBlock eyebrow="设备与现场" title="报修单详情" />
+    <div class="page-actions-bar">
+      <el-button @click="$router.back()">
         <el-icon><ArrowLeft /></el-icon>返回
       </el-button>
-      <h1 class="page-title">报修单详情</h1>
       <el-tag v-if="fault" :type="getFaultStatusType(fault.status)" effect="light" size="large">
         {{ getFaultStatusText(fault.status) }}
       </el-tag>
@@ -14,10 +14,11 @@
     </div>
 
     <template v-if="fault">
-      <el-card class="info-card">
-        <template #header>
-          <span class="card-title">报修信息</span>
-        </template>
+      <div class="app-panel" style="margin-bottom:20px">
+        <div class="app-panel-header">
+          <h3 class="app-panel-header__title">报修信息</h3>
+        </div>
+        <div class="app-panel--padded">
         <el-descriptions :column="3" border>
           <el-descriptions-item label="报修单号">
             <span class="code-text">{{ fault.faultCode }}</span>
@@ -44,12 +45,14 @@
           <el-descriptions-item label="响应时间">{{ responseTime }}</el-descriptions-item>
           <el-descriptions-item label="故障描述" :span="3">{{ fault.description }}</el-descriptions-item>
         </el-descriptions>
-      </el-card>
+        </div>
+      </div>
 
-      <el-card v-if="fault.photos && fault.photos.length > 0" class="info-card">
-        <template #header>
-          <span class="card-title">故障照片</span>
-        </template>
+      <div v-if="fault.photos && fault.photos.length > 0" class="app-panel" style="margin-bottom:20px">
+        <div class="app-panel-header">
+          <h3 class="app-panel-header__title">故障照片</h3>
+        </div>
+        <div class="app-panel--padded">
         <div class="photo-gallery">
           <el-image
             v-for="(photo, index) in fault.photos"
@@ -61,12 +64,14 @@
             class="photo-item"
           />
         </div>
-      </el-card>
+        </div>
+      </div>
 
-      <el-card v-if="fault.faultCause || fault.repairAction" class="info-card">
-        <template #header>
-          <span class="card-title">维修记录</span>
-        </template>
+      <div v-if="fault.faultCause || fault.repairAction" class="app-panel" style="margin-bottom:20px">
+        <div class="app-panel-header">
+          <h3 class="app-panel-header__title">维修记录</h3>
+        </div>
+        <div class="app-panel--padded">
         <el-descriptions :column="1" border>
           <el-descriptions-item label="故障原因">{{ fault.faultCause || '-' }}</el-descriptions-item>
           <el-descriptions-item label="处理措施">{{ fault.repairAction || '-' }}</el-descriptions-item>
@@ -75,12 +80,14 @@
           <h4>维修人签名</h4>
           <img :src="fault.repairSignature" alt="维修人签名" class="signature-img" />
         </div>
-      </el-card>
+        </div>
+      </div>
 
-      <el-card v-if="fault.status === 'pending' || fault.status === 'in_progress'" class="info-card">
-        <template #header>
-          <span class="card-title">操作</span>
-        </template>
+      <div v-if="fault.status === 'pending' || fault.status === 'in_progress'" class="app-panel" style="margin-bottom:20px">
+        <div class="app-panel-header">
+          <h3 class="app-panel-header__title">操作</h3>
+        </div>
+        <div class="app-panel--padded">
         <div class="action-bar">
           <el-button v-if="fault.status === 'pending'" type="success" @click="handleAccept" :loading="processing">
             接单处理
@@ -92,7 +99,8 @@
             取消报修
           </el-button>
         </div>
-      </el-card>
+        </div>
+      </div>
     </template>
 
     <el-dialog v-model="showCompleteDialog" title="完成维修" width="600px" destroy-on-close>
@@ -223,47 +231,21 @@ onMounted(() => {
 
 <style scoped>
 .fault-detail-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
-  font-family: 'Inter', sans-serif;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.page-header {
+.page-actions-bar {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 24px;
-}
-
-.back-btn { border-radius: 8px; }
-
-.page-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--primary);
-  margin: 0;
-}
-
-.info-card {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: none;
-  margin-bottom: 20px;
-}
-
-.card-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--primary);
 }
 
 .code-text {
   font-family: 'SF Mono', monospace;
-  color: var(--text-light);
+  color: #909399;
 }
 
 .photo-gallery { display: flex; flex-wrap: wrap; gap: 12px; }
@@ -277,7 +259,7 @@ onMounted(() => {
 }
 
 .repair-signature { margin-top: 20px; text-align: center; }
-.repair-signature h4 { color: var(--text-light); margin-bottom: 12px; }
+.repair-signature h4 { color: #909399; margin-bottom: 12px; }
 
 .signature-img {
   max-width: 400px;

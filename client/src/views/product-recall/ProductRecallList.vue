@@ -1,8 +1,6 @@
 <template>
   <div class="recall-list-page">
-    <div class="page-header">
-      <h1 class="page-title">产品召回管理</h1>
-    </div>
+    <PageHeaderBlock eyebrow="质量与合规" title="产品召回管理" />
 
     <el-card class="table-card">
       <template #header>
@@ -89,6 +87,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import productRecallApi from '@/api/product-recall';
 import type { ProductRecall, ProductRecallStatus } from '@/api/product-recall';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 const router = useRouter();
 const list = ref<ProductRecall[]>([]);

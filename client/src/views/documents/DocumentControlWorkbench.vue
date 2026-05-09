@@ -1,5 +1,6 @@
 <template>
   <div class="document-control-workbench">
+    <PageHeaderBlock title="文控工作台" eyebrow="文控与审批" />
     <div class="queue-grid">
       <el-card
         v-for="card in cards"
@@ -78,6 +79,13 @@ onMounted(fetchWorkbench);
 </script>
 
 <style scoped>
+.document-control-workbench {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .queue-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

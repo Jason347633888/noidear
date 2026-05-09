@@ -1,14 +1,10 @@
 <template>
   <div class="alert-rule-list">
-    <el-card class="page-header">
-      <div class="header-content">
-        <div>
-          <h2>告警规则配置</h2>
-          <p class="subtitle">管理系统告警规则</p>
-        </div>
+    <PageHeaderBlock eyebrow="系统治理" title="告警规则" description="管理系统告警规则">
+      <template #actions>
         <el-button type="primary" @click="handleCreate">新建规则</el-button>
-      </div>
-    </el-card>
+      </template>
+    </PageHeaderBlock>
 
     <el-card>
       <el-table :data="tableData" v-loading="loading" stripe>
@@ -87,6 +83,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 import {
   queryAlertRules,
   createAlertRule,
@@ -233,28 +230,10 @@ onMounted(() => {
 
 <style scoped>
 .alert-rule-list {
-  padding: 20px;
-}
-
-.page-header {
-  margin-bottom: 20px;
-}
-
-.header-content {
+  padding: 24px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.header-content h2 {
-  margin: 0;
-  font-size: 24px;
-}
-
-.subtitle {
-  margin: 4px 0 0;
-  color: var(--el-text-color-secondary);
-  font-size: 14px;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .pagination {

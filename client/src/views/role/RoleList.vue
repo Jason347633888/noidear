@@ -1,5 +1,6 @@
 <template>
   <div class="role-list">
+    <PageHeaderBlock eyebrow="系统治理" title="角色管理" />
     <el-card class="filter-card">
       <el-form :model="filterForm" inline>
         <el-form-item label="角色名称">
@@ -12,15 +13,16 @@
       </el-form>
     </el-card>
 
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <span>角色列表</span>
+    <div class="app-panel table-card">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">角色列表</h3>
+        <div class="app-panel-header__actions">
           <el-button type="primary" @click="handleCreate">
             创建角色
           </el-button>
         </div>
-      </template>
+      </div>
+      <div class="app-panel--padded">
 
       <el-alert
         v-if="missingSystemRoles.length"
@@ -68,7 +70,8 @@
           @current-change="handleSearch"
         />
       </div>
-    </el-card>
+      </div>
+    </div>
 
     <!-- 创建/编辑对话框 -->
     <RoleForm
@@ -92,6 +95,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import request from '@/api/request';
 import RoleForm from '@/components/role/RoleForm.vue';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 import RolePermissions from '@/components/role/RolePermissions.vue';
 import { useBootstrapStore } from '@/stores/bootstrap';
 
@@ -216,7 +220,10 @@ onMounted(() => {
 
 <style scoped>
 .role-list {
-  padding: 0;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .filter-card {

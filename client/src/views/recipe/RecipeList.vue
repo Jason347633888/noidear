@@ -1,9 +1,6 @@
 <template>
   <div class="recipe-list-page">
-    <div class="page-header">
-      <h1 class="page-title">配方管理</h1>
-      <p class="page-subtitle">管理产品配方版本及物料配比</p>
-    </div>
+    <PageHeaderBlock eyebrow="生产执行" title="配方管理" description="管理产品配方版本及物料配比" />
 
     <el-card class="table-card">
       <template #header>
@@ -76,6 +73,7 @@ import { ref, computed, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { recipeApi, type Recipe, getRecipeStatusText, getRecipeStatusType } from '@/api/recipe';
 import { productApi, type Product } from '@/api/product';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 const list = ref<Recipe[]>([]);
 const loading = ref(false);
@@ -147,21 +145,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.recipe-list-page { padding: 24px; }
-
-.page-header { margin-bottom: 24px; }
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #909399;
-  margin: 0;
+.recipe-list-page {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .card-header {

@@ -1,7 +1,7 @@
 <template>
   <div class="statistics-dashboard">
+    <PageHeaderBlock eyebrow="数据分析" title="统计大屏" />
     <div class="dashboard-header">
-      <h2>数据分析大屏</h2>
       <div class="header-controls">
         <el-radio-group v-model="period" size="small" @change="fetchAllStats">
           <el-radio-button label="today">今天</el-radio-button>
@@ -29,28 +29,28 @@
 
     <el-row :gutter="20" v-loading="loading">
       <el-col :span="12">
-        <el-card class="chart-card">
-          <template #header><span>文档统计（按类型）</span></template>
-          <div ref="docChartRef" class="chart-container" />
-        </el-card>
+        <div class="app-panel chart-card">
+          <div class="app-panel-header"><h3 class="app-panel-header__title">文档统计（按类型）</h3></div>
+          <div class="app-panel--padded"><div ref="docChartRef" class="chart-container" /></div>
+        </div>
       </el-col>
       <el-col :span="12">
-        <el-card class="chart-card">
-          <template #header><span>用户统计（按部门）</span></template>
-          <div ref="userChartRef" class="chart-container" />
-        </el-card>
+        <div class="app-panel chart-card">
+          <div class="app-panel-header"><h3 class="app-panel-header__title">用户统计（按部门）</h3></div>
+          <div class="app-panel--padded"><div ref="userChartRef" class="chart-container" /></div>
+        </div>
       </el-col>
       <el-col :span="16">
-        <el-card class="chart-card">
-          <template #header><span>审批统计（平均耗时趋势）</span></template>
-          <div ref="workflowChartRef" class="chart-container" />
-        </el-card>
+        <div class="app-panel chart-card">
+          <div class="app-panel-header"><h3 class="app-panel-header__title">审批统计（平均耗时趋势）</h3></div>
+          <div class="app-panel--padded"><div ref="workflowChartRef" class="chart-container" /></div>
+        </div>
       </el-col>
       <el-col :span="8">
-        <el-card class="chart-card">
-          <template #header><span>设备完好率</span></template>
-          <div ref="equipmentChartRef" class="chart-container" />
-        </el-card>
+        <div class="app-panel chart-card">
+          <div class="app-panel-header"><h3 class="app-panel-header__title">设备完好率</h3></div>
+          <div class="app-panel--padded"><div ref="equipmentChartRef" class="chart-container" /></div>
+        </div>
       </el-col>
     </el-row>
   </div>
@@ -59,6 +59,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Refresh } from '@element-plus/icons-vue';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 import { ElMessage } from 'element-plus';
 import * as echarts from 'echarts';
 import statisticsApi from '@/api/statistics';
@@ -187,14 +188,18 @@ function renderEquipmentChart(goodRate: number) {
 </script>
 
 <style scoped>
-.statistics-dashboard { padding: 0; }
+.statistics-dashboard {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 .dashboard-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
+  justify-content: flex-end;
+  margin-bottom: 0;
 }
-.dashboard-header h2 { margin: 0; font-size: 20px; font-weight: 600; }
 .header-controls { display: flex; align-items: center; gap: 8px; }
 .refresh-hint { font-size: 12px; color: #999; }
 .chart-card { margin-bottom: 20px; }

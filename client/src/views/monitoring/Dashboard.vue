@@ -1,28 +1,21 @@
 <template>
   <div class="monitoring-dashboard">
-    <!-- Header -->
-    <el-card class="page-header">
-      <div class="header-content">
-        <div>
-          <h2>运维监控大屏</h2>
-          <p class="subtitle">实时监控系统状态和性能指标</p>
-        </div>
-        <div class="header-actions">
-          <el-button :icon="FullScreen" @click="toggleFullScreen">
-            {{ isFullScreen ? '退出全屏' : '全屏显示' }}
-          </el-button>
-          <el-button
-            :icon="autoRefresh ? VideoPause : VideoPlay"
-            @click="toggleAutoRefresh"
-          >
-            {{ autoRefresh ? '暂停刷新' : '自动刷新' }}
-          </el-button>
-          <el-button :icon="Refresh" :loading="loading" @click="fetchAllData">
-            刷新
-          </el-button>
-        </div>
-      </div>
-    </el-card>
+    <PageHeaderBlock eyebrow="系统治理" title="监控大屏" />
+    <!-- Header Controls -->
+    <div class="header-actions">
+      <el-button :icon="FullScreen" @click="toggleFullScreen">
+        {{ isFullScreen ? '退出全屏' : '全屏显示' }}
+      </el-button>
+      <el-button
+        :icon="autoRefresh ? VideoPause : VideoPlay"
+        @click="toggleAutoRefresh"
+      >
+        {{ autoRefresh ? '暂停刷新' : '自动刷新' }}
+      </el-button>
+      <el-button :icon="Refresh" :loading="loading" @click="fetchAllData">
+        刷新
+      </el-button>
+    </div>
 
     <!-- 系统健康状态 -->
     <el-row :gutter="20" class="health-row">
@@ -162,6 +155,7 @@ import { queryAlertHistory, acknowledgeAlert, type AlertHistory } from '@/api/mo
 import HealthStatusCard from '@/components/monitoring/HealthStatusCard.vue';
 import MetricCard from '@/components/monitoring/MetricCard.vue';
 import AlertList from '@/components/monitoring/AlertList.vue';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 const router = useRouter();
 const loading = ref(false);
@@ -319,28 +313,10 @@ onUnmounted(() => {
 
 <style scoped>
 .monitoring-dashboard {
-  padding: 20px;
-}
-
-.page-header {
-  margin-bottom: 20px;
-}
-
-.header-content {
+  padding: 24px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.header-content h2 {
-  margin: 0;
-  font-size: 24px;
-}
-
-.subtitle {
-  margin: 4px 0 0;
-  color: var(--el-text-color-secondary);
-  font-size: 14px;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .header-actions {

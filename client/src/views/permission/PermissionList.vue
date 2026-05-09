@@ -1,5 +1,6 @@
 <template>
   <div class="permission-list">
+    <PageHeaderBlock eyebrow="系统治理" title="权限管理" />
     <el-card class="filter-card">
       <el-form :model="filterForm" inline>
         <el-form-item label="资源类型">
@@ -151,6 +152,7 @@ import { ref, reactive, onMounted, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import request from '@/api/request';
 import PermissionForm from '@/components/permission/PermissionForm.vue';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 interface Permission {
   id: string;
@@ -282,7 +284,10 @@ onMounted(() => {
 
 <style scoped>
 .permission-list {
-  padding: 0;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .filter-card {

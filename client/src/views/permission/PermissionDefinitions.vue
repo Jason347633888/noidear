@@ -1,5 +1,6 @@
 <template>
   <div class="permission-definitions">
+    <PageHeaderBlock eyebrow="系统治理" title="权限定义" />
     <el-card class="filter-card">
       <template #header>
         <div class="card-header">

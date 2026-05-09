@@ -15,7 +15,13 @@
         </div>
       </template>
 
-      <el-table :data="tableData" v-loading="loading" stripe class="approval-table">
+      <el-table
+        v-if="loading || tableData.length"
+        :data="tableData"
+        v-loading="loading"
+        stripe
+        class="approval-table"
+      >
         <el-table-column prop="number" label="文档编号" width="180">
           <template #default="{ row }">
             <span class="doc-number">{{ row.number }}</span>
@@ -156,16 +162,6 @@ onMounted(fetchData);
 
 <style scoped>
 .approval-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --success: #27ae60;
-  --danger: #e74c3c;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
-  --bg: #f5f6fa;
-}
-
-.approval-page {
   font-family: 'Inter', sans-serif;
 }
 
@@ -175,11 +171,11 @@ onMounted(fetchData);
   font-family: 'Cormorant Garamond', serif;
   font-size: 28px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--shell-ink);
   margin: 0 0 4px;
 }
 
-.page-subtitle { font-size: 14px; color: var(--text-light); margin: 0; }
+.page-subtitle { font-size: 14px; color: var(--shell-muted); margin: 0; }
 
 .table-card {
   border-radius: 12px;
@@ -195,22 +191,22 @@ onMounted(fetchData);
   font-family: 'Cormorant Garamond', serif;
   font-size: 18px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--shell-ink);
 }
 
-.approval-badge :deep(.el-badge__content) { background: var(--danger); }
+.approval-badge :deep(.el-badge__content) { background: var(--shell-danger); }
 
 .approval-table :deep(th) {
   background: #fafafa;
   font-weight: 500;
-  color: var(--text-light);
+  color: var(--shell-muted);
   font-size: 12px;
 }
 
 .doc-number {
   font-family: 'SF Mono', monospace;
   font-size: 12px;
-  color: var(--text-light);
+  color: var(--shell-muted);
 }
 
 .doc-info { display: flex; align-items: center; gap: 10px; }
@@ -230,7 +226,7 @@ onMounted(fetchData);
 .doc-icon.level-2 { background: linear-gradient(135deg, #3498db 0%, #5dade2 100%); }
 .doc-icon.level-3 { background: linear-gradient(135deg, #9b59b6 0%, #a569bd 100%); }
 
-.doc-title { font-size: 14px; color: var(--text); font-weight: 500; }
+.doc-title { font-size: 14px; color: var(--shell-ink); font-weight: 500; }
 
 .creator-info { display: flex; align-items: center; gap: 8px; }
 
@@ -238,8 +234,8 @@ onMounted(fetchData);
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  background: var(--primary);
-  color: var(--accent);
+  background: var(--el-color-primary);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -247,14 +243,14 @@ onMounted(fetchData);
   font-weight: 600;
 }
 
-.time-text { font-size: 12px; color: var(--text-light); }
+.time-text { font-size: 12px; color: var(--shell-muted); }
 
 .action-btns { display: flex; gap: 4px; }
 
 .action-btn { font-size: 12px; display: flex; align-items: center; gap: 4px; }
 
-.approve-btn { color: var(--success); }
-.reject-btn { color: var(--danger); }
+.approve-btn { color: var(--shell-success); }
+.reject-btn { color: var(--shell-danger); }
 
 .reject-dialog :deep(.el-dialog__header) { padding-bottom: 16px; border-bottom: 1px solid #f0f0f0; }
 
@@ -267,7 +263,7 @@ onMounted(fetchData);
   margin-bottom: 16px;
   font-size: 15px;
   font-weight: 500;
-  color: var(--danger);
+  color: var(--shell-danger);
 }
 
 .reject-icon {

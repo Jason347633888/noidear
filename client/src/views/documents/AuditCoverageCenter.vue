@@ -1,5 +1,6 @@
 <template>
   <div class="audit-coverage-center">
+    <PageHeaderBlock title="审核覆盖中心" eyebrow="文控与审批" />
     <div class="toolbar">
       <el-date-picker v-model="period" type="daterange" start-placeholder="开始日期" end-placeholder="结束日期" />
       <el-button type="primary" @click="load">查询</el-button>
@@ -41,9 +42,15 @@ const load = async () => {
 </script>
 
 <style scoped>
+.audit-coverage-center {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .toolbar {
   display: flex;
   gap: 10px;
-  margin-bottom: 12px;
 }
 </style>

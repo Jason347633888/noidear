@@ -1,9 +1,6 @@
 <template>
   <div class="training-statistics">
-    <el-card class="page-header">
-      <h2>培训统计分析</h2>
-      <p class="subtitle">培训项目与学员数据统计分析</p>
-    </el-card>
+    <PageHeaderBlock eyebrow="培训与内审" title="培训统计" description="培训项目与学员数据统计分析" />
 
     <!-- 统计卡片 -->
     <el-row :gutter="20" class="metrics-row">
@@ -485,23 +482,10 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .training-statistics {
-  padding: 20px;
-}
-
-.page-header {
-  margin-bottom: 20px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 24px;
-  color: #303133;
-}
-
-.subtitle {
-  margin: 8px 0 0 0;
-  color: #909399;
-  font-size: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .metrics-row {

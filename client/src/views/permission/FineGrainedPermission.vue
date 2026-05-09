@@ -1,31 +1,25 @@
 <template>
   <div class="fine-grained-permission">
-    <el-card class="header-card">
-      <div class="page-header">
-        <div>
-          <h3 class="page-title">细粒度权限配置</h3>
-          <p class="page-desc">配置资源-操作权限矩阵，精确控制每个角色对系统资源的访问权限</p>
-        </div>
-        <div class="header-actions">
-          <el-select
-            v-model="selectedRoleId"
-            placeholder="选择角色"
-            style="width: 200px; margin-right: 12px"
-            @change="handleRoleChange"
-          >
-            <el-option
-              v-for="role in roles"
-              :key="role.id"
-              :value="role.id"
-              :label="role.name"
-            />
-          </el-select>
-          <el-button type="primary" :disabled="!selectedRoleId" @click="handleSave" :loading="saving">
-            保存配置
-          </el-button>
-        </div>
-      </div>
-    </el-card>
+    <PageHeaderBlock eyebrow="系统治理" title="细粒度权限" description="配置资源-操作权限矩阵，精确控制每个角色对系统资源的访问权限">
+      <template #actions>
+        <el-select
+          v-model="selectedRoleId"
+          placeholder="选择角色"
+          style="width: 200px; margin-right: 12px"
+          @change="handleRoleChange"
+        >
+          <el-option
+            v-for="role in roles"
+            :key="role.id"
+            :value="role.id"
+            :label="role.name"
+          />
+        </el-select>
+        <el-button type="primary" :disabled="!selectedRoleId" @click="handleSave" :loading="saving">
+          保存配置
+        </el-button>
+      </template>
+    </PageHeaderBlock>
 
     <el-card v-loading="loading" class="matrix-card">
       <template #header>

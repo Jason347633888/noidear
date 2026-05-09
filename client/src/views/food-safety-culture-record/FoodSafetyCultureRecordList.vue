@@ -1,9 +1,6 @@
 <template>
   <div class="fsc-list-page">
-    <div class="page-header">
-      <h1 class="page-title">食品安全文化建设记录</h1>
-      <p class="page-subtitle">记录培训、检查、会议及宣传活动等食品安全文化活动</p>
-    </div>
+    <PageHeaderBlock eyebrow="设备与现场" title="食品安全文化建设记录" description="记录培训、检查、会议及宣传活动等食品安全文化活动" />
 
     <el-card class="table-card">
       <template #header>
@@ -154,6 +151,7 @@ import foodSafetyCultureRecordApi, {
   type ActivityType,
   getActivityTypeText,
 } from '@/api/food-safety-culture-record';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -284,23 +282,9 @@ onMounted(() => {
 <style scoped>
 .fsc-list-page {
   padding: 24px;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #909399;
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .card-header {
@@ -324,10 +308,5 @@ onMounted(() => {
 .card-count {
   font-size: 13px;
   color: #909399;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
 }
 </style>

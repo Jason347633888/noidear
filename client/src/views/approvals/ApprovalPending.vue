@@ -1,21 +1,27 @@
 <template>
   <div class="approval-page">
-    <div class="page-header">
-      <h1 class="page-title">待我审批</h1>
-      <p class="page-subtitle">处理待审批的任务记录和文档申请</p>
-    </div>
+    <PageHeaderBlock
+      eyebrow="工作执行"
+      title="待我审批"
+      description="处理待审批的任务记录和文档申请"
+    />
 
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <div class="card-title-wrap">
-            <span class="card-title">待审批列表</span>
-            <el-badge :value="tasks.length" :max="99" class="approval-badge" v-if="tasks.length" />
-          </div>
-        </div>
-      </template>
+    <div class="app-panel table-card">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">
+          待审批列表
+          <el-badge v-if="tasks.length" :value="tasks.length" :max="99" class="approval-badge" />
+        </h3>
+      </div>
 
-      <el-table :data="tasks" v-loading="loading" stripe class="approval-table" row-key="id">
+      <el-table
+        v-if="loading || tasks.length"
+        :data="tasks"
+        v-loading="loading"
+        stripe
+        class="approval-table"
+        row-key="id"
+      >
         <el-table-column label="审批事项" min-width="200">
           <template #default="{ row }">
             <span class="doc-title">{{ row.stepName ?? '-' }}</span>
@@ -54,7 +60,7 @@
       </el-table>
 
       <el-empty v-if="!loading && !tasks.length" description="暂无待审批记录" :image-size="120" />
-    </el-card>
+    </div>
 
     <!-- 通过确认对话框 -->
     <el-dialog v-model="showApproveDialog" title="确认通过" width="440px" class="approve-dialog">
@@ -111,6 +117,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { View, Check, Close, Warning } from '@element-plus/icons-vue';
 import { unifiedApprovalApi, type ApprovalTask, type ApprovalInstance } from '@/api/unified-approval';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 const router = useRouter();
 const loading = ref(false);
@@ -211,67 +218,30 @@ onMounted(load);
 
 <style scoped>
 .approval-page {
-  --primary: #1a1a2e;
-  --accent: #c9a227;
-  --success: #27ae60;
-  --danger: #e74c3c;
-  --text: #2c3e50;
-  --text-light: #7f8c8d;
-  --bg: #f5f6fa;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.approval-page {
-  font-family: 'Inter', sans-serif;
-}
+.table-card { overflow: hidden; }
 
-.page-header { margin-bottom: 24px; }
-
-.page-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--primary);
-  margin: 0 0 4px;
-}
-
-.page-subtitle { font-size: 14px; color: var(--text-light); margin: 0; }
-
-.table-card {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: none;
-}
-
-.card-header { display: flex; justify-content: space-between; align-items: center; }
-
-.card-title-wrap { display: flex; align-items: center; gap: 12px; }
-
-.card-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--primary);
-}
-
-.approval-badge :deep(.el-badge__content) { background: var(--danger); }
+.approval-badge :deep(.el-badge__content) { background: var(--shell-danger); }
 
 .approval-table :deep(th) {
   background: #fafafa;
   font-weight: 500;
-  color: var(--text-light);
+  color: var(--shell-muted);
   font-size: 12px;
 }
 
-.doc-title { font-size: 14px; color: var(--text); font-weight: 500; }
+.doc-title { font-size: 14px; color: var(--shell-ink); font-weight: 500; }
 
-.time-text { font-size: 12px; color: var(--text-light); }
+.time-text { font-size: 12px; color: var(--shell-muted); }
 
 .action-btns { display: flex; gap: 4px; }
 
 .action-btn { font-size: 12px; display: flex; align-items: center; gap: 4px; }
-
-.approve-btn { color: var(--success); }
-.reject-btn { color: var(--danger); }
 
 .reject-dialog :deep(.el-dialog__header) { padding-bottom: 16px; border-bottom: 1px solid #f0f0f0; }
 
@@ -284,7 +254,7 @@ onMounted(load);
   margin-bottom: 16px;
   font-size: 15px;
   font-weight: 500;
-  color: var(--danger);
+  color: var(--shell-danger);
 }
 
 .reject-icon {
@@ -293,7 +263,7 @@ onMounted(load);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(231, 76, 60, 0.1);
+  background: rgba(180, 35, 24, 0.1);
   border-radius: 6px;
 }
 
@@ -302,15 +272,15 @@ onMounted(load);
 .char-count {
   text-align: right;
   font-size: 12px;
-  color: var(--text-light);
+  color: var(--shell-muted);
   margin-top: 4px;
 }
 
-.char-warning { color: var(--danger); }
+.char-warning { color: var(--shell-danger); }
 
 .approve-content p {
   font-size: 14px;
-  color: var(--text);
+  color: var(--shell-ink);
   margin-bottom: 12px;
 }
 

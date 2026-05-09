@@ -1,100 +1,102 @@
 <template>
   <div class="deviation-report-view">
-    <div class="page-header">
-      <h2>偏离报告管理</h2>
+    <PageHeaderBlock eyebrow="生产执行" title="偏差报告" />
+
+    <div class="app-panel" style="margin-bottom: 16px">
+      <div class="app-panel--padded">
+        <el-form :model="filterForm" inline>
+          <el-form-item label="状态">
+            <el-select v-model="filterForm.status" placeholder="全部状态" clearable style="width: 150px;">
+              <el-option value="pending" label="待审批" />
+              <el-option value="approved" label="已通过" />
+              <el-option value="rejected" label="已拒绝" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="日期范围">
+            <el-date-picker
+              v-model="dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              value-format="YYYY-MM-DD"
+              style="width: 280px;"
+            />
+          </el-form-item>
+          <el-form-item label="关键词">
+            <el-input
+              v-model="filterForm.keyword"
+              placeholder="字段名/任务ID"
+              clearable
+              style="width: 200px;"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">查询</el-button>
+            <el-button @click="handleReset">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
     </div>
 
-    <el-card class="filter-card">
-      <el-form :model="filterForm" inline>
-        <el-form-item label="状态">
-          <el-select v-model="filterForm.status" placeholder="全部状态" clearable style="width: 150px;">
-            <el-option value="pending" label="待审批" />
-            <el-option value="approved" label="已通过" />
-            <el-option value="rejected" label="已拒绝" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="日期范围">
-          <el-date-picker
-            v-model="dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
-            style="width: 280px;"
-          />
-        </el-form-item>
-        <el-form-item label="关键词">
-          <el-input
-            v-model="filterForm.keyword"
-            placeholder="字段名/任务ID"
-            clearable
-            style="width: 200px;"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <el-card class="table-card" v-loading="loading">
-      <el-table :data="tableData" stripe border>
-        <el-table-column prop="id" label="报告ID" width="180" show-overflow-tooltip />
-        <el-table-column prop="taskRecordId" label="任务记录ID" width="180" show-overflow-tooltip />
-        <el-table-column prop="fieldName" label="偏离字段" width="120" />
-        <el-table-column label="期望值" width="100">
-          <template #default="{ row }">{{ row.expectedValue }}</template>
-        </el-table-column>
-        <el-table-column label="实际值" width="100">
-          <template #default="{ row }">{{ row.actualValue }}</template>
-        </el-table-column>
-        <el-table-column label="偏离率" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getDeviationRateType(row.deviationRate)" size="small">
-              {{ row.deviationRate > 0 ? '+' : '' }}{{ row.deviationRate.toFixed(2) }}%
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="submitter.name" label="提交人" width="100" />
-        <el-table-column label="提交时间" width="160">
-          <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleViewDetail(row)">
-              查看详情
-            </el-button>
-            <template v-if="row.status === 'pending'">
-              <el-button type="success" link size="small" @click="handleApprove(row)">
-                通过
-              </el-button>
-              <el-button type="danger" link size="small" @click="handleReject(row)">
-                拒绝
-              </el-button>
+    <div class="app-panel" style="margin-bottom: 16px" v-loading="loading">
+      <div class="app-panel--padded">
+        <el-table :data="tableData" stripe border>
+          <el-table-column prop="id" label="报告ID" width="180" show-overflow-tooltip />
+          <el-table-column prop="taskRecordId" label="任务记录ID" width="180" show-overflow-tooltip />
+          <el-table-column prop="fieldName" label="偏离字段" width="120" />
+          <el-table-column label="期望值" width="100">
+            <template #default="{ row }">{{ row.expectedValue }}</template>
+          </el-table-column>
+          <el-table-column label="实际值" width="100">
+            <template #default="{ row }">{{ row.actualValue }}</template>
+          </el-table-column>
+          <el-table-column label="偏离率" width="100">
+            <template #default="{ row }">
+              <el-tag :type="getDeviationRateType(row.deviationRate)" size="small">
+                {{ row.deviationRate > 0 ? '+' : '' }}{{ row.deviationRate.toFixed(2) }}%
+              </el-tag>
             </template>
-          </template>
-        </el-table-column>
-      </el-table>
+          </el-table-column>
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="submitter.name" label="提交人" width="100" />
+          <el-table-column label="提交时间" width="160">
+            <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="180" fixed="right">
+            <template #default="{ row }">
+              <el-button type="primary" link size="small" @click="handleViewDetail(row)">
+                查看详情
+              </el-button>
+              <template v-if="row.status === 'pending'">
+                <el-button type="success" link size="small" @click="handleApprove(row)">
+                  通过
+                </el-button>
+                <el-button type="danger" link size="small" @click="handleReject(row)">
+                  拒绝
+                </el-button>
+              </template>
+            </template>
+          </el-table-column>
+        </el-table>
 
-      <div class="pagination">
-        <el-pagination
-          v-model:current-page="pagination.page"
-          v-model:page-size="pagination.pageSize"
-          :total="pagination.total"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          @current-change="fetchData"
-          @size-change="handleSizeChange"
-        />
+        <div class="pagination">
+          <el-pagination
+            v-model:current-page="pagination.page"
+            v-model:page-size="pagination.pageSize"
+            :total="pagination.total"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            @current-change="fetchData"
+            @size-change="handleSizeChange"
+          />
+        </div>
       </div>
-    </el-card>
+    </div>
 
     <!-- 详情弹窗 -->
     <el-dialog v-model="detailVisible" title="偏离报告详情" width="600px">
@@ -322,24 +324,6 @@ onMounted(() => {
 <style scoped>
 .deviation-report-view {
   padding: 0;
-}
-
-.page-header {
-  margin-bottom: 16px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.filter-card {
-  margin-bottom: 16px;
-}
-
-.table-card {
-  margin-bottom: 16px;
 }
 
 .pagination {

@@ -1,28 +1,21 @@
 <template>
   <div class="equipment-list-page">
-    <div class="page-header">
-      <h1 class="page-title">测量设备管理</h1>
-      <p class="page-subtitle">管理测量设备台账及校准记录</p>
-    </div>
+    <PageHeaderBlock eyebrow="设备与现场" title="测量设备管理" description="管理测量设备台账及校准记录" />
 
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <div class="card-title-wrap">
-            <span class="card-title">设备列表</span>
-            <span class="card-count">共 {{ list.length }} 台设备</span>
-            <el-tag v-if="overdueCount > 0" type="danger" effect="light" size="small">
-              {{ overdueCount }} 台逾期
-            </el-tag>
-          </div>
-          <div class="header-actions">
-            <el-button type="primary" @click="openCreateDialog">
-              <el-icon><Plus /></el-icon>新建设备
-            </el-button>
-          </div>
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">设备列表<span class="card-count">共 {{ list.length }} 台设备</span>
+          <el-tag v-if="overdueCount > 0" type="danger" effect="light" size="small">
+            {{ overdueCount }} 台逾期
+          </el-tag>
+        </h3>
+        <div class="app-panel-header__actions">
+          <el-button type="primary" @click="openCreateDialog">
+            <el-icon><Plus /></el-icon>新建设备
+          </el-button>
         </div>
-      </template>
-
+      </div>
+      <div class="app-panel--padded">
       <el-table :data="list" v-loading="loading" stripe :row-class-name="rowClassName">
         <el-table-column prop="code" label="设备编号" width="140" />
         <el-table-column prop="name" label="设备名称" min-width="160" />
@@ -53,7 +46,8 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+      </div>
+    </div>
 
     <!-- 新建设备 dialog -->
     <el-dialog
@@ -396,51 +390,14 @@ onMounted(() => {
 <style scoped>
 .equipment-list-page {
   padding: 24px;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #909399;
-  margin: 0;
-}
-
-.card-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.card-title-wrap {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .card-count {
   font-size: 13px;
   color: #909399;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
 }
 
 .text-danger {

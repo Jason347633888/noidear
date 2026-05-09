@@ -1,12 +1,15 @@
 <template>
   <div class="project-list">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>培训项目列表</span>
+    <PageHeaderBlock eyebrow="培训与内审" title="培训项目" />
+
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">培训项目列表</h3>
+        <div class="app-panel-header__actions">
           <el-button type="primary" @click="handleCreate">创建培训项目</el-button>
         </div>
-      </template>
+      </div>
+      <div class="app-panel--padded">
 
       <!-- 筛选区域 -->
       <AdvancedFilter
@@ -81,7 +84,8 @@
         @current-change="fetchData"
         style="margin-top: 20px; justify-content: flex-end"
       />
-    </el-card>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -267,7 +271,10 @@ onMounted(() => {
 
 <style scoped>
 .project-list {
-  padding: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .card-header {

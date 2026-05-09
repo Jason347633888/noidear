@@ -1,34 +1,41 @@
 <template>
   <div class="batch-detail" v-loading="loading">
-    <el-page-header @back="router.back()" content="批次详情" />
+    <PageHeaderBlock eyebrow="追溯与批次" title="批次详情">
+      <template #actions>
+        <el-button @click="router.push(`/batch-trace/${batchId}/trace`)">查看追溯链</el-button>
+        <el-button @click="handleExport">导出报告</el-button>
+      </template>
+    </PageHeaderBlock>
 
-    <el-card class="info-card" v-if="batch">
-      <template #header>
-        <div class="card-header">
-          <span>批次信息</span>
+    <div class="app-panel" style="margin-bottom: 16px" v-if="batch">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">批次信息</h3>
+        <div class="app-panel-header__actions">
           <el-tag :type="statusTypeMap[batch.status]">
             {{ statusTextMap[batch.status] }}
           </el-tag>
         </div>
-      </template>
-      <el-descriptions :column="3" border>
-        <el-descriptions-item label="批次号">{{ batch.batchNumber }}</el-descriptions-item>
-        <el-descriptions-item label="产品名称">{{ batch.productName }}</el-descriptions-item>
-        <el-descriptions-item label="产品代码">{{ batch.productCode }}</el-descriptions-item>
-        <el-descriptions-item label="数量">{{ batch.quantity }} {{ batch.unit }}</el-descriptions-item>
-        <el-descriptions-item label="开始日期">
-          {{ batch.startDate ? new Date(batch.startDate).toLocaleDateString('zh-CN') : '-' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="结束日期">
-          {{ batch.endDate ? new Date(batch.endDate).toLocaleDateString('zh-CN') : '-' }}
-        </el-descriptions-item>
-      </el-descriptions>
-    </el-card>
+      </div>
+      <div class="app-panel--padded">
+        <el-descriptions :column="3" border>
+          <el-descriptions-item label="批次号">{{ batch.batchNumber }}</el-descriptions-item>
+          <el-descriptions-item label="产品名称">{{ batch.productName }}</el-descriptions-item>
+          <el-descriptions-item label="产品代码">{{ batch.productCode }}</el-descriptions-item>
+          <el-descriptions-item label="数量">{{ batch.quantity }} {{ batch.unit }}</el-descriptions-item>
+          <el-descriptions-item label="开始日期">
+            {{ batch.startDate ? new Date(batch.startDate).toLocaleDateString('zh-CN') : '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="结束日期">
+            {{ batch.endDate ? new Date(batch.endDate).toLocaleDateString('zh-CN') : '-' }}
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
+    </div>
 
-    <el-card class="usage-card">
-      <template #header>
-        <div class="card-header">
-          <span>物料使用记录</span>
+    <div class="app-panel" style="margin-bottom: 16px">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">物料使用记录</h3>
+        <div class="app-panel-header__actions">
           <el-button
             v-if="batch?.status === 'in_progress'"
             type="primary"
@@ -38,53 +45,55 @@
             添加物料
           </el-button>
         </div>
-      </template>
-      <el-table :data="materialUsages" stripe>
-        <el-table-column label="物料名称" min-width="180">
-          <template #default="{ row }">{{ row.material?.name || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="物料批次" width="160">
-          <template #default="{ row }">{{ row.materialBatch?.batchNumber || '-' }}</template>
-        </el-table-column>
-        <el-table-column prop="quantity" label="使用量" width="120" />
-        <el-table-column prop="usedAt" label="使用时间" width="180">
-          <template #default="{ row }">{{ new Date(row.usedAt).toLocaleString('zh-CN') }}</template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+      </div>
+      <div class="app-panel--padded">
+        <el-table :data="materialUsages" stripe>
+          <el-table-column label="物料名称" min-width="180">
+            <template #default="{ row }">{{ row.material?.name || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="物料批次" width="160">
+            <template #default="{ row }">{{ row.materialBatch?.batchNumber || '-' }}</template>
+          </el-table-column>
+          <el-table-column prop="quantity" label="使用量" width="120" />
+          <el-table-column prop="usedAt" label="使用时间" width="180">
+            <template #default="{ row }">{{ new Date(row.usedAt).toLocaleString('zh-CN') }}</template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </div>
 
     <!-- 配料执行归集 -->
-    <el-card style="margin-top: 16px">
-      <template #header>
-        <div style="display: flex; justify-content: space-between; align-items: center">
-          <span>配料执行归集</span>
-          <div style="display: flex; gap: 8px">
-            <el-button
-              v-if="hasDraftAggregations"
-              size="small"
-              type="success"
-              :loading="confirmingAggregation"
-              @click="handleConfirmAggregation"
-            >确认归集</el-button>
-            <el-button size="small" type="primary" @click="openAggregationPanel">+ 归集配料执行</el-button>
-          </div>
-        </div>
-      </template>
-      <div v-if="batch?.aggregations?.length">
-        <div v-for="agg in batch.aggregations" :key="agg.id" style="margin-bottom: 12px; padding: 8px; background: #f9f9f9; border-radius: 4px">
-          <div><strong>配料执行号：</strong>{{ agg.mixingExecution?.executionNo }}</div>
-          <div><strong>配料区：</strong>{{ agg.mixingExecution?.area?.name }}</div>
-          <div><strong>实际配料重量：</strong>{{ agg.mixingExecution?.actual_weight }}</div>
-          <div v-if="isSharedMixingExecution(agg)">
-            <strong>归集方式：</strong>
-            <el-tag type="warning" size="small">共用配料执行</el-tag>
-            <span style="margin-left: 8px">{{ linkedBatchNumbers(agg) }}</span>
-          </div>
-          <div><strong>状态：</strong>{{ agg.status }}</div>
+    <div class="app-panel" style="margin-bottom: 16px">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">配料执行归集</h3>
+        <div class="app-panel-header__actions">
+          <el-button
+            v-if="hasDraftAggregations"
+            size="small"
+            type="success"
+            :loading="confirmingAggregation"
+            @click="handleConfirmAggregation"
+          >确认归集</el-button>
+          <el-button size="small" type="primary" @click="openAggregationPanel">+ 归集配料执行</el-button>
         </div>
       </div>
-      <el-empty v-else description="暂无配料执行归集" />
-    </el-card>
+      <div class="app-panel--padded">
+        <div v-if="batch?.aggregations?.length">
+          <div v-for="agg in batch.aggregations" :key="agg.id" style="margin-bottom: 12px; padding: 8px; background: #f9f9f9; border-radius: 4px">
+            <div><strong>配料执行号：</strong>{{ agg.mixingExecution?.executionNo }}</div>
+            <div><strong>配料区：</strong>{{ agg.mixingExecution?.area?.name }}</div>
+            <div><strong>实际配料重量：</strong>{{ agg.mixingExecution?.actual_weight }}</div>
+            <div v-if="isSharedMixingExecution(agg)">
+              <strong>归集方式：</strong>
+              <el-tag type="warning" size="small">共用配料执行</el-tag>
+              <span style="margin-left: 8px">{{ linkedBatchNumbers(agg) }}</span>
+            </div>
+            <div><strong>状态：</strong>{{ agg.status }}</div>
+          </div>
+        </div>
+        <el-empty v-else description="暂无配料执行归集" />
+      </div>
+    </div>
 
     <!-- 归集选择面板 -->
     <el-dialog v-model="showAggregationPanel" title="选择配料执行" width="700px">
@@ -101,11 +110,6 @@
         <el-button type="primary" @click="submitAggregationDraft">提交归集</el-button>
       </template>
     </el-dialog>
-
-    <div class="actions">
-      <el-button @click="router.push(`/batch-trace/${batchId}/trace`)">查看追溯链</el-button>
-      <el-button @click="handleExport">导出报告</el-button>
-    </div>
 
     <!-- 添加物料对话框 -->
     <el-dialog v-model="usageDialogVisible" title="添加物料使用" width="500px">
@@ -342,8 +346,4 @@ onMounted(async () => {
 
 <style scoped>
 .batch-detail { padding: 0; }
-.info-card { margin-top: 16px; margin-bottom: 16px; }
-.usage-card { margin-bottom: 16px; }
-.card-header { display: flex; justify-content: space-between; align-items: center; }
-.actions { display: flex; gap: 12px; }
 </style>

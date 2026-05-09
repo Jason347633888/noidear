@@ -1,27 +1,20 @@
 <template>
   <div class="metal-detection-page">
-    <div class="page-header">
-      <h1 class="page-title">金属探测记录</h1>
-      <p class="page-subtitle">记录和追踪金属探测仪检测结果</p>
-    </div>
+    <PageHeaderBlock eyebrow="设备与现场" title="金属探测记录" description="记录和追踪金属探测仪检测结果" />
 
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <div class="card-title-wrap">
-            <span class="card-title">检测记录列表</span>
-            <span class="card-count">共 {{ list.length }} 条记录</span>
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <h3 class="app-panel-header__title">检测记录列表<span class="card-count">共 {{ list.length }} 条记录</span></h3>
+        <div class="app-panel-header__actions">
+          <div style="width: 260px; margin-right: 12px">
+            <ProductionBatchSelect v-model="filterBatchId" @update:model-value="loadList" />
           </div>
-          <div class="header-actions">
-            <div style="width: 260px; margin-right: 12px">
-              <ProductionBatchSelect v-model="filterBatchId" @update:model-value="loadList" />
-            </div>
-            <el-button type="primary" @click="openCreateDialog">
-              <el-icon><Plus /></el-icon>新建记录
-            </el-button>
-          </div>
+          <el-button type="primary" @click="openCreateDialog">
+            <el-icon><Plus /></el-icon>新建记录
+          </el-button>
         </div>
-      </template>
+      </div>
+      <div class="app-panel--padded">
 
       <el-table :data="list" v-loading="loading" stripe>
         <el-table-column prop="production_batch_id" label="生产批次 ID" width="200" show-overflow-tooltip />
@@ -69,7 +62,8 @@
           <template #default="{ row }">{{ formatDate(row.tested_at) }}</template>
         </el-table-column>
       </el-table>
-    </el-card>
+      </div>
+    </div>
 
     <!-- 新建对话框 -->
     <el-dialog v-model="createDialogVisible" title="新建金属探测记录" width="520px" :close-on-click-modal="false">
@@ -244,50 +238,13 @@ onMounted(() => {
 <style scoped>
 .metal-detection-page {
   padding: 24px;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #909399;
-  margin: 0;
-}
-
-.card-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.card-title-wrap {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .card-count {
   font-size: 13px;
   color: #909399;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
 }
 </style>

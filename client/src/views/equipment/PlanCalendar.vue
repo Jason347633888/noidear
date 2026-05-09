@@ -1,9 +1,6 @@
 <template>
   <div class="plan-calendar-page">
-    <div class="page-header">
-      <h1 class="page-title">维护计划日历</h1>
-      <p class="page-subtitle">以日历形式查看设备维护计划安排</p>
-    </div>
+    <PageHeaderBlock eyebrow="设备与现场" title="维护计划日历" description="以日历形式查看设备维护计划安排" />
 
     <el-card class="calendar-card">
       <template #header>
@@ -142,22 +139,18 @@ onMounted(() => { fetchCalendarData(); });
 
 <style scoped>
 .plan-calendar-page {
-  --primary: #1a1a2e; --accent: #c9a227; --text: #2c3e50; --text-light: #7f8c8d;
-  font-family: 'Inter', sans-serif;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
-.page-header { margin-bottom: 24px; }
-.page-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px; font-weight: 600; color: var(--primary); margin: 0 0 4px;
-}
-.page-subtitle { font-size: 14px; color: var(--text-light); margin: 0; }
 .calendar-card {
   border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: none;
 }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .card-title {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 18px; font-weight: 600; color: var(--primary);
+  font-size: 18px; font-weight: 600; color: #303133;
 }
 .calendar-legend {
   display: flex; gap: 20px; margin-bottom: 16px;
@@ -165,23 +158,23 @@ onMounted(() => { fetchCalendarData(); });
 }
 .legend-item { display: flex; align-items: center; gap: 6px; }
 .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
-.legend-text { font-size: 13px; color: var(--text-light); }
+.legend-text { font-size: 13px; color: #909399; }
 
 .maintenance-calendar :deep(.el-calendar-day) {
   height: auto; min-height: 100px; padding: 4px;
 }
 .calendar-cell { height: 100%; cursor: pointer; padding: 4px; }
-.date-number { display: inline-block; font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+.date-number { display: inline-block; font-size: 14px; font-weight: 500; color: #303133; margin-bottom: 4px; }
 .date-number.today {
-  background: var(--accent); color: white;
+  background: #c9a227; color: white;
   width: 24px; height: 24px; line-height: 24px;
   text-align: center; border-radius: 50%;
 }
 .plan-dots { display: flex; flex-direction: column; gap: 2px; }
 .plan-dot-item { display: flex; align-items: center; gap: 4px; }
 .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-.dot-text { font-size: 11px; color: var(--text-light); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.more-plans { font-size: 11px; color: var(--accent); cursor: pointer; }
+.dot-text { font-size: 11px; color: #909399; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.more-plans { font-size: 11px; color: #c9a227; cursor: pointer; }
 
 .empty-state { padding: 40px 0; }
 .plan-list { display: flex; flex-direction: column; gap: 16px; }
@@ -189,11 +182,11 @@ onMounted(() => { fetchCalendarData(); });
   border: 1px solid #ebeef5; border-radius: 8px; padding: 16px;
   cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s;
 }
-.plan-item:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(201,162,39,0.1); }
+.plan-item:hover { border-color: #c9a227; box-shadow: 0 2px 8px rgba(201,162,39,0.1); }
 .plan-item-header { display: flex; gap: 8px; margin-bottom: 12px; }
 .plan-item-body { display: flex; flex-direction: column; gap: 8px; }
 .plan-item-field { display: flex; gap: 8px; font-size: 13px; }
-.field-label { color: var(--text-light); min-width: 70px; }
-.field-value { color: var(--text); }
+.field-label { color: #909399; min-width: 70px; }
+.field-value { color: #303133; }
 .field-value.code { font-family: 'SF Mono', monospace; font-size: 12px; }
 </style>

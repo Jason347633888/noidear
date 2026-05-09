@@ -1,10 +1,6 @@
 <template>
   <div class="task-statistics">
-    <el-card class="page-header">
-      <h2>任务统计分析</h2>
-      <p class="subtitle">按部门、模板、状态统计任务数据</p>
-    </el-card>
-
+    <PageHeaderBlock eyebrow="数据分析" title="任务统计" description="按部门、模板、状态统计任务数据" />
     <!-- 筛选条件 -->
     <el-card class="filter-card">
       <el-form :model="filters" inline>
@@ -430,22 +426,6 @@ onBeforeUnmount(() => {
 <style scoped>
 .task-statistics {
   padding: 20px;
-}
-
-.page-header {
-  margin-bottom: 20px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 24px;
-  color: #303133;
-}
-
-.subtitle {
-  margin: 8px 0 0 0;
-  color: #909399;
-  font-size: 14px;
 }
 
 .filter-card {
