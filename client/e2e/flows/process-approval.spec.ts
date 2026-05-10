@@ -57,7 +57,7 @@ async function advanceToStep(
 
 test.describe('研发流程 - 审批流程', () => {
   test('PA-01: Step7 危害评估页面可正常加载', async ({ page, request }) => {
-    if (!templateId) { test.skip(true, '无流程模板 — 跳过 PA-01'); return; }
+    if (!templateId) throw new Error('ProcessTemplate not found — check seed-baseline.ts (PA-01)');
     const productName = `E2E-PA01-${Date.now()}`;
     await loginAdmin(page);
 
@@ -80,7 +80,7 @@ test.describe('研发流程 - 审批流程', () => {
   });
 
   test('PA-02: Step7 提交后触发审批并出现审批按钮', async ({ page, request }) => {
-    if (!templateId) { test.skip(true, '无流程模板 — 跳过 PA-02'); return; }
+    if (!templateId) throw new Error('ProcessTemplate not found — check seed-baseline.ts (PA-02)');
     const productName = `E2E-PA02-${Date.now()}`;
     await loginAdmin(page);
 
@@ -115,6 +115,7 @@ test.describe('研发流程 - 审批流程', () => {
   });
 
   test('PA-03: 通过 UI 在 Step7 点击审批通过', async ({ page, request }) => {
+    if (!templateId) throw new Error('ProcessTemplate not found — check seed-baseline.ts (PA-03)');
     const productName = `E2E-PA03-${Date.now()}`;
     await loginAdmin(page);
 

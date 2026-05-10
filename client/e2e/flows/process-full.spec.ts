@@ -46,6 +46,7 @@ async function createAndLogin(
   request: APIRequestContext,
   productName: string,
 ): Promise<string> {
+  if (!templateId) throw new Error('ProcessTemplate not found — check seed-baseline.ts');
   const { adminUser, adminPass } = getCredentials();
   const instance = await createProcessInstanceViaApi(request, token, templateId, productName);
   await loginViaApiCached(page, adminUser, adminPass);
@@ -54,7 +55,6 @@ async function createAndLogin(
 
 test.describe('研发流程 - 基本流程', () => {
   test('PF-01: Step1 提交后应跳转到 Step2 而非 Step3', async ({ page, request }) => {
-    if (!templateId) { test.skip(true, '无流程模板 — 跳过 PF-01'); return; }
     const productName = `E2E-PF01-${Date.now()}`;
     const instanceId = await createAndLogin(page, request, productName);
     await gotoProcessDetail(page, instanceId);
@@ -78,7 +78,6 @@ test.describe('研发流程 - 基本流程', () => {
   });
 
   test('PF-02: 暂存草稿后在列表中可见', async ({ page, request }) => {
-    if (!templateId) { test.skip(true, '无流程模板 — 跳过 PF-02'); return; }
     const productName = `E2E-Draft-${Date.now()}`;
     const instanceId = await createAndLogin(page, request, productName);
     await gotoProcessDetail(page, instanceId);
