@@ -11,7 +11,7 @@
 
 ## 项目概览
 
-`noidear` 是一个食品安全与质量管理 SaaS 原型/平台，覆盖从体系文件、记录表单、产品研发、仓储批次到追溯查询的完整业务链路。项目当前以 283 张四级记录表单为表单事实源，并将主数据、批次数据、过程记录、审批工作流和质量治理记录落到统一的前后端系统中。
+`noidear` 是一个食品安全与质量管理 SaaS 原型/平台，覆盖从体系文件、记录表单、产品研发、仓储批次到追溯查询的完整业务链路。当前事实以代码为准；283 张四级记录表单的落地映射由 `server/src/modules/model-landing/generated/model-landing.generated.ts` 和相关 spec artifact 表达。
 
 当前代码库包含：
 
@@ -21,7 +21,8 @@
 - `tools/noidear-mcp/`：面向 Agent 的 MCP 工具服务
 - `mobile/`：移动端/同步相关能力
 - `monitoring/`：Prometheus、Grafana、Loki、Alertmanager 配置
-- `docs/`：需求、设计、业务规则、Agent 协议与追溯权威模型
+- `docs/`：Agent 协议、食品安全主数据与追溯 hard gate
+- `archive/`：历史执行资料和旧导入材料，不作为当前事实源
 
 ---
 
@@ -29,7 +30,7 @@
 
 ### 文控与记录表单
 
-- 三级体系文件管理、版本控制、审批、归档、作废、回收站
+- 体系文件管理、版本控制、审批、归档、作废、回收站
 - 记录表单索引、编号规则、文控工作台、阅读确认、培训需求、影响分析
 - 动态表单、字段组件、记录填报、任务派发、逾期与锁定控制
 
@@ -42,7 +43,7 @@
 
 ### 研发、生产与质量过程
 
-- 产品研发 9 步流程，含 HACCP 审批、步骤顺序推进、打印视图
+- 产品研发流程，含模板化审批、步骤顺序推进、打印视图
 - 配方管理、工序步骤/CCP、配料执行、车间暂存、班次看板
 - 环境温湿度、过程参数、金属探测、清洁消毒、换产检查、玻璃及硬塑完整性检查
 - 偏差检测、偏差报告、统计分析、数据导出
@@ -75,7 +76,7 @@
 |------|------|
 | 前端 | Vue 3.4+、TypeScript、Vite 5、Element Plus、Pinia、Vue Router、ECharts、Vitest、Playwright |
 | 后端 | Node.js 20、NestJS 10、TypeScript、Prisma 5、Jest、Swagger |
-| 数据 | PostgreSQL 15、Redis 7、MinIO、可选 ElasticSearch |
+| 数据 | PostgreSQL 15、Redis 7、MinIO |
 | 监控 | Prometheus、Grafana、Alertmanager、Loki、Promtail |
 | 部署 | Docker、Docker Compose、Nginx |
 | 自动化 | npm workspaces、MCP server、共享类型包 |
@@ -217,7 +218,8 @@ noidear/
 ├── tools/noidear-mcp/           # MCP 工具服务
 ├── monitoring/                  # Prometheus/Grafana/Loki/Alertmanager
 ├── mobile/                      # 移动端相关能力
-└── docs/                        # 需求、设计、业务规则与操作文档
+├── docs/                        # Agent 协议、食品安全 hard gate
+└── archive/                     # 历史执行资料和旧导入材料
 ```
 
 ---
@@ -227,13 +229,8 @@ noidear/
 | 文档 | 说明 |
 |------|------|
 | [AGENTS.md](AGENTS.md) | Agent 根入口，定义阅读顺序和食品安全 hard gate |
-| [docs/AGENT_GUIDE.md](docs/AGENT_GUIDE.md) | 项目特有操作协议，包含 MCP、API、测试、追溯规则 |
-| [docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md](docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md) | 食品安全主数据与追溯权威模型 |
-| [docs/BUSINESS_RULES.md](docs/BUSINESS_RULES.md) | 业务规则清单 |
-| [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) | 项目结构、模块映射与快速定位 |
-| [docs/DESIGN.md](docs/DESIGN.md) | 技术设计与业务规则设计 |
-| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | 需求积压与历史需求说明 |
-| [docs/INTERACTION_DESIGN.md](docs/INTERACTION_DESIGN.md) | 前端交互设计规范 |
+| [docs/AGENT_GUIDE.md](docs/AGENT_GUIDE.md) | 项目操作协议、代码定位、运行合同和文档收敛规则 |
+| [docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md](docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md) | 食品安全主数据、批次、记录表单与追溯 hard gate |
 | [llms.txt](llms.txt) | LLM/Agent 系统能力入口 |
 | [SECURITY.md](SECURITY.md) | 安全说明 |
 

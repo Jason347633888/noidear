@@ -1,108 +1,82 @@
 # 安全说明
 
-> **最后更新**: 2026-02-06  
-> **系统状态**: 🟢 生产就绪
+本文档按当前代码库可确认的安全措施记录，不声明未经验证的上线结论。
 
----
+## 1. 认证与会话
 
-## 已实施的安全措施
+代码来源：`server/src/modules/auth/`、`client/src/api/request.ts`。
 
-### 认证与授权 ✅
-- **JWT 认证**: 512位随机密钥
-- **密码加密**: bcrypt (10 rounds)
-- **RBAC权限**: 基于角色的访问控制
-- **会话管理**: Token 过期机制
+- 登录接口：`POST /api/v1/auth/login`。
+- 当前用户接口：`GET /api/v1/auth/profile`。
+- 改密码接口：`PATCH /api/v1/auth/change-password`。
+- 前端将 token 存入 `localStorage.token`，请求时写入 `Authorization: Bearer <token>`。
+- JWT payload 包含 `sub`、`username`、`roleCode`、`companyId`。
+- 后端认证上下文要求 `companyId` 存在；缺失会失败。
+- 密码校验使用 `bcrypt.compare()`。
+- 默认登录失败锁定策略：5 分钟窗口内失败 5 次后锁定 1 分钟；`AUTH_LOCKOUT_DISABLED=true` 可关闭。
+- SSO 相关代码存在于 `server/src/modules/auth/sso.*`，具体部署依赖环境配置。
 
-### 输入验证 ✅
-- **全局验证**: class-validator
-- **文件限制**: 类型白名单（PDF/Word/Excel），最大10MB
-- **SQL注入防护**: Prisma ORM参数化查询
+## 2. 后端安全基线
 
-### 安全头 ✅
-- **Helmet中间件**: CSP, HSTS, X-Frame-Options
-- **CORS配置**: 限制来源域名
-- **Content-Type**: nosniff
+代码来源：`server/src/main.ts`。
 
-### 数据保护 ✅
-- **环境变量**: 敏感信息不硬编码
-- **数据库事务**: 保证数据一致性
-- **版本控制**: Decimal类型避免精度问题
-- **并发安全**: SELECT FOR UPDATE行锁
+- 全局 API 前缀：`/api/v1`。
+- 启用 Helmet，包含 CSP、HSTS、X-Frame-Options、nosniff、referrer policy 等配置。
+- CORS 默认允许 `process.env.CORS_ORIGIN || 'http://localhost:5173'`。
+- 全局 `ValidationPipe` 开启：
+  - `whitelist`
+  - `transform`
+  - `forbidNonWhitelisted`
+- 全局响应拦截器：`ResponseInterceptor`。
+- 全局异常过滤器：`HttpExceptionFilter`。
+- Swagger 路径为 `/api/docs`；生产环境仅在 `SWAGGER_ENABLED=true` 时启用。
+- 静态上传访问路径为 `/uploads/`。
 
----
+## 3. 数据访问与审计
 
-## 已知依赖漏洞评估
+- 数据访问主要通过 Prisma。
+- 权限模型包括 `Role`、`Permission`、`RolePermission`、`FineGrainedPermission`、`UserPermission`、`DepartmentPermission`。
+- 审计相关模型包括 `OperationLog`、`LoginLog`、`PermissionLog`、`SensitiveLog`。
+- 敏感配置应通过环境变量提供，不应写入仓库。
 
-### 漏洞清单
+## 4. 生产配置要求
 
-| 包名 | 严重性 | 来源 | 实际风险 | 状态 |
-|------|--------|------|---------|------|
-| fast-xml-parser | High | minio | ✅ 无风险 | 已评估 |
-| js-yaml | Moderate | @nestjs/swagger | ✅ 无风险 | 已评估 |
-| lodash | Moderate | @nestjs/swagger | ✅ 低风险 | 已评估 |
+部署前至少确认：
 
-### 风险分析
+- `JWT_SECRET` 使用强随机值，且不要复用 README 示例值。
+- `DATABASE_URL`、MinIO、Redis、SSO 等凭据来自安全的环境变量或 secret 管理。
+- 生产 CORS 只允许真实前端域名。
+- 生产环境不要开启 Swagger，除非临时诊断并显式设置 `SWAGGER_ENABLED=true`。
+- `/uploads/` 的公开访问范围符合业务要求。
+- 反向代理启用 HTTPS。
+- 数据库、MinIO、Redis 不直接暴露到公网。
 
-1. **fast-xml-parser** (minio依赖)
-   - **漏洞**: 原型污染
-   - **实际影响**: 无 - MinIO仅用于文件存储，不解析XML
-   - **缓解措施**: 文件类型白名单 + 大小限制 + 认证保护
+## 5. 依赖安全检查
 
-2. **js-yaml** (@nestjs/swagger依赖)
-   - **漏洞**: 原型污染
-   - **实际影响**: 无 - Swagger仅开发环境使用
-   - **缓解措施**: 生产环境可关闭Swagger模块
-
-3. **lodash** (@nestjs/swagger依赖)
-   - **漏洞**: 原型污染 (_.unset, _.omit)
-   - **实际影响**: 低 - 未直接使用受影响函数
-   - **缓解措施**: 间接依赖，无外部输入
-
-**结论**: 所有漏洞均为间接依赖，实际利用条件不存在，系统可安全上线。
-
----
-
-## 安全维护
-
-### 定期检查（每月）
+本文件不内置固定漏洞结论。依赖状态会随时间变化，检查时以当前命令输出为准：
 
 ```bash
-# 安全审计
 npm audit
-
-# 仅检查生产依赖
-npm audit --production
-
-# 检查可更新依赖
+npm audit --omit=dev
 npm outdated
 ```
 
-### 更新策略
+依赖升级后至少运行：
 
-| 依赖类型 | 更新频率 | 测试要求 |
-|---------|---------|---------|
-| 生产依赖 | 每季度 | 完整回归测试 |
-| 开发依赖 | 每月 | 构建测试 |
-| 安全补丁 | 立即 | 冒烟测试 |
+```bash
+npm run build:server
+npm run build:client
+npm run test:server
+npm run test:client
+```
 
----
+## 6. 安全报告
 
-## 安全报告
+如发现安全问题，请通过项目维护者约定渠道报告。不要在公开 issue 中发布可利用细节、真实密钥、生产数据或攻击步骤。
 
-如发现安全问题，请通过以下方式报告：
+报告中建议包含：
 
-- **Email**: security@example.com
-- **Issue**: 在 GitHub 创建私有安全 Issue
-
----
-
-## 合规性
-
-- ✅ OWASP Top 10 防护
-- ✅ 数据加密传输（HTTPS，生产环境）
-- ✅ 敏感数据加密存储
-- ✅ 审计日志记录
-
----
-
-**安全状态**: ✅ 已通过安全评估，可上线
+- 受影响版本或 commit。
+- 影响范围。
+- 最小复现。
+- 已知缓解方式。

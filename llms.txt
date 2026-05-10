@@ -9,17 +9,12 @@
 - 系统总览：`README.md`
 - Agent 协议：`AGENTS.md`、`docs/AGENT_GUIDE.md`
 - 主数据与追溯 hard gate：`docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md`
-- 模块边界与 GAP 事实源：`docs/module-usage/00-index.md`
-- 当前 GAP 总表：`docs/module-usage/99-current-gap-register.md`
-- GAP 分诊：`docs/module-usage/97-gap-triage.md`
-- 可执行 PR 排期：`docs/module-usage/96-pr-roadmap.md`
-- 机器可读索引：`docs/module-usage/module-usage.manifest.json`
 
 ## API 入口
 REST API:  http://localhost:3000/api/v1
 Swagger UI: http://localhost:3000/api/docs
 Swagger JSON: http://localhost:3000/api/docs-json
-认证方式: POST /api/v1/auth/login { username, password } -> { access_token }
+认证方式: POST /api/v1/auth/login { username, password } -> { token, user }
 Token 用法: Authorization: Bearer <token>
 
 ## MCP 工具
@@ -34,5 +29,4 @@ Server ID: noidear-mcp
 - 培训、内审、CAPA、统一审批
 
 ## 说明
-- `docs/REQUIREMENTS.md` 与 `docs/PROJECT_STRUCTURE.md` 现作为历史快照/导航补充，不再是排期事实源。
-- 任何 GAP、计划、排期、已完成状态，以 `docs/module-usage/*` 为准。
+- 顶层 `docs/` 只保留 agent 操作协议和食品安全 hard gate；历史执行资料已移到 `archive/`，避免形成平行事实源。
