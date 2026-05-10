@@ -2,16 +2,6 @@
   <div class="department-page">
     <PageHeaderBlock eyebrow="系统治理" title="部门管理" description="管理组织架构与部门负责人" />
 
-    <el-alert
-      v-if="leaderCandidatesBlocked"
-      type="warning"
-      show-icon
-      :closable="false"
-      title="初始化未完成：没有可用的 leader 用户"
-      description="请先到用户管理创建或启用 leader 用户，当前仍可浏览部门列表，但新增和编辑已被阻塞。"
-      class="bootstrap-alert"
-    />
-
     <el-card class="filter-card">
       <el-form :model="filterForm" inline class="filter-form">
         <el-form-item label="关键词" class="filter-item">
@@ -37,7 +27,7 @@
             <span class="card-title">部门列表</span>
             <span class="card-count">共 {{ filteredDepartments.length }} 个部门</span>
           </div>
-          <el-button type="primary" :disabled="leaderCandidatesBlocked" @click="openCreate" class="create-btn">
+          <el-button type="primary" @click="openCreate" class="create-btn">
             新增部门
           </el-button>
         </div>
@@ -73,7 +63,7 @@
         </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" :disabled="leaderCandidatesBlocked" @click="handleEdit(row)">编辑</el-button>
+            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -98,7 +88,13 @@
           <el-input v-model="form.name" placeholder="请输入部门名称" />
         </el-form-item>
         <el-form-item label="负责人" prop="managerId">
-          <el-select v-model="form.managerId" placeholder="请选择负责人" filterable class="full-select">
+          <el-select
+            v-model="form.managerId"
+            :placeholder="managerCandidates.length === 0 ? '暂无空闲负责人候选，可稍后设置' : '请选择负责人（可选）'"
+            filterable
+            clearable
+            class="full-select"
+          >
             <el-option
               v-for="user in managerCandidates"
               :key="user.id"
@@ -161,7 +157,6 @@ const form = reactive({
 const formRules = {
   code: [{ required: true, message: '请输入部门编码', trigger: 'blur' }],
   name: [{ required: true, message: '请输入部门名称', trigger: 'blur' }],
-  managerId: [{ required: true, message: '请选择负责人', trigger: 'change' }],
 };
 
 const managerCandidates = computed(() => {
@@ -179,8 +174,6 @@ const managerCandidates = computed(() => {
     return true;
   });
 });
-
-const leaderCandidatesBlocked = computed(() => managerCandidates.value.length === 0);
 
 const filteredDepartments = computed(() => {
   return departments.value.filter((dept) => {
@@ -270,34 +263,33 @@ const handleEdit = (department: Department) => {
 };
 
 const handleSubmit = async () => {
+  await formRef.value?.validate();
+
   const payload = {
     code: form.code.trim().toUpperCase(),
     name: form.name.trim(),
-    managerId: form.managerId,
+    managerId: form.managerId || undefined,
   };
-
-  if (!payload.code || !payload.name || !payload.managerId) {
-    ElMessage.error('请完整填写部门编码、名称和负责人');
-    return;
-  }
 
   saving.value = true;
   try {
     if (editingDepartment.value) {
       await updateDepartment(editingDepartment.value.id, {
         name: payload.name,
-        managerId: payload.managerId,
+        managerId: payload.managerId ?? null,
       });
       ElMessage.success('保存成功');
     } else {
       const newDept = await createDepartment(payload);
-      const managerUser = users.value.find((item) => item.id === payload.managerId);
-      if (managerUser && !managerUser.departmentId) {
-        await request.put(`/users/${managerUser.id}`, {
-          departmentId: newDept.id,
-          roleId: managerUser.roleObj?.id,
-          name: managerUser.name,
-        });
+      if (payload.managerId) {
+        const managerUser = users.value.find((item) => item.id === payload.managerId);
+        if (managerUser && !managerUser.departmentId) {
+          await request.put(`/users/${managerUser.id}`, {
+            departmentId: newDept.id,
+            roleId: managerUser.roleObj?.id,
+            name: managerUser.name,
+          });
+        }
       }
       ElMessage.success('创建成功');
     }
@@ -328,12 +320,3 @@ onMounted(async () => {
 .filter-input { width: 180px; }
 .filter-select { width: 140px; }
 .filter-actions { margin-left: auto; }
-.table-card { border-radius: 12px; }
-.card-header { display: flex; justify-content: space-between; align-items: center; }
-.card-title-wrap { display: flex; align-items: baseline; gap: 12px; }
-.card-title { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 600; color: var(--shell-ink); }
-.card-count { font-size: 12px; color: var(--shell-muted); }
-.create-btn { border-radius: 8px; }
-.ml-4 { margin-left: 4px; }
-.full-select { width: 100%; }
-</style>
