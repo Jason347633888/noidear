@@ -161,7 +161,6 @@ services:
       - MINIO_SECRET_KEY=noidear123
       - NODE_ENV=production
       - SWAGGER_ENABLED=true
-      - SEED_MINIMUM_ORG=true
     depends_on:
       postgres:
         condition: service_healthy
