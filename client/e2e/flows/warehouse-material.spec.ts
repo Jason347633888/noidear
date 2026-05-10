@@ -50,8 +50,7 @@ async function openMaterialPicker(page: Page): Promise<void> {
   const pickerBtn = page.locator('.el-button').filter({ hasText: '选择物料' });
   const isVisible = await pickerBtn.isVisible({ timeout: 10000 }).catch(() => false);
   if (!isVisible) {
-    test.skip();
-    return;
+    throw new Error('「选择物料」按钮不可见 — Step2 物料选择器 fixture 或 UI 断言失败，请检查 seed-baseline.ts 或 Process 模板配置');
   }
   await pickerBtn.click();
 }
@@ -124,7 +123,7 @@ test.describe('Step2 物料选择器', () => {
     const uncheckedItems = page.locator('.material-item .el-checkbox:not(.is-disabled)');
     const uncheckedCount = await uncheckedItems.count();
     if (uncheckedCount === 0) {
-      test.skip();
+      throw new Error('没有可勾选物料 — E2E baseline/fixture 中缺少稳定可选物料，请检查 seed-baseline.ts 中的 Material 数据');
     }
 
     await uncheckedItems.first().click();
