@@ -193,7 +193,7 @@ InventoryMovement（schema 存在，当前未被任何 service 写入）
 | 对象 | 当前事实源 | 允许展示字段 | 禁止新增的平行事实源 | 旧字段或旧模块处理 |
 |---|---|---|---|---|
 | 物料主数据 | `Material`（`materials` 表） | name, code, unit, category | 不允许在 MaterialBatch、RequisitionItem 等下游表重复维护物料名称作为事实 | — |
-| 批次库存数量 | `MaterialBatch.quantity`（实时更新） | quantity, lot_status | 不允许在 StagingAreaStock 或 BatchMaterialUsage 中单独维护平行的"当前库存"字段 | — |
+| 批次库存数量 | `MaterialBatch.quantity`（实时更新） | quantity, lotStatus | 不允许在 StagingAreaStock 或 BatchMaterialUsage 中单独维护平行的"当前库存"字段 | — |
 | 库存流水（激活） | `StockRecord`（`stock_records` 表） | recordType, quantity, relatedType, relatedId | 不允许在业务层或前端直接维护库存状态副本 | `InventoryMovement` 当前为未激活遗留表，需决策后处理 |
 | 配料区暂存库存 | `StagingAreaStock`（`staging_area_stocks` 表） | quantity, location, area_id | 不允许在 MixingExecution 或前端 state 中维护暂存库存副本 | — |
 | 物料平衡 | `MaterialBalanceService` 动态计算（非持久化） | 所有平衡报表字段仅展示，不落库 | 不允许在其他 service 或前端重新实现物料平衡计算逻辑 | — |

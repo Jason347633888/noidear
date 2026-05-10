@@ -22,7 +22,7 @@ facts_or_projections:
   - RecordTaskAssignment/Instance：周期记录任务派发事实源
   - TodoTask：跨模块待办聚合视图（由 ApprovalTodoBridge 等桥写入）
 downstream_consumers:
-  - 文档模块（通过旧 Approval 模型）
+  - 文档模块（PR4 后通过 ApprovalInstance；旧 Approval 表保留只读历史兼容，新文档不再写旧 Approval）
   - 研发流程、培训计划、偏差报告、来料、变更（通过统一审批平台 ApprovalInstance）
   - 记录填写模块（通过 RecordTaskInstance → Record）
   - My-Todos 待办视图（读 TodoTask）
@@ -43,14 +43,14 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 
 | 机制 | 核心表 | 用途 |
 |------|--------|------|
-| **旧审批（Legacy Approval）** | `approvals` | 文档模块的链式签批（单层/顺签/会签），与 `documents` 直接关联 |
+| **旧审批（Legacy Approval）** | `approvals` | 历史文档的只读兼容路径（PR4 后不再新增写入）；新文档审批全走 ApprovalInstance |
 | **统一审批平台（Unified Approval Platform）** | `approval_definitions` / `approval_instances` / `approval_tasks` / `approval_actions` | 新一代多步骤审批引擎，供研发流程、培训、偏差报告等业务模块挂载 |
 | **工作流（Workflow）** | `workflow_templates` / `workflow_instances` / `workflow_tasks` | P1-3 通用工作流，支持按模板配置的多步骤任务流转，独立于统一审批平台 |
 | **任务管理（Task）** | `tasks` / `task_records` | 管理员派发给部门的填写任务，带提交/审批/偏差三态 |
 | **任务派发（Record Task）** | `record_task_assignments` / `record_task_instances` | 管理员对特定 RecordTemplate 配置周期性或单次填写任务，由 ScheduledTask 自动触发生成实例 |
 | **待办聚合（TodoTask）** | `todo_tasks` | 将统一审批平台待办、工作流待办等汇聚成统一视图，由各模块的桥接服务写入 |
 
-**这五条机制并非互通**：工作流引擎与统一审批平台是两套独立的流转系统，旧审批仅供文档模块使用。三者共存，但无共享数据通道。
+**这五条机制并非互通**：工作流引擎与统一审批平台是两套独立的流转系统；旧审批表（`approvals`）自 PR4 起不再新增写入，仅作历史兼容只读路径。三者共存，但无共享数据通道。
 
 ## 2. 使用角色
 
@@ -130,7 +130,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 |----------|----------|------|----------|----------|----------|------|
 | GAP-500 | 前端 `approveLevel1`/`approveLevel2` 调用 `/approvals/level1/:id/approve` 和 `/approvals/level2/:id/approve`，后端无此路由 | 旧接口残留调用未清理 | 旧审批"一级/二级审批"按钮调用后返回 404 | P1（高） | 已验证 | `client/src/api/approval.ts:L63,L76`；`server/src/modules/approval/approval.controller.ts` 无 level1/level2 路由 |
 | GAP-501 | 前端 `GET /auth/profile` vs 后端 `@Post('profile')` HTTP 方法不匹配 | auth.controller 将 profile 定义为 POST，前端 store 用 GET | 用户登录后获取 profile 返回 405，页面可能初始化失败 | P0（关键） | 已验证 | `client/src/stores/user.ts:L45`；`server/src/modules/auth/auth.controller.ts:L17` |
-| GAP-502 | 旧审批平台（Approval 模型）与统一审批平台（ApprovalInstance/Task）并存，前端页面 `/approvals/*` 混合调用两套 API | 迁移进行中，无明确废弃隔离 | 维护者不清楚哪条路径是权威，可能导致双写或遗漏 | P1（高） | 已验证 | `client/src/api/approval.ts` 同时有旧接口和新接口调用；两个独立的 backend controller |
+| GAP-502 | 旧审批平台（Approval 模型）与统一审批平台（ApprovalInstance/Task）并存 | **文档模块已完成迁移（PR4）**：新文档提交全走 ApprovalInstance，旧 Approval 表保留只读历史兼容，`prisma.approval.create` 已清零 | 历史文档兼容路径仍读旧 Approval；前端 `/approvals/*` 页面为历史入口，不新增接入 | P1（历史兼容） | **已部分完成（PR4）** | ADR: `docs/decisions/2026-05-09-document-approval-legacy-compatibility.md` |
 | GAP-503 | 工作流（Workflow）与统一审批平台（UnifiedApproval）并存，语义重叠，无文档说明各自适用场景 | P1-3 工作流在统一审批平台之前实现 | 新业务不知道应该用哪套审批机制 | P1（高） | 已验证 | `server/src/modules/workflow/` 和 `server/src/modules/unified-approval/` 独立模块；`schema.prisma:L686` WorkflowTemplate vs L434 ApprovalDefinition |
 | GAP-504 | Task（任务管理）与 RecordTask（任务派发）两套任务机制并存，模型结构相似但无明确区分文档 | 两套系统独立开发 | 管理员不知道何时用哪套任务派发 | P2（中） | 已验证 | `schema.prisma:L3832` Task vs L2368 RecordTaskAssignment；两者均关联 RecordTemplate |
 
@@ -140,7 +140,7 @@ last_verified_commit: 7bab98dc3ccd49e8e1d76b95b28a1b79207c483c
 |----------|----------|----------|----------------|---------|-----------|
 | GAP-500 | 删除 `approveLevel1`/`approveLevel2` 前端调用，统一使用 `approveUnified` | 前端 approval.ts | 否 | fix/approval-remove-legacy-level-calls | 是 |
 | GAP-501 | 将 `auth.controller.ts` 的 `@Post('profile')` 改为 `@Get('profile')` | auth 模块 | 否 | fix/auth-profile-method-get | 是 |
-| GAP-502 | 在文档中明确声明旧 Approval 仅供文档模块使用，其余模块禁止新接入；制定旧接口废弃时间表 | approval, document | 否（仅文档+deprecation 标记） | docs/approval-migration-plan | 是 |
+| GAP-502 | **已完成（PR4）**：新文档审批全走 ApprovalInstance，旧 Approval 表只读历史兼容，`prisma.approval.create` 清零；ADR 已记录 | approval, document | 否 | 已合并（PR #200） | — |
 | GAP-503 | 在 AGENTS.md 或模块文档中补充决策树：何时使用 Workflow vs UnifiedApproval，并确定迁移方向 | workflow, unified-approval | 需要业务确认 | docs/workflow-vs-unified-approval-decision | 否（需先做业务决策） |
 | GAP-504 | 补充 RecordTask（周期性表单派发） vs Task（一次性任务+审批）的使用场景说明 | task, record-task | 否 | docs/task-vs-record-task-guide | 是 |
 
