@@ -25,8 +25,8 @@ export function getCredentials() {
   return {
     adminUser: process.env.E2E_ADMIN_USER || 'admin',
     adminPass: process.env.E2E_ADMIN_PASS || 'ChangeMe123!',
-    memberUser: process.env.E2E_USER_USER || 'user1',
-    memberPass: process.env.E2E_USER_PASS || '12345678',
+    memberUser: process.env.E2E_USER_USER || 'seed_user',
+    memberPass: process.env.E2E_USER_PASS || 'ChangeMe123!',
   };
 }
 
