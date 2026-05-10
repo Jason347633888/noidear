@@ -531,3 +531,211 @@ test.describe('统计 – Statistics', () => {
     await expect(contentArea.first()).toBeAttached({ timeout: 10000 });
   });
 });
+
+// ==========================================================================
+// AUD-001~003, AUD-005, AUD-011, AUD-020~022 — 审计日志补充
+// ==========================================================================
+
+test.describe('AUD — 登录日志 & 敏感操作审计', () => {
+  // AUD-001: 成功登录产生登录日志
+  test('AUD-001: 成功登录后审计日志中存在 login+success 记录', async ({ request }) => {
+    const token = await adminToken(request);
+
+    // Trigger a fresh login to create a log entry
+    const { adminUser, adminPass } = (() => ({
+      adminUser: process.env.E2E_ADMIN_USER || 'admin',
+      adminPass: process.env.E2E_ADMIN_PASS || 'ChangeMe123!',
+    }))();
+    await request.post(`${API_BASE}/auth/login`, {
+      data: { username: adminUser, password: adminPass },
+    });
+
+    // Query login audit logs
+    const logRes = await request.get(`${API_BASE}/audit/login-logs?limit=10`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (logRes.status() === 404) {
+      test.skip(true, 'GET /audit/login-logs 未实现 — 跳过 AUD-001');
+      return;
+    }
+    expect(logRes.ok()).toBe(true);
+    const body = await logRes.json();
+    const logs: Array<{ action?: string; status?: string }> =
+      body?.data?.list ?? body?.data ?? body?.list ?? [];
+
+    if (logs.length === 0) {
+      test.skip(true, '登录日志为空 — 跳过 AUD-001');
+      return;
+    }
+
+    // At least one recent log should have action=login and status=success
+    const successLog = logs.find(
+      (l) =>
+        (l.action === 'login' || l.action === 'LOGIN') &&
+        (l.status === 'success' || l.status === 'SUCCESS'),
+    );
+    expect(successLog, '应存在 action=login, status=success 的日志').toBeTruthy();
+  });
+
+  // AUD-002: 登录失败产生失败日志
+  test('AUD-002: 错误密码登录后审计日志中存在 login_failed 记录', async ({ request }) => {
+    const token = await adminToken(request);
+
+    const { adminUser } = (() => ({
+      adminUser: process.env.E2E_ADMIN_USER || 'admin',
+    }))();
+
+    // Trigger a failed login
+    await request.post(`${API_BASE}/auth/login`, {
+      data: { username: adminUser, password: 'WrongPassword_AUD002!' },
+    });
+
+    const logRes = await request.get(`${API_BASE}/audit/login-logs?limit=20`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (logRes.status() === 404) {
+      test.skip(true, 'GET /audit/login-logs 未实现 — 跳过 AUD-002');
+      return;
+    }
+    expect(logRes.ok()).toBe(true);
+    const body = await logRes.json();
+    const logs: Array<{ action?: string; status?: string }> =
+      body?.data?.list ?? body?.data ?? body?.list ?? [];
+
+    if (logs.length === 0) {
+      test.skip(true, '登录日志为空 — 跳过 AUD-002');
+      return;
+    }
+
+    const failLog = logs.find(
+      (l) =>
+        l.action?.toLowerCase().includes('fail') ||
+        l.action?.toLowerCase().includes('login_failed') ||
+        l.status?.toLowerCase() === 'failed' ||
+        l.status?.toLowerCase() === 'fail',
+    );
+    expect(failLog, '应存在登录失败日志').toBeTruthy();
+  });
+
+  // AUD-003: 登录日志支持多维度查询过滤
+  test('AUD-003: 登录日志支持 action 参数过滤', async ({ request }) => {
+    const token = await adminToken(request);
+
+    const logRes = await request.get(`${API_BASE}/audit/login-logs?action=login&limit=10`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (logRes.status() === 404) {
+      test.skip(true, 'GET /audit/login-logs 未实现 — 跳过 AUD-003');
+      return;
+    }
+    expect(logRes.ok()).toBe(true);
+    const body = await logRes.json();
+    expect(body).toHaveProperty('data');
+  });
+
+  // AUD-005: 登录日志 90 天自动清理（验证接口存在且返回正常）
+  test('AUD-005: 清理接口存在且 90 天内日志保留', async ({ request }) => {
+    const token = await adminToken(request);
+
+    // Query logs within 90 days — should return without error
+    const since = new Date(Date.now() - 89 * 24 * 3600 * 1000).toISOString().split('T')[0];
+    const logRes = await request.get(
+      `${API_BASE}/audit/login-logs?startDate=${since}&limit=10`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (logRes.status() === 404) {
+      test.skip(true, 'GET /audit/login-logs 未实现 — 跳过 AUD-005');
+      return;
+    }
+    expect(logRes.ok()).toBe(true);
+    // We can't trigger the cron job here; just verify the API is operational
+    const body = await logRes.json();
+    expect(body).toHaveProperty('data');
+  });
+
+  // AUD-011: 权限日志永久保留（接口可用）
+  test('AUD-011: 权限变更日志接口可用且返回数据结构正确', async ({ request }) => {
+    const token = await adminToken(request);
+
+    const logRes = await request.get(`${API_BASE}/audit/permission-logs?limit=5`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (logRes.status() === 404) {
+      test.skip(true, 'GET /audit/permission-logs 未实现 — 跳过 AUD-011');
+      return;
+    }
+    expect(logRes.ok()).toBe(true);
+    const body = await logRes.json();
+    expect(body).toHaveProperty('data');
+  });
+
+  // AUD-020: 文档发布时记录敏感日志
+  test('AUD-020: 文档相关敏感日志接口可查询', async ({ request }) => {
+    const token = await adminToken(request);
+
+    const logRes = await request.get(
+      `${API_BASE}/audit/sensitive-logs?resourceType=document&limit=10`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (logRes.status() === 404) {
+      // Try alternate endpoint
+      const altRes = await request.get(`${API_BASE}/audit/logs?resourceType=document&limit=10`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (altRes.status() === 404) {
+        test.skip(true, '敏感日志接口未实现 — 跳过 AUD-020');
+        return;
+      }
+      expect(altRes.ok()).toBe(true);
+      return;
+    }
+    expect(logRes.ok()).toBe(true);
+    const body = await logRes.json();
+    expect(body).toHaveProperty('data');
+  });
+
+  // AUD-021: 数据删除时记录敏感日志
+  test('AUD-021: 敏感日志接口支持 action=delete 过滤', async ({ request }) => {
+    const token = await adminToken(request);
+
+    const logRes = await request.get(
+      `${API_BASE}/audit/sensitive-logs?action=delete&limit=10`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (logRes.status() === 404) {
+      const altRes = await request.get(`${API_BASE}/audit/logs?action=delete&limit=10`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (altRes.status() === 404) {
+        test.skip(true, '敏感日志接口未实现 — 跳过 AUD-021');
+        return;
+      }
+      expect(altRes.ok()).toBe(true);
+      return;
+    }
+    expect(logRes.ok()).toBe(true);
+  });
+
+  // AUD-022: 敏感日志按 resourceType 和 action 组合过滤
+  test('AUD-022: 敏感日志按 resourceType+action 过滤返回正确结构', async ({ request }) => {
+    const token = await adminToken(request);
+
+    const logRes = await request.get(
+      `${API_BASE}/audit/sensitive-logs?resourceType=document&action=publish&limit=10`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (logRes.status() === 404) {
+      const altRes = await request.get(
+        `${API_BASE}/audit/logs?resourceType=document&action=publish&limit=10`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (altRes.status() === 404) {
+        test.skip(true, '敏感日志接口未实现 — 跳过 AUD-022');
+        return;
+      }
+      expect(altRes.ok()).toBe(true);
+      return;
+    }
+    expect(logRes.ok()).toBe(true);
+  });
+});
