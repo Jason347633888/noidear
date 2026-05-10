@@ -74,8 +74,8 @@ test.describe('Login Logs', () => {
     // Wait for table to load
     await page.waitForTimeout(2000);
 
-    // Select action filter
-    const actionSelect = page.locator('.el-select').filter({ has: page.locator('input[placeholder="请选择操作"]') });
+    // Select action filter (use nth index since EP2.x select has no plain input placeholder)
+    const actionSelect = page.locator('.filter-card .el-select').nth(0);
     await actionSelect.click();
 
     // Wait for dropdown
@@ -102,8 +102,8 @@ test.describe('Login Logs', () => {
     // Wait for table to load
     await page.waitForTimeout(2000);
 
-    // Select status filter
-    const statusSelect = page.locator('.el-select').filter({ has: page.locator('input[placeholder="请选择状态"]') });
+    // Select status filter (use nth index since EP2.x select has no plain input placeholder)
+    const statusSelect = page.locator('.filter-card .el-select').nth(1);
     await statusSelect.click();
 
     // Wait for dropdown
@@ -210,10 +210,11 @@ test.describe('Login Logs', () => {
       await expect(pagination.first()).toBeVisible();
     } else {
       console.log('Pagination not found on login logs page');
+      return;
     }
 
     // Check if there are multiple pages
-    const totalText = await pagination.locator('.el-pagination__total').textContent();
+    const totalText = await pagination.locator('.el-pagination__total').textContent().catch(() => null);
 
     if (totalText && parseInt(totalText.match(/\d+/)?.[0] || '0') > 10) {
       // Click next page

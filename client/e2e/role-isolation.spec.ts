@@ -478,7 +478,7 @@ test('ROLE-005: 管理员可为角色分配权限', async ({ page }) => {
   }
   const permBody = await permRes.json();
   const perms: Array<{ id: string }> =
-    permBody?.data?.list ?? permBody?.data ?? permBody?.list ?? [];
+    permBody?.data?.list ?? permBody?.data?.data ?? permBody?.data ?? permBody?.list ?? [];
   if (perms.length === 0) {
     test.skip(true, '无权限数据 — 跳过 ROLE-005');
     return;

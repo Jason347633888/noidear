@@ -48,7 +48,7 @@ async function createUserViaApi(
     throw new Error(`createUserViaApi failed ${res.status()}: ${body}`);
   }
   const body = await res.json();
-  return body.data as { id: string; username: string; status: string };
+  return (body?.data?.data ?? body?.data) as { id: string; username: string; status: string };
 }
 
 /** Delete a user via the REST API (best-effort, used in afterAll cleanup). */
@@ -72,7 +72,7 @@ async function fetchRoles(
   });
   if (!res.ok()) throw new Error(`fetchRoles failed: ${res.status()}`);
   const body = await res.json();
-  return (body?.data?.list ?? body?.data ?? []) as Array<{
+  return (body?.data?.list ?? body?.data?.data ?? body?.data ?? []) as Array<{
     id: string;
     code: string;
     name: string;
@@ -94,7 +94,7 @@ async function createRoleViaApi(
     throw new Error(`createRoleViaApi failed ${res.status()}: ${body}`);
   }
   const body = await res.json();
-  return body.data as { id: string; code: string; name: string };
+  return (body?.data?.data ?? body?.data) as { id: string; code: string; name: string };
 }
 
 /** Delete a role via the REST API (best-effort). */
@@ -124,7 +124,7 @@ async function createDepartmentViaApi(
     throw new Error(`createDepartmentViaApi failed ${res.status()}: ${body}`);
   }
   const body = await res.json();
-  return body.data as { id: string; code: string; name: string };
+  return (body?.data?.data ?? body?.data) as { id: string; code: string; name: string };
 }
 
 /** Delete a department via the REST API (best-effort). */

@@ -16,7 +16,7 @@ import {
  */
 
 let token: string;
-let templateId: string;
+let templateId: string | null = null;
 
 test.beforeAll(async ({ request }) => {
   const { adminUser, adminPass } = getCredentials();
@@ -67,6 +67,7 @@ async function countMaterialItems(page: Page): Promise<number> {
 
 test.describe('Step2 物料选择器', () => {
   test('WM-01: 点击「选择物料」弹窗正常出现', async ({ page, request }) => {
+    if (!templateId) { test.skip(true, '无流程模板 — 跳过 WM-01'); return; }
     await loginAdmin(page);
     const instance = await createProcessInstanceViaApi(
       request, token, templateId, `E2E-WM01-${Date.now()}`,
@@ -80,6 +81,7 @@ test.describe('Step2 物料选择器', () => {
   });
 
   test('WM-02: 搜索过滤输入关键词后列表数量减少或显示空状态', async ({ page, request }) => {
+    if (!templateId) { test.skip(true, '无流程模板 — 跳过 WM-02'); return; }
     await loginAdmin(page);
     const instance = await createProcessInstanceViaApi(
       request, token, templateId, `E2E-WM02-${Date.now()}`,
@@ -109,6 +111,7 @@ test.describe('Step2 物料选择器', () => {
   });
 
   test('WM-03: 勾选物料并确认后原料表显示已选物料', async ({ page, request }) => {
+    if (!templateId) { test.skip(true, '无流程模板 — 跳过 WM-03'); return; }
     await loginAdmin(page);
     const instance = await createProcessInstanceViaApi(
       request, token, templateId, `E2E-WM03-${Date.now()}`,

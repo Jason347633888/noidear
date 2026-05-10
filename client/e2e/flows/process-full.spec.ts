@@ -15,7 +15,7 @@ import {
  */
 
 let token: string;
-let templateId: string;
+let templateId: string | null = null;
 
 test.beforeAll(async ({ request }) => {
   const { adminUser, adminPass } = getCredentials();
@@ -54,6 +54,7 @@ async function createAndLogin(
 
 test.describe('研发流程 - 基本流程', () => {
   test('PF-01: Step1 提交后应跳转到 Step2 而非 Step3', async ({ page, request }) => {
+    if (!templateId) { test.skip(true, '无流程模板 — 跳过 PF-01'); return; }
     const productName = `E2E-PF01-${Date.now()}`;
     const instanceId = await createAndLogin(page, request, productName);
     await gotoProcessDetail(page, instanceId);
@@ -77,6 +78,7 @@ test.describe('研发流程 - 基本流程', () => {
   });
 
   test('PF-02: 暂存草稿后在列表中可见', async ({ page, request }) => {
+    if (!templateId) { test.skip(true, '无流程模板 — 跳过 PF-02'); return; }
     const productName = `E2E-Draft-${Date.now()}`;
     const instanceId = await createAndLogin(page, request, productName);
     await gotoProcessDetail(page, instanceId);

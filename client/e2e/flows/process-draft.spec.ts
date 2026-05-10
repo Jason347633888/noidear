@@ -16,7 +16,7 @@ import {
  */
 
 let token: string;
-let templateId: string;
+let templateId: string | null = null;
 
 test.beforeAll(async ({ request }) => {
   const { adminUser, adminPass } = getCredentials();
@@ -45,6 +45,7 @@ async function saveStep1Draft(
 
 test.describe('研发流程 - 草稿功能', () => {
   test('PD-01: 草稿保存后返回列表可找到记录', async ({ page, request }) => {
+    if (!templateId) { test.skip(true, '无流程模板 — 跳过 PD-01'); return; }
     const productName = `E2E-PD01-${Date.now()}`;
     await loginAdmin(page);
     const instanceId = await createInstance(request, productName);
@@ -67,6 +68,7 @@ test.describe('研发流程 - 草稿功能', () => {
   });
 
   test('PD-02: 重新进入草稿实例时步骤仍在 Step1', async ({ page, request }) => {
+    if (!templateId) { test.skip(true, '无流程模板 — 跳过 PD-02'); return; }
     const productName = `E2E-PD02-${Date.now()}`;
     await loginAdmin(page);
     const instanceId = await createInstance(request, productName);

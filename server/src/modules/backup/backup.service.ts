@@ -51,7 +51,7 @@ export class BackupService {
       });
 
       this.logger.error(`PostgreSQL backup failed: ${error.message}`);
-      throw error;
+      return { success: false, fileName: filename, error: error.message };
     }
   }
 
@@ -91,7 +91,7 @@ export class BackupService {
       });
 
       this.logger.error(`MinIO backup failed: ${error.message}`);
-      throw error;
+      return { success: false, fileName: filename, error: error.message };
     }
   }
 

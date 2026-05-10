@@ -58,7 +58,7 @@ test('PERM-001: 管理员可创建新权限（resource:action）', async ({ requ
   }
   expect([200, 201]).toContain(res.status());
   const body = await res.json();
-  const id = body?.data?.id ?? body?.id;
+  const id = body?.data?.data?.id ?? body?.data?.id ?? body?.id;
   expect(id).toBeTruthy();
 
   // Cleanup: delete the created permission
@@ -126,7 +126,7 @@ test('PERM-003: 按 resource 过滤权限列表 → 仅返回匹配项', async (
   expect(res.ok()).toBe(true);
 
   const body = await res.json();
-  const items: Array<{ resource: string }> = body?.data?.list ?? body?.data ?? body?.list ?? [];
+  const items: Array<{ resource: string }> = body?.data?.list ?? body?.data?.data ?? body?.data ?? body?.list ?? [];
   if (items.length === 0) {
     // No document permissions seeded — acceptable
     return;

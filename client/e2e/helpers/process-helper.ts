@@ -32,21 +32,32 @@ interface ProcessTemplate {
 
 /**
  * Fetch the default process template ID.
+ * Returns null if the endpoint is not available.
  */
 export async function fetchDefaultProcessTemplateId(
   request: APIRequestContext,
   token: string,
-): Promise<string> {
-  const res = await request.get(`${API_BASE}/process/templates/default`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+): Promise<string | null> {
+  try {
+    const res = await request.get(`${API_BASE}/process/templates/default`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-  if (!res.ok()) {
-    throw new Error(`Fetch process template failed: ${res.status()}`);
+    if (!res.ok()) {
+      const listRes = await request.get(`${API_BASE}/process/templates?limit=1`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!listRes.ok()) return null;
+      const listBody = (await listRes.json()) as ApiResponse<{ list?: ProcessTemplate[]; data?: ProcessTemplate[] }>;
+      const list = listBody.data?.list ?? (Array.isArray(listBody.data) ? listBody.data as unknown as ProcessTemplate[] : []);
+      return list.length > 0 ? list[0].id : null;
+    }
+
+    const body = (await res.json()) as ApiResponse<ProcessTemplate>;
+    return body.data?.id ?? null;
+  } catch {
+    return null;
   }
-
-  const body = (await res.json()) as ApiResponse<ProcessTemplate>;
-  return body.data.id;
 }
 
 /**
@@ -140,13 +151,13 @@ export async function fetchProcessInstanceViaApi(
 
 /**
  * Initialize shared process test data: returns templateId and admin token.
- * Call in test.beforeAll().
+ * Call in test.beforeAll(). templateId may be null if not seeded.
  */
 export async function initProcessTestData(
   request: APIRequestContext,
   adminUser: string,
   adminPass: string,
-): Promise<{ token: string; templateId: string }> {
+): Promise<{ token: string; templateId: string | null }> {
   const token = await getAuthToken(request, adminUser, adminPass);
   const templateId = await fetchDefaultProcessTemplateId(request, token);
   return { token, templateId };

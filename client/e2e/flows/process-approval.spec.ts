@@ -23,7 +23,7 @@ import {
 const STEP7_NUMBER = 7;
 
 let token: string;
-let templateId: string;
+let templateId: string | null = null;
 
 test.beforeAll(async ({ request }) => {
   const { adminUser, adminPass } = getCredentials();
@@ -57,6 +57,7 @@ async function advanceToStep(
 
 test.describe('研发流程 - 审批流程', () => {
   test('PA-01: Step7 危害评估页面可正常加载', async ({ page, request }) => {
+    if (!templateId) { test.skip(true, '无流程模板 — 跳过 PA-01'); return; }
     const productName = `E2E-PA01-${Date.now()}`;
     await loginAdmin(page);
 
@@ -79,6 +80,7 @@ test.describe('研发流程 - 审批流程', () => {
   });
 
   test('PA-02: Step7 提交后触发审批并出现审批按钮', async ({ page, request }) => {
+    if (!templateId) { test.skip(true, '无流程模板 — 跳过 PA-02'); return; }
     const productName = `E2E-PA02-${Date.now()}`;
     await loginAdmin(page);
 

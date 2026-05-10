@@ -59,6 +59,6 @@ test.describe('Document Control Center (Phase 2+3)', () => {
   test('DC-09: Audit chain explorer renders', async ({ page }) => {
     await page.goto('/documents/operations/audit-chain');
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('.el-card, .el-select').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.audit-chain-explorer, .el-card, select').first()).toBeVisible({ timeout: 10000 });
   });
 });

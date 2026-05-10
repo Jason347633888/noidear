@@ -569,7 +569,7 @@ test.describe('TRN — 培训状态流转 & 档案', () => {
     }
     const plansBody = await plansRes.json();
     const plans: Array<{ id: string; status?: string }> =
-      plansBody?.data?.list ?? plansBody?.data ?? [];
+      plansBody?.data?.list ?? plansBody?.data?.data?.list ?? plansBody?.data?.data ?? plansBody?.data ?? [];
     if (plans.length === 0) {
       test.skip(true, '无待审批培训计划 — 跳过 TRN-004');
       return;

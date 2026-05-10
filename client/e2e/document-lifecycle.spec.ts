@@ -667,7 +667,7 @@ test.describe('SRC — 全文搜索补充', () => {
     expect(body).toHaveProperty('data');
     // Deleted docs should not appear
     const items: Array<{ deletedAt?: string | null }> =
-      body?.data?.list ?? body?.data?.items ?? body?.data ?? [];
+      body?.data?.list ?? body?.data?.items ?? body?.data?.data ?? body?.data ?? [];
     items.forEach((item) => {
       expect(item.deletedAt == null || item.deletedAt === undefined).toBe(true);
     });

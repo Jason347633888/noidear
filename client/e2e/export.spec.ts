@@ -11,12 +11,12 @@ test.describe('批量导出/导入功能', () => {
 
   test('管理员可以访问批量导出页面', async ({ page }) => {
     await page.goto('/admin/export');
-    await expect(page.locator('h2:has-text("批量导出")')).toBeVisible();
+    await expect(page.locator('h1:has-text("批量导出")')).toBeVisible();
   });
 
   test('管理员可以访问批量导入页面', async ({ page }) => {
     await page.goto('/admin/import');
-    await expect(page.locator('h2:has-text("批量导入")')).toBeVisible();
+    await expect(page.locator('h1:has-text("批量导入")')).toBeVisible();
   });
 
   test('批量导出页面显示导出类型选项', async ({ page }) => {

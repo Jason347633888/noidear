@@ -36,8 +36,8 @@ test.describe('Sequential Approval Flow', () => {
     await page.goto('/approvals/history');
     await page.waitForLoadState('networkidle');
 
-    const title = page.locator('.page-title');
-    await expect(title).toContainText('审批历史');
+    const title = page.locator('.app-page-header__title, .page-title, h1');
+    await expect(title.first()).toContainText('审批历史');
   });
 
   test('S-SEQ-3: reject endpoint accessible via API', async ({ request }) => {

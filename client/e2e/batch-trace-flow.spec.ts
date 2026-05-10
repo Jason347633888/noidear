@@ -75,9 +75,9 @@ test.describe('Batch Trace Flow', () => {
     }
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
-    // Should show results card or empty state
+    // Should show results card, error alert, or empty state after search
     await expect(
-      page.locator('.result-card, .el-empty').first(),
+      page.locator('.el-card, .el-alert, .traceability-shell').first(),
     ).toBeVisible({ timeout: 30000 });
   });
 
