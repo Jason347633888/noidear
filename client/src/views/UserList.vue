@@ -28,6 +28,12 @@
             <el-option v-for="role in systemRoles" :key="role.id" :label="role.name" :value="role.code" />
           </el-select>
         </el-form-item>
+        <el-form-item label="状态" class="filter-item">
+          <el-select v-model="filterForm.status" clearable placeholder="全部" class="filter-select">
+            <el-option value="active" label="启用" />
+            <el-option value="inactive" label="停用" />
+          </el-select>
+        </el-form-item>
         <el-form-item class="filter-item filter-actions">
           <el-button type="primary" @click="handleSearch">
             <el-icon><Search /></el-icon>搜索
@@ -141,6 +147,12 @@
             <el-option v-for="role in systemRoles" :key="role.id" :label="role.name" :value="role.id" />
           </el-select>
         </el-form-item>
+        <el-form-item label="状态" prop="status" v-if="editingUser">
+          <el-select v-model="createForm.status" class="full-select">
+            <el-option value="active" label="启用" />
+            <el-option value="inactive" label="停用" />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="closeDialog">取消</el-button>
@@ -216,6 +228,7 @@ const createForm = reactive({
   password: '',
   departmentId: null as string | null,
   roleId: '' as string,
+  status: 'active' as 'active' | 'inactive',
 });
 const createRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
@@ -319,6 +332,7 @@ const handleEdit = (row: UserRow) => {
   createForm.password = '';
   createForm.departmentId = row.departmentId || null;
   createForm.roleId = row.roleId || '';
+  createForm.status = row.status;
   showCreateDialog.value = true;
 };
 
@@ -354,6 +368,7 @@ const handleCreate = async () => {
         name: createForm.name,
         departmentId: createForm.departmentId,
         roleId: createForm.roleId,
+        status: createForm.status,
       });
       ElMessage.success('保存成功');
     } else {
@@ -383,6 +398,7 @@ const closeDialog = () => {
   createForm.password = '';
   createForm.departmentId = null;
   createForm.roleId = '';
+  createForm.status = 'active';
 };
 
 onMounted(async () => {

@@ -87,6 +87,12 @@
         <el-form-item label="部门名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入部门名称" />
         </el-form-item>
+        <el-form-item label="状态" prop="status" v-if="editingDepartment">
+          <el-select v-model="form.status" class="full-select">
+            <el-option value="active" label="启用" />
+            <el-option value="inactive" label="停用" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="负责人" prop="managerId">
           <el-select
             v-model="form.managerId"
@@ -152,6 +158,7 @@ const form = reactive({
   code: '',
   name: '',
   managerId: '',
+  status: 'active' as 'active' | 'inactive',
 });
 
 const formRules = {
@@ -259,6 +266,7 @@ const handleEdit = (department: Department) => {
   form.code = department.code;
   form.name = department.name;
   form.managerId = department.managerId || '';
+  form.status = department.status as 'active' | 'inactive';
   dialogVisible.value = true;
 };
 
@@ -277,6 +285,7 @@ const handleSubmit = async () => {
       await updateDepartment(editingDepartment.value.id, {
         name: payload.name,
         managerId: payload.managerId ?? null,
+        status: form.status,
       });
       ElMessage.success('保存成功');
     } else {
@@ -320,3 +329,4 @@ onMounted(async () => {
 .filter-input { width: 180px; }
 .filter-select { width: 140px; }
 .filter-actions { margin-left: auto; }
+.full-select { width: 100%; }
