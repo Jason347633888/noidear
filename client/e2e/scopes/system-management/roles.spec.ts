@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { apiBaseUrl } from '../../support/urls';
-import { ensureOrgBootstrapCompleted } from '../../support/bootstrap';
+import { ensureSystemManagementRolesFixture } from '../../support/bootstrap';
 
 const uniqueId = () => process.env.E2E_RUN_ID ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const SYSTEM_ROLES = ['admin', 'leader', 'user'];
 
 test.describe('Roles Page', () => {
   test.beforeEach(async ({ request }) => {
-    await ensureOrgBootstrapCompleted(request);
+    await ensureSystemManagementRolesFixture(request);
   });
 
   test('should navigate to roles page', async ({ page }) => {

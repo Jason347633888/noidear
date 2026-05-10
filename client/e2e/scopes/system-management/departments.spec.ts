@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { apiBaseUrl } from '../../support/urls';
-import { ensureOrgBootstrapCompleted } from '../../support/bootstrap';
+import { ensureSystemManagementDepartmentsFixture } from '../../support/bootstrap';
 
 const uniqueId = () => process.env.E2E_RUN_ID ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 test.describe('Departments Page', () => {
   test.beforeEach(async ({ request }) => {
-    await ensureOrgBootstrapCompleted(request);
+    await ensureSystemManagementDepartmentsFixture(request);
   });
 
   test('should navigate to /departments', async ({ page }) => {
@@ -36,7 +36,7 @@ test.describe('Departments Page', () => {
   test('assigning previously unassigned leader auto-attaches user to department', async ({ request }) => {
     const runId = uniqueId();
     const apiBase = apiBaseUrl();
-    const { token, roleIds } = await ensureOrgBootstrapCompleted(request);
+    const { token, roleIds } = await ensureSystemManagementDepartmentsFixture(request);
 
     const userRes = await request.post(`${apiBase}/users`, {
       headers: { Authorization: `Bearer ${token}` },

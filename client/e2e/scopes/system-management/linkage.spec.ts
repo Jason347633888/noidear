@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { apiBaseUrl } from '../../support/urls';
-import { ensureOrgBootstrapCompleted } from '../../support/bootstrap';
+import { ensureSystemManagementLinkageFixture } from '../../support/bootstrap';
 
 const uniqueId = () => process.env.E2E_RUN_ID ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -14,9 +14,9 @@ test.describe('System Management Cross-Page Linkage', () => {
   let runId: string;
 
   test.beforeAll(async ({ request }) => {
-    const bootstrap = await ensureOrgBootstrapCompleted(request);
-    token = bootstrap.token;
-    leaderRoleId = bootstrap.roleIds.leader;
+    const fixture = await ensureSystemManagementLinkageFixture(request);
+    token = fixture.token;
+    leaderRoleId = fixture.roleIds.leader;
   });
 
   test('setup: create unassigned leader via API', async ({ request }) => {
