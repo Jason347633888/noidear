@@ -1,19 +1,18 @@
 import { buildBaselineSeedOptions } from './seed-baseline';
 
 describe('buildBaselineSeedOptions', () => {
-  it('keeps minimum organization disabled by default', () => {
-    expect(buildBaselineSeedOptions({})).toEqual({
+  it('returns only A-class baseline options without minimum organization', () => {
+    const options = buildBaselineSeedOptions({});
+    expect(options).toEqual({
       adminPassword: 'ChangeMe123!',
       seedUserPassword: 'ChangeMe123!',
-      ensureMinimumOrganization: false,
     });
+    expect(options).not.toHaveProperty('ensureMinimumOrganization');
   });
 
-  it('enables minimum organization only for exact true', () => {
-    expect(buildBaselineSeedOptions({ SEED_MINIMUM_ORG: 'true' }).ensureMinimumOrganization).toBe(true);
-    expect(buildBaselineSeedOptions({ SEED_MINIMUM_ORG: 'True' }).ensureMinimumOrganization).toBe(false);
-    expect(buildBaselineSeedOptions({ SEED_MINIMUM_ORG: '1' }).ensureMinimumOrganization).toBe(false);
-    expect(buildBaselineSeedOptions({ SEED_MINIMUM_ORG: 'yes' }).ensureMinimumOrganization).toBe(false);
+  it('does not produce ensureMinimumOrganization even when SEED_MINIMUM_ORG env is set', () => {
+    const options = buildBaselineSeedOptions({ SEED_MINIMUM_ORG: 'true' } as Record<string, string>);
+    expect(options).not.toHaveProperty('ensureMinimumOrganization');
   });
 
   it('uses admin password as the seed user password fallback', () => {
