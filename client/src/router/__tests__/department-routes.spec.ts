@@ -15,9 +15,19 @@ describe('department route and menu static check', () => {
     expect(source).toContain('部门管理');
   });
 
-  it('初始化未完成时登录后跳转到 /bootstrap/org（路由存在静态检查）', () => {
+  it('router does not contain /bootstrap/org route or bootstrap store', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/router/index.ts'), 'utf-8');
-    expect(source).toContain('/bootstrap/org');
-    expect(source).toContain('OrganizationBootstrap');
+    expect(source).not.toContain("/bootstrap/org");
+    expect(source).not.toContain('useBootstrapStore');
+    expect(source).not.toContain('bootstrapStore.refresh');
+    expect(source).not.toContain("to.query.from === 'bootstrap'");
+    expect(source).toContain("path: '/login'");
+  });
+
+  it('router still contains normal routes', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/router/index.ts'), 'utf-8');
+    expect(source).toContain("path: 'departments'");
+    expect(source).toContain("path: 'users'");
+    expect(source).toContain("path: '/login'");
   });
 });

@@ -8,12 +8,7 @@ vi.mock('@/api/request', () => ({
 }));
 
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ query: {} }),
   useRouter: () => ({ push: vi.fn() }),
-}));
-
-vi.mock('@/stores/bootstrap', () => ({
-  useBootstrapStore: () => ({ refresh: vi.fn() }),
 }));
 
 import RoleList from '../RoleList.vue';

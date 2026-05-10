@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
 import { useUserStore } from '@/stores/user';
-import { useBootstrapStore } from '@/stores/bootstrap';
 import { ElMessage } from 'element-plus';
 
 const redirectToProductWorkbench = () => {
@@ -979,12 +978,6 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/process/ProcessPrint.vue'),
     meta: { title: '研发流程打印', hideLayout: true },
   },
-  {
-    path: '/bootstrap/org',
-    name: 'OrganizationBootstrap',
-    component: () => import('@/views/bootstrap/OrganizationBootstrap.vue'),
-    meta: { title: '组织与权限初始化', requiresAuth: true, hidden: true },
-  },
   { path: '/:pathMatch(.*)*', redirect: '/dashboard' },
 ];
 
@@ -1009,24 +1002,6 @@ router.beforeEach(async (to, _from, next) => {
       await userStore.fetchUser();
     }
 
-    if (userStore.isLoggedIn) {
-      const bootstrapStore = useBootstrapStore();
-      if (!bootstrapStore.loaded) {
-        try {
-          await bootstrapStore.refresh();
-        } catch {
-          // bootstrap API 失败不阻断导航
-        }
-      }
-      if (bootstrapStore.loaded && !bootstrapStore.completed && to.path !== '/bootstrap/org' && !publicPaths.includes(to.path) && userStore.isAdmin) {
-        next('/bootstrap/org');
-        return;
-      }
-      if (bootstrapStore.completed && to.path === '/bootstrap/org') {
-        next('/dashboard');
-        return;
-      }
-    }
   }
 
   if (to.meta?.requiresAdmin) {

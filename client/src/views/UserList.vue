@@ -154,7 +154,6 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { useBootstrapStore } from '@/stores/bootstrap';
 import request from '@/api/request';
 import { Search, RefreshRight, Plus, Edit, Key } from '@element-plus/icons-vue';
 import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
@@ -193,7 +192,6 @@ interface DepartmentItem {
 
 const route = useRoute();
 const router = useRouter();
-const bootstrapStore = useBootstrapStore();
 const loading = ref(false);
 const creating = ref(false);
 const showCreateDialog = ref(false);
@@ -370,10 +368,6 @@ const handleCreate = async () => {
     }
     closeDialog();
     await Promise.all([fetchData(), fetchDepartments(), loadSystemRoles()]);
-    if (route.query.from === 'bootstrap') {
-      await bootstrapStore.refresh();
-      await router.push('/bootstrap/org');
-    }
   } catch {
     ElMessage.error('操作失败');
   } finally {

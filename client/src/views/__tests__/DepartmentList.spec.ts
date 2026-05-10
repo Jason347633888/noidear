@@ -18,11 +18,6 @@ vi.mock('@/api/request', () => ({
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push: mockPush }),
-  useRoute: () => ({ path: '/departments', query: {} }),
-}));
-
-vi.mock('@/stores/bootstrap', () => ({
-  useBootstrapStore: () => ({ completed: true, step: 'completed', loaded: true, refresh: vi.fn() }),
 }));
 
 import DepartmentList from '../DepartmentList.vue';
