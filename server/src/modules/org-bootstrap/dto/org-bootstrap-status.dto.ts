@@ -1,3 +1,5 @@
+// Deprecated diagnostic types. This DTO is NOT a product initialization contract.
+// Frontend routing must NOT consume these fields to gate access.
 export type BootstrapStep =
   | 'system_role_baseline'
   | 'departments'
@@ -12,6 +14,8 @@ export type BootstrapReason =
   | 'missing_business_member';
 
 export interface OrgBootstrapStatusDto {
+  /** Always true — this endpoint is a deprecated authenticated diagnostic only. */
+  deprecated: true;
   completed: boolean;
   step: BootstrapStep;
   reasons: BootstrapReason[];
