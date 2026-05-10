@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { apiBaseUrl } from '../../support/urls';
-import { ensureOrgBootstrapCompleted } from '../../support/bootstrap';
+import { ensureSystemManagementUsersFixture } from '../../support/bootstrap';
 
 const uniqueId = () => process.env.E2E_RUN_ID ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 test.describe('Users Page', () => {
   test.beforeEach(async ({ request }) => {
-    await ensureOrgBootstrapCompleted(request);
+    await ensureSystemManagementUsersFixture(request);
   });
 
   test('should load /users page', async ({ page }) => {
@@ -46,7 +46,7 @@ test.describe('Users Page', () => {
   test('creating a leader without department shows 未分配部门', async ({ page, request }) => {
     const runId = uniqueId();
     const apiBase = apiBaseUrl();
-    const { token, roleIds } = await ensureOrgBootstrapCompleted(request);
+    const { token, roleIds } = await ensureSystemManagementUsersFixture(request);
 
     const createRes = await request.post(`${apiBase}/users`, {
       headers: { Authorization: `Bearer ${token}` },

@@ -18,12 +18,6 @@ interface DepartmentRef {
   name: string;
 }
 
-interface BootstrapStatus {
-  completed: boolean;
-  step: string;
-  reasons: string[];
-}
-
 function uniqueId(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -65,127 +59,112 @@ export async function getSystemRoleIds(
   };
 }
 
-async function getBootstrapStatus(
+async function createDepartmentWithLeader(
   request: APIRequestContext,
   token: string,
-): Promise<BootstrapStatus> {
-  const resp = await request.get(`${API_BASE}/org-bootstrap/status`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  expect(resp.ok(), `GET /org-bootstrap/status failed: ${resp.status()}`).toBe(true);
-  return unwrapData<BootstrapStatus>(await resp.json());
-}
-
-async function listDepartments(
-  request: APIRequestContext,
-  token: string,
-): Promise<DepartmentRef[]> {
-  const resp = await request.get(`${API_BASE}/departments`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  expect(resp.ok(), `GET /departments failed: ${resp.status()}`).toBe(true);
-  const body = await resp.json();
-  const data = unwrapData<{ list?: DepartmentRef[] } | DepartmentRef[]>(body);
-  return Array.isArray(data) ? data : (data.list ?? []);
-}
-
-async function createDepartment(
-  request: APIRequestContext,
-  token: string,
-): Promise<DepartmentRef> {
+  leaderRoleId: string,
+): Promise<{ deptId: string; leaderId: string }> {
   const suffix = uniqueId('dept');
-  const resp = await request.post(`${API_BASE}/departments`, {
+  const leaderSuffix = uniqueId('ldr');
+
+  const leaderResp = await request.post(`${API_BASE}/users`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      username: `e2e_ldr_${leaderSuffix}`,
+      password: 'TestPass123!',
+      name: `E2E Leader ${leaderSuffix}`,
+      roleId: leaderRoleId,
+    },
+  });
+  expect([200, 201], `Create leader failed: ${leaderResp.status()}`).toContain(leaderResp.status());
+  const leader = unwrapData<{ id: string }>(await leaderResp.json());
+
+  const deptResp = await request.post(`${API_BASE}/departments`, {
     headers: { Authorization: `Bearer ${token}` },
     data: {
       code: `E2E_${suffix}`.toUpperCase(),
-      name: `E2E Bootstrap Dept ${suffix}`,
+      name: `E2E Fixture Dept ${suffix}`,
+      managerId: leader.id,
     },
   });
-  expect([200, 201], `Create department failed: ${resp.status()}`).toContain(resp.status());
-  return unwrapData<DepartmentRef>(await resp.json());
+  expect([200, 201], `Create department failed: ${deptResp.status()}`).toContain(deptResp.status());
+  const dept = unwrapData<DepartmentRef>(await deptResp.json());
+
+  return { deptId: dept.id, leaderId: leader.id };
 }
 
-async function createUser(
-  request: APIRequestContext,
-  token: string,
-  roleId: string,
-  options: { usernamePrefix: string; namePrefix: string; departmentId?: string },
-): Promise<{ id: string; username: string }> {
-  const suffix = uniqueId(options.usernamePrefix);
-  const username = `${options.usernamePrefix}_${suffix}`;
-  const resp = await request.post(`${API_BASE}/users`, {
-    headers: { Authorization: `Bearer ${token}` },
-    data: {
-      username,
-      password: 'TestPass123!',
-      name: `${options.namePrefix} ${suffix}`,
-      roleId,
-      departmentId: options.departmentId,
-    },
-  });
-  expect([200, 201], `Create user failed: ${resp.status()}`).toContain(resp.status());
-  const user = unwrapData<{ id: string }>(await resp.json());
-  return { id: user.id, username };
-}
-
-async function assignDepartmentManager(
-  request: APIRequestContext,
-  token: string,
-  departmentId: string,
-  managerId: string,
-) {
-  const resp = await request.put(`${API_BASE}/departments/${departmentId}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    data: { managerId },
-  });
-  expect([200, 201], `Assign department manager failed: ${resp.status()}`).toContain(resp.status());
-}
-
-export async function ensureOrgBootstrapCompleted(
+/**
+ * Users fixture: provides admin token, role IDs, one active department with
+ * a valid leader candidate so users.spec.ts assertions can run.
+ */
+export async function ensureSystemManagementUsersFixture(
   request: APIRequestContext,
 ): Promise<{
   token: string;
   roleIds: Record<SystemRoleCode, string>;
-  status: BootstrapStatus;
+  deptId: string;
 }> {
   const { token } = await adminLogin(request);
   const roleIds = await getSystemRoleIds(request, token);
+  const { deptId } = await createDepartmentWithLeader(request, token, roleIds.leader);
+  return { token, roleIds, deptId };
+}
 
-  let status = await getBootstrapStatus(request, token);
-  if (status.completed) {
-    return { token, roleIds, status };
-  }
+/**
+ * Departments fixture: provides admin token, role IDs, and an active leader
+ * candidate so departments.spec.ts can assert leader selection and department
+ * creation flows.
+ */
+export async function ensureSystemManagementDepartmentsFixture(
+  request: APIRequestContext,
+): Promise<{
+  token: string;
+  roleIds: Record<SystemRoleCode, string>;
+  leaderId: string;
+}> {
+  const { token } = await adminLogin(request);
+  const roleIds = await getSystemRoleIds(request, token);
+  const suffix = uniqueId('ldr');
+  const leaderResp = await request.post(`${API_BASE}/users`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      username: `e2e_dept_ldr_${suffix}`,
+      password: 'TestPass123!',
+      name: `E2E Dept Leader ${suffix}`,
+      roleId: roleIds.leader,
+    },
+  });
+  expect([200, 201], `Create leader candidate failed: ${leaderResp.status()}`).toContain(leaderResp.status());
+  const leader = unwrapData<{ id: string }>(await leaderResp.json());
+  return { token, roleIds, leaderId: leader.id };
+}
 
-  if (status.step === 'departments' || status.reasons.includes('missing_department')) {
-    await createDepartment(request, token);
-    status = await getBootstrapStatus(request, token);
-  }
+/**
+ * Roles fixture: provides admin token only. Role and permission assertions
+ * do not need departments or business users.
+ */
+export async function ensureSystemManagementRolesFixture(
+  request: APIRequestContext,
+): Promise<{
+  token: string;
+  roleIds: Record<SystemRoleCode, string>;
+}> {
+  const { token } = await adminLogin(request);
+  const roleIds = await getSystemRoleIds(request, token);
+  return { token, roleIds };
+}
 
-  const departments = await listDepartments(request, token);
-  let workingDepartment = departments[0];
-  if (!workingDepartment) {
-    workingDepartment = await createDepartment(request, token);
-  }
-
-  if (status.step === 'department_manager' || status.reasons.includes('missing_department_manager')) {
-    const leader = await createUser(request, token, roleIds.leader, {
-      usernamePrefix: 'e2e_boot_leader',
-      namePrefix: 'E2E Bootstrap Leader',
-      departmentId: workingDepartment.id,
-    });
-    await assignDepartmentManager(request, token, workingDepartment.id, leader.id);
-    status = await getBootstrapStatus(request, token);
-  }
-
-  if (status.step === 'department_members' || status.reasons.includes('missing_business_member')) {
-    await createUser(request, token, roleIds.user, {
-      usernamePrefix: 'e2e_boot_member',
-      namePrefix: 'E2E Bootstrap Member',
-      departmentId: workingDepartment.id,
-    });
-    status = await getBootstrapStatus(request, token);
-  }
-
-  expect(status.completed, `Bootstrap not completed: ${status.step} ${status.reasons.join(',')}`).toBe(true);
-  return { token, roleIds, status };
+/**
+ * Linkage fixture: provides admin token, leader role ID, and an unassigned
+ * leader user so linkage.spec.ts can assert user→department assignment flows.
+ */
+export async function ensureSystemManagementLinkageFixture(
+  request: APIRequestContext,
+): Promise<{
+  token: string;
+  roleIds: Record<SystemRoleCode, string>;
+}> {
+  const { token } = await adminLogin(request);
+  const roleIds = await getSystemRoleIds(request, token);
+  return { token, roleIds };
 }
