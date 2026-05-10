@@ -397,47 +397,7 @@ test.describe('AUTH — 认证与授权', () => {
     expect(res.status()).toBe(401);
   });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // AUTH-020  SSO 登录跳转
-  // ──────────────────────────────────────────────────────────────────────────
-  test('AUTH-020: SSO 登录接口存在 → 返回跳转 URL 或 404（功能未实现）', async ({
-    request,
-  }) => {
-    const res = await request.get(`${API_BASE}/auth/sso/login`);
-    // SSO may redirect (3xx), return URL (200), or not be implemented (404)
-    if (res.status() === 404) {
-      test.skip(true, 'SSO 未实现 — 跳过 AUTH-020');
-      return;
-    }
-    // If implemented, should redirect or return a URL
-    expect([200, 302, 307]).toContain(res.status());
-  });
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // AUTH-021  SSO 回调成功，系统颁发 JWT
-  // ──────────────────────────────────────────────────────────────────────────
-  test('AUTH-021: SSO 回调接口存在（无有效 code 时返回 400/401）', async ({ request }) => {
-    const res = await request.get(`${API_BASE}/auth/sso/callback?code=invalid_test_code`);
-    if (res.status() === 404) {
-      test.skip(true, 'SSO 回调未实现 — 跳过 AUTH-021');
-      return;
-    }
-    // With invalid code, should return 400 or 401 — NOT 200 with a real token
-    expect([400, 401, 422]).toContain(res.status());
-  });
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // AUTH-022  SSO 回调携带无效授权码时拒绝
-  // ──────────────────────────────────────────────────────────────────────────
-  test('AUTH-022: SSO 无效授权码 → 返回 4xx 错误', async ({ request }) => {
-    const res = await request.post(`${API_BASE}/auth/sso/callback`, {
-      data: { code: 'completely-invalid-oauth-code-for-e2e-test' },
-    });
-    if (res.status() === 404) {
-      test.skip(true, 'SSO 回调 POST 未实现 — 跳过 AUTH-022');
-      return;
-    }
-    expect(res.status()).toBeGreaterThanOrEqual(400);
-    expect(res.status()).toBeLessThan(500);
-  });
+  // AUTH-020, AUTH-021, AUTH-022: SSO 单点登录 — NOT-CURRENT-TARGET
+  // Coverage accounting: SSO feature is not in current sprint scope.
+  // These cases are excluded from automated E2E and tracked as not-current-target.
 });

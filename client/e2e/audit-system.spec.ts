@@ -300,37 +300,9 @@ test.describe('备份 – Backup', () => {
     }
   });
 
-  // BCK-003: 备份失败时仍记录历史
-  test('BCK-003: 备份失败时历史表仍新增 status=failed 的记录', async ({ request }) => {
-    const token = await adminToken(request);
-
-    // We can't easily make PG unavailable in CI, so just verify the backup history
-    // records have a status field (and check if any failed entries exist)
-    const histRes = await request.get(`${API_BASE}/backup/history?limit=50`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!histRes.ok()) {
-      test.skip(true, 'GET /backup/history 失败 — 跳过 BCK-003');
-      return;
-    }
-    const histBody = await histRes.json();
-    const records: Array<{ status?: string; errorMessage?: string }> =
-      histBody?.data?.list ?? histBody?.data ?? [];
-
-    // Verify the schema supports failed records (status field exists)
-    if (records.length > 0) {
-      expect(records[0]).toHaveProperty('status');
-    }
-    // If any failed record exists, verify it has errorMessage
-    const failedRecord = records.find((r) => r.status === 'failed');
-    if (failedRecord) {
-      expect(
-        failedRecord.errorMessage !== undefined || failedRecord.errorMessage === null,
-      ).toBe(true);
-    }
-    // Test passes regardless — we're verifying schema readiness, not inducing failure
-    expect(histRes.ok()).toBe(true);
-  });
+  // BCK-003: 备份失败时仍记录历史 — MANUAL/NON-ORDINARY
+  // Coverage accounting: BCK-003 requires making PG unavailable to induce a backup
+  // failure, which cannot be automated in CI. Counted in manual-non-ordinary list.
 });
 
 // ===========================================================================
@@ -600,7 +572,8 @@ test.describe('统计 – Statistics', () => {
 });
 
 // ==========================================================================
-// AUD-001~003, AUD-005, AUD-011, AUD-020~022 — 审计日志补充
+// AUD-001~003, AUD-011, AUD-020~022 — 审计日志补充
+// AUD-005: 90天自动清理 — MANUAL/NON-ORDINARY (cron job cannot be triggered in automated E2E)
 // ==========================================================================
 
 test.describe('AUD — 登录日志 & 敏感操作审计', () => {
@@ -696,26 +669,6 @@ test.describe('AUD — 登录日志 & 敏感操作审计', () => {
       return;
     }
     expect(logRes.ok()).toBe(true);
-    const body = await logRes.json();
-    expect(body).toHaveProperty('data');
-  });
-
-  // AUD-005: 登录日志 90 天自动清理（验证接口存在且返回正常）
-  test('AUD-005: 清理接口存在且 90 天内日志保留', async ({ request }) => {
-    const token = await adminToken(request);
-
-    // Query logs within 90 days — should return without error
-    const since = new Date(Date.now() - 89 * 24 * 3600 * 1000).toISOString().split('T')[0];
-    const logRes = await request.get(
-      `${API_BASE}/audit/login-logs?startDate=${since}&limit=10`,
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-    if (logRes.status() === 404) {
-      test.skip(true, 'GET /audit/login-logs 未实现 — 跳过 AUD-005');
-      return;
-    }
-    expect(logRes.ok()).toBe(true);
-    // We can't trigger the cron job here; just verify the API is operational
     const body = await logRes.json();
     expect(body).toHaveProperty('data');
   });
