@@ -12,14 +12,8 @@ vi.mock('@/api/request', () => ({
   },
 }));
 
-const mockPush = vi.fn();
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ push: mockPush }),
-  useRoute: () => ({ path: '/roles', query: {} }),
-}));
-
-vi.mock('@/stores/bootstrap', () => ({
-  useBootstrapStore: () => ({ refresh: vi.fn() }),
+  useRouter: () => ({ push: vi.fn() }),
 }));
 
 vi.mock('element-plus', () => ({

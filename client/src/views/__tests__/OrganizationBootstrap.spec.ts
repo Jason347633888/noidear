@@ -1,32 +1,28 @@
-import { readFileSync } from 'fs';
+import { existsSync } from 'fs';
 import { resolve } from 'path';
+import { readFileSync } from 'fs';
 import { describe, expect, it } from 'vitest';
 
-describe('OrganizationBootstrap static checks', () => {
-  it('view file contains bootstrap steps', () => {
-    const source = readFileSync(
-      resolve(process.cwd(), 'src/views/bootstrap/OrganizationBootstrap.vue'),
-      'utf-8',
-    );
-    expect(source).toContain('el-steps');
-    expect(source).toContain('system_role_baseline');
-    expect(source).toContain('departments');
-    expect(source).toContain('department_manager');
-    expect(source).toContain('department_members');
+describe('OrganizationBootstrap removal checks', () => {
+  it('wizard view file is deleted', () => {
+    const filePath = resolve(process.cwd(), 'src/views/bootstrap/OrganizationBootstrap.vue');
+    expect(existsSync(filePath)).toBe(false);
   });
 
-  it('view file uses bootstrap store', () => {
-    const source = readFileSync(
-      resolve(process.cwd(), 'src/views/bootstrap/OrganizationBootstrap.vue'),
-      'utf-8',
-    );
-    expect(source).toContain('useBootstrapStore');
-    expect(source).toContain('bootstrapStore.refresh');
+  it('bootstrap store is deleted', () => {
+    const filePath = resolve(process.cwd(), 'src/stores/bootstrap.ts');
+    expect(existsSync(filePath)).toBe(false);
   });
 
-  it('router redirects to /bootstrap/org when bootstrap incomplete', () => {
+  it('bootstrap api wrapper is deleted', () => {
+    const filePath = resolve(process.cwd(), 'src/api/bootstrap.ts');
+    expect(existsSync(filePath)).toBe(false);
+  });
+
+  it('router does not reference bootstrap/org or bootstrap store', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/router/index.ts'), 'utf-8');
-    expect(source).toContain('/bootstrap/org');
-    expect(source).toContain('bootstrapStore.completed');
+    expect(source).not.toContain('/bootstrap/org');
+    expect(source).not.toContain('bootstrapStore.completed');
+    expect(source).not.toContain('useBootstrapStore');
   });
 });
