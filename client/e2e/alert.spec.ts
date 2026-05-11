@@ -28,7 +28,7 @@ test.describe('Alert Rule Management', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify page title
-    await expect(page.locator('h2').filter({ hasText: /告警规则/ })).toBeVisible();
+    await expect(page.locator('h1').filter({ hasText: /告警规则/ })).toBeVisible();
 
     // Verify create button exists (relaxed selector with longer timeout)
     await expect(page.locator('button').filter({ hasText: /新建|创建|新增/ }).first()).toBeVisible({ timeout: 10000 });
@@ -254,7 +254,7 @@ test.describe('Alert History', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify page title
-    await expect(page.locator('h2').filter({ hasText: '告警历史' })).toBeVisible();
+    await expect(page.locator('h1').filter({ hasText: '告警历史' })).toBeVisible();
 
     // Verify filter form exists
     await expect(page.locator('.filter-card')).toBeVisible();
@@ -317,7 +317,7 @@ test.describe('Alert History', () => {
       const searchButton = page.locator('button').filter({ hasText: '查询' });
       if (await searchButton.count() > 0) {
         // Close date picker first by clicking elsewhere
-        await page.locator('h2').click();
+        await page.locator('h1').click();
         await page.waitForTimeout(500);
 
         await searchButton.click();

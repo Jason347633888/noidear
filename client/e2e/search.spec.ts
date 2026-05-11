@@ -13,13 +13,13 @@ test.describe('高级搜索功能', () => {
 
   test('用户可以进行全文搜索', async ({ page }) => {
     await page.goto('/search');
-    await expect(page.locator('h2:has-text("高级搜索")')).toBeVisible();
+    await expect(page.locator('h1:has-text("高级搜索")')).toBeVisible({ timeout: 10000 });
 
     await page.fill('input[placeholder*="关键词"]', '操作规程');
     await page.click('button:has-text("搜索")');
 
     // Verify search was triggered (loading appears or result area exists)
-    await expect(page.locator('.result-list, .no-results, .el-empty').first()).toBeAttached({ timeout: 10000 });
+    await expect(page.locator('.search-result, .result-list, .no-results, .el-empty').first()).toBeAttached({ timeout: 10000 });
   });
 
   test('用户可以使用高级筛选', async ({ page }) => {
@@ -33,7 +33,7 @@ test.describe('高级搜索功能', () => {
     await page.click('button:has-text("搜索")');
 
     // Verify search was triggered (result area exists)
-    await expect(page.locator('.result-list, .no-results, .el-empty').first()).toBeAttached({ timeout: 10000 });
+    await expect(page.locator('.search-result, .result-list, .no-results, .el-empty').first()).toBeAttached({ timeout: 10000 });
   });
 
   test('搜索历史记录正常工作', async ({ page }) => {
@@ -52,7 +52,7 @@ test.describe('高级搜索功能', () => {
     await hotTag.click();
 
     // Verify search was triggered (result area exists)
-    await expect(page.locator('.result-list, .no-results, .el-empty').first()).toBeAttached({ timeout: 10000 });
+    await expect(page.locator('.search-result, .result-list, .no-results, .el-empty').first()).toBeAttached({ timeout: 10000 });
   });
 
   test('点击搜索结果跳转到文档详情', async ({ page }) => {

@@ -27,8 +27,8 @@ test.describe('Health Check Page', () => {
     await page.goto('/health');
     await page.waitForLoadState('networkidle');
 
-    // Verify page title
-    await expect(page.locator('h2').filter({ hasText: /系统健康检查|健康状态/ })).toBeVisible();
+    // Verify page title (HealthPage uses h2, not h1)
+    await expect(page.locator('h1, h2').filter({ hasText: /系统健康检查|健康状态/ })).toBeVisible();
 
     // Verify page has loaded content
     await expect(page.locator('.el-card').first()).toBeVisible();
@@ -444,7 +444,7 @@ test.describe('Health Check Page', () => {
       await page.waitForURL('**/monitoring/dashboard', { timeout: 10000 });
 
       // Verify monitoring dashboard loaded
-      await expect(page.locator('h2').filter({ hasText: '运维监控大屏' })).toBeVisible();
+      await expect(page.locator('h1').filter({ hasText: '监控大屏' })).toBeVisible();
 
       console.log('Navigation to monitoring dashboard successful');
     } else {

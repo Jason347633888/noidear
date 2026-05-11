@@ -330,3 +330,4 @@ onMounted(async () => {
 .filter-select { width: 140px; }
 .filter-actions { margin-left: auto; }
 .full-select { width: 100%; }
+</style>

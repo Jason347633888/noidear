@@ -36,6 +36,16 @@ export class MonitoringController {
     private readonly alertService: AlertService,
   ) {}
 
+  @Get('overview')
+  @ApiOperation({ summary: '获取监控概览（含时间戳，用于刷新判断）' })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  async getOverview() {
+    return {
+      timestamp: new Date().toISOString(),
+      status: 'ok',
+    };
+  }
+
   @Get('metrics')
   @ApiOperation({ summary: '获取 Prometheus 格式的指标' })
   @ApiResponse({ status: 200, description: '获取成功' })

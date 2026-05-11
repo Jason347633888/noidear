@@ -15,7 +15,7 @@ import {
  */
 
 let token: string;
-let templateId: string;
+let templateId: string | null = null;
 
 test.beforeAll(async ({ request }) => {
   const { adminUser, adminPass } = getCredentials();
@@ -46,6 +46,7 @@ async function createAndLogin(
   request: APIRequestContext,
   productName: string,
 ): Promise<string> {
+  if (!templateId) throw new Error('ProcessTemplate not found — check seed-baseline.ts');
   const { adminUser, adminPass } = getCredentials();
   const instance = await createProcessInstanceViaApi(request, token, templateId, productName);
   await loginViaApiCached(page, adminUser, adminPass);

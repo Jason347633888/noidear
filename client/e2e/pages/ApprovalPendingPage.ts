@@ -8,7 +8,7 @@ export class ApprovalPendingPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.title = page.locator('.page-title');
+    this.title = page.locator('.app-page-header__title');
     this.table = page.locator('.approval-table');
     this.emptyState = page.locator('.el-empty');
   }

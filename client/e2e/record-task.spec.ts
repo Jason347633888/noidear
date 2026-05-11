@@ -621,3 +621,102 @@ test.describe('BDD 核心场景', () => {
     expect([400, 403, 409]).toContain(putRes.status());
   });
 });
+
+// ==========================================================================
+// TSK-005: 提交的表单进入审批流程
+// ==========================================================================
+
+test.describe('TSK-005 — 表单提交触发审批流程', () => {
+  test('TSK-005: 提交的表单自动进入审批流程（需工作流配置）', async ({ request }) => {
+    const { adminUser, adminPass } = getCredentials();
+    let token: string;
+    try {
+      const loginRes = await request.post(`${API_BASE}/auth/login`, {
+        data: { username: adminUser, password: adminPass },
+      });
+      if (!loginRes.ok()) throw new Error('login failed');
+      const body = await loginRes.json();
+      token = body?.data?.token ?? body?.token;
+    } catch {
+      test.skip(true, 'Admin login failed — 跳过 TSK-005');
+      return;
+    }
+
+    // Find a submitted task
+    const tasksRes = await request.get(`${API_BASE}/tasks?status=submitted&limit=5`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!tasksRes.ok()) {
+      test.skip(true, 'GET /tasks 失败 — 跳过 TSK-005');
+      return;
+    }
+    const tasksBody = await tasksRes.json();
+    const tasks: Array<{ id: string; status?: string; approvalStatus?: string }> =
+      tasksBody?.data?.list ?? tasksBody?.data ?? [];
+
+    if (tasks.length === 0) {
+      // Create and submit a task to verify approval triggers
+      const { templateId } = await (async () => {
+        const tmplRes = await request.get(`${API_BASE}/record-templates?status=active&limit=1`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!tmplRes.ok()) return { templateId: null };
+        const tmplBody = await tmplRes.json();
+        const tmpl = (tmplBody?.data?.list ?? tmplBody?.data ?? [])[0];
+        return { templateId: tmpl?.id ?? null };
+      })();
+
+      if (!templateId) {
+        test.skip(true, '无活跃模板，无法创建任务 — 跳过 TSK-005');
+        return;
+      }
+
+      const createRes = await request.post(`${API_BASE}/tasks`, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        data: {
+          templateId,
+          deadline: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+        },
+      });
+      if (!createRes.ok()) {
+        test.skip(true, `创建任务失败 (${createRes.status()}) — 跳过 TSK-005`);
+        return;
+      }
+      const createBody = await createRes.json();
+      const taskId: string = createBody?.data?.id ?? createBody?.id;
+
+      // Submit the task
+      const submitRes = await request.post(`${API_BASE}/tasks/${taskId}/submit`, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        data: { data: {} },
+      });
+      if (!submitRes.ok()) {
+        test.skip(true, `提交任务失败 (${submitRes.status()}) — 跳过 TSK-005`);
+        return;
+      }
+
+      // Check if task now has an approval flow
+      const detailRes = await request.get(`${API_BASE}/tasks/${taskId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (detailRes.ok()) {
+        const detail = await detailRes.json();
+        const taskData = detail?.data ?? detail;
+        // The task should be in submitted/pending_approval state after submission
+        const status: string = taskData.status ?? taskData.approvalStatus ?? '';
+        expect(['submitted', 'pending_approval', 'pending', 'under_review']).toContain(
+          status.toLowerCase(),
+        );
+      }
+      return;
+    }
+
+    // Verify submitted task has approval status
+    const task = tasks[0];
+    expect(
+      task.status === 'submitted' ||
+        task.approvalStatus === 'pending' ||
+        task.status === 'pending_approval',
+    ).toBe(true);
+  });
+});

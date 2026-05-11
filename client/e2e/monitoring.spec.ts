@@ -28,7 +28,7 @@ test.describe('Monitoring Dashboard', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify page title
-    await expect(page.locator('h2').filter({ hasText: '运维监控大屏' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h1').filter({ hasText: '监控大屏' })).toBeVisible({ timeout: 10000 });
     await expect(page.locator('text=实时监控系统状态和性能指标')).toBeVisible({ timeout: 10000 });
 
     // Verify header action buttons
@@ -206,7 +206,7 @@ test.describe('Metrics Page', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify page title
-    await expect(page.locator('h2').filter({ hasText: '性能指标' })).toBeVisible();
+    await expect(page.locator('h1').filter({ hasText: '运行指标' })).toBeVisible();
 
     // Verify page content loads without errors
     await expect(page.locator('.el-card').first()).toBeVisible();

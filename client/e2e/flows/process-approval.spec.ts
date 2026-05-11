@@ -23,7 +23,7 @@ import {
 const STEP7_NUMBER = 7;
 
 let token: string;
-let templateId: string;
+let templateId: string | null = null;
 
 test.beforeAll(async ({ request }) => {
   const { adminUser, adminPass } = getCredentials();
@@ -40,6 +40,7 @@ async function loginAdmin(page: Page): Promise<void> {
 /**
  * 通过 API 逐步推进流程到目标步骤。
  * 每个步骤提交 -> 审批通过 -> 进入下一步。
+ * Step3 无需审批者：服务端在 trialConclusion==='通过' 时自动审批。
  */
 async function advanceToStep(
   request: APIRequestContext,
@@ -47,16 +48,23 @@ async function advanceToStep(
   targetStep: number,
 ): Promise<void> {
   for (let step = 1; step < targetStep; step++) {
-    await submitProcessStepViaApi(request, token, instanceId, step, {
-      productName: 'E2E-审批测试产品',
-      processType: '戚风分蛋工艺',
-    });
-    await approveProcessStepViaApi(request, token, instanceId, step, 'E2E自动审批');
+    const stepData: Record<string, unknown> =
+      step === 3
+        ? { trialConclusion: '通过', productName: 'E2E-审批测试产品', processType: '戚风分蛋工艺' }
+        : { productName: 'E2E-审批测试产品', processType: '戚风分蛋工艺' };
+
+    await submitProcessStepViaApi(request, token, instanceId, step, stepData);
+
+    // Step3 服务端自动审批，无需再调用审批接口
+    if (step !== 3) {
+      await approveProcessStepViaApi(request, token, instanceId, step, 'E2E自动审批');
+    }
   }
 }
 
 test.describe('研发流程 - 审批流程', () => {
   test('PA-01: Step7 危害评估页面可正常加载', async ({ page, request }) => {
+    if (!templateId) throw new Error('ProcessTemplate not found — check seed-baseline.ts (PA-01)');
     const productName = `E2E-PA01-${Date.now()}`;
     await loginAdmin(page);
 
@@ -79,6 +87,7 @@ test.describe('研发流程 - 审批流程', () => {
   });
 
   test('PA-02: Step7 提交后触发审批并出现审批按钮', async ({ page, request }) => {
+    if (!templateId) throw new Error('ProcessTemplate not found — check seed-baseline.ts (PA-02)');
     const productName = `E2E-PA02-${Date.now()}`;
     await loginAdmin(page);
 
@@ -113,6 +122,7 @@ test.describe('研发流程 - 审批流程', () => {
   });
 
   test('PA-03: 通过 UI 在 Step7 点击审批通过', async ({ page, request }) => {
+    if (!templateId) throw new Error('ProcessTemplate not found — check seed-baseline.ts (PA-03)');
     const productName = `E2E-PA03-${Date.now()}`;
     await loginAdmin(page);
 

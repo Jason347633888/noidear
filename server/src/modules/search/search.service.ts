@@ -89,7 +89,7 @@ export class SearchService {
     ]);
 
     return {
-      data: documents.map((doc) => this.formatResult(doc, keyword)),
+      items: documents.map((doc) => this.formatResult(doc, keyword)),
       total,
       page,
       limit,
