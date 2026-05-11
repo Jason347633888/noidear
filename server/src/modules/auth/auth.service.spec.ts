@@ -99,6 +99,20 @@ describe('AuthService', () => {
         .rejects.toThrow(new UnauthorizedException('账号已被禁用'));
     });
 
+    it('rejects a user without role defensively', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        ...mockUser,
+        roleId: null,
+        roleObj: null,
+      } as any);
+      jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
+
+      await expect(service.login({
+        username: mockUser.username,
+        password: 'correct-password',
+      })).rejects.toThrow(UnauthorizedException);
+    });
+
     it('账号被锁定时应该抛出 UnauthorizedException', async () => {
       const lockedUser = {
         ...mockUser,
