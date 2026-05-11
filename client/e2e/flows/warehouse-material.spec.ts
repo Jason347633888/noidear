@@ -91,6 +91,9 @@ test.describe('Step2 物料选择器', () => {
     await waitForPickerLoaded(page);
 
     const totalBefore = await countMaterialItems(page);
+    if (totalBefore === 0) {
+      throw new Error('物料列表为空 — E2E baseline/Material fixture 缺失，请检查 seed-baseline.ts 中的 Material 数据 (WM-02)');
+    }
 
     const searchInput = page.locator('.picker-toolbar .el-input input');
     await searchInput.fill('zzz_nonexistent_keyword_xyz');
