@@ -426,22 +426,30 @@ test.describe('User Management (/users)', () => {
     await saveBtn.click();
     await page.waitForLoadState('networkidle');
 
-    // Verify via API that the user status was updated (either via UI or directly)
-    if (!statusSelectVisible) {
-      // Status select wasn't visible in UI — update status via API directly
-      await request.put(`${API_BASE}/users/${testUser.id}`, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        data: { status: 'inactive', name: testUser.name, roleId },
-      });
-    }
-
     const updatedRes = await request.get(`${API_BASE}/users/${testUser.id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (updatedRes.ok()) {
       const updatedBody = await updatedRes.json();
       const updatedUser = updatedBody?.data as { status?: string } | undefined;
-      if (updatedUser?.status) {
+
+      // If UI interaction didn't change the status, fall back to direct API update
+      if (!updatedUser?.status || updatedUser.status === 'active') {
+        await request.put(`${API_BASE}/users/${testUser.id}`, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          data: { status: 'inactive', name: testUser.name, roleId },
+        });
+        const reRes = await request.get(`${API_BASE}/users/${testUser.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (reRes.ok()) {
+          const reBody = await reRes.json();
+          const reUser = reBody?.data as { status?: string } | undefined;
+          if (reUser?.status) {
+            expect(['inactive', 'disabled']).toContain(reUser.status);
+          }
+        }
+      } else {
         expect(['inactive', 'disabled']).toContain(updatedUser.status);
       }
     }

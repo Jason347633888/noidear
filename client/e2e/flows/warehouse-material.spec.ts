@@ -72,6 +72,8 @@ async function openMaterialPicker(page: Page): Promise<void> {
 async function waitForPickerLoaded(page: Page): Promise<void> {
   await page.locator('.picker-loading').waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
   await expect(page.locator('.el-dialog')).toBeVisible({ timeout: 5000 });
+  // Wait for materials to load or empty state to appear
+  await page.locator('.material-item, .el-empty').first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
 }
 
 async function countMaterialItems(page: Page): Promise<number> {

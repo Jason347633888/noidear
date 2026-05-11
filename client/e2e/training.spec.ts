@@ -97,7 +97,7 @@ test.describe('TRN: Annual Training Plans', () => {
   let draftPlanId: string;
   let approvedPlanId: string;
   const timestamp = Date.now();
-  const uniqueYear = 9000 + (Date.now() % 100); // dynamic far-future year to avoid collision on re-runs
+  const uniqueYear = 90000 + (Date.now() % 9000); // dynamic far-future year (90000-98999) to avoid collision on re-runs
 
   test.beforeAll(async ({ request }) => {
     const { adminUser, adminPass } = getCredentials();

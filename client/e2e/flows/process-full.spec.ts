@@ -34,10 +34,11 @@ async function fillStep1RequiredFields(page: Page): Promise<void> {
   const productNameItem = page.locator('.el-form-item').filter({ hasText: '开发产品名称' });
   await productNameItem.locator('input').first().fill('E2E测试产品');
 
-  const radioBtn = page.locator('.el-radio').filter({ hasText: '戚风分蛋工艺' }).first();
-  const isVisible = await radioBtn.isVisible().catch(() => false);
-  if (isVisible) {
-    await radioBtn.click();
+  const processReqItem = page.locator('.el-form-item').filter({ hasText: '工艺要求' });
+  const processReqTextarea = processReqItem.locator('textarea').first();
+  const hasTextarea = await processReqTextarea.isVisible().catch(() => false);
+  if (hasTextarea) {
+    await processReqTextarea.fill('戚风分蛋工艺');
   }
 }
 

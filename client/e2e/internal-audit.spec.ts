@@ -86,14 +86,14 @@ test.describe('内审计划 (Audit Plans)', () => {
     const usersBody = await usersRes.json();
     const adminUserId: string = usersBody?.data?.list?.[0]?.id ?? usersBody?.data?.[0]?.id ?? '';
 
-    // Fetch at least one document ID to satisfy documentIds requirement
-    const docsRes = await request.get(`${API_BASE}/documents?limit=1`, {
+    // Fetch at least one published/effective document ID to satisfy documentIds requirement
+    const docsRes = await request.get(`${API_BASE}/documents?limit=5&status=effective`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const docsBody = docsRes.ok() ? await docsRes.json() : null;
     const docList: Array<{ id: string }> = docsBody?.data?.list ?? docsBody?.data ?? [];
     if (docList.length === 0) {
-      test.skip(true, 'No documents exist — documentIds cannot be satisfied');
+      test.skip(true, 'No effective documents exist — documentIds cannot be satisfied');
       return;
     }
     const documentId = docList[0].id;
@@ -137,8 +137,8 @@ test.describe('内审计划 (Audit Plans)', () => {
     const usersBody = await usersRes.json();
     const adminUserId: string = usersBody?.data?.list?.[0]?.id ?? usersBody?.data?.[0]?.id ?? '';
 
-    // Fetch a document id
-    const docsRes = await request.get(`${API_BASE}/documents?limit=1`, {
+    // Fetch an effective document id (audit plan API requires published/effective docs)
+    const docsRes = await request.get(`${API_BASE}/documents?limit=5&status=effective`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const docsBody = docsRes.ok() ? await docsRes.json() : null;

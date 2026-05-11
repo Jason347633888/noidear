@@ -51,10 +51,10 @@ test.describe('Health Check Page', () => {
       console.log('Overall system health status found');
     }
 
-    // Look for status badge/tag
-    const statusBadge = page.locator('.el-tag, .el-badge').first();
-    if (await statusBadge.count() > 0) {
-      await expect(statusBadge).toBeVisible();
+    // Look for visible status badge/tag on the health page
+    const visibleStatusBadge = page.locator('.el-tag, .el-badge').filter({ visible: true }).first();
+    if (await visibleStatusBadge.count() > 0) {
+      await expect(visibleStatusBadge).toBeVisible();
       console.log('Health status badge found');
     }
 

@@ -630,7 +630,7 @@ test.describe('WF-003: /my-todos renders', () => {
     await page.waitForLoadState('networkidle');
 
     await expect(
-      page.locator('.el-table, .el-empty, .todo-list, .todo-empty, .my-todos-page'),
+      page.locator('.el-table, .el-empty, .todo-list, .todo-empty, .my-todos-page').first(),
     ).toBeVisible({ timeout: 10000 });
   });
 
