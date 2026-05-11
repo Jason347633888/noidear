@@ -591,8 +591,8 @@ test.describe('TRN — 培训状态流转 & 档案', () => {
       },
     );
     if (!approveRes.ok()) {
-      test.skip(true, `Approve endpoint failed (${approveRes.status()}) — 跳过 TRN-004`);
-      return;
+      const body = await approveRes.text().catch(() => '(no body)');
+      throw new Error(`approve endpoint failed: HTTP ${approveRes.status()} — ${body}`);
     }
 
     // Verify status changed to approved
