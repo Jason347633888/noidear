@@ -178,13 +178,11 @@ export class AlertService {
       ]);
 
       return {
-        data,
-        meta: {
-          total,
-          page,
-          limit,
-          totalPages: Math.ceil(total / limit),
-        },
+        items: data,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       };
     } catch (error) {
       this.logger.error(
