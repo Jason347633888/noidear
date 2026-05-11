@@ -19,7 +19,7 @@
     <el-card class="step-card">
       <template #header>
         <div class="step-header">
-          <span>{{ currentStep?.title }}</span>
+          <span>Step {{ viewStep }} — {{ currentStep?.title }}</span>
           <div class="step-nav">
             <el-button :disabled="viewStep <= 1" @click="viewStep--">上一步</el-button>
             <el-button :disabled="viewStep >= 7" @click="viewStep++">下一步</el-button>
@@ -139,8 +139,13 @@ const handleSave = async (data: Record<string, unknown>) => {
 
 const handleSubmit = async (data: Record<string, unknown>) => {
   try {
-    await processApi.submitStep(instanceId, { stepNumber: viewStep.value, data, saveAsDraft: false });
+    const submittedStep = viewStep.value;
+    await processApi.submitStep(instanceId, { stepNumber: submittedStep, data, saveAsDraft: false });
     await loadInstance();
+    // Advance view to next step so user sees the next pending step after submission
+    if (submittedStep < STEPS.length) {
+      viewStep.value = submittedStep + 1;
+    }
     ElMessage.success('提交成功');
   } catch {
     ElMessage.error('提交失败');

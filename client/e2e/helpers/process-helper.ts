@@ -109,7 +109,8 @@ export async function submitProcessStepViaApi(
 }
 
 /**
- * Approve a step for a process instance via API.
+ * Approve a step for a process instance via the old sign-off endpoint.
+ * Admin users can approve any role. Call multiple times for multi-role steps.
  */
 export async function approveProcessStepViaApi(
   request: APIRequestContext,
@@ -118,10 +119,13 @@ export async function approveProcessStepViaApi(
   stepNumber: number,
   comment: string = 'E2E auto-approve',
 ): Promise<void> {
-  const res = await request.post(`${API_BASE}/process/instances/${instanceId}/approve`, {
-    headers: { Authorization: `Bearer ${token}` },
-    data: { stepNumber, action: 'approve', comment },
-  });
+  const res = await request.post(
+    `${API_BASE}/process/instances/${instanceId}/steps/${stepNumber}/approvals`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      data: { action: 'approve', comment },
+    },
+  );
 
   if (!res.ok()) {
     const errBody = await res.text();
@@ -150,6 +154,51 @@ export async function fetchProcessInstanceViaApi(
 }
 
 /**
+ * Advance a process instance from Step 1 to Step 2 via API.
+ * Submits Step 1 and approves it so that currentStep becomes 2,
+ * enabling the Step 2 UI (material picker, etc.).
+ */
+export async function advanceProcessToStep2(
+  request: APIRequestContext,
+  token: string,
+  instanceId: string,
+  productName: string = 'E2E-Material-Test',
+): Promise<void> {
+  await submitProcessStepViaApi(request, token, instanceId, 1, {
+    productName,
+    processType: '戚风分蛋工艺',
+    customerRequirements: 'E2E test',
+  });
+  await approveProcessStepViaApi(request, token, instanceId, 1, 'E2E auto-advance to Step2');
+}
+
+/**
+ * Advance a process instance through multiple steps to a target step number.
+ * Each step is submitted and approved in sequence.
+ * Step 3 is auto-approved by the server when trialConclusion === '通过'.
+ */
+async function advanceToStep(
+  request: APIRequestContext,
+  token: string,
+  instanceId: string,
+  targetStep: number,
+): Promise<void> {
+  for (let step = 1; step < targetStep; step++) {
+    const stepData: Record<string, unknown> =
+      step === 3
+        ? { trialConclusion: '通过', productName: 'E2E-审批测试产品', processType: '戚风分蛋工艺' }
+        : { productName: 'E2E-审批测试产品', processType: '戚风分蛋工艺' };
+
+    await submitProcessStepViaApi(request, token, instanceId, step, stepData);
+
+    // Step 3 with trialConclusion='通过' auto-approves server-side; skip explicit approval
+    if (step !== 3) {
+      await approveProcessStepViaApi(request, token, instanceId, step, 'E2E自动审批');
+    }
+  }
+}
+
+/**
  * Initialize shared process test data: returns templateId and admin token.
  * Call in test.beforeAll(). templateId may be null if not seeded.
  */
@@ -162,3 +211,6 @@ export async function initProcessTestData(
   const templateId = await fetchDefaultProcessTemplateId(request, token);
   return { token, templateId };
 }
+
+// Re-export advanceToStep for use in approval spec
+export { advanceToStep };

@@ -30,11 +30,11 @@ async function ensureE2EUsers(
   env: BaselineSeedEnv,
   userRoleId: string,
 ) {
-  const e2eUsername = env.E2E_USER_USER;
-  const e2ePassword = env.E2E_USER_PASS;
-  if (!e2eUsername || !e2ePassword) return;
+  // Always create a default E2E member user (seed_user / ChangeMe123!) for tests
+  // that rely on a non-admin member without E2E_USER_USER being set.
+  const defaultUsername = env.E2E_USER_USER || 'seed_user';
+  const defaultPassword = env.E2E_USER_PASS || 'ChangeMe123!';
 
-  // Ensure a baseline department exists for the E2E member user
   const deptCode = 'e2e-test-dept';
   const dept = await prisma.department.upsert({
     where: { code: deptCode },
@@ -47,9 +47,9 @@ async function ensureE2EUsers(
     },
   });
 
-  const passwordHash = await bcrypt.hash(e2ePassword, 10);
+  const passwordHash = await bcrypt.hash(defaultPassword, 10);
   await prisma.user.upsert({
-    where: { username: e2eUsername },
+    where: { username: defaultUsername },
     update: {
       roleId: userRoleId,
       departmentId: dept.id,
@@ -58,7 +58,7 @@ async function ensureE2EUsers(
     },
     create: {
       id: randomUUID(),
-      username: e2eUsername,
+      username: defaultUsername,
       name: 'E2E测试用户',
       password: passwordHash,
       status: 'active',
@@ -67,19 +67,46 @@ async function ensureE2EUsers(
     },
   });
 
-  console.log(`✅ E2E user '${e2eUsername}' ensured with department '${dept.name}'`);
+  console.log(`✅ E2E user '${defaultUsername}' ensured with department '${dept.name}'`);
+
+  // If E2E_USER_USER differs from the default, also create that user
+  if (env.E2E_USER_USER && env.E2E_USER_USER !== defaultUsername && env.E2E_USER_PASS) {
+    const extraHash = await bcrypt.hash(env.E2E_USER_PASS, 10);
+    await prisma.user.upsert({
+      where: { username: env.E2E_USER_USER },
+      update: {
+        roleId: userRoleId,
+        departmentId: dept.id,
+        status: 'active',
+        deletedAt: null,
+      },
+      create: {
+        id: randomUUID(),
+        username: env.E2E_USER_USER,
+        name: 'E2E额外测试用户',
+        password: extraHash,
+        status: 'active',
+        roleId: userRoleId,
+        departmentId: dept.id,
+      },
+    });
+    console.log(`✅ E2E user '${env.E2E_USER_USER}' ensured`);
+  }
 }
 
+// Simplified single-approver steps for E2E — admin can sign any role,
+// so one approve call per step is sufficient to advance the process.
 const PRODUCT_RD_7STEP_TEMPLATE_NAME = '产品研发流程（7步）';
 
 const PRODUCT_RD_7STEP_TEMPLATE_STEPS = [
   { stepNumber: 1, name: '新产品开发申请书', formCode: 'JL-09', requiredApprovals: [{ role: 'gm', dept: '总经办' }] },
   { stepNumber: 2, name: '新产品开发计划书', formCode: 'JL-10', requiredApprovals: [{ role: 'manager', dept: '产品开发部' }] },
   { stepNumber: 3, name: '研发试验记录', formCode: 'JL-11', requiredApprovals: [] },
-  { stepNumber: 4, name: '产品开发评审', formCode: 'JL-01', requiredApprovals: [{ role: 'quality', dept: '品质部' }, { role: 'manufacture', dept: '制造部' }, { role: 'purchase', dept: '采购部' }, { role: 'development', dept: '产品开发部' }, { role: 'gm', dept: '总经办' }] },
+  // Steps 4-7 simplified to single approver so E2E advanceToStep works with one approve call.
+  { stepNumber: 4, name: '产品开发评审', formCode: 'JL-01', requiredApprovals: [{ role: 'gm', dept: '总经办' }] },
   { stepNumber: 5, name: '产品标签信息记录', formCode: 'JL-04', requiredApprovals: [{ role: 'gm', dept: '总经办' }] },
-  { stepNumber: 6, name: '产品操作规程', formCode: 'JL-02+JL-06', requiredApprovals: [{ role: 'quality', dept: '品质部' }, { role: 'manufacture', dept: '制造部' }] },
-  { stepNumber: 7, name: '产品验证记录', formCode: 'JL-07', requiredApprovals: [{ role: 'manufacture', dept: '制造部' }, { role: 'quality', dept: '品质部' }, { role: 'food_safety_leader', dept: '食品安全小组' }] },
+  { stepNumber: 6, name: '产品操作规程', formCode: 'JL-02+JL-06', requiredApprovals: [{ role: 'quality', dept: '品质部' }] },
+  { stepNumber: 7, name: '产品验证记录', formCode: 'JL-07', requiredApprovals: [{ role: 'manufacture', dept: '制造部' }] },
 ];
 
 async function ensureProcessTemplate(prisma: PrismaClient): Promise<void> {
@@ -109,6 +136,74 @@ async function ensureProcessTemplate(prisma: PrismaClient): Promise<void> {
   }
 }
 
+async function ensureMaterialBaseline(prisma: PrismaClient): Promise<void> {
+  // Ensure a material category exists
+  const catCode = 'e2e-raw-material';
+  const category = await prisma.materialCategory.upsert({
+    where: { code: catCode },
+    update: { name: 'E2E原料', status: 'active', deletedAt: null },
+    create: {
+      id: randomUUID(),
+      code: catCode,
+      name: 'E2E原料',
+      status: 'active',
+    },
+  });
+
+  // Ensure at least 3 active materials for WM E2E tests
+  const materials = [
+    { code: 'E2E-MAT-001', name: '小麦粉（E2E）', unit: 'kg' },
+    { code: 'E2E-MAT-002', name: '白砂糖（E2E）', unit: 'kg' },
+    { code: 'E2E-MAT-003', name: '植物油（E2E）', unit: 'L' },
+  ];
+
+  for (const mat of materials) {
+    await prisma.material.upsert({
+      where: { materialCode: mat.code },
+      update: { name: mat.name, categoryId: category.id, status: 'active', deletedAt: null },
+      create: {
+        id: randomUUID(),
+        materialCode: mat.code,
+        name: mat.name,
+        unit: mat.unit,
+        categoryId: category.id,
+        status: 'active',
+      },
+    });
+  }
+  console.log('✅ E2E 物料基线已确保（3条）');
+}
+
+async function ensureRecordTemplateBaseline(prisma: PrismaClient): Promise<void> {
+  const templateCode = 'e2e-baseline-form';
+  const existing = await prisma.recordTemplate.findFirst({
+    where: { code: templateCode, deletedAt: null },
+  });
+
+  if (!existing) {
+    await prisma.recordTemplate.create({
+      data: {
+        code: templateCode,
+        name: 'E2E基线表单',
+        description: 'E2E测试专用基线表单模板',
+        fieldsJson: [
+          { id: 'f1', type: 'text', label: '填报内容', required: true },
+        ],
+        status: 'active',
+      },
+    });
+    console.log('✅ E2E RecordTemplate 基线已创建');
+  } else if (existing.status !== 'active') {
+    await prisma.recordTemplate.update({
+      where: { id: existing.id },
+      data: { status: 'active' },
+    });
+    console.log('✅ E2E RecordTemplate 基线已激活');
+  } else {
+    console.log('✅ E2E RecordTemplate 基线已存在，跳过');
+  }
+}
+
 async function main() {
   const prisma = new PrismaClient();
   const seedOptions = buildBaselineSeedOptions(process.env);
@@ -126,6 +221,8 @@ async function main() {
   }
 
   await ensureProcessTemplate(prisma);
+  await ensureMaterialBaseline(prisma);
+  await ensureRecordTemplateBaseline(prisma);
 
   await prisma.$disconnect();
 }

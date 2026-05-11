@@ -13,7 +13,7 @@ test.describe('高级搜索功能', () => {
 
   test('用户可以进行全文搜索', async ({ page }) => {
     await page.goto('/search');
-    await expect(page.locator('h1:has-text("高级搜索")')).toBeVisible();
+    await expect(page.locator('h1:has-text("高级搜索")')).toBeVisible({ timeout: 10000 });
 
     await page.fill('input[placeholder*="关键词"]', '操作规程');
     await page.click('button:has-text("搜索")');

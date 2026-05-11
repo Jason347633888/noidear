@@ -40,6 +40,7 @@ async function loginAdmin(page: Page): Promise<void> {
 /**
  * 通过 API 逐步推进流程到目标步骤。
  * 每个步骤提交 -> 审批通过 -> 进入下一步。
+ * Step3 无需审批者：服务端在 trialConclusion==='通过' 时自动审批。
  */
 async function advanceToStep(
   request: APIRequestContext,
@@ -47,11 +48,17 @@ async function advanceToStep(
   targetStep: number,
 ): Promise<void> {
   for (let step = 1; step < targetStep; step++) {
-    await submitProcessStepViaApi(request, token, instanceId, step, {
-      productName: 'E2E-审批测试产品',
-      processType: '戚风分蛋工艺',
-    });
-    await approveProcessStepViaApi(request, token, instanceId, step, 'E2E自动审批');
+    const stepData: Record<string, unknown> =
+      step === 3
+        ? { trialConclusion: '通过', productName: 'E2E-审批测试产品', processType: '戚风分蛋工艺' }
+        : { productName: 'E2E-审批测试产品', processType: '戚风分蛋工艺' };
+
+    await submitProcessStepViaApi(request, token, instanceId, step, stepData);
+
+    // Step3 服务端自动审批，无需再调用审批接口
+    if (step !== 3) {
+      await approveProcessStepViaApi(request, token, instanceId, step, 'E2E自动审批');
+    }
   }
 }
 

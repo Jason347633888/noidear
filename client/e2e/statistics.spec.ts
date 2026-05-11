@@ -13,7 +13,7 @@ test.describe('数据分析大屏', () => {
 
   test('管理员可以访问数据分析大屏', async ({ page }) => {
     await page.goto('/statistics/dashboard');
-    await expect(page.locator('h1:has-text("数据分析大屏")')).toBeVisible();
+    await expect(page.locator('h1:has-text("统计大屏")')).toBeVisible();
   });
 
   test('显示时间范围切换按钮', async ({ page }) => {

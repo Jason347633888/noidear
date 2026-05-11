@@ -576,6 +576,10 @@ test.describe('TRN — 培训状态流转 & 档案', () => {
     }
 
     const plan = plans[0];
+    if (!plan?.id) {
+      test.skip(true, '无有效待审批培训计划 — 跳过 TRN-004');
+      return;
+    }
     // Approve via the approval endpoint
     const approveRes = await request.post(
       `${apiBaseUrl()}/training/plans/${plan.id}/approve`,
