@@ -469,13 +469,12 @@ test.describe('BT — 批次追溯补充', () => {
     request: import('@playwright/test').APIRequestContext,
     token: string,
   ): Promise<string | null> {
-    const res = await request.get(`${apiBaseUrl()}/batches?limit=1`, {
+    const response = await request.get(`${apiBaseUrl()}/batch-trace/material-batches?limit=1`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok()) return null;
-    const body = await res.json();
-    const list: Array<{ id: string }> = body?.data?.list ?? body?.data ?? [];
-    return list.length > 0 ? list[0].id : null;
+    if (!response.ok()) return null;
+    const data = await response.json();
+    return data?.data?.[0]?.id ?? null;
   }
 
   // BT-012: 关联物料使用记录
@@ -487,26 +486,13 @@ test.describe('BT — 批次追溯补充', () => {
       return;
     }
 
-    const res = await request.get(
-      `${apiBaseUrl()}/batches/${batchId}/material-usages`,
+    const response = await request.get(
+      `${apiBaseUrl()}/batch-trace/material-batches/${batchId}/usages`,
       { headers: { Authorization: `Bearer ${token}` } },
     );
-    if (res.status() === 404) {
-      // Try alternate path
-      const alt = await request.get(
-        `${apiBaseUrl()}/batches/${batchId}/materials`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      if (alt.status() === 404) {
-        test.skip(true, '物料使用记录接口未实现 — 跳过 BT-012');
-        return;
-      }
-      expect(alt.ok()).toBe(true);
-      return;
-    }
-    expect(res.ok()).toBe(true);
-    const body = await res.json();
-    expect(body).toHaveProperty('data');
+    expect(response.ok()).toBeTruthy();
+    const usages = await response.json();
+    expect(Array.isArray(usages)).toBeTruthy();
   });
 
   // BT-021: 反向追溯结果包含关联的动态表单记录
@@ -574,26 +560,11 @@ test.describe('BT — 批次追溯补充', () => {
       return;
     }
 
-    const exportEndpoints = [
-      `${apiBaseUrl()}/batches/${batchId}/forward-trace/export`,
-      `${apiBaseUrl()}/batches/${batchId}/trace/export`,
-      `${apiBaseUrl()}/batches/${batchId}/report/export`,
-    ];
-
-    let found = false;
-    for (const url of exportEndpoints) {
-      const res = await request.get(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.status() !== 404) {
-        found = true;
-        // Should return a file or 200
-        expect([200, 202]).toContain(res.status());
-        break;
-      }
-    }
-    if (!found) {
-      test.skip(true, '正向追溯导出接口未实现 — 跳过 BT-031');
-    }
+    const response = await request.get(
+      `${apiBaseUrl()}/batch-trace/trace/${batchId}/forward/pdf`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    expect(response.ok()).toBeTruthy();
+    expect(response.headers()['content-type']).toContain('application/pdf');
   });
 });
