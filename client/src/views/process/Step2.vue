@@ -37,7 +37,7 @@
         <el-form-item label="制造部"><el-input v-model="form.inputOpinionManufacture" type="textarea" :rows="2" /></el-form-item>
       </el-card>
 
-      <el-card shadow="never" class="section-card">
+      <el-card shadow="never" class="section-card material-section">
         <template #header><span class="section-title">原料清单（用于后续步骤预填）</span></template>
         <el-table :data="form.rawMaterials" border size="small" style="width:100%">
           <el-table-column type="index" label="序号" width="55" />
@@ -77,12 +77,14 @@
     </div>
 
     <el-dialog v-model="pickerVisible" title="选择物料" width="700px" :close-on-click-modal="false">
-      <el-input v-model="filterKw" placeholder="搜索物料" clearable style="width:240px; margin-bottom:12px" />
+      <div class="picker-toolbar">
+        <el-input v-model="filterKw" placeholder="搜索物料" clearable style="width:240px; margin-bottom:12px" />
+      </div>
       <div style="max-height:400px; overflow-y:auto">
         <div v-for="group in filteredGroups" :key="group.category" style="margin-bottom:8px; border:1px solid var(--el-border-color-light); border-radius:6px; overflow:hidden">
           <div style="background:var(--el-fill-color-light); padding:6px 12px; font-weight:600">{{ group.category }}</div>
           <div style="display:grid; grid-template-columns:repeat(3,1fr)">
-            <div v-for="item in group.items" :key="item.id" style="padding:8px 12px; border-top:1px solid var(--el-border-color-lighter)">
+            <div class="material-item" v-for="item in group.items" :key="item.id" style="padding:8px 12px; border-top:1px solid var(--el-border-color-lighter)">
               <el-checkbox :model-value="isAdded(item.id) || isTempSelected(item.id)" :disabled="isAdded(item.id)" @change="(v: any) => toggleTemp(item, v)">
                 <span style="font-size:12px; color:var(--el-text-color-secondary)">{{ item.materialCode }}</span>
                 {{ item.name }}

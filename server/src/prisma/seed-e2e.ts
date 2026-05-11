@@ -112,29 +112,34 @@ async function seedDocuments(adminId: string): Promise<string[]> {
 
   for (const doc of docs) {
     try {
-      const existing = await prisma.document.findUnique({ where: { id: doc.id } });
-      if (!existing) {
-        await prisma.document.create({
-          data: {
-            id: doc.id,
-            level: doc.level,
-            number: doc.number,
-            title: doc.title,
-            filePath: `/e2e-test-files/${doc.number}.pdf`,
-            fileName: `${doc.number}.pdf`,
-            fileSize: 10240,
-            fileType: 'application/pdf',
-            version: 1.0,
-            status: doc.status,
-            creatorId: adminId,
-            approverId: doc.status !== 'draft' ? adminId : null,
-            approvedAt: doc.status !== 'draft' ? daysAgo(7) : null,
-            effective_date: doc.status === 'effective' ? daysAgo(14) : null,
-            content_md: `# ${doc.title}\n\nE2E 测试专用文档，请勿在生产环境使用。`,
-          },
-        });
-        created.push(doc.id);
-      }
+      await prisma.document.upsert({
+        where: { id: doc.id },
+        update: {
+          status: doc.status,
+          title: doc.title,
+          approverId: doc.status !== 'draft' ? adminId : null,
+          approvedAt: doc.status !== 'draft' ? daysAgo(7) : null,
+          effective_date: doc.status === 'effective' ? daysAgo(14) : null,
+        },
+        create: {
+          id: doc.id,
+          level: doc.level,
+          number: doc.number,
+          title: doc.title,
+          filePath: `/e2e-test-files/${doc.number}.pdf`,
+          fileName: `${doc.number}.pdf`,
+          fileSize: 10240,
+          fileType: 'application/pdf',
+          version: 1.0,
+          status: doc.status,
+          creatorId: adminId,
+          approverId: doc.status !== 'draft' ? adminId : null,
+          approvedAt: doc.status !== 'draft' ? daysAgo(7) : null,
+          effective_date: doc.status === 'effective' ? daysAgo(14) : null,
+          content_md: `# ${doc.title}\n\nE2E 测试专用文档，请勿在生产环境使用。`,
+        },
+      });
+      created.push(doc.id);
     } catch (err: any) {
       if (err.code !== 'P2002') console.warn(`   ⚠ 文档 ${doc.number}: ${err.message}`);
     }
@@ -739,6 +744,21 @@ async function seedDeviationReports(adminId: string): Promise<void> {
 // ──────────────────────────────────────────────────────────────────────────
 // Main
 // ──────────────────────────────────────────────────────────────────────────
+async function resetTrainingPlanFixture(adminId: string) {
+  const e2eYear = 9000;
+  await prisma.trainingPlan.upsert({
+    where: { year: e2eYear },
+    update: { status: 'pending_approval', title: 'E2E年度培训计划（待审批）' },
+    create: {
+      year: e2eYear,
+      title: 'E2E年度培训计划（待审批）',
+      status: 'pending_approval',
+      createdBy: adminId,
+    },
+  });
+  console.log('   ✓ E2E TrainingPlan 基线已重置（pending_approval）');
+}
+
 async function main() {
   console.log('🌱 E2E Seed — 开始补充测试数据...\n');
 
@@ -753,6 +773,7 @@ async function main() {
   await seedSequentialApprovals(adminId, docIds);
   await seedTaskInstances(adminId, memberId);
   await seedDeviationReports(adminId);
+  await resetTrainingPlanFixture(adminId);
 
   console.log('\n✅ E2E Seed 完成');
 }

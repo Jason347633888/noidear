@@ -233,7 +233,7 @@ const createForm = reactive({
 const createRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
-  password: [{ required: true, min: 6, message: '密码长度不能少于6位', trigger: 'blur' }],
+  password: [{ required: true, min: 8, message: '密码长度不能少于8位', trigger: 'blur' }],
   roleId: [{ required: true, message: '请选择角色', trigger: 'change' }],
 };
 
@@ -383,8 +383,9 @@ const handleCreate = async () => {
     }
     closeDialog();
     await Promise.all([fetchData(), fetchDepartments(), loadSystemRoles()]);
-  } catch {
-    ElMessage.error('操作失败');
+  } catch (err: any) {
+    const msg = err?.message || (Array.isArray(err?.details) ? err.details.join('; ') : null) || '操作失败';
+    ElMessage.error(msg);
   } finally {
     creating.value = false;
   }

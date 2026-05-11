@@ -33,7 +33,7 @@ export class AuditPlanService {
       throw new BadRequestException('Start date must be before end date');
     }
 
-    // 3. Validate all documents exist and published
+    // 3. Validate all documents exist and are in effective/published state
     const docs = await this.prisma.document.findMany({
       where: { id: { in: dto.documentIds } },
     });
@@ -42,7 +42,8 @@ export class AuditPlanService {
       throw new BadRequestException('Some documents not found');
     }
 
-    const unpublished = docs.filter((d) => d.status !== 'published');
+    const validStatuses = ['effective', 'published'];
+    const unpublished = docs.filter((d) => !validStatuses.includes(d.status));
     if (unpublished.length > 0) {
       throw new BadRequestException(
         'Only published documents can be selected',
@@ -195,7 +196,8 @@ export class AuditPlanService {
         throw new BadRequestException('Some documents not found');
       }
 
-      const unpublished = docs.filter((d) => d.status !== 'published');
+      const validStatuses = ['effective', 'published'];
+      const unpublished = docs.filter((d) => !validStatuses.includes(d.status));
       if (unpublished.length > 0) {
         throw new BadRequestException(
           'Only published documents can be selected',
