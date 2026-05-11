@@ -73,6 +73,7 @@ export const menuGroups: MenuEntry[] = [
       { path: '/non-conformances', title: '不合格品处置', icon: WarnTriangleFilled },
       { path: '/corrective-actions', title: '纠正措施（CAPA）', icon: CircleCheck },
       { path: '/customer-complaints', title: '顾客投诉', icon: Message },
+      { path: '/product-recalls', title: '产品召回', icon: WarnTriangleFilled },
       { path: '/supplier-evaluations', title: '供应商评估', icon: Goods },
       { path: '/change-events', title: '变更管理', icon: Connection },
     ],
