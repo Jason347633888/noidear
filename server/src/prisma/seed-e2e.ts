@@ -18,6 +18,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -42,6 +43,52 @@ function daysLater(n: number): Date {
 // ──────────────────────────────────────────────────────────────────────────
 // 辅助：查询用户 ID
 // ──────────────────────────────────────────────────────────────────────────
+async function ensureE2EMemberUser(): Promise<void> {
+  const department = await prisma.department.upsert({
+    where: { code: 'e2e-test-dept' },
+    update: { name: 'E2E测试部门', status: 'active', deletedAt: null },
+    create: {
+      id: 'e2e-test-dept',
+      code: 'e2e-test-dept',
+      name: 'E2E测试部门',
+      status: 'active',
+    },
+  });
+
+  const userRole = await prisma.role.findFirst({
+    where: { code: 'user', deletedAt: null },
+    select: { id: true },
+  });
+
+  if (!userRole) {
+    throw new Error('seed_user requires role code=user');
+  }
+
+  const passwordHash = await bcrypt.hash(process.env.E2E_USER_PASS || 'ChangeMe123!', 10);
+
+  await prisma.user.upsert({
+    where: { username: 'seed_user' },
+    update: {
+      roleId: userRole.id,
+      departmentId: department.id,
+      status: 'active',
+      deletedAt: null,
+      loginAttempts: 0,
+      firstFailedAt: null,
+      lockedUntil: null,
+    },
+    create: {
+      id: 'e2e-seed-user-001',
+      username: 'seed_user',
+      name: 'E2E测试用户',
+      password: passwordHash,
+      roleId: userRole.id,
+      departmentId: department.id,
+      status: 'active',
+    },
+  });
+}
+
 async function findUserIds(): Promise<{ adminId: string; memberId: string | null }> {
   const admin = await prisma.user.findFirst({
     where: { username: 'admin' },
@@ -552,54 +599,28 @@ async function seedCountersignApprovals(adminId: string, docIds: string[]): Prom
     return;
   }
 
-  const groupId = 'e2e-countersign-group-001';
-  const existing = await prisma.approval.findFirst({ where: { groupId } });
-  if (existing) {
-    console.log('   ✓ 会签审批已存在，跳过');
-    return;
+  const records = [
+    { id: 'e2e-appr-cs-pending-001', documentId: docId, approverId: adminId, status: 'pending', approvalType: 'countersign', sequence: 0, groupId: 'e2e-countersign-group-pending', level: 1 },
+    { id: 'e2e-appr-cs-pending-002', documentId: docId, approverId: adminId, status: 'pending', approvalType: 'countersign', sequence: 0, groupId: 'e2e-countersign-group-pending', level: 1 },
+    { id: 'e2e-appr-cs-approved-001', documentId: docId, approverId: adminId, status: 'approved', approvalType: 'countersign', sequence: 0, groupId: 'e2e-countersign-group-approved', level: 1, approvedAt: daysAgo(1) },
+    { id: 'e2e-appr-cs-cancelled-001', documentId: docId, approverId: adminId, status: 'cancelled', approvalType: 'countersign', sequence: 0, groupId: 'e2e-countersign-group-cancelled', level: 1 },
+  ];
+
+  let count = 0;
+  for (const record of records) {
+    try {
+      await prisma.approval.upsert({
+        where: { id: record.id },
+        update: { status: record.status, groupId: record.groupId, approvedAt: (record as any).approvedAt ?? null },
+        create: record,
+      });
+      count++;
+    } catch (err: any) {
+      console.warn(`   ⚠ 会签审批 ${record.id}: ${err.message}`);
+    }
   }
 
-  try {
-    // 创建 3 条会签记录（A1 pending, A2 pending, A3 pending）
-    await prisma.approval.createMany({
-      data: [
-        {
-          id: 'e2e-appr-cs-001',
-          documentId: docId,
-          approverId: adminId,
-          status: 'pending',
-          approvalType: 'countersign',
-          sequence: 0,
-          groupId,
-          level: 1,
-        },
-        {
-          id: 'e2e-appr-cs-002',
-          documentId: docId,
-          approverId: adminId,
-          status: 'pending',
-          approvalType: 'countersign',
-          sequence: 0,
-          groupId,
-          level: 1,
-        },
-        {
-          id: 'e2e-appr-cs-003',
-          documentId: docId,
-          approverId: adminId,
-          status: 'pending',
-          approvalType: 'countersign',
-          sequence: 0,
-          groupId,
-          level: 1,
-        },
-      ],
-      skipDuplicates: true,
-    });
-    console.log('   ✓ 会签审批: 3 条新增');
-  } catch (err: any) {
-    console.warn(`   ⚠ 会签审批 seed 失败: ${err.message}`);
-  }
+  console.log(`   ✓ 会签审批: ${count} 条已就绪`);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -614,53 +635,28 @@ async function seedSequentialApprovals(adminId: string, docIds: string[]): Promi
     return;
   }
 
-  const groupId = 'e2e-sequential-group-001';
-  const existing = await prisma.approval.findFirst({ where: { groupId } });
-  if (existing) {
-    console.log('   ✓ 顺签审批已存在，跳过');
-    return;
+  const records = [
+    { id: 'e2e-appr-seq-pending-001', documentId: docId, approverId: adminId, status: 'pending', approvalType: 'sequential', sequence: 1, groupId: 'e2e-sequential-group-pending', level: 1 },
+    { id: 'e2e-appr-seq-waiting-001', documentId: docId, approverId: adminId, status: 'waiting', approvalType: 'sequential', sequence: 2, groupId: 'e2e-sequential-group-pending', level: 2 },
+    { id: 'e2e-appr-seq-approved-001', documentId: docId, approverId: adminId, status: 'approved', approvalType: 'sequential', sequence: 1, groupId: 'e2e-sequential-group-approved', level: 1, approvedAt: daysAgo(1) },
+    { id: 'e2e-appr-seq-cancelled-001', documentId: docId, approverId: adminId, status: 'cancelled', approvalType: 'sequential', sequence: 1, groupId: 'e2e-sequential-group-cancelled', level: 1 },
+  ];
+
+  let count = 0;
+  for (const record of records) {
+    try {
+      await prisma.approval.upsert({
+        where: { id: record.id },
+        update: { status: record.status, groupId: record.groupId, sequence: record.sequence, approvedAt: (record as any).approvedAt ?? null },
+        create: record,
+      });
+      count++;
+    } catch (err: any) {
+      console.warn(`   ⚠ 顺签审批 ${record.id}: ${err.message}`);
+    }
   }
 
-  try {
-    await prisma.approval.createMany({
-      data: [
-        {
-          id: 'e2e-appr-seq-001',
-          documentId: docId,
-          approverId: adminId,
-          status: 'pending',
-          approvalType: 'sequential',
-          sequence: 1,
-          groupId,
-          level: 1,
-        },
-        {
-          id: 'e2e-appr-seq-002',
-          documentId: docId,
-          approverId: adminId,
-          status: 'waiting',
-          approvalType: 'sequential',
-          sequence: 2,
-          groupId,
-          level: 2,
-        },
-        {
-          id: 'e2e-appr-seq-003',
-          documentId: docId,
-          approverId: adminId,
-          status: 'waiting',
-          approvalType: 'sequential',
-          sequence: 3,
-          groupId,
-          level: 3,
-        },
-      ],
-      skipDuplicates: true,
-    });
-    console.log('   ✓ 顺签审批: 3 条新增');
-  } catch (err: any) {
-    console.warn(`   ⚠ 顺签审批 seed 失败: ${err.message}`);
-  }
+  console.log(`   ✓ 顺签审批: ${count} 条已就绪`);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -1108,6 +1104,7 @@ async function resetTrainingPlanFixture(adminId: string) {
 async function main() {
   console.log('🌱 E2E Seed — 开始补充测试数据...\n');
 
+  await ensureE2EMemberUser();
   const { adminId, memberId } = await findUserIds();
   console.log(`   admin: ${adminId}, member: ${memberId ?? '(未找到)'}\n`);
 
