@@ -1,4 +1,5 @@
 import { request } from '@playwright/test';
+import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { apiBaseUrl, appBaseUrl } from './support/urls';
@@ -98,10 +99,40 @@ export default async function globalSetup() {
     );
 
     console.log('✅ Global setup: Admin login cached');
+
+    // Run E2E seed to ensure required test data exists
+    await runE2ESeed();
   } catch (error) {
     console.error('❌ Global setup failed:', error);
     throw error;
   } finally {
     await context.dispose();
+  }
+}
+
+async function runE2ESeed(): Promise<void> {
+  const serverDir = path.resolve(process.cwd(), '..', 'server');
+  const seedSource = path.join(serverDir, 'src', 'prisma', 'seed-e2e.ts');
+
+  if (!fs.existsSync(seedSource)) {
+    console.warn('⚠️  seed-e2e.ts not found, skipping E2E seed');
+    return;
+  }
+
+  try {
+    console.log('🌱 Running E2E seed...');
+    execSync(`npm run build:seed && node dist/prisma/seed-e2e.js`, {
+      cwd: serverDir,
+      stdio: 'pipe',
+      timeout: 120000,
+      env: {
+        ...process.env,
+        DATABASE_URL: process.env.DATABASE_URL ?? 'postgresql://noidear:noidear123@localhost:5432/document_system',
+      },
+    });
+    console.log('✅ E2E seed complete');
+  } catch (err: any) {
+    // Seed failure is non-fatal — tests will skip if data is missing
+    console.warn('⚠️  E2E seed failed (tests may skip):', err.stderr?.toString()?.slice(0, 200) ?? err.message);
   }
 }
