@@ -180,27 +180,28 @@ async function ensureRecordTemplateBaseline(prisma: PrismaClient): Promise<void>
     where: { code: templateCode, deletedAt: null },
   });
 
+  const baselineFields = [
+    { id: 'f1', name: 'field1', type: 'text', label: '填报内容', required: true },
+  ];
+
   if (!existing) {
     await prisma.recordTemplate.create({
       data: {
         code: templateCode,
         name: 'E2E基线表单',
         description: 'E2E测试专用基线表单模板',
-        fieldsJson: [
-          { id: 'f1', type: 'text', label: '填报内容', required: true },
-        ],
+        fieldsJson: baselineFields,
         status: 'active',
       },
     });
     console.log('✅ E2E RecordTemplate 基线已创建');
-  } else if (existing.status !== 'active') {
+  } else {
+    // Always sync fieldsJson and status so existing DBs get the field name fix
     await prisma.recordTemplate.update({
       where: { id: existing.id },
-      data: { status: 'active' },
+      data: { status: 'active', fieldsJson: baselineFields },
     });
-    console.log('✅ E2E RecordTemplate 基线已激活');
-  } else {
-    console.log('✅ E2E RecordTemplate 基线已存在，跳过');
+    console.log('✅ E2E RecordTemplate 基线已同步');
   }
 }
 

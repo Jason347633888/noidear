@@ -50,7 +50,7 @@ test.describe('Task Management (TASK-052)', () => {
     await loginViaApiCached(page, adminUser, adminPass);
     await page.goto(`/tasks/${taskId}`);
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('.el-descriptions, .el-card')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.el-descriptions, .el-card').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('TK-04: Task list pagination renders', async ({ page }) => {
