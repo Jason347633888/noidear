@@ -12,6 +12,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 : "${PLAYWRIGHT_BASE_URL:=http://client-e2e}"
 : "${E2E_ADMIN_USER:=admin}"
 : "${E2E_ADMIN_PASS:=ChangeMe123!}"
+: "${E2E_USER_USER:=seed_user}"
+: "${E2E_USER_PASS:=ChangeMe123!}"
 
 export COMPOSE_PROJECT_NAME
 
@@ -39,6 +41,8 @@ docker compose -f "$COMPOSE_FILE" -p "$COMPOSE_PROJECT_NAME" run --rm \
   -e PLAYWRIGHT_BASE_URL="$PLAYWRIGHT_BASE_URL" \
   -e E2E_ADMIN_USER="$E2E_ADMIN_USER" \
   -e E2E_ADMIN_PASS="$E2E_ADMIN_PASS" \
+  -e E2E_USER_USER="$E2E_USER_USER" \
+  -e E2E_USER_PASS="$E2E_USER_PASS" \
   e2e-runner \
   -lc "cd /work && npm ci --workspace client --include-workspace-root=false && npm run test:e2e --workspace client -- --timeout=${E2E_TIMEOUT}000 ${TEST_ARGS}"
 

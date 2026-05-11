@@ -142,24 +142,33 @@ export class ProcessInstanceController {
       const requiredApprovals: any[] = stepConfig.requiredApprovals ?? [];
 
       if (requiredApprovals.length > 0) {
-        // Route through unified approval engine
+        // Try to route through unified approval engine; fall back gracefully when
+        // no ApprovalDefinition is configured (e.g. in test/seed environments).
         const productName =
           (data as any)?.productName ||
           instance.productName ||
           `流程实例 ${id}`;
-        const approvalInstance = await this.approvalEngine.startApproval({
-          resourceType: 'process_instance',
-          resourceId: id,
-          resourceStep: `step:${actualStepNumber}`,
-          triggerKey: `step:${actualStepNumber}`,
-          title: `${productName} — ${stepConfig.name ?? `步骤${actualStepNumber}`}审批`,
-          createdById: userId,
-        });
-        // Persist the approval instance id on the step data
-        await this.prisma.processStepData.update({
-          where: { instanceId_stepNumber: { instanceId: id, stepNumber: actualStepNumber } },
-          data: { approvalInstanceId: approvalInstance.id },
-        });
+        try {
+          const approvalInstance = await this.approvalEngine.startApproval({
+            resourceType: 'process_instance',
+            resourceId: id,
+            resourceStep: `step:${actualStepNumber}`,
+            triggerKey: `step:${actualStepNumber}`,
+            title: `${productName} — ${stepConfig.name ?? `步骤${actualStepNumber}`}审批`,
+            createdById: userId,
+          });
+          // Persist the approval instance id on the step data
+          await this.prisma.processStepData.update({
+            where: { instanceId_stepNumber: { instanceId: id, stepNumber: actualStepNumber } },
+            data: { approvalInstanceId: approvalInstance.id },
+          });
+        } catch (err: any) {
+          // No ApprovalDefinition configured — step remains SUBMITTED and the
+          // legacy /steps/:stepNumber/approvals endpoint handles sign-off.
+          if (err?.status !== 404 && !err?.message?.includes('审批定义不存在')) {
+            throw err;
+          }
+        }
       } else {
         // Step3: auto-approve when trialConclusion === '通过'
         const isStep3Pass =

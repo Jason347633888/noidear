@@ -1,6 +1,6 @@
 <template>
   <div class="monitoring-dashboard">
-    <PageHeaderBlock eyebrow="系统治理" title="监控大屏" />
+    <PageHeaderBlock eyebrow="系统治理" title="监控大屏" description="实时监控系统状态和性能指标" />
     <!-- Header Controls -->
     <div class="header-actions">
       <el-button :icon="FullScreen" @click="toggleFullScreen">

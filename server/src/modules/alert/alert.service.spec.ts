@@ -171,8 +171,11 @@ describe('AlertService', () => {
 
       const result = await service.queryAlertHistory({ page: 1, limit: 10 });
 
-      expect(result.data).toHaveLength(1);
-      expect(result.meta.total).toBe(1);
+      expect(result.items).toHaveLength(1);
+      expect(result.total).toBe(1);
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(10);
+      expect(result.totalPages).toBe(1);
     });
   });
 

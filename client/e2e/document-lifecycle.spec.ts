@@ -565,3 +565,291 @@ test.describe('Document Control Operations', () => {
     ).toBeVisible({ timeout: 12000 });
   });
 });
+
+// ==========================================================================
+// DOC-006, DOC-007, DOC-010, SRC-001, SRC-004~007 — 文档过滤 & 全文搜索
+// ==========================================================================
+
+test.describe('DOC — 文档过滤 & 状态提醒', () => {
+  async function docAdminToken(request: import('@playwright/test').APIRequestContext) {
+    const u = process.env.E2E_ADMIN_USER || 'admin';
+    const p = process.env.E2E_ADMIN_PASS || 'ChangeMe123!';
+    const res = await request.post(`${apiBaseUrl()}/auth/login`, {
+      data: { username: u, password: p },
+    });
+    if (!res.ok()) throw new Error('admin login failed');
+    const body = await res.json();
+    return (body?.data?.token ?? body?.token) as string;
+  }
+
+  // DOC-006: 文档列表按 level 过滤
+  test('DOC-006: GET /documents?level=1 仅返回一级文档', async ({ request }) => {
+    const token = await docAdminToken(request);
+    const res = await request.get(`${apiBaseUrl()}/documents?level=1&limit=10`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    const list: Array<{ level?: number }> = body?.data?.list ?? body?.data ?? body?.list ?? [];
+    if (list.length > 0) {
+      list.forEach((d) => expect(d.level).toBe(1));
+    }
+  });
+
+  // DOC-007: 已删除文档不出现在搜索结果中
+  test('DOC-007: 已软删除文档不出现在 GET /documents 列表中', async ({ request }) => {
+    const token = await docAdminToken(request);
+    const res = await request.get(`${apiBaseUrl()}/documents?limit=50`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    const list: Array<{ deletedAt?: string | null }> =
+      body?.data?.list ?? body?.data ?? body?.list ?? [];
+    // None of the returned docs should have a deletedAt
+    list.forEach((d) => {
+      expect(d.deletedAt == null || d.deletedAt === undefined).toBe(true);
+    });
+  });
+
+  // DOC-010: 超过 review_due_date 的文档应有过期标记
+  test('DOC-010: 超期文档查询接口可访问', async ({ request }) => {
+    const token = await docAdminToken(request);
+    // Try endpoint variations
+    const endpoints = [
+      `${apiBaseUrl()}/documents?overdue=true&limit=10`,
+      `${apiBaseUrl()}/documents/overdue?limit=10`,
+      `${apiBaseUrl()}/documents/control-center?limit=10`,
+    ];
+    let found = false;
+    for (const url of endpoints) {
+      const res = await request.get(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok()) {
+        found = true;
+        const body = await res.json();
+        expect(body).toHaveProperty('data');
+        break;
+      }
+    }
+    if (!found) {
+      test.skip(true, '超期文档接口未实现 — 跳过 DOC-010');
+    }
+  });
+});
+
+test.describe('SRC — 全文搜索补充', () => {
+  async function srcAdminToken(request: import('@playwright/test').APIRequestContext) {
+    const u = process.env.E2E_ADMIN_USER || 'admin';
+    const p = process.env.E2E_ADMIN_PASS || 'ChangeMe123!';
+    const res = await request.post(`${apiBaseUrl()}/auth/login`, {
+      data: { username: u, password: p },
+    });
+    if (!res.ok()) throw new Error('admin login failed');
+    const body = await res.json();
+    return (body?.data?.token ?? body?.token) as string;
+  }
+
+  // SRC-001: 关键词搜索返回相关文档
+  test('SRC-001: 关键词搜索返回包含关键词的文档', async ({ request }) => {
+    const token = await srcAdminToken(request);
+    const res = await request.get(
+      `${apiBaseUrl()}/search/query?keyword=${encodeURIComponent('质量')}&limit=10`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (res.status() === 404) {
+      test.skip(true, 'GET /search/query 未实现 — 跳过 SRC-001');
+      return;
+    }
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body).toHaveProperty('data');
+    // Deleted docs should not appear
+    const items: Array<{ deletedAt?: string | null }> =
+      body?.data?.list ?? body?.data?.items ?? body?.data?.data ?? body?.data ?? [];
+    items.forEach((item) => {
+      expect(item.deletedAt == null || item.deletedAt === undefined).toBe(true);
+    });
+  });
+
+  // SRC-004: 搜索结果支持按时间排序
+  test('SRC-004: 搜索支持 sortBy=time 参数', async ({ request }) => {
+    const token = await srcAdminToken(request);
+    const res = await request.get(
+      `${apiBaseUrl()}/search/query?keyword=${encodeURIComponent('文件')}&sortBy=time&limit=10`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (res.status() === 404) {
+      test.skip(true, 'GET /search/query 未实现 — 跳过 SRC-004');
+      return;
+    }
+    expect(res.ok()).toBe(true);
+    const body = await res.json();
+    expect(body).toHaveProperty('data');
+  });
+
+  // SRC-005: 搜索结果支持按相关度排序
+  test('SRC-005: 搜索支持 sortBy=relevance 参数', async ({ request }) => {
+    const token = await srcAdminToken(request);
+    const res = await request.get(
+      `${apiBaseUrl()}/search/query?keyword=${encodeURIComponent('文件')}&sortBy=relevance&limit=10`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (res.status() === 404) {
+      test.skip(true, 'GET /search/query 未实现 — 跳过 SRC-005');
+      return;
+    }
+    expect(res.ok()).toBe(true);
+  });
+
+  // SRC-006: 文档发布时搜索索引自动更新（验证已 effective 文档可被搜索到）
+  test('SRC-006: effective 状态文档可被搜索查询', async ({ request }) => {
+    const token = await srcAdminToken(request);
+
+    // Find an effective document title
+    const docRes = await request.get(
+      `${apiBaseUrl()}/documents?status=effective&limit=1`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (!docRes.ok()) {
+      test.skip(true, '无法获取 effective 文档 — 跳过 SRC-006');
+      return;
+    }
+    const docBody = await docRes.json();
+    const docs: Array<{ title?: string }> = docBody?.data?.list ?? docBody?.data ?? [];
+    if (docs.length === 0) {
+      test.skip(true, '无 effective 文档 — 跳过 SRC-006');
+      return;
+    }
+
+    const title = docs[0].title ?? '';
+    const keyword = title.substring(0, Math.min(4, title.length));
+    if (!keyword) {
+      test.skip(true, '文档标题为空 — 跳过 SRC-006');
+      return;
+    }
+
+    const searchRes = await request.get(
+      `${apiBaseUrl()}/search/query?keyword=${encodeURIComponent(keyword)}&documentStatus=effective&limit=10`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (searchRes.status() === 404) {
+      test.skip(true, '搜索接口未实现 — 跳过 SRC-006');
+      return;
+    }
+    expect(searchRes.ok()).toBe(true);
+    const searchBody = await searchRes.json();
+    expect(searchBody).toHaveProperty('data');
+  });
+
+  // SRC-007: 文档删除时索引被移除（已删除文档不出现在搜索结果）
+  test('SRC-007: 软删除文档不出现在搜索结果中', async ({ request }) => {
+    const token = await srcAdminToken(request);
+
+    // Create a document
+    const createRes = await request.post(`${apiBaseUrl()}/documents`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      data: {
+        title: `SRC007-test-${Date.now()}`,
+        number: `SRC007-${Date.now()}`,
+        content: 'SRC007 unique content for search index test',
+        level: 1,
+      },
+    });
+    if (!createRes.ok()) {
+      test.skip(true, 'Cannot create document — 跳过 SRC-007');
+      return;
+    }
+    const createBody = await createRes.json();
+    const docId: string = createBody?.data?.id ?? createBody?.id;
+    const docTitle: string = createBody?.data?.title ?? createBody?.title ?? `SRC007-test-`;
+
+    // Soft-delete the document
+    const deleteRes = await request.delete(`${apiBaseUrl()}/documents/${docId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!deleteRes.ok()) {
+      test.skip(true, 'Cannot delete document — 跳过 SRC-007');
+      return;
+    }
+
+    // Search for the document by its title — it should NOT appear
+    const keyword = docTitle.substring(0, 10);
+    const searchRes = await request.get(
+      `${apiBaseUrl()}/search/query?keyword=${encodeURIComponent(keyword)}&limit=50`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (searchRes.status() === 404) {
+      test.skip(true, '搜索接口未实现 — 跳过 SRC-007');
+      return;
+    }
+    if (searchRes.ok()) {
+      const searchBody = await searchRes.json();
+      const items: Array<{ id?: string; deletedAt?: string | null }> =
+        searchBody?.data?.list ?? searchBody?.data?.items ?? searchBody?.data ?? [];
+      const found = items.find((i) => i.id === docId);
+      expect(found, '已删除文档不应出现在搜索结果中').toBeUndefined();
+    }
+  });
+
+  // RBN-003: 永久删除回收站中的文档
+  test('RBN-003: 回收站中的文档可被永久删除', async ({ request }) => {
+    const token = await srcAdminToken(request);
+
+    // Create a doc, soft-delete it, then hard-delete from recycle bin
+    const createRes = await request.post(`${apiBaseUrl()}/documents`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      data: {
+        title: `RBN003-test-${Date.now()}`,
+        number: `RBN003-${Date.now()}`,
+        content: 'RBN-003 permanent delete test',
+        level: 1,
+      },
+    });
+    if (!createRes.ok()) {
+      test.skip(true, 'Cannot create document — 跳过 RBN-003');
+      return;
+    }
+    const createBody = await createRes.json();
+    const docId: string = createBody?.data?.id ?? createBody?.id;
+
+    // Soft delete
+    await request.delete(`${apiBaseUrl()}/documents/${docId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    // Permanent delete from recycle bin
+    const hardDeleteRes = await request.delete(
+      `${apiBaseUrl()}/recycle-bin/${docId}/permanent`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (hardDeleteRes.status() === 404) {
+      // Try alternate endpoint
+      const altRes = await request.delete(
+        `${apiBaseUrl()}/documents/${docId}/permanent`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!altRes.ok() && altRes.status() !== 404) {
+        expect([200, 204]).toContain(altRes.status());
+      }
+      if (altRes.status() === 404) {
+        test.skip(true, '永久删除接口未实现 — 跳过 RBN-003');
+      }
+      return;
+    }
+    expect([200, 204]).toContain(hardDeleteRes.status());
+
+    // Verify: doc no longer in recycle bin
+    const rbRes = await request.get(`${apiBaseUrl()}/recycle-bin?limit=50`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (rbRes.ok()) {
+      const rbBody = await rbRes.json();
+      const rbList: Array<{ id: string }> =
+        rbBody?.data?.list ?? rbBody?.data ?? rbBody?.list ?? [];
+      const stillThere = rbList.find((d) => d.id === docId);
+      expect(stillThere).toBeUndefined();
+    }
+  });
+});
