@@ -204,6 +204,28 @@ async function ensureRecordTemplateBaseline(prisma: PrismaClient): Promise<void>
   }
 }
 
+async function ensureTrainingPlanBaseline(prisma: PrismaClient): Promise<void> {
+  // Ensure a pending_approval training plan exists for TRN-004 E2E test
+  const admin = await prisma.user.findFirst({ where: { username: 'admin', deletedAt: null }, select: { id: true } });
+  if (!admin) {
+    console.log('⚠️  admin user not found, skipping training plan baseline');
+    return;
+  }
+
+  const e2eYear = 9000;
+  await prisma.trainingPlan.upsert({
+    where: { year: e2eYear },
+    update: { status: 'pending_approval', title: 'E2E年度培训计划（待审批）' },
+    create: {
+      year: e2eYear,
+      title: 'E2E年度培训计划（待审批）',
+      status: 'pending_approval',
+      createdBy: admin.id,
+    },
+  });
+  console.log('✅ E2E TrainingPlan 基线已确保（pending_approval）');
+}
+
 async function main() {
   const prisma = new PrismaClient();
   const seedOptions = buildBaselineSeedOptions(process.env);
@@ -214,15 +236,18 @@ async function main() {
     adminPasswordHash,
   });
 
-  // Retrieve the userRole id for E2E user creation
-  const userRole = await prisma.role.findFirst({ where: { code: 'user', deletedAt: null } });
-  if (userRole) {
-    await ensureE2EUsers(prisma, process.env, userRole.id);
-  }
+  // E2E-only fixtures: only seed in test environment to avoid polluting production/staging DBs
+  if (process.env.NODE_ENV === 'test') {
+    const userRole = await prisma.role.findFirst({ where: { code: 'user', deletedAt: null } });
+    if (userRole) {
+      await ensureE2EUsers(prisma, process.env, userRole.id);
+    }
 
-  await ensureProcessTemplate(prisma);
-  await ensureMaterialBaseline(prisma);
-  await ensureRecordTemplateBaseline(prisma);
+    await ensureProcessTemplate(prisma);
+    await ensureMaterialBaseline(prisma);
+    await ensureRecordTemplateBaseline(prisma);
+    await ensureTrainingPlanBaseline(prisma);
+  }
 
   await prisma.$disconnect();
 }

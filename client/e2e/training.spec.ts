@@ -569,16 +569,18 @@ test.describe('TRN — 培训状态流转 & 档案', () => {
     }
     const plansBody = await plansRes.json();
     const plans: Array<{ id: string; status?: string }> =
-      plansBody?.data?.list ?? plansBody?.data?.data?.list ?? plansBody?.data?.data ?? plansBody?.data ?? [];
+      plansBody?.data?.list ??
+      plansBody?.data?.items ??
+      plansBody?.data?.data?.list ??
+      plansBody?.data?.data ??
+      (Array.isArray(plansBody?.data) ? plansBody?.data : []);
     if (plans.length === 0) {
-      test.skip(true, '无待审批培训计划 — 跳过 TRN-004');
-      return;
+      throw new Error('fixture missing: no pending_approval training plan found — E2E seed must create one');
     }
 
     const plan = plans[0];
     if (!plan?.id) {
-      test.skip(true, '无有效待审批培训计划 — 跳过 TRN-004');
-      return;
+      throw new Error('fixture data error: pending_approval training plan found but has no id field');
     }
     // Approve via the approval endpoint
     const approveRes = await request.post(
