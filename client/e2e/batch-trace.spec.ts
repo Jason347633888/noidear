@@ -491,7 +491,8 @@ test.describe('BT — 批次追溯补充', () => {
       { headers: { Authorization: `Bearer ${token}` } },
     );
     expect(response.ok()).toBeTruthy();
-    const usages = await response.json();
+    const body = await response.json();
+    const usages = body?.data?.list ?? body?.data?.items ?? (Array.isArray(body?.data) ? body.data : body);
     expect(Array.isArray(usages)).toBeTruthy();
   });
 
