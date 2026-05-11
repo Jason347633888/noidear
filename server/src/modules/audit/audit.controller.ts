@@ -90,6 +90,55 @@ export class AuditController {
     return this.auditService.querySensitiveLogs(dto);
   }
 
+  @Get('login-logs')
+  @ApiOperation({ summary: '查询登录日志（GET）' })
+  @ApiResponse({ status: 200, description: '查询成功' })
+  async getLoginLogs(
+    @Query('action') action?: string,
+    @Query('userId') userId?: string,
+    @Query('result') result?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.auditService.queryLoginLogs({
+      action,
+      userId,
+      status: result,
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 20,
+    });
+  }
+
+  @Get('permission-logs')
+  @ApiOperation({ summary: '查询权限变更日志（GET）' })
+  @ApiResponse({ status: 200, description: '查询成功' })
+  async getPermissionLogs(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.auditService.queryPermissionLogs({
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 20,
+    });
+  }
+
+  @Get('sensitive-logs')
+  @ApiOperation({ summary: '查询敏感操作日志（GET）' })
+  @ApiResponse({ status: 200, description: '查询成功' })
+  async getSensitiveLogs(
+    @Query('resourceType') resourceType?: string,
+    @Query('action') action?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.auditService.querySensitiveLogs({
+      resourceType,
+      action,
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 20,
+    });
+  }
+
   @Get('login-logs/export')
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: '导出登录日志为 Excel' })
