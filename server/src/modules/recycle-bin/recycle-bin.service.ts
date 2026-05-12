@@ -10,6 +10,12 @@ import { Snowflake } from '../../common/utils/snowflake';
 
 type RecycleBinType = 'document' | 'record-template' | 'record';
 
+/**
+ * 跨域回收站聚合服务。
+ *
+ * 这里只保留软删除资源的统一查询、恢复、永久删除编排；
+ * 业务域专属规则应留在对应 domain service 中。
+ */
 @Injectable()
 export class RecycleBinService {
   private readonly snowflake = new Snowflake(1, 1);
