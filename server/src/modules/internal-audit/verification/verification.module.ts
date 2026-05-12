@@ -8,6 +8,8 @@ import { UserPermissionModule } from '../../user-permission/user-permission.modu
 import { RedisModule } from '../../redis/redis.module';
 import { UnifiedApprovalModule } from '../../unified-approval/unified-approval.module';
 import { CorrectiveActionModule } from '../../corrective-action/corrective-action.module';
+import { RoleModule } from '../../role/role.module';
+import { DepartmentPermissionModule } from '../../department-permission/department-permission.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { CorrectiveActionModule } from '../../corrective-action/corrective-actio
     RedisModule,
     UnifiedApprovalModule,
     CorrectiveActionModule,
+    RoleModule,
+    DepartmentPermissionModule,
   ],
   controllers: [VerificationController],
   providers: [VerificationService],

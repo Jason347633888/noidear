@@ -1,8 +1,8 @@
 # Architecture Cleanup — Full Spec
 
-**Date:** 2026-05-12  
-**Scope:** 7 architectural bugs identified via GitNexus graph analysis  
-**Strategy:** Phase A → Phase B → Phase C，每阶段独立可测可合并  
+**Date:** 2026-05-12
+**Scope:** 7 architectural bugs identified via GitNexus graph analysis
+**Strategy:** Phase A → Phase B → Phase C，每阶段独立可测可合并
 **Constraint:** 系统尚未上线，无需兼容旧接口，可直接切换
 
 ---
