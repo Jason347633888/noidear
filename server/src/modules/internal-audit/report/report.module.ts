@@ -8,6 +8,8 @@ import { UserPermissionModule } from '../../user-permission/user-permission.modu
 import { RedisModule } from '../../redis/redis.module';
 import { StorageService } from '../../../common/services/storage.service';
 import { ConfigModule } from '@nestjs/config';
+import { RoleModule } from '../../role/role.module';
+import { DepartmentPermissionModule } from '../../department-permission/department-permission.module';
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { ConfigModule } from '@nestjs/config';
     UserPermissionModule,
     RedisModule,
     ConfigModule,
+    RoleModule,
+    DepartmentPermissionModule,
   ],
   controllers: [ReportController],
   providers: [ReportService, StorageService],

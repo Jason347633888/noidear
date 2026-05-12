@@ -18,14 +18,14 @@ import {
   AuditPlanQueryDto,
 } from './dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
-import { PermissionGuard } from '../../../common/guards/permission.guard';
-import { CheckPermission } from '../../../common/decorators/permission.decorator';
+import { UnifiedPermissionGuard } from '../../../shared/guards/unified-permission.guard';
+import { RequirePermission } from '../../../shared/decorators/require-permission.decorator';
 import { AuditService } from '../../audit/audit.service';
 
 @ApiTags('Audit Plans')
 @ApiBearerAuth()
 @Controller('audit/plans')
-@UseGuards(JwtAuthGuard, PermissionGuard)
+@UseGuards(JwtAuthGuard, UnifiedPermissionGuard)
 export class AuditPlanController {
   constructor(
     private readonly auditPlanService: AuditPlanService,
@@ -33,7 +33,7 @@ export class AuditPlanController {
   ) {}
 
   @Post()
-  @CheckPermission('audit-plan:create')
+  @RequirePermission('audit-plan:create')
   @ApiOperation({ summary: 'Create audit plan' })
   @ApiResponse({ status: 201, description: 'Plan created successfully' })
   async create(@Body() createDto: CreateAuditPlanDto, @Request() req: any) {
@@ -53,7 +53,7 @@ export class AuditPlanController {
   }
 
   @Get()
-  @CheckPermission('audit-plan:read')
+  @RequirePermission('audit-plan:read')
   @ApiOperation({ summary: 'Get all audit plans' })
   @ApiResponse({ status: 200, description: 'Plans retrieved successfully' })
   async findAll(@Query() query: AuditPlanQueryDto) {
@@ -61,7 +61,7 @@ export class AuditPlanController {
   }
 
   @Get('statistics')
-  @CheckPermission('audit-plan:read')
+  @RequirePermission('audit-plan:read')
   @ApiOperation({ summary: 'Get audit plan statistics' })
   @ApiResponse({ status: 200, description: 'Statistics retrieved successfully' })
   async getStatistics() {
@@ -69,7 +69,7 @@ export class AuditPlanController {
   }
 
   @Get(':id')
-  @CheckPermission('audit-plan:read')
+  @RequirePermission('audit-plan:read')
   @ApiOperation({ summary: 'Get audit plan by ID' })
   @ApiResponse({ status: 200, description: 'Plan retrieved successfully' })
   async findOne(@Param('id') id: string) {
@@ -77,7 +77,7 @@ export class AuditPlanController {
   }
 
   @Put(':id')
-  @CheckPermission('audit-plan:update')
+  @RequirePermission('audit-plan:update')
   @ApiOperation({ summary: 'Update audit plan' })
   @ApiResponse({ status: 200, description: 'Plan updated successfully' })
   async update(
@@ -101,7 +101,7 @@ export class AuditPlanController {
   }
 
   @Delete(':id')
-  @CheckPermission('audit-plan:delete')
+  @RequirePermission('audit-plan:delete')
   @ApiOperation({ summary: 'Delete audit plan' })
   @ApiResponse({ status: 200, description: 'Plan deleted successfully' })
   async remove(@Param('id') id: string, @Request() req: any) {
@@ -121,7 +121,7 @@ export class AuditPlanController {
   }
 
   @Post(':id/start')
-  @CheckPermission('audit-plan:execute')
+  @RequirePermission('audit-plan:execute')
   @ApiOperation({ summary: 'Start audit plan execution' })
   @ApiResponse({ status: 200, description: 'Plan execution started' })
   async start(@Param('id') id: string, @Request() req: any) {
@@ -141,7 +141,7 @@ export class AuditPlanController {
   }
 
   @Post(':id/copy')
-  @CheckPermission('audit-plan:create')
+  @RequirePermission('audit-plan:create')
   @ApiOperation({ summary: 'Copy historical audit plan' })
   @ApiResponse({ status: 201, description: 'Plan copied successfully' })
   @ApiResponse({ status: 404, description: 'Original plan not found' })

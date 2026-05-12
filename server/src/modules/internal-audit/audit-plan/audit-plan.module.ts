@@ -6,9 +6,11 @@ import { AuditModule } from '../../audit/audit.module';
 import { UserPermissionModule } from '../../user-permission/user-permission.module';
 import { RedisModule } from '../../redis/redis.module';
 import { OperationLogModule } from '../../operation-log/operation-log.module';
+import { RoleModule } from '../../role/role.module';
+import { DepartmentPermissionModule } from '../../department-permission/department-permission.module';
 
 @Module({
-  imports: [PrismaModule, AuditModule, UserPermissionModule, RedisModule, OperationLogModule],
+  imports: [PrismaModule, AuditModule, UserPermissionModule, RedisModule, OperationLogModule, RoleModule, DepartmentPermissionModule],
   controllers: [AuditPlanController],
   providers: [AuditPlanService],
   exports: [AuditPlanService],

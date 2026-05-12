@@ -5,8 +5,9 @@ import { NotificationModule } from '../notification/notification.module';
 import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
 import { DocumentModule } from '../document/document.module';
 import { UserPermissionModule } from '../user-permission/user-permission.module';
+import { RoleModule } from '../role/role.module';
+import { DepartmentPermissionModule } from '../department-permission/department-permission.module';
 import { StorageService } from '../../common/services';
-import { PermissionGuard } from '../../common/guards/permission.guard';
 import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
 import { MaterialController } from './material.controller';
 import { MaterialService } from './material.service';
@@ -32,9 +33,9 @@ import { InventoryMovementLedgerService } from './services/inventory-movement-le
 import { SupplierAccessService } from './services/supplier-access.service';
 
 @Module({
-  imports: [PrismaModule, BatchTraceModule, NotificationModule, UnifiedApprovalModule, DocumentModule, UserPermissionModule],
+  imports: [PrismaModule, BatchTraceModule, NotificationModule, UnifiedApprovalModule, DocumentModule, UserPermissionModule, RoleModule, DepartmentPermissionModule],
   controllers: [MaterialController, SupplierController, InboundController, BatchController, RequisitionController, StagingAreaController, MaterialBalanceController, ReturnController, ScrapController, WarehouseTraceabilityController],
-  providers: [MaterialService, SupplierService, InboundService, BatchService, RequisitionService, StagingAreaService, MaterialBalanceService, ReturnService, ScrapService, WarehouseCronService, StorageService, PermissionGuard, InventoryMovementLedgerService, SupplierAccessService],
+  providers: [MaterialService, SupplierService, InboundService, BatchService, RequisitionService, StagingAreaService, MaterialBalanceService, ReturnService, ScrapService, WarehouseCronService, StorageService, InventoryMovementLedgerService, SupplierAccessService],
   exports: [MaterialService, SupplierService, InboundService, BatchService, RequisitionService, StagingAreaService, MaterialBalanceService, ReturnService, ScrapService, InventoryMovementLedgerService, SupplierAccessService],
 })
 export class WarehouseModule implements OnModuleInit {

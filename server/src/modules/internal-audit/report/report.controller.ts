@@ -18,8 +18,8 @@ import { Request as ExpressRequest } from 'express';
 import { ReportService } from './report.service';
 import { QueryReportDto } from './dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
-import { PermissionGuard } from '../../../common/guards/permission.guard';
-import { CheckPermission } from '../../../common/decorators/permission.decorator';
+import { UnifiedPermissionGuard } from '../../../shared/guards/unified-permission.guard';
+import { RequirePermission } from '../../../shared/decorators/require-permission.decorator';
 import { AuditService } from '../../audit/audit.service';
 import { AuthenticatedUser } from '../../auth/authenticated-user';
 
@@ -30,7 +30,7 @@ interface AuthenticatedRequest extends ExpressRequest {
 @ApiTags('Audit Report')
 @ApiBearerAuth()
 @Controller('audit')
-@UseGuards(JwtAuthGuard, PermissionGuard)
+@UseGuards(JwtAuthGuard, UnifiedPermissionGuard)
 export class ReportController {
   constructor(
     private readonly reportService: ReportService,
@@ -38,7 +38,7 @@ export class ReportController {
   ) {}
 
   @Post('plans/:id/complete')
-  @CheckPermission('audit-plan:complete')
+  @RequirePermission('audit-plan:complete')
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @ApiOperation({ summary: 'Complete audit plan and generate report' })
   @ApiResponse({ status: 200, description: 'Report generated successfully' })
@@ -68,7 +68,7 @@ export class ReportController {
   }
 
   @Get('reports')
-  @CheckPermission('audit-report:read')
+  @RequirePermission('audit-report:read')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Query audit reports' })
   @ApiResponse({ status: 200, description: 'Reports retrieved successfully' })
@@ -91,7 +91,7 @@ export class ReportController {
   }
 
   @Get('reports/:id')
-  @CheckPermission('audit-report:read')
+  @RequirePermission('audit-report:read')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Get audit report by ID' })
   @ApiResponse({ status: 200, description: 'Report retrieved successfully' })

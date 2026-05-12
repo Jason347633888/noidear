@@ -17,8 +17,8 @@ import { Request as ExpressRequest } from 'express';
 import { RectificationService } from './rectification.service';
 import { SubmitRectificationDto } from './dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
-import { PermissionGuard } from '../../../common/guards/permission.guard';
-import { CheckPermission } from '../../../common/decorators/permission.decorator';
+import { UnifiedPermissionGuard } from '../../../shared/guards/unified-permission.guard';
+import { RequirePermission } from '../../../shared/decorators/require-permission.decorator';
 import { AuditService } from '../../audit/audit.service';
 import { AuthenticatedUser } from '../../auth/authenticated-user';
 
@@ -29,7 +29,7 @@ interface AuthenticatedRequest extends ExpressRequest {
 @ApiTags('Audit Rectification')
 @ApiBearerAuth()
 @Controller('audit/findings')
-@UseGuards(JwtAuthGuard, PermissionGuard)
+@UseGuards(JwtAuthGuard, UnifiedPermissionGuard)
 export class RectificationController {
   constructor(
     private readonly rectificationService: RectificationService,
@@ -37,7 +37,7 @@ export class RectificationController {
   ) {}
 
   @Get('my-rectifications')
-  @CheckPermission('audit-rectification:read')
+  @RequirePermission('audit-rectification:read')
   @ApiOperation({ summary: 'Get my rectification tasks' })
   @ApiResponse({ status: 200, description: 'Rectification tasks retrieved' })
   async getMyRectifications(@Request() req: AuthenticatedRequest) {
@@ -58,7 +58,7 @@ export class RectificationController {
   }
 
   @Post(':id/submit-rectification')
-  @CheckPermission('audit-rectification:submit')
+  @RequirePermission('audit-rectification:submit')
   @ApiOperation({ summary: 'Submit rectification for verification' })
   @ApiResponse({ status: 200, description: 'Rectification submitted' })
   @ApiResponse({ status: 403, description: 'User not the assignee' })

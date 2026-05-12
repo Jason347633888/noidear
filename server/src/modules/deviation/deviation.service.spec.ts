@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DeviationService } from './deviation.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalService } from '../approval/approval.service';
+import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 
 describe('DeviationService - detectDeviations', () => {
   let service: DeviationService;
@@ -19,12 +20,15 @@ describe('DeviationService - detectDeviations', () => {
     findOne: jest.fn().mockResolvedValue({}),
   };
 
+  const mockApprovalEngine = { act: jest.fn() };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DeviationService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: ApprovalService, useValue: mockApprovalService },
+        { provide: ApprovalEngineService, useValue: mockApprovalEngine },
       ],
     }).compile();
 
@@ -186,12 +190,15 @@ describe('DeviationService - createDeviationReports', () => {
     findOne: jest.fn().mockResolvedValue({}),
   };
 
+  const mockApprovalEngine = { act: jest.fn() };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DeviationService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: ApprovalService, useValue: mockApprovalService },
+        { provide: ApprovalEngineService, useValue: mockApprovalEngine },
       ],
     }).compile();
 
@@ -319,12 +326,15 @@ describe('DeviationService - findDeviationReports', () => {
     findOne: jest.fn().mockResolvedValue({}),
   };
 
+  const mockApprovalEngine = { act: jest.fn() };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DeviationService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: ApprovalService, useValue: mockApprovalService },
+        { provide: ApprovalEngineService, useValue: mockApprovalEngine },
       ],
     }).compile();
 
@@ -428,26 +438,31 @@ describe('DeviationService - findDeviationReports', () => {
 
 describe('DeviationService - approveDeviationReport', () => {
   let service: DeviationService;
-
-  const mockPrismaService = {
-    deviationReport: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), count: jest.fn(), findMany: jest.fn() },
-    template: { findUnique: jest.fn() },
-    record: { findUnique: jest.fn(), update: jest.fn() },
-  };
+  let prisma: any;
+  let approvalEngine: any;
 
   const mockApprovalService = {
     createApprovalChain: jest.fn().mockResolvedValue({ id: 'chain-1' }),
     approve: jest.fn().mockResolvedValue({ success: true }),
     reject: jest.fn().mockResolvedValue({ success: true }),
+    getApprovalChain: jest.fn().mockResolvedValue([]),
     findOne: jest.fn().mockResolvedValue({}),
   };
 
   beforeEach(async () => {
+    prisma = {
+      deviationReport: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), count: jest.fn(), findMany: jest.fn() },
+      template: { findUnique: jest.fn() },
+      record: { findUnique: jest.fn(), update: jest.fn() },
+    };
+    approvalEngine = { act: jest.fn() };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DeviationService,
-        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: PrismaService, useValue: prisma },
         { provide: ApprovalService, useValue: mockApprovalService },
+        { provide: ApprovalEngineService, useValue: approvalEngine },
       ],
     }).compile();
 
@@ -456,55 +471,40 @@ describe('DeviationService - approveDeviationReport', () => {
 
   afterEach(() => jest.clearAllMocks());
 
-  it('应该成功审批偏离报告', async () => {
-    const mockReport = {
+  it('delegates approval to ApprovalEngineService.act', async () => {
+    prisma.deviationReport.findUnique.mockResolvedValue({
       id: 'report-1',
       status: 'pending',
-    };
-
-    mockPrismaService.deviationReport.findUnique.mockResolvedValue(mockReport);
-    mockPrismaService.deviationReport.update.mockResolvedValue({
-      ...mockReport,
-      status: 'approved',
-      approvedBy: 'approver-1',
+      approvalInstanceId: 'instance-1',
+    });
+    approvalEngine.act.mockResolvedValue(undefined);
+    prisma.deviationReport.findUnique.mockResolvedValueOnce({
+      id: 'report-1',
+      status: 'pending',
+      approvalInstanceId: 'instance-1',
     });
 
-    const result = await service.approveDeviationReport(
-      'report-1',
-      'approver-1',
-      'approved',
-      '审批通过',
-    );
+    await service.approveDeviationReport('report-1', 'approver-1', 'approved', '同意');
 
-    expect(result.status).toBe('approved');
-    expect(mockPrismaService.deviationReport.update).toHaveBeenCalledWith({
-      where: { id: 'report-1' },
-      data: expect.objectContaining({
-        status: 'approved',
-        approvedBy: 'approver-1',
-        comment: '审批通过',
-      }),
+    expect(approvalEngine.act).toHaveBeenCalledWith('instance-1', 'approve', 'approver-1', '同意');
+    expect(prisma.deviationReport.update).not.toHaveBeenCalled();
+  });
+
+  it('throws when deviation report has no approval instance', async () => {
+    prisma.deviationReport.findUnique.mockResolvedValue({
+      id: 'report-1',
+      status: 'pending',
+      approvalInstanceId: null,
     });
+
+    await expect(service.approveDeviationReport('report-1', 'approver-1', 'approved')).rejects.toThrow('偏离报告未关联审批实例');
   });
 
   it('应该在报告不存在时抛出异常', async () => {
-    mockPrismaService.deviationReport.findUnique.mockResolvedValue(null);
+    prisma.deviationReport.findUnique.mockResolvedValue(null);
 
     await expect(
       service.approveDeviationReport('report-1', 'approver-1', 'approved'),
     ).rejects.toThrow('偏离报告不存在');
-  });
-
-  it('应该在报告已审批时抛出异常', async () => {
-    const mockReport = {
-      id: 'report-1',
-      status: 'approved',
-    };
-
-    mockPrismaService.deviationReport.findUnique.mockResolvedValue(mockReport);
-
-    await expect(
-      service.approveDeviationReport('report-1', 'approver-1', 'approved'),
-    ).rejects.toThrow('偏离报告已审批');
   });
 });

@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, forwardRef, Optional } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BusinessException, ErrorCode } from '../../common/exceptions/business.exception';
 import { ApprovalService } from '../approval/approval.service';
@@ -33,7 +33,7 @@ export class DeviationService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => ApprovalService))
     private readonly approvalService: ApprovalService,
-    @Optional() private readonly approvalEngine?: ApprovalEngineService,
+    private readonly approvalEngine: ApprovalEngineService,
   ) {}
 
   detectDeviations(
@@ -239,48 +239,27 @@ export class DeviationService {
     reportId: string,
     approverId: string,
     status: 'approved' | 'rejected',
-    comment?: string,
+    comment = '',
   ) {
     const report = await this.prisma.deviationReport.findUnique({
       where: { id: reportId },
-      include: { record: true },
     });
 
     if (!report) {
       throw new BusinessException(ErrorCode.NOT_FOUND, '偏离报告不存在');
     }
 
-    if (report.status !== 'pending') {
-      throw new BusinessException(
-        ErrorCode.CONFLICT,
-        `偏离报告已审批，当前状态：${report.status}`,
-      );
+    if (!report.approvalInstanceId) {
+      throw new BusinessException(ErrorCode.VALIDATION_ERROR, '偏离报告未关联审批实例');
     }
 
-    // P2-7: 集成到审批流程系统
-    // 如果任务记录有审批链，通过审批链处理
-    if (report.record) {
-      try {
-        const approvals = await this.approvalService.getApprovalChain(report.recordId);
-        if (approvals && approvals.length > 0) {
-          this.logger.log(
-            `偏离报告 ${reportId} 已集成到审批流程，建议使用 ApprovalService.approveUnified 处理`,
-          );
-        }
-      } catch (error) {
-        this.logger.warn(`获取审批链失败: ${error.message}`);
-      }
-    }
+    await this.approvalEngine.act(
+      report.approvalInstanceId,
+      status === 'approved' ? 'approve' : 'reject',
+      approverId,
+      comment,
+    );
 
-    // 降级处理：直接更新偏离报告状态（兼容旧逻辑）
-    return this.prisma.deviationReport.update({
-      where: { id: reportId },
-      data: {
-        status,
-        approvedBy: approverId,
-        approvedAt: new Date(),
-        comment,
-      },
-    });
+    return this.prisma.deviationReport.findUnique({ where: { id: reportId } });
   }
 }
