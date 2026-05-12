@@ -272,4 +272,34 @@ describe('ProductRecallService', () => {
 
     expect(notificationBridge.notifyRequester).toHaveBeenCalledWith('requester-1', 'rejected', '批次召回');
   });
+
+  it('skips notification on approve when requested_by is null', async () => {
+    jest.spyOn(service, 'findOne').mockResolvedValue({
+      id: 'recall-1',
+      company_id: 'company-1',
+      status: 'pending_review',
+      requested_by: null,
+      title: '批次召回',
+    } as any);
+    prisma.productRecall.update.mockResolvedValue({ id: 'recall-1', status: 'approved' });
+
+    await service.approve('recall-1', { review_note: '同意' }, { id: 'reviewer-1', companyId: 'company-1' });
+
+    expect(notificationBridge.notifyRequester).not.toHaveBeenCalled();
+  });
+
+  it('skips notification on reject when requested_by is null', async () => {
+    jest.spyOn(service, 'findOne').mockResolvedValue({
+      id: 'recall-1',
+      company_id: 'company-1',
+      status: 'pending_review',
+      requested_by: null,
+      title: '批次召回',
+    } as any);
+    prisma.productRecall.update.mockResolvedValue({ id: 'recall-1', status: 'rejected' });
+
+    await service.reject('recall-1', { review_note: '不同意' }, { id: 'reviewer-1', companyId: 'company-1' });
+
+    expect(notificationBridge.notifyRequester).not.toHaveBeenCalled();
+  });
 });

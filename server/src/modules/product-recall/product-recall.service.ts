@@ -136,7 +136,9 @@ export class ProductRecallService {
       reviewed_at: new Date(),
       review_note: dto.review_note,
     });
-    await this.notificationBridge.notifyRequester(recall.requested_by, 'approved', recall.title);
+    if (recall.requested_by) {
+      await this.notificationBridge.notifyRequester(recall.requested_by, 'approved', recall.title);
+    }
     return result;
   }
 
@@ -147,7 +149,9 @@ export class ProductRecallService {
       reviewed_at: new Date(),
       review_note: dto.review_note,
     });
-    await this.notificationBridge.notifyRequester(recall.requested_by, 'rejected', recall.title);
+    if (recall.requested_by) {
+      await this.notificationBridge.notifyRequester(recall.requested_by, 'rejected', recall.title);
+    }
     return result;
   }
 
