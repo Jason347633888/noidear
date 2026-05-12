@@ -104,6 +104,17 @@ import {
   type AuditFinding,
   type FindingStatus,
 } from '@/api/internal-audit/finding';
+import { useFormat } from '@/composables/useFormat';
+
+const { formatDate: formatDateRaw, formatStatus: formatStatusWithMap } = useFormat();
+
+const findingStatusMap: Record<FindingStatus, string> = {
+  pending: '待整改',
+  rectifying: '整改中',
+  pending_verification: '待复审',
+  verified: '已通过',
+  rejected: '已驳回',
+};
 
 const loading = ref(false);
 const submitting = ref(false);
@@ -178,16 +189,7 @@ const formatIssueType = (type: string) => {
   return map[type] || type || '-';
 };
 
-const formatStatus = (status: FindingStatus) => {
-  const map: Record<FindingStatus, string> = {
-    pending: '待整改',
-    rectifying: '整改中',
-    pending_verification: '待复审',
-    verified: '已通过',
-    rejected: '已驳回',
-  };
-  return map[status] || status;
-};
+const formatStatus = (status: FindingStatus) => formatStatusWithMap(status, findingStatusMap);
 
 const statusTagType = (status: FindingStatus) => {
   const map: Record<FindingStatus, string> = {
@@ -200,10 +202,7 @@ const statusTagType = (status: FindingStatus) => {
   return map[status] || 'info';
 };
 
-const formatDate = (date?: string) => {
-  if (!date) return '-';
-  return new Date(date).toLocaleDateString('zh-CN');
-};
+const formatDate = (date?: string) => formatDateRaw(date) || '-';
 
 const isOverdue = (deadline?: string) => {
   if (!deadline) return false;
