@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ApprovalNotificationBridge } from '../unified-approval/approval-notification.bridge';
 import { CreateProductRecallDto, CreateProductRecallNotificationDto } from './dto/create-product-recall.dto';
 import { QueryProductRecallDto } from './dto/query-product-recall.dto';
 import { MarkNotificationSentDto, RecallCancelDto, RecallCompleteDto, RecallReviewDto } from './dto/transition-product-recall.dto';
@@ -19,7 +20,10 @@ const allowedTransitions: Record<string, string[]> = {
 
 @Injectable()
 export class ProductRecallService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly notificationBridge: ApprovalNotificationBridge,
+  ) {}
 
   async create(dto: CreateProductRecallDto, currentUser: CurrentUser) {
     const companyId = currentUser.companyId;
@@ -126,19 +130,25 @@ export class ProductRecallService {
   }
 
   async approve(id: string, dto: RecallReviewDto, currentUser: CurrentUser) {
-    return this.transition(id, currentUser, 'approved', {
+    const recall = await this.findOne(id, currentUser.companyId);
+    const result = await this.transition(id, currentUser, 'approved', {
       reviewed_by: currentUser.id,
       reviewed_at: new Date(),
       review_note: dto.review_note,
     });
+    await this.notificationBridge.notifyRequester(recall.requested_by, 'approved', recall.title);
+    return result;
   }
 
   async reject(id: string, dto: RecallReviewDto, currentUser: CurrentUser) {
-    return this.transition(id, currentUser, 'rejected', {
+    const recall = await this.findOne(id, currentUser.companyId);
+    const result = await this.transition(id, currentUser, 'rejected', {
       reviewed_by: currentUser.id,
       reviewed_at: new Date(),
       review_note: dto.review_note,
     });
+    await this.notificationBridge.notifyRequester(recall.requested_by, 'rejected', recall.title);
+    return result;
   }
 
   async complete(id: string, dto: RecallCompleteDto, currentUser: CurrentUser) {

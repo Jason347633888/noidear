@@ -20,6 +20,6 @@ import { ApprovalTaskController } from './approval-task.controller';
     ApprovalNotificationBridge,
     ApprovalCallbackRegistry,
   ],
-  exports: [ApprovalEngineService, ApprovalCallbackRegistry, ApprovalAssignmentResolver],
+  exports: [ApprovalEngineService, ApprovalCallbackRegistry, ApprovalAssignmentResolver, ApprovalNotificationBridge],
 })
 export class UnifiedApprovalModule {}

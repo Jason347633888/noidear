@@ -19,7 +19,8 @@ describe('ProductRecallService', () => {
     $transaction: jest.fn(),
   };
 
-  const service = new ProductRecallService(prisma);
+  const notificationBridge: any = { notifyRequester: jest.fn() };
+  const service = new ProductRecallService(prisma, notificationBridge);
 
   beforeEach(() => jest.clearAllMocks());
 
@@ -240,5 +241,35 @@ describe('ProductRecallService', () => {
     expect(prisma.productRecall.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ source_traceability_snapshot_id: 'snapshot-1' }),
     }));
+  });
+
+  it('notifies requester after recall approval', async () => {
+    jest.spyOn(service, 'findOne').mockResolvedValue({
+      id: 'recall-1',
+      company_id: 'company-1',
+      status: 'pending_review',
+      requested_by: 'requester-1',
+      title: '批次召回',
+    } as any);
+    prisma.productRecall.update.mockResolvedValue({ id: 'recall-1', status: 'approved' });
+
+    await service.approve('recall-1', { review_note: '同意' }, { id: 'reviewer-1', companyId: 'company-1' });
+
+    expect(notificationBridge.notifyRequester).toHaveBeenCalledWith('requester-1', 'approved', '批次召回');
+  });
+
+  it('notifies requester after recall rejection', async () => {
+    jest.spyOn(service, 'findOne').mockResolvedValue({
+      id: 'recall-1',
+      company_id: 'company-1',
+      status: 'pending_review',
+      requested_by: 'requester-1',
+      title: '批次召回',
+    } as any);
+    prisma.productRecall.update.mockResolvedValue({ id: 'recall-1', status: 'rejected' });
+
+    await service.reject('recall-1', { review_note: '不同意' }, { id: 'reviewer-1', companyId: 'company-1' });
+
+    expect(notificationBridge.notifyRequester).toHaveBeenCalledWith('requester-1', 'rejected', '批次召回');
   });
 });
