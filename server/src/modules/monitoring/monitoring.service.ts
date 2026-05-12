@@ -13,6 +13,11 @@ export class MonitoringService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  private serializeTags(tags: unknown): string | undefined {
+    if (tags === undefined || tags === null || tags === '') return undefined;
+    return typeof tags === 'string' ? tags : JSON.stringify(tags);
+  }
+
   /**
    * 记录指标到数据库
    */
@@ -23,7 +28,7 @@ export class MonitoringService {
           metricName: dto.metricName,
           metricValue: dto.metricValue,
           metricType: dto.metricType,
-          tags: dto.tags,
+          tags: this.serializeTags(dto.tags),
         },
       });
       return convertBigIntToNumber(metric);
@@ -46,7 +51,7 @@ export class MonitoringService {
           metricName: dto.metricName,
           metricValue: dto.metricValue,
           metricType: dto.metricType,
-          tags: dto.tags,
+          tags: this.serializeTags(dto.tags),
         })),
       });
     } catch (error) {

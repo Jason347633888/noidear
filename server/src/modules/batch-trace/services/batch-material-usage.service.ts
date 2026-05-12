@@ -58,4 +58,20 @@ export class BatchMaterialUsageService {
       orderBy: { usedAt: 'asc' },
     });
   }
+
+  async getMaterialBatchUsages(materialBatchId: string) {
+    return this.prisma.batchMaterialUsage.findMany({
+      where: { materialBatchId },
+      include: {
+        productionBatch: true,
+        materialBatch: {
+          include: {
+            material: true,
+            supplier: true,
+          },
+        },
+      },
+      orderBy: { usedAt: 'asc' },
+    });
+  }
 }

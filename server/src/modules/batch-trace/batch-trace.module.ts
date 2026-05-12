@@ -12,6 +12,7 @@ import { MaterialBatchController } from './controllers/material-batch.controller
 import { MaterialUsageController } from './controllers/material-usage.controller';
 import { TraceExportController } from './controllers/trace-export.controller';
 import { BatchMixingAggregationController } from './controllers/batch-mixing-aggregation.controller';
+import { BatchMaterialUsageController } from './controllers/batch-material-usage.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
@@ -22,6 +23,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
     MaterialUsageController,
     TraceExportController,
     BatchMixingAggregationController,
+    BatchMaterialUsageController,
   ],
   providers: [
     BatchNumberGeneratorService,

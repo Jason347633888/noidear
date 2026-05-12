@@ -230,17 +230,52 @@ test.describe('AUTH — 认证与授权', () => {
   });
 
   // ──────────────────────────────────────────────────────────────────────────
-  // AUTH-LOCK-001  连续登录失败被拒绝
-  //
-  // 当用户反复以错误密码登录时，系统应持续返回 401/403/429。
-  // 若系统尚未实现账号锁定功能，测试以 test.skip() 标记，并保留说明。
+  // AUTH-LOCK-001  连续登录失败被锁定后再次登录被拒绝
   // ──────────────────────────────────────────────────────────────────────────
-  test('AUTH-LOCK-001: 连续错误密码登录被系统拒绝', async () => {
-    // TODO: 当后端实现账号锁定（account lockout）或请求限速（rate-limiting）后，
-    //       移除此 test.skip()，并验证第 N 次失败后返回 429（Too Many Requests）
-    //       或 403（账号已锁定）。
-    //       当前系统每次错误登录均返回 401，不会触发锁定，因此跳过此场景。
-    test.skip(true, '后端尚未实现账号锁定 / rate-limiting，等待功能上线后再验证');
+  test('AUTH-LOCK-001: 连续错误密码登录被系统拒绝', async ({ request }) => {
+    const adminToken = await getAdminToken(request);
+    const username = `auth_lock_${Date.now().toString(36)}`;
+    const password = 'TempPass@123';
+    let tempUserId: string | undefined;
+
+    const rolesRes = await request.get(`${API_BASE}/roles`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    expect(rolesRes.ok()).toBeTruthy();
+    const rolesBody = await rolesRes.json();
+    const roles: Array<{ id: string; code: string }> = rolesBody?.data?.list ?? rolesBody?.data ?? [];
+    const userRole = roles.find((role) => role.code === 'user') ?? roles[0];
+    expect(userRole, '没有可用 member 角色，无法执行 AUTH-LOCK-001').toBeTruthy();
+
+    const createRes = await request.post(`${API_BASE}/users`, {
+      headers: { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+      data: { username, password, name: 'AUTH Lock Temp', roleId: userRole!.id },
+    });
+    expect(createRes.ok()).toBeTruthy();
+    const createBody = await createRes.json();
+    tempUserId = createBody?.data?.id ?? createBody?.id;
+
+    try {
+      for (let i = 0; i < 5; i += 1) {
+        const failed = await request.post(`${API_BASE}/auth/login`, {
+          data: { username, password: `wrong-password-${Date.now()}-${i}` },
+        });
+        expect(failed.status()).toBe(401);
+      }
+
+      const locked = await request.post(`${API_BASE}/auth/login`, {
+        data: { username, password },
+      });
+      expect(locked.status()).toBe(401);
+      const body = await locked.json().catch(() => ({}));
+      expect(JSON.stringify(body)).toContain('账号已锁定');
+    } finally {
+      if (tempUserId) {
+        await request.delete(`${API_BASE}/users/${tempUserId}`, {
+          headers: { Authorization: `Bearer ${adminToken}` },
+        }).catch(() => null);
+      }
+    }
   });
 
   test('AUTH-LOCK-001: 每次错误密码登录均返回 401（无锁定机制下的基础验证）', async ({
@@ -321,8 +356,7 @@ test.describe('AUTH — 认证与授权', () => {
       data: { username: memberUser, password: memberPass },
     });
     if (loginRes.status() === 429 || loginRes.status() === 403) {
-      // Account appears locked — lockout IS implemented but we can't wait 5min in CI
-      test.skip(true, '账号已被锁定，等待锁定到期不适合 CI 环境 — 跳过 AUTH-004');
+      test.skip(true, '账号锁定到期需要等待 1 分钟，不适合 CI 环境；锁定即时拒绝由 AUTH-LOCK-001 覆盖');
       return;
     }
     if (!loginRes.ok()) {
