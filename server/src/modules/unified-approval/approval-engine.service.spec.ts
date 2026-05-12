@@ -161,4 +161,41 @@ describe('ApprovalEngineService', () => {
 
     expect(deps.callbacks.invoke).not.toHaveBeenCalled();
   });
+
+  describe('act', () => {
+    it('approves first pending task for instance', async () => {
+      const deps = makeDeps();
+      deps.prisma.approvalTask = { findFirst: jest.fn().mockResolvedValue({ id: 'task-1' }) };
+      const service = new ApprovalEngineService(deps.prisma, deps.resolver, deps.todo, deps.notification, deps.callbacks);
+      jest.spyOn(service, 'approveTask').mockResolvedValue({ id: 'task-1', status: 'APPROVED' } as any);
+
+      await service.act('instance-1', 'approve', 'approver-1', '同意');
+
+      expect(deps.prisma.approvalTask.findFirst).toHaveBeenCalledWith({
+        where: { instanceId: 'instance-1', status: 'PENDING' },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+      expect(service.approveTask).toHaveBeenCalledWith('task-1', 'approver-1', '同意');
+    });
+
+    it('rejects first pending task for instance', async () => {
+      const deps = makeDeps();
+      deps.prisma.approvalTask = { findFirst: jest.fn().mockResolvedValue({ id: 'task-1' }) };
+      const service = new ApprovalEngineService(deps.prisma, deps.resolver, deps.todo, deps.notification, deps.callbacks);
+      jest.spyOn(service, 'rejectTask').mockResolvedValue({ id: 'task-1', status: 'REJECTED' } as any);
+
+      await service.act('instance-1', 'reject', 'approver-1', '不同意');
+
+      expect(service.rejectTask).toHaveBeenCalledWith('task-1', 'approver-1', '不同意');
+    });
+
+    it('throws NotFoundException when instance has no pending task', async () => {
+      const deps = makeDeps();
+      deps.prisma.approvalTask = { findFirst: jest.fn().mockResolvedValue(null) };
+      const service = new ApprovalEngineService(deps.prisma, deps.resolver, deps.todo, deps.notification, deps.callbacks);
+
+      await expect(service.act('instance-1', 'approve', 'approver-1')).rejects.toThrow('审批实例没有待处理任务');
+    });
+  });
 });

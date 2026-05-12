@@ -95,6 +95,28 @@ export class ApprovalEngineService {
     return this.completeTask(taskId, actorId, 'REJECTED', comment);
   }
 
+  async act(
+    instanceId: string,
+    action: 'approve' | 'reject',
+    actorId: string,
+    comment = '',
+  ): Promise<void> {
+    const task = await this.prisma.approvalTask.findFirst({
+      where: { instanceId, status: 'PENDING' },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+    if (!task) {
+      throw new NotFoundException('审批实例没有待处理任务');
+    }
+
+    if (action === 'approve') {
+      await this.approveTask(task.id, actorId, comment);
+      return;
+    }
+    await this.rejectTask(task.id, actorId, comment);
+  }
+
   private async completeTask(taskId: string, actorId: string, status: 'APPROVED' | 'REJECTED', comment: string) {
     return this.prisma.$transaction(async (tx: any) => {
       const task = await tx.approvalTask.findUnique({
