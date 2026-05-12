@@ -32,5 +32,11 @@ export class DeviationModule implements OnModuleInit {
         data: { status: 'approved' },
       });
     });
+    this.callbacks.register('deviation.approvalRejected', async (context: any) => {
+      await context.tx.deviationReport.update({
+        where: { id: context.resourceId },
+        data: { status: 'rejected' },
+      });
+    });
   }
 }

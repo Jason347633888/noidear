@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, Logger, Optional } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -17,7 +17,7 @@ export class ChangeEventService {
     private readonly eventEmitter: EventEmitter2,
     private readonly formTaskService: ChangeEventFormTaskService,
     private readonly relationService: ChangeEventRelationService,
-    @Optional() private readonly approvalEngine?: ApprovalEngineService,
+    private readonly approvalEngine: ApprovalEngineService,
   ) {}
 
   /**
@@ -186,7 +186,24 @@ export class ChangeEventService {
   }
 
   async approve(id: string, userId: string) {
-    return this.updateStatus(id, 'approved', userId);
+    const changeEvent = await this.prisma.changeEvent.findUnique({ where: { id } });
+    if (!changeEvent) {
+      throw new Error(`ChangeEvent ${id} not found`);
+    }
+
+    const instance = await this.prisma.approvalInstance.findFirst({
+      where: { resourceType: 'change_event', resourceId: id, status: 'PENDING' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+
+    if (!instance) {
+      this.logger.warn(`Legacy ChangeEvent approval fallback: ${id} has no ApprovalInstance`);
+      return this.updateStatus(id, 'approved', userId);
+    }
+
+    await this.approvalEngine.act(instance.id, 'approve', userId, '');
+    return this.findOne(id);
   }
 
   async remove(id: string) {
