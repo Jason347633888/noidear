@@ -17,8 +17,8 @@ import { Request as ExpressRequest } from 'express';
 import { VerificationService } from './verification.service';
 import { VerifyRectificationDto, RejectRectificationDto } from './dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
-import { PermissionGuard } from '../../../common/guards/permission.guard';
-import { CheckPermission } from '../../../common/decorators/permission.decorator';
+import { UnifiedPermissionGuard } from '../../../shared/guards/unified-permission.guard';
+import { RequirePermission } from '../../../shared/decorators/require-permission.decorator';
 import { AuditService } from '../../audit/audit.service';
 import { AuthenticatedUser } from '../../auth/authenticated-user';
 
@@ -29,7 +29,7 @@ interface AuthenticatedRequest extends ExpressRequest {
 @ApiTags('Audit Verification')
 @ApiBearerAuth()
 @Controller('audit/findings')
-@UseGuards(JwtAuthGuard, PermissionGuard)
+@UseGuards(JwtAuthGuard, UnifiedPermissionGuard)
 export class VerificationController {
   constructor(
     private readonly verificationService: VerificationService,
@@ -37,7 +37,7 @@ export class VerificationController {
   ) {}
 
   @Get('pending-verification')
-  @CheckPermission('audit-verification:read')
+  @RequirePermission('audit-verification:read')
   @ApiOperation({ summary: 'Get pending verification list' })
   @ApiResponse({ status: 200, description: 'Pending verifications retrieved' })
   async getPendingVerifications(@Request() req: AuthenticatedRequest) {
@@ -58,7 +58,7 @@ export class VerificationController {
   }
 
   @Post(':id/verify')
-  @CheckPermission('audit-verification:verify')
+  @RequirePermission('audit-verification:verify')
   @ApiOperation({ summary: 'Verify rectification (approve)' })
   @ApiResponse({ status: 200, description: 'Rectification verified' })
   @ApiResponse({ status: 403, description: 'User not the auditor' })
@@ -92,7 +92,7 @@ export class VerificationController {
   }
 
   @Post(':id/reject')
-  @CheckPermission('audit-verification:reject')
+  @RequirePermission('audit-verification:reject')
   @ApiOperation({ summary: 'Reject rectification' })
   @ApiResponse({ status: 200, description: 'Rectification rejected' })
   @ApiResponse({ status: 403, description: 'User not the auditor' })

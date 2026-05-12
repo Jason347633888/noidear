@@ -23,18 +23,18 @@ import {
   QuerySensitiveLogDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { PermissionGuard } from '../../common/guards/permission.guard';
-import { CheckPermission } from '../../common/decorators/permission.decorator';
+import { UnifiedPermissionGuard } from '../../shared/guards/unified-permission.guard';
+import { RequirePermission } from '../../shared/decorators/require-permission.decorator';
 
 @ApiTags('审计日志')
 @Controller('audit')
-@UseGuards(JwtAuthGuard, PermissionGuard)
+@UseGuards(JwtAuthGuard, UnifiedPermissionGuard)
 @ApiBearerAuth()
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 
   @Post('login-logs')
-  @CheckPermission('audit:create')
+  @RequirePermission('audit:create')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: '记录登录日志（仅内部服务调用）' })
   @ApiResponse({ status: 201, description: '登录日志记录成功' })
@@ -45,7 +45,7 @@ export class AuditController {
   }
 
   @Post('permission-logs')
-  @CheckPermission('audit:create')
+  @RequirePermission('audit:create')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: '记录权限变更日志（仅管理员）' })
   @ApiResponse({ status: 201, description: '权限变更日志记录成功' })
@@ -56,7 +56,7 @@ export class AuditController {
   }
 
   @Post('sensitive-logs')
-  @CheckPermission('audit:create')
+  @RequirePermission('audit:create')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: '记录敏感操作日志（仅内部服务调用）' })
   @ApiResponse({ status: 201, description: '敏感操作日志记录成功' })

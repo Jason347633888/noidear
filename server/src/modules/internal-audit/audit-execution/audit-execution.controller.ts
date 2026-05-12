@@ -17,15 +17,15 @@ import {
 import { AuditExecutionService } from './audit-execution.service';
 import { CreateAuditFindingDto, UpdateAuditFindingDto } from './dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
-import { PermissionGuard } from '../../../common/guards/permission.guard';
-import { CheckPermission } from '../../../common/decorators/permission.decorator';
+import { UnifiedPermissionGuard } from '../../../shared/guards/unified-permission.guard';
+import { RequirePermission } from '../../../shared/decorators/require-permission.decorator';
 import { AuditService } from '../../audit/audit.service';
 import { AuthenticatedRequest } from './audit-execution.types';
 
 @ApiTags('Audit Execution')
 @ApiBearerAuth()
 @Controller('audit')
-@UseGuards(JwtAuthGuard, PermissionGuard)
+@UseGuards(JwtAuthGuard, UnifiedPermissionGuard)
 export class AuditExecutionController {
   constructor(
     private readonly auditExecutionService: AuditExecutionService,
@@ -33,7 +33,7 @@ export class AuditExecutionController {
   ) {}
 
   @Post('findings')
-  @CheckPermission('audit-finding:create')
+  @RequirePermission('audit-finding:create')
   @ApiOperation({ summary: 'Record audit finding' })
   @ApiResponse({ status: 201, description: 'Finding created successfully' })
   @ApiResponse({ status: 400, description: 'Validation error' })
@@ -64,7 +64,7 @@ export class AuditExecutionController {
   }
 
   @Put('findings/:id')
-  @CheckPermission('audit-finding:update')
+  @RequirePermission('audit-finding:update')
   @ApiOperation({ summary: 'Update audit finding' })
   @ApiResponse({ status: 200, description: 'Finding updated successfully' })
   @ApiResponse({ status: 400, description: 'Validation error' })
@@ -103,7 +103,7 @@ export class AuditExecutionController {
   // This endpoint was redundant with POST /api/v1/audit/plans/:id/complete in report.controller.ts
 
   @Get('plans/:id/progress')
-  @CheckPermission('audit-plan:read')
+  @RequirePermission('audit-plan:read')
   @ApiOperation({ summary: 'Get audit execution progress' })
   @ApiResponse({ status: 200, description: 'Progress retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Plan not found' })

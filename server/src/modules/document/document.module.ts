@@ -12,7 +12,6 @@ import { DepartmentPermissionModule } from '../department-permission/department-
 import { StatisticsModule } from '../statistics/statistics.module';
 import { StatisticsCacheInterceptor } from '../../common/interceptors/statistics-cache.interceptor';
 import { UserPermissionModule } from '../user-permission/user-permission.module';
-import { PermissionGuard } from '../../common/guards/permission.guard';
 import { SearchModule } from '../search/search.module';
 import { DocumentCronService } from './document-cron.service';
 import { DocumentReferenceService } from './services/document-reference.service';
@@ -42,7 +41,7 @@ import { CANONICAL_DOCUMENT_STATUS } from './constants/document-control.constant
 @Module({
   imports: [ConfigModule, PrismaModule, NotificationModule, OperationLogModule, ExportModule, DepartmentPermissionModule, StatisticsModule, UserPermissionModule, SearchModule, ModelLandingModule, UnifiedApprovalModule],
   controllers: [DocumentController],
-  providers: [DocumentService, DocumentCronService, DocumentReferenceService, MarkdownWikilinkService, DocumentReferenceHealthService, BusinessDocumentLinkService, DocumentExpiryService, DocumentLifecycleService, DocumentControlMetadataService, DocumentControlWorkbenchService, RecordFormLandingService, DocumentReadRequirementService, DocumentTrainingNeedService, DocumentAuditCoverageService, DocumentImpactService, DocumentHealthService, DocumentAuditChainService, DocumentEvidenceChainService, FilePreviewService, StorageService, StatisticsCacheInterceptor, PermissionGuard, DocumentsListener, NumberRuleService],
+  providers: [DocumentService, DocumentCronService, DocumentReferenceService, MarkdownWikilinkService, DocumentReferenceHealthService, BusinessDocumentLinkService, DocumentExpiryService, DocumentLifecycleService, DocumentControlMetadataService, DocumentControlWorkbenchService, RecordFormLandingService, DocumentReadRequirementService, DocumentTrainingNeedService, DocumentAuditCoverageService, DocumentImpactService, DocumentHealthService, DocumentAuditChainService, DocumentEvidenceChainService, FilePreviewService, StorageService, StatisticsCacheInterceptor, DocumentsListener, NumberRuleService],
   exports: [DocumentService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, BusinessDocumentLinkService, DocumentExpiryService],
 })
 export class DocumentModule implements OnModuleInit {

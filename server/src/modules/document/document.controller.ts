@@ -42,8 +42,8 @@ import { BatchConfirmRecordFormLandingDto, ConfirmRecordFormLandingDto, UpdateRe
 import { PublishDocumentDto, RollbackDocumentVersionDto } from './dto/document-lifecycle.dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { PermissionGuard } from '../../common/guards/permission.guard';
-import { CheckPermission } from '../../common/decorators/permission.decorator';
+import { UnifiedPermissionGuard } from '../../shared/guards/unified-permission.guard';
+import { RequirePermission } from '../../shared/decorators/require-permission.decorator';
 import { ExportService } from '../export/export.service';
 import { ExportDocumentsDto } from '../export/dto';
 import { DepartmentPermissionService } from '../department-permission/department-permission.service';
@@ -174,8 +174,8 @@ export class DocumentController {
   }
 
   @Post('record-form-index/batch-confirm-suggested')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('record_form:landing_manage')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('record_form:landing_manage')
   @ApiOperation({ summary: '批量确认选中表单的落地建议' })
   batchConfirmRecordFormLanding(@Body() dto: BatchConfirmRecordFormLandingDto, @Req() req: any) {
     return this.recordFormLandingService.batchConfirmSuggested(dto.codes, req.user?.id || 'system');
@@ -188,8 +188,8 @@ export class DocumentController {
   }
 
   @Post('record-form-index/:code/confirm')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('record_form:landing_manage')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('record_form:landing_manage')
   @ApiOperation({ summary: '确认源表单落地关系' })
   confirmRecordFormLanding(@Param('code') code: string, @Body() dto: ConfirmRecordFormLandingDto, @Req() req: any) {
     return this.recordFormLandingService.confirm(code, dto, req.user.id);
@@ -208,8 +208,8 @@ export class DocumentController {
   }
 
   @Patch('record-form-index/:code')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:control_manage')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:control_manage')
   @ApiOperation({ summary: '维护源表单目标入口' })
   updateRecordFormIndexEntry(
     @Param('code') code: string,
@@ -223,8 +223,8 @@ export class DocumentController {
   // =============================
 
   @Post(':id/read-requirements')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:control_manage')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:control_manage')
   @ApiOperation({ summary: '创建阅读要求' })
   createReadRequirement(@Param('id') id: string, @Body() dto: CreateReadRequirementDto, @Req() req: any) {
     return this.readRequirementService.create(id, dto, req.user.id);
@@ -243,32 +243,32 @@ export class DocumentController {
   }
 
   @Post(':id/training-needs/suggest')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:control_manage')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:control_manage')
   @ApiOperation({ summary: '建议培训需求' })
   suggestTrainingNeed(@Param('id') id: string, @Req() req: any) {
     return this.trainingNeedService.suggestForDocument(id, req.user.id);
   }
 
   @Post('control/training-needs/:id/accept')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:control_manage')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:control_manage')
   @ApiOperation({ summary: '接受培训需求' })
   acceptTrainingNeed(@Param('id') id: string) {
     return this.trainingNeedService.accept(id);
   }
 
   @Post('control/training-needs/:id/dismiss')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:control_manage')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:control_manage')
   @ApiOperation({ summary: '驳回培训需求' })
   dismissTrainingNeed(@Param('id') id: string, @Body() dto: TrainingNeedActionDto) {
     return this.trainingNeedService.dismiss(id, dto.reason);
   }
 
   @Post('control/training-needs/:id/link')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:control_manage')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:control_manage')
   @ApiOperation({ summary: '关联培训项目' })
   linkTrainingNeed(@Param('id') id: string, @Body() dto: TrainingNeedActionDto) {
     return this.trainingNeedService.link(id, dto.linkedTrainingProjectId);
@@ -281,16 +281,16 @@ export class DocumentController {
   }
 
   @Post('control/impact-reviews')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:control_manage')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:control_manage')
   @ApiOperation({ summary: '创建影响评审' })
   createImpactReview(@Body() dto: ImpactReviewCreateDto) {
     return this.impactService.createReview(dto);
   }
 
   @Patch('control/impact-items/:id')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:control_manage')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:control_manage')
   @ApiOperation({ summary: '更新影响评审条目' })
   updateImpactItem(@Param('id') id: string, @Body() dto: ImpactItemUpdateDto) {
     return this.impactService.updateItem(id, dto);
@@ -331,8 +331,8 @@ export class DocumentController {
   }
 
   @Get('reference-health/issues')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:control_manage')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:control_manage')
   @ApiOperation({ summary: '查询文档引用问题清单' })
   getReferenceHealthIssues() {
     return this.referenceHealthService.listIssues();
@@ -343,24 +343,24 @@ export class DocumentController {
   // =============================
 
   @Get('number-rules')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:number_rule_manage')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:number_rule_manage')
   @ApiOperation({ summary: '查询文控编号规则' })
   listNumberRules() {
     return this.numberRuleService.list();
   }
 
   @Post('number-rules')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:number_rule_manage')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:number_rule_manage')
   @ApiOperation({ summary: '创建或更新文控编号规则' })
   upsertNumberRule(@Body() dto: UpsertNumberRuleDto) {
     return this.numberRuleService.upsert(dto);
   }
 
   @Post('number-rules/:id/deactivate')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:number_rule_manage')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:number_rule_manage')
   @ApiOperation({ summary: '停用文控编号规则' })
   deactivateNumberRule(@Param('id') id: string) {
     return this.numberRuleService.deactivate(id);
@@ -423,8 +423,8 @@ export class DocumentController {
   }
 
   @Post(':id/versions/:targetVersion/rollback')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:control_manage')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:control_manage')
   @ApiOperation({ summary: '回滚到指定版本' })
   async rollbackVersion(
     @Param('id') id: string,
@@ -463,8 +463,8 @@ export class DocumentController {
   }
 
   @Post(':id/archive')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:archive')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:archive')
   @ApiOperation({ summary: '归档文档' })
   async archive(
     @Param('id') id: string,
@@ -475,8 +475,8 @@ export class DocumentController {
   }
 
   @Post(':id/obsolete')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:obsolete')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:obsolete')
   @ApiOperation({ summary: '作废文档' })
   async obsolete(
     @Param('id') id: string,
@@ -522,8 +522,8 @@ export class DocumentController {
   }
 
   @Delete(':id/permanent')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:permanent_delete')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:permanent_delete')
   @ApiOperation({ summary: '物理删除文档' })
   async permanentDelete(@Param('id') id: string, @Req() req: any) {
     return this.documentService.permanentDelete(id, req.user.id);
@@ -542,8 +542,8 @@ export class DocumentController {
   }
 
   @Post(':id/approve')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:approve')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:approve')
   @ApiOperation({ summary: '审批文档' })
   async approve(
     @Param('id') id: string,
@@ -621,8 +621,8 @@ export class DocumentController {
   }
 
   @Post(':id/revisions')
-  @UseGuards(PermissionGuard)
-  @CheckPermission('document:revise')
+  @UseGuards(UnifiedPermissionGuard)
+  @RequirePermission('document:revise')
   @ApiOperation({ summary: '发起文件修订草稿' })
   createRevision(@Param('id') id: string, @Req() req: any) {
     return this.documentService.createRevisionDraft(id, req.user.id);
