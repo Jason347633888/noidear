@@ -11,6 +11,7 @@ import { StorageService } from '../../../common/services/storage.service';
 import { QueryReportDto } from './dto';
 import * as PDFDocument from 'pdfkit';
 import { Snowflake } from '../../../common/utils';
+import { formatDate, formatDateRange } from '../../../shared/utils/format.util';
 
 @Injectable()
 export class ReportService {
@@ -260,9 +261,9 @@ export class ReportService {
     doc.fontSize(10);
     doc.text(`- 内审标题: ${plan.title || 'N/A'}`);
     doc.text(`- 审核类型: ${plan.type || 'N/A'}`);
-    doc.text(`- 审核时间: ${this.formatDateRange(plan.startDate, plan.endDate)}`);
+    doc.text(`- 审核时间: ${formatDateRange(plan.startDate, plan.endDate)}`);
     doc.text(`- 内审员: ${plan.auditor?.username || 'N/A'}`);
-    doc.text(`- 完成日期: ${this.formatDate(new Date())}`);
+    doc.text(`- 完成日期: ${formatDate(new Date())}`);
     doc.moveDown();
   }
 
@@ -316,7 +317,7 @@ export class ReportService {
       const version = finding?.rectificationVersion || 'N/A';
       const verifier = finding?.verifiedBy || 'N/A';
       const verifiedDate = finding?.verifiedAt
-        ? this.formatDate(new Date(finding.verifiedAt))
+        ? formatDate(new Date(finding.verifiedAt))
         : 'N/A';
 
       doc.text(`${index + 1}. ${docNumber} - ${version} - ${verifier} - ${verifiedDate} - 通过`);
@@ -345,14 +346,6 @@ export class ReportService {
     return (plan?.findings || []).filter(
       (f: any) => f?.auditResult === '不符合'
     );
-  }
-
-  private formatDate(date: Date): string {
-    return date.toISOString().split('T')[0];
-  }
-
-  private formatDateRange(start: Date, end: Date): string {
-    return `${this.formatDate(start)} ~ ${this.formatDate(end)}`;
   }
 
   private calculateRate(count: number, total: number): string {
@@ -433,7 +426,7 @@ export class ReportService {
   }
 
   private generateDocumentTitle(plan: any): string {
-    const completedDate = this.formatDate(new Date());
+    const completedDate = formatDate(new Date());
     return `${plan.title}-内审报告-${completedDate}`;
   }
 

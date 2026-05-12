@@ -9,6 +9,20 @@ import {
   ExportApprovalsDto,
   ExportUsersDto,
 } from './dto';
+import { formatDate, formatStatus } from '../../shared/utils/format.util';
+
+const COMMON_STATUS_MAP: Record<string, string> = {
+  draft: '草稿',
+  pending: '待处理',
+  pending_review: '待审核',
+  pending_approval: '待审批',
+  approved: '已批准',
+  rejected: '已拒绝',
+  completed: '已完成',
+  cancelled: '已取消',
+  active: '启用',
+  inactive: '禁用',
+};
 
 interface FieldConfig {
   key: string;
@@ -251,8 +265,8 @@ export class ExportService {
           name: user.name,
           role: roleNameMap[user.roleObj?.code] ?? (user.roleObj?.code || ''),
           departmentName: user.department?.name || '未分配',
-          status: this.formatStatus(user.status),
-          createdAt: this.formatDate(user.createdAt),
+          status: formatStatus(user.status, COMMON_STATUS_MAP),
+          createdAt: formatDate(user.createdAt),
         };
         worksheet.addRow(this.filterRow(row, fields));
       });
@@ -447,11 +461,11 @@ export class ExportService {
       title: doc.title,
       level: doc.level,
       version: doc.version.toString(),
-      status: this.formatStatus(doc.status),
+      status: formatStatus(doc.status, COMMON_STATUS_MAP),
       creatorName: doc.creator?.name || '',
-      createdAt: this.formatDate(doc.createdAt),
+      createdAt: formatDate(doc.createdAt),
       approverName: doc.approver?.name || '',
-      approvedAt: doc.approvedAt ? this.formatDate(doc.approvedAt) : '',
+      approvedAt: doc.approvedAt ? formatDate(doc.approvedAt) : '',
     };
   }
 
@@ -459,18 +473,18 @@ export class ExportService {
     return {
       templateTitle: task.template?.title || '',
       departmentName: task.department?.name || '',
-      deadline: task.deadline ? this.formatDate(task.deadline) : '',
-      status: this.formatStatus(task.status),
+      deadline: task.deadline ? formatDate(task.deadline) : '',
+      status: formatStatus(task.status, COMMON_STATUS_MAP),
       creatorName: task.creator?.name || '',
-      createdAt: this.formatDate(task.createdAt),
+      createdAt: formatDate(task.createdAt),
     };
   }
 
   private mapRecordRow(record: any): any {
     return {
       id: record.id,
-      status: this.formatStatus(record.status),
-      createdAt: this.formatDate(record.createdAt),
+      status: formatStatus(record.status, COMMON_STATUS_MAP),
+      createdAt: formatDate(record.createdAt),
     };
   }
 
@@ -483,8 +497,8 @@ export class ExportService {
       deviationRate: `${(report.deviationRate * 100).toFixed(2)}%`,
       deviationType: this.formatDeviationType(report.deviationType),
       reason: report.reason,
-      status: this.formatStatus(report.status),
-      reportedAt: this.formatDate(report.reportedAt),
+      status: formatStatus(report.status, COMMON_STATUS_MAP),
+      reportedAt: formatDate(report.reportedAt),
     };
   }
 
@@ -493,10 +507,10 @@ export class ExportService {
       documentNumber: approval.document?.number || '',
       documentTitle: approval.document?.title || '',
       approverName: approval.approver.name,
-      status: this.formatStatus(approval.status),
+      status: formatStatus(approval.status, COMMON_STATUS_MAP),
       comment: approval.comment || '',
-      createdAt: this.formatDate(approval.createdAt),
-      approvedAt: approval.approvedAt ? this.formatDate(approval.approvedAt) : '',
+      createdAt: formatDate(approval.createdAt),
+      approvedAt: approval.approvedAt ? formatDate(approval.approvedAt) : '',
     };
   }
 
@@ -509,29 +523,6 @@ export class ExportService {
     const filtered: any = {};
     fields.forEach(f => { filtered[f.key] = row[f.key]; });
     return filtered;
-  }
-
-  private formatDate(date: Date | null): string {
-    if (!date) return '';
-    const d = new Date(date);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const hour = String(d.getHours()).padStart(2, '0');
-    const minute = String(d.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hour}:${minute}`;
-  }
-
-  private formatStatus(status: string): string {
-    const map: Record<string, string> = {
-      draft: '草稿',
-      pending: '待审批',
-      approved: '已审批',
-      rejected: '已驳回',
-      inactive: '已停用',
-      completed: '已完成',
-    };
-    return map[status] || status;
   }
 
   private formatDeviationType(type: string): string {
@@ -598,7 +589,7 @@ export class ExportService {
       case 'date':
       case 'time':
       case 'datetime':
-        return this.formatDate(new Date(value));
+        return formatDate(new Date(value));
 
       case 'select':
       case 'radio':
@@ -729,7 +720,7 @@ export class ExportService {
     ];
     stats.byStatus.forEach((item: any) => {
       statusSheet.addRow({
-        status: this.formatStatus(item.status),
+        status: formatStatus(item.status, COMMON_STATUS_MAP),
         count: item.count,
         percentage: `${item.percentage}%`,
       });
@@ -807,7 +798,7 @@ export class ExportService {
     ];
     stats.byStatus.forEach((item: any) => {
       statusSheet.addRow({
-        status: this.formatStatus(item.status),
+        status: formatStatus(item.status, COMMON_STATUS_MAP),
         count: item.count,
       });
     });
