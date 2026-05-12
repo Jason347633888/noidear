@@ -21,7 +21,7 @@ import { DocumentStatsQueryDto } from './dto/document-stats-query.dto';
 import { TaskStatsQueryDto } from './dto/task-stats-query.dto';
 import { ApprovalStatsQueryDto } from './dto/approval-stats-query.dto';
 import { OverviewQueryDto } from './dto/overview-query.dto';
-import { ExportService } from '../export/export.service';
+import { StatisticsExportService } from './statistics-export.service';
 
 @Controller('statistics')
 @UseGuards(JwtAuthGuard)
@@ -30,7 +30,7 @@ export class StatisticsController {
 
   constructor(
     private readonly statisticsService: StatisticsService,
-    private readonly exportService: ExportService,
+    private readonly statisticsExportService: StatisticsExportService,
     private readonly managementDashboardService: ManagementDashboardService,
     private readonly traceabilityExportService: TraceabilityExportService,
   ) {}
@@ -207,13 +207,13 @@ export class StatisticsController {
       // 注意：统计服务本身已包含权限过滤，所以这里不需要额外传递user参数
       if (type === 'documents') {
         const stats = await this.statisticsService.getDocumentStatistics({});
-        buffer = await this.exportService.exportDocumentStatistics(stats);
+        buffer = await this.statisticsExportService.exportDocumentStatistics(stats);
       } else if (type === 'tasks') {
         const stats = await this.statisticsService.getTaskStatistics({});
-        buffer = await this.exportService.exportTaskStatistics(stats);
+        buffer = await this.statisticsExportService.exportTaskStatistics(stats);
       } else if (type === 'approvals') {
         const stats = await this.statisticsService.getApprovalStatistics({});
-        buffer = await this.exportService.exportApprovalStatistics(stats);
+        buffer = await this.statisticsExportService.exportApprovalStatistics(stats);
       } else {
         throw new Error('Invalid export type. Must be: documents, tasks, or approvals');
       }
