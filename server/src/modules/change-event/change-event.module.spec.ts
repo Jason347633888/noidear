@@ -1,6 +1,6 @@
 import { ChangeEventModule } from './change-event.module';
 
-describe('ChangeEventModule approvalApproved callback wiring', () => {
+describe('ChangeEventModule approval callback wiring', () => {
   function instantiateAndInit() {
     const registered = new Map<string, (ctx: any) => Promise<void>>();
     const callbacks: any = {
@@ -18,16 +18,17 @@ describe('ChangeEventModule approvalApproved callback wiring', () => {
     return { registered, callbacks, productProcessChangeService };
   }
 
-  it("registers a 'changeEvent.approvalApproved' callback", () => {
+  it("registers 'changeEvent.approvalApproved' and 'changeEvent.approvalRejected' callbacks", () => {
     const { registered } = instantiateAndInit();
     expect(registered.has('changeEvent.approvalApproved')).toBe(true);
+    expect(registered.has('changeEvent.approvalRejected')).toBe(true);
   });
 
-  it('callback updates legacy approval row AND dispatches applyApprovedChange', async () => {
+  it('approved callback updates change_event status and dispatches applyApprovedChange (no legacy changeApproval write)', async () => {
     const { registered, productProcessChangeService } = instantiateAndInit();
 
     const tx = {
-      changeApproval: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      changeEvent: { update: jest.fn().mockResolvedValue({ id: 'change-1', status: 'approved' }) },
     };
 
     const cb = registered.get('changeEvent.approvalApproved')!;
@@ -41,16 +42,39 @@ describe('ChangeEventModule approvalApproved callback wiring', () => {
       comment: 'ok',
     });
 
-    expect(tx.changeApproval.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { change_event_id: 'change-1' },
-        data: expect.objectContaining({ decision: 'approved', approver_id: 'approver-1' }),
-      }),
-    );
+    expect(tx.changeEvent.update).toHaveBeenCalledWith({
+      where: { id: 'change-1' },
+      data: { status: 'approved', approved_by: 'approver-1' },
+    });
     expect(productProcessChangeService.applyApprovedChange).toHaveBeenCalledWith(
       'change-1',
       'approver-1',
       tx,
     );
+  });
+
+  it('rejected callback marks change_event rejected without touching applyApprovedChange', async () => {
+    const { registered, productProcessChangeService } = instantiateAndInit();
+
+    const tx = {
+      changeEvent: { update: jest.fn().mockResolvedValue({ id: 'change-1', status: 'rejected' }) },
+    };
+
+    const cb = registered.get('changeEvent.approvalRejected')!;
+    await cb({
+      tx,
+      instanceId: 'inst-1',
+      resourceType: 'change_event',
+      resourceId: 'change-1',
+      triggerKey: 'approve_change',
+      actorId: 'approver-1',
+      comment: '不符合',
+    });
+
+    expect(tx.changeEvent.update).toHaveBeenCalledWith({
+      where: { id: 'change-1' },
+      data: { status: 'rejected', approved_by: 'approver-1' },
+    });
+    expect(productProcessChangeService.applyApprovedChange).not.toHaveBeenCalled();
   });
 });

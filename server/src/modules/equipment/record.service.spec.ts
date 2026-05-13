@@ -145,35 +145,7 @@ describe('RecordService', () => {
     });
   });
 
-  describe('approve', () => {
-    it('should approve and generate next plan', async () => {
-      prisma.maintenanceRecord.findUnique.mockResolvedValue({ ...mockRecord, status: 'submitted' });
-      prisma.maintenanceRecord.update.mockResolvedValue({ ...mockRecord, status: 'approved' });
-
-      const result = await service.approve('rec-1', { reviewerSignature: 'sig-url', reviewerId: 'r1' });
-
-      expect(result.status).toBe('approved');
-      expect(planService.generateNextPlan).toHaveBeenCalledWith('eq-1', 'daily', expect.any(Date));
-    });
-
-    it('should reject approving a draft record', async () => {
-      prisma.maintenanceRecord.findUnique.mockResolvedValue(mockRecord);
-      await expect(service.approve('rec-1', {})).rejects.toThrow(BadRequestException);
-    });
-  });
-
-  describe('reject', () => {
-    it('should reject a submitted record', async () => {
-      prisma.maintenanceRecord.findUnique.mockResolvedValue({ ...mockRecord, status: 'submitted' });
-      prisma.maintenanceRecord.update.mockResolvedValue({ ...mockRecord, status: 'rejected' });
-
-      const result = await service.reject('rec-1', { rejectReason: 'Incomplete data' });
-      expect(result.status).toBe('rejected');
-    });
-
-    it('should reject rejecting a draft record', async () => {
-      prisma.maintenanceRecord.findUnique.mockResolvedValue(mockRecord);
-      await expect(service.reject('rec-1', { rejectReason: 'test' })).rejects.toThrow(BadRequestException);
-    });
-  });
+  // Approve/reject side effects are covered by the unified approval callbacks
+  // registered in EquipmentModule; see Task 8 in the post-API-cleanup hardening
+  // plan for the callback-pattern rewrite that replaces these direct route specs.
 });
