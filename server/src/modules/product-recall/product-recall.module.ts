@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
+import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
 import { ProductRecallController } from './product-recall.controller';
 import { ProductRecallService } from './product-recall.service';
 
@@ -10,4 +11,35 @@ import { ProductRecallService } from './product-recall.service';
   providers: [ProductRecallService],
   exports: [ProductRecallService],
 })
-export class ProductRecallModule {}
+export class ProductRecallModule implements OnModuleInit {
+  constructor(
+    private readonly callbacks: ApprovalCallbackRegistry,
+    private readonly service: ProductRecallService,
+  ) {}
+
+  onModuleInit() {
+    this.callbacks.register('productRecall.approvalApproved', async (context: any) => {
+      const reviewNote =
+        typeof context.metadata?.review_note === 'string'
+          ? (context.metadata.review_note as string)
+          : undefined;
+      await this.service.markApprovalApprovedFromCallback(
+        context.resourceId,
+        context.actorId,
+        reviewNote,
+      );
+    });
+
+    this.callbacks.register('productRecall.approvalRejected', async (context: any) => {
+      const reviewNote =
+        typeof context.metadata?.review_note === 'string' && context.metadata.review_note
+          ? (context.metadata.review_note as string)
+          : context.comment;
+      await this.service.markApprovalRejectedFromCallback(
+        context.resourceId,
+        context.actorId,
+        reviewNote,
+      );
+    });
+  }
+}

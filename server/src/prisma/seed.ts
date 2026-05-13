@@ -735,6 +735,24 @@ async function main() {
         },
       ],
     },
+    {
+      module: 'product-recall',
+      resourceType: 'product_recall',
+      triggerKey: 'submit',
+      name: '产品召回审批',
+      version: 1,
+      steps: [
+        {
+          stepKey: 'product-recall-review',
+          stepName: '召回审批',
+          mode: 'single',
+          assignments: [{ type: 'permission', permissionCode: 'approve:product_recall', label: '召回审批人' }],
+          rejectPolicy: 'reject_instance',
+          onApproved: 'productRecall.approvalApproved',
+          onRejected: 'productRecall.approvalRejected',
+        },
+      ],
+    },
   ];
 
   for (const definition of approvalDefinitions) {

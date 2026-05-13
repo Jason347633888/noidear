@@ -1,9 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 import { ApprovalNotificationBridge } from '../unified-approval/approval-notification.bridge';
 import { CreateProductRecallDto, CreateProductRecallNotificationDto } from './dto/create-product-recall.dto';
 import { QueryProductRecallDto } from './dto/query-product-recall.dto';
-import { MarkNotificationSentDto, RecallCancelDto, RecallCompleteDto, RecallReviewDto } from './dto/transition-product-recall.dto';
+import { MarkNotificationSentDto, RecallCancelDto, RecallCompleteDto } from './dto/transition-product-recall.dto';
 
 type CurrentUser = { id: string; companyId: string };
 
@@ -23,6 +24,7 @@ export class ProductRecallService {
   constructor(
     private prisma: PrismaService,
     private readonly notificationBridge: ApprovalNotificationBridge,
+    private readonly approvalEngine: ApprovalEngineService,
   ) {}
 
   async create(dto: CreateProductRecallDto, currentUser: CurrentUser) {
@@ -126,33 +128,64 @@ export class ProductRecallService {
   }
 
   async submit(id: string, currentUser: CurrentUser) {
-    return this.transition(id, currentUser, 'pending_review', {});
+    const recall = await this.findOne(id, currentUser.companyId);
+    await this.transition(id, currentUser, 'pending_review', {});
+
+    const approval = await this.approvalEngine.startApproval({
+      resourceType: 'product_recall',
+      resourceId: id,
+      resourceStep: 'submit',
+      triggerKey: 'submit',
+      title: `产品召回审批：${recall.title}`,
+      createdById: currentUser.id,
+    });
+
+    return this.prisma.productRecall.update({
+      where: { id },
+      data: { approvalInstanceId: approval.id },
+    });
   }
 
-  async approve(id: string, dto: RecallReviewDto, currentUser: CurrentUser) {
-    const recall = await this.findOne(id, currentUser.companyId);
-    const result = await this.transition(id, currentUser, 'approved', {
-      reviewed_by: currentUser.id,
-      reviewed_at: new Date(),
-      review_note: dto.review_note,
+  async markApprovalApprovedFromCallback(id: string, actorId: string, reviewNote?: string) {
+    const recall = await this.prisma.productRecall.findUnique({ where: { id } });
+    if (!recall) throw new NotFoundException('召回记录不存在');
+    if (!allowedTransitions[recall.status]?.includes('approved')) {
+      throw new BadRequestException(`召回状态不允许从 ${recall.status} 流转到 approved`);
+    }
+    const updated = await this.prisma.productRecall.update({
+      where: { id },
+      data: {
+        status: 'approved',
+        reviewed_by: actorId,
+        reviewed_at: new Date(),
+        review_note: reviewNote,
+      },
     });
     if (recall.requested_by) {
       await this.notificationBridge.notifyRequester(recall.requested_by, 'approved', recall.title);
     }
-    return result;
+    return updated;
   }
 
-  async reject(id: string, dto: RecallReviewDto, currentUser: CurrentUser) {
-    const recall = await this.findOne(id, currentUser.companyId);
-    const result = await this.transition(id, currentUser, 'rejected', {
-      reviewed_by: currentUser.id,
-      reviewed_at: new Date(),
-      review_note: dto.review_note,
+  async markApprovalRejectedFromCallback(id: string, actorId: string, reviewNote?: string) {
+    const recall = await this.prisma.productRecall.findUnique({ where: { id } });
+    if (!recall) throw new NotFoundException('召回记录不存在');
+    if (!allowedTransitions[recall.status]?.includes('rejected')) {
+      throw new BadRequestException(`召回状态不允许从 ${recall.status} 流转到 rejected`);
+    }
+    const updated = await this.prisma.productRecall.update({
+      where: { id },
+      data: {
+        status: 'rejected',
+        reviewed_by: actorId,
+        reviewed_at: new Date(),
+        review_note: reviewNote,
+      },
     });
     if (recall.requested_by) {
       await this.notificationBridge.notifyRequester(recall.requested_by, 'rejected', recall.title);
     }
-    return result;
+    return updated;
   }
 
   async complete(id: string, dto: RecallCompleteDto, currentUser: CurrentUser) {

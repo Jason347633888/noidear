@@ -1,11 +1,5 @@
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
-export class RecallReviewDto {
-  @IsOptional()
-  @IsString()
-  review_note?: string;
-}
-
 export class RecallCompleteDto {
   @IsString()
   @IsNotEmpty()

@@ -4,7 +4,7 @@ import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { ProductRecallService } from './product-recall.service';
 import { CreateProductRecallDto, CreateProductRecallNotificationDto } from './dto/create-product-recall.dto';
 import { QueryProductRecallDto } from './dto/query-product-recall.dto';
-import { MarkNotificationSentDto, RecallCancelDto, RecallCompleteDto, RecallReviewDto } from './dto/transition-product-recall.dto';
+import { MarkNotificationSentDto, RecallCancelDto, RecallCompleteDto } from './dto/transition-product-recall.dto';
 
 @Controller('product-recalls')
 @UseGuards(JwtAuthGuard)
