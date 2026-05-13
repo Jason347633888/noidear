@@ -172,6 +172,11 @@ No files changed in this task.
 - Create: `tools/system-map-deleted-scopes.json`
 - Modify: `docs/system-map.html` only if the script regenerates it and the repo expects it committed.
 
+**Errata from root-checkout verification:**
+- The controller scan must never skip files with a broad substring check such as `"spec" in path.name`. That incorrectly skips valid controllers such as `incoming-inspection.controller.ts` and `fragile-item-inspection.controller.ts`. Only skip `*.spec.ts`, `*.test.ts`, and explicit generated/private folders.
+- `deleted_scope` classification must run before `matched`. If a frontend path or file is in deleted scope, the call must be reported as `deleted_scope_frontend_residue` even when a backend route still exists. Otherwise deleted modules such as `workflow`, `monitoring`, `asset-loan-record`, `internal-audit`, and `management-review` appear as false green `matched` calls.
+- After creating the script, run the regression snippet in Step 10 before trusting `docs/system-map.html`.
+
 - [ ] **Step 1: Add deleted-scope configuration**
 
 Create `tools/system-map-deleted-scopes.json`:
@@ -398,7 +403,7 @@ def parse_controller_file(path: Path) -> dict[str, Any]:
 def load_all_backend_controllers() -> dict[str, list[dict[str, Any]]]:
     modules: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for path in sorted(SERVER_MODULES_DIR.rglob("*.controller.ts")):
-        if path.name.endswith(".spec.ts"):
+        if path.name.endswith(".spec.ts") or path.name.endswith(".test.ts") or "__" in path.name:
             continue
         info = parse_controller_file(path)
         if info["routes"]:
@@ -423,10 +428,10 @@ def is_deleted_frontend_call(url: str, deleted: dict[str, Any]) -> bool:
 
 
 def classify_call(url: str, method: str, match: dict[str, str] | None, source_kind: str, deleted: dict[str, Any]) -> str:
-    if match:
-        return "matched"
     if is_deleted_frontend_call(url, deleted):
         return "deleted_scope_frontend_residue"
+    if match:
+        return "matched"
     return "api_adapter_missing" if source_kind == "api" else "direct_client_missing"
 
 
@@ -579,6 +584,10 @@ def load_direct_client_requests() -> dict:
 Confirm the controller parser supports `@Controller()`, then parses route decorators by iterating route matches and inspecting only the text slice until the next route decorator. Do not use a `DOTALL` negative-lookahead pattern over the whole file.
 
 ```python
+for path in sorted(SERVER_MODULES_DIR.rglob("*.controller.ts")):
+    if path.name.endswith(".spec.ts") or path.name.endswith(".test.ts") or "__" in path.name:
+        continue
+
 ctrl_match = re.search(r"@Controller\s*\(\s*(?:(['\"`])([^'\"`]*)\1)?\s*\)", text, re.MULTILINE)
 prefix = ctrl_match.group(2) if ctrl_match and ctrl_match.group(2) is not None else ""
 
@@ -597,6 +606,8 @@ for index, m in enumerate(route_matches):
         continue
     handler = handler_match.group(1)
 ```
+
+Regression requirement: `incoming-inspection.controller.ts` and `fragile-item-inspection.controller.ts` must appear in backend controller output. If either module has zero parsed routes, the scanner is still wrong.
 
 - [ ] **Step 6: Verify TypeScript indexed-access strings are ignored**
 
@@ -625,12 +636,14 @@ def is_deleted_frontend_call(url: str, deleted: dict) -> bool:
     return any(normalized.startswith(prefix) for prefix in deleted.get("frontendPathPrefixes", []))
 
 def classify_call(url: str, method: str, match, source_kind: str, deleted: dict) -> str:
-    if match:
-        return "matched"
     if is_deleted_frontend_call(url, deleted):
         return "deleted_scope_frontend_residue"
+    if match:
+        return "matched"
     return "api_adapter_missing" if source_kind == "api" else "direct_client_missing"
 ```
+
+Classification rule: deleted scope wins over route matching. A deleted-scope call with a valid backend route is still `deleted_scope_frontend_residue`, not `matched`.
 
 - [ ] **Step 8: Verify classification is wired into the main module builder**
 
@@ -675,7 +688,7 @@ def count_statuses(modules: list) -> dict:
             counts[call["status"]] += 1
         if module.get("be_only"):
             counts["backend_only"] += len(module.get("be_routes", []))
-        if module["name"] in deleted.get("backendModules", []) and module.get("be_routes"):
+        if module.get("deleted_scope_backend_residue"):
             counts["deleted_scope_backend_residue"] += len(module["be_routes"])
     return dict(counts)
 ```
@@ -702,10 +715,34 @@ python3 tools/generate-system-map.py
 rg -n "api_adapter_missing|direct_client_missing|deleted_scope_frontend_residue|deleted_scope_backend_residue|GET services" docs/system-map.html tools/generate-system-map.py
 ```
 
+Then run this regression snippet:
+
+```bash
+python3 - <<'PY'
+import importlib.util
+from pathlib import Path
+
+root = Path.cwd()
+spec = importlib.util.spec_from_file_location("system_map", root / "tools/generate-system-map.py")
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+controllers = mod.load_all_backend_controllers()
+assert "incoming-inspection" in controllers, "incoming-inspection.controller.ts was incorrectly skipped"
+assert "fragile-item-inspection" in controllers, "fragile-item-inspection.controller.ts was incorrectly skipped"
+
+match = {"module": "asset-loan-record", "handler": "findAll", "file": "server/src/modules/asset-loan-record/asset-loan-record.controller.ts"}
+status = mod.classify_call("/asset-loan-records", "GET", match, "api", mod.load_deleted_scopes())
+assert status == "deleted_scope_frontend_residue", f"deleted scope must win over matched, got {status}"
+PY
+```
+
 Expected:
 
 - `GET services` has no hits.
+- `incoming-inspection` and `fragile-item-inspection` do not appear as `api_adapter_missing` merely because their filenames contain `inspection`.
 - `deleted_scope_frontend_residue` exists while deletion work is not done.
+- Deleted-scope calls still show as `deleted_scope_frontend_residue` even when a backend route currently matches them.
 - `api_adapter_missing` and `direct_client_missing` are separate categories.
 
 - [ ] **Step 11: Commit**
