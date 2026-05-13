@@ -20,9 +20,8 @@ describe('ProductRecallService', () => {
     $transaction: jest.fn(),
   };
 
-  const notificationBridge: any = { notifyRequester: jest.fn() };
   const approvalEngine: any = { startApproval: jest.fn() };
-  const service = new ProductRecallService(prisma, notificationBridge, approvalEngine);
+  const service = new ProductRecallService(prisma, approvalEngine);
 
   beforeEach(() => jest.clearAllMocks());
 
@@ -88,9 +87,11 @@ describe('ProductRecallService', () => {
 
   it('rejects invalid state transition', async () => {
     prisma.productRecall.findFirst.mockResolvedValue({ id: 'recall-1', status: 'completed', title: '召回' });
+    prisma.$transaction.mockImplementation(async (fn: any) => fn(prisma));
 
     await expect(service.submit('recall-1', { id: 'user-1', companyId: 'company-1' })).rejects.toBeInstanceOf(BadRequestException);
     expect(approvalEngine.startApproval).not.toHaveBeenCalled();
+    expect(prisma.productRecall.update).not.toHaveBeenCalled();
   });
 
   it('starts unified approval and writes approvalInstanceId on submit', async () => {
@@ -104,6 +105,7 @@ describe('ProductRecallService', () => {
       .mockResolvedValueOnce({ id: 'recall-1', status: 'pending_review' })
       .mockResolvedValueOnce({ id: 'recall-1', status: 'pending_review', approvalInstanceId: 'inst-1' });
     approvalEngine.startApproval.mockResolvedValue({ id: 'inst-1' });
+    prisma.$transaction.mockImplementation(async (fn: any) => fn(prisma));
 
     const result = await service.submit('recall-1', { id: 'user-1', companyId: 'company-1' });
 
@@ -113,6 +115,7 @@ describe('ProductRecallService', () => {
       triggerKey: 'submit',
       resourceStep: 'submit',
       createdById: 'user-1',
+      tx: prisma,
     }));
     expect(prisma.productRecall.update).toHaveBeenLastCalledWith({
       where: { id: 'recall-1' },
@@ -121,18 +124,62 @@ describe('ProductRecallService', () => {
     expect(result.approvalInstanceId).toBe('inst-1');
   });
 
-  it('markApprovalApprovedFromCallback updates the recall and notifies the requester', async () => {
-    prisma.productRecall.findUnique.mockResolvedValue({
+  it('submit rolls back when startApproval fails so no half-submitted recall persists', async () => {
+    prisma.productRecall.findFirst.mockResolvedValue({
       id: 'recall-1',
-      status: 'pending_review',
+      status: 'draft',
+      title: '批次召回',
       requested_by: 'user-1',
-      title: '召回',
     });
-    prisma.productRecall.update.mockResolvedValue({ id: 'recall-1', status: 'approved' });
+    prisma.productRecall.update.mockResolvedValue({ id: 'recall-1', status: 'pending_review' });
+    approvalEngine.startApproval.mockRejectedValue(new Error('approval definition missing'));
 
-    await service.markApprovalApprovedFromCallback('recall-1', 'approver-1', '风险可控');
+    const txRecorder: Array<{ op: string; data?: unknown }> = [];
+    prisma.$transaction.mockImplementation(async (fn: any) => {
+      try {
+        return await fn({
+          productRecall: {
+            findFirst: (...args: any[]) => {
+              txRecorder.push({ op: 'findFirst', data: args });
+              return prisma.productRecall.findFirst(...args);
+            },
+            update: (...args: any[]) => {
+              txRecorder.push({ op: 'update', data: args });
+              return prisma.productRecall.update(...args);
+            },
+          },
+        });
+      } catch (err) {
+        txRecorder.push({ op: 'rollback' });
+        throw err;
+      }
+    });
 
-    expect(prisma.productRecall.update).toHaveBeenCalledWith(expect.objectContaining({
+    await expect(
+      service.submit('recall-1', { id: 'user-1', companyId: 'company-1' }),
+    ).rejects.toThrow('approval definition missing');
+
+    expect(txRecorder.map((entry) => entry.op)).toEqual(['findFirst', 'update', 'rollback']);
+    expect(approvalEngine.startApproval).toHaveBeenCalledTimes(1);
+  });
+
+  it('markApprovalApprovedFromCallback updates the recall via the provided tx without sending a duplicate notification', async () => {
+    const tx: any = {
+      productRecall: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'recall-1',
+          status: 'pending_review',
+          requested_by: 'user-1',
+          title: '召回',
+        }),
+        update: jest.fn().mockResolvedValue({ id: 'recall-1', status: 'approved' }),
+      },
+    };
+
+    await service.markApprovalApprovedFromCallback(tx, 'recall-1', 'approver-1', '风险可控');
+
+    expect(tx.productRecall.findUnique).toHaveBeenCalledWith({ where: { id: 'recall-1' } });
+    expect(tx.productRecall.update).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: 'recall-1' },
       data: expect.objectContaining({
         status: 'approved',
@@ -140,36 +187,50 @@ describe('ProductRecallService', () => {
         review_note: '风险可控',
       }),
     }));
-    expect(notificationBridge.notifyRequester).toHaveBeenCalledWith('user-1', 'approved', '召回');
+    expect(prisma.productRecall.findUnique).not.toHaveBeenCalled();
+    expect(prisma.productRecall.update).not.toHaveBeenCalled();
   });
 
-  it('markApprovalRejectedFromCallback transitions the recall to rejected and notifies', async () => {
-    prisma.productRecall.findUnique.mockResolvedValue({
-      id: 'recall-1',
-      status: 'pending_review',
-      requested_by: 'user-1',
-      title: '召回',
-    });
-    prisma.productRecall.update.mockResolvedValue({ id: 'recall-1', status: 'rejected' });
+  it('markApprovalRejectedFromCallback transitions the recall via tx without sending a duplicate notification', async () => {
+    const tx: any = {
+      productRecall: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'recall-1',
+          status: 'pending_review',
+          requested_by: 'user-1',
+          title: '召回',
+        }),
+        update: jest.fn().mockResolvedValue({ id: 'recall-1', status: 'rejected' }),
+      },
+    };
 
-    await service.markApprovalRejectedFromCallback('recall-1', 'approver-1', '证据不足');
+    await service.markApprovalRejectedFromCallback(tx, 'recall-1', 'approver-1', '证据不足');
 
-    expect(prisma.productRecall.update).toHaveBeenCalledWith(expect.objectContaining({
+    expect(tx.productRecall.update).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         status: 'rejected',
         reviewed_by: 'approver-1',
         review_note: '证据不足',
       }),
     }));
-    expect(notificationBridge.notifyRequester).toHaveBeenCalledWith('user-1', 'rejected', '召回');
+    expect(prisma.productRecall.findUnique).not.toHaveBeenCalled();
+    expect(prisma.productRecall.update).not.toHaveBeenCalled();
   });
 
   it('callback paths reject illegal transitions from terminal states', async () => {
-    prisma.productRecall.findUnique.mockResolvedValue({ id: 'recall-1', status: 'completed', requested_by: null });
+    const tx: any = {
+      productRecall: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 'recall-1', status: 'completed', requested_by: null }),
+        update: jest.fn(),
+      },
+    };
 
     await expect(
-      service.markApprovalApprovedFromCallback('recall-1', 'approver-1'),
+      service.markApprovalApprovedFromCallback(tx, 'recall-1', 'approver-1'),
     ).rejects.toBeInstanceOf(BadRequestException);
+    expect(tx.productRecall.update).not.toHaveBeenCalled();
   });
 
   it('marks notification sent and advances approved recall to notified', async () => {

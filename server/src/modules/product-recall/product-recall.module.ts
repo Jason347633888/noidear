@@ -24,6 +24,7 @@ export class ProductRecallModule implements OnModuleInit {
           ? (context.metadata.review_note as string)
           : undefined;
       await this.service.markApprovalApprovedFromCallback(
+        context.tx,
         context.resourceId,
         context.actorId,
         reviewNote,
@@ -36,6 +37,7 @@ export class ProductRecallModule implements OnModuleInit {
           ? (context.metadata.review_note as string)
           : context.comment;
       await this.service.markApprovalRejectedFromCallback(
+        context.tx,
         context.resourceId,
         context.actorId,
         reviewNote,

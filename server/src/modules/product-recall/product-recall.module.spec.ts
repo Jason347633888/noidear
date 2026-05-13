@@ -17,8 +17,11 @@ describe('ProductRecallModule approval callbacks', () => {
     expect(registry.has('productRecall.approvalRejected')).toBe(true);
   });
 
-  it('approved callback forwards review_note metadata to the service', async () => {
+  it('approved callback forwards the approval transaction client and review_note metadata to the service', async () => {
+    const tx = { productRecall: { findUnique: jest.fn(), update: jest.fn() } } as any;
+
     await registry.invoke('productRecall.approvalApproved', {
+      tx,
       resourceId: 'recall-1',
       actorId: 'approver-1',
       comment: 'OK',
@@ -26,14 +29,18 @@ describe('ProductRecallModule approval callbacks', () => {
     } as any);
 
     expect(service.markApprovalApprovedFromCallback).toHaveBeenCalledWith(
+      tx,
       'recall-1',
       'approver-1',
       '风险可控',
     );
   });
 
-  it('rejected callback prefers metadata.review_note but falls back to comment', async () => {
+  it('rejected callback forwards tx and prefers metadata.review_note but falls back to comment', async () => {
+    const tx = { productRecall: { findUnique: jest.fn(), update: jest.fn() } } as any;
+
     await registry.invoke('productRecall.approvalRejected', {
+      tx,
       resourceId: 'recall-1',
       actorId: 'approver-1',
       comment: '驳回理由',
@@ -41,6 +48,7 @@ describe('ProductRecallModule approval callbacks', () => {
     } as any);
 
     expect(service.markApprovalRejectedFromCallback).toHaveBeenCalledWith(
+      tx,
       'recall-1',
       'approver-1',
       '驳回理由',
@@ -48,6 +56,7 @@ describe('ProductRecallModule approval callbacks', () => {
 
     jest.clearAllMocks();
     await registry.invoke('productRecall.approvalRejected', {
+      tx,
       resourceId: 'recall-1',
       actorId: 'approver-1',
       comment: '驳回理由',
@@ -55,6 +64,7 @@ describe('ProductRecallModule approval callbacks', () => {
     } as any);
 
     expect(service.markApprovalRejectedFromCallback).toHaveBeenCalledWith(
+      tx,
       'recall-1',
       'approver-1',
       '证据不足',
