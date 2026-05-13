@@ -14,15 +14,6 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/Login.vue'),
   },
   {
-    path: '/login/sso',
-    name: 'SsoLogin',
-    component: () => import('@/views/login/SsoLogin.vue'),
-  },
-  {
-    path: '/sso',
-    redirect: '/login/sso',
-  },
-  {
     path: '/',
     component: () => import('@/views/Layout.vue'),
     children: [
@@ -67,61 +58,6 @@ const routes: RouteRecordRaw[] = [
         name: 'RecordFormLandingIndex',
         component: () => import('@/views/documents/RecordFormLandingIndex.vue'),
         meta: { title: '记录表单索引' },
-      },
-      {
-        path: 'documents/control/number-rules',
-        name: 'DocumentNumberRules',
-        component: () => import('@/views/documents/NumberRuleCenter.vue'),
-        meta: { title: '编号规则', requiresAuth: true },
-      },
-      {
-        path: 'documents/control/workbench',
-        name: 'DocumentControlWorkbench',
-        component: () => import('@/views/documents/DocumentControlWorkbench.vue'),
-        meta: { title: '文控工作台' },
-      },
-      {
-        path: 'documents/control/workbench/issues',
-        name: 'DocumentControlIssueList',
-        component: () => import('@/views/documents/DocumentControlIssueList.vue'),
-        meta: { title: '文控问题明细' },
-      },
-      // 文控运营中心
-      {
-        path: 'documents/operations/read-confirmations',
-        name: 'ReadConfirmationCenter',
-        component: () => import('@/views/documents/ReadConfirmationCenter.vue'),
-        meta: { title: '阅读确认' },
-      },
-      {
-        path: 'documents/operations/training-needs',
-        name: 'TrainingNeedCenter',
-        component: () => import('@/views/documents/TrainingNeedCenter.vue'),
-        meta: { title: '培训需求' },
-      },
-      {
-        path: 'documents/operations/health',
-        name: 'DocumentHealthDashboard',
-        component: () => import('@/views/documents/DocumentHealthDashboard.vue'),
-        meta: { title: '文控健康度' },
-      },
-      {
-        path: 'documents/operations/audit-coverage',
-        name: 'AuditCoverageCenter',
-        component: () => import('@/views/documents/AuditCoverageCenter.vue'),
-        meta: { title: '审核覆盖' },
-      },
-      {
-        path: 'documents/operations/impact',
-        name: 'ImpactAnalysisWorkbench',
-        component: () => import('@/views/documents/ImpactAnalysisWorkbench.vue'),
-        meta: { title: '影响分析' },
-      },
-      {
-        path: 'documents/operations/audit-chain',
-        name: 'AuditChainExplorer',
-        component: () => import('@/views/documents/AuditChainExplorer.vue'),
-        meta: { title: '审核链路' },
       },
       {
         path: 'templates',
@@ -173,11 +109,6 @@ const routes: RouteRecordRaw[] = [
         path: 'approvals/history',
         name: 'ApprovalHistory',
         component: () => import('@/views/approvals/ApprovalHistory.vue'),
-      },
-      {
-        path: 'approvals/all',
-        name: 'ApprovalAll',
-        component: () => import('@/views/approvals/ApprovalAll.vue'),
       },
       {
         path: 'tasks',
@@ -304,47 +235,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/templates/TemplateDesigner.vue'),
         meta: { title: '表单设计器' },
       },
-      // 工作流模块
-      {
-        path: 'workflow/templates',
-        name: 'WorkflowTemplates',
-        component: () => import('@/views/workflow/TemplateList.vue'),
-      },
-      {
-        path: 'workflow/templates/create',
-        name: 'WorkflowTemplateCreate',
-        component: () => import('@/views/workflow/TemplateEditor.vue'),
-      },
-      {
-        path: 'workflow/templates/:id/edit',
-        name: 'WorkflowTemplateEdit',
-        component: () => import('@/views/workflow/TemplateEditor.vue'),
-      },
       {
         path: 'my-todos',
         name: 'MyTodos',
         component: () => import('@/views/my-todos/MyTodos.vue'),
         meta: { title: '我的待办' },
-      },
-      {
-        path: 'workflow/my-tasks',
-        name: 'WorkflowMyTasks',
-        component: () => import('@/views/workflow/MyTasks.vue'),
-      },
-      {
-        path: 'workflow/instances',
-        name: 'WorkflowInstances',
-        component: () => import('@/views/workflow/InstanceList.vue'),
-      },
-      {
-        path: 'workflow/instances/:id',
-        name: 'WorkflowInstanceDetail',
-        component: () => import('@/views/workflow/InstanceDetail.vue'),
-      },
-      {
-        path: 'workflow/statistics',
-        name: 'WorkflowStatistics',
-        component: () => import('@/views/workflow/WorkflowStatistics.vue'),
       },
       // 记录模块
       {
@@ -578,76 +473,6 @@ const routes: RouteRecordRaw[] = [
         name: 'TrainingArchiveDetail',
         component: () => import('@/views/training/archives/ArchiveDetail.vue'),
       },
-      // 内审管理模块
-      {
-        path: 'internal-audit/plans',
-        name: 'InternalAuditPlans',
-        component: () => import('@/views/internal-audit/PlanList.vue'),
-        meta: { title: '内审计划' },
-      },
-      {
-        path: 'internal-audit/plans/:id/execute',
-        name: 'AuditExecute',
-        component: () => import('@/views/internal-audit/AuditExecute.vue'),
-        meta: { title: '审核执行' },
-      },
-      {
-        path: 'internal-audit/rectifications',
-        name: 'InternalAuditRectifications',
-        component: () => import('@/views/internal-audit/RectificationList.vue'),
-        meta: { title: '我的整改任务' },
-      },
-      {
-        path: 'internal-audit/verifications',
-        name: 'InternalAuditVerifications',
-        component: () => import('@/views/internal-audit/VerificationList.vue'),
-        meta: { title: '复审验证' },
-      },
-      {
-        path: 'internal-audit/reports',
-        name: 'InternalAuditReports',
-        component: () => import('@/views/internal-audit/ReportList.vue'),
-        meta: { title: '内审报告' },
-      },
-      {
-        path: 'internal-audit/reports/:id',
-        name: 'InternalAuditReportDetail',
-        component: () => import('@/views/internal-audit/ReportDetail.vue'),
-        meta: { title: '内审报告详情' },
-      },
-      {
-        path: 'management-reviews',
-        name: 'ManagementReviewList',
-        component: () => import('@/views/management-review/ReviewList.vue'),
-        meta: { title: '管理评审' },
-      },
-      {
-        path: 'management-reviews/:id',
-        name: 'ManagementReviewDetail',
-        component: () => import('@/views/management-review/ReviewDetail.vue'),
-        meta: { title: '管理评审详情' },
-      },
-      // 系统运维监控模块
-      {
-        path: 'monitoring/dashboard',
-        name: 'MonitoringDashboard',
-        component: () => import('@/views/monitoring/Dashboard.vue'),
-      },
-      {
-        path: 'monitoring/metrics',
-        name: 'MetricsPage',
-        component: () => import('@/views/monitoring/MetricsPage.vue'),
-      },
-      {
-        path: 'monitoring/alerts/rules',
-        name: 'AlertRuleList',
-        component: () => import('@/views/monitoring/AlertRuleList.vue'),
-      },
-      {
-        path: 'monitoring/alerts/history',
-        name: 'AlertHistoryList',
-        component: () => import('@/views/monitoring/AlertHistoryList.vue'),
-      },
       {
         path: 'audit/login-logs',
         name: 'LoginLogList',
@@ -674,11 +499,6 @@ const routes: RouteRecordRaw[] = [
         name: 'BackupManage',
         component: () => import('@/views/backup/BackupManage.vue'),
       },
-      {
-        path: 'health',
-        name: 'HealthPage',
-        component: () => import('@/views/health/HealthPage.vue'),
-      },
       // 高级功能模块
       {
         path: 'search',
@@ -695,22 +515,6 @@ const routes: RouteRecordRaw[] = [
         path: 'admin/import',
         name: 'ImportPage',
         component: () => import('@/views/admin/ImportPage.vue'),
-        meta: { requiresAdmin: true },
-      },
-      {
-        path: 'workflow/designer',
-        name: 'WorkflowDesignerLegacy',
-        redirect: '/workflow-templates/designer',
-      },
-      {
-        path: 'workflow-templates/designer',
-        name: 'WorkflowDesigner',
-        component: () => import('@/views/workflow/WorkflowDesigner.vue'),
-      },
-      {
-        path: 'statistics/dashboard',
-        name: 'StatisticsDashboard',
-        component: () => import('@/views/statistics/StatisticsDashboard.vue'),
         meta: { requiresAdmin: true },
       },
       // CCP 监控模块
@@ -913,20 +717,6 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/fragile-item-inspection/FragileItemInspectionList.vue'),
         meta: { title: '玻璃及硬塑完整性检查' },
       },
-      // 资产借用记录模块
-      {
-        path: 'asset-loan-records',
-        name: 'AssetLoanRecordList',
-        component: () => import('@/views/asset-loan-record/AssetLoanRecordList.vue'),
-        meta: { title: '资产借用记录' },
-      },
-      // 表单领用记录模块
-      {
-        path: 'document-issuances',
-        name: 'DocumentIssuanceList',
-        component: () => import('@/views/document-issuance/DocumentIssuanceList.vue'),
-        meta: { title: '表单领用记录' },
-      },
       // 换产前检查模块
       {
         path: 'line-change-check-records',
@@ -962,13 +752,6 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/shift/ShiftDashboard.vue'),
         meta: { title: '班次看板' },
       },
-      // 管理层仪表盘
-      {
-        path: 'management-dashboard',
-        name: 'ManagementDashboard',
-        component: () => import('@/views/dashboard/ManagementDashboard.vue'),
-        meta: { title: '管理层仪表盘' },
-      },
     ],
   },
   // 打印页（无 Layout）
@@ -988,7 +771,7 @@ const router = createRouter({
 
 // 导航守卫
 router.beforeEach(async (to, _from, next) => {
-  const publicPaths = ['/login', '/login/sso'];
+  const publicPaths = ['/login'];
   const token = localStorage.getItem('token');
 
   if (!publicPaths.includes(to.path) && !token) {

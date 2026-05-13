@@ -40,11 +40,9 @@ const stubs: Record<string, any> = {
   'el-button': { template: '<button @click="$emit(\'click\')"><slot /></button>' , props: ['type', 'loading', 'disabled'] },
   'el-icon': { template: '<span><slot /></span>' },
   'el-empty': { template: '<div />', props: ['description'] },
-  'ExcelUpload': { template: '<div />', props: ['visible'] },
   'Plus': { template: '<span />' },
   'Delete': { template: '<span />' },
   'Rank': { template: '<span />' },
-  'Upload': { template: '<span />' },
 };
 
 import TemplateEdit from '../TemplateEdit.vue';

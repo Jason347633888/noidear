@@ -233,41 +233,6 @@
           </el-table>
         </div>
 
-        <!-- 审批记录 -->
-        <div class="detail-section">
-          <div class="section-header">
-            <div class="section-title">审批记录</div>
-            <el-button size="small" type="primary" @click="openApprovalDialog">
-              <el-icon><Plus /></el-icon>添加审批
-            </el-button>
-          </div>
-          <div v-if="detailLoading" class="loading-hint">加载中...</div>
-          <div v-else-if="approvalRecords.length === 0" class="empty-hint">暂无审批记录</div>
-          <el-table v-else :data="approvalRecords" size="small" stripe>
-            <el-table-column label="审批决定" width="100">
-              <template #default="{ row }">
-                <el-tag :type="getDecisionType(row.decision)" effect="light" size="small">
-                  {{ getDecisionText(row.decision) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="comments" label="备注" show-overflow-tooltip>
-              <template #default="{ row }">{{ row.comments ?? '-' }}</template>
-            </el-table-column>
-            <el-table-column label="审批时间" width="130">
-              <template #default="{ row }">
-                {{ row.approved_at ? formatDate(row.approved_at) : '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="70" fixed="right">
-              <template #default="{ row }">
-                <el-button link type="danger" size="small" @click="handleDeleteApproval(row.id)">
-                  删除
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
       </div>
 
       <template #footer>
@@ -372,52 +337,6 @@
       </template>
     </el-dialog>
 
-    <!-- ── 添加审批记录对话框 ── -->
-    <el-dialog
-      v-model="approvalDialogVisible"
-      title="添加审批记录"
-      width="520px"
-      :close-on-click-modal="false"
-      append-to-body
-    >
-      <el-form
-        ref="approvalFormRef"
-        :model="approvalForm"
-        label-width="100px"
-      >
-        <el-form-item label="审批决定">
-          <el-select v-model="approvalForm.decision" placeholder="请选择" clearable style="width: 100%">
-            <el-option label="批准" value="approved" />
-            <el-option label="拒绝" value="rejected" />
-            <el-option label="待定" value="pending" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="审批意见">
-          <el-input
-            v-model="approvalForm.comments"
-            type="textarea"
-            :rows="3"
-            placeholder="填写审批意见（选填）"
-          />
-        </el-form-item>
-        <el-form-item label="审批时间">
-          <el-date-picker
-            v-model="approvalForm.approved_at"
-            type="date"
-            placeholder="请选择审批时间"
-            format="YYYY-MM-DD"
-            value-format="YYYY-MM-DD"
-            style="width: 100%"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="approvalDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submittingSubRecord" @click="handleCreateApproval">
-          提交
-        </el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -443,12 +362,6 @@ import changeVerificationRecordApi, {
   getVerificationResultText,
   getVerificationResultType,
 } from '@/api/change-verification-record';
-import changeApprovalApi, {
-  type ChangeApproval,
-  getDecisionText,
-  getDecisionType,
-} from '@/api/change-approval';
-
 const router = useRouter();
 
 // ── Form task status map ──────────────────────────────────────────────────────
@@ -490,7 +403,6 @@ const detailLoading = ref(false);
 
 const complianceRecords = ref<ChangeComplianceRecord[]>([]);
 const verificationRecords = ref<ChangeVerificationRecord[]>([]);
-const approvalRecords = ref<ChangeApproval[]>([]);
 
 // ── Compliance sub-dialog ─────────────────────────────────────────────────────
 
@@ -513,16 +425,6 @@ const verificationForm = reactive({
   result: '',
   findings: '',
   notes: '',
-});
-
-// ── Approval sub-dialog ───────────────────────────────────────────────────────
-
-const approvalDialogVisible = ref(false);
-const approvalFormRef = ref<FormInstance>();
-const approvalForm = reactive({
-  decision: '',
-  comments: '',
-  approved_at: '',
 });
 
 const submittingSubRecord = ref(false);
@@ -562,14 +464,12 @@ async function loadList() {
 async function loadSubRecords(eventId: string) {
   detailLoading.value = true;
   try {
-    const [cr, vr, ar] = await Promise.all([
+    const [cr, vr] = await Promise.all([
       changeComplianceRecordApi.getByEvent(eventId),
       changeVerificationRecordApi.getByEvent(eventId),
-      changeApprovalApi.getByEvent(eventId),
     ]);
     complianceRecords.value = cr as unknown as ChangeComplianceRecord[];
     verificationRecords.value = vr as unknown as ChangeVerificationRecord[];
-    approvalRecords.value = ar as unknown as ChangeApproval[];
   } catch {
     ElMessage.error('加载子记录失败');
   } finally {
@@ -612,7 +512,6 @@ async function openDetailDialog(event: ChangeEvent) {
   currentEvent.value = event;
   complianceRecords.value = [];
   verificationRecords.value = [];
-  approvalRecords.value = [];
   detailDialogVisible.value = true;
   try {
     const full = await changeEventApi.getOne(event.id);
@@ -739,53 +638,6 @@ async function handleDeleteVerification(id: string) {
       type: 'warning',
     });
     await changeVerificationRecordApi.remove(id);
-    ElMessage.success('删除成功');
-    await loadSubRecords(currentEvent.value.id);
-  } catch (err) {
-    if (err !== 'cancel') {
-      ElMessage.error('删除失败，请重试');
-    }
-  }
-}
-
-// ── Approval record ───────────────────────────────────────────────────────────
-
-function openApprovalDialog() {
-  approvalForm.decision = '';
-  approvalForm.comments = '';
-  approvalForm.approved_at = '';
-  approvalDialogVisible.value = true;
-}
-
-async function handleCreateApproval() {
-  if (!currentEvent.value) return;
-  submittingSubRecord.value = true;
-  try {
-    await changeApprovalApi.create({
-      change_event_id: currentEvent.value.id,
-      decision: approvalForm.decision || undefined,
-      comments: approvalForm.comments || undefined,
-      approved_at: approvalForm.approved_at || undefined,
-    });
-    ElMessage.success('审批记录已添加');
-    approvalDialogVisible.value = false;
-    await loadSubRecords(currentEvent.value.id);
-  } catch {
-    ElMessage.error('添加失败，请重试');
-  } finally {
-    submittingSubRecord.value = false;
-  }
-}
-
-async function handleDeleteApproval(id: string) {
-  if (!currentEvent.value) return;
-  try {
-    await ElMessageBox.confirm('确认删除该审批记录？', '删除确认', {
-      confirmButtonText: '确认删除',
-      cancelButtonText: '取消',
-      type: 'warning',
-    });
-    await changeApprovalApi.remove(id);
     ElMessage.success('删除成功');
     await loadSubRecords(currentEvent.value.id);
   } catch (err) {

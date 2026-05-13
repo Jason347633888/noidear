@@ -38,7 +38,6 @@
             <el-option value="permission" label="权限管理" />
             <el-option value="warehouse" label="仓库管理" />
             <el-option value="record" label="记录管理" />
-            <el-option value="workflow" label="工作流管理" />
             <el-option value="batch" label="批次管理" />
           </el-select>
         </el-form-item>
@@ -167,7 +166,6 @@ const getResourceLabel = (resource: string): string => {
     permission: '权限管理',
     warehouse: '仓库管理',
     record: '记录管理',
-    workflow: '工作流管理',
     batch: '批次管理',
   };
   return map[resource] || resource;

@@ -16,7 +16,6 @@ export type KnownFormFieldType =
   | 'table-input'
   | 'constrained-number'
   | 'checkbox-text'
-  | 'approval-step'
   | 'section-header'
   | 'static-content';
 

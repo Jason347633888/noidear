@@ -29,7 +29,6 @@
             <el-option value="permission" label="权限管理" />
             <el-option value="warehouse" label="仓库管理" />
             <el-option value="record" label="记录管理" />
-            <el-option value="workflow" label="工作流管理" />
             <el-option value="batch" label="批次管理" />
           </el-select>
         </el-form-item>
@@ -128,7 +127,7 @@ const resourceCategoryTypeMap: Record<string, string> = {
   document: 'primary', template: 'success', task: 'warning',
   approval: 'danger', user: 'info', role: 'info',
   permission: 'warning', warehouse: 'success', record: 'primary',
-  workflow: 'danger', batch: 'success',
+  batch: 'success',
 };
 
 const getCategoryType = (resource: string) => resourceCategoryTypeMap[resource] || 'info';
@@ -138,7 +137,7 @@ const getResourceLabel = (resource: string): string => {
     document: '文档管理', template: '模板管理', task: '任务管理',
     approval: '审批管理', user: '用户管理', role: '角色管理',
     permission: '权限管理', warehouse: '仓库管理', record: '记录管理',
-    workflow: '工作流管理', batch: '批次管理',
+    batch: '批次管理',
   };
   return map[resource] || resource;
 };

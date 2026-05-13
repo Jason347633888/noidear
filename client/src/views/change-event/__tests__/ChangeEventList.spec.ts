@@ -38,16 +38,6 @@ vi.mock('@/api/change-verification-record', () => ({
   getVerificationResultType: () => 'info',
 }));
 
-vi.mock('@/api/change-approval', () => ({
-  default: {
-    getByEvent: vi.fn().mockResolvedValue([]),
-    create: vi.fn(),
-    remove: vi.fn(),
-  },
-  getDecisionText: (decision: string) => decision,
-  getDecisionType: () => 'info',
-}));
-
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));

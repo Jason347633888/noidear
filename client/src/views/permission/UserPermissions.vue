@@ -137,7 +137,6 @@ const getResourceLabel = (resource: string): string => {
     permission: '权限管理',
     warehouse: '仓库管理',
     record: '记录管理',
-    workflow: '工作流管理',
     batch: '批次管理',
   };
   return map[resource] || resource;
