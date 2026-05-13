@@ -94,7 +94,7 @@ npm run traceability:verify -w server
 | 召回通知 | `ProductRecallNotification` |
 | 召回证据 | `ProductRecallEvidence` |
 | 返工 | `ReworkRecord` |
-| 变更 | `ChangeEvent`、`ChangeApproval` |
+| 变更 | `ChangeEvent`；审批运行由 `ApprovalInstance` / `ApprovalTask` 承载 |
 | 废弃物 | waste 模块模型 |
 
 ### 过程记录
@@ -212,7 +212,7 @@ Supplier
 | MaterialLot | `MaterialBatch` |
 | IngredientUsage | `BatchMaterialUsage` |
 | Customer | `ExternalParty`，当对象是外部方时使用 |
-| DocumentApproval | `ApprovalInstance` / `ApprovalTask`，旧 `Approval` 仅兼容 |
+| DocumentApproval | `ApprovalInstance` / `ApprovalTask` / `ApprovalAction`；当前项目无历史业务数据，旧 `Approval` 不再保留兼容 |
 | ProcessRecord | `ProcessMonitorRecord` 或 process-record 模块，按代码确认 |
 
 新增文档、API、页面和测试时应使用当前代码名，除非专门解释历史术语。

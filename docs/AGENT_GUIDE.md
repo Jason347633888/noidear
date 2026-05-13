@@ -48,7 +48,7 @@
 | IngredientUsage | `BatchMaterialUsage` |
 | ProcessRecord | `ProcessMonitorRecord` / `ProcessRecord` 相关模块 |
 | ProductRecall | `ProductRecall`、`ProductRecallBatch`、`ProductRecallNotification`、`ProductRecallEvidence` |
-| DocumentApproval | 新文档审批走 `ApprovalInstance` / `ApprovalTask`；旧 `Approval` 只作历史兼容 |
+| DocumentApproval | 当前项目无历史业务数据；旧 `Approval` 不再保留兼容。文档审批统一走 `ApprovalInstance` / `ApprovalTask` / `ApprovalAction` |
 
 ## 5. 运行环境
 
