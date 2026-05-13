@@ -268,22 +268,18 @@ export class TaskService {
     });
 
     if (this.approvalEngine) {
-      try {
-        const approval = await this.approvalEngine.startApproval({
-          resourceType: 'taskRecord',
-          resourceId: record.id,
-          resourceStep: 'submit',
-          triggerKey: 'submit',
-          title: `任务记录审批：${task.title ?? taskId}`,
-          createdById: userId,
-        });
-        await this.prisma.taskRecord.update({
-          where: { id: record.id },
-          data: { approvalInstanceId: approval.id },
-        });
-      } catch {
-        // No ApprovalDefinition matched — skip unified tracking silently
-      }
+      const approval = await this.approvalEngine.startApproval({
+        resourceType: 'task_record',
+        resourceId: record.id,
+        resourceStep: 'submit',
+        triggerKey: 'submit',
+        title: `任务记录审批：${task.title ?? taskId}`,
+        createdById: userId,
+      });
+      return this.prisma.taskRecord.update({
+        where: { id: record.id },
+        data: { approvalInstanceId: approval.id },
+      });
     }
 
     return record;
