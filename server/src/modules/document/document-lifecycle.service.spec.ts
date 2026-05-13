@@ -14,10 +14,6 @@ describe('DocumentLifecycleService', () => {
       count: jest.fn(),
       findMany: jest.fn(),
     },
-    documentReadConfirmation: {
-      upsert: jest.fn(),
-      findMany: jest.fn(),
-    },
     $transaction: jest.fn(),
   };
 
@@ -48,12 +44,6 @@ describe('DocumentLifecycleService', () => {
     expect(mockPrisma.document.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: 'effective' }) }),
     );
-  });
-
-  it('should record read confirmation', async () => {
-    mockPrisma.documentReadConfirmation.upsert.mockResolvedValue({ id: 'c1' });
-    await service.confirmRead('doc1', 'user1');
-    expect(mockPrisma.documentReadConfirmation.upsert).toHaveBeenCalled();
   });
 
   it('should return documents expiring within 30 days', async () => {

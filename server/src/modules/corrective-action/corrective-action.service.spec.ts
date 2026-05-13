@@ -16,9 +16,6 @@ describe('CorrectiveActionService', () => {
     customerComplaint: {
       findFirst: jest.fn(),
     },
-    auditFinding: {
-      findUnique: jest.fn(),
-    },
   };
   const numberSequence = {
     generateCorrectiveActionNo: jest.fn(),
@@ -125,8 +122,9 @@ describe('CorrectiveActionService', () => {
     expect(prisma.correctiveAction.create).not.toHaveBeenCalled();
   });
 
-  it('validates internal audit finding source existence', async () => {
-    prisma.auditFinding.findUnique.mockResolvedValue({ id: 'finding-1' });
+  it('allows internal audit CAPA creation without verifying an AuditFinding source', async () => {
+    // 内审业务模块已剔除（API contract gap cleanup）。CAPA 仅保留触发分类，
+    // 不再对 AuditFinding 做外键校验。
     prisma.correctiveAction.create.mockResolvedValue({ id: 'c3' });
 
     await service.create(
@@ -135,10 +133,6 @@ describe('CorrectiveActionService', () => {
       '2',
     );
 
-    expect(prisma.auditFinding.findUnique).toHaveBeenCalledWith({
-      where: { id: 'finding-1' },
-      select: { id: true },
-    });
     expect(prisma.correctiveAction.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -150,20 +144,6 @@ describe('CorrectiveActionService', () => {
     );
   });
 
-  it('rejects CAPA creation when internal audit finding source is missing', async () => {
-    prisma.auditFinding.findUnique.mockResolvedValue(null);
-
-    await expect(
-      service.create(
-        { trigger_type: 'internal_audit', trigger_id: 'missing-finding', description: '内审整改' },
-        'u1',
-        '2',
-      ),
-    ).rejects.toThrow('内审发现项不存在');
-
-    expect(prisma.correctiveAction.create).not.toHaveBeenCalled();
-  });
-
   it('allows other CAPA creation without a trigger source', async () => {
     prisma.correctiveAction.create.mockResolvedValue({ id: 'c4' });
 
@@ -171,7 +151,6 @@ describe('CorrectiveActionService', () => {
 
     expect(prisma.nonConformance.findFirst).not.toHaveBeenCalled();
     expect(prisma.customerComplaint.findFirst).not.toHaveBeenCalled();
-    expect(prisma.auditFinding.findUnique).not.toHaveBeenCalled();
     expect(prisma.correctiveAction.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({

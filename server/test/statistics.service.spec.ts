@@ -33,14 +33,10 @@ describe('StatisticsService', () => {
     recordTaskAssignment: {
       findMany: jest.fn(),
     },
-    workflowInstance: {
-      count: jest.fn(),
-      findMany: jest.fn(),
-    },
     equipment: {
       count: jest.fn(),
     },
-    approval: {
+    approvalInstance: {
       count: jest.fn(),
       groupBy: jest.fn(),
       findMany: jest.fn(),
@@ -312,18 +308,18 @@ describe('StatisticsService', () => {
   describe('getApprovalStatistics', () => {
     it('should return approval statistics with approval rate', async () => {
       mockRedisService.get.mockResolvedValue(null);
-      mockPrismaService.approval.count
+      mockPrismaService.approvalInstance.count
         .mockResolvedValueOnce(100) // total
         .mockResolvedValueOnce(70) // approved
         .mockResolvedValueOnce(20) // rejected
         .mockResolvedValueOnce(10); // pending
 
-      mockPrismaService.approval.findMany.mockResolvedValue([
-        { createdAt: new Date('2026-01-01T10:00:00'), updatedAt: new Date('2026-01-01T12:00:00') },
-        { createdAt: new Date('2026-01-02T10:00:00'), updatedAt: new Date('2026-01-02T14:00:00') },
+      mockPrismaService.approvalInstance.findMany.mockResolvedValue([
+        { createdAt: new Date('2026-01-01T10:00:00'), completedAt: new Date('2026-01-01T12:00:00') },
+        { createdAt: new Date('2026-01-02T10:00:00'), completedAt: new Date('2026-01-02T14:00:00') },
       ]);
 
-      mockPrismaService.approval.groupBy.mockResolvedValue([
+      mockPrismaService.approvalInstance.groupBy.mockResolvedValue([
         { approverId: 'user-1', _count: { id: 100 } }
       ]);
 
@@ -344,19 +340,19 @@ describe('StatisticsService', () => {
 
     it('should calculate average approval time in hours', async () => {
       mockRedisService.get.mockResolvedValue(null);
-      mockPrismaService.approval.count
+      mockPrismaService.approvalInstance.count
         .mockResolvedValueOnce(50)
         .mockResolvedValueOnce(30)
         .mockResolvedValueOnce(10)
         .mockResolvedValueOnce(10);
 
       // Mock 2 hours average (7200000 ms)
-      mockPrismaService.approval.findMany.mockResolvedValue([
-        { createdAt: new Date('2026-01-01T10:00:00'), updatedAt: new Date('2026-01-01T12:00:00') },
-        { createdAt: new Date('2026-01-02T10:00:00'), updatedAt: new Date('2026-01-02T12:00:00') },
+      mockPrismaService.approvalInstance.findMany.mockResolvedValue([
+        { createdAt: new Date('2026-01-01T10:00:00'), completedAt: new Date('2026-01-01T12:00:00') },
+        { createdAt: new Date('2026-01-02T10:00:00'), completedAt: new Date('2026-01-02T12:00:00') },
       ]);
 
-      mockPrismaService.approval.groupBy.mockResolvedValue([
+      mockPrismaService.approvalInstance.groupBy.mockResolvedValue([
         { approverId: 'user-1', _count: { id: 50 } }
       ]);
 
@@ -371,15 +367,15 @@ describe('StatisticsService', () => {
 
     it('should handle no approved or rejected approvals', async () => {
       mockRedisService.get.mockResolvedValue(null);
-      mockPrismaService.approval.count
+      mockPrismaService.approvalInstance.count
         .mockResolvedValueOnce(10) // total
         .mockResolvedValueOnce(0) // approved
         .mockResolvedValueOnce(0) // rejected
         .mockResolvedValueOnce(10); // pending
 
-      mockPrismaService.approval.findMany.mockResolvedValue([]);
+      mockPrismaService.approvalInstance.findMany.mockResolvedValue([]);
 
-      mockPrismaService.approval.groupBy.mockResolvedValue([
+      mockPrismaService.approvalInstance.groupBy.mockResolvedValue([
         { approverId: 'user-1', _count: { id: 10 } }
       ]);
 
@@ -399,7 +395,7 @@ describe('StatisticsService', () => {
       mockRedisService.get.mockResolvedValue(null);
       mockPrismaService.document.count.mockResolvedValue(100);
       mockPrismaService.recordTaskInstance.count.mockResolvedValue(50);
-      mockPrismaService.approval.count.mockResolvedValue(30);
+      mockPrismaService.approvalInstance.count.mockResolvedValue(30);
 
       const result = await service.getOverviewStatistics({});
 
@@ -423,7 +419,7 @@ describe('StatisticsService', () => {
         .mockResolvedValueOnce(30) // monthly tasks
         .mockResolvedValueOnce(80); // completed tasks
 
-      mockPrismaService.approval.count
+      mockPrismaService.approvalInstance.count
         .mockResolvedValueOnce(90) // total approvals
         .mockResolvedValueOnce(25) // monthly approvals
         .mockResolvedValueOnce(70) // approved
