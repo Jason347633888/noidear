@@ -39,6 +39,17 @@ export interface StartApprovalInput {
   tx?: Prisma.TransactionClient;
 }
 
+export type ApprovalActionMetadata = Record<string, unknown>;
+
+export interface ApprovalActionValidationContext {
+  resourceType: string;
+  triggerKey: string;
+  stepKey: string;
+  action: 'APPROVED' | 'REJECTED';
+  comment?: string;
+  metadata?: ApprovalActionMetadata;
+}
+
 export interface ApprovalCallbackContext {
   tx: Prisma.TransactionClient;
   instanceId: string;
@@ -49,6 +60,7 @@ export interface ApprovalCallbackContext {
   actorId: string;
   taskId?: string;
   comment?: string;
+  metadata?: ApprovalActionMetadata;
 }
 
 export type ApprovalCallback = (context: ApprovalCallbackContext) => Promise<void>;

@@ -66,11 +66,11 @@ export class ApprovalTaskController {
 
   @Post(':id/approve')
   approve(@Param('id') id: string, @Body() dto: ApprovalTaskActionDto, @Request() req: AuthenticatedRequest) {
-    return this.engine.approveTask(id, req.user.id, dto.comment ?? '');
+    return this.engine.approveTask(id, req.user.id, dto.comment ?? '', dto.metadata);
   }
 
   @Post(':id/reject')
   reject(@Param('id') id: string, @Body() dto: RejectApprovalTaskDto, @Request() req: AuthenticatedRequest) {
-    return this.engine.rejectTask(id, req.user.id, dto.comment);
+    return this.engine.rejectTask(id, req.user.id, dto.comment, dto.metadata);
   }
 }

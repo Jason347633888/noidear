@@ -74,12 +74,6 @@ const productRecallApi = {
   submit(id: string) {
     return request.post<ProductRecall>(`/product-recalls/${id}/submit`);
   },
-  approve(id: string, review_note?: string) {
-    return request.post<ProductRecall>(`/product-recalls/${id}/approve`, { review_note });
-  },
-  reject(id: string, review_note?: string) {
-    return request.post<ProductRecall>(`/product-recalls/${id}/reject`, { review_note });
-  },
   complete(id: string, completion_summary: string) {
     return request.post<ProductRecall>(`/product-recalls/${id}/complete`, { completion_summary });
   },

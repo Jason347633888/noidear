@@ -24,7 +24,8 @@
     "test:server": "npm run test -w server",
     "prisma:generate": "npm run prisma:generate -w server",
     "verify": "npm run build:server && npm run build:client",
-    "verify:full": "npm run typecheck:types && npm run build:mcp && npm run build:server && npm run build:client"
+    "lint:api-prefix": "bash tools/check-client-api-prefix.sh",
+    "verify:full": "npm run lint:api-prefix && npm run typecheck:types && npm run build:mcp && npm run build:server && npm run build:client"
   },
   "devDependencies": {
     "prisma": "^5.22.0"

@@ -141,44 +141,6 @@ describe('ChangeEventService', () => {
     expect(result.id).toBe('change-happy');
   });
 
-  it('delegates approve to approval engine when approval instance exists', async () => {
-    prisma.changeEvent.findUnique.mockResolvedValue({ id: 'ce-1', status: 'pending' });
-    prisma.approvalInstance.findFirst.mockResolvedValue({ id: 'instance-1' });
-    approvalEngine.act.mockResolvedValue(undefined);
-    prisma.changeEvent.findUnique.mockResolvedValueOnce({ id: 'ce-1', status: 'pending' })
-      .mockResolvedValueOnce({ id: 'ce-1', status: 'approved', verifications: [], relations: [], formTasks: [] });
-
-    const service = new ChangeEventService(
-      prisma as any,
-      eventEmitter as any,
-      formTasks as any,
-      relations as any,
-      approvalEngine as any,
-    );
-
-    await service.approve('ce-1', 'approver-1');
-
-    expect(approvalEngine.act).toHaveBeenCalledWith('instance-1', 'approve', 'approver-1', '');
-    expect(prisma.changeEvent.update).not.toHaveBeenCalled();
-  });
-
-  it('falls back to direct update and logs warning for legacy change event without approval instance', async () => {
-    prisma.changeEvent.findUnique.mockResolvedValue({ id: 'ce-1', status: 'pending', verifications: [], relations: [], formTasks: [] });
-    prisma.approvalInstance.findFirst.mockResolvedValue(null);
-    prisma.changeEvent.update.mockResolvedValue({ id: 'ce-1', status: 'approved' });
-
-    const service = new ChangeEventService(
-      prisma as any,
-      eventEmitter as any,
-      formTasks as any,
-      relations as any,
-      approvalEngine as any,
-    );
-    const warnSpy = jest.spyOn((service as any).logger, 'warn').mockImplementation();
-
-    await service.approve('ce-1', 'approver-1');
-
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Legacy ChangeEvent approval fallback'));
-    expect(approvalEngine.act).not.toHaveBeenCalled();
-  });
+  // ChangeEvent direct approve has been removed; the unified approval
+  // callbacks registered in ChangeEventModule are tested in change-event.module.spec.ts.
 });

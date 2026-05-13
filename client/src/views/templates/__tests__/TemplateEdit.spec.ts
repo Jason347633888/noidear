@@ -127,13 +127,7 @@ describe('TemplateEdit', () => {
     expect(field.options[0].value).toBe('b');
   });
 
-  it('handleExcelImport sets imported fields', async () => {
-    const c = w();
-    await flushPromises();
-    const importedFields = [
-      { key: 'f1', label: '字段1', type: 'text', required: false, options: [] },
-    ];
-    (c.vm as any).handleExcelImport(importedFields);
-    expect((c.vm as any).form.fields).toHaveLength(1);
-  });
+  // handleExcelImport was removed when the Excel import feature was retired
+  // from the template editor; bulk field import now lives in the template
+  // generation flow rather than the editor.
 });

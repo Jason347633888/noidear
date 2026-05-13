@@ -4,7 +4,7 @@ import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { ProductRecallService } from './product-recall.service';
 import { CreateProductRecallDto, CreateProductRecallNotificationDto } from './dto/create-product-recall.dto';
 import { QueryProductRecallDto } from './dto/query-product-recall.dto';
-import { MarkNotificationSentDto, RecallCancelDto, RecallCompleteDto, RecallReviewDto } from './dto/transition-product-recall.dto';
+import { MarkNotificationSentDto, RecallCancelDto, RecallCompleteDto } from './dto/transition-product-recall.dto';
 
 @Controller('product-recalls')
 @UseGuards(JwtAuthGuard)
@@ -29,16 +29,6 @@ export class ProductRecallController {
   @Post(':id/submit')
   submit(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.service.submit(id, { id: req.user.id, companyId: req.user.companyId });
-  }
-
-  @Post(':id/approve')
-  approve(@Param('id') id: string, @Body() dto: RecallReviewDto, @Request() req: AuthenticatedRequest) {
-    return this.service.approve(id, dto, { id: req.user.id, companyId: req.user.companyId });
-  }
-
-  @Post(':id/reject')
-  reject(@Param('id') id: string, @Body() dto: RecallReviewDto, @Request() req: AuthenticatedRequest) {
-    return this.service.reject(id, dto, { id: req.user.id, companyId: req.user.companyId });
   }
 
   @Post(':id/complete')

@@ -42,16 +42,27 @@ export class WarehouseModule implements OnModuleInit {
   constructor(private readonly callbacks: ApprovalCallbackRegistry) {}
 
   onModuleInit() {
-    const makeCallback = (modelName: string) => async (context: any) => {
+    const makeApprovedCallback = (modelName: string) => async (context: any) => {
       await (context.tx as any)[modelName].update({
         where: { id: context.resourceId },
         data: { status: 'approved', approvedBy: context.actorId, approvedAt: new Date() },
       });
     };
 
-    this.callbacks.register('warehouse.requisitionApproved', makeCallback('materialRequisition'));
-    this.callbacks.register('warehouse.inboundApproved', makeCallback('materialInbound'));
-    this.callbacks.register('warehouse.returnApproved', makeCallback('materialReturn'));
-    this.callbacks.register('warehouse.scrapApproved', makeCallback('materialScrap'));
+    const makeRejectedCallback = (modelName: string) => async (context: any) => {
+      await (context.tx as any)[modelName].update({
+        where: { id: context.resourceId },
+        data: { status: 'rejected', approvedBy: context.actorId, approvedAt: new Date() },
+      });
+    };
+
+    this.callbacks.register('warehouse.requisitionApproved', makeApprovedCallback('materialRequisition'));
+    this.callbacks.register('warehouse.requisitionRejected', makeRejectedCallback('materialRequisition'));
+    this.callbacks.register('warehouse.inboundApproved', makeApprovedCallback('materialInbound'));
+    this.callbacks.register('warehouse.inboundRejected', makeRejectedCallback('materialInbound'));
+    this.callbacks.register('warehouse.returnApproved', makeApprovedCallback('materialReturn'));
+    this.callbacks.register('warehouse.returnRejected', makeRejectedCallback('materialReturn'));
+    this.callbacks.register('warehouse.scrapApproved', makeApprovedCallback('materialScrap'));
+    this.callbacks.register('warehouse.scrapRejected', makeRejectedCallback('materialScrap'));
   }
 }

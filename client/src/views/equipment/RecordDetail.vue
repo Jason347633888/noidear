@@ -234,40 +234,14 @@ const handleSubmit = async () => {
   }
 };
 
-const handleApprove = async () => {
-  if (!record.value) return;
-  approving.value = true;
-  try {
-    await equipmentApi.approveRecord(record.value.id, approvalForm.comment || undefined);
-    ElMessage.success('审批通过');
-    showApproveDialog.value = false;
-    approvalForm.comment = '';
-    fetchRecord();
-  } catch {
-    ElMessage.error('审批失败');
-  } finally {
-    approving.value = false;
-  }
+const handleApprove = () => {
+  ElMessage.info('请在“审批任务”入口处理设备维护审批');
+  showApproveDialog.value = false;
 };
 
-const handleReject = async () => {
-  if (!record.value) return;
-  if (!approvalForm.comment.trim()) {
-    ElMessage.warning('请输入驳回原因');
-    return;
-  }
-  approving.value = true;
-  try {
-    await equipmentApi.rejectRecord(record.value.id, approvalForm.comment);
-    ElMessage.success('已驳回');
-    showRejectDialog.value = false;
-    approvalForm.comment = '';
-    fetchRecord();
-  } catch {
-    ElMessage.error('驳回失败');
-  } finally {
-    approving.value = false;
-  }
+const handleReject = () => {
+  ElMessage.info('请在“审批任务”入口处理设备维护审批');
+  showRejectDialog.value = false;
 };
 
 onMounted(() => {

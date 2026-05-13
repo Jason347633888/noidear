@@ -4,9 +4,16 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 
 const STATUS_VALUES = ['all', 'pending', 'completed'] as const;
 const TYPE_VALUES = [
-  'all', 'training_attend', 'training_organize', 'approval',
-  'audit_rectification', 'equipment_maintain', 'inventory', 'change_request',
+  'all',
+  'training_attend',
+  'training_organize',
+  'approval',
+  'approval_task',
+  'equipment_maintain',
+  'inventory',
+  'change_request',
   'document_renewal',
+  'change_execution_failed',
 ] as const;
 
 export type TodoStatusFilter = typeof STATUS_VALUES[number];

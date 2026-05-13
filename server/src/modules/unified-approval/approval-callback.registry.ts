@@ -9,6 +9,10 @@ export class ApprovalCallbackRegistry {
     this.callbacks.set(key, callback);
   }
 
+  has(key: string): boolean {
+    return this.callbacks.has(key);
+  }
+
   async invoke(key: string, context: ApprovalCallbackContext) {
     const callback = this.callbacks.get(key);
     if (!callback) {

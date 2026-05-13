@@ -31,5 +31,11 @@ export class TrainingModule implements OnModuleInit {
         data: { status: 'approved' },
       });
     });
+    this.callbacks.register('training.planRejected', async (context: any) => {
+      await context.tx.trainingPlan.update({
+        where: { id: context.resourceId },
+        data: { status: 'rejected' },
+      });
+    });
   }
 }

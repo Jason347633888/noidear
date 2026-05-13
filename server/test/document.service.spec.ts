@@ -350,69 +350,8 @@ describe('DocumentService', () => {
     });
   });
 
-  describe('obsolete', () => {
-    it('应该成功作废已发布文档（管理员）', async () => {
-      const mockDocument = {
-        id: 'doc1',
-        number: '1-HR-001',
-        title: '测试文档',
-        status: 'approved',
-        creatorId: 'user1',
-      };
-
-      jest.spyOn(service, 'findOne').mockResolvedValue(mockDocument as any);
-      mockPrismaService.document.update.mockResolvedValue({
-        ...mockDocument,
-        status: 'obsolete',
-        obsoleteReason: '内容错误',
-      });
-      mockOperationLogService.log.mockResolvedValue(undefined);
-      mockNotificationService.create.mockResolvedValue(undefined);
-
-      await service.obsolete('doc1', '内容错误', 'admin', 'admin');
-
-      expect(mockPrismaService.document.update).toHaveBeenCalledWith({
-        where: { id: 'doc1' },
-        data: expect.objectContaining({
-          status: 'obsolete',
-          obsoleteReason: '内容错误',
-          obsoletedBy: 'admin',
-        }),
-      });
-      expect(mockOperationLogService.log).toHaveBeenCalled();
-      expect(mockNotificationService.create).toHaveBeenCalled();
-    });
-
-    it('应该拒绝作废非已发布文档', async () => {
-      const mockDocument = {
-        id: 'doc1',
-        number: '1-HR-001',
-        status: 'pending',
-        creatorId: 'user1',
-      };
-
-      jest.spyOn(service, 'findOne').mockResolvedValue(mockDocument as any);
-
-      await expect(
-        service.obsolete('doc1', '测试', 'admin', 'admin')
-      ).rejects.toThrow('只有已生效文档可操作');
-    });
-
-    it('应该拒绝非管理员作废', async () => {
-      const mockDocument = {
-        id: 'doc1',
-        number: '1-HR-001',
-        status: 'approved',
-        creatorId: 'user1',
-      };
-
-      jest.spyOn(service, 'findOne').mockResolvedValue(mockDocument as any);
-
-      await expect(
-        service.obsolete('doc1', '测试原因很长很长很长', 'user1', 'user')
-      ).rejects.toThrow(BusinessException);
-    });
-  });
+  // Legacy `obsolete()` action removed: superseding/废止 is now handled by
+  // unified approval callbacks + DocumentLifecycleService.supersede().
 
   describe('restore', () => {
     it('应该成功恢复归档文档（管理员）', async () => {

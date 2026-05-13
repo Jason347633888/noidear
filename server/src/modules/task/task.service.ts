@@ -14,7 +14,6 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { SubmitTaskDto } from './dto/submit-task.dto';
 import { SaveTaskDraftDto } from './dto/save-task-draft.dto';
-import { ApproveTaskDto } from './dto/approve-task.dto';
 import { QueryTaskDto } from './dto/query-task.dto';
 
 interface TemplateField {
@@ -269,22 +268,18 @@ export class TaskService {
     });
 
     if (this.approvalEngine) {
-      try {
-        const approval = await this.approvalEngine.startApproval({
-          resourceType: 'taskRecord',
-          resourceId: record.id,
-          resourceStep: 'submit',
-          triggerKey: 'submit',
-          title: `任务记录审批：${task.title ?? taskId}`,
-          createdById: userId,
-        });
-        await this.prisma.taskRecord.update({
-          where: { id: record.id },
-          data: { approvalInstanceId: approval.id },
-        });
-      } catch {
-        // No ApprovalDefinition matched — skip unified tracking silently
-      }
+      const approval = await this.approvalEngine.startApproval({
+        resourceType: 'task_record',
+        resourceId: record.id,
+        resourceStep: 'submit',
+        triggerKey: 'submit',
+        title: `任务记录审批：${task.title ?? taskId}`,
+        createdById: userId,
+      });
+      return this.prisma.taskRecord.update({
+        where: { id: record.id },
+        data: { approvalInstanceId: approval.id },
+      });
     }
 
     return record;
@@ -375,35 +370,6 @@ export class TaskService {
     });
 
     return updated;
-  }
-
-  async approve(dto: ApproveTaskDto, userId: string) {
-    const record = await this.prisma.taskRecord.findUnique({
-      where: { id: dto.recordId },
-    });
-    if (!record) {
-      throw new NotFoundException('Task record not found');
-    }
-    if (record.status !== 'submitted') {
-      throw new ConflictException('Record has already been processed');
-    }
-
-    await this.prisma.taskRecord.update({
-      where: { id: dto.recordId },
-      data: {
-        status: dto.status,
-        approverId: userId,
-        approvedAt: new Date(),
-        comment: dto.comment,
-      },
-    });
-
-    await this.prisma.task.update({
-      where: { id: record.taskId },
-      data: { status: dto.status },
-    });
-
-    return { success: true };
   }
 
   async getPendingApprovals(query: QueryTaskDto) {

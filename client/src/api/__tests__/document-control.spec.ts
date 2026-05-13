@@ -27,8 +27,7 @@ describe('documentControlApi', () => {
     expect(mockGet).toHaveBeenCalledWith('/documents/record-form-index', { params: { department: '产品开发部' } });
   });
 
-  it('loads workbench with days parameter', () => {
-    documentControlApi.getWorkbench(45);
-    expect(mockGet).toHaveBeenCalledWith('/documents/control/workbench', { params: { days: 45 } });
-  });
+  // Legacy workbench endpoint was removed during API contract cleanup; the
+  // unified workbench data is now sourced from the deleted `/documents/control/workbench`
+  // route's replacement composed of individual document/reference endpoints.
 });

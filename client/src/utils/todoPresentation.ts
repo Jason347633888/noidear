@@ -4,11 +4,12 @@ export const todoTypeLabels: Record<TodoType, string> = {
   training_attend: '培训参加',
   training_organize: '培训组织',
   approval: '审批',
-  audit_rectification: '内审整改',
+  approval_task: '审批任务',
   equipment_maintain: '设备维护',
   inventory: '盘点',
   change_request: '变更请求',
-  approval_task: '审批任务',
+  document_renewal: '文件复审/续期',
+  change_execution_failed: '工艺变更执行异常',
 };
 
 export const priorityWeights: Record<TodoPriority, number> = {

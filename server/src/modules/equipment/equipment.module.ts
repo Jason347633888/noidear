@@ -48,16 +48,43 @@ import { SchedulerService } from './scheduler.service';
   ],
 })
 export class EquipmentModule implements OnModuleInit {
-  constructor(private readonly callbacks: ApprovalCallbackRegistry) {}
+  constructor(
+    private readonly callbacks: ApprovalCallbackRegistry,
+    private readonly planService: PlanService,
+    private readonly statsService: StatsService,
+  ) {}
 
   onModuleInit() {
     this.callbacks.register('equipment.maintenanceApproved', async (context: any) => {
-      await context.tx.maintenanceRecord.update({
+      const record = await context.tx.maintenanceRecord.update({
         where: { id: context.resourceId },
         data: {
           status: 'approved',
           reviewerId: context.actorId,
+          reviewerSignature:
+            typeof context.metadata?.reviewerSignature === 'string'
+              ? context.metadata.reviewerSignature
+              : undefined,
           approvedAt: new Date(),
+        },
+      });
+      await this.planService.generateNextPlan(
+        record.equipmentId,
+        record.maintenanceLevel,
+        record.maintenanceDate,
+      );
+      const year = record.maintenanceDate.getFullYear();
+      await this.statsService.clearCache(['maintenance', `cost-${year}`]).catch(() => {});
+    });
+
+    this.callbacks.register('equipment.maintenanceRejected', async (context: any) => {
+      await context.tx.maintenanceRecord.update({
+        where: { id: context.resourceId },
+        data: {
+          status: 'rejected',
+          rejectedAt: new Date(),
+          rejectReason: String(context.metadata?.rejectReason ?? context.comment ?? ''),
+          reviewerId: context.actorId,
         },
       });
     });

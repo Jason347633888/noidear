@@ -31,7 +31,7 @@ vi.mock('element-plus', () => ({
 
 vi.mock('@/stores/user', () => ({
   useUserStore: () => ({
-    user: { id: 'user-1', name: 'Admin', role: 'admin' },
+    user: { id: 'user-1', name: 'Admin', role: 'admin', roleCode: 'admin' },
     isAdmin: true,
   }),
 }));
@@ -241,7 +241,8 @@ describe('DocumentDetail', () => {
 
     expect(wrapper.text()).toContain('停用文档');
     expect(wrapper.text()).toContain('归档');
-    expect(wrapper.text()).toContain('作废');
+    // “作废” action removed when the legacy obsolete lifecycle was retired
+    // in favor of the unified approval supersede flow.
   });
 
   it('isCreator is true when user is document creator', async () => {
@@ -356,7 +357,8 @@ describe('DocumentDetail', () => {
 
     expect(wrapper.text()).toContain('下载版本');
     expect(wrapper.text()).toContain('预览版本');
-    expect(wrapper.text()).toContain('回滚');
+    // “回滚” action removed: version rollback is no longer exposed; supersede
+    // via unified approval is the supported lifecycle path.
   });
 
   it('falls back to version download URL when version preview request fails', async () => {

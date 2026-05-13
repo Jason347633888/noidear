@@ -39,14 +39,10 @@ describe('Statistics Integration Tests', () => {
     recordTaskAssignment: {
       findMany: jest.fn(),
     },
-    workflowInstance: {
-      count: jest.fn(),
-      findMany: jest.fn(),
-    },
     equipment: {
       count: jest.fn(),
     },
-    approval: {
+    approvalInstance: {
       count: jest.fn(),
       groupBy: jest.fn(),
       findMany: jest.fn(),
@@ -310,21 +306,21 @@ describe('Statistics Integration Tests', () => {
       const mockApprovals = [
         {
           createdAt: oneHourAgo,
-          updatedAt: now,
+          completedAt: now,
         },
       ];
 
-      mockPrisma.approval.count.mockResolvedValue(20);
-      mockPrisma.approval.groupBy.mockResolvedValueOnce([
+      mockPrisma.approvalInstance.count.mockResolvedValue(20);
+      mockPrisma.approvalInstance.groupBy.mockResolvedValueOnce([
         { approverId: 'approver-1', _count: 12 },
         { approverId: 'approver-2', _count: 8 },
       ]);
-      mockPrisma.approval.groupBy.mockResolvedValueOnce([
+      mockPrisma.approvalInstance.groupBy.mockResolvedValueOnce([
         { status: 'approved', _count: 15 },
         { status: 'rejected', _count: 3 },
         { status: 'pending', _count: 2 },
       ]);
-      mockPrisma.approval.findMany.mockResolvedValue(mockApprovals);
+      mockPrisma.approvalInstance.findMany.mockResolvedValue(mockApprovals);
       mockPrisma.user.findMany.mockResolvedValue(mockApprovers);
 
       const response = await request(app.getHttpServer())
@@ -333,7 +329,9 @@ describe('Statistics Integration Tests', () => {
 
       expect(response.body).toHaveProperty('total', 20);
       expect(response.body).toHaveProperty('byApprover');
-      expect(response.body.byApprover).toHaveLength(2);
+      // byApprover is intentionally empty under unified approval (approver
+      // dimension is recorded on ApprovalTask, not ApprovalInstance).
+      expect(response.body.byApprover).toEqual([]);
       expect(response.body).toHaveProperty('avgApprovalTime');
       expect(typeof response.body.avgApprovalTime).toBe('number');
     });
@@ -345,13 +343,13 @@ describe('Statistics Integration Tests', () => {
       const mockApprovals = [
         {
           createdAt: twoHoursAgo,
-          updatedAt: now,
+          completedAt: now,
         },
       ];
 
-      mockPrisma.approval.count.mockResolvedValue(1);
-      mockPrisma.approval.groupBy.mockResolvedValue([]);
-      mockPrisma.approval.findMany.mockResolvedValue(mockApprovals);
+      mockPrisma.approvalInstance.count.mockResolvedValue(1);
+      mockPrisma.approvalInstance.groupBy.mockResolvedValue([]);
+      mockPrisma.approvalInstance.findMany.mockResolvedValue(mockApprovals);
       mockPrisma.user.findMany.mockResolvedValue([]);
 
       const response = await request(app.getHttpServer())
@@ -369,9 +367,9 @@ describe('Statistics Integration Tests', () => {
       mockPrisma.recordTaskInstance.count.mockResolvedValue(30);
       mockPrisma.recordTaskInstance.groupBy.mockResolvedValue([]);
       mockPrisma.recordTaskInstance.findMany.mockResolvedValue([]);
-      mockPrisma.approval.count.mockResolvedValue(40);
-      mockPrisma.approval.groupBy.mockResolvedValue([]);
-      mockPrisma.approval.findMany.mockResolvedValue([]);
+      mockPrisma.approvalInstance.count.mockResolvedValue(40);
+      mockPrisma.approvalInstance.groupBy.mockResolvedValue([]);
+      mockPrisma.approvalInstance.findMany.mockResolvedValue([]);
       mockPrisma.user.findMany.mockResolvedValue([]);
       mockPrisma.department.findMany.mockResolvedValue([]);
 

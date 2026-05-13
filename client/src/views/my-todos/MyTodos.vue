@@ -26,10 +26,12 @@
             <el-option label="培训参加" value="training_attend" />
             <el-option label="培训组织" value="training_organize" />
             <el-option label="审批" value="approval" />
-            <el-option label="内审整改" value="audit_rectification" />
+            <el-option label="审批任务" value="approval_task" />
             <el-option label="设备维护" value="equipment_maintain" />
             <el-option label="盘点" value="inventory" />
             <el-option label="变更请求" value="change_request" />
+            <el-option label="文件复审/续期" value="document_renewal" />
+            <el-option label="工艺变更执行异常" value="change_execution_failed" />
           </el-select>
         </el-col>
       </el-row>

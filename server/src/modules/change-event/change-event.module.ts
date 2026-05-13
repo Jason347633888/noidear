@@ -28,20 +28,17 @@ export class ChangeEventModule implements OnModuleInit {
         where: { id: context.resourceId },
         data: { status: 'approved', approved_by: context.actorId },
       });
-      await (context.tx as any).changeApproval.updateMany({
-        where: { change_event_id: context.resourceId },
-        data: {
-          approver_id: context.actorId,
-          decision: 'approved',
-          comments: context.comment,
-          approved_at: new Date(),
-        },
-      });
       await this.productProcessChangeService.applyApprovedChange(
         context.resourceId,
         context.actorId,
         context.tx,
       );
+    });
+    this.callbacks.register('changeEvent.approvalRejected', async (context: any) => {
+      await (context.tx as any).changeEvent.update({
+        where: { id: context.resourceId },
+        data: { status: 'rejected', approved_by: context.actorId },
+      });
     });
   }
 }

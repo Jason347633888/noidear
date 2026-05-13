@@ -72,14 +72,6 @@
               <el-button type="primary" link size="small" @click="handleViewDetail(row)">
                 查看详情
               </el-button>
-              <template v-if="row.status === 'pending'">
-                <el-button type="success" link size="small" @click="handleApprove(row)">
-                  通过
-                </el-button>
-                <el-button type="danger" link size="small" @click="handleReject(row)">
-                  拒绝
-                </el-button>
-              </template>
             </template>
           </el-table-column>
         </el-table>
@@ -132,49 +124,18 @@
       </el-descriptions>
     </el-dialog>
 
-    <!-- 审批弹窗 -->
-    <el-dialog v-model="approveVisible" title="审批偏离报告" width="500px">
-      <el-form :model="approveForm" :rules="approveRules" ref="approveFormRef" label-width="100px">
-        <el-form-item label="审批操作">
-          <el-radio-group v-model="approveForm.action">
-            <el-radio value="approve">通过</el-radio>
-            <el-radio value="reject">拒绝</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="审批意见" prop="comment">
-          <el-input
-            v-model="approveForm.comment"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入审批意见（可选）"
-            maxlength="200"
-            show-word-limit
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="approveVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmitApprove" :loading="submitting">
-          提交审批
-        </el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import type { FormInstance, FormRules } from 'element-plus';
 import deviationApi, { type DeviationReport } from '@/api/deviation';
 
 const loading = ref(false);
-const submitting = ref(false);
 const tableData = ref<DeviationReport[]>([]);
 const detailVisible = ref(false);
-const approveVisible = ref(false);
 const currentReport = ref<DeviationReport | null>(null);
-const approveFormRef = ref<FormInstance>();
 const dateRange = ref<[string, string] | null>(null);
 
 const filterForm = reactive({
@@ -187,17 +148,6 @@ const pagination = reactive({
   pageSize: 20,
   total: 0,
 });
-
-const approveForm = reactive({
-  action: 'approve' as 'approve' | 'reject',
-  comment: '',
-});
-
-const approveRules: FormRules = {
-  comment: [
-    { max: 200, message: '审批意见不超过200字符', trigger: 'blur' },
-  ],
-};
 
 const getStatusType = (status: string) => {
   const map: Record<string, any> = {
@@ -278,42 +228,6 @@ const handleSizeChange = () => {
 const handleViewDetail = (row: DeviationReport) => {
   currentReport.value = row;
   detailVisible.value = true;
-};
-
-const handleApprove = (row: DeviationReport) => {
-  currentReport.value = row;
-  approveForm.action = 'approve';
-  approveForm.comment = '';
-  approveVisible.value = true;
-};
-
-const handleReject = (row: DeviationReport) => {
-  currentReport.value = row;
-  approveForm.action = 'reject';
-  approveForm.comment = '';
-  approveVisible.value = true;
-};
-
-const handleSubmitApprove = async () => {
-  if (!approveFormRef.value || !currentReport.value) return;
-
-  try {
-    await approveFormRef.value.validate();
-    submitting.value = true;
-
-    await deviationApi.approveDeviationReport(currentReport.value.id, {
-      action: approveForm.action,
-      comment: approveForm.comment || undefined,
-    });
-
-    ElMessage.success(approveForm.action === 'approve' ? '审批通过' : '已拒绝');
-    approveVisible.value = false;
-    fetchData();
-  } catch {
-    // Error handled by interceptor or validation
-  } finally {
-    submitting.value = false;
-  }
 };
 
 onMounted(() => {

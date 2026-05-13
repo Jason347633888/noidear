@@ -244,14 +244,8 @@ const handleSubmit = async (row: any) => {
   }
 };
 
-const handleApprove = async (row: any, action: 'approved' | 'rejected') => {
-  const msg = action === 'approved' ? '确定批准该领料单？' : '确定驳回该领料单？';
-  try {
-    await ElMessageBox.confirm(msg, '确认');
-    await requisitionApi.approve(row.id, action);
-    ElMessage.success(action === 'approved' ? '已批准' : '已驳回');
-    fetchData();
-  } catch (error) { /* 取消 */ }
+const handleApprove = (_row: any, _action: 'approved' | 'rejected') => {
+  ElMessage.info('请在"审批任务"入口处理领料单审批');
 };
 
 const handleDispatch = async (row: any) => {

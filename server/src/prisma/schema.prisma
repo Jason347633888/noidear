@@ -1771,7 +1771,6 @@ enum TodoType {
   training_attend // 培训参加任务
   approval // 审批任务
   approval_task // 统一审批任务
-  audit_rectification // 内审整改任务（TASK-326）
   equipment_maintain // 设备维护任务
   inventory // 盘点任务
   change_request // 变更请求任务
@@ -3388,6 +3387,7 @@ model ProductRecall {
   completion_summary              String?
   cancelled_at                    DateTime?
   cancel_reason                   String?
+  approvalInstanceId              String?
   created_at                      DateTime              @default(now())
   updated_at                      DateTime              @updatedAt
 
@@ -3399,6 +3399,7 @@ model ProductRecall {
   @@index([company_id, status])
   @@index([company_id, source_complaint_id])
   @@index([source_traceability_snapshot_id])
+  @@index([approvalInstanceId])
   @@map("product_recalls")
 }
 

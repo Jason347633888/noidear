@@ -10,8 +10,6 @@ import { ApprovalEngineService } from '../unified-approval/approval-engine.servi
 import {
   CreateRecordDto,
   UpdateRecordDto,
-  ApproveRecordDto,
-  RejectRecordDto,
   QueryRecordDto,
 } from './dto/record.dto';
 import { PlanService } from './plan.service';
@@ -128,50 +126,6 @@ export class RecordService {
     }
 
     return updated;
-  }
-
-  async approve(id: string, dto: ApproveRecordDto) {
-    const record = await this.findOne(id);
-    this.assertSubmittedStatus(record.status, 'approved');
-
-    const updated = await this.prisma.maintenanceRecord.update({
-      where: { id },
-      data: {
-        status: 'approved',
-        approvedAt: new Date(),
-        reviewerSignature: dto.reviewerSignature,
-        reviewerId: dto.reviewerId,
-      },
-    });
-
-    await this.planService.generateNextPlan(
-      record.equipmentId,
-      record.maintenanceLevel,
-      record.maintenanceDate,
-    );
-
-    this.logger.log(`Maintenance record approved: ${record.recordNumber}`);
-
-    // Clear maintenance and cost stats cache
-    const year = record.maintenanceDate.getFullYear();
-    await this.statsService.clearCache(['maintenance', `cost-${year}`]).catch(() => {});
-
-    return updated;
-  }
-
-  async reject(id: string, dto: RejectRecordDto) {
-    const record = await this.findOne(id);
-    this.assertSubmittedStatus(record.status, 'rejected');
-
-    return this.prisma.maintenanceRecord.update({
-      where: { id },
-      data: {
-        status: 'rejected',
-        rejectedAt: new Date(),
-        rejectReason: dto.rejectReason,
-        reviewerId: dto.reviewerId,
-      },
-    });
   }
 
   // --- Private helpers ---

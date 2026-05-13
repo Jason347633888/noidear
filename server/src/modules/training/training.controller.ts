@@ -65,12 +65,6 @@ export class TrainingController {
     return this.trainingService.submitPlanForApproval(id);
   }
 
-  @Post('plans/:id/approve')
-  @ApiOperation({ summary: '审批通过（管理员）' })
-  async approvePlan(@Param('id') id: string) {
-    return this.trainingService.handleApprovalCompleted(id);
-  }
-
   // ==================== 培训项目管理 ====================
 
   @Post('projects')

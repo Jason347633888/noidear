@@ -15,10 +15,12 @@ describe('RoleService', () => {
   const mockPrismaService: any = {
     role: {
       create: jest.fn(),
+      createMany: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
       findFirst: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
       delete: jest.fn(),
       count: jest.fn(),
     },
@@ -89,10 +91,7 @@ describe('RoleService', () => {
 
       const result = await service.create(dto);
 
-      expect(result).toEqual({
-        success: true,
-        data: mockRole,
-      });
+      expect(result).toEqual(mockRole);
       expect(mockPrismaService.role.findUnique).toHaveBeenCalledWith({
         where: { code: dto.code },
       });
@@ -131,14 +130,11 @@ describe('RoleService', () => {
       const result = await service.findAll(query);
 
       expect(result).toEqual({
-        success: true,
-        data: mockRoles,
-        meta: {
-          total: 2,
-          page: 1,
-          limit: 10,
-          totalPages: 1,
-        },
+        list: mockRoles,
+        total: 2,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
       });
 
       expect(mockPrismaService.role.count).toHaveBeenCalledWith({
@@ -176,8 +172,8 @@ describe('RoleService', () => {
 
       const result = await service.findAll(query);
 
-      expect(result.data).toEqual([]);
-      expect(result.meta.total).toBe(0);
+      expect(result.list).toEqual([]);
+      expect(result.total).toBe(0);
     });
   });
 
@@ -198,10 +194,7 @@ describe('RoleService', () => {
 
       const result = await service.findOne(roleId);
 
-      expect(result).toEqual({
-        success: true,
-        data: mockRole,
-      });
+      expect(result).toEqual(mockRole);
       expect(mockPrismaService.role.findFirst).toHaveBeenCalledWith({
         where: { id: roleId, deletedAt: null },
         include: {
@@ -254,14 +247,12 @@ describe('RoleService', () => {
 
       const result = await service.update(roleId, dto);
 
-      expect(result).toEqual({
-        success: true,
-        data: updatedRole,
-      });
+      expect(result).toEqual(updatedRole);
       expect(mockPrismaService.role.update).toHaveBeenCalledWith({
         where: { id: roleId },
         data: {
-          ...dto,
+          name: dto.name,
+          description: dto.description,
           updatedAt: expect.any(Date),
         },
       });
@@ -443,7 +434,7 @@ describe('RoleService', () => {
 
       const result = await service.getRolePermissions(roleId);
 
-      expect(result.data).toEqual([
+      expect(result).toEqual([
         {
           id: 'perm-1',
           resource: 'document',

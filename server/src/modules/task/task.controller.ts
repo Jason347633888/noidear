@@ -19,7 +19,6 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { SubmitTaskDto } from './dto/submit-task.dto';
 import { SaveTaskDraftDto } from './dto/save-task-draft.dto';
-import { ApproveTaskDto } from './dto/approve-task.dto';
 import { LegacySubmitTaskDto } from './dto/legacy-submit-task.dto';
 import { QueryTaskDto } from './dto/query-task.dto';
 
@@ -59,13 +58,6 @@ export class TaskController {
       deviationReasons: dto.deviationReasons,
     };
     return this.taskService.submit(dto.taskId, submitDto, req.user.id);
-  }
-
-  @Post('approve')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: '审批任务记录' })
-  approve(@Body() dto: ApproveTaskDto, @Request() req: any) {
-    return this.taskService.approve(dto, req.user.id);
   }
 
   @Get(':id')

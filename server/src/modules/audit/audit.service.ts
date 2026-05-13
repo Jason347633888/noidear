@@ -586,43 +586,6 @@ export class AuditService {
   }
 
   /**
-   * 获取审计仪表板数据
-   * TASK-362: Get dashboard overview
-   */
-  async getDashboard() {
-    try {
-      const now = new Date();
-      const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const last30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-      const [loginStats24h, loginStats7d, sensitiveOps24h, sensitiveOps7d] = await Promise.all([
-        this.getLoginStats(last24h, now),
-        this.getLoginStats(last7d, now),
-        this.getSensitiveStats(last24h, now),
-        this.getSensitiveStats(last7d, now),
-      ]);
-
-      return {
-        login: {
-          last24h: loginStats24h,
-          last7d: loginStats7d,
-        },
-        sensitive: {
-          last24h: sensitiveOps24h,
-          last7d: sensitiveOps7d,
-        },
-      };
-    } catch (error) {
-      this.logger.error(
-        `Failed to get dashboard: ${error.message}`,
-        error.stack,
-      );
-      throw error;
-    }
-  }
-
-  /**
    * 获取用户操作时间线
    * TASK-362: Get user timeline (all activities)
    */

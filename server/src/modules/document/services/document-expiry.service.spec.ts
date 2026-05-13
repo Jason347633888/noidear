@@ -7,6 +7,7 @@ describe('DocumentExpiryService', () => {
       update: jest.fn(),
     },
     todoTask: {
+      findUnique: jest.fn(),
       upsert: jest.fn(),
     },
   };
@@ -15,6 +16,7 @@ describe('DocumentExpiryService', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     prisma.businessDocumentLink.update.mockResolvedValue({});
+    prisma.todoTask.findUnique.mockResolvedValue(null);
     prisma.todoTask.upsert.mockResolvedValue({});
     service = new DocumentExpiryService(prisma as any);
   });
@@ -73,13 +75,13 @@ describe('DocumentExpiryService', () => {
         userId_type_relatedId: {
           userId: 'creator1',
           type: 'document_renewal',
-          relatedId: 'expired-link',
+          relatedId: 'doc1',
         },
       },
       create: expect.objectContaining({
         userId: 'creator1',
         type: 'document_renewal',
-        relatedId: 'expired-link',
+        relatedId: 'doc1',
         priority: 'high',
         dueDate: new Date('2026-04-20'),
       }),
@@ -89,13 +91,13 @@ describe('DocumentExpiryService', () => {
         userId_type_relatedId: {
           userId: 'owner2',
           type: 'document_renewal',
-          relatedId: 'soon-link',
+          relatedId: 'doc2',
         },
       },
       create: expect.objectContaining({
         userId: 'owner2',
         type: 'document_renewal',
-        relatedId: 'soon-link',
+        relatedId: 'doc2',
         priority: 'normal',
         dueDate: new Date('2026-05-10'),
       }),

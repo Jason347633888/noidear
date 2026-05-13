@@ -19,7 +19,10 @@ function makeDeps() {
   const todo: any = { createTaskTodos: jest.fn(), closeTaskTodos: jest.fn(), cancelInstanceTodos: jest.fn() };
   const notification: any = { notifyTaskCreated: jest.fn(), notifyRequester: jest.fn() };
   const callbacks: any = { invoke: jest.fn() };
-  return { tx, prisma, resolver, todo, notification, callbacks };
+  const metadataValidator: any = {
+    validate: jest.fn((context) => context.metadata ?? {}),
+  };
+  return { tx, prisma, resolver, todo, notification, callbacks, metadataValidator };
 }
 
 describe('ApprovalEngineService', () => {
@@ -34,7 +37,14 @@ describe('ApprovalEngineService', () => {
     deps.tx.approvalInstance.create.mockResolvedValue({ id: 'inst-1', title: '标题' });
     deps.tx.approvalTask.create.mockResolvedValue({ id: 'task-1', assigneeUserId: 'u2', stepName: '审批', instance: { title: '标题' } });
 
-    const service = new ApprovalEngineService(deps.prisma, deps.resolver, deps.todo, deps.notification, deps.callbacks);
+    const service = new ApprovalEngineService(
+      deps.prisma,
+      deps.resolver,
+      deps.todo,
+      deps.notification,
+      deps.callbacks,
+      deps.metadataValidator,
+    );
     const result = await service.startApproval({
       resourceType: 'document',
       resourceId: 'doc-1',
@@ -52,7 +62,14 @@ describe('ApprovalEngineService', () => {
   it('rejects start when definition is missing', async () => {
     const deps = makeDeps();
     deps.tx.approvalDefinition.findFirst.mockResolvedValue(null);
-    const service = new ApprovalEngineService(deps.prisma, deps.resolver, deps.todo, deps.notification, deps.callbacks);
+    const service = new ApprovalEngineService(
+      deps.prisma,
+      deps.resolver,
+      deps.todo,
+      deps.notification,
+      deps.callbacks,
+      deps.metadataValidator,
+    );
 
     await expect(
       service.startApproval({ resourceType: 'document', resourceId: 'd1', triggerKey: 'missing', title: '标题', createdById: 'u1' }),
@@ -79,7 +96,14 @@ describe('ApprovalEngineService', () => {
     });
     deps.tx.approvalTask.findMany.mockResolvedValue([]);
 
-    const service = new ApprovalEngineService(deps.prisma, deps.resolver, deps.todo, deps.notification, deps.callbacks);
+    const service = new ApprovalEngineService(
+      deps.prisma,
+      deps.resolver,
+      deps.todo,
+      deps.notification,
+      deps.callbacks,
+      deps.metadataValidator,
+    );
     await service.approveTask('task-1', 'approver', '通过');
 
     expect(deps.resolver.assertCanAct).toHaveBeenCalled();
@@ -93,7 +117,14 @@ describe('ApprovalEngineService', () => {
   it('rejects an already completed task', async () => {
     const deps = makeDeps();
     deps.tx.approvalTask.findUnique.mockResolvedValue({ id: 'task-1', status: 'APPROVED', instance: {} });
-    const service = new ApprovalEngineService(deps.prisma, deps.resolver, deps.todo, deps.notification, deps.callbacks);
+    const service = new ApprovalEngineService(
+      deps.prisma,
+      deps.resolver,
+      deps.todo,
+      deps.notification,
+      deps.callbacks,
+      deps.metadataValidator,
+    );
 
     await expect(service.approveTask('task-1', 'u1')).rejects.toThrow(BadRequestException);
   });
@@ -120,7 +151,14 @@ describe('ApprovalEngineService', () => {
       },
     });
 
-    const service = new ApprovalEngineService(deps.prisma, deps.resolver, deps.todo, deps.notification, deps.callbacks);
+    const service = new ApprovalEngineService(
+      deps.prisma,
+      deps.resolver,
+      deps.todo,
+      deps.notification,
+      deps.callbacks,
+      deps.metadataValidator,
+    );
     await service.rejectTask('task-1', 'approver', '不符合要求');
 
     expect(deps.tx.approvalInstance.update).toHaveBeenCalledWith({
@@ -156,17 +194,140 @@ describe('ApprovalEngineService', () => {
       },
     });
 
-    const service = new ApprovalEngineService(deps.prisma, deps.resolver, deps.todo, deps.notification, deps.callbacks);
+    const service = new ApprovalEngineService(
+      deps.prisma,
+      deps.resolver,
+      deps.todo,
+      deps.notification,
+      deps.callbacks,
+      deps.metadataValidator,
+    );
     await service.rejectTask('task-1', 'approver', '不符合要求');
 
     expect(deps.callbacks.invoke).not.toHaveBeenCalled();
+  });
+
+  it('stores approval metadata under ApprovalAction.snapshot.businessDecision', async () => {
+    const deps = makeDeps();
+    deps.tx.approvalTask.findUnique.mockResolvedValue({
+      id: 'task-1',
+      status: 'PENDING',
+      stepKey: 'product-recall-review',
+      approvalMode: 'single',
+      assignmentType: 'user',
+      assigneeUserId: 'approver',
+      assigneeRoleCode: null,
+      assigneeDepartmentId: null,
+      assigneePermissionCode: null,
+      instanceId: 'inst-1',
+      instance: {
+        id: 'inst-1',
+        resourceType: 'product_recall',
+        resourceId: 'recall-1',
+        resourceStep: 'submit',
+        triggerKey: 'submit',
+        createdById: 'requester',
+        title: '召回审批',
+        definition: { steps: [{ stepKey: 'product-recall-review', onApproved: 'productRecall.approvalApproved' }] },
+      },
+    });
+    deps.tx.approvalTask.update.mockResolvedValue({ id: 'task-1', status: 'APPROVED' });
+    deps.tx.approvalTask.findMany.mockResolvedValue([]);
+
+    const service = new ApprovalEngineService(
+      deps.prisma,
+      deps.resolver,
+      deps.todo,
+      deps.notification,
+      deps.callbacks,
+      deps.metadataValidator,
+    );
+    await service.approveTask('task-1', 'approver', '同意', { review_note: '风险可控' });
+
+    expect(deps.metadataValidator.validate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resourceType: 'product_recall',
+        triggerKey: 'submit',
+        stepKey: 'product-recall-review',
+        action: 'APPROVED',
+        metadata: { review_note: '风险可控' },
+      }),
+    );
+    expect(deps.tx.approvalAction.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        snapshot: expect.objectContaining({
+          businessDecision: { review_note: '风险可控' },
+        }),
+      }),
+    });
+    expect(deps.callbacks.invoke).toHaveBeenCalledWith(
+      'productRecall.approvalApproved',
+      expect.objectContaining({ metadata: { review_note: '风险可控' } }),
+    );
+  });
+
+  it('passes reject metadata to onRejected callbacks', async () => {
+    const deps = makeDeps();
+    deps.tx.approvalTask.findUnique.mockResolvedValue({
+      id: 'task-1',
+      status: 'PENDING',
+      stepKey: 'maintenance-record',
+      approvalMode: 'single',
+      assignmentType: 'user',
+      assigneeUserId: 'approver',
+      assigneeRoleCode: null,
+      assigneeDepartmentId: null,
+      assigneePermissionCode: null,
+      instanceId: 'inst-1',
+      instance: {
+        id: 'inst-1',
+        resourceType: 'maintenance_record',
+        resourceId: 'rec-1',
+        resourceStep: 'submit',
+        triggerKey: 'submit',
+        createdById: 'requester',
+        title: '维护记录审批',
+        definition: {
+          steps: [
+            {
+              stepKey: 'maintenance-record',
+              onApproved: 'equipment.maintenanceApproved',
+              onRejected: 'equipment.maintenanceRejected',
+            },
+          ],
+        },
+      },
+    });
+    deps.tx.approvalTask.update.mockResolvedValue({ id: 'task-1', status: 'REJECTED' });
+
+    const service = new ApprovalEngineService(
+      deps.prisma,
+      deps.resolver,
+      deps.todo,
+      deps.notification,
+      deps.callbacks,
+      deps.metadataValidator,
+    );
+    await service.rejectTask('task-1', 'approver', '资料不完整', { rejectReason: '缺少照片' });
+
+    expect(deps.callbacks.invoke).toHaveBeenCalledWith(
+      'equipment.maintenanceRejected',
+      expect.objectContaining({ metadata: { rejectReason: '缺少照片' } }),
+    );
   });
 
   describe('act', () => {
     it('approves first pending task for instance', async () => {
       const deps = makeDeps();
       deps.prisma.approvalTask = { findFirst: jest.fn().mockResolvedValue({ id: 'task-1' }) };
-      const service = new ApprovalEngineService(deps.prisma, deps.resolver, deps.todo, deps.notification, deps.callbacks);
+      const service = new ApprovalEngineService(
+        deps.prisma,
+        deps.resolver,
+        deps.todo,
+        deps.notification,
+        deps.callbacks,
+        deps.metadataValidator,
+      );
       jest.spyOn(service, 'approveTask').mockResolvedValue({ id: 'task-1', status: 'APPROVED' } as any);
 
       await service.act('instance-1', 'approve', 'approver-1', '同意');
@@ -176,24 +337,38 @@ describe('ApprovalEngineService', () => {
         orderBy: { createdAt: 'asc' },
         select: { id: true },
       });
-      expect(service.approveTask).toHaveBeenCalledWith('task-1', 'approver-1', '同意');
+      expect(service.approveTask).toHaveBeenCalledWith('task-1', 'approver-1', '同意', undefined);
     });
 
     it('rejects first pending task for instance', async () => {
       const deps = makeDeps();
       deps.prisma.approvalTask = { findFirst: jest.fn().mockResolvedValue({ id: 'task-1' }) };
-      const service = new ApprovalEngineService(deps.prisma, deps.resolver, deps.todo, deps.notification, deps.callbacks);
+      const service = new ApprovalEngineService(
+        deps.prisma,
+        deps.resolver,
+        deps.todo,
+        deps.notification,
+        deps.callbacks,
+        deps.metadataValidator,
+      );
       jest.spyOn(service, 'rejectTask').mockResolvedValue({ id: 'task-1', status: 'REJECTED' } as any);
 
       await service.act('instance-1', 'reject', 'approver-1', '不同意');
 
-      expect(service.rejectTask).toHaveBeenCalledWith('task-1', 'approver-1', '不同意');
+      expect(service.rejectTask).toHaveBeenCalledWith('task-1', 'approver-1', '不同意', undefined);
     });
 
     it('throws NotFoundException when instance has no pending task', async () => {
       const deps = makeDeps();
       deps.prisma.approvalTask = { findFirst: jest.fn().mockResolvedValue(null) };
-      const service = new ApprovalEngineService(deps.prisma, deps.resolver, deps.todo, deps.notification, deps.callbacks);
+      const service = new ApprovalEngineService(
+        deps.prisma,
+        deps.resolver,
+        deps.todo,
+        deps.notification,
+        deps.callbacks,
+        deps.metadataValidator,
+      );
 
       await expect(service.act('instance-1', 'approve', 'approver-1')).rejects.toThrow('审批实例没有待处理任务');
     });

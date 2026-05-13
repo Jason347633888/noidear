@@ -50,6 +50,10 @@ const batchRows = [
 ];
 
 const stubs = {
+  PageHeaderBlock: {
+    template: '<header><slot /><slot name="actions" /></header>',
+    props: ['eyebrow', 'title'],
+  },
   'el-card': { template: '<section><slot name="header" /><slot /></section>' },
   'el-button': { template: '<button :disabled="disabled" @click="$emit(\'click\')"><slot /></button>', props: ['type', 'loading', 'disabled'] },
   'el-icon': { template: '<i><slot /></i>' },
