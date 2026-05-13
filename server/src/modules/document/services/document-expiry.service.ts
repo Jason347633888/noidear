@@ -70,31 +70,54 @@ export class DocumentExpiryService {
     const title = status === 'expired'
       ? `业务文件已到期: ${link.document.title}`
       : `业务文件即将到期: ${link.document.title}`;
+    const relatedId = link.document.id;
+    const nextPriority: 'high' | 'normal' = status === 'expired' ? 'high' : 'normal';
+    const description = `${link.businessType}/${link.businessId}/${link.documentKind} ${link.document.number}`;
+
+    const existing = await this.prisma.todoTask.findUnique({
+      where: {
+        userId_type_relatedId: {
+          userId,
+          type: 'document_renewal',
+          relatedId,
+        },
+      },
+    });
+
+    const dueDate = existing?.dueDate && link.expiresAt && existing.dueDate < link.expiresAt
+      ? existing.dueDate
+      : link.expiresAt;
+    const priority: 'high' | 'normal' = existing?.priority === 'high' || nextPriority === 'high'
+      ? 'high'
+      : 'normal';
+    const mergedDescription = existing?.description && !existing.description.includes(description)
+      ? `${existing.description}; ${description}`
+      : description;
 
     await this.prisma.todoTask.upsert({
       where: {
         userId_type_relatedId: {
           userId,
           type: 'document_renewal',
-          relatedId: link.id,
+          relatedId,
         },
       },
       create: {
         userId,
         type: 'document_renewal',
-        relatedId: link.id,
+        relatedId,
         title,
-        description: `${link.businessType}/${link.businessId}/${link.documentKind} ${link.document.number}`,
+        description: mergedDescription,
         status: 'pending',
-        priority: status === 'expired' ? 'high' : 'normal',
-        dueDate: link.expiresAt,
+        priority,
+        dueDate,
       },
       update: {
         title,
-        description: `${link.businessType}/${link.businessId}/${link.documentKind} ${link.document.number}`,
+        description: mergedDescription,
         status: 'pending',
-        priority: status === 'expired' ? 'high' : 'normal',
-        dueDate: link.expiresAt,
+        priority,
+        dueDate,
       },
     });
   }

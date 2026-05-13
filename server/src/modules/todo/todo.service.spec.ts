@@ -55,12 +55,12 @@ describe('TodoService', () => {
       expect(result.items[0].actionRoute).toBeNull();
     });
 
-    it('sets actionRoute for document renewal todos', async () => {
-      mockPrisma.todoTask.findMany.mockResolvedValue([makeTodo({ type: 'document_renewal', relatedId: 'link1' })]);
+    it('sets actionRoute for document renewal todos to document detail', async () => {
+      mockPrisma.todoTask.findMany.mockResolvedValue([makeTodo({ type: 'document_renewal', relatedId: 'doc1' })]);
       mockPrisma.todoTask.count.mockResolvedValue(1);
 
       const result = await service.findAll('user1', { status: 'all', type: 'all', page: 1, limit: 20 });
-      expect(result.items[0].actionRoute).toBe('/documents/business-links/link1');
+      expect(result.items[0].actionRoute).toBe('/documents/doc1');
     });
 
     it('routes change_execution_failed todos to product-by-plan redirect', async () => {
@@ -98,6 +98,9 @@ describe('TodoService', () => {
       expect(result.byType['approval']).toBe(1);
       expect(result.byType['equipment_maintain']).toBe(0);
       expect(result.byType['document_renewal']).toBe(0);
+      expect(result.byType['change_execution_failed']).toBe(0);
+      // audit_rectification was removed; key must be absent from the zero-fill map.
+      expect((result.byType as Record<string, number>).audit_rectification).toBeUndefined();
     });
   });
 

@@ -1771,7 +1771,6 @@ enum TodoType {
   training_attend // 培训参加任务
   approval // 审批任务
   approval_task // 统一审批任务
-  audit_rectification // 内审整改任务（TASK-326）
   equipment_maintain // 设备维护任务
   inventory // 盘点任务
   change_request // 变更请求任务

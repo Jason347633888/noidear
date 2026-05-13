@@ -4,11 +4,12 @@ export type TodoType =
   | 'training_attend'
   | 'training_organize'
   | 'approval'
-  | 'audit_rectification'
+  | 'approval_task'
   | 'equipment_maintain'
   | 'inventory'
   | 'change_request'
-  | 'approval_task';
+  | 'document_renewal'
+  | 'change_execution_failed';
 
 export interface TodoItem {
   id: string;
