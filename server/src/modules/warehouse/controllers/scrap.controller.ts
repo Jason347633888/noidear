@@ -32,17 +32,6 @@ export class ScrapController {
     return this.scrapService.create(dto);
   }
 
-  @Post(':id/approve')
-  @ApiOperation({ summary: '审批报废单' })
-  @ApiResponse({ status: 200, description: '审批成功' })
-  @ApiResponse({ status: 404, description: '报废单不存在' })
-  approve(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: ApproveScrapDto,
-  ) {
-    return this.scrapService.approve(id, dto);
-  }
-
   @Post(':id/complete')
   @ApiOperation({ summary: '完成报废（库存变更）' })
   @ApiResponse({ status: 200, description: '报废完成' })

@@ -32,17 +32,6 @@ export class ReturnController {
     return this.returnService.create(dto);
   }
 
-  @Post(':id/approve')
-  @ApiOperation({ summary: '审批退料单' })
-  @ApiResponse({ status: 200, description: '审批成功' })
-  @ApiResponse({ status: 404, description: '退料单不存在' })
-  approve(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: ApproveReturnDto,
-  ) {
-    return this.returnService.approve(id, dto);
-  }
-
   @Post(':id/complete')
   @ApiOperation({ summary: '完成退料（库存变更）' })
   @ApiResponse({ status: 200, description: '退料完成' })

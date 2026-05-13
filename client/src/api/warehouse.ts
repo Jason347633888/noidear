@@ -222,9 +222,6 @@ export const requisitionApi = {
     return request.post(`/warehouse/requisitions/${id}/submit`);
   },
 
-  approve(id: string, action: 'approved' | 'rejected', comment?: string) {
-    return request.post(`/warehouse/requisitions/${id}/approve`, { action, comment });
-  },
 };
 
 // =========================================================================

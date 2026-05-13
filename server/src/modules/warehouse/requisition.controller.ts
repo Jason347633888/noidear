@@ -30,12 +30,6 @@ export class RequisitionController {
     return this.requisitionService.submit(id);
   }
 
-  @Post(':id/approve')
-  @HttpCode(HttpStatus.OK)
-  approve(@Param('id') id: string, @Body() body: { action?: 'approved' | 'rejected' }, @Request() req: any) {
-    return this.requisitionService.approve(id, req.user.id, body.action ?? 'approved');
-  }
-
   @Post(':id/complete')
   @HttpCode(HttpStatus.OK)
   complete(@Param('id') id: string, @Request() req: any) {

@@ -36,11 +36,6 @@ export class InboundController {
     return this.inboundService.findOne(id);
   }
 
-  @Post(':id/approve')
-  approve(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
-    return this.inboundService.approve(id, req.user.id);
-  }
-
   @Post(':id/complete')
   complete(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.inboundService.complete(id, req.user.id);
