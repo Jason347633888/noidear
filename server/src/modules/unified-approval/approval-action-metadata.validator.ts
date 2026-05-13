@@ -9,7 +9,12 @@ export class ApprovalActionMetadataValidator {
     'maintenance_record:submit:maintenance-record:APPROVED': (context) =>
       this.optionalStringObject(context.metadata, 'reviewerSignature'),
     'maintenance_record:submit:maintenance-record:REJECTED': (context) => ({
-      rejectReason: this.requireString(context.metadata, 'rejectReason', '驳回原因不能为空'),
+      rejectReason: this.requireStringWithFallback(
+        context.metadata,
+        'rejectReason',
+        context.comment,
+        '驳回原因不能为空',
+      ),
     }),
     'product_recall:submit:product-recall-review:APPROVED': (context) =>
       this.optionalStringObject(context.metadata, 'review_note'),
@@ -50,5 +55,21 @@ export class ApprovalActionMetadataValidator {
       throw new BadRequestException(message);
     }
     return value.trim();
+  }
+
+  private requireStringWithFallback(
+    metadata: ApprovalActionMetadata | undefined,
+    field: string,
+    fallback: string | undefined,
+    message: string,
+  ): string {
+    const direct = metadata?.[field];
+    if (typeof direct === 'string' && direct.trim().length > 0) {
+      return direct.trim();
+    }
+    if (typeof fallback === 'string' && fallback.trim().length > 0) {
+      return fallback.trim();
+    }
+    throw new BadRequestException(message);
   }
 }
