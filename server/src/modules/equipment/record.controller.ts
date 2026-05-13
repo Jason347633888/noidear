@@ -9,14 +9,13 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RecordService } from './record.service';
 import {
   CreateRecordDto,
   UpdateRecordDto,
-  ApproveRecordDto,
-  RejectRecordDto,
   QueryRecordDto,
 } from './dto/record.dto';
 
@@ -47,17 +46,7 @@ export class RecordController {
   }
 
   @Post(':id/submit')
-  submit(@Param('id') id: string) {
-    return this.recordService.submit(id);
-  }
-
-  @Post(':id/approve')
-  approve(@Param('id') id: string, @Body() dto: ApproveRecordDto) {
-    return this.recordService.approve(id, dto);
-  }
-
-  @Post(':id/reject')
-  reject(@Param('id') id: string, @Body() dto: RejectRecordDto) {
-    return this.recordService.reject(id, dto);
+  submit(@Param('id') id: string, @Request() req: any) {
+    return this.recordService.submit(id, req.user?.id);
   }
 }

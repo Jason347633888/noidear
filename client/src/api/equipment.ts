@@ -422,14 +422,6 @@ const equipmentApi = {
     return request.post(`/maintenance-records/${id}/submit`);
   },
 
-  approveRecord(id: string, comment?: string) {
-    return request.post(`/maintenance-records/${id}/approve`, { comment });
-  },
-
-  rejectRecord(id: string, comment: string) {
-    return request.post(`/maintenance-records/${id}/reject`, { comment });
-  },
-
   // --- Equipment Faults ---
 
   getFaultList(params: FaultListParams = {}) {
