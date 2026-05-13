@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Delete,
   Body,
   Param,
   Query,
@@ -123,5 +124,12 @@ export class RecordTemplateController {
   @ApiOperation({ summary: '启用模板版本' })
   activateRevision(@Param('id') id: string, @Req() req: any) {
     return this.templateService.activateRevision(id, req.user.id);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: '删除记录模板' })
+  remove(@Param('id') id: string) {
+    return this.templateService.remove(id);
   }
 }

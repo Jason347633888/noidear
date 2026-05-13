@@ -144,7 +144,7 @@ def parse_controller_file(path: Path) -> dict[str, Any]:
 def load_all_backend_controllers() -> dict[str, list[dict[str, Any]]]:
     modules: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for path in sorted(SERVER_MODULES_DIR.rglob("*.controller.ts")):
-        if path.name.endswith(".spec.ts"):
+        if path.name.endswith(".spec.ts") or path.name.endswith(".test.ts") or "__" in path.name:
             continue
         info = parse_controller_file(path)
         if info["routes"]:
@@ -169,10 +169,10 @@ def is_deleted_frontend_call(url: str, deleted: dict[str, Any]) -> bool:
 
 
 def classify_call(url: str, method: str, match: dict[str, str] | None, source_kind: str, deleted: dict[str, Any]) -> str:
-    if match:
-        return "matched"
     if is_deleted_frontend_call(url, deleted):
         return "deleted_scope_frontend_residue"
+    if match:
+        return "matched"
     return "api_adapter_missing" if source_kind == "api" else "direct_client_missing"
 
 
