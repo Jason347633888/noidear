@@ -223,40 +223,4 @@ export class DeviationService {
     return { list, total, page, limit };
   }
 
-  /**
-   * 偏离报告审批（集成到审批流程系统）
-   *
-   * 注意：此方法已集成到 ApprovalService
-   * - 如果需要创建偏离报告审批，调用 ApprovalService.createApprovalChain
-   * - 如果需要审批偏离报告，调用 ApprovalService.approveUnified
-   *
-   * @deprecated 建议使用 ApprovalService 统一处理审批流程
-   */
-  async approveDeviationReport(
-    reportId: string,
-    approverId: string,
-    status: 'approved' | 'rejected',
-    comment = '',
-  ) {
-    const report = await this.prisma.deviationReport.findUnique({
-      where: { id: reportId },
-    });
-
-    if (!report) {
-      throw new BusinessException(ErrorCode.NOT_FOUND, '偏离报告不存在');
-    }
-
-    if (!report.approvalInstanceId) {
-      throw new BusinessException(ErrorCode.VALIDATION_ERROR, '偏离报告未关联审批实例');
-    }
-
-    await this.approvalEngine.act(
-      report.approvalInstanceId,
-      status === 'approved' ? 'approve' : 'reject',
-      approverId,
-      comment,
-    );
-
-    return this.prisma.deviationReport.findUnique({ where: { id: reportId } });
-  }
 }

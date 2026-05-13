@@ -47,13 +47,6 @@ export default {
   },
 
   /**
-   * 审批偏离报告
-   */
-  approveDeviationReport(id: string, data: { action: 'approve' | 'reject'; comment?: string }) {
-    return request.post(`/deviation-reports/${id}/approve`, data);
-  },
-
-  /**
    * 更新模板公差配置（路由迁到 record-templates 正式 API）
    */
   updateToleranceConfig(templateId: string, data: { fields: ToleranceFieldConfig[] }) {
