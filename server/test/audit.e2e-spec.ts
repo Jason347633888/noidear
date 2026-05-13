@@ -349,20 +349,6 @@ describe('Audit API (e2e)', () => {
     });
   });
 
-  describe('GET /api/v1/audit/dashboard', () => {
-    it('should get audit dashboard data', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/api/v1/audit/dashboard')
-        .set('Authorization', `Bearer ${authToken}`)
-        .expect(200);
-
-      expect(response.body).toHaveProperty('login');
-      expect(response.body).toHaveProperty('sensitive');
-      expect(response.body.login).toHaveProperty('last24h');
-      expect(response.body.login).toHaveProperty('last7d');
-    });
-  });
-
   describe('GET /api/v1/audit/brcgs-report', () => {
     it('should generate BRCGS compliance report', async () => {
       const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();

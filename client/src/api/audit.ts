@@ -74,13 +74,6 @@ export interface SensitiveLogStats {
   todayOperations: number;
 }
 
-export interface DashboardStats {
-  todayLogins: number;
-  todaySensitiveOps: number;
-  abnormalLogins: number;
-  recentAlerts: number;
-}
-
 // 查询登录日志
 export const queryLoginLogs = (params: QueryLogsParams) => {
   return request.post<{ items: LoginLog[]; total: number }>('/audit/login-logs/query', params);
@@ -141,11 +134,6 @@ export const searchLogs = (params: QueryLogsParams) => {
     '/audit/search',
     params,
   );
-};
-
-// 获取审计仪表板统计
-export const getDashboardStats = () => {
-  return request.get<DashboardStats>('/audit/dashboard');
 };
 
 // 获取用户操作时间线

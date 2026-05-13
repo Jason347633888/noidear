@@ -210,14 +210,6 @@ export class AuditController {
     );
   }
 
-  @Get('dashboard')
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @ApiOperation({ summary: '获取审计仪表板' })
-  @ApiResponse({ status: 200, description: '查询成功' })
-  async getDashboard() {
-    return this.auditService.getDashboard();
-  }
-
   @Get('timeline/:userId')
   @ApiOperation({ summary: '获取用户操作时间线' })
   @ApiResponse({ status: 200, description: '查询成功' })

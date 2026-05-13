@@ -561,22 +561,6 @@ describe('AuditService', () => {
     });
   });
 
-  describe('getDashboard', () => {
-    it('should return structured dashboard data', async () => {
-      mockPrismaService.loginLog.count.mockResolvedValue(10);
-      mockPrismaService.loginLog.groupBy.mockResolvedValue([]);
-      mockPrismaService.sensitiveLog.count.mockResolvedValue(5);
-      mockPrismaService.sensitiveLog.groupBy.mockResolvedValue([]);
-
-      const result = await service.getDashboard();
-
-      expect(result).toHaveProperty('login.last24h');
-      expect(result).toHaveProperty('login.last7d');
-      expect(result).toHaveProperty('sensitive.last24h');
-      expect(result).toHaveProperty('sensitive.last7d');
-    });
-  });
-
   describe('getUserTimeline', () => {
     it('should merge and sort timeline entries', async () => {
       const now = new Date();
