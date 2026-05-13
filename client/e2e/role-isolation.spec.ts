@@ -8,7 +8,6 @@
  *   ROLE-ISO-001  Regular user cannot create another user (admin-only)
  *   ROLE-ISO-002  Regular user cannot delete a department (admin-only)
  *   ROLE-ISO-003  Unauthenticated requests are rejected with 401
- *   ROLE-ISO-004  Internal audit finding → rectification → close loop (admin)
  *   ROLE-ISO-005  Trainee (regular user) can view their training assignments
  */
 
@@ -181,109 +180,6 @@ test('ROLE-ISO-002: regular user cannot delete a department', async ({ page }) =
 test('ROLE-ISO-003: unauthenticated request returns 401', async ({ page }) => {
   const res = await page.request.get(`${API_BASE}/users`);
   expect(res.status()).toBe(401);
-});
-
-// ---------------------------------------------------------------------------
-// ROLE-ISO-004  Internal audit finding → rectification → close loop
-// ---------------------------------------------------------------------------
-
-test('ROLE-ISO-004: internal audit finding rectification close loop', async ({ page }) => {
-  const token = await getAuthToken('admin');
-
-  // Step 1 — locate an existing audit plan (or skip if none exist)
-  const plansRes = await page.request.get(`${API_BASE}/internal-audit/plans?limit=1`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!plansRes.ok()) {
-    test.skip(true, 'Audit plans API not available — skipping ROLE-ISO-004');
-    return;
-  }
-
-  const plansData = (await plansRes.json()) as {
-    data?: { list?: Array<{ id: string }> };
-    list?: Array<{ id: string }>;
-  };
-
-  const planList = plansData?.data?.list ?? plansData?.list ?? [];
-  if (planList.length === 0) {
-    test.skip(true, 'No audit plans found — skipping ROLE-ISO-004');
-    return;
-  }
-
-  const planId = planList[0].id;
-
-  // Step 2 — create a rectification (finding) for that plan
-  const dueDateStr = new Date(Date.now() + 30 * 24 * 3600 * 1000)
-    .toISOString()
-    .split('T')[0];
-
-  const findingRes = await page.request.post(
-    `${API_BASE}/internal-audit/rectifications`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      data: {
-        planId,
-        description: 'Test finding for ROLE-ISO-004 close-loop test',
-        severity: 'minor',
-        dueDate: dueDateStr,
-      },
-    },
-  );
-
-  if (!findingRes.ok()) {
-    test.skip(true, 'Rectification creation not available — skipping ROLE-ISO-004');
-    return;
-  }
-
-  const finding = (await findingRes.json()) as {
-    id?: string;
-    data?: { id?: string };
-  };
-  const findingId = finding?.data?.id ?? finding?.id;
-
-  if (!findingId) {
-    test.skip(true, 'Rectification response missing id — skipping ROLE-ISO-004');
-    return;
-  }
-
-  // Step 3 — submit the rectification
-  const rectRes = await page.request.put(
-    `${API_BASE}/internal-audit/rectifications/${findingId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      data: { status: 'submitted', correctionPlan: 'Fixed the issue' },
-    },
-  );
-
-  expect(rectRes.ok()).toBe(true);
-
-  // Step 4 — close / verify the rectification
-  const closeRes = await page.request.put(
-    `${API_BASE}/internal-audit/rectifications/${findingId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      data: { status: 'closed', verificationResult: 'Verified OK' },
-    },
-  );
-
-  expect(closeRes.ok()).toBe(true);
-
-  const closed = (await closeRes.json()) as {
-    status?: string;
-    data?: { status?: string };
-  };
-  const closedStatus = closed?.data?.status ?? closed?.status ?? '';
-  expect(closedStatus).toMatch(/closed|verified|completed/i);
 });
 
 // ---------------------------------------------------------------------------

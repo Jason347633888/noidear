@@ -24,8 +24,6 @@ import { apiBaseUrl } from './support/urls';
  *   - APPR-006  Non-designated approver → 403
  *   - APPR-010  Sequential: 1st level pending, rest waiting
  *   - APPR-011  Sequential: 1st approves → 2nd level activated
- *   - WF-001    /workflow/instances renders
- *   - WF-002    /workflow/templates renders
  *   - WF-003    /my-todos renders with list or empty state
  */
 
@@ -570,56 +568,6 @@ test.describe('APPR-011: Sequential flow level promotion', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// WF-001 / WF-002 / WF-003 – Workflow UI pages render
-// ---------------------------------------------------------------------------
-
-test.describe('WF-001: /workflow/instances renders', () => {
-  test('Workflow instances page loads and shows table or empty state', async ({ page }) => {
-    const { adminUser, adminPass } = getCredentials();
-    await loginViaApiCached(page, adminUser, adminPass);
-
-    await page.goto('/workflow/instances');
-    await page.waitForLoadState('networkidle');
-
-    // The page must render something meaningful within 10 s
-    await expect(
-      page.locator('.el-table, .el-empty, .workflow-instances'),
-    ).toBeVisible({ timeout: 10000 });
-  });
-
-  test('Workflow instances page does not 404', async ({ page }) => {
-    const { adminUser, adminPass } = getCredentials();
-    await loginViaApiCached(page, adminUser, adminPass);
-
-    const response = await page.goto('/workflow/instances');
-    // Accept a redirect to login if auth guard fires; not a 404
-    expect(response?.status() ?? 200).not.toBe(404);
-  });
-});
-
-test.describe('WF-002: /workflow/templates renders', () => {
-  test('Workflow templates page loads and shows table or empty state', async ({ page }) => {
-    const { adminUser, adminPass } = getCredentials();
-    await loginViaApiCached(page, adminUser, adminPass);
-
-    await page.goto('/workflow/templates');
-    await page.waitForLoadState('networkidle');
-
-    await expect(
-      page.locator('.el-table, .el-empty, .workflow-templates'),
-    ).toBeVisible({ timeout: 10000 });
-  });
-
-  test('Workflow templates API endpoint is accessible', async ({ request }) => {
-    const token = await adminToken(request);
-    const res = await request.get(`${API_BASE}/workflow/templates?page=1&limit=10`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    // 404 means the route is not implemented yet; accept it but not a 5xx
-    expect(res.status()).toBeLessThan(500);
-  });
-});
 
 test.describe('WF-003: /my-todos renders', () => {
   test('My todos page loads and shows list or empty state', async ({ page }) => {

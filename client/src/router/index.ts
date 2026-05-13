@@ -91,8 +91,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'approvals',
-        name: 'Approvals',
-        component: () => import('@/views/approvals/ApprovalList.vue'),
+        redirect: '/approvals/pending',
       },
       {
         path: 'approvals/pending',

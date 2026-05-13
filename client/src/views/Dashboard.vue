@@ -461,7 +461,7 @@ async function fetchDashboard() {
     todoApi.list({ status: 'pending', type: 'all', page: 1, limit: 50 }),
     todoApi.list({ status: 'completed', type: 'all', page: 1, limit: 6 }),
     request.get<{ list: DocumentItem[] }>('/documents', { params: { limit: 4 } }),
-    request.get<{ list: ApprovalItem[] }>('/documents/pending-approvals'),
+    request.get<ApprovalItem[]>('/approval-tasks/my-pending'),
   ]);
 
   if (pendingTodosRes.status === 'fulfilled') {
@@ -484,7 +484,7 @@ async function fetchDashboard() {
   }
 
   if (approvalsRes.status === 'fulfilled') {
-    pendingApprovals.value = approvalsRes.value.list || [];
+    pendingApprovals.value = (approvalsRes.value as unknown as ApprovalItem[]) || [];
   } else {
     pendingApprovals.value = [];
   }

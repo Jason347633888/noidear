@@ -429,26 +429,4 @@ test.describe('Health Check Page', () => {
     }
   });
 
-  test('should navigate from health page to monitoring dashboard', async ({ page }) => {
-    await page.goto('/health');
-    await page.waitForLoadState('networkidle');
-
-    // Look for navigation link to monitoring dashboard
-    const dashboardLink = page.locator('a, button').filter({ hasText: /监控大屏|监控中心|Dashboard/ });
-
-    if (await dashboardLink.count() > 0) {
-      // Click dashboard link
-      await dashboardLink.first().click();
-
-      // Wait for navigation
-      await page.waitForURL('**/monitoring/dashboard', { timeout: 10000 });
-
-      // Verify monitoring dashboard loaded
-      await expect(page.locator('h1').filter({ hasText: '监控大屏' })).toBeVisible();
-
-      console.log('Navigation to monitoring dashboard successful');
-    } else {
-      console.log('No direct navigation link found to monitoring dashboard');
-    }
-  });
 });

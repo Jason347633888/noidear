@@ -77,10 +77,6 @@ export const productionBatchApi = {
     return request.put<ProductionBatch>(`/batch-trace/production-batches/${id}`, payload);
   },
 
-  complete(id: string) {
-    return request.post(`/batch-trace/production-batches/${id}/complete`);
-  },
-
   confirm(data: {
     batchNumber: string;
     productId: string;
