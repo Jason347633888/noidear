@@ -31,16 +31,6 @@ export class ProductRecallController {
     return this.service.submit(id, { id: req.user.id, companyId: req.user.companyId });
   }
 
-  @Post(':id/approve')
-  approve(@Param('id') id: string, @Body() dto: RecallReviewDto, @Request() req: AuthenticatedRequest) {
-    return this.service.approve(id, dto, { id: req.user.id, companyId: req.user.companyId });
-  }
-
-  @Post(':id/reject')
-  reject(@Param('id') id: string, @Body() dto: RecallReviewDto, @Request() req: AuthenticatedRequest) {
-    return this.service.reject(id, dto, { id: req.user.id, companyId: req.user.companyId });
-  }
-
   @Post(':id/complete')
   complete(@Param('id') id: string, @Body() dto: RecallCompleteDto, @Request() req: AuthenticatedRequest) {
     return this.service.complete(id, dto, { id: req.user.id, companyId: req.user.companyId });

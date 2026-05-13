@@ -174,10 +174,10 @@ async function confirmAction() {
   try {
     if (type === 'submit') {
       await productRecallApi.submit(id);
-    } else if (type === 'approve') {
-      await productRecallApi.approve(id, note);
-    } else if (type === 'reject') {
-      await productRecallApi.reject(id, note);
+    } else if (type === 'approve' || type === 'reject') {
+      ElMessage.info('请在"审批任务"入口处理产品召回审批');
+      actionDialog.value.visible = false;
+      return;
     } else if (type === 'complete') {
       if (!note) { ElMessage.error('请填写完成摘要'); return; }
       await productRecallApi.complete(id, note);
