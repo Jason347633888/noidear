@@ -56,14 +56,6 @@ export class ChangeEventController {
     return this.service.updateStatus(id, status, req.user.id);
   }
 
-  @Post(':id/approve')
-  approve(
-    @Param('id') id: string,
-    @Request() req: { user: { id: string } },
-  ) {
-    return this.service.approve(id, req.user.id);
-  }
-
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.service.remove(id);

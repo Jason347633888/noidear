@@ -185,27 +185,6 @@ export class ChangeEventService {
     return updated;
   }
 
-  async approve(id: string, userId: string) {
-    const changeEvent = await this.prisma.changeEvent.findUnique({ where: { id } });
-    if (!changeEvent) {
-      throw new Error(`ChangeEvent ${id} not found`);
-    }
-
-    const instance = await this.prisma.approvalInstance.findFirst({
-      where: { resourceType: 'change_event', resourceId: id, status: 'PENDING' },
-      orderBy: { createdAt: 'desc' },
-      select: { id: true },
-    });
-
-    if (!instance) {
-      this.logger.warn(`Legacy ChangeEvent approval fallback: ${id} has no ApprovalInstance`);
-      return this.updateStatus(id, 'approved', userId);
-    }
-
-    await this.approvalEngine.act(instance.id, 'approve', userId, '');
-    return this.findOne(id);
-  }
-
   async remove(id: string) {
     return this.prisma.changeEvent.delete({ where: { id } });
   }
