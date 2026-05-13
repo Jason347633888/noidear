@@ -4,7 +4,12 @@ import { ApprovalAssignmentResolver } from './approval-assignment.resolver';
 import { ApprovalTodoBridge } from './approval-todo.bridge';
 import { ApprovalNotificationBridge } from './approval-notification.bridge';
 import { ApprovalCallbackRegistry } from './approval-callback.registry';
-import type { ApprovalStepDefinition, StartApprovalInput } from './types';
+import { ApprovalActionMetadataValidator } from './approval-action-metadata.validator';
+import type {
+  ApprovalActionMetadata,
+  ApprovalStepDefinition,
+  StartApprovalInput,
+} from './types';
 
 @Injectable()
 export class ApprovalEngineService {
@@ -14,6 +19,7 @@ export class ApprovalEngineService {
     private readonly todoBridge: ApprovalTodoBridge,
     private readonly notificationBridge: ApprovalNotificationBridge,
     private readonly callbackRegistry: ApprovalCallbackRegistry,
+    private readonly metadataValidator: ApprovalActionMetadataValidator,
   ) {}
 
   async startApproval(input: StartApprovalInput) {
@@ -87,12 +93,12 @@ export class ApprovalEngineService {
     }
   }
 
-  async approveTask(taskId: string, actorId: string, comment = '') {
-    return this.completeTask(taskId, actorId, 'APPROVED', comment);
+  async approveTask(taskId: string, actorId: string, comment = '', metadata?: ApprovalActionMetadata) {
+    return this.completeTask(taskId, actorId, 'APPROVED', comment, metadata);
   }
 
-  async rejectTask(taskId: string, actorId: string, comment: string) {
-    return this.completeTask(taskId, actorId, 'REJECTED', comment);
+  async rejectTask(taskId: string, actorId: string, comment: string, metadata?: ApprovalActionMetadata) {
+    return this.completeTask(taskId, actorId, 'REJECTED', comment, metadata);
   }
 
   async act(
@@ -100,6 +106,7 @@ export class ApprovalEngineService {
     action: 'approve' | 'reject',
     actorId: string,
     comment = '',
+    metadata?: ApprovalActionMetadata,
   ): Promise<void> {
     const task = await this.prisma.approvalTask.findFirst({
       where: { instanceId, status: 'PENDING' },
@@ -111,13 +118,19 @@ export class ApprovalEngineService {
     }
 
     if (action === 'approve') {
-      await this.approveTask(task.id, actorId, comment);
+      await this.approveTask(task.id, actorId, comment, metadata);
       return;
     }
-    await this.rejectTask(task.id, actorId, comment);
+    await this.rejectTask(task.id, actorId, comment, metadata);
   }
 
-  private async completeTask(taskId: string, actorId: string, status: 'APPROVED' | 'REJECTED', comment: string) {
+  private async completeTask(
+    taskId: string,
+    actorId: string,
+    status: 'APPROVED' | 'REJECTED',
+    comment: string,
+    metadata?: ApprovalActionMetadata,
+  ) {
     return this.prisma.$transaction(async (tx: any) => {
       const task = await tx.approvalTask.findUnique({
         where: { id: taskId },
@@ -127,6 +140,15 @@ export class ApprovalEngineService {
       if (task.status !== 'PENDING') throw new BadRequestException('审批任务已经处理');
 
       await this.resolver.assertCanAct({ userId: actorId, task });
+
+      const normalizedMetadata = this.metadataValidator.validate({
+        resourceType: task.instance.resourceType,
+        triggerKey: task.instance.triggerKey,
+        stepKey: task.stepKey,
+        action: status,
+        comment,
+        metadata,
+      });
 
       const updated = await tx.approvalTask.update({
         where: { id: taskId },
@@ -147,6 +169,7 @@ export class ApprovalEngineService {
             assigneeRoleCode: task.assigneeRoleCode,
             assigneeDepartmentId: task.assigneeDepartmentId,
             assigneePermissionCode: task.assigneePermissionCode,
+            businessDecision: normalizedMetadata,
           },
         },
       });
@@ -176,6 +199,7 @@ export class ApprovalEngineService {
             actorId,
             taskId: task.id,
             comment,
+            metadata: normalizedMetadata,
           });
         }
 
@@ -183,12 +207,18 @@ export class ApprovalEngineService {
         return updated;
       }
 
-      await this.advanceIfStepComplete(tx, task, actorId, comment);
+      await this.advanceIfStepComplete(tx, task, actorId, comment, normalizedMetadata);
       return updated;
     });
   }
 
-  private async advanceIfStepComplete(tx: any, task: any, actorId: string, comment: string) {
+  private async advanceIfStepComplete(
+    tx: any,
+    task: any,
+    actorId: string,
+    comment: string,
+    metadata: ApprovalActionMetadata,
+  ) {
     const pending = await tx.approvalTask.findMany({
       where: { instanceId: task.instanceId, stepKey: task.stepKey, status: 'PENDING' },
     });
@@ -232,6 +262,7 @@ export class ApprovalEngineService {
       actorId,
       taskId: task.id,
       comment,
+      metadata,
     });
     await tx.approvalInstance.update({
       where: { id: task.instanceId },

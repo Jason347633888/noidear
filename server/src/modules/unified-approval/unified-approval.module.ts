@@ -6,6 +6,7 @@ import { ApprovalEngineService } from './approval-engine.service';
 import { ApprovalTodoBridge } from './approval-todo.bridge';
 import { ApprovalNotificationBridge } from './approval-notification.bridge';
 import { ApprovalCallbackRegistry } from './approval-callback.registry';
+import { ApprovalActionMetadataValidator } from './approval-action-metadata.validator';
 import { ApprovalDefinitionController } from './approval-definition.controller';
 import { ApprovalInstanceController } from './approval-instance.controller';
 import { ApprovalTaskController } from './approval-task.controller';
@@ -19,7 +20,14 @@ import { ApprovalTaskController } from './approval-task.controller';
     ApprovalTodoBridge,
     ApprovalNotificationBridge,
     ApprovalCallbackRegistry,
+    ApprovalActionMetadataValidator,
   ],
-  exports: [ApprovalEngineService, ApprovalCallbackRegistry, ApprovalAssignmentResolver, ApprovalNotificationBridge],
+  exports: [
+    ApprovalEngineService,
+    ApprovalCallbackRegistry,
+    ApprovalAssignmentResolver,
+    ApprovalNotificationBridge,
+    ApprovalActionMetadataValidator,
+  ],
 })
 export class UnifiedApprovalModule {}
