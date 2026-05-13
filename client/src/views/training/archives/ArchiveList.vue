@@ -127,7 +127,7 @@ const fetchArchives = async () => {
 
 const fetchDepartments = async () => {
   try {
-    const res = await request.get<any>('/api/v1/departments');
+    const res = await request.get<any>('/departments');
     departments.value = (res as any).data || [];
   } catch (error) {
     console.error('获取部门列表失败', error);
