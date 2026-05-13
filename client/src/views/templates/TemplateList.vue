@@ -34,9 +34,6 @@
             <el-button type="primary" @click="showCreateDialog = true">
               新建模板
             </el-button>
-            <el-button @click="showImportDialog = true">
-              Excel 导入
-            </el-button>
           </div>
         </div>
       </template>
@@ -74,13 +71,21 @@
           <template #default="{ row }">
             <el-button link type="primary" @click="handleView(row)">查看</el-button>
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="success" @click="handleCopy(row)">复制</el-button>
             <el-button
+              v-if="row.status !== 'active'"
               link
-              :type="row.status === 'active' ? 'warning' : 'success'"
-              @click="handleToggle(row)"
+              type="success"
+              @click="handleActivate(row)"
             >
-              {{ row.status === 'active' ? '停用' : '启用' }}
+              启用
+            </el-button>
+            <el-button
+              v-else
+              link
+              type="warning"
+              @click="handleArchive(row)"
+            >
+              归档
             </el-button>
             <el-button
               link
@@ -155,37 +160,6 @@
       </template>
     </el-dialog>
 
-    <!-- Excel 导入对话框 -->
-    <el-dialog v-model="showImportDialog" title="从 Excel 导入模板" width="500px">
-      <el-form :model="importForm" label-width="100px">
-        <el-form-item label="模板级别">
-          <el-select v-model="importForm.level">
-            <el-option :value="1" label="一级模板" />
-            <el-option :value="2" label="二级模板" />
-            <el-option :value="3" label="三级模板" />
-            <el-option :value="4" label="四级模板" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="上传文件">
-          <el-upload
-            :auto-upload="false"
-            :limit="1"
-            :on-change="handleFileChange"
-            accept=".xlsx,.xls"
-          >
-            <el-button type="primary">选择文件</el-button>
-            <template #tip>
-              <div class="el-upload__tip">支持 .xlsx, .xls 格式</div>
-            </template>
-          </el-upload>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showImportDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleImport" :loading="importing">导入</el-button>
-      </template>
-    </el-dialog>
-
     <!-- 模板详情对话框 -->
     <el-dialog v-model="showDetailDialog" title="模板详情" width="600px">
       <el-descriptions :column="2" border v-if="currentTemplate">
@@ -236,11 +210,9 @@ interface Template {
 const loading = ref(false);
 const tableData = ref<Template[]>([]);
 const showCreateDialog = ref(false);
-const showImportDialog = ref(false);
 const showDetailDialog = ref(false);
 const currentTemplate = ref<Template | null>(null);
 const creating = ref(false);
-const importing = ref(false);
 const createFormRef = ref();
 
 const filterForm = reactive({ keyword: '', level: undefined as number | undefined, status: '' });
@@ -251,8 +223,6 @@ const createForm = reactive({
   title: '',
   fields: [{ name: '', label: '', type: 'text', required: true }],
 });
-
-const importForm = reactive({ level: 4, file: null as File | null });
 
 const createRules = {
   level: [{ required: true, message: '请选择模板级别', trigger: 'change' }],
@@ -282,18 +252,18 @@ const handleReset = () => { filterForm.keyword = ''; filterForm.level = undefine
 const handleView = (row: Template) => { currentTemplate.value = row; showDetailDialog.value = true; };
 const handleEdit = (row: Template) => { router.push(`/templates/${row.id}/edit`); };
 const router = useRouter();
-const handleCopy = async (row: Template) => {
+const handleArchive = async (row: Template) => {
   try {
-    await ElMessageBox.confirm('确定要复制该模板吗？', '提示');
-    await request.post(`/templates/${row.id}/copy`);
-    ElMessage.success('复制成功');
+    await ElMessageBox.confirm('确定要归档该模板吗？归档后将不能创建新记录。', '提示', { type: 'warning' });
+    await request.post(`/record-templates/${row.id}/archive`);
+    ElMessage.success('已归档');
     fetchData();
   } catch {}
 };
-const handleToggle = async (row: Template) => {
+const handleActivate = async (row: Template) => {
   try {
-    await request.post(`/templates/${row.id}/toggle`);
-    ElMessage.success('操作成功');
+    await request.post(`/record-templates/${row.id}/activate`);
+    ElMessage.success('已启用');
     fetchData();
   } catch {}
 };
@@ -322,20 +292,6 @@ const handleCreate = async () => {
     showCreateDialog.value = false;
     fetchData();
   } catch {} finally { creating.value = false; }
-};
-
-const handleFileChange = (uploadFile: { raw: File }) => { importForm.file = uploadFile.raw; };
-const handleImport = async () => {
-  if (!importForm.file) { ElMessage.error('请选择文件'); return; }
-  importing.value = true;
-  try {
-    const form = new FormData();
-    form.append('file', importForm.file);
-    await request.post('/templates/from-excel', form, { params: { level: importForm.level } });
-    ElMessage.success('导入成功');
-    showImportDialog.value = false;
-    fetchData();
-  } catch {} finally { importing.value = false; }
 };
 
 onMounted(() => fetchData());

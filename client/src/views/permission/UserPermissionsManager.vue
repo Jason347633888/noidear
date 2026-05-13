@@ -38,7 +38,6 @@
             <el-option value="permission" label="权限管理" />
             <el-option value="warehouse" label="仓库管理" />
             <el-option value="record" label="记录管理" />
-            <el-option value="workflow" label="工作流管理" />
             <el-option value="batch" label="批次管理" />
           </el-select>
         </el-form-item>
@@ -125,6 +124,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import request from '@/api/request';
+import permissionApi from '@/api/permission';
 import GrantPermissionDialog from '@/components/permission/GrantPermissionDialog.vue';
 
 interface UserPermissionRecord {
@@ -167,7 +167,6 @@ const getResourceLabel = (resource: string): string => {
     permission: '权限管理',
     warehouse: '仓库管理',
     record: '记录管理',
-    workflow: '工作流管理',
     batch: '批次管理',
   };
   return map[resource] || resource;
@@ -236,7 +235,7 @@ const handleRevoke = async (row: UserPermissionRecord) => {
       '警告',
       { type: 'warning' },
     );
-    await request.delete(`/user-permissions/${row.id}`);
+    await permissionApi.revokeUserPermission(row.id);
     ElMessage.success('权限撤销成功');
     fetchData();
   } catch {

@@ -83,6 +83,7 @@ import { ref, reactive, watch } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import { ElMessage } from 'element-plus';
 import request from '@/api/request';
+import permissionApi from '@/api/permission';
 
 interface UserOption {
   id: string;
@@ -131,7 +132,7 @@ const getResourceLabel = (resource: string): string => {
     document: '文档管理', template: '模板管理', task: '任务管理',
     approval: '审批管理', user: '用户管理', role: '角色管理',
     permission: '权限管理', warehouse: '仓库管理', record: '记录管理',
-    workflow: '工作流管理', batch: '批次管理',
+    batch: '批次管理',
   };
   return map[resource] || resource;
 };
@@ -189,7 +190,7 @@ const handleSubmit = async () => {
 
   submitting.value = true;
   try {
-    await request.post('/user-permissions', {
+    await permissionApi.grantUserPermission({
       userId: form.userId,
       permissionId: form.permissionId,
       expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : undefined,

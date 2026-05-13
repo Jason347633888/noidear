@@ -62,14 +62,6 @@ export class DocumentLifecycleService {
     });
   }
 
-  async confirmRead(documentId: string, userId: string) {
-    return this.prisma.documentReadConfirmation.upsert({
-      where: { document_id_user_id: { document_id: documentId, user_id: userId } },
-      update: { confirmed_at: new Date() },
-      create: { document_id: documentId, user_id: userId },
-    });
-  }
-
   async getDueSoon(days = 30) {
     const deadline = new Date();
     deadline.setDate(deadline.getDate() + days);

@@ -1,7 +1,6 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { ProcessInstanceController } from './process-instance.controller';
 import { ProcessTemplateController } from './process-template.controller';
-import { ProcessStepApprovalService } from './process-step-approval.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
 import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
@@ -11,8 +10,6 @@ import { applyProcessStepApproved } from './process-approval.callbacks';
 @Module({
   imports: [PrismaModule, UnifiedApprovalModule],
   controllers: [ProcessInstanceController, ProcessTemplateController],
-  providers: [ProcessStepApprovalService],
-  exports: [ProcessStepApprovalService],
 })
 export class ProcessModule implements OnModuleInit {
   constructor(

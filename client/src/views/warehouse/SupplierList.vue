@@ -175,9 +175,9 @@ const handleFormSubmit = async () => {
 
 const handleDelete = async (row: Supplier) => {
   try {
-    await ElMessageBox.confirm('确定要删除该供应商吗？', '警告', { type: 'warning' });
-    await supplierApi.delete(row.id);
-    ElMessage.success('删除成功');
+    await ElMessageBox.confirm('确定要停用该供应商吗？停用后将不能再下单，但历史追溯记录仍然保留。', '警告', { type: 'warning' });
+    await supplierApi.disable(row.id);
+    ElMessage.success('已停用');
     fetchData();
   } catch { /* user cancelled or error handled by interceptor */ }
 };

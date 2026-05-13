@@ -81,16 +81,4 @@ export const processApi = {
   submitStep: (instanceId: string, payload: { stepNumber: number; data: Record<string, unknown>; saveAsDraft?: boolean }) =>
     request.post(`/process/instances/${instanceId}/steps`, payload),
 
-  submitApproval: (instanceId: string, stepNumber: number, payload: { action: 'approve' | 'reject'; comment?: string; role?: string }) =>
-    request.post(`/process/instances/${instanceId}/steps/${stepNumber}/approvals`, payload),
-
-  getApprovals: (instanceId: string, stepNumber?: number) =>
-    request.get<ProcessStepApproval[]>(`/process/instances/${instanceId}/approvals`, { params: stepNumber ? { stepNumber } : {} }),
-
-  getPendingApprovals: () =>
-    request.get<ProcessStepApproval[]>('/process/instances/approvals/pending'),
-
-  // Backward compatibility: approveStep uses submitApproval internally
-  approveStep: (instanceId: string, payload: { stepNumber: number; action: 'approve' | 'reject'; comment?: string }) =>
-    request.post(`/process/instances/${instanceId}/approve`, payload),
 };

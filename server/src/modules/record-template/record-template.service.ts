@@ -31,7 +31,6 @@ export class RecordTemplateService {
         batchLinkType: createDto.batchLinkType,
         batchLinkField: createDto.batchLinkField,
         approvalRequired: createDto.approvalRequired ?? false,
-        workflowConfig: createDto.workflowConfig,
       } as any,
     });
   }
@@ -91,6 +90,29 @@ export class RecordTemplateService {
   }
 
   /**
+   * 查询模板字段容差配置。容差存储在 toleranceJson 元数据字段。
+   */
+  async getTolerance(templateId: string) {
+    const template = await this.findOne(templateId);
+    const meta = (template as any).toleranceJson ?? null;
+    return meta ?? { rules: [], notes: null };
+  }
+
+  /**
+   * 更新模板字段容差配置。
+   */
+  async updateTolerance(
+    templateId: string,
+    payload: { rules: unknown[]; notes?: string },
+  ) {
+    await this.findOne(templateId);
+    return this.prisma.recordTemplate.update({
+      where: { id: templateId },
+      data: { toleranceJson: payload as any } as any,
+    });
+  }
+
+  /**
    * 更新记录模板
    */
   async update(id: string, updateDto: UpdateRecordTemplateDto) {
@@ -111,7 +133,6 @@ export class RecordTemplateService {
         batchLinkType: updateDto.batchLinkType,
         batchLinkField: updateDto.batchLinkField,
         approvalRequired: updateDto.approvalRequired,
-        workflowConfig: updateDto.workflowConfig,
       },
     });
   }
@@ -172,7 +193,6 @@ export class RecordTemplateService {
           retentionYears: updateDto.retentionYears || existing.retentionYears,
           description: updateDto.description || existing.description,
           approvalRequired: updateDto.approvalRequired ?? (existing as any).approvalRequired ?? false,
-          workflowConfig: updateDto.workflowConfig ?? (existing as any).workflowConfig,
           version: nextVersion,
           status: 'active',
           versionStatus: 'active',
@@ -225,7 +245,6 @@ export class RecordTemplateService {
         retentionYears: updateDto.retentionYears || existing.retentionYears,
         description: updateDto.description || existing.description,
         approvalRequired: updateDto.approvalRequired ?? (existing as any).approvalRequired ?? false,
-        workflowConfig: updateDto.workflowConfig ?? (existing as any).workflowConfig,
         version: nextVersion,
         versionStatus: 'draft',
         status: 'draft',

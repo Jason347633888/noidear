@@ -10,7 +10,6 @@ import {
   ExportTasksDto,
   ExportTaskRecordsDto,
   ExportDeviationReportsDto,
-  ExportApprovalsDto,
   ExportUsersDto,
 } from './dto';
 
@@ -54,16 +53,6 @@ export class ExportController {
     try {
       const buffer = await this.exportService.exportDeviationReports(dto);
       this.sendExcelFile(res, buffer, 'deviation_reports');
-    } catch (error) {
-      this.handleError(res, error);
-    }
-  }
-
-  @Post('approvals')
-  async exportApprovals(@Body() dto: ExportApprovalsDto, @Res() res: Response) {
-    try {
-      const buffer = await this.exportService.exportApprovals(dto);
-      this.sendExcelFile(res, buffer, 'approvals');
     } catch (error) {
       this.handleError(res, error);
     }

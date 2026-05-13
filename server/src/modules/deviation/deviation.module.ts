@@ -1,4 +1,4 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { DeviationService } from './deviation.service';
 import { DeviationController } from './deviation.controller';
 import { DeviationAnalyticsService } from './deviation-analytics.service';
@@ -6,7 +6,6 @@ import { DeviationAnalyticsController } from './deviation-analytics.controller';
 import { DeviationCronService } from './deviation-cron.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { ExportModule } from '../export/export.module';
-import { ApprovalModule } from '../approval/approval.module';
 import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
 import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
 
@@ -14,7 +13,6 @@ import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.
   imports: [
     PrismaModule,
     ExportModule,
-    forwardRef(() => ApprovalModule),
     UnifiedApprovalModule,
   ],
   controllers: [DeviationController, DeviationAnalyticsController],

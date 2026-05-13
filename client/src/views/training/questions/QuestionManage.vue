@@ -174,7 +174,7 @@ const handleSortEnd = async (evt: any) => {
   }));
 
   try {
-    await updateQuestionOrder(updatedOrder);
+    await updateQuestionOrder(projectId, updatedOrder);
     ElMessage.success('题目顺序已更新');
   } catch (error: any) {
     ElMessage.error(error.message || '更新顺序失败');

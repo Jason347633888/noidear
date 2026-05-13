@@ -15,7 +15,6 @@ import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { StatisticsService } from './statistics.service';
-import { ManagementDashboardService } from './management-dashboard.service';
 import { TraceabilityExportService } from './traceability-export.service';
 import { DocumentStatsQueryDto } from './dto/document-stats-query.dto';
 import { TaskStatsQueryDto } from './dto/task-stats-query.dto';
@@ -31,7 +30,6 @@ export class StatisticsController {
   constructor(
     private readonly statisticsService: StatisticsService,
     private readonly statisticsExportService: StatisticsExportService,
-    private readonly managementDashboardService: ManagementDashboardService,
     private readonly traceabilityExportService: TraceabilityExportService,
   ) {}
 
@@ -110,20 +108,6 @@ export class StatisticsController {
     }
   }
 
-  @Get('workflow')
-  @ApiOperation({ summary: '工作流统计（平均耗时、通过率、取消率）' })
-  async getWorkflowStats(@Query() query: OverviewQueryDto) {
-    try {
-      return await this.statisticsService.getWorkflowStats(query);
-    } catch (error) {
-      this.logger.error('Failed to get workflow statistics', error.stack);
-      throw new HttpException(
-        'Failed to retrieve workflow statistics',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
   @Get('equipment')
   @ApiOperation({ summary: '设备统计（完好率、维修率、故障率）' })
   async getEquipmentStats(@Query() query: OverviewQueryDto) {
@@ -133,34 +117,6 @@ export class StatisticsController {
       this.logger.error('Failed to get equipment statistics', error.stack);
       throw new HttpException(
         'Failed to retrieve equipment statistics',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Get('dashboard/kpis')
-  @ApiOperation({ summary: '管理层仪表盘 KPI 数据' })
-  async getDashboardKpis(@Request() req: AuthenticatedRequest) {
-    try {
-      return await this.managementDashboardService.getKpis(req.user.companyId);
-    } catch (error) {
-      this.logger.error('Failed to get dashboard KPIs', error.stack);
-      throw new HttpException(
-        'Failed to retrieve dashboard KPIs',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Get('dashboard/brcgs-readiness')
-  @ApiOperation({ summary: 'BRCGS 准备度视图（即将过期文件 + 超期CAPA）' })
-  async getBrcgsReadiness(@Request() req: AuthenticatedRequest) {
-    try {
-      return await this.managementDashboardService.getBrcgsReadiness(req.user.companyId);
-    } catch (error) {
-      this.logger.error('Failed to get BRCGS readiness', error.stack);
-      throw new HttpException(
-        'Failed to retrieve BRCGS readiness data',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

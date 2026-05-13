@@ -418,7 +418,7 @@ export class StatisticsService {
 
       const [total, approved, rejected, pending, avgApprovalTime, byApprover] =
         await Promise.all([
-          this.prisma.approval.count({ where }),
+          this.prisma.approvalInstance.count({ where }),
           this.getApprovedCount(where),
           this.getRejectedCount(where),
           this.getPendingCount(where),
@@ -446,10 +446,7 @@ export class StatisticsService {
 
   private buildApprovalWhere(filters: ApprovalStatsQueryDto): any {
     const where: any = {};
-
-    if (filters.approverId) where.approverId = filters.approverId;
     if (filters.status) where.status = filters.status;
-
     return {
       ...where,
       ...this.buildDateWhere(filters.startDate, filters.endDate),
@@ -457,111 +454,35 @@ export class StatisticsService {
   }
 
   private async getApprovedCount(where: any): Promise<number> {
-    return this.prisma.approval.count({
-      where: { ...where, status: 'approved' },
-    });
+    return this.prisma.approvalInstance.count({ where: { ...where, status: 'APPROVED' } });
   }
 
   private async getRejectedCount(where: any): Promise<number> {
-    return this.prisma.approval.count({
-      where: { ...where, status: 'rejected' },
-    });
+    return this.prisma.approvalInstance.count({ where: { ...where, status: 'REJECTED' } });
   }
 
   private async getPendingCount(where: any): Promise<number> {
-    return this.prisma.approval.count({
-      where: { ...where, status: 'pending' },
-    });
+    return this.prisma.approvalInstance.count({ where: { ...where, status: 'PENDING' } });
   }
 
   private async getAvgApprovalTime(where: any): Promise<number> {
-    const approvals = await this.prisma.approval.findMany({
-      where: {
-        ...where,
-        status: { in: ['approved', 'rejected'] },
-        // updatedAt always set by @updatedAt decorator, no need to filter
-      },
-      select: { createdAt: true, updatedAt: true },
+    const approvals: Array<{ createdAt: Date; completedAt: Date | null }> = await this.prisma.approvalInstance.findMany({
+      where: { ...where, status: { in: ['APPROVED', 'REJECTED'] }, completedAt: { not: null } },
+      select: { createdAt: true, completedAt: true },
     });
-
     if (approvals.length === 0) return 0;
-
     const totalMs = approvals.reduce(
-      (sum, a) => sum + (a.updatedAt.getTime() - a.createdAt.getTime()),
+      (sum, a) => sum + ((a.completedAt?.getTime() ?? a.createdAt.getTime()) - a.createdAt.getTime()),
       0,
     );
-
     return Math.round((totalMs / approvals.length / (1000 * 60 * 60)) * 100) / 100;
   }
 
-  private async getApprovalsByApprover(where: any) {
-    const byApproverRaw = await this.prisma.approval.groupBy({
-      by: ['approverId'],
-      _count: { id: true },
-      where,
-    });
-
-    const approverIds = byApproverRaw.map((item) => item.approverId);
-
-    const approvers =
-      approverIds.length > 0
-        ? await this.prisma.user.findMany({
-            where: { id: { in: approverIds } },
-            select: { id: true, name: true },
-          })
-        : [];
-
-    const approverMap = new Map(approvers.map((a) => [a.id, a.name]));
-
-    return Promise.all(
-      byApproverRaw.map(async (item) => {
-        const [approverApproved, approverRejected, approverApprovals] =
-          await Promise.all([
-            this.prisma.approval.count({
-              where: {
-                ...where,
-                approverId: item.approverId,
-                status: 'approved',
-              },
-            }),
-            this.prisma.approval.count({
-              where: {
-                ...where,
-                approverId: item.approverId,
-                status: 'rejected',
-              },
-            }),
-            this.prisma.approval.findMany({
-              where: {
-                ...where,
-                approverId: item.approverId,
-                status: { in: ['approved', 'rejected'] },
-                // updatedAt always set by @updatedAt decorator, no need to filter
-              },
-              select: { createdAt: true, updatedAt: true },
-            }),
-          ]);
-
-        let avgTime = 0;
-        if (approverApprovals.length > 0) {
-          const totalMs = approverApprovals.reduce(
-            (sum, a) => sum + (a.updatedAt.getTime() - a.createdAt.getTime()),
-            0,
-          );
-          avgTime =
-            Math.round((totalMs / approverApprovals.length / (1000 * 60 * 60)) * 100) / 100;
-        }
-
-        return {
-          approverId: item.approverId,
-          name: approverMap.get(item.approverId) || '未知用户',
-          approved: approverApproved,
-          rejected: approverRejected,
-          avgTime,
-        };
-      }),
-    );
+  private async getApprovalsByApprover(_where: any) {
+    // 统一审批以 ApprovalTask 为执行人维度；旧 Approval.approverId 已剔除，按统一审批维度的报表后续单独建。
+    return [] as Array<{ approverId: string; name: string; approved: number; rejected: number; avgTime: number }>;
   }
+
 
   async getOverviewStatistics(filters: OverviewQueryDto) {
     const cacheKey = this.getCacheKey('overview', filters);
@@ -592,7 +513,7 @@ export class StatisticsService {
         this.prisma.recordTaskInstance.count({
           where: { ...dateWhere },
         }),
-        this.prisma.approval.count({ where: dateWhere }),
+        this.prisma.approvalInstance.count({ where: dateWhere }),
         this.prisma.document.count({
           where: {
             deletedAt: null,
@@ -604,7 +525,7 @@ export class StatisticsService {
             createdAt: { gte: thirtyDaysAgo },
           },
         }),
-        this.prisma.approval.count({
+        this.prisma.approvalInstance.count({
           where: {
             createdAt: { gte: thirtyDaysAgo },
           },
@@ -612,10 +533,10 @@ export class StatisticsService {
         this.prisma.recordTaskInstance.count({
           where: { status: 'completed', ...dateWhere },
         }),
-        this.prisma.approval.count({
+        this.prisma.approvalInstance.count({
           where: { status: 'approved', ...dateWhere },
         }),
-        this.prisma.approval.count({
+        this.prisma.approvalInstance.count({
           where: { status: 'rejected', ...dateWhere },
         }),
       ]);
@@ -707,52 +628,6 @@ export class StatisticsService {
     });
   }
 
-  async getWorkflowStats(query: { startDate?: string; endDate?: string }) {
-    const cacheKey = this.getCacheKey('workflow', query);
-    return this.getCached(cacheKey, async () => {
-      const dateWhere = this.buildDateWhere(query.startDate, query.endDate);
-      const where = { deletedAt: null, ...dateWhere };
-
-      const [total, completed, cancelled, instances] = await Promise.all([
-        this.prisma.workflowInstance.count({ where }),
-        this.prisma.workflowInstance.count({ where: { ...where, status: 'completed' } }),
-        this.prisma.workflowInstance.count({ where: { ...where, status: 'cancelled' } }),
-        this.prisma.workflowInstance.findMany({
-          where: { ...where, status: 'completed' },
-          select: { createdAt: true, updatedAt: true },
-          take: 1000,
-        }),
-      ]);
-
-      const passRate = total > 0
-        ? Math.round((completed / total) * 10000) / 100
-        : 0;
-
-      const cancelRate = total > 0
-        ? Math.round((cancelled / total) * 10000) / 100
-        : 0;
-
-      let avgDurationHours = 0;
-      if (instances.length > 0) {
-        const totalMs = instances.reduce(
-          (sum, inst) => sum + (inst.updatedAt.getTime() - inst.createdAt.getTime()),
-          0,
-        );
-        avgDurationHours =
-          Math.round((totalMs / instances.length / (1000 * 60 * 60)) * 100) / 100;
-      }
-
-      return {
-        total,
-        completed,
-        cancelled,
-        passRate,
-        cancelRate,
-        avgDurationHours,
-      };
-    });
-  }
-
   async getEquipmentStats(query: { startDate?: string; endDate?: string }) {
     const cacheKey = this.getCacheKey('equipment', query);
     return this.getCached(cacheKey, async () => {
@@ -796,7 +671,6 @@ export class StatisticsService {
     await this.redis.del('statistics:approvals:*');
     await this.redis.del('statistics:overview:*');
     await this.redis.del('statistics:users:*');
-    await this.redis.del('statistics:workflow:*');
     await this.redis.del('statistics:equipment:*');
   }
 }

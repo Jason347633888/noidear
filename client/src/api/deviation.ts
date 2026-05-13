@@ -54,16 +54,16 @@ export default {
   },
 
   /**
-   * 更新模板公差配置
+   * 更新模板公差配置（路由迁到 record-templates 正式 API）
    */
   updateToleranceConfig(templateId: string, data: { fields: ToleranceFieldConfig[] }) {
-    return request.put(`/templates/${templateId}/tolerance`, data);
+    return request.put(`/record-templates/${templateId}/tolerance`, data);
   },
 
   /**
-   * 获取模板公差配置
+   * 获取模板公差配置（路由迁到 record-templates 正式 API）
    */
   getToleranceConfig(templateId: string) {
-    return request.get<{ fields: ToleranceFieldConfig[] }>(`/templates/${templateId}/tolerance`);
+    return request.get<{ fields: ToleranceFieldConfig[] }>(`/record-templates/${templateId}/tolerance`);
   },
 };

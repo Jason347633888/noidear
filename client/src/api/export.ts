@@ -29,12 +29,6 @@ export default {
     });
   },
 
-  exportApprovals(filters: ExportFilters): Promise<Blob> {
-    return request.post('/export/approvals', filters, {
-      responseType: 'blob',
-    });
-  },
-
   exportTaskRecordsByTaskId(taskId: string): Promise<Blob> {
     return request.post(`/export/task-records`, { taskId }, {
       responseType: 'blob',

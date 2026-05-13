@@ -15,28 +15,19 @@ export class SearchService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * API contract cleanup 后：全文索引模型已移除。
+   * 该方法保留为 no-op 以兼容历史 listener，不再写入索引。
+   */
   async indexDocument(documentId: string) {
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, deletedAt: null },
-      include: {
-        creator: { select: { departmentId: true, department: { select: { name: true } } } },
-      },
+      select: { id: true },
     });
-
     if (!document) {
       throw new NotFoundException(`文档 ${documentId} 不存在`);
     }
-
-    const metadata = this.buildDocumentMetadata(document);
-
-    await this.prisma.fulltextIndex.upsert({
-      where: { documentId },
-      create: { documentId, content: document.title, metadata, indexedAt: new Date() },
-      update: { content: document.title, metadata, indexedAt: new Date() },
-    });
-
-    this.logger.log(`文档 ${documentId} 索引完成`);
-    return { success: true, documentId, message: '文档已索引' };
+    return { success: true, documentId, message: '全文索引已剔除，跳过' };
   }
 
   async search(query: SearchQueryDto) {
@@ -60,12 +51,8 @@ export class SearchService {
   }
 
   async deleteIndex(documentId: string) {
-    const existing = await this.prisma.fulltextIndex.findUnique({ where: { documentId } });
-    if (!existing) throw new NotFoundException(`文档 ${documentId} 的索引不存在`);
-
-    await this.prisma.fulltextIndex.delete({ where: { documentId } });
-
-    return { success: true, message: '索引已删除' };
+    // no-op：全文索引已剔除
+    return { success: true, message: '全文索引已剔除' };
   }
 
   private async searchWithPostgres(query: SearchQueryDto, keyword: string) {

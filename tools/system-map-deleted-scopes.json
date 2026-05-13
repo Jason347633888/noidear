@@ -1,0 +1,68 @@
+{
+  "frontendPathPrefixes": [
+    "/workflow",
+    "/workflow-templates",
+    "/monitoring",
+    "/management-dashboard",
+    "/statistics/dashboard",
+    "/auth/sso",
+    "/asset-loan-records",
+    "/management-reviews",
+    "/audit/plans",
+    "/audit/rectifications",
+    "/audit/reports",
+    "/change-approvals",
+    "/document-issuances",
+    "/documents/number-rules",
+    "/documents/export",
+    "/export/documents"
+  ],
+  "frontendFiles": [
+    "client/src/api/workflow.ts",
+    "client/src/api/monitoring.ts",
+    "client/src/api/sso.ts",
+    "client/src/api/asset-loan-record.ts",
+    "client/src/api/change-approval.ts",
+    "client/src/api/management-review.ts",
+    "client/src/api/document-issuance.ts",
+    "client/src/api/internal-audit"
+  ],
+  "backendModules": [
+    "approval",
+    "workflow",
+    "monitoring",
+    "asset-loan-record",
+    "change-approval",
+    "internal-audit",
+    "management-review",
+    "document-issuance"
+  ],
+  "prismaModels": [
+    "Approval",
+    "WorkflowTemplate",
+    "WorkflowInstance",
+    "WorkflowTask",
+    "TaskDelegationLog",
+    "ChangeApproval",
+    "ProcessStepApproval",
+    "AssetLoanRecord",
+    "NumberRule",
+    "DocumentIssuance",
+    "DocumentReadConfirmation",
+    "DocumentReadRequirement",
+    "DocumentTrainingNeed",
+    "DocumentCoverageReview",
+    "DocumentImpactReview",
+    "DocumentImpactItem",
+    "FulltextIndex",
+    "DocumentRecommendation",
+    "DocumentViewLog",
+    "SystemMetric",
+    "AlertRule",
+    "AlertHistory"
+  ],
+  "allowedTerms": [
+    "monitoring_method",
+    "monitoring_frequency"
+  ]
+}

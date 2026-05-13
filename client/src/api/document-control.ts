@@ -1,5 +1,4 @@
 import request from './request';
-import type { EvidenceChainQuery, EvidenceChainResult } from '@noidear/types';
 
 export type DocumentType =
   | 'MANUAL'
@@ -201,31 +200,7 @@ export const documentControlApi = {
     return request.get<DocumentReferenceHealthResult>('/documents/reference-health/issues');
   },
 
-  getWorkbench(days = 30) {
-    return request.get<WorkbenchResponse>('/documents/control/workbench', { params: { days } });
-  },
-
-  listWorkbenchIssues(params: { type: WorkbenchIssueType; page?: number; limit?: number; days?: number }) {
-    return request.get<WorkbenchIssueListResponse>('/documents/control/workbench/issues', { params });
-  },
-
-  getEvidenceChain(params: EvidenceChainQuery) {
-    return request.get<EvidenceChainResult>('/documents/control/evidence-chain', { params });
-  },
-
   createRevision(documentId: string) {
     return request.post<DocumentControlDocument>(`/documents/${documentId}/revisions`);
-  },
-
-  listNumberRules() {
-    return request.get('/documents/number-rules');
-  },
-
-  upsertNumberRule(payload: Record<string, unknown>) {
-    return request.post('/documents/number-rules', payload);
-  },
-
-  deactivateNumberRule(id: string) {
-    return request.post(`/documents/number-rules/${id}/deactivate`);
   },
 };

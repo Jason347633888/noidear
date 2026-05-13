@@ -2,5 +2,4 @@ export * from './export-documents.dto';
 export * from './export-tasks.dto';
 export * from './export-task-records.dto';
 export * from './export-deviation-reports.dto';
-export * from './export-approvals.dto';
 export * from './export-users.dto';

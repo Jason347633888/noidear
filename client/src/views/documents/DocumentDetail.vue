@@ -63,13 +63,6 @@
           重新提交
         </el-button>
         <el-button
-          type="warning"
-          v-if="document.status === 'pending'"
-          @click="handleWithdraw"
-        >
-          撤回
-        </el-button>
-        <el-button
           type="primary"
           v-if="canEditDraft"
           @click="$router.push(`/documents/${document.id}/edit`)"
@@ -103,13 +96,6 @@
           @click="showArchiveDialog"
         >
           归档
-        </el-button>
-        <el-button
-          type="danger"
-          v-if="isEffectiveDocument(document.status) && isAdmin"
-          @click="showObsoleteDialog"
-        >
-          作废
         </el-button>
         <el-button
           type="success"
@@ -337,7 +323,6 @@
           <template #default="{ row }">
             <el-button link type="primary" @click="handlePreviewVersion(row)">预览版本</el-button>
             <el-button link type="primary" @click="handleDownloadVersion(row)">下载版本</el-button>
-            <el-button link type="warning" @click="handleRollbackVersion(row)">回滚</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -386,28 +371,6 @@
         <el-button @click="archiveDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleArchive" :loading="archiving">
           确认归档
-        </el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 作废对话框 -->
-    <el-dialog v-model="obsoleteDialogVisible" title="作废文档" width="500px">
-      <el-form :model="obsoleteForm" :rules="obsoleteRules" ref="obsoleteFormRef">
-        <el-form-item label="作废原因" prop="reason">
-          <el-input
-            v-model="obsoleteForm.reason"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入作废原因（至少10个字符）"
-            maxlength="500"
-            show-word-limit
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="obsoleteDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleObsolete" :loading="obsoleting">
-          确认作废
         </el-button>
       </template>
     </el-dialog>
@@ -604,22 +567,15 @@ const referenceHealthIssues = computed(() => (
   referenceHealth.value?.issues.filter(issue => issue.status !== 'healthy') || []
 ));
 
-// 归档/作废/恢复相关
+// 归档/恢复相关
 const archiveDialogVisible = ref(false);
-const obsoleteDialogVisible = ref(false);
 const restoreDialogVisible = ref(false);
 const archiving = ref(false);
-const obsoleting = ref(false);
 const restoring = ref(false);
 const archiveFormRef = ref();
-const obsoleteFormRef = ref();
 const restoreFormRef = ref();
 
 const archiveForm = ref({
-  reason: '',
-});
-
-const obsoleteForm = ref({
   reason: '',
 });
 
@@ -631,13 +587,6 @@ const archiveRules = {
   reason: [
     { required: true, message: '请输入归档原因', trigger: 'blur' },
     { min: 10, message: '归档原因至少10个字符', trigger: 'blur' },
-  ],
-};
-
-const obsoleteRules = {
-  reason: [
-    { required: true, message: '请输入作废原因', trigger: 'blur' },
-    { min: 10, message: '作废原因至少10个字符', trigger: 'blur' },
   ],
 };
 
@@ -848,20 +797,6 @@ const handlePreviewVersion = async (row: VersionItem) => {
   }
 };
 
-const handleRollbackVersion = async (row: VersionItem) => {
-  if (!document.value?.id) return;
-  const result = await ElMessageBox.prompt(`请输入回滚到 v${row.version} 的原因`, '回滚版本', {
-    inputType: 'textarea',
-    inputValidator: (val) => Boolean(val && val.trim().length >= 5),
-    inputErrorMessage: '回滚原因至少 5 个字符',
-  }) as unknown as { value: string };
-  const { value } = result;
-  await documentManagementApi.rollbackVersion(document.value.id, row.version, value);
-  ElMessage.success('版本回滚成功');
-  await fetchData();
-  await fetchVersionHistory();
-};
-
 const startMarkdownEdit = () => {
   if (!canEditMarkdown.value) return;
   markdownDraft.value = document.value?.content_md || '';
@@ -1014,22 +949,6 @@ const handleSubmit = async () => {
   }
 };
 
-const handleWithdraw = async () => {
-  if (!document.value?.id) {
-    return;
-  }
-  try {
-    await ElMessageBox.confirm('确定要撤回该文档吗？撤回后可重新编辑和提交。', '提示', {
-      type: 'warning',
-    });
-    await request.post(`/documents/${document.value.id}/withdraw`);
-    ElMessage.success('撤回成功');
-    fetchData();
-  } catch {
-    // 用户取消
-  }
-};
-
 const handleDelete = async () => {
   if (!document.value?.id) {
     return;
@@ -1065,11 +984,6 @@ const showArchiveDialog = () => {
   archiveDialogVisible.value = true;
 };
 
-const showObsoleteDialog = () => {
-  obsoleteForm.value.reason = '';
-  obsoleteDialogVisible.value = true;
-};
-
 const showRestoreDialog = () => {
   restoreForm.value.reason = '';
   restoreDialogVisible.value = true;
@@ -1094,28 +1008,6 @@ const handleArchive = async () => {
     }
   } finally {
     archiving.value = false;
-  }
-};
-
-const handleObsolete = async () => {
-  if (!document.value?.id) {
-    return;
-  }
-  try {
-    await obsoleteFormRef.value.validate();
-    obsoleting.value = true;
-    await request.post(`/documents/${document.value.id}/obsolete`, {
-      reason: obsoleteForm.value.reason,
-    });
-    ElMessage.success('作废成功');
-    obsoleteDialogVisible.value = false;
-    fetchData();
-  } catch (error: any) {
-    if (error?.message) {
-      // 表单验证失败，不显示错误
-    }
-  } finally {
-    obsoleting.value = false;
   }
 };
 

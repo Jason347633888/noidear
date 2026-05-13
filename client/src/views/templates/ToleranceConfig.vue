@@ -136,7 +136,7 @@ const getLevelText = (level?: number) => {
 const fetchTemplate = async () => {
   loading.value = true;
   try {
-    const res = await request.get<Template>(`/templates/${route.params.id}`);
+    const res = await request.get<Template>(`/record-templates/${route.params.id}`);
     template.value = res;
     await fetchToleranceConfig();
   } catch {

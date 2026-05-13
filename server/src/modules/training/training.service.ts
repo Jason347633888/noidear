@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { WorkflowInstanceService } from '../workflow/workflow-instance.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 import { CreateTrainingPlanDto } from './dto/create-plan.dto';
 import { UpdateTrainingPlanDto } from './dto/update-plan.dto';
@@ -10,7 +9,6 @@ import { QueryTrainingPlanDto } from './dto/query-plan.dto';
 export class TrainingService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly workflowService: WorkflowInstanceService,
     @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {}
 
@@ -121,7 +119,7 @@ export class TrainingService {
   /**
    * 提交审批
    * BR-092: 培训计划审批规则
-   * TASK-321: 集成工作流引擎
+   * 统一审批：通过 ApprovalEngineService 发起 ApprovalInstance；状态推进由 training.planApproved callback 回写
    */
   async submitPlanForApproval(id: string) {
     const plan = await this.getPlanById(id);
@@ -129,17 +127,6 @@ export class TrainingService {
     if (plan.status !== 'draft') {
       throw new BadRequestException('只有草稿状态的培训计划可以提交审批');
     }
-
-    // 创建工作流实例
-    await this.workflowService.create(
-      {
-        templateId: 'training-plan-approval',
-        resourceType: 'training_plan',
-        resourceId: id,
-        resourceTitle: plan.title,
-      },
-      plan.createdBy,
-    );
 
     try {
       const approval = await this.approvalEngine?.startApproval({
@@ -197,25 +184,10 @@ export class TrainingService {
   }
 
   /**
-   * 重新提交审批
-   * TASK-321: 删除旧工作流和待办，创建新工作流
+   * 重新提交审批：清理旧待办后重新发起统一审批
    */
   async resubmitPlanForApproval(id: string) {
     const plan = await this.getPlanById(id);
-
-    // 查找并删除旧的工作流实例
-    const oldWorkflow = await this.prisma.workflowInstance.findFirst({
-      where: {
-        resourceType: 'training_plan',
-        resourceId: id,
-      },
-    });
-
-    if (oldWorkflow) {
-      await this.prisma.workflowInstance.delete({
-        where: { id: oldWorkflow.id },
-      });
-    }
 
     // 删除旧的待办任务
     await this.prisma.todoTask.deleteMany({
@@ -226,16 +198,19 @@ export class TrainingService {
       },
     });
 
-    // 创建新的工作流实例
-    await this.workflowService.create(
-      {
-        templateId: 'training-plan-approval',
+    try {
+      const approval = await this.approvalEngine?.startApproval({
         resourceType: 'training_plan',
         resourceId: id,
-        resourceTitle: plan.title,
-      },
-      plan.createdBy,
-    );
+        resourceStep: 'submit',
+        triggerKey: 'submit',
+        title: `培训计划审批：${plan.title}`,
+        createdById: plan.createdBy,
+      });
+      if (approval) {
+        await this.prisma.trainingPlan.update({ where: { id }, data: { approvalInstanceId: approval.id } });
+      }
+    } catch { /* no definition = skip */ }
 
     return this.prisma.trainingPlan.update({
       where: { id },

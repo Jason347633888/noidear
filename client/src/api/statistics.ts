@@ -19,14 +19,6 @@ export interface UserStats {
   byRole: { name: string; value: number }[];
 }
 
-export interface WorkflowStats {
-  total: number;
-  avgDuration: number;
-  timeoutRate: number;
-  passRate: number;
-  trend: { date: string; avgDuration: number }[];
-}
-
 export interface EquipmentStats {
   total: number;
   goodRate: number;
@@ -41,10 +33,6 @@ export default {
 
   getUserStats(filter: StatisticsFilter): Promise<UserStats> {
     return request.get('/statistics/users', { params: filter });
-  },
-
-  getWorkflowStats(filter: StatisticsFilter): Promise<WorkflowStats> {
-    return request.get('/statistics/workflow', { params: filter });
   },
 
   getEquipmentStats(filter: StatisticsFilter): Promise<EquipmentStats> {

@@ -27,7 +27,6 @@ export type RecordTemplateFieldType =
   | 'section-header'
   | 'static-content'
   | 'template-content'
-  | 'approval-step'
   | 'location'
   | 'qrcode'
   | 'barcode'
@@ -100,3 +99,23 @@ export const recordTemplateApi = {
     return request.post<RecordTemplate>(`/record-templates/${id}/activate`);
   },
 };
+
+export interface TemplateTolerancePayload {
+  rules: Array<{
+    fieldKey: string;
+    valueType: 'number' | 'date' | 'time';
+    operator: 'between' | 'min' | 'max' | 'equals';
+    min?: number;
+    max?: number;
+    unit?: string;
+  }>;
+  notes?: string;
+}
+
+export function getTemplateTolerance(templateId: string) {
+  return request.get(`/record-templates/${templateId}/tolerance`);
+}
+
+export function updateTemplateTolerance(templateId: string, payload: TemplateTolerancePayload) {
+  return request.put(`/record-templates/${templateId}/tolerance`, payload);
+}

@@ -58,7 +58,6 @@ import ConstrainedNumberField from './ConstrainedNumberField.vue';
 import CheckboxTextField from './CheckboxTextField.vue';
 import AutoDisplayField from './AutoDisplayField.vue';
 import TemplateContentField from './TemplateContentField.vue';
-import ApprovalStepField from './ApprovalStepField.vue';
 
 export interface FieldConfig {
   name: string;
@@ -119,7 +118,6 @@ const componentMap: Record<string, Component> = {
   'checkbox-text': CheckboxTextField,
   'auto-display': AutoDisplayField,
   'template-content': TemplateContentField,
-  'approval-step': ApprovalStepField,
 };
 
 // 字段验证

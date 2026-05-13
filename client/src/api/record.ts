@@ -80,10 +80,6 @@ export default {
     return request.put<Record>(`/records/${id}`, { data });
   },
 
-  approveRecord(id: string, action: 'approved' | 'rejected', comment?: string) {
-    return request.post(`/records/${id}/approve`, { action, comment });
-  },
-
   getRecordChangeLogs(recordId: string) {
     return request.get<RecordChangeLog[]>(`/records/${recordId}/change-logs`);
   },

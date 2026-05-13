@@ -7,13 +7,16 @@ import {
   Body,
   Param,
   Query,
+  Res,
   UseGuards,
   UseInterceptors,
   HttpCode,
   HttpStatus,
   Req,
   BadRequestException,
+  StreamableFile,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { RecordService } from './record.service';
 import { CreateRecordDto } from './dto/create-record.dto';
@@ -56,6 +59,20 @@ export class RecordController {
   @ApiResponse({ status: 404, description: '记录不存在' })
   findOne(@Param('id') id: string) {
     return this.recordService.findOne(id);
+  }
+
+  @Get(':recordId/pdf')
+  @ApiOperation({ summary: '导出记录 PDF（以 Record + RecordTemplate 为事实源）' })
+  async exportPdf(
+    @Param('recordId') recordId: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const pdf = await this.recordService.generatePdf(recordId);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="record-${recordId}.pdf"`,
+    });
+    return new StreamableFile(pdf);
   }
 
   @Put(':id')

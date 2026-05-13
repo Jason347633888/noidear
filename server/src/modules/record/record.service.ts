@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger, Optional } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import PDFDocument from 'pdfkit';
 import { PrismaService } from '../../prisma/prisma.service';
-import { WorkflowInstanceService } from '../workflow/workflow-instance.service';
 import { DeviationService } from '../deviation/deviation.service';
 import { DocumentNoService } from '../record-template/document-no.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
@@ -16,7 +16,6 @@ export class RecordService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly workflowInstanceService: WorkflowInstanceService,
     private readonly deviationService: DeviationService,
     private readonly documentNoService: DocumentNoService,
     @Optional() private readonly approvalEngine: ApprovalEngineService,
@@ -26,7 +25,7 @@ export class RecordService {
    * 创建记录实例
    * BR-221: 自动生成记录编号
    * TASK-169: 自动关联批次
-   * HIGH-5: 若模板配置 approvalRequired + workflowConfig，自动启动工作流实例
+   * 注：模板配置 approvalRequired 时，由提交记录的入口走统一审批 (ApprovalInstance)，不再自动启动旧 workflow
    */
   async create(createDto: CreateRecordDto, userId: string) {
     const template = await this.prisma.recordTemplate.findUnique({
@@ -72,33 +71,6 @@ export class RecordService {
         ...batchAssociation,
       },
     });
-
-    // HIGH-5: 若模板需要审批且配置了工作流，自动启动工作流实例
-    const templateAny = template as any;
-    if (templateAny.approvalRequired && templateAny.workflowConfig?.templateId) {
-      try {
-        const instance = await this.workflowInstanceService.create(
-          {
-            templateId: templateAny.workflowConfig.templateId,
-            resourceType: 'record',
-            resourceId: record.id,
-            resourceTitle: `记录 ${record.number}`,
-          },
-          userId,
-        );
-
-        const workflowId: string | null = instance?.data?.id ?? null;
-        await this.prisma.record.update({
-          where: { id: record.id },
-          data: { workflowId },
-        });
-
-        return { ...record, workflowId };
-      } catch (error) {
-        this.logger.error(`自动启动工作流失败，记录 ${record.id}: ${error.message}`);
-        // 工作流启动失败不影响记录创建，返回已创建的记录
-      }
-    }
 
     return record;
   }
@@ -164,6 +136,57 @@ export class RecordService {
     }
 
     return record;
+  }
+
+  /**
+   * 按需生成记录 PDF。事实源为 Record + RecordTemplate，不写入存储。
+   */
+  async generatePdf(recordId: string): Promise<Buffer> {
+    const record = await this.prisma.record.findUnique({
+      where: { id: recordId },
+      include: { template: true } as any,
+    }) as any;
+
+    if (!record) {
+      throw new NotFoundException('记录不存在');
+    }
+
+    const template = record.template;
+    const fields: Array<{ name?: string; label?: string; key?: string }> = Array.isArray(template?.fieldsJson)
+      ? (template.fieldsJson as Array<{ name?: string; label?: string; key?: string }>)
+      : [];
+    const data: Record<string, unknown> = (record.dataJson as Record<string, unknown>) ?? {};
+
+    return await new Promise<Buffer>((resolve, reject) => {
+      const doc = new PDFDocument({ size: 'A4', margin: 50 });
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      doc.fontSize(16).text(template?.name ?? '记录', { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(10);
+      doc.text(`记录编号: ${record.number ?? recordId}`);
+      doc.text(`状态: ${record.status ?? ''}`);
+      doc.text(`提交时间: ${record.createdAt ? new Date(record.createdAt).toISOString() : ''}`);
+      doc.moveDown();
+
+      for (const field of fields) {
+        const key = field.name ?? field.key ?? '';
+        if (!key) continue;
+        const label = field.label ?? key;
+        const value = data[key];
+        const displayValue = value === undefined || value === null
+          ? '-'
+          : typeof value === 'object'
+            ? JSON.stringify(value)
+            : String(value);
+        doc.text(`${label}: ${displayValue}`);
+      }
+
+      doc.end();
+    });
   }
 
   /**

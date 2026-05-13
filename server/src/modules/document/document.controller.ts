@@ -26,28 +26,16 @@ import { DocumentService } from './document.service';
 import { DocumentLifecycleService } from './document-lifecycle.service';
 import { FilePreviewService } from './services';
 import { DocumentReferenceService } from './services/document-reference.service';
-import { DocumentControlWorkbenchService } from './services/document-control-workbench.service';
 import { RecordFormLandingService } from './services/record-form-landing.service';
-import { DocumentReadRequirementService } from './services/document-read-requirement.service';
-import { DocumentTrainingNeedService } from './services/document-training-need.service';
-import { DocumentAuditCoverageService } from './services/document-audit-coverage.service';
-import { DocumentImpactService } from './services/document-impact.service';
-import { DocumentHealthService } from './services/document-health.service';
-import { DocumentAuditChainService } from './services/document-audit-chain.service';
-import { DocumentEvidenceChainService } from './services/document-evidence-chain.service';
 import { DocumentReferenceHealthService } from './services/document-reference-health.service';
-import { NumberRuleService } from './services/number-rule.service';
-import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, ObsoleteDocumentDto, ApproveDocumentDto, CreateGenericDocumentReferenceDto, WorkbenchQueryDto, WorkbenchIssueQueryDto, CreateReadRequirementDto, TrainingNeedActionDto, ImpactReviewCreateDto, ImpactItemUpdateDto, CoverageQueryDto, AuditChainQueryDto, UpdateMarkdownDto } from './dto';
-import { BatchConfirmRecordFormLandingDto, ConfirmRecordFormLandingDto, UpdateRecordFormLandingEntryDto, UpsertNumberRuleDto } from './dto/document-control.dto';
-import { PublishDocumentDto, RollbackDocumentVersionDto } from './dto/document-lifecycle.dto';
+import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, CreateGenericDocumentReferenceDto, UpdateMarkdownDto } from './dto';
+import { BatchConfirmRecordFormLandingDto, ConfirmRecordFormLandingDto, UpdateRecordFormLandingEntryDto } from './dto/document-control.dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
+import { PublishDocumentDto } from './dto/document-lifecycle.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UnifiedPermissionGuard } from '../../shared/guards/unified-permission.guard';
 import { RequirePermission } from '../../shared/decorators/require-permission.decorator';
-import { ExportService } from '../export/export.service';
-import { ExportDocumentsDto } from '../export/dto';
 import { DepartmentPermissionService } from '../department-permission/department-permission.service';
-import { StatisticsService } from '../statistics/statistics.service';
 import { StatisticsCacheInterceptor } from '../../common/interceptors/statistics-cache.interceptor';
 
 @ApiTags('文档管理')
@@ -61,20 +49,9 @@ export class DocumentController {
     private readonly lifecycleSvc: DocumentLifecycleService,
     private readonly filePreviewService: FilePreviewService,
     private readonly documentReferenceService: DocumentReferenceService,
-    private readonly exportService: ExportService,
     private readonly departmentPermissionService: DepartmentPermissionService,
-    private readonly statisticsService: StatisticsService,
-    private readonly workbenchService: DocumentControlWorkbenchService,
     private readonly recordFormLandingService: RecordFormLandingService,
-    private readonly readRequirementService: DocumentReadRequirementService,
-    private readonly trainingNeedService: DocumentTrainingNeedService,
-    private readonly auditCoverageService: DocumentAuditCoverageService,
-    private readonly impactService: DocumentImpactService,
-    private readonly healthService: DocumentHealthService,
-    private readonly auditChainService: DocumentAuditChainService,
-    private readonly evidenceChainService: DocumentEvidenceChainService,
     private readonly referenceHealthService: DocumentReferenceHealthService,
-    private readonly numberRuleService: NumberRuleService,
   ) {}
 
   @Post('upload')
@@ -105,58 +82,10 @@ export class DocumentController {
     return this.documentService.findAll(query, req.user.id, req.user.roleCode);
   }
 
-  @Get('pending-approvals')
-  @ApiOperation({ summary: '待我审批' })
-  async findPendingApprovals(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Req() req?: any,
-  ) {
-    const pageNum = Number(page) || 1;
-    const limitNum = Math.min(Number(limit) || 20, 100);
-    return this.documentService.findPendingApprovals(
-      req.user.id,
-      req.user.roleCode,
-      pageNum,
-      limitNum,
-    );
-  }
-
-  @Get('export')
-  @ApiOperation({ summary: '导出文档列表' })
-  async export(@Query() dto: ExportDocumentsDto, @Res() res: Response, @Req() req: any) {
-    try {
-      // HIGH-1: 传递用户信息进行权限过滤
-      const buffer = await this.exportService.exportDocuments(dto, req.user);
-      const filename = `documents_${Date.now()}.xlsx`;
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.send(buffer);
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: '导出失败',
-        error: error.message,
-      });
-    }
-  }
-
   @Get('due-soon')
   @ApiOperation({ summary: '查询即将到期复审的文件' })
   getDueSoon(@Query('days') days?: string) {
     return this.lifecycleSvc.getDueSoon(days ? parseInt(days, 10) : 30);
-  }
-
-  @Get('control/workbench/issues')
-  @ApiOperation({ summary: '文控工作台问题明细' })
-  getControlWorkbenchIssues(@Query() query: WorkbenchIssueQueryDto) {
-    return this.workbenchService.listIssues(query);
-  }
-
-  @Get('control/workbench')
-  @ApiOperation({ summary: '文控工作台' })
-  getControlWorkbench(@Query() query: WorkbenchQueryDto) {
-    return this.workbenchService.getWorkbench(query.days ?? 30);
   }
 
   // =============================
@@ -218,152 +147,12 @@ export class DocumentController {
     return this.recordFormLandingService.upsertTarget(code, dto);
   }
 
-  // =============================
-  // Task 6: 文档运控中心端点
-  // =============================
-
-  @Post(':id/read-requirements')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:control_manage')
-  @ApiOperation({ summary: '创建阅读要求' })
-  createReadRequirement(@Param('id') id: string, @Body() dto: CreateReadRequirementDto, @Req() req: any) {
-    return this.readRequirementService.create(id, dto, req.user.id);
-  }
-
-  @Get(':id/read-status')
-  @ApiOperation({ summary: '查询阅读状态' })
-  getReadStatus(@Param('id') id: string) {
-    return this.readRequirementService.getStatus(id);
-  }
-
-  @Get('control/training-needs')
-  @ApiOperation({ summary: '列出培训需求' })
-  listTrainingNeeds(@Query('status') status?: string) {
-    return this.trainingNeedService.list(status);
-  }
-
-  @Post(':id/training-needs/suggest')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:control_manage')
-  @ApiOperation({ summary: '建议培训需求' })
-  suggestTrainingNeed(@Param('id') id: string, @Req() req: any) {
-    return this.trainingNeedService.suggestForDocument(id, req.user.id);
-  }
-
-  @Post('control/training-needs/:id/accept')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:control_manage')
-  @ApiOperation({ summary: '接受培训需求' })
-  acceptTrainingNeed(@Param('id') id: string) {
-    return this.trainingNeedService.accept(id);
-  }
-
-  @Post('control/training-needs/:id/dismiss')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:control_manage')
-  @ApiOperation({ summary: '驳回培训需求' })
-  dismissTrainingNeed(@Param('id') id: string, @Body() dto: TrainingNeedActionDto) {
-    return this.trainingNeedService.dismiss(id, dto.reason);
-  }
-
-  @Post('control/training-needs/:id/link')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:control_manage')
-  @ApiOperation({ summary: '关联培训项目' })
-  linkTrainingNeed(@Param('id') id: string, @Body() dto: TrainingNeedActionDto) {
-    return this.trainingNeedService.link(id, dto.linkedTrainingProjectId);
-  }
-
-  @Get('control/audit-coverage')
-  @ApiOperation({ summary: '查询审核覆盖率' })
-  getAuditCoverage(@Query() dto: CoverageQueryDto) {
-    return this.auditCoverageService.getCoverage(new Date(dto.periodStart), new Date(dto.periodEnd));
-  }
-
-  @Post('control/impact-reviews')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:control_manage')
-  @ApiOperation({ summary: '创建影响评审' })
-  createImpactReview(@Body() dto: ImpactReviewCreateDto) {
-    return this.impactService.createReview(dto);
-  }
-
-  @Patch('control/impact-items/:id')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:control_manage')
-  @ApiOperation({ summary: '更新影响评审条目' })
-  updateImpactItem(@Param('id') id: string, @Body() dto: ImpactItemUpdateDto) {
-    return this.impactService.updateItem(id, dto);
-  }
-
-  @Get('control/health')
-  @ApiOperation({ summary: '查询文控健康度' })
-  getHealth(@Query('days') days?: string) {
-    const parsed = days ? parseInt(days, 10) : 30;
-    return this.healthService.getHealth(Number.isNaN(parsed) ? 30 : Math.min(Math.max(parsed, 1), 365));
-  }
-
-  @Get('control/audit-chain')
-  @ApiOperation({ summary: '查询审计链' })
-  getAuditChain(@Query() dto: AuditChainQueryDto) {
-    return this.auditChainService.getChain(dto.sourceType, dto.sourceId, dto.maxDepth ?? 4);
-  }
-
-  @Get('control/evidence-chain')
-  @ApiOperation({ summary: '证据链查询' })
-  getEvidenceChain(
-    @Query('sourceType') sourceType: string,
-    @Query('sourceId') sourceId: string,
-    @Query('maxDepth') maxDepth?: string,
-  ): Promise<any> {
-    if (!sourceType || !sourceId) {
-      throw new BadRequestException('sourceType and sourceId are required');
-    }
-    const validTypes = ['document', 'record_template', 'record', 'change_event', 'audit_finding', 'corrective_action'];
-    if (!validTypes.includes(sourceType)) {
-      throw new BadRequestException(`Unsupported sourceType: ${sourceType}`);
-    }
-    return this.evidenceChainService.getChain({
-      sourceType: sourceType as any,
-      sourceId,
-      maxDepth: maxDepth ? Number(maxDepth) : undefined,
-    });
-  }
-
   @Get('reference-health/issues')
   @UseGuards(UnifiedPermissionGuard)
   @RequirePermission('document:control_manage')
   @ApiOperation({ summary: '查询文档引用问题清单' })
   getReferenceHealthIssues() {
     return this.referenceHealthService.listIssues();
-  }
-
-  // =============================
-  // Task 2: 文控编号规则管理
-  // =============================
-
-  @Get('number-rules')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:number_rule_manage')
-  @ApiOperation({ summary: '查询文控编号规则' })
-  listNumberRules() {
-    return this.numberRuleService.list();
-  }
-
-  @Post('number-rules')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:number_rule_manage')
-  @ApiOperation({ summary: '创建或更新文控编号规则' })
-  upsertNumberRule(@Body() dto: UpsertNumberRuleDto) {
-    return this.numberRuleService.upsert(dto);
-  }
-
-  @Post('number-rules/:id/deactivate')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:number_rule_manage')
-  @ApiOperation({ summary: '停用文控编号规则' })
-  deactivateNumberRule(@Param('id') id: string) {
-    return this.numberRuleService.deactivate(id);
   }
 
   @Get(':id')
@@ -411,30 +200,6 @@ export class DocumentController {
     return this.documentService.getVersionHistory(id, req.user.id, req.user.roleCode);
   }
 
-  @Get(':id/versions/:v1/compare/:v2')
-  @ApiOperation({ summary: '对比两个版本' })
-  async compareVersions(
-    @Param('id') id: string,
-    @Param('v1') v1: string,
-    @Param('v2') v2: string,
-    @Req() req: any,
-  ) {
-    return this.documentService.compareVersions(id, v1, v2, req.user.id);
-  }
-
-  @Post(':id/versions/:targetVersion/rollback')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:control_manage')
-  @ApiOperation({ summary: '回滚到指定版本' })
-  async rollbackVersion(
-    @Param('id') id: string,
-    @Param('targetVersion') targetVersion: string,
-    @Body() dto: RollbackDocumentVersionDto,
-    @Req() req: any,
-  ) {
-    return this.documentService.rollbackVersion(id, targetVersion, dto.reason, req.user.id);
-  }
-
   @Get(':id/versions/:version/preview')
   @ApiOperation({ summary: '获取历史版本预览信息' })
   async getVersionPreview(
@@ -472,18 +237,6 @@ export class DocumentController {
     @Req() req: any,
   ) {
     return this.documentService.archive(id, dto.reason, req.user.id, req.user.roleCode);
-  }
-
-  @Post(':id/obsolete')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:obsolete')
-  @ApiOperation({ summary: '作废文档' })
-  async obsolete(
-    @Param('id') id: string,
-    @Body() dto: ObsoleteDocumentDto,
-    @Req() req: any,
-  ) {
-    return this.documentService.obsolete(id, dto.reason, req.user.id, req.user.roleCode);
   }
 
   @Post(':id/restore')
@@ -533,24 +286,6 @@ export class DocumentController {
   @ApiOperation({ summary: '提交审批' })
   async submitForApproval(@Param('id') id: string, @Req() req: any) {
     return this.documentService.submitForApproval(id, req.user.id);
-  }
-
-  @Post(':id/withdraw')
-  @ApiOperation({ summary: '撤回审批' })
-  async withdraw(@Param('id') id: string, @Req() req: any) {
-    return this.documentService.withdraw(id, req.user.id);
-  }
-
-  @Post(':id/approve')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:approve')
-  @ApiOperation({ summary: '审批文档' })
-  async approve(
-    @Param('id') id: string,
-    @Body() dto: ApproveDocumentDto,
-    @Req() req: any,
-  ) {
-    return this.documentService.approve(id, dto.status, dto.comment, req.user.id);
   }
 
   @Get(':id/download')
@@ -612,12 +347,6 @@ export class DocumentController {
   @ApiOperation({ summary: '发布文件（设为生效状态）' })
   publish(@Param('id') id: string, @Body() dto: PublishDocumentDto) {
     return this.lifecycleSvc.publish(id, dto);
-  }
-
-  @Post(':id/confirm-read')
-  @ApiOperation({ summary: '确认已阅读文件' })
-  confirmRead(@Param('id') id: string, @Req() req: any) {
-    return this.lifecycleSvc.confirmRead(id, req.user?.id ?? 'system');
   }
 
   @Post(':id/revisions')

@@ -1,15 +1,7 @@
-import request from './request';
-
-export interface CreateApprovalChainDto {
-  recordId: string;
-}
-
-export interface ApproveDto {
-  approvalId: string;
-  action: 'approved' | 'rejected';
-  comment?: string;
-  rejectionReason?: string;
-}
+/**
+ * 旧 Approval 业务类型保留（仅供测试或历史视图引用），
+ * 业务逻辑已统一迁到 `client/src/api/unified-approval.ts`。
+ */
 
 export interface Approval {
   id: string;
@@ -65,66 +57,3 @@ export interface ApprovalHistoryResponse {
   page: number;
   limit: number;
 }
-
-export default {
-  /**
-   * 创建审批链
-   */
-  createApprovalChain(recordId: string) {
-    return request.post<Approval>('/approvals/chains', { recordId });
-  },
-
-  /**
-   * 获取审批链
-   */
-  getApprovalChain(recordId: string) {
-    return request.get<Approval[]>(`/approvals/chains/${recordId}`);
-  },
-
-  // ========== New Unified API ==========
-
-  /**
-   * 获取当前用户的待审批列表
-   */
-  getPendingApprovals() {
-    return request.get<Approval[]>('/approvals/pending');
-  },
-
-  /**
-   * 获取审批详情
-   */
-  getApprovalDetail(id: string) {
-    return request.get<Approval>(`/approvals/detail/${id}`);
-  },
-
-  /**
-   * 获取当前用户的审批历史
-   */
-  getApprovalHistory(page: number = 1, limit: number = 20) {
-    return request.get<ApprovalHistoryResponse>('/approvals/history', {
-      params: { page, limit },
-    });
-  },
-
-  /**
-   * 统一审批接口（通过/驳回）
-   */
-  approveUnified(id: string, action: 'approved' | 'rejected', commentOrReason?: string) {
-    return request.post<Approval>(`/approvals/${id}/approve`, {
-      approvalId: id,
-      action,
-      ...(action === 'approved' ? { comment: commentOrReason } : { rejectionReason: commentOrReason }),
-    });
-  },
-
-  /**
-   * 统一驳回接口
-   */
-  rejectUnified(id: string, rejectionReason: string) {
-    return request.post<Approval>(`/approvals/${id}/reject`, {
-      approvalId: id,
-      action: 'rejected',
-      rejectionReason,
-    });
-  },
-};

@@ -39,12 +39,6 @@ export const documentManagementApi = {
   getVersions(id: string) {
     return request.get<{ revisions: DocumentRevisionItem[]; versions: DocumentVersionItem[] }>(`/documents/${id}/versions`);
   },
-  compareVersions(id: string, v1: number | string, v2: number | string) {
-    return request.get<VersionCompareResult>(`/documents/${id}/versions/${v1}/compare/${v2}`);
-  },
-  rollbackVersion(id: string, version: number | string, reason: string) {
-    return request.post(`/documents/${id}/versions/${version}/rollback`, { reason });
-  },
   versionDownloadUrl(id: string, version: number | string) {
     return `/api/v1/documents/${id}/versions/${version}/download`;
   },
