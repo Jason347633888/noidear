@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { RecordTemplateService } from './record-template.service';
 import { CreateRecordTemplateDto } from './dto/create-record-template.dto';
@@ -70,5 +70,12 @@ export class TemplateAliasController {
   @ApiResponse({ status: 200, description: '查询成功' })
   getVersionHistory(@Param('code') code: string) {
     return this.templateService.getVersionHistory(code);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: '删除记录模板' })
+  remove(@Param('id') id: string) {
+    return this.templateService.remove(id);
   }
 }

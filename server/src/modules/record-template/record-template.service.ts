@@ -307,6 +307,11 @@ export class RecordTemplateService {
     };
   }
 
+  async remove(id: string) {
+    await this.findOne(id);
+    return await this.prisma.recordTemplate.delete({ where: { id } });
+  }
+
   /**
    * 验证模板编号唯一性（BR-211）
    */

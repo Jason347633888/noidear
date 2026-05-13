@@ -17,12 +17,6 @@ export interface ExportFilters {
 }
 
 export default {
-  exportDocuments(filters: ExportFilters): Promise<Blob> {
-    return request.post('/export/documents', filters, {
-      responseType: 'blob',
-    });
-  },
-
   exportTasks(filters: ExportFilters): Promise<Blob> {
     return request.post('/export/tasks', filters, {
       responseType: 'blob',

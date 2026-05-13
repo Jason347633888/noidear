@@ -45,7 +45,7 @@ import exportApi, { type ExportFilters } from '@/api/export';
 
 const props = defineProps<{
   modelValue: boolean;
-  type: 'documents' | 'tasks' | 'task-records' | 'deviation-reports' | 'approvals';
+  type: 'tasks' | 'task-records' | 'deviation-reports';
   filters: ExportFilters;
   defaultFields?: string[];
   total?: number;
@@ -62,17 +62,6 @@ const selectedFields = ref<string[]>([]);
 const format = ref('xlsx');
 
 const fieldConfigs = {
-  documents: [
-    { key: 'number', label: '文档编号' },
-    { key: 'title', label: '标题' },
-    { key: 'level', label: '级别' },
-    { key: 'version', label: '版本' },
-    { key: 'status', label: '状态' },
-    { key: 'creatorName', label: '创建人' },
-    { key: 'createdAt', label: '创建时间' },
-    { key: 'approverName', label: '审批人' },
-    { key: 'approvedAt', label: '审批时间' },
-  ],
   tasks: [
     { key: 'templateTitle', label: '模板名称' },
     { key: 'departmentName', label: '部门' },
@@ -99,25 +88,14 @@ const fieldConfigs = {
     { key: 'status', label: '状态' },
     { key: 'reportedAt', label: '上报时间' },
   ],
-  approvals: [
-    { key: 'documentNumber', label: '文档编号' },
-    { key: 'documentTitle', label: '文档标题' },
-    { key: 'approverName', label: '审批人' },
-    { key: 'status', label: '状态' },
-    { key: 'comment', label: '意见' },
-    { key: 'createdAt', label: '创建时间' },
-    { key: 'approvedAt', label: '审批时间' },
-  ],
 };
 
 const availableFields = computed(() => fieldConfigs[props.type] || []);
 
 const exportMethods: Record<string, (filters: ExportFilters) => Promise<Blob>> = {
-  documents: exportApi.exportDocuments,
   tasks: exportApi.exportTasks,
   'task-records': exportApi.exportTaskRecords,
   'deviation-reports': exportApi.exportDeviationReports,
-  approvals: exportApi.exportApprovals,
 };
 
 watch(() => props.modelValue, (value) => {

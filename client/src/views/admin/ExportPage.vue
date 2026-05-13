@@ -6,28 +6,9 @@
       <el-form :model="form" label-width="120px">
         <el-form-item label="导出类型" required>
           <el-radio-group v-model="form.exportType">
-            <el-radio-button label="documents">文档数据</el-radio-button>
             <el-radio-button label="users">用户数据</el-radio-button>
           </el-radio-group>
         </el-form-item>
-
-        <template v-if="form.exportType === 'documents'">
-          <el-form-item label="文档类型">
-            <el-select v-model="form.docLevel" placeholder="全部" clearable style="width: 200px">
-              <el-option label="一级文件" :value="1" />
-              <el-option label="二级文件" :value="2" />
-              <el-option label="三级文件" :value="3" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="文档状态">
-            <el-select v-model="form.docStatus" placeholder="全部" clearable style="width: 200px">
-              <el-option label="草稿" value="draft" />
-              <el-option label="审批中" value="pending" />
-              <el-option label="已发布" value="published" />
-              <el-option label="已作废" value="obsolete" />
-            </el-select>
-          </el-form-item>
-        </template>
 
         <el-form-item label="时间范围">
           <el-date-picker
@@ -72,18 +53,14 @@ import exportApi from '@/api/export';
 import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 interface ExportForm {
-  exportType: 'documents' | 'users';
-  docLevel: number | null;
-  docStatus: string;
+  exportType: 'users';
   keyword: string;
   startDate: string;
   endDate: string;
 }
 
 const form = reactive<ExportForm>({
-  exportType: 'documents',
-  docLevel: null,
-  docStatus: '',
+  exportType: 'users',
   keyword: '',
   startDate: '',
   endDate: '',
@@ -108,19 +85,12 @@ async function handleExport() {
   progress.value = 30;
   try {
     const filters = {
-      level: form.docLevel ?? undefined,
-      status: form.docStatus || undefined,
       keyword: form.keyword || undefined,
       startDate: form.startDate || undefined,
       endDate: form.endDate || undefined,
     };
 
-    let blob: Blob;
-    if (form.exportType === 'documents') {
-      blob = await exportApi.exportDocuments(filters);
-    } else {
-      blob = await exportApi.exportUsers({ department: filters.keyword || undefined });
-    }
+    const blob: Blob = await exportApi.exportUsers({ department: filters.keyword || undefined });
 
     progress.value = 90;
     const url = URL.createObjectURL(blob);
