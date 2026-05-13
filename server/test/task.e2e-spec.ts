@@ -542,56 +542,6 @@ describe('TaskController (e2e)', () => {
     });
   });
 
-  // 9. POST /api/v1/tasks/approve
-  describe('POST /tasks/approve', () => {
-    let rid: string;
-    beforeAll(async () => {
-      const { data: td } = await apiCreateTask(app, adminToken);
-      const { data: rd } = await apiSubmitTask(app, td.id, memberToken);
-      rid = rd.id;
-    });
-
-    it('should approve submitted record', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/tasks/approve')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({ recordId: rid, status: 'approved', comment: 'ok' })
-        .expect(201);
-      expect(getData(res.body).success).toBe(true);
-    });
-
-    it('should reject double approval', async () => {
-      await request(app.getHttpServer())
-        .post('/api/v1/tasks/approve')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({ recordId: rid, status: 'approved' })
-        .expect(409);
-    });
-
-    it('should require authentication', async () => {
-      await request(app.getHttpServer())
-        .post('/api/v1/tasks/approve')
-        .send({ recordId: rid, status: 'approved' })
-        .expect(401);
-    });
-
-    it('should 404 for non-existent record', async () => {
-      await request(app.getHttpServer())
-        .post('/api/v1/tasks/approve')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({ recordId: 'no-rec', status: 'approved' })
-        .expect(404);
-    });
-
-    it('should validate status enum', async () => {
-      await request(app.getHttpServer())
-        .post('/api/v1/tasks/approve')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({ recordId: rid, status: 'invalid' })
-        .expect(400);
-    });
-  });
-
   // 10. GET /api/v1/tasks/pending-approvals
   describe('GET /tasks/pending-approvals', () => {
     it('should return list for admin', async () => {

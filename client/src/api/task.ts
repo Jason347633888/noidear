@@ -91,11 +91,6 @@ export interface SubmitTaskPayload {
   deviationReasons?: Record<string, string>;
 }
 
-export interface ApproveTaskPayload {
-  recordId: string;
-  status: 'approved' | 'rejected';
-  comment?: string;
-}
 
 export interface DraftPayload {
   data: Record<string, unknown>;
@@ -219,10 +214,4 @@ export default {
     return request.post<TaskRecord>(`/tasks/${id}/draft`, payload);
   },
 
-  /**
-   * 审批任务
-   */
-  approveTask(payload: ApproveTaskPayload) {
-    return request.post('/tasks/approve', payload);
-  },
 };

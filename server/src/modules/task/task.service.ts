@@ -14,7 +14,6 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { SubmitTaskDto } from './dto/submit-task.dto';
 import { SaveTaskDraftDto } from './dto/save-task-draft.dto';
-import { ApproveTaskDto } from './dto/approve-task.dto';
 import { QueryTaskDto } from './dto/query-task.dto';
 
 interface TemplateField {
@@ -375,35 +374,6 @@ export class TaskService {
     });
 
     return updated;
-  }
-
-  async approve(dto: ApproveTaskDto, userId: string) {
-    const record = await this.prisma.taskRecord.findUnique({
-      where: { id: dto.recordId },
-    });
-    if (!record) {
-      throw new NotFoundException('Task record not found');
-    }
-    if (record.status !== 'submitted') {
-      throw new ConflictException('Record has already been processed');
-    }
-
-    await this.prisma.taskRecord.update({
-      where: { id: dto.recordId },
-      data: {
-        status: dto.status,
-        approverId: userId,
-        approvedAt: new Date(),
-        comment: dto.comment,
-      },
-    });
-
-    await this.prisma.task.update({
-      where: { id: record.taskId },
-      data: { status: dto.status },
-    });
-
-    return { success: true };
   }
 
   async getPendingApprovals(query: QueryTaskDto) {

@@ -72,8 +72,7 @@
           <el-table-column label="操作" width="160">
             <template #default="{ row }">
               <template v-if="row.status === 'submitted'">
-                <el-button size="small" type="success" @click="handleApproveRecord(row.id)">通过</el-button>
-                <el-button size="small" type="danger" @click="handleRejectRecord(row.id)">驳回</el-button>
+                <el-text size="small" type="info">请在"审批任务"入口处理</el-text>
               </template>
             </template>
           </el-table-column>
@@ -197,30 +196,6 @@ async function handleCancelTask() {
       ElMessage.error('取消任务失败');
       throw err;
     }
-  }
-}
-
-async function handleApproveRecord(recordId: string) {
-  if (!task.value) return;
-  try {
-    await taskApi.approveTask({ recordId, status: 'approved' });
-    ElMessage.success('已通过');
-    await loadTask();
-  } catch (err) {
-    ElMessage.error('操作失败');
-    throw err;
-  }
-}
-
-async function handleRejectRecord(recordId: string) {
-  if (!task.value) return;
-  try {
-    await taskApi.approveTask({ recordId, status: 'rejected' });
-    ElMessage.success('已驳回');
-    await loadTask();
-  } catch (err) {
-    ElMessage.error('操作失败');
-    throw err;
   }
 }
 

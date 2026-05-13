@@ -15,9 +15,34 @@ export class TaskModule implements OnModuleInit {
 
   onModuleInit() {
     this.callbacks.register('taskRecord.approvalApproved', async (context: any) => {
-      await context.tx.taskRecord.update({
+      const record = await context.tx.taskRecord.update({
         where: { id: context.resourceId },
-        data: { status: 'approved', approvedAt: new Date(), approverId: context.actorId },
+        data: {
+          status: 'approved',
+          approvedAt: new Date(),
+          approverId: context.actorId,
+          comment: context.comment,
+        },
+      });
+      await context.tx.task.update({
+        where: { id: record.taskId },
+        data: { status: 'approved' },
+      });
+    });
+
+    this.callbacks.register('taskRecord.approvalRejected', async (context: any) => {
+      const record = await context.tx.taskRecord.update({
+        where: { id: context.resourceId },
+        data: {
+          status: 'rejected',
+          approvedAt: new Date(),
+          approverId: context.actorId,
+          comment: context.comment,
+        },
+      });
+      await context.tx.task.update({
+        where: { id: record.taskId },
+        data: { status: 'rejected' },
       });
     });
   }
