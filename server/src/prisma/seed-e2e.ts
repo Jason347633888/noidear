@@ -590,75 +590,6 @@ async function seedMaterialBatches(): Promise<string[]> {
 // ──────────────────────────────────────────────────────────────────────────
 // 5. 会签审批记录（APPR-001, APPR-003）
 // ──────────────────────────────────────────────────────────────────────────
-async function seedCountersignApprovals(adminId: string, docIds: string[]): Promise<void> {
-  console.log('── 会签审批记录 (Countersign Approvals)...');
-
-  const docId = docIds.find((id) => id === 'e2e-doc-pending-001') ?? docIds[0];
-  if (!docId) {
-    console.warn('   ⚠ 无可用文档，跳过会签审批 seed');
-    return;
-  }
-
-  const records = [
-    { id: 'e2e-appr-cs-pending-001', documentId: docId, approverId: adminId, status: 'pending', approvalType: 'countersign', sequence: 0, groupId: 'e2e-countersign-group-pending', level: 1 },
-    { id: 'e2e-appr-cs-pending-002', documentId: docId, approverId: adminId, status: 'pending', approvalType: 'countersign', sequence: 0, groupId: 'e2e-countersign-group-pending', level: 1 },
-    { id: 'e2e-appr-cs-approved-001', documentId: docId, approverId: adminId, status: 'approved', approvalType: 'countersign', sequence: 0, groupId: 'e2e-countersign-group-approved', level: 1, approvedAt: daysAgo(1) },
-    { id: 'e2e-appr-cs-cancelled-001', documentId: docId, approverId: adminId, status: 'cancelled', approvalType: 'countersign', sequence: 0, groupId: 'e2e-countersign-group-cancelled', level: 1 },
-  ];
-
-  let count = 0;
-  for (const record of records) {
-    try {
-      await prisma.approval.upsert({
-        where: { id: record.id },
-        update: { status: record.status, groupId: record.groupId, approvedAt: (record as any).approvedAt ?? null },
-        create: record,
-      });
-      count++;
-    } catch (err: any) {
-      console.warn(`   ⚠ 会签审批 ${record.id}: ${err.message}`);
-    }
-  }
-
-  console.log(`   ✓ 会签审批: ${count} 条已就绪`);
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-// 6. 顺签审批记录（APPR-010, APPR-011）
-// ──────────────────────────────────────────────────────────────────────────
-async function seedSequentialApprovals(adminId: string, docIds: string[]): Promise<void> {
-  console.log('── 顺签审批记录 (Sequential Approvals)...');
-
-  const docId = docIds.find((id) => id === 'e2e-doc-draft-001') ?? docIds[0];
-  if (!docId) {
-    console.warn('   ⚠ 无可用文档，跳过顺签审批 seed');
-    return;
-  }
-
-  const records = [
-    { id: 'e2e-appr-seq-pending-001', documentId: docId, approverId: adminId, status: 'pending', approvalType: 'sequential', sequence: 1, groupId: 'e2e-sequential-group-pending', level: 1 },
-    { id: 'e2e-appr-seq-waiting-001', documentId: docId, approverId: adminId, status: 'waiting', approvalType: 'sequential', sequence: 2, groupId: 'e2e-sequential-group-pending', level: 2 },
-    { id: 'e2e-appr-seq-approved-001', documentId: docId, approverId: adminId, status: 'approved', approvalType: 'sequential', sequence: 1, groupId: 'e2e-sequential-group-approved', level: 1, approvedAt: daysAgo(1) },
-    { id: 'e2e-appr-seq-cancelled-001', documentId: docId, approverId: adminId, status: 'cancelled', approvalType: 'sequential', sequence: 1, groupId: 'e2e-sequential-group-cancelled', level: 1 },
-  ];
-
-  let count = 0;
-  for (const record of records) {
-    try {
-      await prisma.approval.upsert({
-        where: { id: record.id },
-        update: { status: record.status, groupId: record.groupId, sequence: record.sequence, approvedAt: (record as any).approvedAt ?? null },
-        create: record,
-      });
-      count++;
-    } catch (err: any) {
-      console.warn(`   ⚠ 顺签审批 ${record.id}: ${err.message}`);
-    }
-  }
-
-  console.log(`   ✓ 顺签审批: ${count} 条已就绪`);
-}
-
 // ──────────────────────────────────────────────────────────────────────────
 // 生产批次与投料（BT 系列）
 // ──────────────────────────────────────────────────────────────────────────
@@ -666,7 +597,7 @@ async function seedProductionBatches(): Promise<string[]> {
   console.log('── 生产批次与投料 (ProductionBatch / BatchMaterialUsage)...');
 
   const product = await prisma.product.findFirst({ select: { id: true, name: true } });
-  const recipe = await prisma.recipe.findFirst({ select: { id: true, name: true } });
+  const recipe = await prisma.recipe.findFirst({ select: { id: true, version: true } });
   const materialBatches = await prisma.materialBatch.findMany({
     where: { batchNumber: { in: ['E2E-MB-2026-001', 'E2E-MB-2026-002'] } },
     orderBy: { batchNumber: 'asc' },
@@ -684,7 +615,7 @@ async function seedProductionBatches(): Promise<string[]> {
       productId: product.id,
       productName: product.name,
       recipeId: recipe.id,
-      recipeName: recipe.name,
+      recipeName: `Recipe v${recipe.version}`,
       plannedQuantity: 1000,
       actualQuantity: 980,
       productionDate: daysAgo(7),
@@ -696,7 +627,7 @@ async function seedProductionBatches(): Promise<string[]> {
       productId: product.id,
       productName: product.name,
       recipeId: recipe.id,
-      recipeName: recipe.name,
+      recipeName: `Recipe v${recipe.version}`,
       plannedQuantity: 800,
       actualQuantity: 790,
       productionDate: daysAgo(3),
@@ -1116,8 +1047,6 @@ async function main() {
   await seedMaterialBatches();
   await seedProductionBatches();
   await seedApprovalDefinitions(adminId);
-  await seedCountersignApprovals(adminId, docIds);
-  await seedSequentialApprovals(adminId, docIds);
   await seedTaskInstances(adminId, memberId);
   await seedDeviationReports(adminId);
   await seedFoodSafetyChain(adminId);

@@ -71,7 +71,6 @@ enum ProductionStatus {
   cancelled
 }
 
-
 enum InboundStatus {
   draft
   pending
@@ -128,32 +127,26 @@ model User {
   subordinates  User[]      @relation("UserSuperior")
   status        String      @default("active")
   company_id    String      @default("1")
-  loginAttempts   Int         @default(0)
-  firstFailedAt   DateTime?
-  lockedUntil     DateTime?
+  loginAttempts Int         @default(0)
+  firstFailedAt DateTime?
+  lockedUntil   DateTime?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   deletedAt     DateTime?
 
   // 反向关系
-  documentsCreated     Document[]        @relation("DocumentCreator")
-  documentsApproved    Document[]        @relation("DocumentApprover")
-  documentsArchived    Document[]        @relation("DocumentArchiver")
-  documentsObsoleted   Document[]        @relation("DocumentObsoleter")
-  versionsCreated      DocumentVersion[] @relation("VersionCreator")
-  approvalsGiven       Approval[]        @relation("Approver")
-  operationLogs        OperationLog[]
-  notifications        Notification[]
-  managedDepartments   Department[]      @relation("DepartmentManager")
+  documentsCreated   Document[]        @relation("DocumentCreator")
+  documentsApproved  Document[]        @relation("DocumentApprover")
+  documentsArchived  Document[]        @relation("DocumentArchiver")
+  documentsObsoleted Document[]        @relation("DocumentObsoleter")
+  versionsCreated    DocumentVersion[] @relation("VersionCreator")
+  operationLogs      OperationLog[]
+  notifications      Notification[]
+  managedDepartments Department[]      @relation("DepartmentManager")
 
   // P1-2: Fine-grained permission relations
   userPermissions    UserPermission[] @relation("UserPermissions")
   permissionsGranted UserPermission[] @relation("PermissionGrantor")
-
-  // P1-3: Workflow relations
-  workflowsInitiated     WorkflowInstance[] @relation("WorkflowInitiator")
-  workflowTasksAssigned  WorkflowTask[]     @relation("WorkflowTaskAssignee")
-  workflowTasksEscalated WorkflowTask[]     @relation("WorkflowTaskEscalated")
 
   // Deviation relations
   reportedDeviations DeviationReport[] @relation("DeviationReporter")
@@ -166,11 +159,11 @@ model User {
   recordTaskAssignments RecordTaskAssignment[] @relation("RecordTaskCreator")
 
   // Warehouse & Batch Traceability relations
-  stockRecords        StockRecord[]          @relation("StockRecordOperator")
-  stagingRecords      StagingAreaRecord[]    @relation("StagingRecordOperator")
-  stagingTransfers    StagingAreaTransfer[]  @relation("StagingTransferOperator")
-  inboundsApproved MaterialInbound[]   @relation("InboundApprover")
-  inboundsOperated MaterialInbound[]   @relation("InboundOperator")
+  stockRecords     StockRecord[]         @relation("StockRecordOperator")
+  stagingRecords   StagingAreaRecord[]   @relation("StagingRecordOperator")
+  stagingTransfers StagingAreaTransfer[] @relation("StagingTransferOperator")
+  inboundsApproved MaterialInbound[]     @relation("InboundApprover")
+  inboundsOperated MaterialInbound[]     @relation("InboundOperator")
 
   // TASK-359: Audit logging relations
   loginLogs                LoginLog[]      @relation("UserLoginLogs")
@@ -179,10 +172,9 @@ model User {
   sensitiveLogs            SensitiveLog[]  @relation("UserSensitiveLogs")
 
   // RD-001: Process management relations
-  processInstances         ProcessInstance[]  @relation("ProcessCreator")
-  processStepSubmissions   ProcessStepData[]  @relation("StepSubmitter")
-  processStepApprovals     ProcessStepData[]  @relation("StepApprover")
-  stepApprovals            ProcessStepApproval[] @relation("StepApprovalUser")
+  processInstances       ProcessInstance[] @relation("ProcessCreator")
+  processStepSubmissions ProcessStepData[] @relation("StepSubmitter")
+  processStepApprovals   ProcessStepData[] @relation("StepApprover")
 
   // Unified Approval Platform relations
   approvalInstancesCreated ApprovalInstance[] @relation("ApprovalInstanceCreator")
@@ -195,50 +187,34 @@ model User {
   todoTasks TodoTask[] @relation("UserTodoTasks")
 
   // Task Flow relations
-  tasksCreated        Task[]         @relation("TaskCreator")
-  taskRecordsSubmitted TaskRecord[]  @relation("TaskRecordSubmitter")
-  taskRecordsApproved  TaskRecord[]  @relation("TaskRecordApprover")
-
-  // Internal Audit Management System relations (TASK-325)
-  createdAuditPlans     AuditPlan[]    @relation("CreatedAuditPlans")
-  auditedPlans          AuditPlan[]    @relation("AuditedPlans")
-  assignedAuditFindings AuditFinding[] @relation("AssignedAuditFindings")
-  verifiedAuditFindings AuditFinding[] @relation("VerifiedAuditFindings")
-
-  // TASK-379/381: 高级功能关系
-  documentViewLogs        DocumentViewLog[]        @relation("DocumentViewLogs")
-  documentRecommendations DocumentRecommendation[] @relation("DocumentRecommendations")
-  delegationsFrom         DelegationLog[]          @relation("DelegationFrom")
-  delegationsTo           DelegationLog[]          @relation("DelegationTo")
+  tasksCreated         Task[]       @relation("TaskCreator")
+  taskRecordsSubmitted TaskRecord[] @relation("TaskRecordSubmitter")
+  taskRecordsApproved  TaskRecord[] @relation("TaskRecordApprover")
 
   ownedDocuments Document[] @relation("DocumentOwnerUser")
-
-  managementReviewsCreated ManagementReview[]       @relation("ManagementReviewCreator")
-  managementReviewActions  ManagementReviewAction[] @relation("ManagementReviewActionOwner")
 
   @@map("users")
 }
 
 model Department {
-  id        String       @id
-  code      String       @unique
+  id        String    @id
+  code      String    @unique
   name      String
   managerId String?
-  manager   User?        @relation("DepartmentManager", fields: [managerId], references: [id], onDelete: SetNull)
-  status    String       @default("active")
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  manager   User?     @relation("DepartmentManager", fields: [managerId], references: [id], onDelete: SetNull)
+  status    String    @default("active")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   // 反向关系
-  users             User[]             @relation("UserDepartment")
-  numberRules       NumberRule[]
-  pendingNumbers    PendingNumber[]
-  workflowTemplates    WorkflowTemplate[]    @relation("WorkflowTemplateDepartment")
-  departmentPermissions DepartmentPermission[]
-  documents            Document[]            @relation("DocumentDepartment")
-  ownedDocuments       Document[]            @relation("DocumentOwnerDepartment")
-  recordTaskAssignments RecordTaskAssignment[] @relation("RecordTaskDepartment")
+  users                  User[]                  @relation("UserDepartment")
+  pendingNumbers         PendingNumber[]
+  documentNumberCounters DocumentNumberCounter[]
+  departmentPermissions  DepartmentPermission[]
+  documents              Document[]              @relation("DocumentDepartment")
+  ownedDocuments         Document[]              @relation("DocumentOwnerDepartment")
+  recordTaskAssignments  RecordTaskAssignment[]  @relation("RecordTaskDepartment")
 
   // Task Flow relations
   tasks Task[] @relation("TaskDepartment")
@@ -246,33 +222,21 @@ model Department {
   @@map("departments")
 }
 
-model NumberRule {
-  id           String     @id
+model DocumentNumberCounter {
+  id           String   @id @default(cuid())
+  scope        String
   level        Int
   departmentId String
-  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  sequence     Int        @default(0)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  sourceFolder String   @default("")
+  categoryCode String   @default("")
+  sequence     Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  // Document control governance fields
-  scope           String  @default("document")
-  sourceFolder    String  @default("")
-  prefix          String?
-  categoryCode    String?
-  format          String?
-  sequencePadding Int     @default(3)
-  separator       String  @default("-")
-  resetPolicy     String  @default("none")
-  isActive        Boolean @default(true)
-  lockedAfterUse  Boolean @default(true)
-  usedCount       Int     @default(0)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
 
-  @@unique([scope, level, departmentId, sourceFolder])
-  @@index([scope])
-  @@index([sourceFolder])
-  @@index([isActive])
-  @@map("number_rules")
+  @@unique([scope, level, departmentId, sourceFolder, categoryCode], name: "doc_num_counter_uniq")
+  @@map("document_number_counters")
 }
 
 model PendingNumber {
@@ -284,34 +248,34 @@ model PendingNumber {
   deletedAt    DateTime   @default(now())
 
   // Document control governance fields
-  scope        String  @default("document")
-  sourceFolder String  @default("")
+  scope        String @default("document")
+  sourceFolder String @default("")
 
   @@unique([scope, level, departmentId, sourceFolder, number])
   @@map("pending_numbers")
 }
 
 model Document {
-  id         String    @id
-  level      Int
-  number     String
-  title      String
-  filePath   String
-  fileName   String
-  fileSize   Int
-  fileType   String
+  id                 String    @id
+  level              Int
+  number             String
+  title              String
+  filePath           String
+  fileName           String
+  fileSize           Int
+  fileType           String
   // Legacy compatibility field for historical upload/rollback routes. Current display uses versionNo/versionLabel.
-  version    Decimal   @default(1.0) @db.Decimal(3, 1)
-  status     String
-  creatorId  String
-  creator    User      @relation("DocumentCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+  version            Decimal   @default(1.0) @db.Decimal(3, 1)
+  status             String
+  creatorId          String
+  creator            User      @relation("DocumentCreator", fields: [creatorId], references: [id], onDelete: Restrict)
   approverId         String?
   approver           User?     @relation("DocumentApprover", fields: [approverId], references: [id], onDelete: SetNull)
   approvedAt         DateTime?
   approvalInstanceId String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  deletedAt  DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
 
   // 文档内容和部门
   content      Json?
@@ -329,67 +293,50 @@ model Document {
   obsoleter      User?     @relation("DocumentObsoleter", fields: [obsoletedBy], references: [id], onDelete: SetNull)
 
   // 反向关系
-  versions  DocumentVersion[]
-  approvals Approval[]
-
-  // Internal Audit Management System relations (TASK-325)
-  auditFindings AuditFinding[] @relation("AuditFindings")
-  auditReports  AuditReport[]  @relation("AuditReports")
-
-  // TASK-379/380: 高级功能关系
-  viewLogs        DocumentViewLog[]        @relation("DocumentViewLogs")
-  recommendations DocumentRecommendation[] @relation("DocumentRecommendations")
-  fulltextIndex   FulltextIndex?           @relation("FulltextIndex")
+  versions DocumentVersion[]
 
   // P2: 跨文档引用（BR-305/306）
   sourceReferences DocumentReference[] @relation("SourceRefs")
   targetReferences DocumentReference[] @relation("TargetRefs")
 
   // 食品安全元数据（Task 11）
-  doc_code        String?   // 文件编号，如 GRSS-CX-01-2024
-  doc_level       String?   // 'level1'|'level2'|'level3'|'level4'
+  doc_code  String? // 文件编号，如 GRSS-CX-01-2024
+  doc_level String? // 'level1'|'level2'|'level3'|'level4'
 
   // Document Control Center: 6-category controlled file system
-  document_type      String?   // MANUAL | PROCEDURE | WORK_INSTRUCTION | RECORD_FORM_INDEX | COMPANY_FILE | EXTERNAL_FILE
-  source_folder      String?   // 01 | 02 | 03 | 04 | 05 | 06
-  owner_department   String?
-  owner_user_id      String?
-  ownerDepartmentId  String?
-  ownerDepartment    Department? @relation("DocumentOwnerDepartment", fields: [ownerDepartmentId], references: [id], onDelete: SetNull)
-  ownerUserId        String?
-  ownerUser          User?       @relation("DocumentOwnerUser", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  tags               String[]  @default([])
-  metadata           Json?
-  external_source    String?
+  document_type       String? // MANUAL | PROCEDURE | WORK_INSTRUCTION | RECORD_FORM_INDEX | COMPANY_FILE | EXTERNAL_FILE
+  source_folder       String? // 01 | 02 | 03 | 04 | 05 | 06
+  owner_department    String?
+  owner_user_id       String?
+  ownerDepartmentId   String?
+  ownerDepartment     Department? @relation("DocumentOwnerDepartment", fields: [ownerDepartmentId], references: [id], onDelete: SetNull)
+  ownerUserId         String?
+  ownerUser           User?       @relation("DocumentOwnerUser", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  tags                String[]    @default([])
+  metadata            Json?
+  external_source     String?
   external_expires_at DateTime?
-  lineage_key        String?
+  lineage_key         String?
 
-  fill_frequency  String?   // 填写频率：每班/每日/每周/每批次/每月/每年
-  retention_years Int?      // 保存年限
-  reviewer        String?   // 审核人
+  fill_frequency  String? // 填写频率：每班/每日/每周/每批次/每月/每年
+  retention_years Int? // 保存年限
+  reviewer        String? // 审核人
   effective_date  DateTime? // 生效日期
   content_md      String?   @db.Text // Markdown 正文
 
   // Task 8: 文件生命周期管理
   review_due_date  DateTime?
   superseded_by_id String?
-  superseded_by    Document?  @relation("DocumentSuperseded", fields: [superseded_by_id], references: [id], onDelete: SetNull)
-  supersedes       Document[] @relation("DocumentSuperseded")
-  read_confirmations DocumentReadConfirmation[]
-  readRequirements   DocumentReadRequirement[]
-  trainingNeeds      DocumentTrainingNeed[]
-  coverageReviews    DocumentCoverageReview[]
-  businessLinks       BusinessDocumentLink[]
-  documentIssuances  DocumentIssuance[]
+  superseded_by    Document?              @relation("DocumentSuperseded", fields: [superseded_by_id], references: [id], onDelete: SetNull)
+  supersedes       Document[]             @relation("DocumentSuperseded")
+  businessLinks    BusinessDocumentLink[]
 
   // Document control governance: revision tracking
-  versionNo      Int       @default(1)
+  versionNo      Int        @default(1)
   revisionOfId   String?
   revisionOf     Document?  @relation("DocumentRevisions", fields: [revisionOfId], references: [id], onDelete: SetNull)
   revisions      Document[] @relation("DocumentRevisions")
   revisionStatus String     @default("current")
-
-  managementReviewReports ManagementReview[] @relation("ManagementReviewReportDocument")
 
   @@index([number])
   @@index([lineage_key])
@@ -414,35 +361,6 @@ model DocumentVersion {
   createdAt  DateTime @default(now())
 
   @@map("document_versions")
-}
-
-model Approval {
-  id              String    @id
-  documentId      String?
-  document        Document? @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  approverId      String
-  approver        User      @relation("Approver", fields: [approverId], references: [id], onDelete: Restrict)
-  status          String
-  comment         String?
-  level           Int         @default(1)
-  approvalChainId String?
-  previousLevel   String?
-  nextLevel       String?
-  rejectionReason String?
-  approvedAt      DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @default(now()) @updatedAt
-
-  // Phase 7: 会签/顺签扩展字段
-  approvalType String  @default("single") // single | countersign | sequential
-  sequence     Int     @default(0) // 顺签时的审批顺序
-  groupId      String? // 会签/顺签分组标识
-
-  @@index([approverId, status])
-  @@index([documentId])
-  @@index([approvalChainId])
-  @@index([groupId])
-  @@map("approvals")
 }
 
 // ========================================
@@ -580,29 +498,29 @@ model Notification {
 }
 
 model DeviationReport {
-  id              String @id
-  recordId        String
-  record          Record @relation(fields: [recordId], references: [id], onDelete: Cascade)
-  templateId      String
-  fieldName       String
-  expectedValue   String
-  actualValue     String
-  toleranceMin    Float
-  toleranceMax    Float
-  deviationAmount Float
-  deviationRate   Float      @default(0)
-  deviationType   String
-  reason          String
-  status          String     @default("pending")
-  reporterId      String
-  reporter        User       @relation("DeviationReporter", fields: [reporterId], references: [id], onDelete: Restrict)
-  reportedAt      DateTime   @default(now())
+  id                 String    @id
+  recordId           String
+  record             Record    @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  templateId         String
+  fieldName          String
+  expectedValue      String
+  actualValue        String
+  toleranceMin       Float
+  toleranceMax       Float
+  deviationAmount    Float
+  deviationRate      Float     @default(0)
+  deviationType      String
+  reason             String
+  status             String    @default("pending")
+  reporterId         String
+  reporter           User      @relation("DeviationReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  reportedAt         DateTime  @default(now())
   approvedBy         String?
   approvedAt         DateTime?
   comment            String?
   approvalInstanceId String?
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
   deletedAt          DateTime?
 
   @@index([approvalInstanceId])
@@ -619,8 +537,8 @@ model Role {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  users       User[]           @relation("UserRole")
-  permissions RolePermission[]
+  users                  User[]                      @relation("UserRole")
+  permissions            RolePermission[]
   fineGrainedPermissions RoleFineGrainedPermission[]
 
   @@map("roles")
@@ -700,90 +618,6 @@ model UserPermission {
   @@map("user_permissions")
 }
 
-// P1-3: 工作流模板表
-model WorkflowTemplate {
-  id           String      @id @default(cuid())
-  code         String      @unique
-  name         String
-  departmentId String?
-  department   Department? @relation("WorkflowTemplateDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
-  category     String
-  steps        Json
-  version      Int         @default(1)
-  status       String      @default("active")
-  description  String?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  deletedAt    DateTime?
-
-  instances WorkflowInstance[]
-
-  @@index([code])
-  @@index([category])
-  @@index([departmentId])
-  @@index([status])
-  @@map("workflow_templates")
-}
-
-// P1-3: 工作流实例表（含外键修复）
-model WorkflowInstance {
-  id            String           @id @default(cuid())
-  templateId    String
-  template      WorkflowTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
-  resourceType  String
-  resourceId    String
-  resourceTitle String
-  initiatorId   String
-  initiator     User?            @relation("WorkflowInitiator", fields: [initiatorId], references: [id], onDelete: SetNull)
-  status        String           @default("pending")
-  currentStep   Int              @default(0)
-  cancelReason  String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  deletedAt     DateTime?
-
-  tasks   WorkflowTask[]
-  records Record[]        @relation("RecordWorkflow")
-
-  @@index([templateId])
-  @@index([resourceType])
-  @@index([resourceId])
-  @@index([resourceType, resourceId])
-  @@index([status])
-  @@index([initiatorId])
-  @@map("workflow_instances")
-}
-
-// P1-3: 工作流任务表（含外键修复）
-model WorkflowTask {
-  id            String           @id @default(cuid())
-  instanceId    String
-  instance      WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
-  stepIndex     Int
-  stepName      String
-  assigneeId    String
-  assignee      User?            @relation("WorkflowTaskAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
-  status        String           @default("pending")
-  comment       String?
-  dueAt         DateTime
-  completedAt   DateTime?
-  escalatedTo   String?
-  escalatedUser User?            @relation("WorkflowTaskEscalated", fields: [escalatedTo], references: [id], onDelete: SetNull)
-  // TASK-381: 审批委托字段
-  delegatedTo   String?          // 委托人 ID
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-
-  // TASK-381: 委托日志关系
-  delegationLogs DelegationLog[] @relation("DelegationLogs")
-
-  @@index([instanceId])
-  @@index([assigneeId])
-  @@index([status])
-  @@index([dueAt])
-  @@map("workflow_tasks")
-}
-
 // 动态表单引擎: 记录模板表
 model RecordTemplate {
   id             String    @id @default(cuid())
@@ -812,16 +646,16 @@ model RecordTemplate {
   approvalRequired Boolean @default(false)
   workflowConfig   Json?
 
-  records              Record[]
-  taskAssignments      RecordTaskAssignment[]
-  tasks                Task[]
-  landingEntries       RecordFormLandingEntry[]
-  changeFormTasks      ChangeEventFormTask[]
+  records         Record[]
+  taskAssignments RecordTaskAssignment[]
+  tasks           Task[]
+  landingEntries  RecordFormLandingEntry[]
+  changeFormTasks ChangeEventFormTask[]
 
   // Document control governance: template versioning
   templateFamilyId String?
   baseCode         String?
-  versionStatus    String    @default("active")
+  versionStatus    String           @default("active")
   supersedesId     String?
   supersedes       RecordTemplate?  @relation("RecordTemplateVersions", fields: [supersedesId], references: [id], onDelete: SetNull)
   supersededBy     RecordTemplate[] @relation("RecordTemplateVersions")
@@ -857,16 +691,14 @@ model Record {
   deletedAt      DateTime?
 
   // TASK-169: 批次关联
-  relatedBatchType     String? // "production"; legacy rows may contain "finished_goods"
-  relatedBatchId       String? // 批次 ID
-  relatedBatchNumber   String? // 批次号（冗余，加速查询）
-  productionBatchId    String?
-  productionBatch      ProductionBatch?    @relation("RecordProductionBatch", fields: [productionBatchId], references: [id], onDelete: SetNull)
+  relatedBatchType   String? // "production"; legacy rows may contain "finished_goods"
+  relatedBatchId     String? // 批次 ID
+  relatedBatchNumber String? // 批次号（冗余，加速查询）
+  productionBatchId  String?
+  productionBatch    ProductionBatch? @relation("RecordProductionBatch", fields: [productionBatchId], references: [id], onDelete: SetNull)
   // TASK-9: finishedGoodsBatchId column kept in DB for historical audit trail, but removed from Prisma model
 
-  // 工作流集成字段
-  workflowId         String?
-  workflow           WorkflowInstance? @relation("RecordWorkflow", fields: [workflowId], references: [id], onDelete: SetNull)
+  // 统一审批关联（workflow 旧字段已剔除）
   approvalInstanceId String?
 
   // 任务实例关联
@@ -879,25 +711,23 @@ model Record {
   autoArchiveStatus  String    @default("active")
 
   // ShiftInstance & ProductionRun 关联
-  shift_instance_id  String?
-  shift_instance     ShiftInstance?  @relation(fields: [shift_instance_id], references: [id], onDelete: SetNull)
-  production_run_id  String?
-  production_run     ProductionRun?  @relation(fields: [production_run_id], references: [id], onDelete: SetNull)
-  document_no        String?
-  entity_links       Json?
+  shift_instance_id String?
+  shift_instance    ShiftInstance? @relation(fields: [shift_instance_id], references: [id], onDelete: SetNull)
+  production_run_id String?
+  production_run    ProductionRun? @relation(fields: [production_run_id], references: [id], onDelete: SetNull)
+  document_no       String?
+  entity_links      Json?
 
-  changeLogs      RecordChangeLog[]
+  changeLogs       RecordChangeLog[]
   deviationReports DeviationReport[]
 
-  usageType      String?
-  sourceType     String?
-  sourceId       String?
-  changeEventId  String?
-  changeEvent    ChangeEvent? @relation("ChangeEventRecords", fields: [changeEventId], references: [id], onDelete: SetNull)
-  changeFormTasks ChangeEventFormTask[]
+  usageType               String?
+  sourceType              String?
+  sourceId                String?
+  changeEventId           String?
+  changeEvent             ChangeEvent?            @relation("ChangeEventRecords", fields: [changeEventId], references: [id], onDelete: SetNull)
+  changeFormTasks         ChangeEventFormTask[]
   product_recall_evidence ProductRecallEvidence[]
-  managementReviewMeetingMinutes ManagementReview[] @relation("ManagementReviewMeetingMinutes")
-  managementReviewReports        ManagementReview[] @relation("ManagementReviewReportRecord")
 
   @@index([templateId])
   @@index([number])
@@ -905,7 +735,6 @@ model Record {
   @@index([retentionUntil])
   @@index([relatedBatchNumber])
   @@index([productionBatchId])
-  @@index([workflowId])
   @@index([taskInstanceId])
   @@index([shift_instance_id])
   @@index([production_run_id])
@@ -979,12 +808,12 @@ model Material {
   ingredientInfo String? @db.Text // RD-001: 配料信息（产品研发流程使用）
 
   // 食品安全扩展字段
-  material_type  String  @default("raw") // 'raw'|'auxiliary'|'packaging'
-  is_allergen    Boolean @default(false)
-  allergen_notes String?
+  material_type   String  @default("raw") // 'raw'|'auxiliary'|'packaging'
+  is_allergen     Boolean @default(false)
+  allergen_notes  String?
   shelf_life_days Int?
 
-  batches MaterialBatch[]
+  batches                 MaterialBatch[]
   packagingMaterialUsages PackagingMaterialUsage[]
   mixingExecutionLines    MixingExecutionLine[]
   recipeLines             RecipeLine[]             @relation("RecipeLineMaterial")
@@ -1015,27 +844,27 @@ model MaterialBatch {
   deletedAt         DateTime?
 
   // 库存流水
-  stockRecords        StockRecord[]
+  stockRecords         StockRecord[]
   // 领料明细
-  requisitionItems    MaterialRequisitionItem[]
+  requisitionItems     MaterialRequisitionItem[]
   // 暂存间库存
-  stagingStocks       StagingAreaStock[]
+  stagingStocks        StagingAreaStock[]
   // 暂存间盘点
-  stocktakes          StagingAreaStocktake[]
+  stocktakes           StagingAreaStocktake[]
   // 投料执行明细
   mixingExecutionLines MixingExecutionLine[]
   // 批次追溯系统关联（TASK-159）
-  batchMaterialUsages BatchMaterialUsage[]
+  batchMaterialUsages  BatchMaterialUsage[]
   // 入库明细关联
-  inboundItems        MaterialInboundItem[]     @relation("InboundCreatedBatch")
+  inboundItems         MaterialInboundItem[]     @relation("InboundCreatedBatch")
   // 退料明细关联（TASK-195）
-  returnItems         MaterialReturnItem[]      @relation("ReturnBatches")
+  returnItems          MaterialReturnItem[]      @relation("ReturnBatches")
   // 报废明细关联（TASK-196）
-  scrapItems          MaterialScrapItem[]       @relation("ScrapBatches")
+  scrapItems           MaterialScrapItem[]       @relation("ScrapBatches")
 
   // 食品安全扩展字段
-  supplier_lot_no   String?  // 供应商批号
-  storage_confirmed Boolean  @default(false)
+  supplier_lot_no   String? // 供应商批号
+  storage_confirmed Boolean            @default(false)
   // 库存流向状态（仓储操作触发），独立于质量状态 status(BatchStatus)
   // BatchStatus = QC 质量/锁定状态；LotInventoryStatus = 库存流向状态
   lotStatus         LotInventoryStatus @default(in_stock) @map("lot_status")
@@ -1075,17 +904,17 @@ model StockRecord {
 
 // TASK-184: 领料单表
 model MaterialRequisition {
-  id              String            @id @default(cuid())
-  requisitionNo   String            @unique
-  requisitionType RequisitionType // production(生产领料), maintenance(维修领料), other(其他)
-  status          RequisitionStatus @default(draft) // draft, pending, approved, rejected, completed
-  applicantId     String
-  departmentId    String?
-  remark          String?
-  targetZone      String?   // 目标车间区域：筛粉间 | 称油间 | 小料房
-  equipmentId     String?
-  equipment       Equipment? @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
-  submittedAt     DateTime?
+  id                 String            @id @default(cuid())
+  requisitionNo      String            @unique
+  requisitionType    RequisitionType // production(生产领料), maintenance(维修领料), other(其他)
+  status             RequisitionStatus @default(draft) // draft, pending, approved, rejected, completed
+  applicantId        String
+  departmentId       String?
+  remark             String?
+  targetZone         String? // 目标车间区域：筛粉间 | 称油间 | 小料房
+  equipmentId        String?
+  equipment          Equipment?        @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  submittedAt        DateTime?
   approvedAt         DateTime?
   approvedBy         String?
   completedAt        DateTime?
@@ -1174,16 +1003,16 @@ model SupplierQualification {
 
 // TASK-186: 暂存间库存表
 model StagingAreaStock {
-  id        String        @id @default(cuid())
-  batchId   String
-  area_id   String?
-  location  String?
-  quantity  Float         @default(0)
-  batch                MaterialBatch        @relation(fields: [batchId], references: [id], onDelete: Restrict)
-  area                 WorkshopArea?        @relation(fields: [area_id], references: [id])
+  id                   String                @id @default(cuid())
+  batchId              String
+  area_id              String?
+  location             String?
+  quantity             Float                 @default(0)
+  batch                MaterialBatch         @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  area                 WorkshopArea?         @relation(fields: [area_id], references: [id])
   mixingExecutionLines MixingExecutionLine[]
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 
   @@unique([batchId, area_id])
   @@index([area_id])
@@ -1214,8 +1043,8 @@ model StagingAreaTransfer {
   id         String   @id @default(cuid())
   stockId    String
   batchId    String
-  fromZone   String   // 筛粉间 | 称油间 | 小料房
-  toZone     String   // 筛粉间 | 称油间 | 小料房
+  fromZone   String // 筛粉间 | 称油间 | 小料房
+  toZone     String // 筛粉间 | 称油间 | 小料房
   quantity   Float
   operatorId String
   operator   User     @relation("StagingTransferOperator", fields: [operatorId], references: [id], onDelete: Restrict)
@@ -1260,28 +1089,28 @@ model StagingAreaStocktake {
 
 // 投料执行记录
 model MixingExecution {
-  id             String                @id @default(cuid())
-  executionNo    String                @unique
+  id             String                   @id @default(cuid())
+  executionNo    String                   @unique
   recipeId       String
   productId      String
   area_id        String
-  work_date      DateTime              @db.Date
+  work_date      DateTime                 @db.Date
   shift_type_id  String?
   team_id        String?
   planned_weight Float?
   actual_weight  Float
-  status         MixingExecutionStatus @default(confirmed)
+  status         MixingExecutionStatus    @default(confirmed)
   operatorId     String?
   confirmedAt    DateTime?
   note           String?
-  recipe         Recipe                @relation(fields: [recipeId], references: [id])
-  product        Product               @relation(fields: [productId], references: [id])
-  area           WorkshopArea          @relation(fields: [area_id], references: [id])
-  shift_type     ShiftType?            @relation(fields: [shift_type_id], references: [id], onDelete: SetNull)
+  recipe         Recipe                   @relation(fields: [recipeId], references: [id])
+  product        Product                  @relation(fields: [productId], references: [id])
+  area           WorkshopArea             @relation(fields: [area_id], references: [id])
+  shift_type     ShiftType?               @relation(fields: [shift_type_id], references: [id], onDelete: SetNull)
   lines          MixingExecutionLine[]
   aggregations   BatchMixingAggregation[]
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
 
   @@index([work_date, area_id])
   @@index([recipeId])
@@ -1358,15 +1187,15 @@ model MaterialBalance {
 
 // TASK-197: 物料入库单表
 model MaterialInbound {
-  id          String        @id @default(cuid())
-  inboundNo   String        @unique
-  supplierId  String
-  supplier    Supplier      @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  status      InboundStatus @default(draft) // draft, pending, approved, completed
-  submittedAt DateTime?
-  approvedAt  DateTime?
-  approvedBy  String?
-  approver    User?         @relation("InboundApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  id                 String        @id @default(cuid())
+  inboundNo          String        @unique
+  supplierId         String
+  supplier           Supplier      @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  status             InboundStatus @default(draft) // draft, pending, approved, completed
+  submittedAt        DateTime?
+  approvedAt         DateTime?
+  approvedBy         String?
+  approver           User?         @relation("InboundApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
   completedAt        DateTime?
   operatorId         String?
   operator           User?         @relation("InboundOperator", fields: [operatorId], references: [id], onDelete: SetNull)
@@ -1406,11 +1235,11 @@ model MaterialInboundItem {
 
 // TASK-195: 退料单表
 model MaterialReturn {
-  id          String               @id @default(cuid())
-  returnNo    String               @unique
-  status      MaterialReturnStatus @default(draft) // draft, approved, completed
-  reason      String?
-  requesterId String
+  id                 String               @id @default(cuid())
+  returnNo           String               @unique
+  status             MaterialReturnStatus @default(draft) // draft, approved, completed
+  reason             String?
+  requesterId        String
   approvedBy         String?
   approvedAt         DateTime?
   completedAt        DateTime?
@@ -1446,11 +1275,11 @@ model MaterialReturnItem {
 
 // TASK-196: 报废单表
 model MaterialScrap {
-  id          String              @id @default(cuid())
-  scrapNo     String              @unique
-  status      MaterialScrapStatus @default(draft) // draft, approved, completed
-  reason      String // 报废原因（必填）
-  requesterId String
+  id                 String              @id @default(cuid())
+  scrapNo            String              @unique
+  status             MaterialScrapStatus @default(draft) // draft, approved, completed
+  reason             String // 报废原因（必填）
+  requesterId        String
   approvedBy         String?
   approvedAt         DateTime?
   completedAt        DateTime?
@@ -1493,10 +1322,10 @@ model ProductionBatch {
   id              String           @id @default(cuid())
   batchNumber     String           @unique // 生产批次号（BR-241: 唯一性，BR-242: 不可修改）
   productId       String // 产品ID
-  product         Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  product         Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
   productName     String
   recipeId        String // 配方ID
-  recipe          Recipe  @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  recipe          Recipe           @relation(fields: [recipeId], references: [id], onDelete: Restrict)
   recipeName      String?
   plannedQuantity Float?
   actualQuantity  Float?
@@ -1507,25 +1336,25 @@ model ProductionBatch {
   deletedAt       DateTime?
 
   // 批次物料使用关联（追溯链）
-  materialUsages   BatchMaterialUsage[]
+  materialUsages      BatchMaterialUsage[]
   // 物料平衡记录
-  materialBalances MaterialBalance[]    @relation("MaterialBalanceProductionBatch")
+  materialBalances    MaterialBalance[]    @relation("MaterialBalanceProductionBatch")
   // TASK-169: 动态表单记录关联
-  relatedRecords   Record[]             @relation("RecordProductionBatch")
+  relatedRecords      Record[]             @relation("RecordProductionBatch")
   customer_complaints CustomerComplaint[]
 
   // 班组排班扩展字段
-  team_id          String?
-  shift_type_id    String?
-  leader_id        String?
-  unit             String?
-  packagedAt       DateTime?
-  warehousedAt     DateTime?
-  packageMachine   String?
-  packagingLine    String?
-  team             Team?       @relation(fields: [team_id], references: [id])
-  shift_type       ShiftType?  @relation(fields: [shift_type_id], references: [id])
-  aggregations     BatchMixingAggregation[]
+  team_id                 String?
+  shift_type_id           String?
+  leader_id               String?
+  unit                    String?
+  packagedAt              DateTime?
+  warehousedAt            DateTime?
+  packageMachine          String?
+  packagingLine           String?
+  team                    Team?                    @relation(fields: [team_id], references: [id])
+  shift_type              ShiftType?               @relation(fields: [shift_type_id], references: [id])
+  aggregations            BatchMixingAggregation[]
   packagingMaterialUsages PackagingMaterialUsage[]
 
   // 食品安全扩展字段
@@ -1543,15 +1372,15 @@ model ProductionBatch {
   samples        Sample[]
 
   // Task 14: CCP 监控记录
-  ccp_records    CCPRecord[]
+  ccp_records CCPRecord[]
 
   // Task 15a: 质量合规
   rework_records ReworkRecord[]
 
   // Task 15b: 过程监控
-  process_monitor_records ProcessMonitorRecord[]
-  metal_detection_logs    MetalDetectionLog[]
-  environment_records     EnvironmentRecord[]
+  process_monitor_records  ProcessMonitorRecord[]
+  metal_detection_logs     MetalDetectionLog[]
+  environment_records      EnvironmentRecord[]
   fragile_item_inspections FragileItemInspection[]
 
   production_run_id String?
@@ -1735,7 +1564,6 @@ model MaintenanceRecord {
   reviewerSignature  String? // 审核人员签名URL
   performerId        String? // 维保人员ID
   reviewerId         String? // 审核人员ID
-  workflowId         String? // 工作流实例ID
   approvalInstanceId String?
   status             MaintenanceRecordStatus @default(draft)
   submittedAt        DateTime?
@@ -1913,62 +1741,6 @@ model SensitiveLog {
 // TASK-360: System Monitoring Tables
 // ========================================
 
-// 系统性能指标记录表 (System Metrics)
-model SystemMetric {
-  id          BigInt   @id @default(autoincrement())
-  metricName  String
-  metricValue Float
-  metricType  String // 'system', 'application', 'business'
-  tags        String? // JSON string for key-value tags
-  timestamp   DateTime @default(now())
-  createdAt   DateTime @default(now())
-
-  @@index([metricName])
-  @@index([timestamp])
-  @@index([metricType])
-  @@map("system_metrics")
-}
-
-// 告警规则配置表 (Alert Rules)
-model AlertRule {
-  id             BigInt   @id @default(autoincrement())
-  name           String
-  metricName     String
-  condition      String // '>', '<', '>=', '<=', '=='
-  threshold      Float
-  severity       String // 'info', 'warning', 'critical'
-  enabled        Boolean  @default(true)
-  notifyChannels String? // JSON array: ['email', 'wechat', 'dingtalk']
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  alertHistory AlertHistory[]
-
-  @@index([enabled])
-  @@index([metricName])
-  @@map("alert_rules")
-}
-
-// 告警历史记录表 (Alert History)
-model AlertHistory {
-  id            BigInt    @id @default(autoincrement())
-  ruleId        BigInt
-  metricValue   Float
-  triggeredAt   DateTime  @default(now())
-  resolvedAt    DateTime?
-  status        String // 'triggered', 'resolved', 'acknowledged'
-  message       String?
-  notifiedUsers String? // JSON array of user IDs
-  createdAt     DateTime  @default(now())
-
-  rule AlertRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
-
-  @@index([ruleId])
-  @@index([triggeredAt])
-  @@index([status])
-  @@map("alert_history")
-}
-
 // 备份历史记录表 (Backup History)
 model BackupHistory {
   id           BigInt    @id @default(autoincrement())
@@ -2056,18 +1828,18 @@ model TodoTask {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
+  @@unique([userId, type, relatedId])
   @@index([userId, status])
   @@index([type, relatedId])
   @@index([status, dueDate])
-  @@unique([userId, type, relatedId])
   @@map("todo_tasks")
 }
 
 // TASK-302: 年度培训计划表
 model TrainingPlan {
-  id        String             @id @default(cuid())
-  year      Int                @unique // BR-091: 年度唯一性
-  title     String
+  id                 String             @id @default(cuid())
+  year               Int                @unique // BR-091: 年度唯一性
+  title              String
   status             TrainingPlanStatus @default(draft)
   approvalInstanceId String?
   createdBy          String
@@ -2104,10 +1876,9 @@ model TrainingProject {
   completedAt   DateTime?
 
   // 反向关系
-  questions              TrainingQuestion[]
-  learningRecords        LearningRecord[]
-  archive                TrainingArchive?
-  documentTrainingNeeds  DocumentTrainingNeed[]
+  questions       TrainingQuestion[]
+  learningRecords LearningRecord[]
+  archive         TrainingArchive?
 
   @@index([planId])
   @@index([department])
@@ -2186,275 +1957,17 @@ model TrainingArchive {
   @@map("training_archives")
 }
 
-// ========================================
-// Internal Audit Management System (内审管理系统)
-// TASK-325: 内审管理核心表
-// ========================================
-
-// 1. 内审计划表
-model AuditPlan {
-  id    String @id @default(cuid())
-  title String // "2024-Q1 内审"
-  type  String // "quarterly" | "semiannual" | "annual"
-
-  startDate DateTime // 审核起始日期
-  endDate   DateTime // 审核结束日期
-
-  documentIds String[] // 计划审核的文档 ID 列表(批量勾选)
-
-  status String @default("draft")
-  // draft: 草稿(可启动)
-  // ongoing: 审核中
-  // pending_rectification: 等待整改
-  // completed: 已完成
-
-  auditorId String // 内审员
-  createdBy String // 创建人
-
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  startedAt   DateTime? // 启动时间
-  completedAt DateTime? // 完成时间
-
-  auditor User @relation("AuditedPlans", fields: [auditorId], references: [id])
-  creator User @relation("CreatedAuditPlans", fields: [createdBy], references: [id])
-
-  findings AuditFinding[]
-  report   AuditReport?
-
-  @@index([status, startDate])
-  @@index([auditorId])
-  @@index([createdBy])
-  @@map("audit_plans")
-}
-
-// 2. 审核发现(内审记录)表
-model AuditFinding {
-  id     String @id @default(cuid())
-  planId String // 所属内审计划
-
-  documentId  String // 关联的文档
-  auditResult String // "符合" | "不符合"
-
-  // 以下字段仅在 auditResult = "不符合" 时填写
-  issueType   String? // "需要修改" | "缺失记录" | "文档缺失"
-  description String? // 问题描述(必填)
-
-  department String? // 责任部门
-  assigneeId String? // 责任人
-  dueDate    DateTime? // 整改期限(审核日期 + 30 天)
-
-  status             String @default("pending")
-  // pending: 待整改(仅"不符合"项有此状态)
-  // rectifying: 整改中
-  // pending_verification: 待复审
-  // verified: 已验证通过
-  // rejected: 复审驳回
-  approvalInstanceId String?
-
-  // 整改证据(系统自动记录)
-  rectificationDocumentId String? // 整改后的文档 ID
-  rectificationVersion    String? // 整改后的文档版本号
-
-  verifiedBy      String? // 验证人(内审员)
-  verifiedAt      DateTime?
-  rejectionReason String? // 驳回原因
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  plan     AuditPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  document Document  @relation("AuditFindings", fields: [documentId], references: [id])
-  assignee User?     @relation("AssignedAuditFindings", fields: [assigneeId], references: [id])
-  verifier User?     @relation("VerifiedAuditFindings", fields: [verifiedBy], references: [id])
-
-  @@unique([planId, documentId])
-  @@index([planId, auditResult])
-  @@index([assigneeId, status])
-  @@index([status, dueDate])
-  @@index([approvalInstanceId])
-  @@map("audit_findings")
-}
-
-// 3. 内审报告(归档)表
-model AuditReport {
-  id     String @id @default(cuid())
-  planId String @unique
-
-  summary Json // 汇总信息
-  // {
-  //   totalDocuments: 50,
-  //   conformCount: 45,
-  //   nonConformCount: 5,
-  //   byLevel: { "1": 1, "2": 10, "3": 20, "4": 19 },
-  //   byDepartment: { "生产部": 3, "质量部": 2 },
-  //   byIssueType: { "需要修改": 3, "缺失记录": 2 }
-  // }
-
-  pdfUrl     String // PDF 报告路径(MinIO)
-  documentId String // 归档到文档系统的文档 ID
-
-  createdAt DateTime @default(now())
-
-  plan     AuditPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  document Document  @relation("AuditReports", fields: [documentId], references: [id])
-
-  @@index([documentId])
-  @@map("audit_reports")
-}
-
-model ManagementReview {
-  id                 String   @id @default(cuid())
-  companyId          String
-  year               Int
-  title              String
-  status             String   @default("draft")
-  reviewDate         DateTime?
-  location           String?
-  materialDueDate    DateTime?
-  purpose            String   @default("评审质量和食品安全管理体系的适宜性、充分性和有效性。")
-  scope              Json     @default("[]")
-  participants       Json     @default("[]")
-  createdBy          String
-  completedAt        DateTime?
-  reportDocumentId   String?
-  reportRecordId     String?
-  meetingMinutesRecordId String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-
-  creator              User      @relation("ManagementReviewCreator", fields: [createdBy], references: [id], onDelete: Restrict)
-  reportDocument       Document? @relation("ManagementReviewReportDocument", fields: [reportDocumentId], references: [id], onDelete: SetNull)
-  reportRecord         Record?   @relation("ManagementReviewReportRecord", fields: [reportRecordId], references: [id], onDelete: SetNull)
-  meetingMinutesRecord Record?   @relation("ManagementReviewMeetingMinutes", fields: [meetingMinutesRecordId], references: [id], onDelete: SetNull)
-  inputs               ManagementReviewInput[]
-  actions              ManagementReviewAction[]
-
-  @@unique([companyId, year])
-  @@index([companyId, status])
-  @@index([year])
-  @@index([reportDocumentId])
-  @@index([reportRecordId])
-  @@index([meetingMinutesRecordId])
-  @@map("management_reviews")
-}
-
-model ManagementReviewInput {
-  id         String   @id @default(cuid())
-  reviewId   String
-  sourceType String
-  sourceId   String
-  department String?
-  title      String
-  summary    Json
-  included   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  review ManagementReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-
-  @@unique([reviewId, sourceType, sourceId])
-  @@index([reviewId, sourceType])
-  @@map("management_review_inputs")
-}
-
-model ManagementReviewAction {
-  id                    String   @id @default(cuid())
-  reviewId              String
-  action                String
-  responsibleDepartment String
-  ownerId               String?
-  dueDate               DateTime?
-  status                String   @default("open")
-  verificationNote      String?
-  completedAt           DateTime?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  review ManagementReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  owner  User?            @relation("ManagementReviewActionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-
-  @@index([reviewId, status])
-  @@index([ownerId])
-  @@map("management_review_actions")
-}
-
-// TASK-379: 用户文档访问日志表（智能推荐基础数据）
-model DocumentViewLog {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation("DocumentViewLogs", fields: [userId], references: [id], onDelete: Cascade)
-  documentId String
-  document   Document @relation("DocumentViewLogs", fields: [documentId], references: [id], onDelete: Cascade)
-  viewedAt   DateTime @default(now())
-  duration   Int      @default(0) // 阅读时长（秒）
-  createdAt  DateTime @default(now())
-
-  @@index([userId, viewedAt])
-  @@index([documentId])
-  @@map("document_view_logs")
-}
-
-// TASK-379: 智能文档推荐表（协同过滤算法结果）
-model DocumentRecommendation {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation("DocumentRecommendations", fields: [userId], references: [id], onDelete: Cascade)
-  documentId String
-  document   Document @relation("DocumentRecommendations", fields: [documentId], references: [id], onDelete: Cascade)
-  score      Float    @default(0) // 推荐分数 0-100
-  reason     String?  // 推荐理由
-  createdAt  DateTime @default(now())
-
-  @@unique([userId, documentId])
-  @@index([userId, score(sort: Desc)])
-  @@map("document_recommendations")
-}
-
-// TASK-380: 全文搜索索引表（ElasticSearch 同步用）
-model FulltextIndex {
-  id         String   @id @default(cuid())
-  documentId String   @unique
-  document   Document @relation("FulltextIndex", fields: [documentId], references: [id], onDelete: Cascade)
-  content    String   // 文档全文内容
-  metadata   Json     // 文档元数据（类型、部门、标签等）
-  indexedAt  DateTime @default(now())
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@index([documentId])
-  @@map("fulltext_indexes")
-}
-
-// TASK-381: 审批委托日志表
-model DelegationLog {
-  id          String       @id @default(cuid())
-  taskId      String
-  task        WorkflowTask @relation("DelegationLogs", fields: [taskId], references: [id], onDelete: Cascade)
-  fromUserId  String
-  fromUser    User         @relation("DelegationFrom", fields: [fromUserId], references: [id], onDelete: Restrict)
-  toUserId    String
-  toUser      User         @relation("DelegationTo", fields: [toUserId], references: [id], onDelete: Restrict)
-  reason      String?
-  delegatedAt DateTime     @default(now())
-  createdAt   DateTime     @default(now())
-
-  @@index([taskId])
-  @@index([delegatedAt])
-  @@map("delegation_logs")
-}
-
 // P1-2: 角色细粒度权限中间表
 model RoleFineGrainedPermission {
-  id          String   @id @default(cuid())
-  roleId      String
-  resource    String
-  action      String
-  allowed     Boolean  @default(true)
-  grantedBy   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  role        Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  roleId    String
+  resource  String
+  action    String
+  allowed   Boolean  @default(true)
+  grantedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([roleId, resource, action])
   @@index([roleId])
@@ -2482,23 +1995,23 @@ model DepartmentPermission {
 // ========================================
 
 model RecordTaskAssignment {
-  id           String         @id @default(cuid())
-  templateId   String
-  template     RecordTemplate @relation(fields: [templateId], references: [id])
-  title        String
-  departmentId String
-  department   Department     @relation("RecordTaskDepartment", fields: [departmentId], references: [id])
-  isPeriodic         Boolean        @default(false)
+  id                 String               @id @default(cuid())
+  templateId         String
+  template           RecordTemplate       @relation(fields: [templateId], references: [id])
+  title              String
+  departmentId       String
+  department         Department           @relation("RecordTaskDepartment", fields: [departmentId], references: [id])
+  isPeriodic         Boolean              @default(false)
   periodType         String?
   periodConfig       Json?
   cron_expression    String?
   source_document_id String?
   last_triggered_at  DateTime?
-  status             String         @default("active")
+  status             String               @default("active")
   creatorId          String
-  creator            User           @relation("RecordTaskCreator", fields: [creatorId], references: [id])
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  creator            User                 @relation("RecordTaskCreator", fields: [creatorId], references: [id])
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
   instances          RecordTaskInstance[]
 
   @@index([departmentId])
@@ -2543,7 +2056,7 @@ enum ProcessStepStatus {
 model ProcessTemplate {
   id        String   @id @default(cuid())
   name      String
-  steps     Json     // 7步流程配置（CX-26）
+  steps     Json // 7步流程配置（CX-26）
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2554,21 +2067,20 @@ model ProcessTemplate {
 }
 
 model ProcessInstance {
-  id          String        @id @default(cuid())
+  id          String          @id @default(cuid())
   templateId  String
   template    ProcessTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
-  productName String        @default("")
-  currentStep Int           @default(1)
-  status      ProcessStatus @default(DRAFT)
+  productName String          @default("")
+  currentStep Int             @default(1)
+  status      ProcessStatus   @default(DRAFT)
   createdById String
-  createdBy   User          @relation("ProcessCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdBy   User            @relation("ProcessCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
-  stepData ProcessStepData[]
-  productId   String?
-  product     Product?              @relation("ProcessProduct", fields: [productId], references: [id], onDelete: SetNull)
-  approvals   ProcessStepApproval[]
+  stepData  ProcessStepData[]
+  productId String?
+  product   Product?          @relation("ProcessProduct", fields: [productId], references: [id], onDelete: SetNull)
 
   @@index([createdById])
   @@index([status])
@@ -2577,49 +2089,27 @@ model ProcessInstance {
 }
 
 model ProcessStepData {
-  id              String            @id @default(cuid())
-  instanceId      String
-  instance        ProcessInstance   @relation(fields: [instanceId], references: [id], onDelete: Cascade)
-  stepNumber      Int
-  data            Json              @default("{}")
+  id                 String            @id @default(cuid())
+  instanceId         String
+  instance           ProcessInstance   @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  stepNumber         Int
+  data               Json              @default("{}")
   status             ProcessStepStatus @default(PENDING)
   approvalInstanceId String?
   submittedById      String?
-  submittedBy     User?             @relation("StepSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
-  submittedAt     DateTime?
-  approvedById    String?
-  approvedBy      User?             @relation("StepApprover", fields: [approvedById], references: [id], onDelete: SetNull)
-  approvedAt      DateTime?
-  approvalComment String?           @db.Text
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  submittedBy        User?             @relation("StepSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
+  submittedAt        DateTime?
+  approvedById       String?
+  approvedBy         User?             @relation("StepApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt         DateTime?
+  approvalComment    String?           @db.Text
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
   @@unique([instanceId, stepNumber])
   @@index([instanceId])
   @@index([approvalInstanceId])
   @@map("process_step_data")
-}
-
-model ProcessStepApproval {
-  id          String          @id @default(cuid())
-  instanceId  String
-  instance    ProcessInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
-  stepNumber  Int
-  approverId  String?
-  approver    User?           @relation("StepApprovalUser", fields: [approverId], references: [id], onDelete: SetNull)
-  department  String
-  role        String
-  status      String          @default("PENDING")
-  comment     String?
-  signedAt    DateTime?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-
-  @@unique([instanceId, stepNumber, role])
-  @@index([instanceId, stepNumber])
-  @@index([role, status])
-  @@index([approverId, status])
-  @@map("process_step_approvals")
 }
 
 // P2: 跨文档引用表（BR-305/306）
@@ -2631,18 +2121,18 @@ model DocumentReference {
   targetDocId String?
   targetDoc   Document? @relation("TargetRefs", fields: [targetDocId], references: [id], onDelete: SetNull)
 
-  targetType  String   @default("document")
-  targetId    String?
-  targetRoute String?
-  targetLabel String?
-  relationType String @default("RELATED_TO")
+  targetType   String  @default("document")
+  targetId     String?
+  targetRoute  String?
+  targetLabel  String?
+  relationType String  @default("RELATED_TO")
 
   sectionId      String?
   wikilinkTarget String?
   snapshot       Json?
   syncedAt       DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@unique([sourceDocId, targetType, targetId, targetRoute, sectionId])
   @@index([sourceDocId])
@@ -2654,20 +2144,20 @@ model DocumentReference {
 }
 
 model BusinessDocumentLink {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   documentId   String
-  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  document     Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
   businessType String
   businessId   String
   documentKind String
-  required     Boolean  @default(false)
+  required     Boolean   @default(false)
   issuedAt     DateTime?
   expiresAt    DateTime?
-  warningDays  Int      @default(30)
-  status       String   @default("valid")
+  warningDays  Int       @default(30)
+  status       String    @default("valid")
   metadata     Json?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@unique([businessType, businessId, documentKind, documentId])
   @@index([businessType, businessId])
@@ -2677,26 +2167,26 @@ model BusinessDocumentLink {
 }
 
 model RecordFormLandingEntry {
-  id              String   @id @default(cuid())
-  sourceCode      String   @unique
-  targetModule    String?
-  targetModel     String?
-  targetRoute     String?
+  id               String          @id @default(cuid())
+  sourceCode       String          @unique
+  targetModule     String?
+  targetModel      String?
+  targetRoute      String?
   targetTemplateId String?
   targetTemplate   RecordTemplate? @relation(fields: [targetTemplateId], references: [id], onDelete: SetNull)
-  landingStrategy String?
-  relatedDocIds   String[] @default([])
-  notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  landingStrategy  String?
+  relatedDocIds    String[]        @default([])
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   // Document control governance fields
-  landingStatus        String   @default("unimplemented")
-  confirmationStatus   String   @default("unconfirmed")
+  landingStatus        String    @default("unimplemented")
+  confirmationStatus   String    @default("unconfirmed")
   confidence           String?
   confirmedBy          String?
   confirmedAt          DateTime?
-  fieldCoverageStatus  String   @default("unknown")
+  fieldCoverageStatus  String    @default("unknown")
   fieldCoverageSummary Json?
   primaryRoute         String?
   sourceFormVersion    String?
@@ -2719,7 +2209,7 @@ model AgentAction {
   path       String?
   method     String?
   params     Json?
-  result     String   // 'success' | 'error'
+  result     String // 'success' | 'error'
   errorCode  String?
   executedAs String
   durationMs Int
@@ -2737,7 +2227,7 @@ model SupplierDocument {
   company_id  Int
   supplier_id String
   supplier    Supplier  @relation(fields: [supplier_id], references: [id])
-  doc_type    String    // 'business_license'|'food_production_permit'|'inspection_report'|'certificate'|'other'
+  doc_type    String // 'business_license'|'food_production_permit'|'inspection_report'|'certificate'|'other'
   doc_name    String
   doc_no      String?
   issued_by   String?
@@ -2752,21 +2242,21 @@ model SupplierDocument {
 }
 
 model IncomingInspection {
-  id                String                    @id @default(cuid())
+  id                String                     @id @default(cuid())
   company_id        Int
   material_batch_id String
-  material_batch    MaterialBatch             @relation(fields: [material_batch_id], references: [id])
+  material_batch    MaterialBatch              @relation(fields: [material_batch_id], references: [id])
   inspected_at      DateTime
   inspector_id      String?
-  sample_qty        Decimal?                  @db.Decimal(14,4)
+  sample_qty        Decimal?                   @db.Decimal(14, 4)
   sample_unit       String?
-  overall_result    String                    // 'pass'|'fail'|'conditional_pass'
+  overall_result    String // 'pass'|'fail'|'conditional_pass'
   disposition       String?
   disposition_by    String?
   notes             String?
   results           IncomingInspectionResult[]
-  created_at        DateTime                  @default(now())
-  updated_at        DateTime                  @updatedAt
+  created_at        DateTime                   @default(now())
+  updated_at        DateTime                   @updatedAt
 
   @@map("incoming_inspections")
 }
@@ -2785,12 +2275,12 @@ model IncomingInspectionResult {
 model InventoryMovement {
   id            Int      @id @default(autoincrement())
   company_id    Int
-  movement_type String   // 'receive'|'issue_to_production'|'transfer'|'production_in'|'production_out'|'adjustment'|'return_to_warehouse'|'scrap'
-  object_type   String   // 'material_batch'|'production_batch'
+  movement_type String // 'receive'|'issue_to_production'|'transfer'|'production_in'|'production_out'|'adjustment'|'return_to_warehouse'|'scrap'
+  object_type   String // 'material_batch'|'production_batch'
   object_id     String
   from_location String?
   to_location   String?
-  qty           Decimal  @db.Decimal(14,4)
+  qty           Decimal  @db.Decimal(14, 4)
   unit          String
   ref_type      String?
   ref_id        String?
@@ -2809,8 +2299,8 @@ model StockCount {
   location          String?
   material_batch_id String
   material_batch    MaterialBatch @relation(fields: [material_batch_id], references: [id])
-  book_qty          Decimal       @db.Decimal(14,4)
-  actual_qty        Decimal       @db.Decimal(14,4)
+  book_qty          Decimal       @db.Decimal(14, 4)
+  actual_qty        Decimal       @db.Decimal(14, 4)
   variance_reason   String?
   counter_id        String?
   verifier_id       String?
@@ -2828,7 +2318,7 @@ model DeliveryNote {
   production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id])
   customer_name       String
   transporter_name    String?
-  shipped_qty         Decimal         @db.Decimal(14,4)
+  shipped_qty         Decimal         @db.Decimal(14, 4)
   unit                String
   ship_date           DateTime        @db.Date
   vehicle_plate       String?
@@ -2847,7 +2337,7 @@ model Sample {
   company_id          Int
   production_batch_id String
   production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id])
-  sample_qty          Decimal         @db.Decimal(14,4)
+  sample_qty          Decimal         @db.Decimal(14, 4)
   unit                String
   sampling_date       DateTime        @db.Date
   sampled_by          String?
@@ -2865,21 +2355,21 @@ model Sample {
 // ─── 产品/配方/CCP ────────────────────────────────
 
 model Product {
-  id           String    @id @default(cuid())
-  company_id   String
-  code         String
-  name         String
-  spec         String?
-  net_weight   Decimal?  @db.Decimal(12,4)
-  weight_unit  String?
-  label_claims String?
+  id                  String            @id @default(cuid())
+  company_id          String
+  code                String
+  name                String
+  spec                String?
+  net_weight          Decimal?          @db.Decimal(12, 4)
+  weight_unit         String?
+  label_claims        String?
   shelf_life_days     Int?
-  nutrition_energy    Decimal? @db.Decimal(10,2)
-  nutrition_protein   Decimal? @db.Decimal(10,2)
-  nutrition_fat       Decimal? @db.Decimal(10,2)
-  nutrition_trans_fat Decimal? @db.Decimal(10,2)
-  nutrition_carb      Decimal? @db.Decimal(10,2)
-  nutrition_sodium    Decimal? @db.Decimal(10,2)
+  nutrition_energy    Decimal?          @db.Decimal(10, 2)
+  nutrition_protein   Decimal?          @db.Decimal(10, 2)
+  nutrition_fat       Decimal?          @db.Decimal(10, 2)
+  nutrition_trans_fat Decimal?          @db.Decimal(10, 2)
+  nutrition_carb      Decimal?          @db.Decimal(10, 2)
+  nutrition_sodium    Decimal?          @db.Decimal(10, 2)
   product_type        String?
   processing_method   String?
   standard_code       String?
@@ -2888,17 +2378,17 @@ model Product {
   label_allergens     String?
   consumer_notice     String?
   process_instances   ProcessInstance[] @relation("ProcessProduct")
-  status       String    @default("active") // 'active'|'inactive'|'discontinued'
-  source       String    @default("manual_admin")
-  recipes      Recipe[]
-  created_at   DateTime  @default(now())
-  updated_at   DateTime  @updatedAt
-  deleted_at   DateTime?
+  status              String            @default("active") // 'active'|'inactive'|'discontinued'
+  source              String            @default("manual_admin")
+  recipes             Recipe[]
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+  deleted_at          DateTime?
 
-  production_runs  ProductionRun[]
-  mixingExecutions MixingExecution[]
+  production_runs           ProductionRun[]
+  mixingExecutions          MixingExecution[]
   productProcessChangePlans ProductProcessChangePlan[]
-  productionBatches ProductionBatch[]
+  productionBatches         ProductionBatch[]
 
   @@unique([company_id, code])
   @@index([source])
@@ -2906,22 +2396,22 @@ model Product {
 }
 
 model WorkshopArea {
-  id          String   @id @default(cuid())
-  company_id  String
-  code        String
-  name        String
-  status      String   @default("active")
-  sort_order  Int      @default(0)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  deleted_at  DateTime?
+  id         String    @id @default(cuid())
+  company_id String
+  code       String
+  name       String
+  status     String    @default("active")
+  sort_order Int       @default(0)
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
 
-  recipeLines        RecipeLine[]          @relation("RecipeLineArea")
-  materialUsages     BatchMaterialUsage[]  @relation("BatchUsageArea")
+  recipeLines        RecipeLine[]           @relation("RecipeLineArea")
+  materialUsages     BatchMaterialUsage[]   @relation("BatchUsageArea")
   stagingStocks      StagingAreaStock[]
   stocktakes         StagingAreaStocktake[]
   mixingExecutions   MixingExecution[]
-  environmentRecords EnvironmentRecord[]   @relation("EnvironmentRecordLocation")
+  environmentRecords EnvironmentRecord[]    @relation("EnvironmentRecordLocation")
 
   @@unique([company_id, code])
   @@unique([company_id, name])
@@ -2930,17 +2420,17 @@ model WorkshopArea {
 }
 
 model Team {
-  id          String              @id @default(cuid())
-  code        String              @unique
-  name        String
-  active      Boolean             @default(true)
-  members     TeamMember[]
-  schedules   TeamShiftSchedule[]
+  id             String                 @id @default(cuid())
+  code           String                 @unique
+  name           String
+  active         Boolean                @default(true)
+  members        TeamMember[]
+  schedules      TeamShiftSchedule[]
   batches        ProductionBatch[]
   stocktakes     StagingAreaStocktake[]
   shiftInstances ShiftInstance[]
-  created_at  DateTime            @default(now())
-  updated_at  DateTime            @updatedAt
+  created_at     DateTime               @default(now())
+  updated_at     DateTime               @updatedAt
 
   @@map("teams")
 }
@@ -2960,20 +2450,20 @@ model TeamMember {
 }
 
 model ShiftType {
-  id          String               @id @default(cuid())
-  code        String               @unique
-  name        String
-  start_time  String
-  end_time    String
-  crosses_day Boolean              @default(false)
-  active      Boolean              @default(true)
-  schedules   TeamShiftSchedule[]
-  batches        ProductionBatch[]
-  records        StagingAreaStocktake[]
-  shiftInstances  ShiftInstance[]
+  id               String                 @id @default(cuid())
+  code             String                 @unique
+  name             String
+  start_time       String
+  end_time         String
+  crosses_day      Boolean                @default(false)
+  active           Boolean                @default(true)
+  schedules        TeamShiftSchedule[]
+  batches          ProductionBatch[]
+  records          StagingAreaStocktake[]
+  shiftInstances   ShiftInstance[]
   mixingExecutions MixingExecution[]
-  created_at  DateTime             @default(now())
-  updated_at  DateTime             @updatedAt
+  created_at       DateTime               @default(now())
+  updated_at       DateTime               @updatedAt
 
   @@map("shift_types")
 }
@@ -2995,22 +2485,22 @@ model TeamShiftSchedule {
 }
 
 model Recipe {
-  id           String       @id @default(cuid())
+  id           String        @id @default(cuid())
   company_id   String
   product_id   String
-  product      Product      @relation(fields: [product_id], references: [id])
-  version      Int          @default(1)
+  product      Product       @relation(fields: [product_id], references: [id])
+  version      Int           @default(1)
   version_note String?
-  status       String       @default("draft") // 'draft'|'active'|'archived'
+  status       String        @default("draft") // 'draft'|'active'|'archived'
   approved_by  String?
   approved_at  DateTime?
   lines        RecipeLine[]
   steps        ProcessStep[]
-  created_at   DateTime     @default(now())
-  updated_at   DateTime     @updatedAt
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
 
-  production_runs ProductionRun[]
-  mixingExecutions MixingExecution[]
+  production_runs   ProductionRun[]
+  mixingExecutions  MixingExecution[]
   productionBatches ProductionBatch[]
 
   changeEventId String?
@@ -3021,15 +2511,15 @@ model Recipe {
 }
 
 model RecipeLine {
-  id            String  @id @default(cuid())
-  recipe_id     String
-  recipe        Recipe  @relation(fields: [recipe_id], references: [id])
-  material_id   String
-  material      Material @relation("RecipeLineMaterial", fields: [material_id], references: [id])
-  qty_per_batch Decimal @db.Decimal(14,4)
-  unit          String
-  is_critical   Boolean @default(false)
-  notes         String?
+  id                 String       @id @default(cuid())
+  recipe_id          String
+  recipe             Recipe       @relation(fields: [recipe_id], references: [id])
+  material_id        String
+  material           Material     @relation("RecipeLineMaterial", fields: [material_id], references: [id])
+  qty_per_batch      Decimal      @db.Decimal(14, 4)
+  unit               String
+  is_critical        Boolean      @default(false)
+  notes              String?
   area_id            String
   area               WorkshopArea @relation("RecipeLineArea", fields: [area_id], references: [id], onDelete: Restrict)
   area_name_snapshot String?
@@ -3076,11 +2566,11 @@ model CCPPoint {
   process_step_id      String
   process_step         ProcessStep @relation(fields: [process_step_id], references: [id])
   ccp_no               String
-  hazard_type          String      // 'biological'|'chemical'|'physical'
+  hazard_type          String // 'biological'|'chemical'|'physical'
   control_measure      String
   critical_limit       String
-  cl_min               Decimal?    @db.Decimal(14,4)
-  cl_max               Decimal?    @db.Decimal(14,4)
+  cl_min               Decimal?    @db.Decimal(14, 4)
+  cl_max               Decimal?    @db.Decimal(14, 4)
   cl_unit              String?
   monitoring_method    String?
   monitoring_frequency String?
@@ -3102,7 +2592,7 @@ model CCPRecord {
   production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id])
   ccp_point_id        String
   ccp_point           CCPPoint        @relation(fields: [ccp_point_id], references: [id])
-  measured_value      Decimal?        @db.Decimal(14,4)
+  measured_value      Decimal?        @db.Decimal(14, 4)
   measured_text       String?
   unit                String?
   is_within_cl        Boolean
@@ -3121,7 +2611,7 @@ model InspectionStandard {
   company_id    String
   code          String
   name          String
-  applies_to    String           // 'material'|'product'
+  applies_to    String // 'material'|'product'
   reference_doc String?
   version       String?
   status        String           @default("active")
@@ -3140,8 +2630,8 @@ model InspectionItem {
   item_name   String
   test_method String?
   unit        String?
-  spec_min    Decimal?           @db.Decimal(14,4)
-  spec_max    Decimal?           @db.Decimal(14,4)
+  spec_min    Decimal?           @db.Decimal(14, 4)
+  spec_max    Decimal?           @db.Decimal(14, 4)
   spec_text   String?
   is_critical Boolean            @default(false)
 
@@ -3151,49 +2641,50 @@ model InspectionItem {
 // ─── 质量合规 ─────────────────────────────────────
 
 model NonConformance {
-  id              String    @id @default(cuid())
-  company_id      String
-  nc_no           String
-  source_type     String    // 'material_batch'|'production_batch'|'product'
-  source_id       String
-  nc_type         String?
-  description     String
-  qty             Decimal?  @db.Decimal(14,4)
-  unit            String?
-  discovered_at   DateTime
-  discovered_by   String?
-  disposition     String?   // 'rework'|'destroy'|'concession'|'return'
-  disposition_by  String?
-  disposition_at  DateTime?
-  status          String    @default("open") // 'open'|'dispositioned'|'closed'
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  company_id     String
+  nc_no          String
+  source_type    String // 'material_batch'|'production_batch'|'product'
+  source_id      String
+  nc_type        String?
+  description    String
+  qty            Decimal?  @db.Decimal(14, 4)
+  unit           String?
+  discovered_at  DateTime
+  discovered_by  String?
+  disposition    String? // 'rework'|'destroy'|'concession'|'return'
+  disposition_by String?
+  disposition_at DateTime?
+  status         String    @default("open") // 'open'|'dispositioned'|'closed'
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
 
-  rework_records  ReworkRecord[]
+  rework_records ReworkRecord[]
+
   @@unique([company_id, nc_no])
   @@index([company_id, status])
   @@index([company_id, source_type, source_id])
 }
 
 model CorrectiveAction {
-  id                String    @id @default(cuid())
-  company_id        String
-  capa_no           String
-  trigger_type      String    // 'non_conformance'|'customer_complaint'|'internal_audit'|'other'
-  trigger_id        String?
-  description       String
-  root_cause        String?
-  corrective_action String?
-  preventive_action String?
-  due_date          DateTime? @db.Date
+  id                 String    @id @default(cuid())
+  company_id         String
+  capa_no            String
+  trigger_type       String // 'non_conformance'|'customer_complaint'|'internal_audit'|'other'
+  trigger_id         String?
+  description        String
+  root_cause         String?
+  corrective_action  String?
+  preventive_action  String?
+  due_date           DateTime? @db.Date
   responsible_id     String?
   status             String    @default("open") // 'open'|'implementing'|'pending_verification'|'closed'
   approvalInstanceId String?
   verified_by        String?
-  verified_at       DateTime?
-  closed_at         DateTime?
-  created_at        DateTime  @default(now())
-  updated_at        DateTime  @updatedAt
+  verified_at        DateTime?
+  closed_at          DateTime?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
 
   verification_records VerificationRecord[]
 
@@ -3219,22 +2710,23 @@ model VerificationRecord {
 }
 
 model CustomerComplaint {
-  id                  String    @id @default(cuid())
+  id                  String          @id @default(cuid())
   company_id          String
   complaint_no        String
   customer_id         String?
-  customer            ExternalParty? @relation(fields: [customer_id], references: [id], onDelete: SetNull)
+  customer            ExternalParty?  @relation(fields: [customer_id], references: [id], onDelete: SetNull)
   customer_name       String
   production_batch_id String
   production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id], onDelete: Restrict)
   received_at         DateTime
   complaint_type      String?
   description         String
-  status              String    @default("open")
+  status              String          @default("open")
   resolution          String?
   closed_at           DateTime?
-  created_at          DateTime  @default(now())
-  updated_at          DateTime  @updatedAt
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+
   @@unique([company_id, complaint_no])
   @@index([production_batch_id])
   @@index([customer_id])
@@ -3246,14 +2738,14 @@ model ReworkRecord {
   production_batch_id String
   production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id])
   nc_id               String
-  non_conformance     NonConformance @relation(fields: [nc_id], references: [id], onDelete: Restrict)
+  non_conformance     NonConformance  @relation(fields: [nc_id], references: [id], onDelete: Restrict)
   rework_reason       String
-  rework_qty          Decimal         @db.Decimal(14,4)
+  rework_qty          Decimal         @db.Decimal(14, 4)
   unit                String
   rework_process      String?
   rework_date         DateTime        @db.Date
   operator_id         String?
-  quality_verdict     String          // 'pass'|'fail'
+  quality_verdict     String // 'pass'|'fail'
   verdict_by          String?
   created_at          DateTime        @default(now())
   updated_at          DateTime        @updatedAt
@@ -3276,6 +2768,7 @@ model MeasuringEquipment {
   calibration_records    CalibrationRecord[]
   created_at             DateTime            @default(now())
   updated_at             DateTime            @updatedAt
+
   @@unique([company_id, code])
 }
 
@@ -3288,7 +2781,7 @@ model CalibrationRecord {
   valid_until            DateTime           @db.Date
   calibration_body       String?
   certificate_no         String?
-  result                 String             // 'pass'|'fail'|'conditional'
+  result                 String // 'pass'|'fail'|'conditional'
   notes                  String?
   created_by             String?
   created_at             DateTime           @default(now())
@@ -3304,10 +2797,10 @@ model EnvironmentRecord {
   location_id         String?
   location_ref        WorkshopArea?   @relation("EnvironmentRecordLocation", fields: [location_id], references: [id], onDelete: Restrict)
   location            String
-  record_type         String          // 'temperature_humidity'|'pressure_differential'|'other'
-  temperature         Decimal?        @db.Decimal(8,2)
-  humidity            Decimal?        @db.Decimal(8,2)
-  pressure_diff       Decimal?        @db.Decimal(8,2)
+  record_type         String // 'temperature_humidity'|'pressure_differential'|'other'
+  temperature         Decimal?        @db.Decimal(8, 2)
+  humidity            Decimal?        @db.Decimal(8, 2)
+  pressure_diff       Decimal?        @db.Decimal(8, 2)
   is_within_spec      Boolean
   abnormal_action     String?
   measured_at         DateTime
@@ -3325,11 +2818,11 @@ model ProcessMonitorRecord {
   production_batch_id String
   production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id])
   param_name          String
-  param_value         Decimal?        @db.Decimal(14,4)
+  param_value         Decimal?        @db.Decimal(14, 4)
   param_text          String?
   unit                String?
-  spec_min            Decimal?        @db.Decimal(14,4)
-  spec_max            Decimal?        @db.Decimal(14,4)
+  spec_min            Decimal?        @db.Decimal(14, 4)
+  spec_max            Decimal?        @db.Decimal(14, 4)
   is_within_spec      Boolean
   abnormal_action     String?
   measured_at         DateTime
@@ -3356,19 +2849,19 @@ model MetalDetectionLog {
 }
 
 model CleaningRecord {
-  id              String    @id @default(cuid())
+  id              String   @id @default(cuid())
   company_id      String
-  target_type     String    // 'area'|'equipment'|'utensil'|'facility'
+  target_type     String // 'area'|'equipment'|'utensil'|'facility'
   target_name     String
   cleaning_method String?
   disinfectant    String?
   concentration   String?
-  cleaning_date   DateTime  @db.Date
+  cleaning_date   DateTime @db.Date
   operator_id     String?
   verifier_id     String?
   is_pass         Boolean
   notes           String?
-  created_at      DateTime  @default(now())
+  created_at      DateTime @default(now())
 }
 
 // ─── 人员合规 ─────────────────────────────────────
@@ -3390,7 +2883,7 @@ model ViolationRecord {
 }
 
 model MedicationRecord {
-  id            String    @id @default(cuid())
+  id            String   @id @default(cuid())
   company_id    String
   employee_id   String
   drug_name     String
@@ -3399,8 +2892,8 @@ model MedicationRecord {
   health_impact String?
   fit_for_duty  Boolean
   assessed_by   String?
-  record_date   DateTime  @db.Date
-  created_at    DateTime  @default(now())
+  record_date   DateTime @db.Date
+  created_at    DateTime @default(now())
 }
 
 model VisitorRecord {
@@ -3417,23 +2910,25 @@ model VisitorRecord {
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
   deleted_at    DateTime?
+
   @@map("visitor_records")
 }
 
 model EmergencyDrillRecord {
   id           String    @id @default(cuid())
   company_id   String
-  drill_type   String    // 'fire'|'food_safety'|'chemical'|'earthquake'|'other'
+  drill_type   String // 'fire'|'food_safety'|'chemical'|'earthquake'|'other'
   drill_date   DateTime
   participants Int
   duration_min Int?
-  result       String    // 'pass'|'fail'|'partial'
+  result       String // 'pass'|'fail'|'partial'
   issues       String?
   improvement  String?
   organizer    String?
   created_at   DateTime  @default(now())
   updated_at   DateTime  @updatedAt
   deleted_at   DateTime?
+
   @@map("emergency_drill_records")
 }
 
@@ -3443,7 +2938,7 @@ model ChangeEvent {
   id            String                     @id @default(cuid())
   company_id    String
   change_no     String
-  change_type   String                     // 'recipe'|'process'|'equipment'|'supplier'|'document'|'record_form'|'other'
+  change_type   String // 'recipe'|'process'|'equipment'|'supplier'|'document'|'record_form'|'other'
   description   String
   reason        String
   applied_by    String?
@@ -3454,10 +2949,9 @@ model ChangeEvent {
   created_at    DateTime                   @default(now())
   updated_at    DateTime                   @updatedAt
 
-  records       Record[]                   @relation("ChangeEventRecords")
-  relations     ChangeEventRelation[]
-  formTasks     ChangeEventFormTask[]
-  impactReviews DocumentImpactReview[]
+  records                  Record[]                  @relation("ChangeEventRecords")
+  relations                ChangeEventRelation[]
+  formTasks                ChangeEventFormTask[]
   productProcessChangePlan ProductProcessChangePlan?
   execution                ChangeEventExecution?
 
@@ -3489,16 +2983,16 @@ model ProductProcessChangePlan {
 }
 
 model ChangeEventExecution {
-  id            String      @id @default(cuid())
+  id            String                         @id @default(cuid())
   company_id    String
-  changeEventId String      @unique
-  changeEvent   ChangeEvent @relation(fields: [changeEventId], references: [id], onDelete: Cascade)
+  changeEventId String                         @unique
+  changeEvent   ChangeEvent                    @relation(fields: [changeEventId], references: [id], onDelete: Cascade)
   status        String
   executedAt    DateTime?
   errorMessage  String?
   artifacts     ChangeEventExecutionArtifact[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime                       @default(now())
+  updatedAt     DateTime                       @updatedAt
 
   @@map("change_event_executions")
 }
@@ -3525,7 +3019,7 @@ model ChangeVerificationRecord {
   change_event        ChangeEvent @relation(fields: [change_event_id], references: [id])
   verification_plan   String
   verification_result String
-  verdict             String      // 'pass'|'fail'|'conditional'
+  verdict             String // 'pass'|'fail'|'conditional'
   verified_by         String?
   approved_by         String?
   verified_at         DateTime    @db.Date
@@ -3554,20 +3048,20 @@ model ChangeEventRelation {
 }
 
 model ChangeEventFormTask {
-  id            String         @id @default(cuid())
-  changeEventId String
-  changeEvent   ChangeEvent    @relation(fields: [changeEventId], references: [id], onDelete: Cascade)
-  templateId    String
-  template      RecordTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
-  recordId      String?
-  record        Record?        @relation(fields: [recordId], references: [id], onDelete: SetNull)
+  id             String         @id @default(cuid())
+  changeEventId  String
+  changeEvent    ChangeEvent    @relation(fields: [changeEventId], references: [id], onDelete: Cascade)
+  templateId     String
+  template       RecordTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  recordId       String?
+  record         Record?        @relation(fields: [recordId], references: [id], onDelete: SetNull)
   sourceFormCode String
-  title         String
-  status        String         @default("pending")
-  required      Boolean        @default(true)
-  sortOrder     Int            @default(0)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  title          String
+  status         String         @default("pending")
+  required       Boolean        @default(true)
+  sortOrder      Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   @@unique([changeEventId, templateId])
   @@index([changeEventId])
@@ -3578,93 +3072,54 @@ model ChangeEventFormTask {
 }
 
 model WasteDisposalRecord {
-  id              String    @id @default(cuid())
+  id              String   @id @default(cuid())
   company_id      String
   material_name   String
   lot_no          String?
-  disposal_reason String    // 'expired'|'non_conforming'|'damaged'|'other'
-  qty             Decimal   @db.Decimal(14, 4)
+  disposal_reason String // 'expired'|'non_conforming'|'damaged'|'other'
+  qty             Decimal  @db.Decimal(14, 4)
   unit            String
   disposal_method String
-  disposal_date   DateTime  @db.Date
+  disposal_date   DateTime @db.Date
   operator_id     String?
   witness_id      String?
   notes           String?
-  created_at      DateTime  @default(now())
+  created_at      DateTime @default(now())
 }
 
 model WasteRecord {
-  id                   String    @id @default(cuid())
+  id                   String   @id @default(cuid())
   company_id           String
   production_batch_id  String?
   waste_type           String
-  qty                  Decimal   @db.Decimal(14, 4)
+  qty                  Decimal  @db.Decimal(14, 4)
   unit                 String
   shift                String?
   disposal_destination String?
   recorded_at          DateTime
   operator_id          String?
-  created_at           DateTime  @default(now())
+  created_at           DateTime @default(now())
 }
 
 model SupplierEvaluation {
-  id             String    @id @default(cuid())
+  id             String   @id @default(cuid())
   company_id     String
   supplier_id    String
-  supplier       Supplier  @relation(fields: [supplier_id], references: [id])
+  supplier       Supplier @relation(fields: [supplier_id], references: [id])
   eval_period    String
-  eval_date      DateTime  @db.Date
-  quality_score  Decimal?  @db.Decimal(5, 2)
-  delivery_score Decimal?  @db.Decimal(5, 2)
-  service_score  Decimal?  @db.Decimal(5, 2)
-  total_score    Decimal?  @db.Decimal(5, 2)
-  verdict        String    // 'approved'|'conditional'|'eliminated'
+  eval_date      DateTime @db.Date
+  quality_score  Decimal? @db.Decimal(5, 2)
+  delivery_score Decimal? @db.Decimal(5, 2)
+  service_score  Decimal? @db.Decimal(5, 2)
+  total_score    Decimal? @db.Decimal(5, 2)
+  verdict        String // 'approved'|'conditional'|'eliminated'
   evaluator_id   String?
   notes          String?
-  created_at     DateTime  @default(now())
-}
-
-model DocumentIssuance {
-  id              String    @id @default(cuid())
-  company_id      String
-  document_id     String
-  document        Document  @relation(fields: [document_id], references: [id], onDelete: Restrict)
-  document_name   String
-  document_code   String?
-  template_id     String?
-  issued_to       String?
-  issued_by       String?
-  quantity        Int       @default(1)
-  purpose         String?
-  issued_at       DateTime  @default(now())
-  notes           String?
-  created_at      DateTime  @default(now())
-  deleted_at      DateTime?
-
-  @@index([document_id])
-}
-
-model AssetLoanRecord {
-  id              String    @id @default(cuid())
-  company_id      String
-  asset_type      String
-  asset_name      String
-  asset_code      String?
-  borrower_id     String?
-  borrower_name   String?
-  borrow_at       DateTime  @default(now())
-  expected_return DateTime?
-  actual_return   DateTime?
-  purpose         String?
-  approver_id     String?
-  status          String    @default("borrowed")
-  notes           String?
-  created_at      DateTime  @default(now())
-  deleted_at      DateTime?
+  created_at     DateTime @default(now())
 }
 
 model FragileItemInspection {
-  id                  String    @id @default(cuid())
+  id                  String          @id @default(cuid())
   company_id          String
   production_batch_id String
   production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id], onDelete: Restrict)
@@ -3676,56 +3131,42 @@ model FragileItemInspection {
   damage_action       String?
   inspected_at        DateTime
   inspector_id        String?
-  created_at          DateTime  @default(now())
+  created_at          DateTime        @default(now())
 
   @@index([production_batch_id])
 }
 
 model ChangeComplianceRecord {
-  id               String    @id @default(cuid())
+  id               String   @id @default(cuid())
   company_id       String
   change_event_id  String
   assessor_id      String?
-  legal_compliance Boolean   @default(true)
+  legal_compliance Boolean  @default(true)
   safety_impact    String?
-  risk_level       String?   // low, medium, high
+  risk_level       String? // low, medium, high
   conclusion       String?
-  assessed_at      DateTime  @default(now())
+  assessed_at      DateTime @default(now())
   notes            String?
-  created_at       DateTime  @default(now())
-}
-
-model ChangeApproval {
-  id                 String    @id @default(cuid())
-  company_id         String
-  change_event_id    String
-  approver_id        String?
-  decision           String?   // approved, rejected, pending
-  comments           String?
-  approved_at        DateTime?
-  approvalInstanceId String?
-  created_at         DateTime  @default(now())
-
-  @@index([approvalInstanceId])
+  created_at       DateTime @default(now())
 }
 
 model LineChangeCheckRecord {
-  id                    String    @id @default(cuid())
+  id                    String         @id @default(cuid())
   company_id            String
-  check_date            DateTime  @default(now())
+  check_date            DateTime       @default(now())
   production_line       String?
   product_from          String?
   product_to            String?
-  allergen_cleared      Boolean   @default(false)
-  equipment_cleaned     Boolean   @default(false)
-  utensils_replaced     Boolean   @default(false)
-  labels_updated        Boolean   @default(false)
-  packaging_cleared     Boolean   @default(false)
-  raw_materials_cleared Boolean   @default(false)
+  allergen_cleared      Boolean        @default(false)
+  equipment_cleaned     Boolean        @default(false)
+  utensils_replaced     Boolean        @default(false)
+  labels_updated        Boolean        @default(false)
+  packaging_cleared     Boolean        @default(false)
+  raw_materials_cleared Boolean        @default(false)
   inspector_id          String?
-  supervisor_ok         Boolean   @default(false)
+  supervisor_ok         Boolean        @default(false)
   notes                 String?
-  created_at            DateTime  @default(now())
+  created_at            DateTime       @default(now())
   deleted_at            DateTime?
   production_run_id     String?
   production_run        ProductionRun? @relation(fields: [production_run_id], references: [id], onDelete: SetNull)
@@ -3736,7 +3177,7 @@ model LineChangeCheckRecord {
 model FoodSafetyCultureRecord {
   id              String    @id @default(cuid())
   company_id      String
-  activity_type   String    // training, inspection, meeting, campaign
+  activity_type   String // training, inspection, meeting, campaign
   title           String
   description     String?
   action_measures Json?
@@ -3750,42 +3191,42 @@ model FoodSafetyCultureRecord {
 }
 
 model ExternalParty {
-  id              String    @id @default(cuid())
-  company_id      String
-  party_type      String    // customer, carrier, waste_collector
-  name            String
-  code            String?
-  contact_name    String?
-  contact_phone   String?
-  address         String?
-  license_no      String?
-  approved_items  String?
-  status          String    @default("active") // active, inactive
-  notes           String?
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
-  deleted_at      DateTime?
+  id             String    @id @default(cuid())
+  company_id     String
+  party_type     String // customer, carrier, waste_collector
+  name           String
+  code           String?
+  contact_name   String?
+  contact_phone  String?
+  address        String?
+  license_no     String?
+  approved_items String?
+  status         String    @default("active") // active, inactive
+  notes          String?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+  deleted_at     DateTime?
 
   product_recall_notifications ProductRecallNotification[]
-  customer_complaints CustomerComplaint[]
+  customer_complaints          CustomerComplaint[]
 }
 
 model PackagingMaterialUsage {
-  id                  String    @id @default(cuid())
+  id                  String          @id @default(cuid())
   company_id          String
   production_batch_id String
   production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id], onDelete: Restrict)
   material_id         String?
-  material            Material? @relation(fields: [material_id], references: [id], onDelete: SetNull)
+  material            Material?       @relation(fields: [material_id], references: [id], onDelete: SetNull)
   material_name       String
   material_code       String?
   used_weight         Decimal?
   waste_weight        Decimal?
   unit                String?
-  usage_date          DateTime  @default(now())
+  usage_date          DateTime        @default(now())
   operator_id         String?
   notes               String?
-  created_at          DateTime  @default(now())
+  created_at          DateTime        @default(now())
   deleted_at          DateTime?
 
   @@index([production_batch_id])
@@ -3793,24 +3234,24 @@ model PackagingMaterialUsage {
 }
 
 model ShiftInstance {
-  id              String   @id @default(cuid())
-  company_id      String
-  shift_type_id   String
-  shift_type_ref  ShiftType @relation(fields: [shift_type_id], references: [id], onDelete: Restrict)
-  shift_type      String   // legacy display snapshot; derived from ShiftType.name
+  id                   String    @id @default(cuid())
+  company_id           String
+  shift_type_id        String
+  shift_type_ref       ShiftType @relation(fields: [shift_type_id], references: [id], onDelete: Restrict)
+  shift_type           String // legacy display snapshot; derived from ShiftType.name
   team_id              String?
-  team                 Team?    @relation(fields: [team_id], references: [id], onDelete: SetNull)
+  team                 Team?     @relation(fields: [team_id], references: [id], onDelete: SetNull)
   leader_id            String?
   team_override_reason String?
-  shift_date      DateTime @db.Date
-  opened_by       String
-  closed_by       String?
-  opened_at       DateTime @default(now())
-  closed_at       DateTime?
-  status          String   @default("open") // 'open' | 'closed'
-  notes           String?
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  shift_date           DateTime  @db.Date
+  opened_by            String
+  closed_by            String?
+  opened_at            DateTime  @default(now())
+  closed_at            DateTime?
+  status               String    @default("open") // 'open' | 'closed'
+  notes                String?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
 
   production_runs ProductionRun[]
   records         Record[]
@@ -3843,8 +3284,8 @@ model ProductionRun {
   updated_at        DateTime      @updatedAt
 
   records                   Record[]
-  production_batches         ProductionBatch[]
-  line_change_check_records  LineChangeCheckRecord[]
+  production_batches        ProductionBatch[]
+  line_change_check_records LineChangeCheckRecord[]
 
   @@index([company_id, shift_instance_id])
   @@index([product_id])
@@ -3871,127 +3312,6 @@ model TraceabilitySnapshot {
   @@map("traceability_snapshots")
 }
 
-// Task 8: 文件阅读确认
-model DocumentReadConfirmation {
-  id           String   @id @default(cuid())
-  document_id  String
-  document     Document @relation(fields: [document_id], references: [id], onDelete: Cascade)
-  user_id      String
-  confirmed_at DateTime @default(now())
-
-  @@unique([document_id, user_id])
-  @@map("document_read_confirmations")
-}
-
-// Document Control Operations Center models
-model DocumentReadRequirement {
-  id         String   @id @default(cuid())
-  documentId String
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  scopeType  String
-  scopeId    String
-  requiredBy String
-  requiredAt DateTime @default(now())
-  dueAt      DateTime?
-  reason     String?
-  status     String   @default("active")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@unique([documentId, scopeType, scopeId, status])
-  @@index([documentId])
-  @@index([scopeType, scopeId])
-  @@index([status])
-  @@map("document_read_requirements")
-}
-
-model DocumentTrainingNeed {
-  id                      String   @id @default(cuid())
-  documentId              String
-  document                Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  triggerType             String
-  targetDepartment        String?
-  targetRole              String?
-  reason                  String
-  status                  String   @default("suggested")
-  linkedTrainingProjectId String?
-  linkedTrainingProject   TrainingProject? @relation(fields: [linkedTrainingProjectId], references: [id], onDelete: SetNull)
-  dismissedReason         String?
-  createdBy               String?
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-
-  @@index([documentId])
-  @@index([status])
-  @@index([targetDepartment])
-  @@index([linkedTrainingProjectId])
-  @@map("document_training_needs")
-}
-
-model DocumentImpactReview {
-  id            String   @id @default(cuid())
-  sourceType    String
-  sourceId      String
-  title         String
-  status        String   @default("draft")
-  summary       String?
-  reviewedBy    String?
-  reviewedAt    DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  changeEventId String?
-  changeEvent   ChangeEvent? @relation(fields: [changeEventId], references: [id], onDelete: SetNull)
-  items         DocumentImpactItem[]
-
-  @@index([sourceType, sourceId])
-  @@index([status])
-  @@index([changeEventId])
-  @@map("document_impact_reviews")
-}
-
-model DocumentImpactItem {
-  id              String               @id @default(cuid())
-  reviewId        String
-  review          DocumentImpactReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  targetType      String
-  targetId        String?
-  targetRoute     String?
-  targetLabel     String
-  relationType    String?
-  impactLevel     String               @default("medium")
-  suggestedAction String?
-  status          String               @default("open")
-  notes           String?
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
-
-  @@index([reviewId])
-  @@index([targetType, targetId])
-  @@index([status])
-  @@map("document_impact_items")
-}
-
-model DocumentCoverageReview {
-  id                 String   @id @default(cuid())
-  periodStart        DateTime
-  periodEnd          DateTime
-  documentId         String
-  document           Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  coverageStatus     String
-  auditPlanId        String?
-  findingId          String?
-  correctiveActionId String?
-  reviewedBy         String?
-  reviewedAt         DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-
-  @@index([documentId])
-  @@index([periodStart, periodEnd])
-  @@index([coverageStatus])
-  @@map("document_coverage_reviews")
-}
-
 // ========================================
 // One-time Task Flow (TASK-FLOW)
 // ========================================
@@ -4001,16 +3321,16 @@ model Task {
   templateId   String
   template     RecordTemplate @relation(fields: [templateId], references: [id])
   departmentId String
-  department   Department   @relation("TaskDepartment", fields: [departmentId], references: [id])
+  department   Department     @relation("TaskDepartment", fields: [departmentId], references: [id])
   deadline     DateTime
-  status       String       @default("pending")
+  status       String         @default("pending")
   title        String?
   description  String?
   creatorId    String
-  creator      User         @relation("TaskCreator", fields: [creatorId], references: [id])
+  creator      User           @relation("TaskCreator", fields: [creatorId], references: [id])
   draftData    Json?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
   records      TaskRecord[]
 
   @@index([departmentId])
@@ -4019,13 +3339,13 @@ model Task {
 }
 
 model TaskRecord {
-  id               String    @id @default(cuid())
-  taskId           String
-  task             Task      @relation(fields: [taskId], references: [id])
-  templateId       String
-  dataJson         Json      @default("{}")
-  submitterId      String
-  submitter        User      @relation("TaskRecordSubmitter", fields: [submitterId], references: [id])
+  id                 String    @id @default(cuid())
+  taskId             String
+  task               Task      @relation(fields: [taskId], references: [id])
+  templateId         String
+  dataJson           Json      @default("{}")
+  submitterId        String
+  submitter          User      @relation("TaskRecordSubmitter", fields: [submitterId], references: [id])
   status             String    @default("pending")
   approvalInstanceId String?
   submittedAt        DateTime  @default(now())
@@ -4033,9 +3353,9 @@ model TaskRecord {
   approverId         String?
   approver           User?     @relation("TaskRecordApprover", fields: [approverId], references: [id])
   comment            String?
-  hasDeviation     Boolean   @default(false)
-  deviationCount   Int       @default(0)
-  deviationReasons Json?
+  hasDeviation       Boolean   @default(false)
+  deviationCount     Int       @default(0)
+  deviationReasons   Json?
 
   @@index([taskId])
   @@index([approvalInstanceId])
@@ -4045,19 +3365,19 @@ model TaskRecord {
 // GAP-311: ProductRecall independent model
 
 model ProductRecall {
-  id                              String    @id @default(cuid())
+  id                              String                @id @default(cuid())
   company_id                      String
   recall_no                       String
   title                           String
   reason                          String
-  risk_level                      String    @default("medium")
-  status                          String    @default("draft")
+  risk_level                      String                @default("medium")
+  status                          String                @default("draft")
   source_complaint_id             String?
   source_query_ref                String?
   source_traceability_snapshot_id String?
   source_traceability_snapshot    TraceabilitySnapshot? @relation("ProductRecallTraceabilitySnapshot", fields: [source_traceability_snapshot_id], references: [id], onDelete: SetNull)
   requested_by                    String?
-  requested_at                    DateTime  @default(now())
+  requested_at                    DateTime              @default(now())
   reviewed_by                     String?
   reviewed_at                     DateTime?
   review_note                     String?
@@ -4066,8 +3386,8 @@ model ProductRecall {
   completion_summary              String?
   cancelled_at                    DateTime?
   cancel_reason                   String?
-  created_at                      DateTime  @default(now())
-  updated_at                      DateTime  @updatedAt
+  created_at                      DateTime              @default(now())
+  updated_at                      DateTime              @updatedAt
 
   batches       ProductRecallBatch[]
   notifications ProductRecallNotification[]
@@ -4081,20 +3401,20 @@ model ProductRecall {
 }
 
 model ProductRecallBatch {
-  id                  String          @id @default(cuid())
-  company_id          String
-  recall_id           String
-  recall              ProductRecall   @relation(fields: [recall_id], references: [id], onDelete: Cascade)
-  production_batch_id String
-  production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id], onDelete: Restrict)
+  id                    String          @id @default(cuid())
+  company_id            String
+  recall_id             String
+  recall                ProductRecall   @relation(fields: [recall_id], references: [id], onDelete: Cascade)
+  production_batch_id   String
+  production_batch      ProductionBatch @relation(fields: [production_batch_id], references: [id], onDelete: Restrict)
   batch_number_snapshot String
   product_name_snapshot String
-  affected_qty        Decimal?        @db.Decimal(14, 4)
-  unit                String?
-  disposition         String?
-  status              String          @default("identified")
-  created_at          DateTime        @default(now())
-  updated_at          DateTime        @updatedAt
+  affected_qty          Decimal?        @db.Decimal(14, 4)
+  unit                  String?
+  disposition           String?
+  status                String          @default("identified")
+  created_at            DateTime        @default(now())
+  updated_at            DateTime        @updatedAt
 
   @@unique([recall_id, production_batch_id])
   @@index([company_id, production_batch_id])
@@ -4102,21 +3422,21 @@ model ProductRecallBatch {
 }
 
 model ProductRecallNotification {
-  id                   String         @id @default(cuid())
-  company_id           String
-  recall_id            String
-  recall               ProductRecall  @relation(fields: [recall_id], references: [id], onDelete: Cascade)
-  external_party_id    String?
-  external_party       ExternalParty? @relation(fields: [external_party_id], references: [id], onDelete: SetNull)
-  customer_name        String
-  contact_name         String?
-  contact_phone        String?
-  notification_method  String         @default("phone")
-  status               String         @default("pending")
-  notified_at          DateTime?
-  response_summary     String?
-  created_at           DateTime       @default(now())
-  updated_at           DateTime       @updatedAt
+  id                  String         @id @default(cuid())
+  company_id          String
+  recall_id           String
+  recall              ProductRecall  @relation(fields: [recall_id], references: [id], onDelete: Cascade)
+  external_party_id   String?
+  external_party      ExternalParty? @relation(fields: [external_party_id], references: [id], onDelete: SetNull)
+  customer_name       String
+  contact_name        String?
+  contact_phone       String?
+  notification_method String         @default("phone")
+  status              String         @default("pending")
+  notified_at         DateTime?
+  response_summary    String?
+  created_at          DateTime       @default(now())
+  updated_at          DateTime       @updatedAt
 
   @@index([company_id, recall_id])
   @@index([external_party_id])
@@ -4124,18 +3444,18 @@ model ProductRecallNotification {
 }
 
 model ProductRecallEvidence {
-  id                 String        @id @default(cuid())
-  company_id         String
-  recall_id          String
-  recall             ProductRecall @relation(fields: [recall_id], references: [id], onDelete: Cascade)
-  evidence_type      String
-  record_id          String?
-  record             Record?       @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  id                       String        @id @default(cuid())
+  company_id               String
+  recall_id                String
+  recall                   ProductRecall @relation(fields: [recall_id], references: [id], onDelete: Cascade)
+  evidence_type            String
+  record_id                String?
+  record                   Record?       @relation(fields: [record_id], references: [id], onDelete: SetNull)
   traceability_snapshot_id String?
-  external_ref       String?
-  title              String
-  notes              String?
-  created_at         DateTime      @default(now())
+  external_ref             String?
+  title                    String
+  notes                    String?
+  created_at               DateTime      @default(now())
 
   @@index([company_id, recall_id])
   @@index([record_id])

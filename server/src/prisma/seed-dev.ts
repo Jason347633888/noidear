@@ -19,29 +19,11 @@ async function main() {
     await prisma.document.upsert({ where: { id: doc.id }, update: {}, create: doc });
   }
 
-  console.log('✅ 创建审批数据...');
-  await prisma.approval.createMany({
-    data: [
-      { id: 'app_001', documentId: 'doc_001', status: 'approved', approverId: admin.id, approvedAt: new Date() },
-      { id: 'app_002', documentId: 'doc_002', status: 'pending', approverId: admin.id },
-    ] as any,
-    skipDuplicates: true,
-  });
-
   console.log('📋 创建模板数据...');
   await prisma.recordTemplate.createMany({
     data: [
       { code: 'TMPL-001', name: '温度记录表', fieldsJson: {}, description: '生产车间温度监控记录' },
       { code: 'TMPL-002', name: '巡检记录表', fieldsJson: {}, description: '日常巡检检查记录' },
-    ] as any,
-    skipDuplicates: true,
-  });
-
-  console.log('🚨 创建告警规则...');
-  await prisma.alertRule.createMany({
-    data: [
-      { name: '设备温度超限', metricName: 'temperature', condition: '>', threshold: 80, severity: 'critical', enabled: true },
-      { name: '任务逾期提醒', metricName: 'task_deadline', condition: '<', threshold: 0, severity: 'warning', enabled: true },
     ] as any,
     skipDuplicates: true,
   });

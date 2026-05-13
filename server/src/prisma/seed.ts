@@ -676,23 +676,6 @@ async function main() {
       ],
     },
     {
-      module: 'audit',
-      resourceType: 'audit_finding',
-      triggerKey: 'rectification_submitted',
-      name: '内审整改复审',
-      version: 1,
-      steps: [
-        {
-          stepKey: 'audit-finding-verification',
-          stepName: '整改复审',
-          mode: 'single',
-          assignments: [{ type: 'permission', permissionCode: 'approve:audit_finding', label: '内审复审人' }],
-          rejectPolicy: 'reject_instance',
-          onApproved: 'audit.findingVerified',
-        },
-      ],
-    },
-    {
       module: 'capa',
       resourceType: 'corrective_action',
       triggerKey: 'verify_close',
