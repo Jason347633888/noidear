@@ -707,52 +707,6 @@ export class StatisticsService {
     });
   }
 
-  async getWorkflowStats(query: { startDate?: string; endDate?: string }) {
-    const cacheKey = this.getCacheKey('workflow', query);
-    return this.getCached(cacheKey, async () => {
-      const dateWhere = this.buildDateWhere(query.startDate, query.endDate);
-      const where = { deletedAt: null, ...dateWhere };
-
-      const [total, completed, cancelled, instances] = await Promise.all([
-        this.prisma.workflowInstance.count({ where }),
-        this.prisma.workflowInstance.count({ where: { ...where, status: 'completed' } }),
-        this.prisma.workflowInstance.count({ where: { ...where, status: 'cancelled' } }),
-        this.prisma.workflowInstance.findMany({
-          where: { ...where, status: 'completed' },
-          select: { createdAt: true, updatedAt: true },
-          take: 1000,
-        }),
-      ]);
-
-      const passRate = total > 0
-        ? Math.round((completed / total) * 10000) / 100
-        : 0;
-
-      const cancelRate = total > 0
-        ? Math.round((cancelled / total) * 10000) / 100
-        : 0;
-
-      let avgDurationHours = 0;
-      if (instances.length > 0) {
-        const totalMs = instances.reduce(
-          (sum, inst) => sum + (inst.updatedAt.getTime() - inst.createdAt.getTime()),
-          0,
-        );
-        avgDurationHours =
-          Math.round((totalMs / instances.length / (1000 * 60 * 60)) * 100) / 100;
-      }
-
-      return {
-        total,
-        completed,
-        cancelled,
-        passRate,
-        cancelRate,
-        avgDurationHours,
-      };
-    });
-  }
-
   async getEquipmentStats(query: { startDate?: string; endDate?: string }) {
     const cacheKey = this.getCacheKey('equipment', query);
     return this.getCached(cacheKey, async () => {
@@ -796,7 +750,6 @@ export class StatisticsService {
     await this.redis.del('statistics:approvals:*');
     await this.redis.del('statistics:overview:*');
     await this.redis.del('statistics:users:*');
-    await this.redis.del('statistics:workflow:*');
     await this.redis.del('statistics:equipment:*');
   }
 }

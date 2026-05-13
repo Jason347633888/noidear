@@ -1,6 +1,5 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
-import { WorkflowModule } from '../workflow/workflow.module';
 import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
 import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
 import { TrainingController } from './training.controller';
@@ -17,7 +16,7 @@ import { TrainingScheduleService } from './training.schedule';
 import { StorageService } from '../../common/services/storage.service';
 
 @Module({
-  imports: [PrismaModule, WorkflowModule, UnifiedApprovalModule],
+  imports: [PrismaModule, UnifiedApprovalModule],
   controllers: [TrainingController, QuestionController, ExamController, RecordController, ArchiveController],
   providers: [TrainingService, QuestionService, ExamService, RecordService, ArchiveService, TrainingScheduleService, StorageService],
   exports: [TrainingService, QuestionService, ExamService, RecordService, ArchiveService],

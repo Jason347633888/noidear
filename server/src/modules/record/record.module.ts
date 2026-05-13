@@ -5,14 +5,13 @@ import { ChangeLogInterceptor } from './interceptors/change-log.interceptor';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { DynamicFormBatchController } from './controllers/dynamic-form-batch.controller';
 import { DynamicFormBatchService } from './services/dynamic-form-batch.service';
-import { WorkflowModule } from '../workflow/workflow.module';
 import { DeviationModule } from '../deviation/deviation.module';
 import { RecordTemplateModule } from '../record-template/record-template.module';
 import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
 import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
 
 @Module({
-  imports: [PrismaModule, WorkflowModule, DeviationModule, RecordTemplateModule, UnifiedApprovalModule],
+  imports: [PrismaModule, DeviationModule, RecordTemplateModule, UnifiedApprovalModule],
   controllers: [RecordController, DynamicFormBatchController],
   providers: [RecordService, ChangeLogInterceptor, DynamicFormBatchService],
   exports: [RecordService, DynamicFormBatchService],

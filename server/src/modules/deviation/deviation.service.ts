@@ -1,7 +1,6 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BusinessException, ErrorCode } from '../../common/exceptions/business.exception';
-import { ApprovalService } from '../approval/approval.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 
 export interface DeviationDetectionResult {
@@ -31,8 +30,6 @@ export class DeviationService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => ApprovalService))
-    private readonly approvalService: ApprovalService,
     private readonly approvalEngine: ApprovalEngineService,
   ) {}
 

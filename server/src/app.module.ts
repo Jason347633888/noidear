@@ -22,7 +22,6 @@ import { UserPermissionModule } from './modules/user-permission/user-permission.
 import { DepartmentPermissionModule } from './modules/department-permission/department-permission.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { StatisticsModule } from './modules/statistics/statistics.module';
-import { WorkflowModule } from './modules/workflow/workflow.module';
 import { RecordTemplateModule } from './modules/record-template/record-template.module';
 import { RecordModule } from './modules/record/record.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
@@ -30,13 +29,9 @@ import { SystemConfigModule } from './modules/system-config/system-config.module
 import { EquipmentModule } from './modules/equipment/equipment.module';
 import { MobileModule } from './modules/mobile/mobile.module';
 import { AuditModule } from './modules/audit/audit.module';
-import { MonitoringModule } from './modules/monitoring/monitoring.module';
-import { AlertModule } from './modules/alert/alert.module';
 import { BackupModule } from './modules/backup/backup.module';
 import { HealthModule } from './modules/health/health.module';
 import { TrainingModule } from './modules/training/training.module';
-import { InternalAuditModule } from './modules/internal-audit/internal-audit.module';
-import { ManagementReviewModule } from './modules/management-review/management-review.module';
 import { SearchModule } from './modules/search/search.module';
 import { ImportModule } from './modules/import/import.module';
 import { RecordTaskModule } from './modules/record-task/record-task.module';
@@ -65,9 +60,6 @@ import { ReworkRecordModule } from './modules/rework-record/rework-record.module
 import { FragileItemInspectionModule } from './modules/fragile-item-inspection/fragile-item-inspection.module';
 import { ChangeComplianceRecordModule } from './modules/change-compliance-record/change-compliance-record.module';
 import { ChangeVerificationRecordModule } from './modules/change-verification-record/change-verification-record.module';
-import { ChangeApprovalModule } from './modules/change-approval/change-approval.module';
-import { AssetLoanRecordModule } from './modules/asset-loan-record/asset-loan-record.module';
-import { DocumentIssuanceModule } from './modules/document-issuance/document-issuance.module';
 import { LineChangeCheckRecordModule } from './modules/line-change-check-record/line-change-check-record.module';
 import { FoodSafetyCultureRecordModule } from './modules/food-safety-culture-record/food-safety-culture-record.module';
 import { ProcessModule } from './modules/process/process.module';
@@ -116,7 +108,6 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     UserPermissionModule,
     DepartmentPermissionModule,
     StatisticsModule,
-    WorkflowModule,
     RecordTemplateModule,
     RecordModule,
     WarehouseModule,
@@ -124,13 +115,9 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     EquipmentModule,
     MobileModule,
     AuditModule,
-    MonitoringModule,
-    AlertModule,
     BackupModule,
     HealthModule,
     TrainingModule,
-    InternalAuditModule,
-    ManagementReviewModule,
     SearchModule,
     ImportModule,
     RecordTaskModule,
@@ -159,9 +146,6 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     FragileItemInspectionModule,
     ChangeComplianceRecordModule,
     ChangeVerificationRecordModule,
-    ChangeApprovalModule,
-    AssetLoanRecordModule,
-    DocumentIssuanceModule,
     LineChangeCheckRecordModule,
     FoodSafetyCultureRecordModule,
     ProcessModule,
