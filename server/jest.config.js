@@ -1,7 +1,12 @@
+// Default `npm run test` keeps to unit-level specs. End-to-end suites
+// require DATABASE_URL / JWT_SECRET / Postgres / Redis / MinIO and are
+// opted into via `npm run test:e2e` (RUN_E2E=1).
+const runE2e = process.env.RUN_E2E === '1';
+
 module.exports = {
   moduleFileExtensions: ['js', 'json', 'ts'],
   rootDir: '.',
-  testRegex: '.*\\.(spec|e2e-spec|test)\\.ts$',
+  testRegex: runE2e ? '.*\\.e2e-spec\\.ts$' : '.*\\.(spec|test)\\.ts$',
   transform: {
     '^.+\\.(t|j)s$': ['ts-jest', { diagnostics: false }],
   },

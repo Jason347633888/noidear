@@ -10,7 +10,7 @@ describe('model landing artifact freeze guard', () => {
   it('matches the frozen spec counts', () => {
     const repoRoot = resolve(__dirname, '..', '..');
     const spec = readFileSync(
-      resolve(repoRoot, 'docs/superpowers/specs/2026-04-24-model-landing-layer-design.md'),
+      resolve(repoRoot, 'archive/superpowers/specs/2026-04-24-model-landing-layer-design.md'),
       'utf8',
     );
 
