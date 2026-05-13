@@ -5,7 +5,6 @@ import { ExportService } from './export.service';
 import { DocumentExportService } from './services/document-export.service';
 import { TaskExportService } from './services/task-export.service';
 import { DeviationExportService } from './services/deviation-export.service';
-import { ApprovalExportService } from './services/approval-export.service';
 import { UserExportService } from './services/user-export.service';
 
 @Module({
@@ -16,7 +15,6 @@ import { UserExportService } from './services/user-export.service';
     DocumentExportService,
     TaskExportService,
     DeviationExportService,
-    ApprovalExportService,
     UserExportService,
   ],
   exports: [ExportService],

@@ -149,7 +149,8 @@ export class UserService {
 
   /**
    * BR-319: 用户离职数据转交
-   * 将用户名下 pending 状态的工作流任务转交给直属上级
+   * 将用户名下 PENDING 状态的统一审批任务转交给直属上级。
+   * 旧 WorkflowTask 已剔除，本方法只处理 ApprovalTask。
    */
   private async handleUserOffboarding(userId: string): Promise<void> {
     const user = await this.prisma.user.findUnique({
@@ -158,12 +159,12 @@ export class UserService {
     });
 
     if (!user?.superiorId) {
-      this.logger.warn(`用户 ${userId} 无直属上级，跳过工作流任务转交`);
+      this.logger.warn(`用户 ${userId} 无直属上级，跳过审批任务转交`);
       return;
     }
 
-    const pendingTasks = await this.prisma.workflowTask.findMany({
-      where: { assigneeId: userId, status: 'pending' },
+    const pendingTasks = await this.prisma.approvalTask.findMany({
+      where: { assigneeUserId: userId, status: 'PENDING' },
       select: { id: true },
     });
 
@@ -171,13 +172,13 @@ export class UserService {
       return;
     }
 
-    await this.prisma.workflowTask.updateMany({
-      where: { assigneeId: userId, status: 'pending' },
-      data: { assigneeId: user.superiorId },
+    await this.prisma.approvalTask.updateMany({
+      where: { assigneeUserId: userId, status: 'PENDING' },
+      data: { assigneeUserId: user.superiorId },
     });
 
     this.logger.log(
-      `用户 ${userId} 离职转交: ${pendingTasks.length} 个工作流任务已转交给直属上级 ${user.superiorId}`,
+      `用户 ${userId} 离职转交: ${pendingTasks.length} 个审批任务已转交给直属上级 ${user.superiorId}`,
     );
   }
 

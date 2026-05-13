@@ -18,15 +18,7 @@ import { DocumentCronService } from './document-cron.service';
 import { DocumentReferenceService } from './services/document-reference.service';
 import { DocumentLifecycleService } from './document-lifecycle.service';
 import { DocumentControlMetadataService } from './services/document-control-metadata.service';
-import { DocumentControlWorkbenchService } from './services/document-control-workbench.service';
 import { RecordFormLandingService } from './services/record-form-landing.service';
-import { DocumentReadRequirementService } from './services/document-read-requirement.service';
-import { DocumentTrainingNeedService } from './services/document-training-need.service';
-import { DocumentAuditCoverageService } from './services/document-audit-coverage.service';
-import { DocumentImpactService } from './services/document-impact.service';
-import { DocumentHealthService } from './services/document-health.service';
-import { DocumentAuditChainService } from './services/document-audit-chain.service';
-import { DocumentEvidenceChainService } from './services/document-evidence-chain.service';
 import { MarkdownWikilinkService } from './services/markdown-wikilink.service';
 import { DocumentReferenceHealthService } from './services/document-reference-health.service';
 import { BusinessDocumentLinkService } from './services/business-document-link.service';
@@ -42,7 +34,7 @@ import { CANONICAL_DOCUMENT_STATUS } from './constants/document-control.constant
 @Module({
   imports: [ConfigModule, PrismaModule, NotificationModule, OperationLogModule, ExportModule, DepartmentPermissionModule, RoleModule, StatisticsModule, UserPermissionModule, SearchModule, ModelLandingModule, UnifiedApprovalModule],
   controllers: [DocumentController],
-  providers: [DocumentService, DocumentCronService, DocumentReferenceService, MarkdownWikilinkService, DocumentReferenceHealthService, BusinessDocumentLinkService, DocumentExpiryService, DocumentLifecycleService, DocumentControlMetadataService, DocumentControlWorkbenchService, RecordFormLandingService, DocumentReadRequirementService, DocumentTrainingNeedService, DocumentAuditCoverageService, DocumentImpactService, DocumentHealthService, DocumentAuditChainService, DocumentEvidenceChainService, FilePreviewService, StorageService, StatisticsCacheInterceptor, DocumentsListener, NumberRuleService],
+  providers: [DocumentService, DocumentCronService, DocumentReferenceService, MarkdownWikilinkService, DocumentReferenceHealthService, BusinessDocumentLinkService, DocumentExpiryService, DocumentLifecycleService, DocumentControlMetadataService, RecordFormLandingService, FilePreviewService, StorageService, StatisticsCacheInterceptor, DocumentsListener, NumberRuleService],
   exports: [DocumentService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, BusinessDocumentLinkService, DocumentExpiryService],
 })
 export class DocumentModule implements OnModuleInit {

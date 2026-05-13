@@ -91,13 +91,7 @@ export class CorrectiveActionService {
     }
 
     if (dto.trigger_type === 'internal_audit') {
-      const source = await client.auditFinding.findUnique({
-        where: { id: dto.trigger_id },
-        select: { id: true },
-      });
-      if (!source) {
-        throw new BadRequestException('内审发现项不存在');
-      }
+      // 内审业务模块已剔除（API contract gap cleanup）。CAPA 不再校验 AuditFinding 外键。
       return;
     }
 

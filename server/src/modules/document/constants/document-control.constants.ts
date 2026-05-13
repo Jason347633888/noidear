@@ -65,6 +65,16 @@ export type ReferenceTargetType = (typeof REFERENCE_TARGET_TYPES)[number];
 export const NUMBER_RULE_SCOPES = ['document', 'record_template'] as const;
 export type NumberRuleScope = typeof NUMBER_RULE_SCOPES[number];
 
+/**
+ * 默认编号生成规则（内部常量，不再开放 NumberRule 用户配置）。
+ * 与 `DocumentNumberCounter` 配合使用：counter 提供序号，规则提供格式。
+ */
+export const DEFAULT_DOCUMENT_NUMBER_RULE = {
+  format: '{level}-{departmentCode}-{categoryCode}-{sequence}',
+  sequencePadding: 3,
+  separator: '-',
+} as const;
+
 export const LANDING_STRATEGIES = [
   'business_module',
   'dynamic_form',

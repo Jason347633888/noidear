@@ -9,13 +9,11 @@ import {
   NotFoundException,
   BadRequestException,
   UseGuards,
-  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
-import { ProcessStepApprovalService } from './process-step-approval.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 
 @ApiTags('流程实例')
@@ -24,7 +22,6 @@ import { ApprovalEngineService } from '../unified-approval/approval-engine.servi
 export class ProcessInstanceController {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly approvalService: ProcessStepApprovalService,
     private readonly approvalEngine: ApprovalEngineService,
   ) {}
 
@@ -35,14 +32,6 @@ export class ProcessInstanceController {
       include: { stepData: true },
     });
     return { code: 0, data: instances, message: 'success' };
-  }
-
-  @Get('approvals/pending')
-  @ApiOperation({ summary: '查我的待签任务' })
-  async getPendingApprovals(@Request() req: AuthenticatedRequest) {
-    const userId = req.user.id;
-    const list = await this.approvalService.listPendingForUser(userId);
-    return { code: 0, data: list, message: 'success' };
   }
 
   @Get(':id')
@@ -142,33 +131,24 @@ export class ProcessInstanceController {
       const requiredApprovals: any[] = stepConfig.requiredApprovals ?? [];
 
       if (requiredApprovals.length > 0) {
-        // Try to route through unified approval engine; fall back gracefully when
-        // no ApprovalDefinition is configured (e.g. in test/seed environments).
+        // 统一审批：步骤需要审批时，必须由 ApprovalDefinition 配置后通过 ApprovalEngineService 启动；
+        // 不再保留旧 ProcessStepApproval 会签兜底通道。
         const productName =
           (data as any)?.productName ||
           instance.productName ||
           `流程实例 ${id}`;
-        try {
-          const approvalInstance = await this.approvalEngine.startApproval({
-            resourceType: 'process_instance',
-            resourceId: id,
-            resourceStep: `step:${actualStepNumber}`,
-            triggerKey: `step:${actualStepNumber}`,
-            title: `${productName} — ${stepConfig.name ?? `步骤${actualStepNumber}`}审批`,
-            createdById: userId,
-          });
-          // Persist the approval instance id on the step data
-          await this.prisma.processStepData.update({
-            where: { instanceId_stepNumber: { instanceId: id, stepNumber: actualStepNumber } },
-            data: { approvalInstanceId: approvalInstance.id },
-          });
-        } catch (err: any) {
-          // No ApprovalDefinition configured — step remains SUBMITTED and the
-          // legacy /steps/:stepNumber/approvals endpoint handles sign-off.
-          if (err?.status !== 404 && !err?.message?.includes('审批定义不存在')) {
-            throw err;
-          }
-        }
+        const approvalInstance = await this.approvalEngine.startApproval({
+          resourceType: 'process_instance',
+          resourceId: id,
+          resourceStep: `step:${actualStepNumber}`,
+          triggerKey: `step:${actualStepNumber}`,
+          title: `${productName} — ${stepConfig.name ?? `步骤${actualStepNumber}`}审批`,
+          createdById: userId,
+        });
+        await this.prisma.processStepData.update({
+          where: { instanceId_stepNumber: { instanceId: id, stepNumber: actualStepNumber } },
+          data: { approvalInstanceId: approvalInstance.id },
+        });
       } else {
         // Step3: auto-approve when trialConclusion === '通过'
         const isStep3Pass =
@@ -196,35 +176,6 @@ export class ProcessInstanceController {
     }
 
     return { code: 0, data: savedStepData, message: 'success' };
-  }
-
-  @Post(':id/steps/:stepNumber/approvals')
-  @ApiOperation({ summary: '提交会签（旧接口，保留向后兼容）' })
-  async submitApproval(
-    @Param('id') id: string,
-    @Param('stepNumber') stepNumber: string,
-    @Body() body: any,
-    @Request() req: AuthenticatedRequest,
-  ) {
-    const userId = req.user.id;
-    const { action, comment = '' } = body;
-    // Never trust role from client — omit requestedRole entirely
-    const result = await this.approvalService.submitApproval(
-      id, parseInt(stepNumber), userId, action, comment, undefined,
-    );
-    return { code: 0, data: result, message: 'success' };
-  }
-
-  @Get(':id/approvals')
-  @ApiOperation({ summary: '查询步骤会签记录' })
-  async getApprovals(
-    @Param('id') id: string,
-    @Query('stepNumber') stepNumber?: string,
-  ) {
-    const approvals = await this.approvalService.listApprovals(
-      id, stepNumber ? parseInt(stepNumber) : undefined,
-    );
-    return { code: 0, data: approvals, message: 'success' };
   }
 
   @Delete(':id')

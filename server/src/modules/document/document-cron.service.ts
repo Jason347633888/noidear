@@ -6,7 +6,7 @@ import { DocumentExpiryService } from './services/document-expiry.service'
 
 /**
  * 文档模块定时任务服务
- * - BR-312: 编号规则年度重置
+ * - BR-312: 默认编号计数器年度重置
  * - BR-050: 文件预览缓存清理（7 天）
  */
 @Injectable()
@@ -22,21 +22,21 @@ export class DocumentCronService {
   ) {}
 
   /**
-   * BR-312: 年度重置编号序号
+   * BR-312: 年度重置默认编号计数器序号
    * 每年 1 月 1 日凌晨 0 点执行
    */
   @Cron('0 0 1 1 *')
   async resetAnnualNumberSequences(): Promise<void> {
     try {
-      const result = await this.prisma.numberRule.updateMany({
+      const result = await this.prisma.documentNumberCounter.updateMany({
         data: { sequence: 0 },
       })
 
       this.logger.log(
-        `BR-312 年度编号规则重置完成：共重置 ${result.count} 条规则序号`,
+        `BR-312 年度默认编号计数器重置完成：共重置 ${result.count} 条记录序号`,
       )
     } catch (error) {
-      this.logger.error('BR-312 年度编号规则重置失败', error)
+      this.logger.error('BR-312 年度默认编号计数器重置失败', error)
     }
   }
 
@@ -44,11 +44,11 @@ export class DocumentCronService {
    * BR-312: 手动触发年度重置（供管理员使用）
    */
   async manualResetSequences(): Promise<{ count: number }> {
-    const result = await this.prisma.numberRule.updateMany({
+    const result = await this.prisma.documentNumberCounter.updateMany({
       data: { sequence: 0 },
     })
 
-    this.logger.log(`手动重置编号规则序号：共重置 ${result.count} 条`)
+    this.logger.log(`手动重置默认编号计数器序号：共重置 ${result.count} 条`)
     return { count: result.count }
   }
 
