@@ -177,8 +177,8 @@ export const supplierApi = {
     return request.put<Supplier>(`/warehouse/suppliers/${id}`, payload);
   },
 
-  delete(id: string) {
-    return request.delete(`/warehouse/suppliers/${id}`);
+  disable(id: string) {
+    return request.put(`/warehouse/suppliers/${id}/disable`);
   },
 
   getDocuments(id: string) {
@@ -259,7 +259,13 @@ export const stagingAreaApi = {
 // =========================================================================
 
 export const materialBalanceApi = {
-  getBalance(params: { batchId?: string; dateFrom?: string; dateTo?: string } = {}) {
-    return request.get<MaterialBalance[]>('/warehouse/material-balance', { params });
+  /**
+   * 物料平衡校验：有 batchId 时校验单批次，无则全量校验。
+   * 后端路由：/warehouse/material-balance/check/:batchId 或 /warehouse/material-balance/check-all。
+   */
+  check(batchId?: string) {
+    return batchId
+      ? request.get<MaterialBalance[]>(`/warehouse/material-balance/check/${batchId}`)
+      : request.get<MaterialBalance[]>('/warehouse/material-balance/check-all');
   },
 };

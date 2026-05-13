@@ -17,6 +17,7 @@ import { CreateRecordTemplateDto } from './dto/create-record-template.dto';
 import { UpdateRecordTemplateDto } from './dto/update-record-template.dto';
 import { QueryRecordTemplateDto } from './dto/query-record-template.dto';
 import { UpdateFieldsBodyDto } from './dto/update-fields-body.dto';
+import { UpdateToleranceDto } from './dto/update-tolerance.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 
@@ -49,6 +50,18 @@ export class RecordTemplateController {
   @ApiResponse({ status: 404, description: '模板不存在' })
   findOne(@Param('id') id: string) {
     return this.templateService.findOne(id);
+  }
+
+  @Get(':templateId/tolerance')
+  @ApiOperation({ summary: '查询记录模板字段容差配置' })
+  getTolerance(@Param('templateId') templateId: string) {
+    return this.templateService.getTolerance(templateId);
+  }
+
+  @Put(':templateId/tolerance')
+  @ApiOperation({ summary: '更新记录模板字段容差配置' })
+  updateTolerance(@Param('templateId') templateId: string, @Body() body: UpdateToleranceDto) {
+    return this.templateService.updateTolerance(templateId, body);
   }
 
   @Put(':id')

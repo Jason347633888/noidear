@@ -124,6 +124,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import request from '@/api/request';
+import permissionApi from '@/api/permission';
 import GrantPermissionDialog from '@/components/permission/GrantPermissionDialog.vue';
 
 interface UserPermissionRecord {
@@ -234,7 +235,7 @@ const handleRevoke = async (row: UserPermissionRecord) => {
       '警告',
       { type: 'warning' },
     );
-    await request.delete(`/user-permissions/${row.id}`);
+    await permissionApi.revokeUserPermission(row.id);
     ElMessage.success('权限撤销成功');
     fetchData();
   } catch {

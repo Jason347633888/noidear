@@ -64,17 +64,12 @@ import { materialBalanceApi } from '@/api/warehouse';
 
 const loading = ref(false);
 const tableData = ref<any[]>([]);
-const filterForm = reactive({ dateRange: null as [string, string] | null });
+const filterForm = reactive({ dateRange: null as [string, string] | null, batchId: '' });
 
 const fetchData = async () => {
   loading.value = true;
   try {
-    const params: any = {};
-    if (filterForm.dateRange) {
-      params.dateFrom = filterForm.dateRange[0];
-      params.dateTo = filterForm.dateRange[1];
-    }
-    const res: any = await materialBalanceApi.getBalance(params);
+    const res: any = await materialBalanceApi.check(filterForm.batchId || undefined);
     tableData.value = res;
   } catch (error) {
     ElMessage.error('获取物料平衡数据失败');

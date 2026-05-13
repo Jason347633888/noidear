@@ -42,12 +42,13 @@ export const deleteQuestion = (id: string): Promise<void> => {
 };
 
 /**
- * Batch update question order
+ * 批量调整题目顺序：调用后端 `/training/questions/update-order`，body = { projectId, questionOrders }
  */
 export const updateQuestionOrder = (
-  questions: Array<{ id: string; order: number }>,
+  projectId: string,
+  questionOrders: Array<{ id: string; order: number }>,
 ): Promise<void> => {
-  return request.put('/training/questions/order', { questions });
+  return request.put('/training/questions/update-order', { projectId, questionOrders });
 };
 
 // =========================================================================

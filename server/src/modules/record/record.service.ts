@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger, Optional } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import PDFDocument from 'pdfkit';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DeviationService } from '../deviation/deviation.service';
 import { DocumentNoService } from '../record-template/document-no.service';
@@ -135,6 +136,57 @@ export class RecordService {
     }
 
     return record;
+  }
+
+  /**
+   * 按需生成记录 PDF。事实源为 Record + RecordTemplate，不写入存储。
+   */
+  async generatePdf(recordId: string): Promise<Buffer> {
+    const record = await this.prisma.record.findUnique({
+      where: { id: recordId },
+      include: { template: true } as any,
+    }) as any;
+
+    if (!record) {
+      throw new NotFoundException('记录不存在');
+    }
+
+    const template = record.template;
+    const fields: Array<{ name?: string; label?: string; key?: string }> = Array.isArray(template?.fieldsJson)
+      ? (template.fieldsJson as Array<{ name?: string; label?: string; key?: string }>)
+      : [];
+    const data: Record<string, unknown> = (record.dataJson as Record<string, unknown>) ?? {};
+
+    return await new Promise<Buffer>((resolve, reject) => {
+      const doc = new PDFDocument({ size: 'A4', margin: 50 });
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      doc.fontSize(16).text(template?.name ?? '记录', { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(10);
+      doc.text(`记录编号: ${record.number ?? recordId}`);
+      doc.text(`状态: ${record.status ?? ''}`);
+      doc.text(`提交时间: ${record.createdAt ? new Date(record.createdAt).toISOString() : ''}`);
+      doc.moveDown();
+
+      for (const field of fields) {
+        const key = field.name ?? field.key ?? '';
+        if (!key) continue;
+        const label = field.label ?? key;
+        const value = data[key];
+        const displayValue = value === undefined || value === null
+          ? '-'
+          : typeof value === 'object'
+            ? JSON.stringify(value)
+            : String(value);
+        doc.text(`${label}: ${displayValue}`);
+      }
+
+      doc.end();
+    });
   }
 
   /**

@@ -49,12 +49,4 @@ export class UpdateRecordTemplateDto {
   @IsOptional()
   @IsBoolean()
   approvalRequired?: boolean;
-
-  @ApiPropertyOptional({
-    description: '工作流配置 JSON（approvalRequired 为 true 时需填写）',
-    example: { templateId: 'wf_tpl_001' },
-  })
-  @IsOptional()
-  @IsObject()
-  workflowConfig?: Record<string, any>;
 }

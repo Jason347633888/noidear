@@ -91,6 +91,7 @@ import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import request from '@/api/request';
+import permissionApi from '@/api/permission';
 
 interface UserInfo {
   id: string;
@@ -169,8 +170,8 @@ const fetchUserInfo = async () => {
 const fetchUserPermissions = async () => {
   permissionLoading.value = true;
   try {
-    const res = await request.get<UserPermission[]>(`/user-permissions/${userId}`);
-    userPermissions.value = res;
+    const res: any = await permissionApi.getEffectiveUserPermissions(userId);
+    userPermissions.value = (res?.permissions ?? res ?? []) as UserPermission[];
   } catch (error) {
     ElMessage.error('获取用户权限失败');
   } finally {
@@ -202,7 +203,8 @@ const fetchAvailablePermissions = async () => {
 const handleGrant = async () => {
   granting.value = true;
   try {
-    await request.post(`/user-permissions/${userId}`, {
+    await permissionApi.batchGrantUserPermissions({
+      userId,
       permissionIds: selectedPermissionIds.value,
     });
     ElMessage.success('权限授予成功');
@@ -222,7 +224,19 @@ const handleRevoke = async (permission: UserPermission) => {
       '警告',
       { type: 'warning' },
     );
-    await request.delete(`/user-permissions/${userId}/${permission.id}`);
+    // 权限撤销必须用授权记录 id，而不是 permissionId；按 effective 列表查找匹配项。
+    const effective: any = await permissionApi.getEffectiveUserPermissions(userId);
+    const list: any[] = effective?.permissions ?? effective ?? [];
+    const grant = list.find((item: any) =>
+      item.id === permission.id ||
+      item.permissionId === permission.id ||
+      item.permission?.id === permission.id,
+    );
+    if (!grant?.id) {
+      ElMessage.error('未找到可撤销的授权记录');
+      return;
+    }
+    await permissionApi.revokeUserPermission(grant.id);
     ElMessage.success('权限撤销成功');
     fetchUserPermissions();
   } catch (error) {

@@ -642,9 +642,11 @@ model RecordTemplate {
   batchLinkType    String? // "production"; legacy rows may contain "finished_goods"
   batchLinkField   String? // 哪个字段存储批次号
 
-  // 工作流集成字段
+  // 统一审批集成
   approvalRequired Boolean @default(false)
-  workflowConfig   Json?
+
+  // 字段容差配置（API contract cleanup）
+  toleranceJson Json?
 
   records         Record[]
   taskAssignments RecordTaskAssignment[]

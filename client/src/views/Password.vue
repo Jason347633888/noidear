@@ -51,7 +51,7 @@ import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
-import request from '@/api/request';
+import { authApi } from '@/api/auth';
 
 const router = useRouter();
 const formRef = ref<FormInstance>();
@@ -89,7 +89,7 @@ const handleSubmit = async () => {
   await formRef.value?.validate();
   loading.value = true;
   try {
-    await request.post('/auth/change-password', {
+    await authApi.changePassword({
       oldPassword: form.oldPassword,
       newPassword: form.newPassword,
     });

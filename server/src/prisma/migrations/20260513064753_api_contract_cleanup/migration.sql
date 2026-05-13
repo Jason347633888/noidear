@@ -73,6 +73,10 @@ DROP TABLE IF EXISTS "number_rules" CASCADE;
 -- Drop legacy FK columns on retained models
 ALTER TABLE "records" DROP COLUMN IF EXISTS "workflowId";
 ALTER TABLE "maintenance_records" DROP COLUMN IF EXISTS "workflowId";
+ALTER TABLE "record_templates" DROP COLUMN IF EXISTS "workflowConfig";
+
+-- RecordTemplate: tolerance JSON column (record-template tolerance API)
+ALTER TABLE "record_templates" ADD COLUMN IF NOT EXISTS "toleranceJson" JSONB;
 
 -- DocumentNumberCounter: internal sequence storage for default document numbering
 CREATE TABLE IF NOT EXISTS "document_number_counters" (

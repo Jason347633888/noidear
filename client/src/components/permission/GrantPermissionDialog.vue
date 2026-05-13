@@ -83,6 +83,7 @@ import { ref, reactive, watch } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import { ElMessage } from 'element-plus';
 import request from '@/api/request';
+import permissionApi from '@/api/permission';
 
 interface UserOption {
   id: string;
@@ -189,7 +190,7 @@ const handleSubmit = async () => {
 
   submitting.value = true;
   try {
-    await request.post('/user-permissions', {
+    await permissionApi.grantUserPermission({
       userId: form.userId,
       permissionId: form.permissionId,
       expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : undefined,
