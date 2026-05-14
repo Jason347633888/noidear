@@ -12,7 +12,6 @@ import { apiBaseUrl } from './support/urls';
  *   DOC-002  Filter document list by level via query param
  *   DOC-003  Draft document is editable; title save succeeds
  *   DOC-004  Non-draft document is NOT directly editable
- *   DOC-005  Soft-delete document (via API only; recycle-bin route removed)
  *   DOC-020  Publish new version supersedes old version (API)
  *   DOC-021  Document can be archived
  *   DOC-022  Archived document cannot submit for approval

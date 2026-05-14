@@ -19,13 +19,9 @@
 9. [DEVIATION — 偏差检测](#deviation)
 10. [NON-CONFORMANCE — 不合格品](#non-conformance)
 11. [PRODUCT-RECALL — 产品召回](#product-recall)
-12. [ALERT — 告警规则](#alert)
-13. [MONITORING — 系统监控](#monitoring)
-14. [AUDIT — 审计日志](#audit)
-15. [BACKUP — 备份管理](#backup)
-16. [SEARCH — 全文搜索](#search)
-17. [RECYCLE-BIN — 回收站](#recycle-bin)
-18. [TASK / RECORD — 动态表单与任务](#task-record)
+12. [AUDIT — 审计日志](#audit)
+13. [SEARCH — 全文搜索](#search)
+14. [TASK / RECORD — 动态表单与任务](#task-record)
 
 ---
 
@@ -255,13 +251,12 @@ Feature: 文档创建与编辑
     Then 系统返回 HTTP 400 或 HTTP 403
     And 文档内容不变
 
-  Scenario: BDD-DOC-005 软删除文档进入回收站
+  Scenario: BDD-DOC-005 软删除文档（无回收站 UI）
     Given 文档 D001 状态为 draft
     When 用户删除 D001
     Then 系统返回 HTTP 200
     And 文档的 deletedAt 被设置为当前时间
     And 文档不出现在正常列表查询结果中
-    And 文档出现在回收站列表中
 
   Scenario: BDD-DOC-006 文档列表按 level 过滤
     Given 系统中存在 level=1、level=2、level=3 的文档各若干
@@ -785,91 +780,6 @@ Feature: 产品召回管理
 
 ---
 
-## ALERT — 告警规则 {#alert}
-
-```gherkin
-Feature: 告警规则管理
-
-  Scenario: BDD-ALT-001 创建告警规则
-    When 管理员提交 name="文档逾期未审阅"、metricName="doc.overdue_count"、condition=">"、threshold=5、severity="high"、enabled=true
-    Then 系统返回 HTTP 201
-    And 规则被保存，enabled=true
-
-  Scenario: BDD-ALT-002 disabled 的告警规则不触发告警
-    Given 告警规则 R001 的 enabled=false
-    When 监控指标满足触发条件
-    Then 不产生 AlertHistory 记录
-    And 不发送通知
-
-  Scenario: BDD-ALT-003 enabled 的告警规则触发时产生历史记录
-    Given 告警规则 R001 的 enabled=true，threshold=5
-    When 对应指标值变为 8（超过阈值）
-    Then 系统创建 AlertHistory 记录，status=triggered、value=8
-    And 按配置的 notifyChannels 发送通知
-
-  Scenario: BDD-ALT-004 告警恢复时历史记录状态更新为 resolved
-    Given AlertHistory AH001 状态为 triggered
-    When 对应指标值降至 3（低于阈值）
-    Then AH001 状态变为 resolved
-
-  Scenario: BDD-ALT-005 查询告警历史支持按规则过滤
-    When 查询告警历史，指定 ruleId=R001
-    Then 返回结果仅包含 R001 触发的历史记录
-
-  Scenario: BDD-ALT-006 更新告警规则
-    Given 已存在告警规则 R001
-    When 管理员更新 threshold=10
-    Then 系统返回 HTTP 200
-    And R001 的 threshold 更新为 10
-
-  Scenario: BDD-ALT-007 删除告警规则
-    Given 已存在告警规则 R001
-    When 管理员删除 R001
-    Then 系统返回 HTTP 200
-    And R001 不再出现在规则列表中
-```
-
----
-
-## MONITORING — 系统监控 {#monitoring}
-
-```gherkin
-Feature: 系统指标记录与查询
-
-  Scenario: BDD-MON-001 单条指标记录入库
-    When 系统提交 metricName="api.response_time"、metricValue=120、metricType="histogram"
-    Then 系统返回 HTTP 201
-    And 记录被存入 SystemMetric 表，附带当前 timestamp
-
-  Scenario: BDD-MON-002 批量指标记录入库
-    When 提交包含 5 条指标的批量请求
-    Then 系统返回 HTTP 201
-    And 5 条记录均被保存
-
-  Scenario: BDD-MON-003 按指标名称和时间范围查询
-    Given 系统中存在过去 24 小时的 api.response_time 记录
-    When 查询 metricName="api.response_time"、startTime=过去24小时
-    Then 返回结果仅包含指定时间范围内的记录
-
-  Scenario: BDD-MON-004 系统健康状态检查
-    When 调用系统健康检查接口
-    Then 响应包含以下组件的健康状态：
-      | 组件       | 状态字段   |
-      | PostgreSQL | status     |
-      | Redis      | status     |
-      | MinIO      | status     |
-      | 磁盘       | usagePercent |
-    And 每个组件状态为 healthy 或 unhealthy
-
-  Scenario: BDD-MON-005 监控仪表板自动刷新
-    Given 用户在监控仪表板页面
-    When 仪表板启用自动刷新（间隔 30 秒）
-    Then 每 30 秒请求一次最新指标数据
-    And 图表数据实时更新
-```
-
----
-
 ## AUDIT — 审计日志 {#audit}
 
 ```gherkin
@@ -935,36 +845,6 @@ Feature: 敏感操作审计日志
 
 ---
 
-## BACKUP — 备份管理 {#backup}
-
-```gherkin
-Feature: 数据库与对象存储备份
-
-  Scenario: BDD-BCK-001 触发 PostgreSQL 备份
-    When 管理员调用 PostgreSQL 备份接口
-    Then 系统执行 pg_dump，生成 custom format 备份文件
-    And 文件名格式为 backup_YYYYMMDD_HHmmss.dump
-    And 备份历史表新增一条 backupType=postgres、status=success 的记录
-
-  Scenario: BDD-BCK-002 触发 MinIO 备份
-    When 管理员调用 MinIO 备份接口
-    Then 系统执行压缩打包，生成 .tar.gz 文件
-    And 备份历史表新增 backupType=minio 的记录
-
-  Scenario: BDD-BCK-003 备份失败时仍记录历史
-    Given PostgreSQL 容器不可用
-    When 管理员触发 PostgreSQL 备份
-    Then 备份历史表新增一条 status=failed 的记录
-    And 记录包含 errorMessage 字段
-
-  Scenario: BDD-BCK-004 查询备份历史支持按类型过滤
-    When 管理员查询 backupType=postgres 的备份历史
-    Then 返回结果仅包含 postgres 类型的备份记录
-    And 结果支持分页（page、limit 参数）
-```
-
----
-
 ## SEARCH — 全文搜索 {#search}
 
 ```gherkin
@@ -1009,40 +889,6 @@ Feature: 文档全文搜索
     When 用户请求 page=2、limit=10
     Then 返回第 11~20 条结果
     And 响应包含 total=50 的元数据
-```
-
----
-
-## RECYCLE-BIN — 回收站 {#recycle-bin}
-
-```gherkin
-Feature: 文档回收站
-  已软删除的文档进入回收站，可被恢复或永久删除。
-
-  Background:
-    Given 文档 D001 已被软删除（deletedAt 已设置）
-
-  Scenario: BDD-RBN-001 回收站列表仅显示已删除文档
-    When 管理员查询回收站列表
-    Then 仅显示 deletedAt != null 的文档
-    And 正常文档不出现在回收站列表中
-
-  Scenario: BDD-RBN-002 从回收站恢复文档
-    When 管理员对 D001 执行恢复操作
-    Then 系统返回 HTTP 200
-    And D001 的 deletedAt 被重置为 null
-    And D001 重新出现在正常文档列表中
-
-  Scenario: BDD-RBN-003 永久删除回收站中的文档
-    When 管理员对 D001 执行永久删除
-    Then 系统返回 HTTP 200
-    And D001 从数据库中彻底删除（或标记为不可恢复）
-    And D001 不再出现在回收站列表中
-
-  Scenario: BDD-RBN-004 正常文档无法永久删除（需先进回收站）
-    Given 文档 D002 状态为 effective，deletedAt 为 null
-    When 管理员尝试对 D002 执行永久删除接口
-    Then 系统返回 HTTP 400 或 HTTP 403
 ```
 
 ---
