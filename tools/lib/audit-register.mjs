@@ -16,25 +16,32 @@ export function advisoryIdFromVia(via) {
 }
 
 export function extractAuditItems(auditJson, workspace = 'root') {
+  // Emit one item per (advisoryId, workspace, packageName) triple so that
+  // joinAuditWithRegister can match each occurrence independently.
+  // Using a composite key prevents multiple packages sharing the same advisoryId
+  // from being silently collapsed into a single item whose top-level packageName
+  // only reflects the first package encountered.
   const items = new Map();
   for (const [packageName, vuln] of Object.entries(auditJson.vulnerabilities || {})) {
     for (const via of vuln.via || []) {
       const advisoryId = advisoryIdFromVia(via);
       if (!advisoryId) continue;
-      const current = items.get(advisoryId) || {
+      const tripleKey = `${advisoryId}\0${workspace}\0${packageName}`;
+      if (items.has(tripleKey)) continue;
+      items.set(tripleKey, {
         advisoryId,
         severity: via.severity || vuln.severity,
         packageName,
         workspace,
-        occurrences: [],
-      };
-      current.occurrences.push({
-        workspace,
-        packageName,
-        // packageChain stores npm audit's via package list. It is not a full npm ls dependency-tree path.
-        packageChain: [packageName, ...((vuln.via || []).filter((entry) => typeof entry === 'string'))],
+        occurrences: [
+          {
+            workspace,
+            packageName,
+            // packageChain stores npm audit's via package list. It is not a full npm ls dependency-tree path.
+            packageChain: [packageName, ...((vuln.via || []).filter((entry) => typeof entry === 'string'))],
+          },
+        ],
       });
-      items.set(advisoryId, current);
     }
   }
   return [...items.values()];
@@ -51,6 +58,21 @@ export function loadRegister(path) {
   return parsed;
 }
 
+function parseDate(str, fieldName, advisoryId) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    throw new Error(`invalid date format for ${fieldName} in ${advisoryId}: must be YYYY-MM-DD`);
+  }
+  const date = new Date(`${str}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`invalid ${fieldName} for ${advisoryId}: must be YYYY-MM-DD`);
+  }
+  // 回检：格式合法但日期不存在（如 2026-02-30 被 JS 自动规范化）
+  if (date.toISOString().slice(0, 10) !== str) {
+    throw new Error(`non-existent calendar date for ${fieldName} in ${advisoryId}: ${str}`);
+  }
+  return date;
+}
+
 export function validateRegister(register, now = new Date()) {
   const entries = register.entries || [];
   const ids = new Set();
@@ -61,11 +83,15 @@ export function validateRegister(register, now = new Date()) {
     if (!DECISIONS.has(entry.decision)) throw new Error(`invalid decision for ${entry.advisoryId}`);
     if (!entry.owner || entry.owner === 'implementation-agent') throw new Error(`invalid owner for ${entry.advisoryId}`);
     if (!Number.isInteger(entry.renewalCount) || entry.renewalCount < 0 || entry.renewalCount > 4) throw new Error(`invalid renewalCount for ${entry.advisoryId}`);
-    // SLA rule 1: discoveredAt and nextReviewAt must be valid YYYY-MM-DD dates
-    const discovered = new Date(`${entry.discoveredAt}T00:00:00Z`);
-    if (Number.isNaN(discovered.getTime())) throw new Error(`invalid discoveredAt for ${entry.advisoryId}: must be YYYY-MM-DD`);
+    // SLA rule 1: discoveredAt and nextReviewAt must be valid, existent YYYY-MM-DD dates
+    const discovered = parseDate(entry.discoveredAt, 'discoveredAt', entry.advisoryId);
     const review = new Date(`${entry.nextReviewAt}T23:59:59Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.nextReviewAt)) throw new Error(`invalid date format for nextReviewAt in ${entry.advisoryId}: must be YYYY-MM-DD`);
     if (Number.isNaN(review.getTime())) throw new Error(`invalid nextReviewAt for ${entry.advisoryId}: must be YYYY-MM-DD`);
+    // 回检：nextReviewAt 非法历法日期（如 2026-02-30）
+    if (new Date(`${entry.nextReviewAt}T00:00:00Z`).toISOString().slice(0, 10) !== entry.nextReviewAt) {
+      throw new Error(`non-existent calendar date for nextReviewAt in ${entry.advisoryId}: ${entry.nextReviewAt}`);
+    }
     if (review < now) throw new Error(`expired nextReviewAt for ${entry.advisoryId}`);
     // SLA rule 2: first registration (renewalCount === 0) → nextReviewAt <= discoveredAt + 7 days
     if (entry.renewalCount === 0) {
