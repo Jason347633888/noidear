@@ -142,8 +142,6 @@ export const menuGroups: MenuEntry[] = [
       { path: '/notifications', title: '消息中心', icon: Message },
       { path: '/search', title: '高级搜索', icon: Search },
       { path: '/audit/search', title: '审计日志', icon: Odometer },
-      { path: '/admin/import', title: '批量导入', icon: DataAnalysis },
-      { path: '/admin/export', title: '批量导出', icon: DataAnalysis },
     ],
   },
 ];

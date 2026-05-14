@@ -493,18 +493,6 @@ const routes: RouteRecordRaw[] = [
         name: 'AdvancedSearch',
         component: () => import('@/views/search/AdvancedSearch.vue'),
       },
-      {
-        path: 'admin/export',
-        name: 'ExportPage',
-        component: () => import('@/views/admin/ExportPage.vue'),
-        meta: { requiresAdmin: true },
-      },
-      {
-        path: 'admin/import',
-        name: 'ImportPage',
-        component: () => import('@/views/admin/ImportPage.vue'),
-        meta: { requiresAdmin: true },
-      },
       // CCP 监控模块
       {
         path: 'ccp/records',

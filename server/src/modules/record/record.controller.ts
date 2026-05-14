@@ -19,22 +19,29 @@ import {
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { RecordService } from './record.service';
+import { RecordExportService } from './record-export.service';
 import { CreateRecordDto } from './dto/create-record.dto';
 import { UpdateRecordDto } from './dto/update-record.dto';
 import { QueryRecordDto } from './dto/query-record.dto';
 import { QueryChangeLogDto } from './dto/query-change-log.dto';
 import { SubmitRecordDto } from './dto/submit-record.dto';
+import { ExportRecordsDto } from './dto/export-records.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { ChangeLogInterceptor } from './interceptors/change-log.interceptor';
 import { TimestampValidationInterceptor } from '../../common/interceptors/timestamp-validation.interceptor';
+import { SensitiveLog } from '../audit/decorators/sensitive-log.decorator';
+import { SensitiveLogInterceptor } from '../audit/interceptors/sensitive-log.interceptor';
 
 @ApiTags('记录管理')
 @Controller('records')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class RecordController {
-  constructor(private readonly recordService: RecordService) {}
+  constructor(
+    private readonly recordService: RecordService,
+    private readonly recordExportService: RecordExportService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -51,6 +58,18 @@ export class RecordController {
   @ApiResponse({ status: 200, description: '查询成功' })
   findAll(@Query() query: QueryRecordDto) {
     return this.recordService.findAll(query);
+  }
+
+  @Post('export')
+  @SensitiveLog('export_data', 'record')
+  @UseInterceptors(SensitiveLogInterceptor)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '批量导出记录填写结果（单模板 Excel；跨模板 zip）' })
+  async exportRecords(@Body() dto: ExportRecordsDto, @Res() res: Response) {
+    const result = await this.recordExportService.exportRecords(dto);
+    res.setHeader('Content-Type', result.contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(result.filename)}"`);
+    res.send(result.buffer);
   }
 
   @Get(':id')

@@ -39,3 +39,12 @@ export default {
     return request.get('/statistics/equipment', { params: filter });
   },
 };
+
+export const statisticsApi = {
+  exportDocuments(): Promise<Blob> {
+    return request.get('/statistics/export', { params: { type: 'documents' }, responseType: 'blob' });
+  },
+  exportTasks(): Promise<Blob> {
+    return request.get('/statistics/export', { params: { type: 'tasks' }, responseType: 'blob' });
+  },
+};

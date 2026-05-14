@@ -46,6 +46,14 @@ export interface RecordListParams {
   templateId?: string;
 }
 
+export interface ExportRecordsPayload extends RecordListParams {
+  recordIds?: string[];
+  submitterId?: string;
+  startDate?: string;
+  endDate?: string;
+  fields?: string[];
+}
+
 export interface RecordListResponse {
   list: Record[];
   total: number;
@@ -86,5 +94,9 @@ export default {
 
   exportRecordPdf(recordId: string) {
     return request.get(`/records/${recordId}/pdf`, { responseType: 'blob' });
+  },
+
+  exportRecords(payload: ExportRecordsPayload) {
+    return request.post('/records/export', payload, { responseType: 'blob' });
   },
 };

@@ -1,14 +1,14 @@
-import { IsOptional, IsString, IsArray, IsDateString } from 'class-validator';
+import { IsArray, IsDateString, IsOptional, IsString } from 'class-validator';
 
-export class ExportTaskRecordsDto {
+export class ExportRecordsDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  taskRecordIds?: string[];
+  recordIds?: string[];
 
   @IsOptional()
   @IsString()
-  taskId?: string;
+  status?: string;
 
   @IsOptional()
   @IsString()
@@ -16,7 +16,15 @@ export class ExportTaskRecordsDto {
 
   @IsOptional()
   @IsString()
-  status?: string;
+  keyword?: string;
+
+  @IsOptional()
+  @IsString()
+  usageType?: string;
+
+  @IsOptional()
+  @IsString()
+  changeEventId?: string;
 
   @IsOptional()
   @IsString()

@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { ExportDeviationReportsDto } from '../dto';
-import { formatDate, formatStatus } from '../../../shared/utils/format.util';
+import { PrismaService } from '../../prisma/prisma.service';
+import { ExportDeviationReportsDto } from './dto/export-deviation-reports.dto';
+import { formatDate, formatStatus } from '../../shared/utils/format.util';
 import {
   FieldConfig,
   setupWorksheet,
   getFilteredFields,
   filterRow,
   addDateRange,
-} from '../../../shared/utils/excel.util';
+} from '../../shared/utils/excel.util';
 
 const COMMON_STATUS_MAP: Record<string, string> = {
   draft: '草稿',
