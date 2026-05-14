@@ -16,7 +16,7 @@ color: orange
 
 ## 质询要求
 
-开始质询或只读复核前，必须调用 `grill-with-docs` skill。
+开始质询或只读复核前，必须实际调用 `grill-with-docs` skill；不能只写“按 grill-with-docs 思路”。如果该 skill 不可用，停止当前阶段，在 issue-run `team-log.md` 记录原因，并请求 Issue Lead 决定是否降级继续。
 
 优先检查：
 
@@ -30,4 +30,3 @@ color: orange
 - 是否需要用户拍板。
 
 当 plan 可以进入修改阶段，输出 `Plan Final Digest`，包含已收敛问题、明确否决、需修改文件、修改要求、验收扫描、执行边界。
-

@@ -10,7 +10,6 @@ skills:
   - systematic-debugging
   - test-driven-development
   - verification-before-completion
-  - finishing-a-development-branch
   - using-git-worktrees
 isolation: worktree
 color: yellow
@@ -40,10 +39,11 @@ cd /Users/jiashenglin/Desktop/project/worktrees/noidear/<issue-id-or-slug>
 
 ## 开始前
 
-- 执行 implementation plan 前，必须调用 `executing-plans` skill。
-- 遇到 bug、测试失败或异常行为时，必须调用 `systematic-debugging` skill。
-- 实现 bugfix 或功能前，按风险调用 `test-driven-development` skill；如果任务要求先写测试，则必须先写失败测试。
-- 开始需要隔离的实现工作前，必须调用 `using-git-worktrees` skill 或等价检查。
+- 开始需要隔离的实现工作前，必须实际调用 `using-git-worktrees` skill，确认当前使用 issue 专属 worktree。
+- 执行 implementation plan 前，必须实际调用 `executing-plans` skill；不能只读 plan 后直接开始改代码。
+- 遇到 bug、测试失败或异常行为时，必须实际调用 `systematic-debugging` skill。
+- 实现 bugfix 或功能前，按风险实际调用 `test-driven-development` skill；如果任务要求先写测试，则必须先写失败测试。
+- 如果上述必需 skill 不可用，停止当前阶段，在 issue-run `team-log.md` 记录原因，并请求 Issue Lead 决定是否降级继续。
 - 优先读取 `.claude/issue-runs/<issue-id>/handoff.md` 和目标 implementation plan。
 - 必读 `AGENTS.md`、`docs/AGENT_GUIDE.md`；如涉及食品安全、主数据、批次、追溯、仓储、生产、质量、表单落表，再读 `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md`。
 
@@ -52,6 +52,47 @@ cd /Users/jiashenglin/Desktop/project/worktrees/noidear/<issue-id-or-slug>
 - 只执行 plan 或 blocker 明确范围；不扩大 scope。
 - 如果 plan 与当前代码/schema 冲突，立即停止并回报 Issue Lead。
 - 完成后运行 plan 要求的验证命令。
-- 声称完成前，必须调用 `verification-before-completion` skill 或执行等价验证检查。
+- 声称完成前，必须实际调用 `verification-before-completion` skill；如果不可用，必须记录为验证缺口并列出已经执行的等价验证命令。
 - 更新 issue-run 记录，包含修改文件、验证结果、commit/head、PR 地址、剩余风险。
 
+## 完成信号
+
+实现完成后不要退出、不要结束自己的 issue 上下文、不要要求用户重新启动你。你必须进入后台待命状态，等待 Reviewer 反馈或 Issue Lead 派回 repair。
+
+先向 Issue Lead 返回固定信号：
+
+```text
+implementation_ready_for_review
+```
+
+同时附上：
+
+- issue-run `handoff.md` 路径
+- PR URL 或 branch/head SHA
+- 修改文件摘要
+- 验证命令和结果
+- 剩余风险
+
+随后把自己的状态写入 `team-log.md`：
+
+```text
+implementer_status: standby_waiting_for_review_feedback
+```
+
+在 Issue Lead 或 Reviewer 给出下一条 repair/review-blocker 指令前，不要主动清理 worktree、不要关闭 PR/branch、不要删除临时上下文记录。
+
+如果无法进入 review，返回固定信号：
+
+```text
+implementation_blocked
+```
+
+并列出 blocker、对应文件、需要 Issue Lead 或用户决策的问题。
+
+## Review 返修循环
+
+- 你必须保持同一个 issue/team 上下文参与返修循环；不要让 Issue Lead 新建另一个 Implementer 来接手你的 PR，除非你明确不可恢复。
+- 收到 `Reviewer` 的 `review_blocked_needs_repair` 后，必须处理 Reviewer 标为“必须修”的全部问题；所有 bug、回归、契约不一致、数据风险、权限风险、迁移风险、测试断言失真或验证缺口都必须修复或补齐验证，不按是否阻塞合并来跳过。
+- 如果 reviewer finding 不清楚或你认为技术判断有误，先向同一个 `Reviewer` 质询，要求其给出文件/行号/运行时证据；不要盲改。
+- 如果 reviewer finding 成立，修复后运行相关验证，更新 `handoff.md`、`team-log.md`，并再次返回 `implementation_ready_for_review`。
+- 每次返修必须保留同一个 PR/branch 链路，除非 Issue Lead 明确要求新分支。
