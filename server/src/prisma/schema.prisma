@@ -1701,28 +1701,6 @@ model SensitiveLog {
 }
 
 // ========================================
-// TASK-360: System Monitoring Tables
-// ========================================
-
-// 备份历史记录表 (Backup History)
-model BackupHistory {
-  id           BigInt    @id @default(autoincrement())
-  backupType   String // 'postgres', 'minio'
-  fileName     String
-  fileSize     BigInt?
-  status       String // 'success', 'failed'
-  errorMessage String?
-  startedAt    DateTime  @default(now())
-  completedAt  DateTime?
-  createdAt    DateTime  @default(now())
-
-  @@index([backupType])
-  @@index([status])
-  @@index([startedAt])
-  @@map("backup_history")
-}
-
-// ========================================
 // Training Management System (培训管理系统)
 // ========================================
 

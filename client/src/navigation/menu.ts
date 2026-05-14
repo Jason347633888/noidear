@@ -143,7 +143,6 @@ export const menuGroups: MenuEntry[] = [
       { path: '/search', title: '高级搜索', icon: Search },
       { path: '/audit/search', title: '审计日志', icon: Odometer },
       { path: '/recycle-bin', title: '回收站', icon: Delete },
-      { path: '/backup/manage', title: '备份管理', icon: Cloudy },
       { path: '/admin/import', title: '批量导入', icon: DataAnalysis },
       { path: '/admin/export', title: '批量导出', icon: DataAnalysis },
     ],

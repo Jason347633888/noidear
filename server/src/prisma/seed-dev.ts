@@ -37,15 +37,6 @@ async function main() {
     skipDuplicates: true,
   });
 
-  console.log('💾 创建备份记录...');
-  await prisma.backupHistory.createMany({
-    data: [
-      { backupType: 'postgres', fileName: 'backup-001.sql', status: 'success', fileSize: 1024000, startedAt: new Date(Date.now() - 86400000 * 2), completedAt: new Date(Date.now() - 86400000 * 2 + 300000) },
-      { backupType: 'minio', fileName: 'backup-002.zip', status: 'success', fileSize: 2048000, startedAt: new Date(Date.now() - 86400000), completedAt: new Date(Date.now() - 86400000 + 600000) },
-    ] as any,
-    skipDuplicates: true,
-  });
-
   console.log('⚠️ 偏离报告需要关联记录，跳过...');
 
   console.log('🗑️ 创建回收站数据...');

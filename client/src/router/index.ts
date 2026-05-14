@@ -492,12 +492,6 @@ const routes: RouteRecordRaw[] = [
         name: 'AuditSearch',
         component: () => import('@/views/audit/AuditSearchPage.vue'),
       },
-      { path: 'backup', redirect: '/backup/manage' },
-      {
-        path: 'backup/manage',
-        name: 'BackupManage',
-        component: () => import('@/views/backup/BackupManage.vue'),
-      },
       // 高级功能模块
       {
         path: 'search',
