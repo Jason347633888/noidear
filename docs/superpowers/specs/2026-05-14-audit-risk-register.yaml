@@ -4,48 +4,13 @@
 version: 1
 updatedAt: "2026-05-14"
 entries:
-  - advisoryId: "GHSA-36xv-jgw5-4q75"
-    severity: "moderate"
-    occurrences:
-      - workspace: "server"
-        packageName: "@nestjs/core"
-        packageChain:
-          - "@nestjs/core"
-          - "@nestjs/platform-express"
-        reachedProjectCodePath: "yes"
-    currentBlocker: "Fix requires @nestjs/core@11 (major); current stack is NestJS v10. NestJS v10→v11 migration has breaking changes in module resolution and dependency injection. Scheduled for NestJS v11 upgrade sprint."
-    decision: "wait_upstream"
-    discoveredAt: "2026-05-14"
-    nextReviewAt: "2026-05-21"
-    renewalCount: 0
-    owner: "@JIASHENG1204"
-    notes: "GHSA-36xv-jgw5-4q75: @nestjs/core output neutralization. Blocked on NestJS v11 major upgrade. packageChain is npm audit via list, not full npm ls tree path. Recheck after NestJS v11 upgrade sprint completes by 2026-05-21."
-
-  - advisoryId: "GHSA-2g4f-4pwh-qvx6"
-    severity: "moderate"
-    occurrences:
-      - workspace: "server"
-        packageName: "ajv"
-        packageChain:
-          - "ajv"
-          - "@nestjs/schematics"
-        reachedProjectCodePath: "no"
-    currentBlocker: "Fix requires @nestjs/schematics@11 (major dev dependency). ajv is used by schematics for JSON schema validation at dev/build time only, not at production runtime."
-    decision: "wait_upstream"
-    discoveredAt: "2026-05-14"
-    nextReviewAt: "2026-05-21"
-    renewalCount: 0
-    owner: "@JIASHENG1204"
-    notes: "GHSA-2g4f-4pwh-qvx6: ajv ReDoS with $data option. Dev-time only path via @nestjs/schematics. No production runtime code path reached. Recheck after NestJS v11 upgrade."
-
   - advisoryId: "GHSA-67mh-4wv8-2f99"
     severity: "moderate"
     occurrences:
-      - workspace: "client"
+      - workspace: "root"
         packageName: "esbuild"
         packageChain:
           - "esbuild"
-          - "vite"
         reachedProjectCodePath: "no"
     currentBlocker: "Fix requires vite@8 (major). esbuild is vite's internal dev-server dependency, not used in production bundle."
     decision: "wait_upstream"
@@ -53,114 +18,12 @@ entries:
     nextReviewAt: "2026-05-21"
     renewalCount: 0
     owner: "@JIASHENG1204"
-    notes: "GHSA-67mh-4wv8-2f99: esbuild dev server CORS bypass. Only exploitable when vite dev server is running. No production code path reached. Recheck after vite@8 stable release."
-
-  - advisoryId: "GHSA-5v7r-6r5c-r473"
-    severity: "moderate"
-    occurrences:
-      - workspace: "server"
-        packageName: "file-type"
-        packageChain:
-          - "file-type"
-          - "@nestjs/common"
-        reachedProjectCodePath: "unknown"
-    currentBlocker: "file-type is bundled inside @nestjs/common@10.x. Fix requires @nestjs/common@11 (major). Cannot independently upgrade."
-    decision: "wait_upstream"
-    discoveredAt: "2026-05-14"
-    nextReviewAt: "2026-05-21"
-    renewalCount: 0
-    owner: "@JIASHENG1204"
-    notes: "GHSA-5v7r-6r5c-r473: file-type infinite loop in ASF parser. Requires investigation of whether any project code directly triggers file-type's ASF parser path. Blocked on NestJS v11 upgrade. Code-path investigation needed before next review."
-
-  - advisoryId: "GHSA-j47w-4g3g-c36v"
-    severity: "moderate"
-    occurrences:
-      - workspace: "server"
-        packageName: "file-type"
-        packageChain:
-          - "file-type"
-          - "@nestjs/common"
-        reachedProjectCodePath: "unknown"
-    currentBlocker: "file-type is bundled inside @nestjs/common@10.x. Fix requires @nestjs/common@11 (major). Cannot independently upgrade."
-    decision: "wait_upstream"
-    discoveredAt: "2026-05-14"
-    nextReviewAt: "2026-05-21"
-    renewalCount: 0
-    owner: "@JIASHENG1204"
-    notes: "GHSA-j47w-4g3g-c36v: file-type ZIP decompression bomb. Same blocker as GHSA-5v7r-6r5c-r473. Code-path investigation needed before next review."
-
-  - advisoryId: "GHSA-mh29-5h37-fv8m"
-    severity: "moderate"
-    occurrences:
-      - workspace: "server"
-        packageName: "js-yaml"
-        packageChain:
-          - "js-yaml"
-          - "@nestjs/swagger"
-        reachedProjectCodePath: "no"
-    currentBlocker: "Fix requires @nestjs/swagger@11 (major). js-yaml is used internally by swagger for OpenAPI spec parsing at startup, not during request handling."
-    decision: "wait_upstream"
-    discoveredAt: "2026-05-14"
-    nextReviewAt: "2026-05-21"
-    renewalCount: 0
-    owner: "@JIASHENG1204"
-    notes: "GHSA-mh29-5h37-fv8m: js-yaml prototype pollution in merge. Blocked on @nestjs/swagger v11 major upgrade. Swagger module is loaded at startup with static config only; no user-supplied YAML is parsed via this path."
-
-  - advisoryId: "GHSA-xxjr-mmjv-4gpg"
-    severity: "moderate"
-    occurrences:
-      - workspace: "server"
-        packageName: "lodash"
-        packageChain:
-          - "lodash"
-          - "@nestjs/swagger"
-        reachedProjectCodePath: "no"
-    currentBlocker: "Fix requires @nestjs/swagger@11 (major). lodash is used by swagger for OpenAPI spec generation, not in request handling."
-    decision: "wait_upstream"
-    discoveredAt: "2026-05-14"
-    nextReviewAt: "2026-05-21"
-    renewalCount: 0
-    owner: "@JIASHENG1204"
-    notes: "GHSA-xxjr-mmjv-4gpg: lodash _.unset/_.omit prototype pollution. Blocked on @nestjs/swagger v11. No user-controlled input flows through lodash via swagger path."
-
-  - advisoryId: "GHSA-f23m-r3pf-42rh"
-    severity: "moderate"
-    occurrences:
-      - workspace: "server"
-        packageName: "lodash"
-        packageChain:
-          - "lodash"
-          - "@nestjs/swagger"
-        reachedProjectCodePath: "no"
-    currentBlocker: "Fix requires @nestjs/swagger@11 (major). Same blocker as GHSA-xxjr-mmjv-4gpg."
-    decision: "wait_upstream"
-    discoveredAt: "2026-05-14"
-    nextReviewAt: "2026-05-21"
-    renewalCount: 0
-    owner: "@JIASHENG1204"
-    notes: "GHSA-f23m-r3pf-42rh: lodash prototype pollution via array path bypass. Same path and blocker as GHSA-xxjr-mmjv-4gpg."
-
-  - advisoryId: "GHSA-3v7f-55p6-f55p"
-    severity: "moderate"
-    occurrences:
-      - workspace: "server"
-        packageName: "picomatch"
-        packageChain:
-          - "picomatch"
-          - "@nestjs/schematics"
-        reachedProjectCodePath: "no"
-    currentBlocker: "Fix requires @nestjs/schematics@11 (major dev dependency). picomatch is used by schematics for file glob matching at CLI/dev time only."
-    decision: "wait_upstream"
-    discoveredAt: "2026-05-14"
-    nextReviewAt: "2026-05-21"
-    renewalCount: 0
-    owner: "@JIASHENG1204"
-    notes: "GHSA-3v7f-55p6-f55p: picomatch method injection in POSIX character classes. Dev-time only via @nestjs/schematics. No production runtime code path reached."
+    notes: "GHSA-67mh-4wv8-2f99: esbuild dev server CORS bypass. Only exploitable when vite dev server is running. No production code path reached. Recheck after vite@8 stable release. Occurrence workspace is root because npm audit runs at workspace root and aggregates all workspace vulnerabilities."
 
   - advisoryId: "GHSA-4w7w-66w2-5vf9"
     severity: "moderate"
     occurrences:
-      - workspace: "client"
+      - workspace: "root"
         packageName: "vite"
         packageChain:
           - "vite"
@@ -171,48 +34,14 @@ entries:
     nextReviewAt: "2026-05-21"
     renewalCount: 0
     owner: "@JIASHENG1204"
-    notes: "GHSA-4w7w-66w2-5vf9: Vite path traversal in optimized deps .map handler. Only exploitable via vite dev server. Production bundle is static HTML/JS/CSS with no vite runtime. Recheck after vite@8 migration."
-
-  - advisoryId: "GHSA-8fgc-7cc6-rx7x"
-    severity: "low"
-    occurrences:
-      - workspace: "server"
-        packageName: "webpack"
-        packageChain:
-          - "webpack"
-          - "@nestjs/cli"
-        reachedProjectCodePath: "no"
-    currentBlocker: "webpack is an internal dependency of @nestjs/cli (dev-only). The advisory affects webpack's buildHttp feature (allowedUris), which requires explicit configuration. This project does not configure buildHttp."
-    decision: "wait_upstream"
-    discoveredAt: "2026-05-14"
-    nextReviewAt: "2026-05-21"
-    renewalCount: 0
-    owner: "@JIASHENG1204"
-    notes: "GHSA-8fgc-7cc6-rx7x: webpack buildHttp allowedUris bypass via URL userinfo. Only exploitable when webpack buildHttp is configured with allowedUris. Not configured in this project. Dev-only path via @nestjs/cli."
-
-  - advisoryId: "GHSA-38r7-794h-5758"
-    severity: "low"
-    occurrences:
-      - workspace: "server"
-        packageName: "webpack"
-        packageChain:
-          - "webpack"
-          - "@nestjs/cli"
-        reachedProjectCodePath: "no"
-    currentBlocker: "Same blocker as GHSA-8fgc-7cc6-rx7x. webpack buildHttp feature not used in this project."
-    decision: "wait_upstream"
-    discoveredAt: "2026-05-14"
-    nextReviewAt: "2026-05-21"
-    renewalCount: 0
-    owner: "@JIASHENG1204"
-    notes: "GHSA-38r7-794h-5758: webpack buildHttp HttpUriPlugin SSRF via redirect. Same path and blocker as GHSA-8fgc-7cc6-rx7x. Recheck after @nestjs/cli@11 upgrade."
+    notes: "GHSA-4w7w-66w2-5vf9: Vite path traversal in optimized deps .map handler. Only exploitable via vite dev server. Production bundle is static HTML/JS/CSS with no vite runtime. Recheck after vite@8 migration. Occurrence workspace is root because npm audit runs at workspace root and aggregates all workspace vulnerabilities."
 
 # Example entry format:
 # entries:
 #   - advisoryId: "GHSA-xxxx-xxxx-xxxx"
 #     severity: "moderate" # allowed: low, moderate
 #     occurrences:
-#       - workspace: "client" # allowed: root, client, server, mobile, packages/types, tools/noidear-mcp
+#       - workspace: "root" # allowed: root, client, server, mobile, packages/types, tools/noidear-mcp
 #         packageName: "vite"
 #         packageChain:
 #           - "vite"
