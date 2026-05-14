@@ -12,7 +12,7 @@ import { apiBaseUrl } from './support/urls';
  *   DOC-002  Filter document list by level via query param
  *   DOC-003  Draft document is editable; title save succeeds
  *   DOC-004  Non-draft document is NOT directly editable
- *   DOC-005  Soft-delete document appears in recycle bin
+ *   DOC-005  Soft-delete document (via API only; recycle-bin route removed)
  *   DOC-020  Publish new version supersedes old version (API)
  *   DOC-021  Document can be archived
  *   DOC-022  Archived document cannot submit for approval
@@ -234,39 +234,6 @@ test.describe('Document CRUD', () => {
     }
   });
 
-  // -------------------------------------------------------------------------
-  // DOC-005: Soft-delete document enters recycle bin
-  // NOTE: POST /documents does not exist. We use an existing draft document and
-  //       soft-delete it, then verify the recycle bin page renders.
-  //       If no draft is available the test skips to avoid polluting data.
-  // -------------------------------------------------------------------------
-  test('DOC-005: soft-deleted document appears in recycle bin', async ({ page, request }) => {
-    const { adminUser, adminPass } = getCredentials();
-    const token = await getToken(request);
-
-    const doc = await fetchExistingDocument(request, token, 'draft');
-    if (!doc) {
-      test.skip(true, 'No draft documents available to test soft-delete');
-      return;
-    }
-
-    // Soft-delete via API
-    const delRes = await request.delete(`${API_BASE}/documents/${doc.id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    expect(delRes.ok()).toBe(true);
-
-    await loginViaApiCached(page, adminUser, adminPass);
-    await page.goto('/recycle-bin');
-    await page.waitForLoadState('networkidle');
-
-    // Recycle bin table must be present
-    await expect(page.locator('.el-table, .el-empty').first()).toBeVisible({ timeout: 12000 });
-
-    // At least one row should be visible (the one we just deleted)
-    const rows = page.locator('.el-table__body tr');
-    await expect(rows.first()).toBeVisible({ timeout: 10000 });
-  });
 });
 
 // ===========================================================================
@@ -793,63 +760,4 @@ test.describe('SRC — 全文搜索补充', () => {
     }
   });
 
-  // RBN-003: 永久删除回收站中的文档
-  test('RBN-003: 回收站中的文档可被永久删除', async ({ request }) => {
-    const token = await srcAdminToken(request);
-
-    // Create a doc, soft-delete it, then hard-delete from recycle bin
-    const createRes = await request.post(`${apiBaseUrl()}/documents`, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      data: {
-        title: `RBN003-test-${Date.now()}`,
-        number: `RBN003-${Date.now()}`,
-        content: 'RBN-003 permanent delete test',
-        level: 1,
-      },
-    });
-    if (!createRes.ok()) {
-      test.skip(true, 'Cannot create document — 跳过 RBN-003');
-      return;
-    }
-    const createBody = await createRes.json();
-    const docId: string = createBody?.data?.id ?? createBody?.id;
-
-    // Soft delete
-    await request.delete(`${apiBaseUrl()}/documents/${docId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    // Permanent delete from recycle bin
-    const hardDeleteRes = await request.delete(
-      `${apiBaseUrl()}/recycle-bin/${docId}/permanent`,
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-    if (hardDeleteRes.status() === 404) {
-      // Try alternate endpoint
-      const altRes = await request.delete(
-        `${apiBaseUrl()}/documents/${docId}/permanent`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      if (!altRes.ok() && altRes.status() !== 404) {
-        expect([200, 204]).toContain(altRes.status());
-      }
-      if (altRes.status() === 404) {
-        test.skip(true, '永久删除接口未实现 — 跳过 RBN-003');
-      }
-      return;
-    }
-    expect([200, 204]).toContain(hardDeleteRes.status());
-
-    // Verify: doc no longer in recycle bin
-    const rbRes = await request.get(`${apiBaseUrl()}/recycle-bin?limit=50`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (rbRes.ok()) {
-      const rbBody = await rbRes.json();
-      const rbList: Array<{ id: string }> =
-        rbBody?.data?.list ?? rbBody?.data ?? rbBody?.list ?? [];
-      const stillThere = rbList.find((d) => d.id === docId);
-      expect(stillThere).toBeUndefined();
-    }
-  });
 });
