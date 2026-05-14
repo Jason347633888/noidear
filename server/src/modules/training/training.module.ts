@@ -4,6 +4,7 @@ import { UnifiedApprovalModule } from '../unified-approval/unified-approval.modu
 import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
 import { TrainingController } from './training.controller';
 import { TrainingService } from './training.service';
+import { TrainingStatisticsExportService } from './training-statistics-export.service';
 import { QuestionController } from './question.controller';
 import { QuestionService } from './question.service';
 import { ExamController } from './exam.controller';
@@ -18,7 +19,7 @@ import { StorageService } from '../../common/services/storage.service';
 @Module({
   imports: [PrismaModule, UnifiedApprovalModule],
   controllers: [TrainingController, QuestionController, ExamController, RecordController, ArchiveController],
-  providers: [TrainingService, QuestionService, ExamService, RecordService, ArchiveService, TrainingScheduleService, StorageService],
+  providers: [TrainingService, TrainingStatisticsExportService, QuestionService, ExamService, RecordService, ArchiveService, TrainingScheduleService, StorageService],
   exports: [TrainingService, QuestionService, ExamService, RecordService, ArchiveService],
 })
 export class TrainingModule implements OnModuleInit {
