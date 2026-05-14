@@ -61,6 +61,36 @@ test('flags unknown code path after renewal', () => {
   }, new Date('2026-05-14T00:00:00Z')), /unknown/);
 });
 
+test('treats audit item as unregistered when advisoryId matches but workspace differs', () => {
+  // Register has the advisory for "server" workspace only.
+  // Audit reports the same advisoryId appearing in "client" workspace.
+  // Expected: the client occurrence is NOT covered by the server registration.
+  const joined = joinAuditWithRegister(
+    [{ advisoryId: 'GHSA-abcd-efgh-ijkl', severity: 'moderate', packageName: 'some-pkg', workspace: 'client' }],
+    {
+      entries: [{
+        advisoryId: 'GHSA-abcd-efgh-ijkl',
+        severity: 'moderate',
+        occurrences: [{
+          workspace: 'server',
+          packageName: 'some-pkg',
+          packageChain: ['some-pkg'],
+          reachedProjectCodePath: 'no',
+        }],
+        currentBlocker: 'none',
+        decision: 'wait_upstream',
+        discoveredAt: '2026-05-14',
+        nextReviewAt: '2026-05-21',
+        renewalCount: 0,
+        owner: '@owner',
+        notes: 'registered only for server workspace',
+      }],
+    },
+    new Date('2026-05-14T00:00:00Z'),
+  );
+  assert.equal(joined[0].status, 'unregistered');
+});
+
 test('joins audit items against register states', () => {
   const joined = joinAuditWithRegister(
     [{ advisoryId: 'GHSA-abcd-efgh-ijkl', severity: 'moderate', packageName: 'vite', workspace: 'client' }],

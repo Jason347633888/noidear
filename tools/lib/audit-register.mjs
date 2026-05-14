@@ -79,6 +79,12 @@ export function joinAuditWithRegister(auditItems, register, now = new Date()) {
     if (!entry) return { ...item, status: 'unregistered' };
     if (['high', 'critical'].includes(item.severity)) return { ...item, status: 'highCriticalNotRegisterable' };
     if (new Date(`${entry.nextReviewAt}T23:59:59Z`) < now) return { ...item, status: 'expired' };
+    // Require the specific (advisoryId, workspace, packageName) triple to appear in register occurrences.
+    // A new workspace/packageName occurrence is treated as unregistered even if the advisoryId exists.
+    const occurrenceMatch = (entry.occurrences || []).some(
+      (occ) => occ.workspace === item.workspace && occ.packageName === item.packageName,
+    );
+    if (!occurrenceMatch) return { ...item, status: 'unregistered' };
     return { ...item, status: 'registered' };
   });
   for (const entry of register.entries || []) {
