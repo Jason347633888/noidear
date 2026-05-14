@@ -1,7 +1,9 @@
 import * as ExcelJS from 'exceljs';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const JSZip = require('jszip');
+import { ForbiddenException } from '@nestjs/common';
 import { RecordExportService } from './record-export.service';
+import { AuditService } from '../audit/audit.service';
 
 const record = (overrides: any = {}) => ({
   id: overrides.id ?? 'rec-1',
@@ -22,12 +24,20 @@ const record = (overrides: any = {}) => ({
   ...overrides,
 });
 
-const serviceWithRecords = (records: any[], count = records.length) => new RecordExportService({
-  record: {
-    count: jest.fn().mockResolvedValue(count),
-    findMany: jest.fn().mockResolvedValue(records),
-  },
-} as any);
+const mockAuditService = () => ({
+  createSensitiveLog: jest.fn().mockResolvedValue({}),
+} as unknown as AuditService);
+
+const serviceWithRecords = (records: any[], count = records.length, auditService?: AuditService) =>
+  new RecordExportService(
+    {
+      record: {
+        count: jest.fn().mockResolvedValue(count),
+        findMany: jest.fn().mockResolvedValue(records),
+      },
+    } as any,
+    auditService ?? mockAuditService(),
+  );
 
 describe('RecordExportService', () => {
   it('exports one template as xlsx with dynamic field columns', async () => {
@@ -144,6 +154,33 @@ describe('RecordExportService', () => {
         where: expect.objectContaining({ createdBy: 'user-1' }),
       });
     });
+
+    it('user passes another user submitterId → ForbiddenException', async () => {
+      const service = serviceWithRecords([record()]);
+      await expect(
+        service.exportRecords({ submitterId: 'other-user-id' }, { id: 'user-1', roleCode: 'user' }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('user passes their own submitterId → exports normally', async () => {
+      const service = serviceWithRecords([record()]);
+      await expect(
+        service.exportRecords({ submitterId: 'user-1' }, { id: 'user-1', roleCode: 'user' }),
+      ).resolves.toBeDefined();
+      expect((service as any).prisma.record.count).toHaveBeenCalledWith({
+        where: expect.objectContaining({ createdBy: 'user-1' }),
+      });
+    });
+
+    it('admin passes another user submitterId → exports normally (no ForbiddenException)', async () => {
+      const service = serviceWithRecords([record()]);
+      await expect(
+        service.exportRecords({ submitterId: 'other-user-id' }, { id: 'admin-1', roleCode: 'admin' }),
+      ).resolves.toBeDefined();
+      expect((service as any).prisma.record.count).toHaveBeenCalledWith({
+        where: expect.objectContaining({ createdBy: 'other-user-id' }),
+      });
+    });
   });
 
   it('uses unique entry names when two templates share the same display name', async () => {
@@ -183,5 +220,68 @@ describe('RecordExportService', () => {
     await wb2.xlsx.load(result2.buffer as any);
     const row2Values = (wb2.getWorksheet('记录填写结果')!.getRow(2).values as unknown[]).join(' ');
     expect(row2Values).toContain('lisi');
+  });
+
+  describe('audit log written in service layer', () => {
+    const user = { id: 'admin-1', username: 'admin', roleCode: 'admin' };
+
+    it('single template: audit resourceId = templateId, resourceName = template name, exportedCount correct', async () => {
+      const audit = mockAuditService();
+      const service = serviceWithRecords([record()], 1, audit);
+      await service.exportRecords({ templateId: 'tpl-clean' }, user);
+      expect(audit.createSensitiveLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'export_data',
+          resourceType: 'record',
+          resourceId: 'tpl-clean',
+          resourceName: '清洁记录',
+          userId: 'admin-1',
+          details: expect.objectContaining({ exportedCount: 1 }),
+        }),
+      );
+    });
+
+    it('cross-template: audit resourceId = "cross-template", resourceName = "多模板记录导出"', async () => {
+      const audit = mockAuditService();
+      const records = [
+        record({ templateId: 'tpl-clean', templateName: '清洁记录' }),
+        record({
+          id: 'rec-2',
+          number: 'R-002',
+          templateId: 'tpl-glass',
+          templateName: '玻璃硬塑检查',
+          dataJson: { result: '合格' },
+          template: {
+            id: 'tpl-glass',
+            name: '玻璃硬塑检查',
+            fieldsJson: { fields: [{ name: 'result', label: '结果', type: 'text' }] },
+          },
+        }),
+      ];
+      const service = serviceWithRecords(records, 2, audit);
+      await service.exportRecords({}, user);
+      expect(audit.createSensitiveLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'export_data',
+          resourceType: 'record',
+          resourceId: 'cross-template',
+          resourceName: '多模板记录导出',
+          userId: 'admin-1',
+          details: expect.objectContaining({ exportedCount: 2 }),
+        }),
+      );
+    });
+
+    it('exportedCount matches actual records returned', async () => {
+      const audit = mockAuditService();
+      const records = [record(), record({ id: 'rec-2', number: 'R-002' }), record({ id: 'rec-3', number: 'R-003' })];
+      const service = serviceWithRecords(records, 3, audit);
+      await service.exportRecords({ templateId: 'tpl-clean' }, user);
+      expect(audit.createSensitiveLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          details: expect.objectContaining({ exportedCount: 3 }),
+        }),
+      );
+    });
   });
 });

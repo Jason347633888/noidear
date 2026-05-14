@@ -64,7 +64,7 @@ export class RecordController {
   @Post('export')
   @Roles('admin', 'leader', 'user')
   @SensitiveLog('export_data', 'record', {
-    bodyFields: ['templateId', 'status', 'startDate', 'endDate'],
+    bodyFields: ['templateId', 'status', 'startDate', 'endDate', 'recordIds'],
     resourceIdField: 'templateId',
   })
   @UseInterceptors(SensitiveLogInterceptor)

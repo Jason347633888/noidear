@@ -1,8 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const JSZip = require('jszip');
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { ExportRecordsDto } from './dto/export-records.dto';
 
 interface TemplateField {
@@ -31,7 +32,12 @@ const MAX_RECORD_EXPORT_ROWS = 10000;
 
 @Injectable()
 export class RecordExportService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(RecordExportService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   async exportRecords(dto: ExportRecordsDto, user?: any): Promise<ExportResult> {
     const where = this.buildWhere(dto, user);
@@ -61,29 +67,77 @@ export class RecordExportService {
       groups.set(key, [...(groups.get(key) ?? []), record]);
     }
 
+    let result: ExportResult;
+
     if (groups.size === 1) {
       const [templateRecords] = groups.values();
       const workbookBuffer = await this.buildWorkbook(templateRecords, dto.fields);
       const templateName = this.safeFileName(templateRecords[0].template?.name ?? '记录');
-      return {
+      result = {
         buffer: workbookBuffer,
         filename: `${templateName}-记录导出.xlsx`,
         contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       };
+
+      // 写入审计日志：单模板导出
+      await this.writeAuditLog(dto, user, records, {
+        resourceId: dto.templateId ?? templateRecords[0].templateId,
+        resourceName: templateRecords[0].template?.name ?? '未知模板',
+      });
+    } else {
+      const zip = new JSZip();
+      for (const [templateId, templateRecords] of groups.entries()) {
+        const templateName = this.safeFileName(templateRecords[0].template?.name ?? templateId);
+        const safeId = this.safeFileName(templateId);
+        zip.file(`${templateName}-${safeId}.xlsx`, await this.buildWorkbook(templateRecords, dto.fields));
+      }
+
+      result = {
+        buffer: Buffer.from(await zip.generateAsync({ type: 'nodebuffer' })),
+        filename: `记录导出-${new Date().toISOString().slice(0, 10)}.zip`,
+        contentType: 'application/zip',
+      };
+
+      // 写入审计日志：跨模板导出
+      await this.writeAuditLog(dto, user, records, {
+        resourceId: 'cross-template',
+        resourceName: '多模板记录导出',
+      });
     }
 
-    const zip = new JSZip();
-    for (const [templateId, templateRecords] of groups.entries()) {
-      const templateName = this.safeFileName(templateRecords[0].template?.name ?? templateId);
-      const safeId = this.safeFileName(templateId);
-      zip.file(`${templateName}-${safeId}.xlsx`, await this.buildWorkbook(templateRecords, dto.fields));
-    }
+    return result;
+  }
 
-    return {
-      buffer: Buffer.from(await zip.generateAsync({ type: 'nodebuffer' })),
-      filename: `记录导出-${new Date().toISOString().slice(0, 10)}.zip`,
-      contentType: 'application/zip',
-    };
+  private async writeAuditLog(
+    dto: ExportRecordsDto,
+    user: any,
+    records: any[],
+    meta: { resourceId: string; resourceName: string },
+  ): Promise<void> {
+    if (!user) return;
+    try {
+      await this.auditService.createSensitiveLog({
+        userId: user.id,
+        username: user.username ?? user.name ?? user.id,
+        action: 'export_data',
+        resourceType: 'record',
+        resourceId: meta.resourceId,
+        resourceName: meta.resourceName,
+        details: {
+          templateId: dto.templateId,
+          status: dto.status,
+          startDate: dto.startDate,
+          endDate: dto.endDate,
+          recordIds: dto.recordIds?.length ?? 0,
+          exportedCount: records.length,
+        } as any,
+        ipAddress: 'service-layer',
+        userAgent: 'service-layer',
+      });
+    } catch (err) {
+      // 审计日志失败不应阻断业务
+      this.logger.error('Failed to write export audit log', err);
+    }
   }
 
   private buildWhere(dto: ExportRecordsDto, user?: any) {
@@ -91,6 +145,11 @@ export class RecordExportService {
 
     // 角色范围过滤：普通用户只能导出自己创建的记录
     if (user && user.roleCode === 'user') {
+      // 如果 submitterId 存在且不等于当前用户，拒绝越权导出
+      if (dto.submitterId && dto.submitterId !== user.id) {
+        throw new ForbiddenException('无权导出他人记录');
+      }
+      // 强制限定为当前用户，不允许 dto.submitterId 覆盖
       where.createdBy = user.id;
     }
     if (dto.recordIds?.length) where.id = { in: dto.recordIds };
@@ -103,7 +162,10 @@ export class RecordExportService {
     if (dto.keyword) where.number = { contains: dto.keyword };
     if (dto.usageType) where.usageType = dto.usageType;
     if (dto.changeEventId) where.changeEventId = dto.changeEventId;
-    if (dto.submitterId) where.createdBy = dto.submitterId;
+    // admin/leader 路径：允许 submitterId 过滤他人记录
+    if (dto.submitterId && !(user && user.roleCode === 'user')) {
+      where.createdBy = dto.submitterId;
+    }
     if (dto.startDate || dto.endDate) {
       where.createdAt = {};
       if (dto.startDate) where.createdAt.gte = new Date(dto.startDate);
