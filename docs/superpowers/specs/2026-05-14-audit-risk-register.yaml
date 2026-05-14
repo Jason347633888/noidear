@@ -9,11 +9,13 @@ entries: []
 # entries:
 #   - advisoryId: "GHSA-xxxx-xxxx-xxxx"
 #     severity: "moderate" # allowed: low, moderate
-#     workspace: "client" # allowed: root, client, server, mobile, packages/types, tools/noidear-mcp
-#     packageChain:
-#       - "vite"
-#       - "esbuild"
-#     reachedProjectCodePath: "no" # allowed: yes, no, unknown
+#     occurrences:
+#       - workspace: "client" # allowed: root, client, server, mobile, packages/types, tools/noidear-mcp
+#         packageName: "vite"
+#         packageChain:
+#           - "vite"
+#           - "esbuild"
+#         reachedProjectCodePath: "no" # allowed: yes, no, unknown
 #     currentBlocker: "Upstream stable fix is not released; patched version is prerelease only."
 #     decision: "wait_upstream" # allowed: override, wait_upstream, replace_dependency, remove_capability
 #     discoveredAt: "2026-05-14"

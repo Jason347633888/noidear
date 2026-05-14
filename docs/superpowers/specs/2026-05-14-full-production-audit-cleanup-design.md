@@ -25,22 +25,26 @@ npm audit
 执行口径分层，避免工具链生态短期无稳定修复时让 agent 无限回旋：
 
 - high / critical 必须清零，不允许豁免。
-- low / moderate 也必须优先清零；只有在 npm advisory 当前没有稳定修复版本，且 7 日内无可采用的 stable release 时，才能登记到 `docs/superpowers/specs/2026-05-14-audit-risk-register.yaml`，列明 advisory id、影响 workspace、依赖链、是否触达本项目代码路径、处置决策、下次复核日期和 owner。
+- low / moderate 也必须优先清零；只有在 npm advisory 当前没有稳定修复版本，且 7 日内无可采用的 stable release 时，才能登记到 `docs/superpowers/specs/2026-05-14-audit-risk-register.yaml`，列明 advisory id、所有受影响 occurrence（workspace、package、依赖链、是否触达本项目代码路径）、处置决策、下次复核日期和 owner。
 - 登记风险不是“已清零”。若风险登记非空，implementation 不能声称 full audit cleanup 完成，只能回报“阻塞于上游无稳定修复”并等待用户决策。
 - 不允许用 `--omit=dev`、`--audit-level=high` 或删除 audit 输出来伪装清零；这些参数只能用于本地快速 smoke，不是最终 gate。
 - 第一次生成或更新 risk register 的责任属于 dependency-and-image-hardening 执行 PR；任何一次 strict audit 非零退出，执行 agent 必须在同一个 PR 中更新 YAML register 或修到 0。register 为空但 strict audit 非零必须 block。
-- `docs/superpowers/specs/2026-05-14-audit-risk-register.yaml` 是唯一允许的残留登记格式，不再使用自由文本 markdown 表。每条 entry 必须包含 `advisoryId`、`severity`、`workspace`、`packageChain`、`reachedProjectCodePath`、`currentBlocker`、`decision`、`discoveredAt`、`nextReviewAt`、`renewalCount`、`owner`、`notes`。
-- `tools/check-audit-register.mjs` 必须校验 YAML schema：`severity` 只允许 `low` / `moderate`；`workspace`、`reachedProjectCodePath`、`decision` 必须是白名单枚举，其中 `decision` 只允许 `override`、`wait_upstream`、`replace_dependency`、`remove_capability`；`owner` 必须是具体 GitHub handle、git author email 或 spec 明确列名责任人，不能是 `implementation-agent` 这类泛称；`nextReviewAt` 不得早于运行日；初次登记的 `nextReviewAt` 不得晚于 `discoveredAt + 7 天`。若上游仍无 stable fix，复核后可以把 `nextReviewAt` 再顺延最多 7 天，但必须更新 `notes` 里的证据并递增 `renewalCount`。同一 advisory 连续顺延超过 4 次后，必须改为 `replace_dependency` 或 `remove_capability` 决策，不允许无限续期。
+- `docs/superpowers/specs/2026-05-14-audit-risk-register.yaml` 是唯一允许的残留登记格式，不再使用自由文本 markdown 表。每条 entry 必须包含 `advisoryId`、`severity`、`occurrences`、`currentBlocker`、`decision`、`discoveredAt`、`nextReviewAt`、`renewalCount`、`owner`、`notes`。`occurrences` 是数组，每个元素包含 `workspace`、`packageName`、`packageChain`、`reachedProjectCodePath`，用于表达同一 advisory 命中多个 workspace / package 的情况；不得用多条相同 `advisoryId` entry 表达多 workspace 命中。
+- `tools/check-audit-register.mjs` 必须校验 YAML schema：`severity` 只允许 `low` / `moderate`；`occurrences[].workspace`、`occurrences[].reachedProjectCodePath`、`decision` 必须是白名单枚举，其中 `decision` 只允许 `override`、`wait_upstream`、`replace_dependency`、`remove_capability`；`owner` 必须是具体 GitHub handle、git author email 或 spec 明确列名责任人，不能是 `implementation-agent` 这类泛称；`nextReviewAt` 不得早于运行日；初次登记的 `nextReviewAt` 不得晚于 `discoveredAt + 7 天`。若上游仍无 stable fix，复核后可以把 `nextReviewAt` 再顺延最多 7 天，但必须更新 `notes` 里的证据并递增 `renewalCount`。同一 advisory 连续顺延超过 4 次后，必须改为 `replace_dependency` 或 `remove_capability` 决策，不允许无限续期；`renewalCount` 是上限不是配额，任何复核日发现上游已发 stable fix 都必须立即修复并清理条目，不允许故意走满 4 次。
 - `tools/check-npm-audit-strict.mjs` 必须运行未省略 devDependency 的 `npm audit --json`，并把 advisory id 与 YAML register 对齐：新增 advisory 未登记则失败；登记条目过期则失败；severity 为 high / critical 的条目直接失败；register 里出现 high / critical 也直接失败。若 high / critical 当前确无上游修复，agent 必须停下回报，由用户在换依赖、删能力、或签字接受短期风险之间决策；该短期风险只能写在 PR 描述 / 用户决策记录里，不能写入 risk register，也不能让 strict gate 通过。
 
 Audit checker 数据契约固定如下，implementation plan 不得另行发明：
 
-- Advisory 主键取法：从 `npm audit --json` 的 `vulnerabilities[packageName].via[]` 中只把 object via 作为 advisory 记录；string via 只用于辅助构造依赖链，不生成新 advisory。object via 的 `url` 中若能提取 `GHSA-xxxx-xxxx-xxxx`，`advisoryId` 使用该 GHSA；否则 fallback 为 `npm:${source}:${name}`；若 `source` 缺失，fallback 为 `npm:${name}`。同一个 `advisoryId` 在多个 package 命中时合并为一条 policy item，并保留所有 package / workspace 命中明细。
+- Advisory 主键取法：从 `npm audit --json` 的 `vulnerabilities[packageName].via[]` 中只把 object via 作为 advisory 记录；string via 只用于辅助构造依赖链，不生成新 advisory。object via 的 `url` 中若能提取 `GHSA-xxxx-xxxx-xxxx`，`advisoryId` 使用该 GHSA；否则 fallback 为 `npm:${source}:${name}`；若 `source` 缺失，fallback 为 `npm:${name}`。同一个 `advisoryId` 在多个 package / workspace 命中时合并为一条 policy item，并写入 register 的 `occurrences[]`。
 - `npm audit` 与 register 联表状态：
   - strict 有、register 无：退出 1，状态 `unregistered`。
   - strict 有、register 有、未过期：low / moderate 允许通过；high / critical 仍退出 1，状态 `highCriticalNotRegisterable`。
   - strict 有、register 有、已过期：退出 1，状态 `expired`。
   - strict 无、register 有：退出 0，但 stderr JSON 中输出状态 `staleRegistered`，提示“已修复，请清理 register”。
+- `decision: override` 只在 npm `overrides` 已经应用、但 strict audit 仍命中该 advisory 时登记；如果 override 真正把 transitive 版本升到 fixed、strict 不再命中该 advisory，register 条目必须立即删除，不允许长期保留 `decision: override`。
+- `reachedProjectCodePath: unknown` 只允许作为一次性待调查状态；entry 的 `notes` 必须写明“需 code-path 调查 + 下次复核完成”，并点名对应 workspace/package。同一 `advisoryId` 连续两次复核后仍有 occurrence 为 `unknown` 时，`check-audit-register.mjs` 必须视为 schema 非法并失败。决策矩阵口径：任一 occurrence 为 `yes` 时，应优先 `replace_dependency` 或 `remove_capability`；全部为 `no` 且仅 dev-only / 构建期未触发时，才允许 `wait_upstream`。
+- `renewalCount` 的真实性采用简单约束：脚本只校验数字、非负、且 `<= 4`；是否正确递增由 review 通过 `git diff` / `git log` 兜底。implementation plan 不需要让脚本回溯 git 历史。
+- `check-audit-register.mjs` 与 `check-npm-audit-strict.mjs` 必须共享 `tools/lib/audit-register.mjs` 中的 YAML 解析、schema 校验、advisory id 提取和联表逻辑；禁止复制两套 schema 校验实现。
 - `check-npm-audit-strict.mjs` 必须自己加载 YAML register 并完成联表，不通过 `npm run security:audit:register` 或 child process 间接调用 register checker；`security:audit:register` 只是给人工和 CI 单独验证 YAML schema 用。
 - 退出码固定：0 表示通过；1 表示 audit policy 违规；2 表示 YAML schema 非法或 audit JSON 无法解析；3 表示 register 文件不存在或不可读。失败或 warning 时 stderr 最后一行必须是可解析单行 JSON，例如 `{"code":1,"items":[{"advisoryId":"GHSA-xxxx-xxxx-xxxx","status":"unregistered","severity":"moderate","package":"vite","workspace":"client"}]}`，供 CI 和 review 读取。
 
@@ -330,7 +334,7 @@ Docker 镜像扫描与 `npm audit` 是两套不同 gate：
 本轮纳入 Docker，但口径分层：
 
 1. **自建镜像**：`server`、`client` 构建镜像必须 high / critical 清零。
-2. **保留的第三方镜像**：`postgres`、`redis`、`minio` 不得使用 `latest`；必须固定明确 tag 或 digest，并用扫描结果证明当前风险。
+2. **保留的第三方镜像**：`postgres`、`redis`、`minio` 不得使用 `latest` 或 rolling tag；必须固定到 immutable digest，并用扫描结果证明当前风险。
 3. **不可修复项**：若第三方官方镜像在固定版本下仍有不可修复 high / critical，implementation 必须停下回报，选择升级 tag、换镜像或调整 gate；不得静默豁免。
 
 继续瘦身决策：
@@ -338,13 +342,13 @@ Docker 镜像扫描与 `npm audit` 是两套不同 gate：
 - 删除 `docker-compose.yml` 中 Prometheus、Grafana、Alertmanager、Loki、Promtail 服务。
 - 删除对应 volumes、networks 依赖和 `monitoring/` 配置目录。
 - 更新 README、`docs/AGENT_GUIDE.md` 等文档，不再把 monitoring 列为当前项目结构、运行服务或启动命令。
-- 保留 PostgreSQL、Redis、MinIO 作为当前后端运行基础服务；它们也必须固定 tag / digest 并参与 Docker 扫描。
+- 保留 PostgreSQL、Redis、MinIO 作为当前后端运行基础服务；它们也必须固定到 immutable digest 并参与 Docker 扫描。
 
 实施要求：
 
 - 删除 `client/Dockerfile`、`server/Dockerfile` 中对 `mobile/package.json` 的复制。
-- 固定 `docker-compose.yml` 中所有 `latest` 镜像标签。
-- 保留服务的推荐起点：继续使用当前已固定的 `postgres:15-alpine`、`redis:7-alpine`；MinIO 从 `latest` 改为明确 `RELEASE.*` tag。implementation 必须选择 Docker Hub 最近 60 天内的稳定 MinIO `RELEASE.*` tag，并用 Trivy 证明 high / critical 通过；如果最近 60 天内没有稳定 tag 通过扫描，必须停下回报并选择更换 tag 策略或镜像来源，不得回退到 `latest`，也不得使用早期 magic tag 长期冻结。
+- `docker-compose.yml` 中所有保留第三方镜像必须使用 immutable digest 引用，例如 `postgres@sha256:<digest>`、`redis@sha256:<digest>`、`minio/minio@sha256:<digest>`；`postgres:15-alpine`、`redis:7-alpine` 这类 floating alpine tag 只能作为候选发现入口，不能作为最终 compose 引用。
+- 第三方镜像候选选择方法统一适用于 PostgreSQL、Redis、MinIO：从官方镜像最近 60 天内的稳定 tag 选候选，用 Trivy 扫描 high / critical 通过后，解析出对应 manifest digest，并把 digest ref 写回 `docker-compose.yml` 和扫描脚本。若最近 60 天内没有稳定 tag 通过扫描，必须停下回报并选择更换 tag 策略、换镜像来源或调整部署基线，不得回退到 `latest` 或 rolling tag。
 - 删除 compose 中观测栈后，`docker compose up -d postgres redis minio server client` 应仍能启动主系统。
 - Docker 扫描工具固定为 Trivy，不在 implementation plan 中再二选一。
 - 新增脚本，例如：
@@ -363,9 +367,9 @@ docker image tag "$(docker compose images -q server)" noidear-server:audit-local
 docker image tag "$(docker compose images -q client)" noidear-client:audit-local
 trivy image --severity HIGH,CRITICAL --exit-code 1 noidear-server:audit-local
 trivy image --severity HIGH,CRITICAL --exit-code 1 noidear-client:audit-local
-trivy image --severity HIGH,CRITICAL --exit-code 1 postgres:15-alpine
-trivy image --severity HIGH,CRITICAL --exit-code 1 redis:7-alpine
-trivy image --severity HIGH,CRITICAL --exit-code 1 "minio/minio:${MINIO_IMAGE_TAG}"
+trivy image --severity HIGH,CRITICAL --exit-code 1 "${POSTGRES_IMAGE_REF}"
+trivy image --severity HIGH,CRITICAL --exit-code 1 "${REDIS_IMAGE_REF}"
+trivy image --severity HIGH,CRITICAL --exit-code 1 "${MINIO_IMAGE_REF}"
 ```
 
 自建镜像在本地扫描时可以使用 `noidear-server:audit-local` / `noidear-client:audit-local` 这种短 tag；禁止 `latest` 的规则针对 compose 中保留的第三方镜像引用，以及交付文档中的部署镜像引用。若脚本实际使用 compose 默认生成的本地 tag，必须在脚本里显式解释该 tag 只用于本地扫描。
@@ -375,8 +379,8 @@ trivy image --severity HIGH,CRITICAL --exit-code 1 "minio/minio:${MINIO_IMAGE_TA
 - 默认自己执行 `docker compose build server client`；允许通过 `SKIP_DOCKER_BUILD=1` 跳过构建，但 CI 不得使用该跳过模式。
 - 若本地没有 `trivy`，退出码为 2，并输出安装提示；不得静默跳过 Docker gate。
 - 扫描所有目标后汇总失败项再退出 1；不要 fail-fast，否则 review 看不到完整镜像风险。
-- 第三方镜像清单必须从 `docker-compose.yml` 的固定 tag 同步；若 compose tag 变更，脚本也必须同 PR 更新。
-- 脚本中 `MINIO_IMAGE_TAG` 必须是 implementation 已选定并写回 `docker-compose.yml` 的实际固定 tag；不得保留空值、`latest` 或 `<placeholder>`。
+- 第三方镜像清单必须从 `docker-compose.yml` 的 digest ref 同步；若 compose digest 变更，脚本也必须同 PR 更新。
+- 脚本中 `POSTGRES_IMAGE_REF`、`REDIS_IMAGE_REF`、`MINIO_IMAGE_REF` 必须是 implementation 已选定并写回 `docker-compose.yml` 的实际 immutable digest ref；不得保留空值、`latest`、rolling tag 或 `<placeholder>`。
 
 ---
 
