@@ -1,0 +1,22 @@
+# Temporary low/moderate npm audit residual-risk register.
+# This file is machine-readable and must be validated by tools/check-audit-register.mjs.
+# high and critical advisories are not allowed here.
+version: 1
+updatedAt: "2026-05-14"
+entries: []
+
+# Example entry format:
+# entries:
+#   - advisoryId: "GHSA-xxxx-xxxx-xxxx"
+#     severity: "moderate" # allowed: low, moderate
+#     workspace: "client" # allowed: root, client, server, mobile, packages/types, tools/noidear-mcp
+#     packageChain:
+#       - "vite"
+#       - "esbuild"
+#     reachedProjectCodePath: "no" # allowed: yes, no, unknown
+#     currentBlocker: "Upstream stable fix is not released; patched version is prerelease only."
+#     decision: "wait_upstream" # allowed: override, wait_upstream, replace_dependency, remove_capability, accepted_until_next_review
+#     discoveredAt: "2026-05-14"
+#     nextReviewAt: "2026-05-21"
+#     owner: "implementation-agent"
+#     notes: "Link upstream issue or release note evidence."

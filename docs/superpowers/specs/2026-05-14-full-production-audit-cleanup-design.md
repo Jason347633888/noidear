@@ -25,9 +25,13 @@ npm audit
 执行口径分层，避免工具链生态短期无稳定修复时让 agent 无限回旋：
 
 - high / critical 必须清零，不允许豁免。
-- low / moderate 也必须优先清零；只有在 npm advisory 当前没有稳定修复版本，且 7 日内无可采用的 stable release 时，才能登记到 `docs/superpowers/specs/2026-05-14-audit-risk-register.md`，列明 advisory id、影响 workspace、依赖链、是否触达本项目代码路径、处置决策、下次复核日期。
+- low / moderate 也必须优先清零；只有在 npm advisory 当前没有稳定修复版本，且 7 日内无可采用的 stable release 时，才能登记到 `docs/superpowers/specs/2026-05-14-audit-risk-register.yaml`，列明 advisory id、影响 workspace、依赖链、是否触达本项目代码路径、处置决策、下次复核日期和 owner。
 - 登记风险不是“已清零”。若风险登记非空，implementation 不能声称 full audit cleanup 完成，只能回报“阻塞于上游无稳定修复”并等待用户决策。
 - 不允许用 `--omit=dev`、`--audit-level=high` 或删除 audit 输出来伪装清零；这些参数只能用于本地快速 smoke，不是最终 gate。
+- 第一次生成或更新 risk register 的责任属于 dependency-and-image-hardening 执行 PR；任何一次 strict audit 非零退出，执行 agent 必须在同一个 PR 中更新 YAML register 或修到 0。register 为空但 strict audit 非零必须 block。
+- `docs/superpowers/specs/2026-05-14-audit-risk-register.yaml` 是唯一允许的残留登记格式，不再使用自由文本 markdown 表。每条 entry 必须包含 `advisoryId`、`severity`、`workspace`、`packageChain`、`reachedProjectCodePath`、`currentBlocker`、`decision`、`discoveredAt`、`nextReviewAt`、`owner`、`notes`。
+- `tools/check-audit-register.mjs` 必须校验 YAML schema：`severity` 只允许 `low` / `moderate`；`workspace`、`reachedProjectCodePath`、`decision` 必须是白名单枚举；`owner` 非空；`nextReviewAt` 不得早于运行日；初次登记的 `nextReviewAt` 不得晚于 `discoveredAt + 7 天`。若上游仍无 stable fix，复核后可以把 `nextReviewAt` 再顺延最多 7 天，但必须更新 `notes` 里的证据。
+- `tools/check-npm-audit-strict.mjs` 必须运行未省略 devDependency 的 `npm audit --json`，并把 advisory id 与 YAML register 对齐：新增 advisory 未登记则失败；登记条目过期则失败；severity 为 high / critical 的条目直接失败；register 里出现 high / critical 也直接失败。
 
 这些漏洞不是单一业务缺口，而是四条依赖链混在一起：
 
@@ -150,10 +154,10 @@ rg -n "@/api/mobile|api/mobile|/mobile\\b|mobileApi|MobileUpload|mobileUpload|mo
 
 代码核验结果：当前 `client` 没有调用 `/mobile` 或 `/mobile/sync`，也没有引用 `MobileUpload` / `SyncSubmission` 类型；`MobileModule` 只被 `server/src/app.module.ts` 注册。因此后端 mobile API 与当前 Web/H5 主系统无关。
 
-实施前必须重新枚举 schema 和引用全集，不能假设 mobile schema 永远只有两张表：
+实施前必须重新枚举 schema 和引用全集，不能假设 mobile schema 永远只有两张表。扫描必须限定 mobile workspace / mobile API / mobile-only schema 语义，不使用裸 `Mobile|Sync` 这类会命中 `Asynchronous`、同步队列或响应式 UI 的宽正则：
 
 ```bash
-rg -n "Mobile|Sync" server/src/prisma/schema.prisma server/src packages/types client/src --glob '!**/node_modules/**'
+rg -n "MobileModule|MobileUpload|SyncSubmission|mobile_uploads|sync_submissions|@Controller\\('mobile|mobile/sync|class Mobile|class Sync|interface Mobile|interface Sync|enum Mobile|enum Sync|model Mobile|model Sync" server/src/prisma/schema.prisma server/src packages/types client/src --glob '!**/node_modules/**'
 ```
 
 本次代码事实下 schema 命中为 `MobileUpload` 和 `SyncSubmission`；如果执行时出现新增 enum、relation 或字段，必须一并纳入删除计划或停下回报。
@@ -218,7 +222,7 @@ Schema 删除的执行顺序必须是：
 
 - 前端上传 `.xlsx` / `.xls` 到后端 preview endpoint。
 - 后端只解析第一个 sheet，返回 `columns`、`rows`、`totalRows`，`rows` 只返回前 10 行。
-- 文件大小上限必须在 DTO / interceptor / controller 中明确；建议沿用现有上传限制，若不存在则 implementation plan 必须定一个上限。
+- 文件大小上限固定为 10MB。该值来自当前 `ImportController.validateFile()` 与 `UploadController` 的 `10 * 1024 * 1024` 限制；preview endpoint、DTO / interceptor / controller 和测试都必须使用同一上限，不允许 implementation plan 临场改成更大的值。
 - 预览不得把 Excel 解析结果写成第二事实源。若实现使用临时文件，必须在请求结束后清理；优先使用内存 buffer 解析。
 - 确认导入仍以当前 `importApi.importUsers` / `importApi.importDocuments` 为事实入口；前端可以在预览后再次提交同一文件，不要求预览结果成为导入事实。
 
@@ -233,7 +237,7 @@ Schema 删除的执行顺序必须是：
 - `计划日期`
 - `创建时间`
 
-状态中文映射保持当前页面口径：`planned` 为 `计划中`，`ongoing` 为 `进行中`，`completed` 为 `已完成`，其它状态按 `已取消` 处理，除非 implementation 同时收敛 training status 类型。
+状态中文映射必须按 Prisma `TrainingProjectStatus` 枚举穷尽处理：`planned` 为 `计划中`，`ongoing` 为 `进行中`，`completed` 为 `已完成`，`cancelled` 为 `已取消`。当前前端 `StatisticsPage.vue` 的 fallback 能把未知状态显示成 `已取消`，但后端替换时不得保留这种隐式 fallback；如果出现非枚举状态，应作为数据合同错误处理，不能静默计入已取消。
 
 验收要求：
 
@@ -329,6 +333,7 @@ Docker 镜像扫描与 `npm audit` 是两套不同 gate：
 
 - 删除 `client/Dockerfile`、`server/Dockerfile` 中对 `mobile/package.json` 的复制。
 - 固定 `docker-compose.yml` 中所有 `latest` 镜像标签。
+- 保留服务的推荐起点：继续使用当前已固定的 `postgres:15-alpine`、`redis:7-alpine`；MinIO 从 `latest` 改为明确 `RELEASE.*` tag，候选起点为 Docker Hub 当前可见稳定 tag `minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1`。implementation 必须先用 Trivy 扫描该候选；如果 high / critical 不通过，改用扫描通过的固定 tag 或停下回报，不得回退到 `latest`。
 - 删除 compose 中观测栈后，`docker compose up -d postgres redis minio server client` 应仍能启动主系统。
 - Docker 扫描工具固定为 Trivy，不在 implementation plan 中再二选一。
 - 新增脚本，例如：
@@ -343,14 +348,23 @@ Docker 镜像扫描与 `npm audit` 是两套不同 gate：
 
 ```bash
 docker compose build server client
+docker image tag "$(docker compose images -q server)" noidear-server:audit-local
+docker image tag "$(docker compose images -q client)" noidear-client:audit-local
 trivy image --severity HIGH,CRITICAL --exit-code 1 noidear-server:audit-local
 trivy image --severity HIGH,CRITICAL --exit-code 1 noidear-client:audit-local
-trivy image --severity HIGH,CRITICAL --exit-code 1 <pinned-third-party-image>
+trivy image --severity HIGH,CRITICAL --exit-code 1 postgres:15-alpine
+trivy image --severity HIGH,CRITICAL --exit-code 1 redis:7-alpine
+trivy image --severity HIGH,CRITICAL --exit-code 1 minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1
 ```
 
 自建镜像在本地扫描时可以使用 `noidear-server:audit-local` / `noidear-client:audit-local` 这种短 tag；禁止 `latest` 的规则针对 compose 中保留的第三方镜像引用，以及交付文档中的部署镜像引用。若脚本实际使用 compose 默认生成的本地 tag，必须在脚本里显式解释该 tag 只用于本地扫描。
 
-如果本地没有 `trivy`，脚本必须给出清晰错误信息和安装提示，不得静默跳过 Docker gate。
+`tools/check-docker-images.sh` 的行为必须固定：
+
+- 默认自己执行 `docker compose build server client`；允许通过 `SKIP_DOCKER_BUILD=1` 跳过构建，但 CI 不得使用该跳过模式。
+- 若本地没有 `trivy`，退出码为 2，并输出安装提示；不得静默跳过 Docker gate。
+- 扫描所有目标后汇总失败项再退出 1；不要 fail-fast，否则 review 看不到完整镜像风险。
+- 第三方镜像清单必须从 `docker-compose.yml` 的固定 tag 同步；若 compose tag 变更，脚本也必须同 PR 更新。
 
 ---
 
@@ -497,7 +511,7 @@ docker exec noidear-minio-1 ...
 - 保留追溯导出和追溯快照，归属 `traceability` / `batch-trace` 模块。
 - 保留记录 PDF、批次追溯 PDF、文控附件、培训统计导出等业务页面内真实使用的导出能力。
 - 若偏差、任务、记录任务后续确有可见页面导出需求，应在对应模块重新建立业务内 endpoint；本轮不保留无页面入口的通用导出。
-- 当前 `/admin/export` 的唯一真实动作是用户导出。用户导出本轮不作为独立能力保留；如果以后需要，应在用户管理页面内新增“导出用户”按钮和 `user` 模块 endpoint，而不是恢复通用导出中心。
+- 当前 `/admin/export` 的唯一真实动作是用户导出。用户已选择 B：本轮随通用批量导出中心一起彻底删除用户导出，不迁到 `/admin/users`，也不新增 `user` 模块导出 endpoint。未来若需要用户导出，再按用户管理业务需求重建。
 
 实施前必须先跑引用扫描，避免误删业务内导出：
 
@@ -517,17 +531,21 @@ rg -n "ExportModule|ExportService|@Controller\\('export" server/src --glob '!**/
 ```json
 {
   "security:audit:prod": "npm audit --omit=dev",
-  "security:audit:strict": "npm audit",
-  "security:audit": "npm run security:audit:strict",
-  "security:docker": "bash tools/check-docker-images.sh"
+  "security:audit:raw": "npm audit",
+  "security:audit:register": "node tools/check-audit-register.mjs docs/superpowers/specs/2026-05-14-audit-risk-register.yaml",
+  "security:audit:strict": "node tools/check-npm-audit-strict.mjs",
+  "security:docker": "bash tools/check-docker-images.sh",
+  "verify:full:ci": "npm run verify:full && npm run security:audit:strict && npm test -w server -- --runInBand && npm run test -w client && python3 tools/generate-system-map.py"
 }
 ```
 
 本地和 CI gate 分层：
 
 - `verify:full` 可以串入 `security:audit:prod`，用于本地开发快速发现生产依赖风险。
-- 新增 `verify:full:ci` 或等价 CI/release gate，必须串入 `security:audit:strict`。
-- `security:audit:strict` 不能使用 `--omit=dev` 或 `--audit-level`；若出现上游无稳定修复的 low / moderate，必须更新 audit risk register 并停止回报。
+- 不提供无后缀 `security:audit` alias；调用方必须显式选择 `security:audit:prod`、`security:audit:raw` 或 `security:audit:strict`，避免本地和 CI 语义混淆。
+- 新增 `verify:full:ci`，定义如上；CI/release gate 必须使用该脚本或更严格的等价命令。
+- `security:audit:strict` 不能使用 `--omit=dev` 或 `--audit-level`；若出现上游无稳定修复的 low / moderate，必须更新 audit risk register，并在 PR / 回报中明确说明 full cleanup 仍被上游 stable fix 阻塞。
+- `security:audit:strict` 必须内部调用 `security:audit:register` 语义：YAML 过期、schema 非法、登记 high / critical、strict audit 中出现未登记 low / moderate 都必须失败。
 - Docker 镜像扫描作为单独 gate 运行，避免所有本地开发验证都强制构建镜像；最终验收必须显式运行。
 
 最终验收必须显式运行：
@@ -546,12 +564,14 @@ python3 tools/generate-system-map.py
 
 ## Implementation Plan 边界
 
-这份文件是总设计，不要求一个 implementation plan 或一个 PR 一次落完。后续必须拆成两个独立执行轨道；若创建子 spec 或 plan，建议使用下列命名：
+这份文件是总设计，不要求一个 implementation plan 或一个 PR 一次落完。本 spec 的两条执行轨道应在 `post-api-cleanup-hardening` 合并到 `master` 后启动；若不得不并行，system map 验证必须以后者合入后的 `master` 为基线，避免两条线同时改残留计数和删除范围。
+
+后续必须拆成两个独立执行轨道；若创建子 spec 或 plan，建议使用下列命名：
 
 1. `2026-05-14-app-feature-strip-design.md` / 对应 implementation plan：`mobile`、Backup、Health、RecycleBin、Export 这些结构同质的产品面和横向工具剔除。
 2. `2026-05-14-dependency-and-image-hardening-design.md` / 对应 implementation plan：`xlsx` 后端替换、依赖升级、Docker 镜像安全基线、安全 gate。
 
-若不另建两个 spec 文件，implementation plan 也必须按上述两个轨道拆成两个 PR；不得把产品面剔除、Excel 行为变化、依赖 major upgrade、Docker gate 混成一个 PR。
+若不另建两个 spec 文件，implementation plan 也必须按上述两个轨道拆成两个 PR；不得把产品面剔除、Excel 行为变化、依赖 major upgrade、Docker gate 混成一个 PR。合并顺序必须是 feature-strip 先合，dependency-and-image-hardening 基于 feature-strip 合并后的 `master` 新建分支；原因是先缩小产品面后再跑 audit，剩余 advisory 才能准确归类。
 
 建议执行顺序：
 
@@ -593,7 +613,7 @@ python3 tools/generate-system-map.py
 rg -n "\"mobile\"|noidear-mobile|@dcloudio|uni-app|vite-plugin-uni" package.json package-lock.json client server packages tools README.md docs --glob '!**/node_modules/**'
 rg -n "from ['\"]xlsx|import\\s+.*XLSX|require\\(['\"]xlsx|XLSX\\." client/src client/package.json
 npm ls xlsx
-rg -n "MobileModule|mobile_uploads|sync_submissions|model MobileUpload|model SyncSubmission|@Controller\\('mobile|Mobile|Sync" server/src server/src/prisma/schema.prisma packages/types client/src --glob '!**/coverage/**' --glob '!**/dist/**'
+rg -n "MobileModule|MobileUpload|SyncSubmission|mobile_uploads|sync_submissions|@Controller\\('mobile|mobile/sync|class Mobile|class Sync|interface Mobile|interface Sync|enum Mobile|enum Sync|model Mobile|model Sync" server/src server/src/prisma/schema.prisma packages/types client/src --glob '!**/coverage/**' --glob '!**/dist/**'
 rg -n "image: .*:latest|mobile/package.json|prometheus|grafana|alertmanager|loki|promtail|@willsoto/nestjs-prometheus|prom-client" docker-compose.yml client/Dockerfile server/Dockerfile server/package.json README.md docs/AGENT_GUIDE.md monitoring server/src --glob '!**/coverage/**' --glob '!**/dist/**'
 rg -n "BackupModule|BackupHistory|backup_history|BackupManage|client/src/api/backup|/backup/manage|@Controller\\('backup|triggerMinIOBackup|triggerPostgresBackup|docker exec noidear-(postgres-1|minio-1|postgres|minio)" server/src client/src README.md docs/AGENT_GUIDE.md
 rg -n "HealthController|HealthService|/health/(postgres|redis|minio|disk|dependencies|system-info)|client/src/api/health|健康管理" server/src client/src README.md docs/AGENT_GUIDE.md
@@ -604,7 +624,7 @@ rg -n "ExportPage|ExportDialog|ExportButton|client/src/api/export|/admin/export|
 文档同义词扫描用于人工评估，不要求所有命中为 0；命中时必须判断是否是历史说明、业务语义还是应删除的当前功能描述：
 
 ```bash
-rg -n "观测栈|监控部署|Loki 日志栈|备份历史|PostgreSQL 备份|MinIO 备份|健康检查|统一恢复入口|软删除回收站|批量导出|通用导出" README.md docs CONTEXT.md --glob '!docs/superpowers/specs/2026-05-14-full-production-audit-cleanup-design.md'
+rg -n "观测栈|监控部署|Loki 日志栈|备份历史|PostgreSQL 备份|MinIO 备份|健康检查|统一恢复入口|软删除回收站|批量导出|通用导出" README.md docs CONTEXT.md --glob '!docs/superpowers/specs/**'
 ```
 
 期望：
@@ -631,7 +651,7 @@ rg -n "观测栈|监控部署|Loki 日志栈|备份历史|PostgreSQL 备份|MinI
    `mobile/` 和 `client/` 是两个工程。实施必须只删除 `mobile/`，不能删除 `client/src/views` 或 `client/src/router/index.ts` 中的当前业务页面。
 
 2. **后端 mobile schema 删除漏 migration**
-   删除 `MobileUpload` / `SyncSubmission` 或任何执行期枚举出的 mobile-only schema 必须生成 migration，不允许只改 Prisma schema。执行前必须跑 `rg -n "Mobile|Sync" server/src/prisma/schema.prisma server/src packages/types client/src` 列全集。
+   删除 `MobileUpload` / `SyncSubmission` 或任何执行期枚举出的 mobile-only schema 必须生成 migration，不允许只改 Prisma schema。执行前必须跑限定版 mobile 残留扫描列全集，不得使用裸 `Mobile|Sync` 宽正则。
 
 3. **Nest / Vite / Vitest 等 major upgrade 破坏运行时**
    优先 patch/minor/overrides；若必须 major，implementation plan 必须单独列出 controller、interceptor、Swagger、upload、ValidationPipe、client build、unit tests、E2E 可用性验证。
