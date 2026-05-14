@@ -196,11 +196,6 @@ const routes: RouteRecordRaw[] = [
         name: 'TaskStatistics',
         component: () => import('@/views/statistics/TaskStatistics.vue'),
       },
-      {
-        path: 'recycle-bin',
-        name: 'RecycleBin',
-        component: () => import('@/views/RecycleBin.vue'),
-      },
       // 用户权限管理
       {
         path: 'users/:id/permissions',

@@ -14,7 +14,6 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { OperationLogModule } from './modules/operation-log/operation-log.module';
 import { DeviationModule } from './modules/deviation/deviation.module';
 import { ExportModule } from './modules/export/export.module';
-import { RecycleBinModule } from './modules/recycle-bin/recycle-bin.module';
 import { RoleModule } from './modules/role/role.module';
 import { PermissionModule } from './modules/permission/permission.module';
 import { FineGrainedPermissionModule } from './modules/fine-grained-permission/fine-grained-permission.module';
@@ -99,7 +98,6 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     OperationLogModule,
     DeviationModule,
     ExportModule,
-    RecycleBinModule,
     RoleModule,
     PermissionModule,
     FineGrainedPermissionModule,
