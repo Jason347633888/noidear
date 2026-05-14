@@ -68,7 +68,7 @@ describe('RecordExportService', () => {
 
     const zip = await JSZip.loadAsync(result.buffer);
     expect(Object.keys(zip.files)).toEqual(
-      expect.arrayContaining(['清洁记录.xlsx', '玻璃硬塑检查.xlsx']),
+      expect.arrayContaining(['清洁记录-tpl-clean.xlsx', '玻璃硬塑检查-tpl-glass.xlsx']),
     );
   });
 
@@ -118,6 +118,55 @@ describe('RecordExportService', () => {
     expect(rowValues).toContain('已签名');
     expect(rowValues).toContain('复核 通过');
     expect(rowValues).not.toContain('data:image/png');
+  });
+
+  describe('user scoping by role', () => {
+    it('admin gets all records without createdBy filter', async () => {
+      const service = serviceWithRecords([record()]);
+      await service.exportRecords({}, { id: 'admin-1', roleCode: 'admin' });
+      expect((service as any).prisma.record.count).toHaveBeenCalledWith({
+        where: expect.not.objectContaining({ createdBy: expect.anything() }),
+      });
+    });
+
+    it('leader gets all records without createdBy filter', async () => {
+      const service = serviceWithRecords([record()]);
+      await service.exportRecords({}, { id: 'leader-1', roleCode: 'leader' });
+      expect((service as any).prisma.record.count).toHaveBeenCalledWith({
+        where: expect.not.objectContaining({ createdBy: expect.anything() }),
+      });
+    });
+
+    it('regular user only gets their own records via createdBy filter', async () => {
+      const service = serviceWithRecords([record()]);
+      await service.exportRecords({}, { id: 'user-1', roleCode: 'user' });
+      expect((service as any).prisma.record.count).toHaveBeenCalledWith({
+        where: expect.objectContaining({ createdBy: 'user-1' }),
+      });
+    });
+  });
+
+  it('uses unique entry names when two templates share the same display name', async () => {
+    const service = serviceWithRecords([
+      record({ templateId: 'tpl-a', templateName: '清洁记录' }),
+      record({
+        id: 'rec-2',
+        number: 'R-002',
+        templateId: 'tpl-b',
+        templateName: '清洁记录',
+        template: {
+          id: 'tpl-b',
+          name: '清洁记录',
+          fieldsJson: { fields: [{ name: 'temperature', label: '温度', type: 'number' }] },
+        },
+      }),
+    ]);
+    const result = await service.exportRecords({});
+    const zip = await JSZip.loadAsync(result.buffer);
+    // 两个模板同名但 templateId 不同，zip 条目应各自独立
+    expect(Object.keys(zip.files)).toHaveLength(2);
+    expect(Object.keys(zip.files)).toContain('清洁记录-tpl-a.xlsx');
+    expect(Object.keys(zip.files)).toContain('清洁记录-tpl-b.xlsx');
   });
 
   it('uses creator.name with fallback to username for 填写人 column', async () => {

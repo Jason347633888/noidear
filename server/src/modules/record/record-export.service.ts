@@ -33,8 +33,8 @@ const MAX_RECORD_EXPORT_ROWS = 10000;
 export class RecordExportService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async exportRecords(dto: ExportRecordsDto): Promise<ExportResult> {
-    const where = this.buildWhere(dto);
+  async exportRecords(dto: ExportRecordsDto, user?: any): Promise<ExportResult> {
+    const where = this.buildWhere(dto, user);
     const total = await this.prisma.record.count({ where });
 
     if (total === 0) {
@@ -73,9 +73,10 @@ export class RecordExportService {
     }
 
     const zip = new JSZip();
-    for (const templateRecords of groups.values()) {
-      const templateName = this.safeFileName(templateRecords[0].template?.name ?? templateRecords[0].templateId);
-      zip.file(`${templateName}.xlsx`, await this.buildWorkbook(templateRecords, dto.fields));
+    for (const [templateId, templateRecords] of groups.entries()) {
+      const templateName = this.safeFileName(templateRecords[0].template?.name ?? templateId);
+      const safeId = this.safeFileName(templateId);
+      zip.file(`${templateName}-${safeId}.xlsx`, await this.buildWorkbook(templateRecords, dto.fields));
     }
 
     return {
@@ -85,8 +86,13 @@ export class RecordExportService {
     };
   }
 
-  private buildWhere(dto: ExportRecordsDto) {
+  private buildWhere(dto: ExportRecordsDto, user?: any) {
     const where: any = { deletedAt: null };
+
+    // 角色范围过滤：普通用户只能导出自己创建的记录
+    if (user && user.roleCode === 'user') {
+      where.createdBy = user.id;
+    }
     if (dto.recordIds?.length) where.id = { in: dto.recordIds };
     if (dto.status && dto.status !== 'all') {
       where.status = dto.status;
