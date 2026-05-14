@@ -8,7 +8,6 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY client/package.json ./client/package.json
 COPY server/package.json ./server/package.json
-COPY mobile/package.json ./mobile/package.json
 COPY packages/types/package.json ./packages/types/package.json
 COPY tools/noidear-mcp/package.json ./tools/noidear-mcp/package.json
 RUN npm ci --workspace server --include-workspace-root=false
@@ -28,7 +27,6 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY client/package.json ./client/package.json
 COPY server/package.json ./server/package.json
-COPY mobile/package.json ./mobile/package.json
 COPY packages/types/package.json ./packages/types/package.json
 COPY tools/noidear-mcp/package.json ./tools/noidear-mcp/package.json
 COPY --from=builder /app/node_modules ./node_modules

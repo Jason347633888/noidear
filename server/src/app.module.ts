@@ -27,7 +27,6 @@ import { RecordModule } from './modules/record/record.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { SystemConfigModule } from './modules/system-config/system-config.module';
 import { EquipmentModule } from './modules/equipment/equipment.module';
-import { MobileModule } from './modules/mobile/mobile.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { BackupModule } from './modules/backup/backup.module';
 import { HealthModule } from './modules/health/health.module';
@@ -113,7 +112,6 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     WarehouseModule,
     SystemConfigModule,
     EquipmentModule,
-    MobileModule,
     AuditModule,
     BackupModule,
     HealthModule,
