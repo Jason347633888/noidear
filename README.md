@@ -19,8 +19,6 @@
 - `server/`：NestJS + Prisma 后端 API
 - `packages/types/`：前后端共享 TypeScript 类型
 - `tools/noidear-mcp/`：面向 Agent 的 MCP 工具服务
-- `mobile/`：移动端/同步相关能力
-- `monitoring/`：Prometheus、Grafana、Loki、Alertmanager 配置
 - `docs/`：Agent 协议、食品安全主数据与追溯 hard gate
 - `archive/`：历史执行资料和旧导入材料，不作为当前事实源
 
@@ -77,7 +75,6 @@
 | 前端 | Vue 3.4+、TypeScript、Vite 5、Element Plus、Pinia、Vue Router、ECharts、Vitest、Playwright |
 | 后端 | Node.js 20、NestJS 10、TypeScript、Prisma 5、Jest、Swagger |
 | 数据 | PostgreSQL 15、Redis 7、MinIO |
-| 监控 | Prometheus、Grafana、Alertmanager、Loki、Promtail |
 | 部署 | Docker、Docker Compose、Nginx |
 | 自动化 | npm workspaces、MCP server、共享类型包 |
 
@@ -100,8 +97,8 @@
 nvm use
 npm ci
 
-# 2. 启动基础服务与监控组件
-docker compose up -d postgres redis minio prometheus grafana alertmanager loki promtail
+# 2. 启动基础服务
+docker compose up -d postgres redis minio
 
 # 3. 配置后端环境变量（匹配 docker-compose.yml 的本地账号和端口）
 cat > server/.env <<'EOF'
@@ -146,9 +143,6 @@ docker compose up -d
 | Swagger UI | http://localhost:3000/api/docs |
 | Swagger JSON | http://localhost:3000/api/docs-json |
 | MinIO 控制台 | http://localhost:9001 |
-| Grafana | http://localhost:3001 |
-| Prometheus | http://localhost:9090 |
-| Alertmanager | http://localhost:9093 |
 
 默认登录账号：
 
@@ -216,8 +210,6 @@ noidear/
 │   └── test/                    # 后端 E2E 测试
 ├── packages/types/              # 共享类型定义
 ├── tools/noidear-mcp/           # MCP 工具服务
-├── monitoring/                  # Prometheus/Grafana/Loki/Alertmanager
-├── mobile/                      # 移动端相关能力
 ├── docs/                        # Agent 协议、食品安全 hard gate
 └── archive/                     # 历史执行资料和旧导入材料
 ```

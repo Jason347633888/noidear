@@ -56,7 +56,6 @@
 
 - `client`：Vue 3 + Vite + Element Plus。
 - `server`：NestJS + Prisma。
-- `mobile`：uni-app。
 - `packages/types`：共享类型。
 - `tools/noidear-mcp`：MCP 工具服务。
 
@@ -111,10 +110,6 @@ npm run verify:full
 | MinIO Console | 9001 |
 | Server | 3000 |
 | Client nginx | 80 |
-| Prometheus | 9090 |
-| Grafana | 3001 |
-| Alertmanager | 9093 |
-| Loki | 3100 |
 
 本地开发只需要基础依赖时可先启动：
 
@@ -178,10 +173,8 @@ npm run model-landing:verify -w server
 noidear/
 ├── client/              # Vue 3 + Vite + Element Plus
 ├── server/              # NestJS + Prisma
-├── mobile/              # uni-app
 ├── packages/types/      # 共享类型
 ├── tools/noidear-mcp/   # MCP 工具服务
-├── monitoring/          # Prometheus/Grafana/Loki/Alertmanager
 ├── docs/                # Agent 协议、食品安全 hard gate
 └── archive/             # 历史执行资料和旧导入材料
 ```
@@ -190,7 +183,6 @@ noidear/
 
 - `client`
 - `server`
-- `mobile`
 - `packages/types`
 - `tools/noidear-mcp`
 
