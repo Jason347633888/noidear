@@ -1,18 +1,25 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TrainingController } from './training.controller';
 import { TrainingService } from './training.service';
+import { TrainingStatisticsExportService } from './training-statistics-export.service';
 
 describe('TrainingController status endpoints', () => {
   let controller: TrainingController;
   const trainingService = {
     updateProjectStatus: jest.fn(),
   };
+  const statisticsExportService = {
+    exportProjects: jest.fn(),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TrainingController],
-      providers: [{ provide: TrainingService, useValue: trainingService }],
+      providers: [
+        { provide: TrainingService, useValue: trainingService },
+        { provide: TrainingStatisticsExportService, useValue: statisticsExportService },
+      ],
     }).compile();
 
     controller = module.get<TrainingController>(TrainingController);
