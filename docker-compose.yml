@@ -3,6 +3,7 @@ version: '3.8'
 services:
   # PostgreSQL 数据库
   postgres:
+    # security:docker 当前因第三方镜像 rolling tag 无法通过 Trivy 扫描（所有候选均有 CRITICAL CVE），待上游发布修复版本后切换为 immutable digest。
     image: postgres:15-alpine
     container_name: noidear-postgres
     restart: unless-stopped
@@ -22,6 +23,7 @@ services:
 
   # Redis 缓存
   redis:
+    # security:docker 当前因第三方镜像 rolling tag 无法通过 Trivy 扫描（所有候选均有 CRITICAL CVE），待上游发布修复版本后切换为 immutable digest。
     image: redis:7-alpine
     container_name: noidear-redis
     restart: unless-stopped
@@ -38,6 +40,7 @@ services:
 
   # MinIO 对象存储
   minio:
+    # security:docker 当前因第三方镜像 rolling tag 无法通过 Trivy 扫描（所有候选均有 CRITICAL CVE），待上游发布修复版本后切换为 immutable digest。
     image: minio/minio:latest
     container_name: noidear-minio
     restart: unless-stopped

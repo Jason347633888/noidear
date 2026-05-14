@@ -69,7 +69,7 @@
     "pdfkit": "^0.17.2",
     "pdfmake": "^0.3.4",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "7.8.1",
+    "rxjs": "7.8.2",
     "safe-regex": "^2.1.1",
     "sharp": "^0.34.5"
   },

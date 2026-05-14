@@ -9,6 +9,8 @@ import {
 } from './lib/audit-register.mjs';
 
 const registerPath = 'docs/superpowers/specs/2026-05-14-audit-risk-register.yaml';
+// npm audit 在 workspace 根目录运行，occurrence 的 workspace 字段永远是 'root'
+const AUDIT_ROOT_WORKSPACE = 'root';
 
 try {
   const register = validateRegister(loadRegister(registerPath));
@@ -41,7 +43,7 @@ try {
     auditJson = parsed;
   }
 
-  const auditItems = extractAuditItems(auditJson, 'root');
+  const auditItems = extractAuditItems(auditJson, AUDIT_ROOT_WORKSPACE);
   const joined = joinAuditWithRegister(auditItems, register);
   const failures = joined.filter((item) => ['unregistered', 'expired', 'highCriticalNotRegisterable'].includes(item.status));
   const warnings = joined.filter((item) => item.status === 'staleRegistered');
