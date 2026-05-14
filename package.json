@@ -34,7 +34,9 @@
   },
   "overrides": {
     "rxjs": "7.8.2",
-    "minimatch": "9.0.9"
+    "editorconfig": {
+      "minimatch": "9.0.9"
+    }
   },
   "devDependencies": {
     "prisma": "^5.22.0",

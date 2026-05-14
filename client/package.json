@@ -61,6 +61,8 @@
     "npm": ">=10"
   },
   "overrides": {
-    "minimatch": "9.0.9"
+    "editorconfig": {
+      "minimatch": "9.0.9"
+    }
   }
 }
