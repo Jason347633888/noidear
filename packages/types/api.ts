@@ -31,28 +31,6 @@ export interface LoginResponse {
   };
 }
 
-export interface ApprovalHistory {
-  id: string;
-  documentId: string;
-  approverId: string;
-  approverName: string;
-  status: 'approved' | 'rejected';
-  comment: string | null;
-  createdAt: string;
-}
-
-// 审批相关
-export interface PendingApproval {
-  id: string;
-  documentId: string;
-  documentNumber: string;
-  documentTitle: string;
-  documentLevel: number;
-  creatorId: string;
-  creatorName: string;
-  createdAt: string;
-}
-
 // 消息相关
 export interface Notification {
   id: string;
@@ -96,33 +74,12 @@ export interface DepartmentListResponse {
   total: number;
 }
 
-// 编号规则
-export interface NumberRule {
-  id: string;
-  level: number;
-  departmentId: string;
-  departmentName?: string;
-  sequence: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// 审批
-export interface Approval {
-  id: string;
-  documentId: string;
-  recordId: string | null;
-  approverId: string;
-  approverName?: string;
-  status: 'pending' | 'approved' | 'rejected';
-  comment: string | null;
-  createdAt: string;
-}
-
-export interface ApprovalListResponse {
-  list: Approval[];
-  total: number;
-}
+// Document approval / NumberRule contracts moved to unified approval +
+// default `NumberRuleService` (internal-only). Frontend now consumes
+// `/approval-tasks/:id` for approval data and document number generation is
+// derived from server-side rules; the legacy `NumberRule` / `Approval` /
+// `ApprovalListResponse` / `ApprovalHistory` / `PendingApproval` interfaces
+// are intentionally removed here so downstream typing cannot drift back.
 
 // 操作日志
 export interface OperationLog {

@@ -35,7 +35,6 @@ const VALID_FIELD_TYPES: FieldType[] = [
   'section-header',
   'static-content',
   'template-content',
-  'approval-step',
   'location',
   'qrcode',
   'barcode',

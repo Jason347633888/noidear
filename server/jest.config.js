@@ -1,12 +1,11 @@
 // Default `npm run test` keeps to unit-level specs. End-to-end suites
 // require DATABASE_URL / JWT_SECRET / Postgres / Redis / MinIO and are
-// opted into via `npm run test:e2e` (RUN_E2E=1).
-const runE2e = process.env.RUN_E2E === '1';
+// opted into via `npm run test:e2e` (jest.e2e.config.js).
 
 module.exports = {
   moduleFileExtensions: ['js', 'json', 'ts'],
   rootDir: '.',
-  testRegex: runE2e ? '.*\\.e2e-spec\\.ts$' : '.*\\.(spec|test)\\.ts$',
+  testRegex: '.*\\.(spec|test)\\.ts$',
   transform: {
     '^.+\\.(t|j)s$': ['ts-jest', { diagnostics: false }],
   },
@@ -28,8 +27,6 @@ module.exports = {
     'test/export.e2e-spec.ts',
     'test/statistics.e2e-spec.ts',
     'test/task-batch-export.e2e-spec.ts',
-    // task.e2e-spec.ts: now enabled after Task Flow backend implementation
-    // 'test/task.e2e-spec.ts',
     // Tests requiring pre-seeded admin user with known password (env: TEST_USERNAME/TEST_PASSWORD)
     'test/health.e2e-spec.ts',
     'test/audit.e2e-spec.ts',
@@ -37,12 +34,8 @@ module.exports = {
     'test/training-plan.e2e-spec.ts',
     'test/search.e2e-spec.ts',
     'test/recommendation.e2e-spec.ts',
-    'test/alert.e2e-spec.ts',
-    'test/workflow-advanced.e2e-spec.ts',
     // i18n module not yet implemented
     'test/i18n.e2e-spec.ts',
-    // Load test requires TEST_ADMIN_PASSWORD env var
-    'test/monitoring.load.spec.ts',
     // Traceability contract e2e requires pre-seeded admin user
     'test/traceability-contract.e2e-spec.ts',
   ],

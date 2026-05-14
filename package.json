@@ -17,7 +17,7 @@
   "scripts": {
     "install:all": "npm install",
     "build:client": "npm run build -w client",
-    "build:server": "npm run build -w server",
+    "build:server": "npm run prisma:generate && npm run build -w server",
     "build:mcp": "npm run build -w tools/noidear-mcp",
     "typecheck:types": "npm run typecheck -w packages/types",
     "test:client": "npm run test -w client",

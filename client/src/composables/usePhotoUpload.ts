@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import axios from 'axios'
+import request from '@/api/request'
 
 export function usePhotoUpload() {
   const uploading = ref(false)
@@ -12,10 +12,12 @@ export function usePhotoUpload() {
     try {
       const form = new FormData()
       form.append('file', file)
-      const res = await axios.post('/api/v1/upload/image', form, {
+      // `request` baseURL is /api/v1; pass the suffix only so the lint gate
+      // can keep blanket-blocking /api/v1-prefixed callers.
+      const res = await request.post<{ url: string }>('/upload/image', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-      return (res.data as { url: string }).url
+      return (res as unknown as { url: string }).url
     } finally {
       uploading.value = false
     }

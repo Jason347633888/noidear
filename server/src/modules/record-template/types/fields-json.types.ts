@@ -21,7 +21,6 @@ export type FieldType =
   | 'section-header'
   | 'static-content'
   | 'template-content'
-  | 'approval-step'
   | 'location'
   | 'qrcode'
   | 'barcode'
