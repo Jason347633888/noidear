@@ -29,9 +29,20 @@ npm audit
 - 登记风险不是“已清零”。若风险登记非空，implementation 不能声称 full audit cleanup 完成，只能回报“阻塞于上游无稳定修复”并等待用户决策。
 - 不允许用 `--omit=dev`、`--audit-level=high` 或删除 audit 输出来伪装清零；这些参数只能用于本地快速 smoke，不是最终 gate。
 - 第一次生成或更新 risk register 的责任属于 dependency-and-image-hardening 执行 PR；任何一次 strict audit 非零退出，执行 agent 必须在同一个 PR 中更新 YAML register 或修到 0。register 为空但 strict audit 非零必须 block。
-- `docs/superpowers/specs/2026-05-14-audit-risk-register.yaml` 是唯一允许的残留登记格式，不再使用自由文本 markdown 表。每条 entry 必须包含 `advisoryId`、`severity`、`workspace`、`packageChain`、`reachedProjectCodePath`、`currentBlocker`、`decision`、`discoveredAt`、`nextReviewAt`、`owner`、`notes`。
-- `tools/check-audit-register.mjs` 必须校验 YAML schema：`severity` 只允许 `low` / `moderate`；`workspace`、`reachedProjectCodePath`、`decision` 必须是白名单枚举；`owner` 非空；`nextReviewAt` 不得早于运行日；初次登记的 `nextReviewAt` 不得晚于 `discoveredAt + 7 天`。若上游仍无 stable fix，复核后可以把 `nextReviewAt` 再顺延最多 7 天，但必须更新 `notes` 里的证据。
-- `tools/check-npm-audit-strict.mjs` 必须运行未省略 devDependency 的 `npm audit --json`，并把 advisory id 与 YAML register 对齐：新增 advisory 未登记则失败；登记条目过期则失败；severity 为 high / critical 的条目直接失败；register 里出现 high / critical 也直接失败。
+- `docs/superpowers/specs/2026-05-14-audit-risk-register.yaml` 是唯一允许的残留登记格式，不再使用自由文本 markdown 表。每条 entry 必须包含 `advisoryId`、`severity`、`workspace`、`packageChain`、`reachedProjectCodePath`、`currentBlocker`、`decision`、`discoveredAt`、`nextReviewAt`、`renewalCount`、`owner`、`notes`。
+- `tools/check-audit-register.mjs` 必须校验 YAML schema：`severity` 只允许 `low` / `moderate`；`workspace`、`reachedProjectCodePath`、`decision` 必须是白名单枚举，其中 `decision` 只允许 `override`、`wait_upstream`、`replace_dependency`、`remove_capability`；`owner` 必须是具体 GitHub handle、git author email 或 spec 明确列名责任人，不能是 `implementation-agent` 这类泛称；`nextReviewAt` 不得早于运行日；初次登记的 `nextReviewAt` 不得晚于 `discoveredAt + 7 天`。若上游仍无 stable fix，复核后可以把 `nextReviewAt` 再顺延最多 7 天，但必须更新 `notes` 里的证据并递增 `renewalCount`。同一 advisory 连续顺延超过 4 次后，必须改为 `replace_dependency` 或 `remove_capability` 决策，不允许无限续期。
+- `tools/check-npm-audit-strict.mjs` 必须运行未省略 devDependency 的 `npm audit --json`，并把 advisory id 与 YAML register 对齐：新增 advisory 未登记则失败；登记条目过期则失败；severity 为 high / critical 的条目直接失败；register 里出现 high / critical 也直接失败。若 high / critical 当前确无上游修复，agent 必须停下回报，由用户在换依赖、删能力、或签字接受短期风险之间决策；该短期风险只能写在 PR 描述 / 用户决策记录里，不能写入 risk register，也不能让 strict gate 通过。
+
+Audit checker 数据契约固定如下，implementation plan 不得另行发明：
+
+- Advisory 主键取法：从 `npm audit --json` 的 `vulnerabilities[packageName].via[]` 中只把 object via 作为 advisory 记录；string via 只用于辅助构造依赖链，不生成新 advisory。object via 的 `url` 中若能提取 `GHSA-xxxx-xxxx-xxxx`，`advisoryId` 使用该 GHSA；否则 fallback 为 `npm:${source}:${name}`；若 `source` 缺失，fallback 为 `npm:${name}`。同一个 `advisoryId` 在多个 package 命中时合并为一条 policy item，并保留所有 package / workspace 命中明细。
+- `npm audit` 与 register 联表状态：
+  - strict 有、register 无：退出 1，状态 `unregistered`。
+  - strict 有、register 有、未过期：low / moderate 允许通过；high / critical 仍退出 1，状态 `highCriticalNotRegisterable`。
+  - strict 有、register 有、已过期：退出 1，状态 `expired`。
+  - strict 无、register 有：退出 0，但 stderr JSON 中输出状态 `staleRegistered`，提示“已修复，请清理 register”。
+- `check-npm-audit-strict.mjs` 必须自己加载 YAML register 并完成联表，不通过 `npm run security:audit:register` 或 child process 间接调用 register checker；`security:audit:register` 只是给人工和 CI 单独验证 YAML schema 用。
+- 退出码固定：0 表示通过；1 表示 audit policy 违规；2 表示 YAML schema 非法或 audit JSON 无法解析；3 表示 register 文件不存在或不可读。失败或 warning 时 stderr 最后一行必须是可解析单行 JSON，例如 `{"code":1,"items":[{"advisoryId":"GHSA-xxxx-xxxx-xxxx","status":"unregistered","severity":"moderate","package":"vite","workspace":"client"}]}`，供 CI 和 review 读取。
 
 这些漏洞不是单一业务缺口，而是四条依赖链混在一起：
 
@@ -237,7 +248,7 @@ Schema 删除的执行顺序必须是：
 - `计划日期`
 - `创建时间`
 
-状态中文映射必须按 Prisma `TrainingProjectStatus` 枚举穷尽处理：`planned` 为 `计划中`，`ongoing` 为 `进行中`，`completed` 为 `已完成`，`cancelled` 为 `已取消`。当前前端 `StatisticsPage.vue` 的 fallback 能把未知状态显示成 `已取消`，但后端替换时不得保留这种隐式 fallback；如果出现非枚举状态，应作为数据合同错误处理，不能静默计入已取消。
+状态中文映射必须按 Prisma `TrainingProjectStatus` 枚举穷尽处理：`planned` 为 `计划中`，`ongoing` 为 `进行中`，`completed` 为 `已完成`，`cancelled` 为 `已取消`。当前前端 `StatisticsPage.vue` 的 fallback 能把未知状态显示成 `已取消`，但后端替换时不得保留这种隐式 fallback；如果导出时发现非枚举状态，后端必须抛出 `BadRequestException`，错误信息包含违规培训项目 id 和原始 status，例如 `training status out of contract` + `{ projectIds, statuses }`，前端展示错误并停止下载文件，不能静默留空、写“未知”或计入已取消。
 
 验收要求：
 
@@ -333,7 +344,7 @@ Docker 镜像扫描与 `npm audit` 是两套不同 gate：
 
 - 删除 `client/Dockerfile`、`server/Dockerfile` 中对 `mobile/package.json` 的复制。
 - 固定 `docker-compose.yml` 中所有 `latest` 镜像标签。
-- 保留服务的推荐起点：继续使用当前已固定的 `postgres:15-alpine`、`redis:7-alpine`；MinIO 从 `latest` 改为明确 `RELEASE.*` tag，候选起点为 Docker Hub 当前可见稳定 tag `minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1`。implementation 必须先用 Trivy 扫描该候选；如果 high / critical 不通过，改用扫描通过的固定 tag 或停下回报，不得回退到 `latest`。
+- 保留服务的推荐起点：继续使用当前已固定的 `postgres:15-alpine`、`redis:7-alpine`；MinIO 从 `latest` 改为明确 `RELEASE.*` tag。implementation 必须选择 Docker Hub 最近 60 天内的稳定 MinIO `RELEASE.*` tag，并用 Trivy 证明 high / critical 通过；如果最近 60 天内没有稳定 tag 通过扫描，必须停下回报并选择更换 tag 策略或镜像来源，不得回退到 `latest`，也不得使用早期 magic tag 长期冻结。
 - 删除 compose 中观测栈后，`docker compose up -d postgres redis minio server client` 应仍能启动主系统。
 - Docker 扫描工具固定为 Trivy，不在 implementation plan 中再二选一。
 - 新增脚本，例如：
@@ -354,7 +365,7 @@ trivy image --severity HIGH,CRITICAL --exit-code 1 noidear-server:audit-local
 trivy image --severity HIGH,CRITICAL --exit-code 1 noidear-client:audit-local
 trivy image --severity HIGH,CRITICAL --exit-code 1 postgres:15-alpine
 trivy image --severity HIGH,CRITICAL --exit-code 1 redis:7-alpine
-trivy image --severity HIGH,CRITICAL --exit-code 1 minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1
+trivy image --severity HIGH,CRITICAL --exit-code 1 "minio/minio:${MINIO_IMAGE_TAG}"
 ```
 
 自建镜像在本地扫描时可以使用 `noidear-server:audit-local` / `noidear-client:audit-local` 这种短 tag；禁止 `latest` 的规则针对 compose 中保留的第三方镜像引用，以及交付文档中的部署镜像引用。若脚本实际使用 compose 默认生成的本地 tag，必须在脚本里显式解释该 tag 只用于本地扫描。
@@ -365,6 +376,7 @@ trivy image --severity HIGH,CRITICAL --exit-code 1 minio/minio:RELEASE.2025-09-0
 - 若本地没有 `trivy`，退出码为 2，并输出安装提示；不得静默跳过 Docker gate。
 - 扫描所有目标后汇总失败项再退出 1；不要 fail-fast，否则 review 看不到完整镜像风险。
 - 第三方镜像清单必须从 `docker-compose.yml` 的固定 tag 同步；若 compose tag 变更，脚本也必须同 PR 更新。
+- 脚本中 `MINIO_IMAGE_TAG` 必须是 implementation 已选定并写回 `docker-compose.yml` 的实际固定 tag；不得保留空值、`latest` 或 `<placeholder>`。
 
 ---
 
@@ -535,7 +547,7 @@ rg -n "ExportModule|ExportService|@Controller\\('export" server/src --glob '!**/
   "security:audit:register": "node tools/check-audit-register.mjs docs/superpowers/specs/2026-05-14-audit-risk-register.yaml",
   "security:audit:strict": "node tools/check-npm-audit-strict.mjs",
   "security:docker": "bash tools/check-docker-images.sh",
-  "verify:full:ci": "npm run verify:full && npm run security:audit:strict && npm test -w server -- --runInBand && npm run test -w client && python3 tools/generate-system-map.py"
+  "verify:full:ci": "npm run verify:full && npm run security:audit:strict && npm run test -w server -- --runInBand && npm run test -w client && python3 tools/generate-system-map.py"
 }
 ```
 
@@ -545,7 +557,7 @@ rg -n "ExportModule|ExportService|@Controller\\('export" server/src --glob '!**/
 - 不提供无后缀 `security:audit` alias；调用方必须显式选择 `security:audit:prod`、`security:audit:raw` 或 `security:audit:strict`，避免本地和 CI 语义混淆。
 - 新增 `verify:full:ci`，定义如上；CI/release gate 必须使用该脚本或更严格的等价命令。
 - `security:audit:strict` 不能使用 `--omit=dev` 或 `--audit-level`；若出现上游无稳定修复的 low / moderate，必须更新 audit risk register，并在 PR / 回报中明确说明 full cleanup 仍被上游 stable fix 阻塞。
-- `security:audit:strict` 必须内部调用 `security:audit:register` 语义：YAML 过期、schema 非法、登记 high / critical、strict audit 中出现未登记 low / moderate 都必须失败。
+- `security:audit:strict` 必须在自身脚本内执行与 `security:audit:register` 相同的 YAML schema 校验和联表逻辑：YAML 过期、schema 非法、登记 high / critical、strict audit 中出现未登记 low / moderate 都必须失败。
 - Docker 镜像扫描作为单独 gate 运行，避免所有本地开发验证都强制构建镜像；最终验收必须显式运行。
 
 最终验收必须显式运行：
@@ -555,7 +567,7 @@ npm run security:audit:strict
 npm run security:docker
 npm run verify:full
 npm run verify:full:ci
-npm test -w server -- --runInBand
+npm run test -w server -- --runInBand
 npm run test -w client
 python3 tools/generate-system-map.py
 ```
@@ -602,7 +614,7 @@ npm run security:audit:strict
 npm run security:docker
 npm run verify:full
 npm run verify:full:ci
-npm test -w server -- --runInBand
+npm run test -w server -- --runInBand
 npm run test -w client
 python3 tools/generate-system-map.py
 ```
@@ -684,7 +696,7 @@ rg -n "观测栈|监控部署|Loki 日志栈|备份历史|PostgreSQL 备份|MinI
     删除通用批量导出中心不等于删除所有导出。实施必须先区分后台横向 `/export/*` 工具入口和业务页面内导出；统计、系统审计日志、追溯、记录 PDF、批次 PDF、培训统计等有明确业务场景的导出应迁回对应模块或保留在对应模块。
 
 13. **audit gate 被生态短期 advisory 卡死**
-    清零是目标，但 agent 不应在上游无稳定修复时无限升级或盲目 `--force`。high / critical 必须清零；low / moderate 若无稳定修复，必须记录 audit risk register 并停止回报，等待用户决定继续等上游、换依赖、删能力或接受短期风险。
+    清零是目标，但 agent 不应在上游无稳定修复时无限升级或盲目 `--force`。high / critical 必须清零；若确无修复，必须停下回报，等待用户在换依赖、删能力或签字接受短期风险之间决策；该短期风险不进入 risk register，也不能让 strict gate 通过。low / moderate 若无稳定修复，必须记录 audit risk register；同一 advisory 连续顺延超过 4 次后，必须改为替换依赖或删除能力。
 
 14. **先删 schema 后删 seed 导致 Prisma Client 编译失败**
     删除 Backup / Mobile / RecycleBin 相关 model 前，必须先删 seed 和测试里对对应 delegate 的引用，再改 schema、generate、migrate。不得先 DROP model 再让 seed 编译失败。

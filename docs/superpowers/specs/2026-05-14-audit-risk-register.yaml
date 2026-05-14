@@ -1,6 +1,6 @@
 # Temporary low/moderate npm audit residual-risk register.
 # This file is machine-readable and must be validated by tools/check-audit-register.mjs.
-# high and critical advisories are not allowed here.
+# high and critical advisories are not allowed here; check-audit-register.mjs must fail nonzero if they appear.
 version: 1
 updatedAt: "2026-05-14"
 entries: []
@@ -15,8 +15,9 @@ entries: []
 #       - "esbuild"
 #     reachedProjectCodePath: "no" # allowed: yes, no, unknown
 #     currentBlocker: "Upstream stable fix is not released; patched version is prerelease only."
-#     decision: "wait_upstream" # allowed: override, wait_upstream, replace_dependency, remove_capability, accepted_until_next_review
+#     decision: "wait_upstream" # allowed: override, wait_upstream, replace_dependency, remove_capability
 #     discoveredAt: "2026-05-14"
 #     nextReviewAt: "2026-05-21"
-#     owner: "implementation-agent"
+#     renewalCount: 0 # increment each time nextReviewAt is extended; max 4
+#     owner: "@github-handle-or-author@example.com"
 #     notes: "Link upstream issue or release note evidence."
