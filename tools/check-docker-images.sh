@@ -12,6 +12,16 @@ fi
 
 SERVER_IMAGE_ID="$(docker compose images -q server)"
 CLIENT_IMAGE_ID="$(docker compose images -q client)"
+
+if [[ -z "${SERVER_IMAGE_ID}" ]]; then
+  echo "server image not found — run docker compose build first or unset SKIP_DOCKER_BUILD" >&2
+  exit 1
+fi
+if [[ -z "${CLIENT_IMAGE_ID}" ]]; then
+  echo "client image not found — run docker compose build first or unset SKIP_DOCKER_BUILD" >&2
+  exit 1
+fi
+
 docker image tag "${SERVER_IMAGE_ID}" noidear-server:audit-local
 docker image tag "${CLIENT_IMAGE_ID}" noidear-client:audit-local
 
