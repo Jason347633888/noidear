@@ -1,30 +1,39 @@
-# Full Production Audit Cleanup — Design Spec
+# Full Dependency Audit Cleanup — Design Spec
 
 **Date:** 2026-05-14
-**Scope:** 根项目生产依赖安全审计清零、未设计 mobile/uni-app 交付面剔除、Web/H5 主系统保留、Excel 解析风险替换、Server/MCP 依赖链收口
+**Scope:** 根项目全依赖安全审计清零、未设计 mobile/uni-app 交付面剔除、Web/H5 主系统保留、Excel 解析风险替换、Server/MCP/工具链依赖链收口、Docker 镜像安全基线、应用内运维/横向工具瘦身
 **Premise:** 当前项目没有历史业务数据；用户确认 `mobile/` 并非已设计或已启用的交付范围，可以直接剔除。当前 H5/浏览器主系统是 `client/`，必须保留。
 
 ---
 
 ## 背景
 
-在 `targeted-rework-1` 最新代码上运行：
+在 `targeted-rework-1` 最新代码上运行全量依赖安全审计：
 
 ```bash
-npm audit --audit-level=high --omit=dev
+npm audit
 ```
 
 当前失败结果为：
 
 ```text
-61 vulnerabilities (4 low, 41 moderate, 16 high)
+95 vulnerabilities (17 low, 53 moderate, 25 high)
 ```
 
-这些漏洞不是单一业务缺口，而是三条依赖链混在一起：
+用户确认“全部清零”：本轮不再只修生产依赖 high 漏洞，而是以根目录 `npm audit` 无任何 vulnerability 为验收 gate。`dependencies` 与 `devDependencies` 都在范围内，low / moderate / high 都必须归零。
 
-1. `client` 直接依赖 `xlsx@0.18.5`，该包存在 high 漏洞且 audit 显示无可用修复。
+这些漏洞不是单一业务缺口，而是四条依赖链混在一起：
+
+1. `client` 直接依赖 `xlsx@0.18.5`，该包存在 high 漏洞且 audit 显示无可用修复；当前至少有批量导入和培训统计两个页面直接使用该包。
 2. `mobile` workspace 拉入整套 `@dcloudio/uni-*` 多端构建链，带出 `@intlify`、`jimp`、`postcss`、`esbuild` 等大量 transitive 漏洞。
 3. `server` 和 `tools/noidear-mcp` 依赖链中存在 Nest / Express / Multer / bcrypt / tar 等可升级或可 override 的风险。
+4. `devDependencies` 中的 Nest CLI / schematics、TypeScript ESLint、Vite / Vitest、Jest 等工具链依赖也会触发 audit 失败，需要升级、替换或收敛。
+5. Docker 构建与部署基线仍有未收口项：`client/Dockerfile`、`server/Dockerfile` 还复制 `mobile/package.json`；`docker-compose.yml` 中 MinIO、Prometheus、Grafana、Alertmanager、Loki、Promtail 使用 `latest` 标签。
+6. 用户确认继续瘦身：此前已删除监控 UI / API，本轮也删除 Docker Compose 中的 Prometheus / Grafana / Alertmanager / Loki / Promtail 观测栈和 `monitoring/` 配置目录。
+7. 用户确认继续剔除应用内备份管理：当前 `BackupModule` 通过业务 API 和页面触发 PostgreSQL / MinIO 备份，但实现依赖 `docker exec` 和固定容器名，属于部署运维能力，不作为业务系统功能保留。
+8. 用户确认继续剔除应用内健康管理：当前后端 `HealthController` 暴露依赖健康、磁盘和系统信息接口；前端没有健康管理页面。保留最小运行存活探针即可。
+9. 用户确认继续剔除通用回收站：当前 `RecycleBinModule` 横跨 document、record-template、record 提供统一恢复/永久删除/自动清理入口；不再作为业务系统功能保留。
+10. 用户确认继续剔除通用批量导出中心：当前 `/admin/export` 页面只提供用户导出，通用 `ExportModule` 又横跨 document、task、task-record、deviation、user；真实需要的导出应回到对应业务模块。
 
 用户已确认：`mobile/` 不是当前已设计移动端能力，可以直接剔除；但需要确认当前 H5 页面模块仍在。经检查，当前主系统页面都在 `client/src/views`，路由由 `client/src/router/index.ts` 管理，菜单由 `client/src/navigation/menu.ts` 管理。`mobile/` 是独立 uni-app 草稿工程，不是当前 Web/H5 主系统。
 
@@ -32,12 +41,19 @@ npm audit --audit-level=high --omit=dev
 
 ## 目标
 
-1. 根目录 `npm audit --audit-level=high --omit=dev` 必须通过，不能再有 high 级生产依赖漏洞。
+1. 根目录 `npm audit` 必须通过，不能再有任何 low / moderate / high / critical 漏洞。
 2. 直接剔除未设计的 `mobile/` uni-app workspace，包括 npm workspace、lockfile、Docker install 引用、文档说明和后端 mobile API/schema。
 3. 保留当前 Web/H5 主系统 `client/`，不得删除 `client/src/views`、路由、菜单或当前浏览器端业务模块。
-4. 删除 `client` 对 `xlsx` 的直接依赖，避免浏览器端解析不可信 Excel。
-5. 修复或升级 `server` 与 `tools/noidear-mcp` 的生产依赖链，优先使用最小可验证升级；必要时使用 npm `overrides`。
-6. 更新安全审计 gate，使后续 CI/本地验证能明确覆盖生产依赖安全风险。
+4. 删除 `client` 对 `xlsx` 的直接依赖，避免浏览器端生成或解析不可信 Excel。
+5. 修复或升级 `server`、`tools/noidear-mcp`、前后端测试构建工具链的依赖链，优先使用最小可验证升级；必要时使用 npm `overrides`。
+6. 建立 Docker 镜像安全基线：自建 `server` / `client` 镜像必须无 high / critical 漏洞；保留的第三方服务镜像不得使用 `latest`，必须固定版本或 digest 并输出扫描结果。
+7. 删除应用内备份管理页面、API、调度器、Prisma 模型和 seed 假数据；保留 MinIO 作为业务文件存储能力。
+8. 删除应用内健康管理 API，只保留最小 `/liveness` 运行存活探针。
+9. 删除通用回收站页面、API、cron 和 seed 假数据；保留业务对象自身归档、作废、撤销或软删除字段。
+10. 删除通用批量导出中心页面、组件、API 和后端 `ExportModule`；保留业务场景内的具体导出。
+11. 更新安全审计 gate，使后续 CI/本地验证能明确覆盖全依赖安全风险和运行镜像高危风险。
+
+用户已确认：项目尚未正式使用，当前阶段优先把依赖安全审计清零。若某条依赖链无法在当前 major 内修复，允许进行 breaking major upgrade；这属于技术底座升级，不改变产品业务架构。每个 major upgrade 都必须绑定对应 build/test/runtime smoke 验证，不能只修改 `package-lock.json`。
 
 ---
 
@@ -47,7 +63,15 @@ npm audit --audit-level=high --omit=dev
 - 不保留 `mobile/` 作为 workspace、构建目标或生产交付物。
 - 不删除当前 `client/` Web/H5 主系统页面。
 - 不为了 audit 清零恢复已经剔除的业务模块。
-- 不把 devDependencies 漏洞强行混入生产阻塞项；dev audit 可以单独报告，但本轮验收目标是 `--omit=dev` 生产依赖。
+- 不为保留旧工具链而豁免 devDependencies 漏洞；本轮验收目标是根目录 `npm audit` 全量通过。
+- 不把 Docker 镜像扫描误写成 npm audit 的替代品；它是单独部署基线 gate。
+- 不保留未使用的观测栈作为“以后可能用”的部署负担；Prometheus / Grafana / Alertmanager / Loki / Promtail 本轮剔除。
+- 不保留应用内备份管理页面或 `docker exec` 备份 API；数据库和对象存储备份由部署运维基线负责。
+- 不删除 MinIO 文件存储、`StorageService`、文件上传、文件预览、文控附件、供应商文件、培训归档、来料检验报告或产品报告能力。
+- 不保留依赖健康详情、磁盘信息或系统信息这类应用内健康管理 API；只保留部署平台可用的最小存活探针。
+- 不删除文控“引用健康状态”、访客健康状态、用药健康影响、员工健康检查等业务语义。
+- 不保留跨业务对象的通用回收站入口；不因此删除各业务对象自己的 `deletedAt`、归档、作废或撤销语义。
+- 不保留跨业务对象的通用批量导出中心；不因此删除统计、审计日志、追溯、记录 PDF、批次 PDF、培训统计等业务场景内导出。
 - 不用 `npm audit fix --force` 盲目改全仓依赖。每个 breaking upgrade 都必须有对应验证。
 
 ---
@@ -78,8 +102,10 @@ npm audit --audit-level=high --omit=dev
 ```bash
 npm run build:client
 npm run test -w client
-rg -n "from ['\"]@/api/|request\\." client/src
+rg -n "@/api/mobile|api/mobile|/mobile\\b|mobileApi|MobileUpload|mobileUpload|mobile/sync" client/src packages/types
 ```
+
+`client/src/assets/styles/mobile.css`、`OfficePreview.vue` / `FilePreviewDialog.vue` 中的 `isMobile` 和 `mobile-hint` 是当前 Web/H5 主系统的响应式显示逻辑，不属于 `mobile/` workspace 或后端 `/mobile` API。实施不得因为文件名或 CSS class 含有 `mobile` 而删除这些 Web 响应式代码。
 
 ---
 
@@ -112,17 +138,19 @@ rg -n "from ['\"]@/api/|request\\." client/src
 
 - `server/src/modules/mobile/**`
 - `MobileModule` 在 `server/src/app.module.ts` 中注册。
-- Prisma schema 中存在 `MobileUpload` / `mobile_uploads`。
+- Prisma schema 中存在 `MobileUpload` / `mobile_uploads` 和 `SyncSubmission` / `sync_submissions`。
+
+代码核验结果：当前 `client` 没有调用 `/mobile` 或 `/mobile/sync`，也没有引用 `MobileUpload` / `SyncSubmission` 类型；`MobileModule` 只被 `server/src/app.module.ts` 注册。因此后端 mobile API 与当前 Web/H5 主系统无关。
 
 既然 mobile 交付面整体剔除，后端 mobile API 也必须一并删除：
 
 - 删除 `server/src/modules/mobile/**`。
 - 从 `server/src/app.module.ts` 移除 `MobileModule`。
-- 从 Prisma schema 删除 `MobileUpload` 模型及相关 enum/relation。
+- 从 Prisma schema 删除 `MobileUpload`、`SyncSubmission` 模型及相关 enum/relation。
 - 生成 Prisma migration，包含 DROP TABLE / DROP INDEX 等 schema 变更。
-- 删除 mobile controller/service 相关测试。
+- 删除 mobile controller/service/sync 相关测试。
 
-当前项目没有历史业务数据，不需要迁移历史 mobile upload 数据；但 schema 变更仍必须通过 Prisma migration 表达。
+当前项目没有历史业务数据，不需要迁移历史 mobile upload 或 sync submission 数据；但 schema 变更仍必须通过 Prisma migration 表达。
 
 ---
 
@@ -130,42 +158,48 @@ rg -n "from ['\"]@/api/|request\\." client/src
 
 ### 当前问题
 
-`client/package.json` 直接依赖 `xlsx@0.18.5`。该包 high 漏洞无官方修复。当前直接用法在：
+`client/package.json` 直接依赖 `xlsx@0.18.5`。该包 high 漏洞无官方修复。当前直接用法至少在：
 
 - `client/src/views/admin/ImportPage.vue`
+- `client/src/views/training/statistics/StatisticsPage.vue`
 
-该页面使用 `xlsx` 做两件事：
+这些页面使用 `xlsx` 做三件事：
 
 1. 前端生成导入模板。
 2. 前端读取上传 Excel 并预览。
+3. 前端生成培训统计 Excel。
+
+后端 `server/src/modules/import/import.controller.ts` 已有模板下载路由，但 `ImportService.getUserTemplate()` / `getDocumentTemplate()` 目前只是 `Buffer.from('template')` 占位，不是真实 Excel 文件。后端已有 `exceljs`、`ExcelParserService` 和多处 Excel 导出能力，具备承接模板生成、预览解析和统计导出的基础。
 
 ### 决策
 
-删除浏览器端 `xlsx`。Excel 解析和模板生成不放在前端做。
+删除浏览器端 `xlsx`。Excel 生成、解析和预览不放在前端做。
 
 新的边界：
 
-- 模板下载走后端已存在的 `import/export` 或 `exceljs` 能力。
-- 文件预览走后端 preview endpoint，用 `exceljs` 解析前 10 行返回预览。
+- 所有 Excel 模板下载走后端 `exceljs` 生成真实 workbook，不允许返回占位 buffer。
+- 所有 Excel 文件预览走后端 preview endpoint，用 `exceljs` 解析前 10 行返回预览。
+- 培训统计等业务统计导出走后端导出 endpoint，前端只下载 blob。
 - 前端只负责上传文件、展示后端返回的预览和导入结果，不再本地解析 Excel。
 
-选择后端 preview endpoint 是正式决策，不作为可选项延后。当前页面已有“数据预览”步骤，用户体验应保留；后端已有 `ExcelParserService` / `exceljs` 基础能力，复用成本低于保留高危 `xlsx`。
+选择“后端拥有 Excel 生成/解析事实”是正式决策，不作为可选项延后。当前页面已有“数据预览”步骤，用户体验应保留；后端已有 `ExcelParserService` / `exceljs` 基础能力，复用成本低于保留高危 `xlsx`。
 
 验收要求：
 
 ```bash
-rg -n "from ['\"]xlsx|import\\s+.*xlsx|require\\(['\"]xlsx|XLSX|xlsx" client/src client/package.json
+rg -n "from ['\"]xlsx|import\\s+.*XLSX|require\\(['\"]xlsx|XLSX\\." client/src client/package.json
+npm ls xlsx
 ```
 
-除下载文件名、文案或后端 `exceljs` 方法名外，不得再有前端 `xlsx` 包导入或依赖。
+期望：前端没有 `xlsx` 包导入，没有 `XLSX.*` 调用，`npm ls xlsx` 不再显示该依赖。`.xlsx` 文件名、accept 文案和后端 `exceljs` 方法名可以保留。
 
 ---
 
-## Server / MCP 依赖链设计
+## Server / MCP / 工具链依赖链设计
 
 ### Server
 
-需要处理的生产依赖链包括：
+需要处理的 server 运行时依赖链包括：
 
 - `@nestjs/core` / `@nestjs/platform-express` / `@nestjs/swagger`
 - `express` / `body-parser` / `cookie` / `qs` / `path-to-regexp` / `serve-static`
@@ -176,20 +210,228 @@ rg -n "from ['\"]xlsx|import\\s+.*xlsx|require\\(['\"]xlsx|XLSX|xlsx" client/src
 实施原则：
 
 1. 先尝试当前 major 范围内的安全 patch / minor。
-2. patch/minor 不足时，使用 npm `overrides` 锁定 transitive 安全版本。
-3. 只有无法用 overrides 安全解决时，才做 major upgrade，并必须跑完整 server build/test。
+2. patch/minor 不足时，可以使用 npm `overrides` 锁定 transitive 安全版本。
+3. 若 audit 清零必须跨 major，允许升级；但 implementation plan 必须列出兼容点和验证命令。
 4. bcrypt 可升级到 `6.x`，但必须验证密码 hash/compare 相关测试和登录流程。
-5. Nest 10 到 11 是 breaking 范围，除非确实无法通过 Nest 10 patch/override 解决，否则不作为首选。
+5. Nest 10 到 11 是 breaking 范围；若为 audit 清零采用 Nest 11，需要同步升级 Nest 核心包、platform、testing、swagger、schematics，并验证启动、Swagger、upload、ValidationPipe、interceptor、单元测试和关键 API smoke。
 
 ### MCP
 
-`tools/noidear-mcp` 通过 `@modelcontextprotocol/sdk` 引入 Express 相关链。实施时必须确认它在 `npm audit --omit=dev` 中是否仍产生 high，必要时升级 SDK 或使用 overrides。
+`tools/noidear-mcp` 通过 `@modelcontextprotocol/sdk` 引入 Express 相关链。实施时必须确认它在 `npm audit` 中是否仍产生漏洞，必要时升级 SDK 或使用 overrides。
 
 验证命令：
 
 ```bash
 npm run build:mcp
 ```
+
+### 工具链 devDependencies
+
+`devDependencies` 不再作为安全审计豁免区。需要处理的工具链包括但不限于：
+
+- Nest CLI / schematics / testing 相关包。
+- TypeScript ESLint 相关包。
+- Vite / Vitest / Vue 测试构建链。
+- Jest / ts-jest / supertest 等后端测试链。
+- `glob`、`minimatch`、`tar`、`tmp`、`cross-spawn` 等 transitive 工具包。
+
+实施原则：
+
+1. 能用当前 major 的 patch/minor 修复时，不做无谓 major。
+2. 若 audit 只能通过 major upgrade 解决，允许升级，但必须把 breaking change 纳入同阶段验证，不得只改 lockfile。
+3. 测试工具链升级后必须跑对应测试命令，不能只跑 build。
+4. 若某个包无修复版本且仅服务已剔除能力，优先删除该能力或依赖，而不是 suppress audit。
+
+Vite / Vitest / ESLint / Jest 等升级属于工程底座变化。它们不应改变业务页面和 API 合同，但可能改变构建、mock、coverage、lint 规则或 dev server 行为；因此必须通过 `build:client`、client tests、server tests 和 system map 验证兜住。
+
+此前监控业务 UI / API 已剔除；代码核验显示 `@willsoto/nestjs-prometheus` / `prom-client` 在 `server/src` 中没有实际 import。若实施时仍未发现运行时依赖，应删除这两个 server 依赖。注意不要把食品安全业务里的 `monitoring_method`、过程监控、环境监控、模型落地模板中的 monitoring 文案当作部署观测栈删除。
+
+---
+
+## Docker 镜像安全基线设计
+
+Docker 镜像扫描与 `npm audit` 是两套不同 gate：
+
+- `npm audit` 扫 npm package graph。
+- Docker 镜像扫描扫最终镜像层，包括基础镜像、Linux 系统包、Node / Nginx runtime、系统库和复制进镜像的应用依赖。
+
+本轮纳入 Docker，但口径分层：
+
+1. **自建镜像**：`server`、`client` 构建镜像必须 high / critical 清零。
+2. **保留的第三方镜像**：`postgres`、`redis`、`minio` 不得使用 `latest`；必须固定明确 tag 或 digest，并用扫描结果证明当前风险。
+3. **不可修复项**：若第三方官方镜像在固定版本下仍有不可修复 high / critical，implementation 必须停下回报，选择升级 tag、换镜像或调整 gate；不得静默豁免。
+
+继续瘦身决策：
+
+- 删除 `docker-compose.yml` 中 Prometheus、Grafana、Alertmanager、Loki、Promtail 服务。
+- 删除对应 volumes、networks 依赖和 `monitoring/` 配置目录。
+- 更新 README、`docs/AGENT_GUIDE.md` 等文档，不再把 monitoring 列为当前项目结构、运行服务或启动命令。
+- 保留 PostgreSQL、Redis、MinIO 作为当前后端运行基础服务；它们也必须固定 tag / digest 并参与 Docker 扫描。
+
+实施要求：
+
+- 删除 `client/Dockerfile`、`server/Dockerfile` 中对 `mobile/package.json` 的复制。
+- 固定 `docker-compose.yml` 中所有 `latest` 镜像标签。
+- 删除 compose 中观测栈后，`docker compose up -d postgres redis minio server client` 应仍能启动主系统。
+- 新增脚本，例如：
+
+```json
+{
+  "security:docker": "bash tools/check-docker-images.sh"
+}
+```
+
+脚本至少应覆盖：
+
+```bash
+docker compose build server client
+trivy image --severity HIGH,CRITICAL --exit-code 1 noidear-server:latest
+trivy image --severity HIGH,CRITICAL --exit-code 1 noidear-client:latest
+trivy image --severity HIGH,CRITICAL --exit-code 1 <pinned-third-party-image>
+```
+
+如果本地没有 `trivy`，脚本必须给出清晰错误信息。implementation plan 可选择 Trivy 或 Grype，但必须固定一种工具并写入验证命令。
+
+---
+
+## 应用内备份管理剔除设计
+
+当前代码存在应用内备份管理：
+
+- 前端：`client/src/views/backup/BackupManage.vue`、`client/src/api/backup.ts`、路由 `/backup/manage`、菜单“备份管理”。
+- 后端：`server/src/modules/backup/**`、`BackupModule` 在 `AppModule` 中注册。
+- 数据模型：Prisma `BackupHistory` / `backup_history`。
+- Seed：`server/src/prisma/seed-dev.ts` 中有备份历史假数据。
+
+当前实现直接在业务服务里执行容器命令：
+
+```text
+docker exec noidear-postgres-1 ...
+docker exec noidear-minio-1 ...
+```
+
+这与当前 `docker-compose.yml` 中的 `container_name: noidear-postgres` / `noidear-minio` 不一致，也把部署运维动作放进了业务 API。用户确认继续瘦身：应用内备份管理本轮删除。
+
+删除范围：
+
+- 删除 `client/src/views/backup/BackupManage.vue`。
+- 删除 `client/src/api/backup.ts`。
+- 删除路由和菜单中的 `/backup/manage`。
+- 删除 `server/src/modules/backup/**`。
+- 从 `server/src/app.module.ts` 移除 `BackupModule`。
+- 从 Prisma schema 删除 `BackupHistory` 模型，生成 migration。
+- 删除 seed 中的 backup history 假数据。
+- README / `docs/AGENT_GUIDE.md` 不再把备份管理列为当前功能。
+
+保留范围：
+
+- 保留 MinIO 作为业务文件存储服务。
+- 保留 `StorageService`。
+- 保留文控文件、文件预览、设备照片/签名、供应商文件、来料检验报告、产品报告、培训归档、审计日志归档等业务文件能力。
+
+数据库和对象存储备份转为部署运维基线，不由 Web/H5 主系统页面触发。后续如需要备份治理，应在部署脚本、基础设施配置或独立运维 runbook 中设计，不在业务应用内通过 `docker exec` 实现。
+
+---
+
+## 应用内健康管理剔除设计
+
+当前代码存在后端健康管理能力：
+
+- `server/src/modules/health/health.controller.ts`：鉴权后的 `/health`、`/health/postgres`、`/health/redis`、`/health/minio`、`/health/disk`、`/health/dependencies`、`/health/system-info`。
+- `server/src/modules/health/health.service.ts`：检查 PostgreSQL、Redis、MinIO、磁盘和系统信息。
+- `server/src/modules/health/liveness.controller.ts`：无鉴权 `/liveness`，供 Docker / 部署平台探活。
+- 当前前端没有健康管理页面，也没有 `client/src/api/health.ts` 当前调用。
+
+用户确认继续瘦身：依赖健康详情、磁盘信息和系统信息属于运维面，不作为业务系统功能保留。本轮删除应用内健康管理 API，只保留最小运行存活探针。
+
+删除范围：
+
+- 删除 `HealthController`。
+- 删除 `HealthService`。
+- 调整 `HealthModule`，只注册 `LivenessController`；或将 `LivenessController` 移到独立最小模块后删除原 `health` service/controller。
+- 删除与 `HealthService` 相关测试和 Swagger 描述。
+- README / `docs/AGENT_GUIDE.md` 不再把健康检查或健康管理列为业务功能。
+
+保留范围：
+
+- 保留无鉴权 `/liveness`。
+- 可在 `server` Dockerfile / compose 中使用 `/liveness` 做 server healthcheck。
+- 保留文控引用健康、记录表单落地健康、访客健康状态、用药健康影响、员工健康检查等业务字段和业务页面。
+
+残留扫描命中 `health` 时必须人工分辨：`DocumentReferenceHealthService`、`ReferenceHealthStatus`、`health_status`、`health_impact` 等属于业务语义，不是本轮删除目标。
+
+---
+
+## 通用回收站剔除设计
+
+当前代码存在跨业务对象通用回收站：
+
+- 前端：`client/src/views/RecycleBin.vue`、`client/src/views/recycle-bin/__tests__/RecycleBin.spec.ts`、`client/src/api/recycle-bin.ts`、路由 `/recycle-bin`、菜单“回收站”。
+- 后端：`server/src/modules/recycle-bin/**`、`RecycleBinModule` 在 `AppModule` 中注册。
+- Seed：`server/src/prisma/seed-dev.ts` 中有回收站假数据。
+- Cron：`RecycleBinCron` 每天清理超过 30 天的已删除 document、record-template、record。
+
+用户确认继续瘦身：通用回收站本轮删除。业务对象的退出、归档、作废、撤销、软删除和恢复规则应留在各自业务模块中，不再由一个跨域入口统一恢复。
+
+删除范围：
+
+- 删除 `client/src/views/RecycleBin.vue`。
+- 删除 `client/src/views/recycle-bin/**`。
+- 删除 `client/src/api/recycle-bin.ts`。
+- 删除路由和菜单中的 `/recycle-bin`。
+- 删除 `server/src/modules/recycle-bin/**`。
+- 从 `server/src/app.module.ts` 移除 `RecycleBinModule`。
+- 删除 seed 中的回收站假数据。
+- README / `docs/AGENT_GUIDE.md` 不再把回收站列为当前功能。
+
+保留范围：
+
+- 不删除业务表已有 `deletedAt` 字段。
+- 不删除文控文件归档、作废、修订生命周期。
+- 不删除产品/配方归档、记录模板停用、记录撤销或其它业务对象自己的退出状态。
+- 不删除审计日志、操作日志或业务对象自身的删除记录。
+
+后续若某个业务对象确实需要恢复能力，应在该业务模块内按其权限、编号冲突、文件存储和审计规则单独设计，不恢复通用回收站。
+
+---
+
+## 通用批量导出中心剔除设计
+
+当前代码存在横向批量导出中心：
+
+- 前端：`client/src/views/admin/ExportPage.vue`、路由 `/admin/export`、菜单“批量导出”。
+- 前端通用适配器：`client/src/api/export.ts` 暴露 `exportTasks`、`exportTaskRecords`、`exportDeviationReports`、`exportUsers`、`exportStatistics`。
+- 前端通用组件：`client/src/components/ExportDialog.vue`、`client/src/components/ExportButton.vue` 主要作为通用导出抽象存在。
+- 后端：`server/src/modules/export/**` 和 `ExportModule`，集中提供 `/export/documents`、`/export/tasks`、`/export/task-records`、`/export/deviation-reports`、`/export/users`。
+- 当前真实页面使用呈现不均衡：`/admin/export` 只使用用户导出；统计页通过通用 adapter 调用统计导出；部分通用导出组件没有当前页面引用。
+
+用户确认继续瘦身：本轮删除通用批量导出中心。导出不再作为后台横向工具中心存在；如果某个业务场景需要导出，必须留在对应业务页面和业务后端模块中。
+
+删除范围：
+
+- 删除 `client/src/views/admin/ExportPage.vue`。
+- 删除路由和菜单中的 `/admin/export`。
+- 删除未被业务页面引用的 `ExportDialog.vue` / `ExportButton.vue` 及其测试。
+- 删除 `client/src/api/export.ts` 中通用 `/export/*` adapter；保留场景内导出时应迁入对应业务 adapter，例如 `statistics.ts`、`audit.ts`、`traceability.ts`、`record.ts`。
+- 删除 `server/src/modules/export/**` 和 `ExportModule` 在 `AppModule`、`DocumentModule`、`StatisticsModule`、`DeviationModule` 等处的横向依赖。
+- 删除 `/export/documents`、`/export/tasks`、`/export/task-records`、`/export/deviation-reports`、`/export/users` 这类通用入口。
+
+保留范围：
+
+- 保留系统审计日志导出，归属 `audit` 模块。
+- 保留普通统计页面导出，归属 `statistics` 模块，不再通过通用 `exportApi` 暴露。
+- 保留追溯导出和追溯快照，归属 `traceability` / `batch-trace` 模块。
+- 保留记录 PDF、批次追溯 PDF、文控附件、培训统计导出等业务页面内真实使用的导出能力。
+- 若偏差、任务、记录任务后续确有可见页面导出需求，应在对应模块重新建立业务内 endpoint；本轮不保留无页面入口的通用导出。
+
+实施前必须先跑引用扫描，避免误删业务内导出：
+
+```bash
+rg -n "ExportPage|ExportDialog|ExportButton|exportApi|/admin/export|/export/" client/src server/src packages/types --glob '!**/node_modules/**'
+rg -n "ExportModule|ExportService|@Controller\\('export" server/src --glob '!**/node_modules/**'
+```
+
+实施后，`client/src/api/export.ts` 和 `server/src/modules/export/**` 不应继续存在。若仍有业务页面导出，必须能从对应业务 adapter 和后端模块直接读出归属，不能再依赖通用导出中心。
 
 ---
 
@@ -199,21 +441,21 @@ npm run build:mcp
 
 ```json
 {
-  "security:audit:prod": "npm audit --audit-level=high --omit=dev"
+  "security:audit": "npm audit",
+  "security:docker": "bash tools/check-docker-images.sh"
 }
 ```
 
-`verify:full` 必须串入该脚本，使生产依赖安全审计成为默认完整验证的一部分。最终验收必须显式运行：
+`verify:full` 必须串入 `security:audit`。Docker 镜像扫描可以作为单独 gate 运行，避免所有本地开发验证都强制构建镜像；最终验收必须显式运行：
 
 ```bash
-npm run security:audit:prod
+npm run security:audit
+npm run security:docker
 npm run verify:full
 npm test -w server -- --runInBand
 npm run test -w client
 python3 tools/generate-system-map.py
 ```
-
-如果 devDependencies 仍有漏洞，必须另写风险说明，但不得影响 `security:audit:prod` 通过。
 
 ---
 
@@ -222,12 +464,19 @@ python3 tools/generate-system-map.py
 后续 implementation plan 建议拆成以下阶段：
 
 1. **移动端剔除**：删除 `mobile/`、workspace、Docker 引用、后端 mobile module/schema/test，并生成 Prisma migration。
-2. **Excel 替换**：删除前端 `xlsx`，改为后端 `exceljs` 模板/预览/导入路径。
-3. **Server/MCP 依赖修复**：用 patch/minor/overrides/必要 major 升级处理剩余 high。
-4. **安全 gate**：新增 `security:audit:prod`，并串入 `verify:full`，更新验证文档。
-5. **全量验证**：运行 audit、build、unit tests、system map、残留扫描。
+2. **Excel 替换**：删除前端 `xlsx`，补齐后端 `exceljs` 真实模板、导入预览和培训统计导出路径。
+3. **Server/MCP/工具链依赖修复**：用 patch/minor/overrides/必要 major 升级处理所有 audit 残留。
+4. **Docker 镜像安全基线**：删除 compose 观测栈，固定保留第三方镜像 tag / digest，补 `security:docker`，自建镜像 high / critical 清零。
+5. **应用内备份管理剔除**：删除备份页面、API、调度器、BackupHistory schema/seed，并保留 MinIO 业务文件存储。
+6. **应用内健康管理剔除**：删除 HealthController / HealthService，只保留 `/liveness` 最小探针。
+7. **通用回收站剔除**：删除 RecycleBin 页面/API/module/cron/seed，但保留业务对象自身状态字段。
+8. **通用批量导出中心剔除**：删除 `/admin/export`、通用导出组件/API/ExportModule，把真实保留的导出迁回业务模块。
+9. **安全 gate**：新增 `security:audit` 和 `security:docker`，将 `security:audit` 串入 `verify:full`，更新验证文档。
+10. **全量验证**：运行 audit、docker scan、build、unit tests、system map、残留扫描。
 
-每个阶段都应单独 commit，避免把移动端删除、Excel 行为变化和依赖升级混成一个不可 review 的大 diff。
+每个阶段都应单独 commit，避免把移动端删除、Excel 行为变化、横向工具剔除和依赖升级混成一个不可 review 的大 diff。
+
+依赖升级阶段不得把“业务架构调整”混入安全清理。允许的改动是 package 版本、lockfile、必要配置、因框架升级触发的兼容性修复、测试适配和安全 gate；若发现需要改变业务流程或页面信息架构，必须停下另开决策。
 
 ---
 
@@ -237,7 +486,8 @@ python3 tools/generate-system-map.py
 
 ```bash
 npm ci
-npm run security:audit:prod
+npm run security:audit
+npm run security:docker
 npm run verify:full
 npm test -w server -- --runInBand
 npm run test -w client
@@ -248,13 +498,27 @@ python3 tools/generate-system-map.py
 
 ```bash
 rg -n "\"mobile\"|noidear-mobile|@dcloudio|uni-app|vite-plugin-uni" package.json package-lock.json client server packages tools README.md docs --glob '!**/node_modules/**'
-rg -n "from ['\"]xlsx|import\\s+.*xlsx|require\\(['\"]xlsx|XLSX" client/src client/package.json
-rg -n "MobileModule|mobile_uploads|model MobileUpload|@Controller\\('mobile" server/src server/src/prisma/schema.prisma
+rg -n "from ['\"]xlsx|import\\s+.*XLSX|require\\(['\"]xlsx|XLSX\\." client/src client/package.json
+npm ls xlsx
+rg -n "MobileModule|mobile_uploads|sync_submissions|model MobileUpload|model SyncSubmission|@Controller\\('mobile" server/src server/src/prisma/schema.prisma
+rg -n "image: .*:latest|mobile/package.json|prometheus|grafana|alertmanager|loki|promtail" docker-compose.yml client/Dockerfile server/Dockerfile README.md docs/AGENT_GUIDE.md monitoring
+rg -n "BackupModule|BackupHistory|backup_history|BackupManage|client/src/api/backup|/backup/manage|@Controller\\('backup|triggerMinIOBackup|triggerPostgresBackup|docker exec noidear-(postgres|minio)" server/src client/src README.md docs/AGENT_GUIDE.md
+rg -n "HealthController|HealthService|/health/(postgres|redis|minio|disk|dependencies|system-info)|client/src/api/health|健康检查、备份管理|健康管理" server/src client/src README.md docs/AGENT_GUIDE.md
+rg -n "RecycleBinModule|RecycleBin|recycle-bin|/recycle-bin|回收站|RecycleBinCron" server/src client/src README.md docs/AGENT_GUIDE.md
+rg -n "ExportPage|ExportDialog|ExportButton|client/src/api/export|/admin/export|@Controller\\('export|ExportModule|ExportService|/export/(documents|tasks|task-records|deviation-reports|users)|批量导出" server/src client/src packages/types README.md docs/AGENT_GUIDE.md
 ```
 
 期望：
 
-- 根生产 audit 无 high 漏洞。
+- 根目录 `npm audit` 无任何漏洞。
+- `server` / `client` 自建镜像无 high / critical 漏洞。
+- `docker-compose.yml` 只保留 PostgreSQL、Redis、MinIO、server、client；第三方镜像不使用 `latest`。
+- `monitoring/` 配置目录被删除，README / agent guide 不再列出观测栈。
+- 应用内备份管理被删除；`BackupHistory` schema 和 seed 假数据被 migration / seed 清理覆盖。
+- MinIO 业务文件存储能力仍可用。
+- 应用内健康管理 API 被删除；`/liveness` 最小存活探针仍可用。
+- 通用回收站被删除；业务对象自身 `deletedAt`、归档、作废、撤销等状态保留。
+- 通用批量导出中心被删除；统计、审计、追溯、PDF 等业务内导出仍可用且归属清晰。
 - `mobile/` 不再作为 workspace 或交付面存在。
 - 当前 `client` Web/H5 页面仍能 build/test。
 - 系统地图 `api_adapter_missing`、`direct_client_missing`、`deleted_scope_*_residue` 仍为 0。
@@ -270,8 +534,8 @@ rg -n "MobileModule|mobile_uploads|model MobileUpload|@Controller\\('mobile" ser
 2. **后端 mobile schema 删除漏 migration**
    删除 `MobileUpload` 模型必须生成 migration，不允许只改 Prisma schema。
 
-3. **Nest major upgrade 破坏运行时**
-   优先 patch/minor/overrides；若必须 major，implementation plan 必须单独列出 controller、interceptor、Swagger、upload、ValidationPipe 验证。
+3. **Nest / Vite / Vitest 等 major upgrade 破坏运行时**
+   优先 patch/minor/overrides；若必须 major，implementation plan 必须单独列出 controller、interceptor、Swagger、upload、ValidationPipe、client build、unit tests、E2E 可用性验证。
 
 4. **Excel 预览行为变化**
    若选择删除前端本地预览，需明确页面步骤变化；推荐后端 preview endpoint 保留用户体验。
@@ -279,5 +543,23 @@ rg -n "MobileModule|mobile_uploads|model MobileUpload|@Controller\\('mobile" ser
 5. **lockfile 残留 mobile 依赖**
    删除 workspace 后必须重新 `npm install` / `npm ci` 生成干净 lockfile，并用残留扫描确认 `@dcloudio/uni-*` 不再存在。
 
-6. **dev audit 仍有漏洞**
-   本轮 gate 是 production audit。若 dev audit 仍失败，必须记录到后续风险，不得伪装成 production audit 已覆盖。
+6. **dev 工具链 major upgrade 带来测试行为变化**
+   devDependencies 已纳入清零 gate。若升级测试工具链导致 snapshot、mock、transform 或 Node 版本行为变化，必须修测试或代码事实，不能用 audit 豁免绕过。
+
+7. **第三方 Docker 镜像无法 high / critical 清零**
+   第三方镜像不由本项目构建，清零依赖官方 tag 状态。若固定版本仍有不可修复 high / critical，implementation 必须回报并选择换 tag、换镜像或调整部署基线；不得保留 `latest` 或跳过扫描。
+
+8. **误删业务监控字段**
+   本轮删除的是部署观测栈和此前已剔除的监控 UI / API，不是食品安全业务里的过程监控、环境监控或 `monitoring_method` 字段。实施残留扫描命中这些业务词时必须人工分辨，不得批量删除。
+
+9. **误删业务文件存储能力**
+   删除应用内备份管理不等于删除 MinIO。`StorageService`、上传、预览、附件、归档和报告文件仍是业务能力；implementation 只能删除 backup module 与 `BackupHistory`，不能删除文件存储调用链。
+
+10. **误删业务健康语义**
+    删除应用内健康管理不等于删除业务里的健康概念。文控引用健康、记录表单落地健康、访客健康状态、用药健康影响和员工健康检查都属于业务语义，不能被健康管理残留扫描误删。
+
+11. **误删业务对象状态字段**
+    删除通用回收站不等于删除 `deletedAt` 或归档/作废/撤销状态。实施不得批量移除业务表的软删除字段；只删除回收站入口、service、controller、cron、API adapter 和相关测试/seed。
+
+12. **误删业务内导出**
+    删除通用批量导出中心不等于删除所有导出。实施必须先区分后台横向 `/export/*` 工具入口和业务页面内导出；统计、系统审计日志、追溯、记录 PDF、批次 PDF、培训统计等有明确业务场景的导出应迁回对应模块或保留在对应模块。
