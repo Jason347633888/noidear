@@ -61,8 +61,24 @@ export function validateRegister(register, now = new Date()) {
     if (!DECISIONS.has(entry.decision)) throw new Error(`invalid decision for ${entry.advisoryId}`);
     if (!entry.owner || entry.owner === 'implementation-agent') throw new Error(`invalid owner for ${entry.advisoryId}`);
     if (!Number.isInteger(entry.renewalCount) || entry.renewalCount < 0 || entry.renewalCount > 4) throw new Error(`invalid renewalCount for ${entry.advisoryId}`);
+    // SLA rule 1: discoveredAt and nextReviewAt must be valid YYYY-MM-DD dates
+    const discovered = new Date(`${entry.discoveredAt}T00:00:00Z`);
+    if (Number.isNaN(discovered.getTime())) throw new Error(`invalid discoveredAt for ${entry.advisoryId}: must be YYYY-MM-DD`);
     const review = new Date(`${entry.nextReviewAt}T23:59:59Z`);
+    if (Number.isNaN(review.getTime())) throw new Error(`invalid nextReviewAt for ${entry.advisoryId}: must be YYYY-MM-DD`);
     if (review < now) throw new Error(`expired nextReviewAt for ${entry.advisoryId}`);
+    // SLA rule 2: first registration (renewalCount === 0) → nextReviewAt <= discoveredAt + 7 days
+    if (entry.renewalCount === 0) {
+      const maxReview = new Date(discovered.getTime() + 7 * 24 * 60 * 60 * 1000);
+      maxReview.setUTCHours(23, 59, 59, 999);
+      if (review > maxReview) throw new Error(`nextReviewAt exceeds 7-day SLA window from discoveredAt for ${entry.advisoryId}`);
+    }
+    // SLA rule 3: renewals (renewalCount > 0) → nextReviewAt <= now + 7 days
+    if (entry.renewalCount > 0) {
+      const maxRenewal = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      maxRenewal.setUTCHours(23, 59, 59, 999);
+      if (review > maxRenewal) throw new Error(`nextReviewAt exceeds 7-day SLA renewal window from now for ${entry.advisoryId}`);
+    }
     for (const occurrence of entry.occurrences || []) {
       if (!WORKSPACES.has(occurrence.workspace)) throw new Error(`invalid workspace for ${entry.advisoryId}`);
       if (!CODE_PATH.has(occurrence.reachedProjectCodePath)) throw new Error(`invalid reachedProjectCodePath for ${entry.advisoryId}`);

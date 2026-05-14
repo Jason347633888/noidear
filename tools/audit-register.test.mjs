@@ -117,3 +117,178 @@ test('joins audit items against register states', () => {
   );
   assert.equal(joined[0].status, 'registered');
 });
+
+// SLA rule 1: discoveredAt and nextReviewAt must be valid YYYY-MM-DD dates
+test('accepts valid YYYY-MM-DD dates for discoveredAt and nextReviewAt', () => {
+  assert.doesNotThrow(() => validateRegister({
+    version: 1,
+    updatedAt: '2026-05-14',
+    entries: [{
+      advisoryId: 'GHSA-abcd-efgh-ijkl',
+      severity: 'moderate',
+      occurrences: [{ workspace: 'root', packageName: 'pkg', packageChain: ['pkg'], reachedProjectCodePath: 'no' }],
+      currentBlocker: 'none',
+      decision: 'wait_upstream',
+      discoveredAt: '2026-05-14',
+      nextReviewAt: '2026-05-21',
+      renewalCount: 0,
+      owner: '@owner',
+      notes: 'none',
+    }],
+  }, new Date('2026-05-14T00:00:00Z')));
+});
+
+test('rejects invalid discoveredAt date', () => {
+  assert.throws(() => validateRegister({
+    version: 1,
+    updatedAt: '2026-05-14',
+    entries: [{
+      advisoryId: 'GHSA-abcd-efgh-ijkl',
+      severity: 'moderate',
+      occurrences: [{ workspace: 'root', packageName: 'pkg', packageChain: ['pkg'], reachedProjectCodePath: 'no' }],
+      currentBlocker: 'none',
+      decision: 'wait_upstream',
+      discoveredAt: 'not-a-date',
+      nextReviewAt: '2026-05-21',
+      renewalCount: 0,
+      owner: '@owner',
+      notes: 'none',
+    }],
+  }, new Date('2026-05-14T00:00:00Z')), /discoveredAt/);
+});
+
+test('rejects invalid nextReviewAt date', () => {
+  assert.throws(() => validateRegister({
+    version: 1,
+    updatedAt: '2026-05-14',
+    entries: [{
+      advisoryId: 'GHSA-abcd-efgh-ijkl',
+      severity: 'moderate',
+      occurrences: [{ workspace: 'root', packageName: 'pkg', packageChain: ['pkg'], reachedProjectCodePath: 'no' }],
+      currentBlocker: 'none',
+      decision: 'wait_upstream',
+      discoveredAt: '2026-05-14',
+      nextReviewAt: 'not-a-date',
+      renewalCount: 0,
+      owner: '@owner',
+      notes: 'none',
+    }],
+  }, new Date('2026-05-14T00:00:00Z')), /nextReviewAt/);
+});
+
+// SLA rule 2: renewalCount === 0 → nextReviewAt <= discoveredAt + 7 days
+test('accepts nextReviewAt exactly 7 days after discoveredAt when renewalCount is 0', () => {
+  assert.doesNotThrow(() => validateRegister({
+    version: 1,
+    updatedAt: '2026-05-14',
+    entries: [{
+      advisoryId: 'GHSA-abcd-efgh-ijkl',
+      severity: 'moderate',
+      occurrences: [{ workspace: 'root', packageName: 'pkg', packageChain: ['pkg'], reachedProjectCodePath: 'no' }],
+      currentBlocker: 'none',
+      decision: 'wait_upstream',
+      discoveredAt: '2026-05-14',
+      nextReviewAt: '2026-05-21',
+      renewalCount: 0,
+      owner: '@owner',
+      notes: 'none',
+    }],
+  }, new Date('2026-05-14T00:00:00Z')));
+});
+
+test('rejects nextReviewAt more than 7 days after discoveredAt when renewalCount is 0', () => {
+  assert.throws(() => validateRegister({
+    version: 1,
+    updatedAt: '2026-05-14',
+    entries: [{
+      advisoryId: 'GHSA-abcd-efgh-ijkl',
+      severity: 'moderate',
+      occurrences: [{ workspace: 'root', packageName: 'pkg', packageChain: ['pkg'], reachedProjectCodePath: 'no' }],
+      currentBlocker: 'none',
+      decision: 'wait_upstream',
+      discoveredAt: '2026-05-14',
+      nextReviewAt: '2026-05-22',
+      renewalCount: 0,
+      owner: '@owner',
+      notes: 'none',
+    }],
+  }, new Date('2026-05-14T00:00:00Z')), /nextReviewAt.*7/);
+});
+
+// SLA rule 3: renewalCount > 0 → nextReviewAt <= now + 7 days
+test('accepts nextReviewAt within 7 days of now when renewalCount > 0', () => {
+  assert.doesNotThrow(() => validateRegister({
+    version: 1,
+    updatedAt: '2026-05-14',
+    entries: [{
+      advisoryId: 'GHSA-abcd-efgh-ijkl',
+      severity: 'moderate',
+      occurrences: [{ workspace: 'root', packageName: 'pkg', packageChain: ['pkg'], reachedProjectCodePath: 'no' }],
+      currentBlocker: 'none',
+      decision: 'wait_upstream',
+      discoveredAt: '2026-05-07',
+      nextReviewAt: '2026-05-21',
+      renewalCount: 1,
+      owner: '@owner',
+      notes: 'none',
+    }],
+  }, new Date('2026-05-14T00:00:00Z')));
+});
+
+test('rejects nextReviewAt more than 7 days from now when renewalCount > 0', () => {
+  assert.throws(() => validateRegister({
+    version: 1,
+    updatedAt: '2026-05-14',
+    entries: [{
+      advisoryId: 'GHSA-abcd-efgh-ijkl',
+      severity: 'moderate',
+      occurrences: [{ workspace: 'root', packageName: 'pkg', packageChain: ['pkg'], reachedProjectCodePath: 'no' }],
+      currentBlocker: 'none',
+      decision: 'wait_upstream',
+      discoveredAt: '2026-05-07',
+      nextReviewAt: '2026-05-22',
+      renewalCount: 1,
+      owner: '@owner',
+      notes: 'none',
+    }],
+  }, new Date('2026-05-14T00:00:00Z')), /nextReviewAt.*7/);
+});
+
+// SLA rule 4: renewalCount > 4 must be rejected
+test('rejects renewalCount of 5 or more', () => {
+  assert.throws(() => validateRegister({
+    version: 1,
+    updatedAt: '2026-05-14',
+    entries: [{
+      advisoryId: 'GHSA-abcd-efgh-ijkl',
+      severity: 'moderate',
+      occurrences: [{ workspace: 'root', packageName: 'pkg', packageChain: ['pkg'], reachedProjectCodePath: 'no' }],
+      currentBlocker: 'none',
+      decision: 'wait_upstream',
+      discoveredAt: '2026-05-14',
+      nextReviewAt: '2026-05-21',
+      renewalCount: 5,
+      owner: '@owner',
+      notes: 'none',
+    }],
+  }, new Date('2026-05-14T00:00:00Z')), /renewalCount/);
+});
+
+test('accepts renewalCount of 4 (maximum allowed)', () => {
+  assert.doesNotThrow(() => validateRegister({
+    version: 1,
+    updatedAt: '2026-05-14',
+    entries: [{
+      advisoryId: 'GHSA-abcd-efgh-ijkl',
+      severity: 'moderate',
+      occurrences: [{ workspace: 'root', packageName: 'pkg', packageChain: ['pkg'], reachedProjectCodePath: 'no' }],
+      currentBlocker: 'none',
+      decision: 'wait_upstream',
+      discoveredAt: '2026-04-09',
+      nextReviewAt: '2026-05-21',
+      renewalCount: 4,
+      owner: '@owner',
+      notes: 'none',
+    }],
+  }, new Date('2026-05-14T00:00:00Z')));
+});
