@@ -283,5 +283,38 @@ describe('RecordExportService', () => {
         }),
       );
     });
+
+    it('createSensitiveLog is called exactly once on successful export', async () => {
+      const audit = mockAuditService();
+      const service = serviceWithRecords([record()], 1, audit);
+      await service.exportRecords({ templateId: 'tpl-clean' }, user);
+      expect(audit.createSensitiveLog).toHaveBeenCalledTimes(1);
+    });
+
+    it('audit details include submitterId when admin exports another user records', async () => {
+      const audit = mockAuditService();
+      const service = serviceWithRecords([record()], 1, audit);
+      await service.exportRecords({ templateId: 'tpl-clean', submitterId: 'target-user-id' }, user);
+      expect(audit.createSensitiveLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          details: expect.objectContaining({ submitterId: 'target-user-id' }),
+        }),
+      );
+    });
+
+    it('ForbiddenException path writes export_data_denied audit log', async () => {
+      const audit = mockAuditService();
+      const service = serviceWithRecords([record()], 1, audit);
+      const regularUser = { id: 'user-1', username: 'user1', roleCode: 'user' };
+      await expect(
+        service.exportRecords({ submitterId: 'other-user-id' }, regularUser),
+      ).rejects.toThrow(ForbiddenException);
+      expect(audit.createSensitiveLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'export_data_denied',
+          userId: 'user-1',
+        }),
+      );
+    });
   });
 });

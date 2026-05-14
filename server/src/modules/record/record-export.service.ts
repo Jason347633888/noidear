@@ -40,7 +40,15 @@ export class RecordExportService {
   ) {}
 
   async exportRecords(dto: ExportRecordsDto, user?: any): Promise<ExportResult> {
-    const where = this.buildWhere(dto, user);
+    let where: any;
+    try {
+      where = this.buildWhere(dto, user);
+    } catch (err) {
+      // 权限拒绝时写入拒绝审计日志，然后重新抛出
+      await this.writeAuditLog(dto, user, [], { resourceId: dto.templateId ?? 'unknown', resourceName: '权限拒绝' }, 'export_data_denied');
+      throw err;
+    }
+
     const total = await this.prisma.record.count({ where });
 
     if (total === 0) {
@@ -113,13 +121,14 @@ export class RecordExportService {
     user: any,
     records: any[],
     meta: { resourceId: string; resourceName: string },
+    action: string = 'export_data',
   ): Promise<void> {
     if (!user) return;
     try {
       await this.auditService.createSensitiveLog({
         userId: user.id,
         username: user.username ?? user.name ?? user.id,
-        action: 'export_data',
+        action,
         resourceType: 'record',
         resourceId: meta.resourceId,
         resourceName: meta.resourceName,
@@ -130,6 +139,7 @@ export class RecordExportService {
           endDate: dto.endDate,
           recordIds: dto.recordIds?.length ?? 0,
           exportedCount: records.length,
+          submitterId: dto.submitterId,
         } as any,
         ipAddress: 'service-layer',
         userAgent: 'service-layer',

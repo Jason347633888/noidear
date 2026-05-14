@@ -52,6 +52,7 @@ export interface ExportRecordsPayload extends RecordListParams {
   startDate?: string;
   endDate?: string;
   fields?: string[];
+  keyword?: string;
 }
 
 export interface RecordListResponse {

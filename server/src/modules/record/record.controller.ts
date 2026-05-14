@@ -31,8 +31,6 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ChangeLogInterceptor } from './interceptors/change-log.interceptor';
 import { TimestampValidationInterceptor } from '../../common/interceptors/timestamp-validation.interceptor';
-import { SensitiveLog } from '../audit/decorators/sensitive-log.decorator';
-import { SensitiveLogInterceptor } from '../audit/interceptors/sensitive-log.interceptor';
 
 @ApiTags('记录管理')
 @Controller('records')
@@ -63,11 +61,6 @@ export class RecordController {
 
   @Post('export')
   @Roles('admin', 'leader', 'user')
-  @SensitiveLog('export_data', 'record', {
-    bodyFields: ['templateId', 'status', 'startDate', 'endDate', 'recordIds'],
-    resourceIdField: 'templateId',
-  })
-  @UseInterceptors(SensitiveLogInterceptor)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '批量导出记录填写结果（单模板 Excel；跨模板 zip）' })
   async exportRecords(@Body() dto: ExportRecordsDto, @Req() req: any, @Res() res: Response) {
