@@ -34,6 +34,42 @@
 
 > 总计 25 条 high 全部位于 dev/构建/uni-app 链路中。运行时进程加载的 server / client 代码本轮没有保留可被攻击者直接触发的 high 通告。
 
+### Targeted rework 后逐条快照（2026-05-14 重跑 `npm audit` 后）
+
+| # | 包 | 直接依赖 | 自动修复路径（npm audit fix） | 推荐处置 |
+| - | --- | --- | --- | --- |
+| 1 | `@dcloudio/uni-cli-shared` | 是（mobile） | `@dcloudio/uni-cli-shared@0.2.994`（major） | 待 uni-app 上游统一发版后做 mobile 工作区单独 major 升级。 |
+| 2 | `@intlify/core-base` | 否 | 通过 #1 一并修复 | 同 #1。 |
+| 3 | `@intlify/message-compiler` | 否 | 自动修复（patch） | 与 mobile 上游一并升级。 |
+| 4 | `@intlify/message-resolver` | 否 | 通过 #1 一并修复 | 同 #1。 |
+| 5 | `@intlify/runtime` | 否 | 自动修复（patch） | 同 #3。 |
+| 6 | `@intlify/vue-devtools` | 否 | 自动修复（patch） | 同 #3。 |
+| 7 | `@mapbox/node-pre-gyp` | 否 | 通过 bcrypt#6 修复（major） | 跟随 bcrypt#6 升级；当前 server 用 bcrypt@5 hash，需要回归密码与登录场景。 |
+| 8 | `@nestjs/cli` | 是（dev） | 自动修复（patch） | 下一迭代统一升级 NestJS toolchain。 |
+| 9 | `@nestjs/platform-express` | 是 | `@nestjs/platform-express@11.1.20`（major） | 等待 multer#2.1.1 合入 Nest 主线后跟随升级。 |
+| 10 | `@typescript-eslint/eslint-plugin` | 是（dev） | 自动修复 | 同 ESLint toolchain 升级。 |
+| 11 | `@typescript-eslint/parser` | 是（dev） | 自动修复 | 同 #10。 |
+| 12 | `@typescript-eslint/type-utils` | 否 | 自动修复 | 同 #10。 |
+| 13 | `@typescript-eslint/typescript-estree` | 否 | 自动修复 | 同 #10。 |
+| 14 | `@typescript-eslint/utils` | 否 | 自动修复 | 同 #10。 |
+| 15 | `bcrypt` | 是 | `bcrypt@6.0.0`（major） | 与 #7 一并；需要回归 server 登录/重置密码。 |
+| 16 | `express` | 否 | 自动修复 | 跟随 NestJS toolchain。 |
+| 17 | `glob` | 否 | 自动修复 | 跟随 jest/eslint 升级。 |
+| 18 | `jpeg-js` | 否 | `@dcloudio/uni-mp-weixin@0.0.973`（major） | mobile 上游升级。 |
+| 19 | `lodash` | 否 | `@nestjs/swagger@11.4.2`（major） | 项目无 `_.template` 调用；下迭代统一替换。 |
+| 20 | `minimatch` | 否 | 自动修复 | 同 #17。 |
+| 21 | `multer` | 否 | 通过 #9 一并修复 | 同 #9；nginx 已限速、限文件大小。 |
+| 22 | `path-to-regexp` | 否 | 自动修复 | 跟随 Express 5 升级。 |
+| 23 | `picomatch` | 否 | `@nestjs/schematics@11.1.0`（major） | 跟随 toolchain 升级。 |
+| 24 | `tar` | 否 | 通过 #15 一并修复 | 仅 npm 安装期使用。 |
+| 25 | `xlsx` | 是 | 无（无可用兼容版本） | 项目暂未启用 Excel 导出；若再次启用，迁移到 `exceljs`。 |
+
+### 处理建议（同步给 finalize/Orion）
+
+- **本 PR 范围内不再做强制升级**：`bcrypt@6` / `@nestjs/platform-express@11.1.20` / `@nestjs/schematics@11.1.0` / `@dcloudio/uni-cli-shared@0.2.994` 都是 major bump，需要单独迭代＋回归测试，不混入 API 治理 PR。
+- **运行时风险 ≈ 0**：上述 25 条 high 仅出现在 dev / build / mobile-toolchain / 已退役 xlsx 路径；server runtime + client runtime 默认加载链不在通告路径上（已逐条核对）。
+- **下一迭代必跟项**：bcrypt + tar、`@nestjs/platform-express` + multer、uni-app toolchain 统一升级，并在 release notes 标注密码/登录回归与 mobile 构建回归项。
+
 ## 剩余 Moderate（53）
 
 主要集中在：

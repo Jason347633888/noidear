@@ -48,7 +48,6 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "path": "/Users/jiashenglin/Desktop/mybrain/文件管理体系/当前公司/04-记录表单/产品开发部/产品更改申请表.md",
     "department": "产品开发部",
     "entities": [
-      "ChangeApproval",
       "ChangeEvent",
       "Document",
       "Employee",
@@ -1609,7 +1608,6 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "department": "品质部",
     "entities": [
       "Document",
-      "DocumentIssuance",
       "Employee"
     ],
     "chain": "通用支撑",
@@ -1989,7 +1987,6 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "path": "/Users/jiashenglin/Desktop/mybrain/文件管理体系/当前公司/04-记录表单/品质部/变更申请表.md",
     "department": "品质部",
     "entities": [
-      "ChangeApproval",
       "ChangeEvent",
       "Document",
       "Employee"
@@ -2247,7 +2244,6 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "department": "品质部",
     "entities": [
       "ChangeEvent",
-      "ManagementReview",
       "Product",
       "Recipe"
     ],
@@ -2262,7 +2258,6 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "department": "品质部",
     "entities": [
       "InventoryMovement",
-      "ManagementReview",
       "Material",
       "NonConformance",
       "Product",
@@ -2281,7 +2276,6 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "entities": [
       "InventoryMovement",
       "MaintenanceRecord",
-      "ManagementReview",
       "NonConformance",
       "ProductionBatch"
     ],
@@ -2295,8 +2289,7 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "path": "/Users/jiashenglin/Desktop/mybrain/文件管理体系/当前公司/04-记录表单/品质部/管理评审汇总/品质部工作总结.md",
     "department": "品质部",
     "entities": [
-      "Document",
-      "ManagementReview"
+      "Document"
     ],
     "chain": "管理与支持",
     "basis": "v3:name:管理评审"
@@ -2309,8 +2302,6 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "department": "品质部",
     "entities": [
       "CorrectiveAction",
-      "InternalAudit",
-      "ManagementReview",
       "ProductRecall",
       "TraceabilityDrill"
     ],
@@ -2326,8 +2317,7 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "entities": [
       "AuditRecord",
       "Document",
-      "Employee",
-      "ManagementReview"
+      "Employee"
     ],
     "chain": "管理与支持",
     "basis": "v3:name:管理评审"
@@ -2342,8 +2332,7 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
       "AuditRecord",
       "CorrectiveAction",
       "Document",
-      "Employee",
-      "ManagementReview"
+      "Employee"
     ],
     "chain": "管理与支持",
     "basis": "v3:name:管理评审"
@@ -2356,8 +2345,7 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "department": "品质部",
     "entities": [
       "Document",
-      "Employee",
-      "ManagementReview"
+      "Employee"
     ],
     "chain": "管理与支持",
     "basis": "v3:name:管理评审"
@@ -2371,7 +2359,6 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "entities": [
       "Complaint",
       "InventoryMovement",
-      "ManagementReview",
       "ProductRecall"
     ],
     "chain": "销售/投诉/召回",
@@ -2385,7 +2372,6 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "department": "品质部",
     "entities": [
       "Employee",
-      "ManagementReview",
       "Regulation",
       "TrainingRecord"
     ],
@@ -2399,7 +2385,6 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "path": "/Users/jiashenglin/Desktop/mybrain/文件管理体系/当前公司/04-记录表单/品质部/管理评审汇总/采购部工作总结.md",
     "department": "品质部",
     "entities": [
-      "ManagementReview",
       "Material",
       "MaterialInspection",
       "Supplier"
@@ -2431,7 +2416,7 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "path": "/Users/jiashenglin/Desktop/mybrain/文件管理体系/当前公司/04-记录表单/品质部/紧急采购物资使用评估放行审批表.md",
     "department": "品质部",
     "entities": [
-      "ChangeApproval",
+      "ChangeEvent",
       "Material",
       "MaterialInspection",
       "MaterialLot",
@@ -2845,7 +2830,6 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "path": "/Users/jiashenglin/Desktop/mybrain/文件管理体系/当前公司/04-记录表单/工程部/设备变更申请、评估记录.md",
     "department": "工程部",
     "entities": [
-      "ChangeApproval",
       "ChangeEvent",
       "ChangeVerificationRecord",
       "Employee",
@@ -3087,9 +3071,7 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "formName": "体系文件收发记录表",
     "path": "/Users/jiashenglin/Desktop/mybrain/文件管理体系/当前公司/04-记录表单/行政人事部/体系文件收发记录表.md",
     "department": "行政人事部",
-    "entities": [
-      "DocumentIssuance"
-    ],
+    "entities": [],
     "chain": "通用支撑",
     "basis": "v3:fallback 行政人事"
   },
@@ -3355,9 +3337,7 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "formName": "文件发放（领用）登记表",
     "path": "/Users/jiashenglin/Desktop/mybrain/文件管理体系/当前公司/04-记录表单/行政人事部/文件发放（领用）登记表.md",
     "department": "行政人事部",
-    "entities": [
-      "DocumentIssuance"
-    ],
+    "entities": [],
     "chain": "通用支撑",
     "basis": "v3:fallback 行政人事"
   },
@@ -3369,7 +3349,6 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "department": "行政人事部",
     "entities": [
       "Document",
-      "DocumentIssuance",
       "Employee"
     ],
     "chain": "通用支撑",
@@ -3383,7 +3362,6 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "department": "行政人事部",
     "entities": [
       "Document",
-      "DocumentIssuance",
       "Employee"
     ],
     "chain": "通用支撑",
@@ -3551,8 +3529,7 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "entities": [
       "AuditRecord",
       "Document",
-      "Employee",
-      "ManagementReview"
+      "Employee"
     ],
     "chain": "管理与支持",
     "basis": "v3:name:管理评审"
@@ -3567,8 +3544,7 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
       "AuditRecord",
       "CorrectiveAction",
       "Document",
-      "Employee",
-      "ManagementReview"
+      "Employee"
     ],
     "chain": "管理与支持",
     "basis": "v3:name:管理评审"
@@ -3681,7 +3657,6 @@ export const MODEL_LANDING_FORMS: ModelLandingFormRow[] = [
     "path": "/Users/jiashenglin/Desktop/mybrain/文件管理体系/当前公司/04-记录表单/行政人事部/钥匙借用登记录表.md",
     "department": "行政人事部",
     "entities": [
-      "AssetLoanRecord",
       "Employee"
     ],
     "chain": "管理与支持",

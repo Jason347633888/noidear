@@ -7,7 +7,7 @@ import {
 } from '../src/modules/model-landing/generated/model-landing.generated';
 
 const repoRoot = resolve(__dirname, '..', '..');
-const specPath = resolve(repoRoot, 'docs/superpowers/specs/2026-04-24-model-landing-layer-design.md');
+const specPath = resolve(repoRoot, 'archive/superpowers/specs/2026-04-24-model-landing-layer-design.md');
 const spec = readFileSync(specPath, 'utf8');
 
 const assert = (condition: boolean, message: string) => {
