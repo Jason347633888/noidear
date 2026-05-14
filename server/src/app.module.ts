@@ -13,8 +13,6 @@ import { DocumentModule } from './modules/document/document.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { OperationLogModule } from './modules/operation-log/operation-log.module';
 import { DeviationModule } from './modules/deviation/deviation.module';
-import { ExportModule } from './modules/export/export.module';
-import { RecycleBinModule } from './modules/recycle-bin/recycle-bin.module';
 import { RoleModule } from './modules/role/role.module';
 import { PermissionModule } from './modules/permission/permission.module';
 import { FineGrainedPermissionModule } from './modules/fine-grained-permission/fine-grained-permission.module';
@@ -27,13 +25,10 @@ import { RecordModule } from './modules/record/record.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { SystemConfigModule } from './modules/system-config/system-config.module';
 import { EquipmentModule } from './modules/equipment/equipment.module';
-import { MobileModule } from './modules/mobile/mobile.module';
 import { AuditModule } from './modules/audit/audit.module';
-import { BackupModule } from './modules/backup/backup.module';
 import { HealthModule } from './modules/health/health.module';
 import { TrainingModule } from './modules/training/training.module';
 import { SearchModule } from './modules/search/search.module';
-import { ImportModule } from './modules/import/import.module';
 import { RecordTaskModule } from './modules/record-task/record-task.module';
 import { IncomingInspectionModule } from './modules/incoming-inspection/incoming-inspection.module';
 import { TraceabilityModule } from './modules/traceability/traceability.module';
@@ -100,8 +95,6 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     NotificationModule,
     OperationLogModule,
     DeviationModule,
-    ExportModule,
-    RecycleBinModule,
     RoleModule,
     PermissionModule,
     FineGrainedPermissionModule,
@@ -113,13 +106,10 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     WarehouseModule,
     SystemConfigModule,
     EquipmentModule,
-    MobileModule,
     AuditModule,
-    BackupModule,
     HealthModule,
     TrainingModule,
     SearchModule,
-    ImportModule,
     RecordTaskModule,
     IncomingInspectionModule,
     TraceabilityModule,

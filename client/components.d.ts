@@ -98,8 +98,6 @@ declare module 'vue' {
     ElUpload: typeof import('element-plus/es')['ElUpload']
     ExamResult: typeof import('./src/components/training/ExamResult.vue')['default']
     ExcelViewer: typeof import('./src/components/ExcelViewer.vue')['default']
-    ExportButton: typeof import('./src/components/ExportButton.vue')['default']
-    ExportDialog: typeof import('./src/components/ExportDialog.vue')['default']
     FanDeviceTable: typeof import('./src/components/process/FanDeviceTable.vue')['default']
     FilePreviewDialog: typeof import('./src/components/FilePreviewDialog.vue')['default']
     FileUpload: typeof import('./src/components/FileUpload.vue')['default']

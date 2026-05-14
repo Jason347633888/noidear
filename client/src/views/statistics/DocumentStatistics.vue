@@ -136,7 +136,7 @@ import { ElMessage } from 'element-plus';
 import { Document, Plus, TrendCharts, Select } from '@element-plus/icons-vue';
 import * as echarts from 'echarts';
 import request from '@/api/request';
-import exportApi from '@/api/export';
+import { statisticsApi } from '@/api/statistics';
 import StatCard from '@/components/StatCard.vue';
 
 const filters = ref({
@@ -226,7 +226,7 @@ const resetFilters = () => {
 
 const exportData = async () => {
   try {
-    const blob = await exportApi.exportStatistics('documents');
+    const blob = await statisticsApi.exportDocuments();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

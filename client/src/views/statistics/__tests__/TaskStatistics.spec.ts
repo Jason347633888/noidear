@@ -12,8 +12,11 @@ vi.mock('echarts', () => ({
 vi.mock('@/api/request', () => ({
   default: { get: (...a: unknown[]) => mockGet(...a) },
 }));
-vi.mock('@/api/export', () => ({
-  default: { exportStatistics: vi.fn().mockResolvedValue(new Blob()) },
+vi.mock('@/api/statistics', () => ({
+  statisticsApi: {
+    exportDocuments: vi.fn().mockResolvedValue(new Blob()),
+    exportTasks: vi.fn().mockResolvedValue(new Blob()),
+  },
 }));
 
 import TaskStatistics from '../TaskStatistics.vue';

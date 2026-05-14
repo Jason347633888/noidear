@@ -24,8 +24,46 @@
     <div class="app-panel" style="margin-bottom: 16px">
       <div class="app-panel-header">
         <h3 class="app-panel-header__title">记录列表</h3>
-        <div class="app-panel-header__actions"></div>
+        <div class="app-panel-header__actions">
+          <el-button type="primary" :loading="exporting" @click="openExportDialog">
+            导出记录
+          </el-button>
+        </div>
       </div>
+
+      <!-- 导出筛选对话框 -->
+      <el-dialog v-model="exportDialogVisible" title="导出记录" width="480px">
+        <el-form label-width="100px">
+          <el-form-item label="模板ID">
+            <el-input v-model="exportFilters.templateId" placeholder="留空则导出所有模板" clearable />
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select v-model="exportFilters.status" clearable placeholder="留空则排除草稿">
+              <el-option value="submitted" label="已提交" />
+              <el-option value="signed" label="已签署" />
+              <el-option value="approved" label="已通过" />
+              <el-option value="rejected" label="已驳回" />
+              <el-option value="draft" label="草稿" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="关键词">
+            <el-input v-model="exportFilters.keyword" placeholder="记录编号" clearable />
+          </el-form-item>
+          <el-form-item label="提交人ID">
+            <el-input v-model="exportFilters.submitterId" clearable />
+          </el-form-item>
+          <el-form-item label="开始日期">
+            <el-date-picker v-model="exportFilters.startDate" type="date" value-format="YYYY-MM-DD" placeholder="开始日期" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="结束日期">
+            <el-date-picker v-model="exportFilters.endDate" type="date" value-format="YYYY-MM-DD" placeholder="结束日期" style="width: 100%" />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="exportDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="exporting" @click="handleExportRecords">确认导出</el-button>
+        </template>
+      </el-dialog>
       <div class="app-panel--padded">
         <el-table :data="tableData" v-loading="loading" stripe>
           <el-table-column prop="id" label="记录ID" width="100" show-overflow-tooltip />
@@ -89,6 +127,7 @@ import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import recordApi from '@/api/record';
+import type { ExportRecordsPayload } from '@/api/record';
 
 const router = useRouter();
 const loading = ref(false);
@@ -119,6 +158,53 @@ const fetchData = async () => {
 
 const handleSearch = () => { pagination.page = 1; fetchData(); };
 const handleReset = () => { filterForm.status = ''; handleSearch(); };
+
+const exporting = ref(false);
+const exportDialogVisible = ref(false);
+const exportFilters = reactive({
+  templateId: '',
+  status: '',
+  keyword: '',
+  submitterId: '',
+  startDate: '',
+  endDate: '',
+});
+
+const openExportDialog = () => {
+  exportFilters.status = filterForm.status || '';
+  exportFilters.templateId = '';
+  exportFilters.keyword = '';
+  exportDialogVisible.value = true;
+};
+
+const handleExportRecords = async () => {
+  exporting.value = true;
+  try {
+    const payload: ExportRecordsPayload = {
+      templateId: exportFilters.templateId || undefined,
+      status: exportFilters.status || undefined,
+      keyword: exportFilters.keyword || undefined,
+      submitterId: exportFilters.submitterId || undefined,
+      startDate: exportFilters.startDate || undefined,
+      endDate: exportFilters.endDate || undefined,
+    };
+    const blob = await recordApi.exportRecords(payload);
+    const contentType = (blob as Blob).type;
+    const extension = contentType.includes('zip') ? 'zip' : 'xlsx';
+    const url = window.URL.createObjectURL(blob as Blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `记录导出_${new Date().toISOString().slice(0, 10)}.${extension}`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+    exportDialogVisible.value = false;
+    ElMessage.success('记录导出成功');
+  } catch (error: any) {
+    ElMessage.error(error.message || '记录导出失败');
+  } finally {
+    exporting.value = false;
+  }
+};
 
 onMounted(() => { fetchData(); });
 </script>

@@ -26,5 +26,9 @@ module.exports = {
     'test/task-batch-export.e2e-spec.ts',
     // i18n module not yet implemented
     'test/i18n.e2e-spec.ts',
+    // backup module does not exist in this codebase
+    'test/backup.e2e-spec.ts',
+    // health routes (/health, /health/postgres etc.) replaced by /liveness
+    'test/health.e2e-spec.ts',
   ],
 };

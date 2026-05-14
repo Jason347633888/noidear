@@ -12,6 +12,7 @@ import { AuditService } from '../audit.service';
 import {
   SENSITIVE_LOG_KEY,
   SensitiveLogMetadata,
+  SensitiveLogOptions,
 } from '../decorators/sensitive-log.decorator';
 
 @Injectable()
@@ -35,7 +36,7 @@ export class SensitiveLogInterceptor implements NestInterceptor {
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-    const { action, resourceType } = metadata;
+    const { action, resourceType, options } = metadata;
 
     // 使用 tap 在响应后记录日志（非阻塞）
     return next.handle().pipe(
@@ -48,6 +49,8 @@ export class SensitiveLogInterceptor implements NestInterceptor {
             resourceType,
             request,
             data,
+            undefined,
+            options,
           ).catch((error) => {
             this.logger.error(
               `Failed to record sensitive log: ${error.message}`,
@@ -64,6 +67,7 @@ export class SensitiveLogInterceptor implements NestInterceptor {
             request,
             null,
             error,
+            options,
           ).catch((logError) => {
             this.logger.error(
               `Failed to record sensitive log on error: ${logError.message}`,
@@ -82,9 +86,20 @@ export class SensitiveLogInterceptor implements NestInterceptor {
     request: any,
     data?: any,
     error?: any,
+    options?: SensitiveLogOptions,
   ): Promise<void> {
     try {
-      const resourceId = data?.id || request.params?.id || request.query?.id;
+      // 支持从 body 指定字段提取 resourceId
+      const bodyResourceId = options?.resourceIdField
+        ? request.body?.[options.resourceIdField]
+        : undefined;
+
+      const resourceId =
+        bodyResourceId ||
+        data?.id ||
+        request.params?.id ||
+        request.query?.id;
+
       const resourceName =
         data?.name ||
         data?.title ||
@@ -98,6 +113,22 @@ export class SensitiveLogInterceptor implements NestInterceptor {
         params: request.params,
         query: request.query,
       };
+
+      // 从 body 提取允许的字段并写入 details
+      if (options?.bodyFields?.length && request.body) {
+        const bodyDetails: Record<string, any> = {};
+        for (const field of options.bodyFields) {
+          if (request.body[field] !== undefined) {
+            bodyDetails[field] = request.body[field];
+          }
+        }
+        Object.assign(details, bodyDetails);
+      }
+
+      // 导出操作额外记录实际行数
+      if (action === 'export_data' && data !== null && data !== undefined) {
+        details.recordCount = Array.isArray(data) ? data.length : undefined;
+      }
 
       if (error) {
         details.error = error.message;

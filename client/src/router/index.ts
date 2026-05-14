@@ -196,11 +196,6 @@ const routes: RouteRecordRaw[] = [
         name: 'TaskStatistics',
         component: () => import('@/views/statistics/TaskStatistics.vue'),
       },
-      {
-        path: 'recycle-bin',
-        name: 'RecycleBin',
-        component: () => import('@/views/RecycleBin.vue'),
-      },
       // 用户权限管理
       {
         path: 'users/:id/permissions',
@@ -492,29 +487,11 @@ const routes: RouteRecordRaw[] = [
         name: 'AuditSearch',
         component: () => import('@/views/audit/AuditSearchPage.vue'),
       },
-      { path: 'backup', redirect: '/backup/manage' },
-      {
-        path: 'backup/manage',
-        name: 'BackupManage',
-        component: () => import('@/views/backup/BackupManage.vue'),
-      },
       // 高级功能模块
       {
         path: 'search',
         name: 'AdvancedSearch',
         component: () => import('@/views/search/AdvancedSearch.vue'),
-      },
-      {
-        path: 'admin/export',
-        name: 'ExportPage',
-        component: () => import('@/views/admin/ExportPage.vue'),
-        meta: { requiresAdmin: true },
-      },
-      {
-        path: 'admin/import',
-        name: 'ImportPage',
-        component: () => import('@/views/admin/ImportPage.vue'),
-        meta: { requiresAdmin: true },
       },
       // CCP 监控模块
       {

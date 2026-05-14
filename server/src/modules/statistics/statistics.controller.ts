@@ -152,14 +152,13 @@ export class StatisticsController {
 
   @Get('export')
   async export(
-    @Query('type') type: 'documents' | 'tasks' | 'approvals',
+    @Query('type') type: 'documents' | 'tasks',
     @Res() res: Response,
     @Request() req: any,
   ) {
     try {
       let buffer: Buffer;
 
-      // CRITICAL-1 修复: 导出统计数据而非原始列表
       // 注意：统计服务本身已包含权限过滤，所以这里不需要额外传递user参数
       if (type === 'documents') {
         const stats = await this.statisticsService.getDocumentStatistics({});
@@ -167,11 +166,8 @@ export class StatisticsController {
       } else if (type === 'tasks') {
         const stats = await this.statisticsService.getTaskStatistics({});
         buffer = await this.statisticsExportService.exportTaskStatistics(stats);
-      } else if (type === 'approvals') {
-        const stats = await this.statisticsService.getApprovalStatistics({});
-        buffer = await this.statisticsExportService.exportApprovalStatistics(stats);
       } else {
-        throw new Error('Invalid export type. Must be: documents, tasks, or approvals');
+        throw new Error('Invalid export type. Must be: documents or tasks');
       }
 
       const filename = `statistics_${type}_${Date.now()}.xlsx`;

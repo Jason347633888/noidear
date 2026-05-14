@@ -41,6 +41,13 @@ request.interceptors.request.use(
 // 响应拦截器
 request.interceptors.response.use(
   (response) => {
+    // 二进制响应类型不需要解析 JSON 结构，直接返回原始数据
+    if (
+      response.config.responseType === 'blob' ||
+      response.config.responseType === 'arraybuffer'
+    ) {
+      return response.data as unknown as typeof response;
+    }
     const { code, message, data, details } = response.data as ApiResponse;
     if (code === 0) {
       // Cast needed: interceptor unwraps data so callers receive T directly,

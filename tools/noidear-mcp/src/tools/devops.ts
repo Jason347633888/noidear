@@ -29,16 +29,13 @@ export async function healthCheck(): Promise<unknown> {
     }
   }
 
-  // Server health: use authenticated request since /health requires auth
+  // Server health: use /liveness endpoint (unauthenticated liveness probe)
   try {
-    const token = await tokenManager.getAdminToken().catch(() => null);
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const res = await axios.get(`${CONFIG.baseUrl}/health`, { timeout: 3000, headers });
-    services['server'] = res.data?.code === 0 ? 'healthy' : 'unhealthy';
+    const res = await axios.get(`${CONFIG.baseUrl}/liveness`, { timeout: 3000 });
+    services['server'] = res.status >= 200 && res.status < 300 ? 'healthy' : 'unhealthy';
   } catch (err) {
-    // 401 means server is up but auth failed; treat as healthy for infrastructure check
-    const status = (err as { response?: { status?: number } }).response?.status;
-    services['server'] = status ? 'healthy' : 'unhealthy';
+    // Non-2xx response or network error → unhealthy
+    services['server'] = 'unhealthy';
   }
 
   // Client health: unauthenticated HTTP check

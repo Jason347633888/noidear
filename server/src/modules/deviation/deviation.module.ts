@@ -4,19 +4,18 @@ import { DeviationController } from './deviation.controller';
 import { DeviationAnalyticsService } from './deviation-analytics.service';
 import { DeviationAnalyticsController } from './deviation-analytics.controller';
 import { DeviationCronService } from './deviation-cron.service';
+import { DeviationExportService } from './deviation-export.service';
 import { PrismaModule } from '../../prisma/prisma.module';
-import { ExportModule } from '../export/export.module';
 import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
 import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
 
 @Module({
   imports: [
     PrismaModule,
-    ExportModule,
     UnifiedApprovalModule,
   ],
   controllers: [DeviationController, DeviationAnalyticsController],
-  providers: [DeviationService, DeviationAnalyticsService, DeviationCronService],
+  providers: [DeviationService, DeviationAnalyticsService, DeviationCronService, DeviationExportService],
   exports: [DeviationService, DeviationAnalyticsService],
 })
 export class DeviationModule implements OnModuleInit {

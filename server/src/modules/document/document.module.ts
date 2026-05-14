@@ -7,7 +7,6 @@ import { FilePreviewService } from './services';
 import { StorageService } from '../../common/services';
 import { NotificationModule } from '../notification/notification.module';
 import { OperationLogModule } from '../operation-log/operation-log.module';
-import { ExportModule } from '../export/export.module';
 import { DepartmentPermissionModule } from '../department-permission/department-permission.module';
 import { RoleModule } from '../role/role.module';
 import { StatisticsModule } from '../statistics/statistics.module';
@@ -32,7 +31,7 @@ import type { ApprovalCallbackContext } from '../unified-approval/types';
 import { CANONICAL_DOCUMENT_STATUS } from './constants/document-control.constants';
 
 @Module({
-  imports: [ConfigModule, PrismaModule, NotificationModule, OperationLogModule, ExportModule, DepartmentPermissionModule, RoleModule, StatisticsModule, UserPermissionModule, SearchModule, ModelLandingModule, UnifiedApprovalModule],
+  imports: [ConfigModule, PrismaModule, NotificationModule, OperationLogModule, DepartmentPermissionModule, RoleModule, StatisticsModule, UserPermissionModule, SearchModule, ModelLandingModule, UnifiedApprovalModule],
   controllers: [DocumentController],
   providers: [DocumentService, DocumentCronService, DocumentReferenceService, MarkdownWikilinkService, DocumentReferenceHealthService, BusinessDocumentLinkService, DocumentExpiryService, DocumentLifecycleService, DocumentControlMetadataService, RecordFormLandingService, FilePreviewService, StorageService, StatisticsCacheInterceptor, DocumentsListener, NumberRuleService],
   exports: [DocumentService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, BusinessDocumentLinkService, DocumentExpiryService],

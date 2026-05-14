@@ -1622,45 +1622,6 @@ model EquipmentFault {
 }
 
 // ========================================
-// 移动端应用 (Mobile Application)
-// ========================================
-
-// TASK-354: 移动端文件上传记录表
-model MobileUpload {
-  id           String   @id @default(cuid())
-  userId       String
-  originalUrl  String // 原图 URL
-  thumbnailUrl String? // 缩略图 URL
-  fileName     String // 原始文件名
-  fileSize     Int // 文件大小（字节）
-  mimeType     String // MIME 类型
-  storagePath  String // MinIO 存储路径
-  createdAt    DateTime @default(now())
-
-  @@index([userId])
-  @@index([createdAt])
-  @@map("mobile_uploads")
-}
-
-// TASK-355: 离线同步记录表
-model SyncSubmission {
-  id        String   @id @default(cuid())
-  uuid      String   @unique // 客户端生成的 UUID（去重）
-  userId    String
-  formId    String // 表单模板 ID
-  data      Json // 表单数据
-  status    String   @default("synced") // synced, failed
-  error     String? // 失败原因
-  syncedAt  DateTime @default(now())
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-  @@index([uuid])
-  @@index([status])
-  @@index([syncedAt])
-  @@map("sync_submissions")
-}
-
 // ========================================
 // TASK-359: Audit Logging Tables
 // ========================================
@@ -1737,28 +1698,6 @@ model SensitiveLog {
   @@index([resourceType])
   @@index([createdAt])
   @@map("sensitive_logs")
-}
-
-// ========================================
-// TASK-360: System Monitoring Tables
-// ========================================
-
-// 备份历史记录表 (Backup History)
-model BackupHistory {
-  id           BigInt    @id @default(autoincrement())
-  backupType   String // 'postgres', 'minio'
-  fileName     String
-  fileSize     BigInt?
-  status       String // 'success', 'failed'
-  errorMessage String?
-  startedAt    DateTime  @default(now())
-  completedAt  DateTime?
-  createdAt    DateTime  @default(now())
-
-  @@index([backupType])
-  @@index([status])
-  @@index([startedAt])
-  @@map("backup_history")
 }
 
 // ========================================
