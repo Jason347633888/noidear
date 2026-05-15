@@ -117,8 +117,7 @@ import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Calendar, Clock, CircleCheck, User, Download, Refresh } from '@element-plus/icons-vue';
 import * as echarts from 'echarts';
-import { getTrainingProjects, getLearningRecords } from '@/api/training';
-import * as XLSX from 'xlsx';
+import { getTrainingProjects, getLearningRecords, exportTrainingStatistics } from '@/api/training';
 import StatCard from '@/components/StatCard.vue';
 
 const loading = ref(false);
@@ -424,25 +423,13 @@ const initScoreChart = (records: any[]) => {
 const exportData = async () => {
   exporting.value = true;
   try {
-    const projectsRes = await getTrainingProjects({ limit: 1000 });
-    const projects = projectsRes.items || [];
-
-    const exportData = projects.map((p: any) => ({
-      '项目标题': p.title,
-      '部门': p.department,
-      '季度': `Q${p.quarter}`,
-      '状态': p.status === 'planned' ? '计划中' : p.status === 'ongoing' ? '进行中' : p.status === 'completed' ? '已完成' : '已取消',
-      '学员数': p.traineeCount || p.trainees?.length || 0,
-      '讲师': p.trainer?.name || '',
-      '计划日期': p.scheduledDate || '',
-      '创建时间': p.createdAt,
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '培训统计');
-
-    XLSX.writeFile(wb, `培训统计_${new Date().toISOString().split('T')[0]}.xlsx`);
+    const blob = await exportTrainingStatistics();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `培训统计_${new Date().toISOString().split('T')[0]}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(url);
     ElMessage.success('导出成功');
   } catch (error: any) {
     ElMessage.error(error.message || '导出失败');

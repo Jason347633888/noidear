@@ -171,3 +171,14 @@ export const getMyLearningRecords = (): Promise<LearningRecord[]> => {
 export const getExamRecordsHistory = (learningRecordId: string): Promise<any[]> => {
   return request.get(`/training/records/${learningRecordId}/exams`);
 };
+
+// =========================================================================
+// Training Statistics Export API
+// =========================================================================
+
+/**
+ * Export training statistics as Excel blob (backend-rendered ExcelJS)
+ */
+export function exportTrainingStatistics(): Promise<Blob> {
+  return request.get('/training/statistics/export', { responseType: 'blob' });
+}

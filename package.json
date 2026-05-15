@@ -24,10 +24,23 @@
     "prisma:generate": "npm run prisma:generate -w server",
     "verify": "npm run build:server && npm run build:client",
     "lint:api-prefix": "bash tools/check-client-api-prefix.sh",
-    "verify:full": "npm run lint:api-prefix && npm run typecheck:types && npm run build:mcp && npm run build:server && npm run build:client"
+    "verify:full": "npm run lint:api-prefix && npm run typecheck:types && npm run build:mcp && npm run build:server && npm run build:client",
+    "security:audit:prod": "npm audit --omit=dev",
+    "security:audit:raw": "npm audit",
+    "security:audit:register": "node tools/check-audit-register.mjs docs/superpowers/specs/2026-05-14-audit-risk-register.yaml",
+    "security:audit:strict": "node tools/check-npm-audit-strict.mjs",
+    "security:docker": "bash tools/check-docker-images.sh",
+    "verify:full:ci": "npm run verify:full && npm run security:audit:strict && npm run test -w server -- --runInBand && npm run test -w client && python3 tools/generate-system-map.py"
+  },
+  "overrides": {
+    "rxjs": "7.8.2",
+    "editorconfig": {
+      "minimatch": "9.0.9"
+    }
   },
   "devDependencies": {
-    "prisma": "^5.22.0"
+    "prisma": "^5.22.0",
+    "yaml": "^2.9.0"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0"

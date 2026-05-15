@@ -3,14 +3,45 @@
 # high and critical advisories are not allowed here; check-audit-register.mjs must fail nonzero if they appear.
 version: 1
 updatedAt: "2026-05-14"
-entries: []
+entries:
+  - advisoryId: "GHSA-67mh-4wv8-2f99"
+    severity: "moderate"
+    occurrences:
+      - workspace: "root"
+        packageName: "esbuild"
+        packageChain:
+          - "esbuild"
+        reachedProjectCodePath: "no"
+    currentBlocker: "Fix requires vite@8 (major). esbuild is vite's internal dev-server dependency, not used in production bundle."
+    decision: "wait_upstream"
+    discoveredAt: "2026-05-14"
+    nextReviewAt: "2026-05-21"
+    renewalCount: 0
+    owner: "@JIASHENG1204"
+    notes: "GHSA-67mh-4wv8-2f99: esbuild dev server CORS bypass. Only exploitable when vite dev server is running. No production code path reached. Recheck after vite@8 stable release. Occurrence workspace is root because npm audit runs at workspace root and aggregates all workspace vulnerabilities."
+
+  - advisoryId: "GHSA-4w7w-66w2-5vf9"
+    severity: "moderate"
+    occurrences:
+      - workspace: "root"
+        packageName: "vite"
+        packageChain:
+          - "vite"
+        reachedProjectCodePath: "no"
+    currentBlocker: "Fix requires vite@8 (major). Current project uses vite@5. Vite is a dev-time build tool; the vulnerability affects the vite dev server, not the production bundle."
+    decision: "wait_upstream"
+    discoveredAt: "2026-05-14"
+    nextReviewAt: "2026-05-21"
+    renewalCount: 0
+    owner: "@JIASHENG1204"
+    notes: "GHSA-4w7w-66w2-5vf9: Vite path traversal in optimized deps .map handler. Only exploitable via vite dev server. Production bundle is static HTML/JS/CSS with no vite runtime. Recheck after vite@8 migration. Occurrence workspace is root because npm audit runs at workspace root and aggregates all workspace vulnerabilities."
 
 # Example entry format:
 # entries:
 #   - advisoryId: "GHSA-xxxx-xxxx-xxxx"
 #     severity: "moderate" # allowed: low, moderate
 #     occurrences:
-#       - workspace: "client" # allowed: root, client, server, mobile, packages/types, tools/noidear-mcp
+#       - workspace: "root" # allowed: root, client, server, mobile, packages/types, tools/noidear-mcp
 #         packageName: "vite"
 #         packageChain:
 #           - "vite"

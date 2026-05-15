@@ -9,10 +9,13 @@ import {
   Query,
   UseGuards,
   Request,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { TrainingService } from './training.service';
+import { TrainingStatisticsExportService } from './training-statistics-export.service';
 import { CreateTrainingPlanDto } from './dto/create-plan.dto';
 import { UpdateTrainingPlanDto } from './dto/update-plan.dto';
 import { QueryTrainingPlanDto } from './dto/query-plan.dto';
@@ -25,7 +28,21 @@ import { QueryTrainingProjectDto } from './dto/query-project.dto';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class TrainingController {
-  constructor(private readonly trainingService: TrainingService) {}
+  constructor(
+    private readonly trainingService: TrainingService,
+    private readonly statisticsExportService: TrainingStatisticsExportService,
+  ) {}
+
+  // ==================== 培训统计导出 ====================
+
+  @Get('statistics/export')
+  @ApiOperation({ summary: '导出培训统计 Excel' })
+  async exportStatistics(@Res() res: Response) {
+    const buffer = await this.statisticsExportService.exportProjects();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="training-statistics-${Date.now()}.xlsx"`);
+    res.send(buffer);
+  }
 
   // ==================== 培训计划管理 ====================
 
