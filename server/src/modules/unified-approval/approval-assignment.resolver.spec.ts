@@ -1,98 +1,83 @@
-import { ForbiddenException } from '@nestjs/common';
 import { ApprovalAssignmentResolver } from './approval-assignment.resolver';
 
-function makePrisma(overrides: Record<string, any> = {}) {
-  return {
-    user: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-    },
-    department: {
-      findUnique: jest.fn(),
-    },
-    ...overrides,
-  } as any;
-}
-
 describe('ApprovalAssignmentResolver', () => {
-  it('resolves a direct user assignment', async () => {
-    const prisma = makePrisma();
-    const resolver = new ApprovalAssignmentResolver(prisma);
+  const prisma = {
+    user: { findUnique: jest.fn(), findMany: jest.fn() },
+    department: { findUnique: jest.fn() },
+  } as any;
+  const resolver = new ApprovalAssignmentResolver(prisma);
 
-    const result = await resolver.resolveAssignment({ type: 'user', userId: 'u1' });
+  beforeEach(() => jest.resetAllMocks());
 
-    expect(result.assigneeUserIds).toEqual(['u1']);
-    expect(result.claimMode).toBe('DIRECT');
+  it('USER assignment returns DIRECT claim with single user', async () => {
+    const r = await resolver.resolveAssignment({ type: 'USER', userId: 'u-1' });
+    expect(r).toEqual({ assignment: { type: 'USER', userId: 'u-1' }, assigneeUserIds: ['u-1'], claimMode: 'DIRECT' });
   });
 
-  it('resolves role assignments from active users', async () => {
-    const prisma = makePrisma();
-    prisma.user.findMany.mockResolvedValue([{ id: 'u1' }, { id: 'u2' }]);
-    const resolver = new ApprovalAssignmentResolver(prisma);
+  it('ROLE assignment returns all active users with that role', async () => {
+    prisma.user.findMany.mockResolvedValue([{ id: 'u-1' }, { id: 'u-2' }]);
+    const r = await resolver.resolveAssignment({ type: 'ROLE', roleCode: 'leader' });
+    expect(r.assigneeUserIds).toEqual(['u-1', 'u-2']);
+    expect(r.assigneeRoleCode).toBe('leader');
+    expect(r.claimMode).toBe('CLAIMABLE');
+  });
 
-    const result = await resolver.resolveAssignment({ type: 'role', roleCode: 'quality_manager' });
-
+  it('DEPARTMENT_ROLE filters by department + role', async () => {
+    prisma.user.findMany.mockResolvedValue([{ id: 'u-9' }]);
+    const r = await resolver.resolveAssignment({ type: 'DEPARTMENT_ROLE', departmentId: 'd-1', roleCode: 'leader' });
     expect(prisma.user.findMany).toHaveBeenCalledWith({
-      where: {
-        status: 'active',
-        roleObj: { code: 'quality_manager' },
-      },
+      where: { status: 'active', departmentId: 'd-1', roleObj: { code: 'leader' } },
       select: { id: true },
     });
-    expect(result).toMatchObject({
-      assigneeUserIds: ['u1', 'u2'],
-      assigneeRoleCode: 'quality_manager',
-      claimMode: 'CLAIMABLE',
-    });
+    expect(r.assigneeUserIds).toEqual(['u-9']);
+    expect(r.assigneeDepartmentId).toBe('d-1');
   });
 
-  it('does not trust a client role when authorizing a task', async () => {
-    const prisma = makePrisma();
-    prisma.user.findUnique.mockResolvedValue({
-      id: 'u1',
-      role: 'user',
-      roleObj: { code: 'user' },
-      departmentId: 'dept-user',
-      userPermissions: [],
-    });
-    const resolver = new ApprovalAssignmentResolver(prisma);
-
-    await expect(
-      resolver.assertCanAct({
-        userId: 'u1',
-        task: {
-          assigneeUserId: null,
-          assigneeRoleCode: 'gm',
-          assigneeDepartmentId: null,
-          assigneePermissionCode: null,
-          status: 'PENDING',
-        },
-      }),
-    ).rejects.toThrow(ForbiddenException);
+  it('assertCanAct: admin always allowed', async () => {
+    prisma.user.findUnique.mockResolvedValue({ id: 'u-x', roleObj: { code: 'admin' }, departmentId: null });
+    await expect(resolver.assertCanAct({
+      userId: 'u-x',
+      task: { assigneeUserId: null, assigneeRoleCode: null, assigneeDepartmentId: null, status: 'PENDING' },
+    })).resolves.not.toThrow();
   });
 
-  it('allows admin override', async () => {
-    const prisma = makePrisma();
-    prisma.user.findUnique.mockResolvedValue({
-      id: 'admin',
-      role: 'admin',
-      roleObj: { code: 'admin' },
-      departmentId: null,
-      userPermissions: [],
-    });
-    const resolver = new ApprovalAssignmentResolver(prisma);
+  it('assertCanAct: matches assigneeUserId', async () => {
+    prisma.user.findUnique.mockResolvedValue({ id: 'u-x', roleObj: { code: 'user' }, departmentId: 'd-1' });
+    await expect(resolver.assertCanAct({
+      userId: 'u-x',
+      task: { assigneeUserId: 'u-x', assigneeRoleCode: null, assigneeDepartmentId: null, status: 'PENDING' },
+    })).resolves.not.toThrow();
+  });
 
-    await expect(
-      resolver.assertCanAct({
-        userId: 'admin',
-        task: {
-          assigneeUserId: null,
-          assigneeRoleCode: 'gm',
-          assigneeDepartmentId: null,
-          assigneePermissionCode: null,
-          status: 'PENDING',
-        },
-      }),
-    ).resolves.toBeUndefined();
+  it('assertCanAct: matches assigneeRoleCode', async () => {
+    prisma.user.findUnique.mockResolvedValue({ id: 'u-x', roleObj: { code: 'leader' }, departmentId: 'd-1' });
+    await expect(resolver.assertCanAct({
+      userId: 'u-x',
+      task: { assigneeUserId: null, assigneeRoleCode: 'leader', assigneeDepartmentId: null, status: 'PENDING' },
+    })).resolves.not.toThrow();
+  });
+
+  it('assertCanAct: DEPARTMENT_ROLE requires both department AND role match', async () => {
+    prisma.user.findUnique.mockResolvedValue({ id: 'u-x', roleObj: { code: 'leader' }, departmentId: 'd-1' });
+    await expect(resolver.assertCanAct({
+      userId: 'u-x',
+      task: { assigneeUserId: null, assigneeRoleCode: 'leader', assigneeDepartmentId: 'd-1', status: 'PENDING' },
+    })).resolves.not.toThrow();
+    // wrong department
+    await expect(resolver.assertCanAct({
+      userId: 'u-x',
+      task: { assigneeUserId: null, assigneeRoleCode: 'leader', assigneeDepartmentId: 'd-2', status: 'PENDING' },
+    })).rejects.toThrow();
+  });
+
+  it('does not read userPermissions / permissionCode under any branch', async () => {
+    prisma.user.findUnique.mockResolvedValue({ id: 'u-x', roleObj: { code: 'user' }, departmentId: 'd-1' });
+    await resolver.assertCanAct({
+      userId: 'u-x',
+      task: { assigneeUserId: 'u-x', assigneeRoleCode: null, assigneeDepartmentId: null, status: 'PENDING' },
+    });
+    const call = prisma.user.findUnique.mock.calls[0][0];
+    expect(JSON.stringify(call)).not.toContain('userPermissions');
+    expect(JSON.stringify(call)).not.toContain('fineGrainedPermission');
   });
 });

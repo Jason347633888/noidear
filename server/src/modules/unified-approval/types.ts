@@ -4,19 +4,14 @@ export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 export type ApprovalTaskStatus = ApprovalStatus;
 export type ApprovalActionType = 'APPROVE' | 'REJECT' | 'CLAIM' | 'TRANSFER' | 'CANCEL' | 'COMMENT';
 export type ApprovalMode = 'single' | 'countersign_all' | 'countersign_any' | 'sequential' | 'parallel_groups';
-export type AssignmentType = 'user' | 'role' | 'department' | 'permission';
+export type AssignmentType = 'USER' | 'ROLE' | 'DEPARTMENT_ROLE';
 export type ClaimMode = 'DIRECT' | 'CLAIMABLE';
 export type RejectPolicy = 'reject_instance' | 'back_to_submitter';
 
-export interface ApprovalAssignmentDefinition {
-  type: AssignmentType;
-  userId?: string;
-  roleCode?: string;
-  departmentCode?: string;
-  departmentId?: string;
-  permissionCode?: string;
-  label?: string;
-}
+export type ApprovalAssignmentDefinition =
+  | { type: 'USER'; userId: string; label?: string }
+  | { type: 'ROLE'; roleCode: 'admin' | 'leader' | 'user'; label?: string }
+  | { type: 'DEPARTMENT_ROLE'; departmentId: string; roleCode: 'admin' | 'leader' | 'user'; label?: string };
 
 export interface ApprovalStepDefinition {
   stepKey: string;
@@ -70,6 +65,5 @@ export interface ResolvedAssignment {
   assigneeUserIds: string[];
   assigneeRoleCode?: string;
   assigneeDepartmentId?: string;
-  assigneePermissionCode?: string;
   claimMode: ClaimMode;
 }
