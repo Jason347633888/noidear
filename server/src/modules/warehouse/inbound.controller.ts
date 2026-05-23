@@ -31,8 +31,8 @@ export class InboundController {
   }
 
   @Get()
-  findAll(@Ownership() ownership: OwnershipContext, @Query() _query: QueryInboundDto) {
-    return this.inboundService.listForOwnership(ownership);
+  findAll(@Ownership() ownership: OwnershipContext, @Query() query: QueryInboundDto) {
+    return this.inboundService.findAll(query, ownership);
   }
 
   @Get(':id')

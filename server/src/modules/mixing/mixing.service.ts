@@ -13,30 +13,8 @@ import { userIdsInDepts } from '../module-access/ownership-helpers';
 export class MixingService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Ownership-scoped mixing execution list.
-   * admin: all; user: operatorId = userId; leader: operatorId IN members(managedDepts)
-   */
-  async listForOwnership(ownership: OwnershipContext) {
-    const where: Record<string, unknown> = {};
-
-    if (ownership.roleCode === 'user') {
-      where['operatorId'] = ownership.userId;
-    } else if (ownership.roleCode === 'leader') {
-      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
-      if (memberIds.length === 0) return [];
-      where['operatorId'] = { in: memberIds };
-    }
-    // admin: no filter
-
-    return this.prisma.mixingExecution.findMany({
-      where,
-      orderBy: { work_date: 'desc' },
-      take: 100,
-    });
-  }
-
-  async listExecutions(dto: ListMixingExecutionsDto) {
+  async listExecutions(dto: ListMixingExecutionsDto, ownership: OwnershipContext) {
+    const ownershipWhere = await this.buildOwnershipWhere(ownership);
     return this.prisma.mixingExecution.findMany({
       where: {
         ...(dto.productId && { productId: dto.productId }),
@@ -52,6 +30,7 @@ export class MixingService {
               },
             }
           : {}),
+        ...ownershipWhere,
       },
       include: {
         area: true,
@@ -61,6 +40,17 @@ export class MixingService {
       orderBy: { work_date: 'desc' },
       take: 100,
     });
+  }
+
+  private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
+    if (ownership.roleCode === 'admin') return {};
+    if (ownership.roleCode === 'user') {
+      return { operatorId: ownership.userId };
+    }
+    // leader
+    const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+    if (memberIds.length === 0) return { id: 'no-match' };
+    return { operatorId: { in: memberIds } };
   }
 
   async recommendMaterialBatches(dto: RecommendMaterialBatchDto) {

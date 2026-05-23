@@ -18,8 +18,8 @@ export class DeviationController {
   ) {}
 
   @Get()
-  async findAll(@Ownership() ownership: OwnershipContext, @Query() _query: DeviationReportQueryDto) {
-    return this.deviationService.listForOwnership(ownership);
+  async findAll(@Ownership() ownership: OwnershipContext, @Query() query: DeviationReportQueryDto) {
+    return this.deviationService.findDeviationReports(query, ownership);
   }
 
   @Get('export')

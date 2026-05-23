@@ -38,29 +38,13 @@ export class CorrectiveActionService {
     });
   }
 
-  async listForOwnership(ownership: OwnershipContext) {
-    const where: Record<string, unknown> = {};
-
-    if (ownership.roleCode === 'user') {
-      where['responsible_id'] = ownership.userId;
-    } else if (ownership.roleCode === 'leader') {
-      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
-      if (memberIds.length === 0) return [];
-      where['responsible_id'] = { in: memberIds };
-    }
-    // admin: no filter
-
-    return this.prisma.correctiveAction.findMany({
-      where,
-      orderBy: { created_at: 'desc' },
-    });
-  }
-
-  async findAll(companyId: string, filters: CorrectiveActionListFilters = {}) {
+  async findAll(companyId: string, filters: CorrectiveActionListFilters = {}, ownership?: OwnershipContext) {
     const { status, triggerType, triggerId } = filters;
     if ((triggerType && !triggerId) || (!triggerType && triggerId)) {
       throw new BadRequestException('trigger_type 和 trigger_id 必须同时提供');
     }
+
+    const ownershipWhere = ownership ? await this.buildOwnershipWhere(ownership) : {};
 
     return this.prisma.correctiveAction.findMany({
       where: {
@@ -69,10 +53,22 @@ export class CorrectiveActionService {
         ...(triggerType && triggerId
           ? { trigger_type: triggerType, trigger_id: triggerId }
           : {}),
+        ...ownershipWhere,
       },
       orderBy: { created_at: 'desc' },
       take: 100,
     });
+  }
+
+  private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
+    if (ownership.roleCode === 'admin') return {};
+    if (ownership.roleCode === 'user') {
+      return { responsible_id: ownership.userId };
+    }
+    // leader
+    const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+    if (memberIds.length === 0) return { id: 'no-match' };
+    return { responsible_id: { in: memberIds } };
   }
 
   private async validateTriggerSource(

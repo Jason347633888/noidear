@@ -36,8 +36,8 @@ export class EquipmentController {
   }
 
   @Get()
-  findAll(@Query() _query: QueryEquipmentDto, @Ownership() ownership: OwnershipContext) {
-    return this.equipmentService.listForOwnership(ownership);
+  findAll(@Query() query: QueryEquipmentDto, @Ownership() ownership: OwnershipContext) {
+    return this.equipmentService.findAll(query, ownership);
   }
 
   @Get(':id')

@@ -41,11 +41,12 @@ export class CorrectiveActionController {
   @Get()
   findAll(
     @Ownership() ownership: OwnershipContext,
-    @Query('status') _status?: string,
-    @Query('trigger_type') _triggerType?: CapaTriggerType,
-    @Query('trigger_id') _triggerId?: string,
+    @Request() req: AuthenticatedRequest,
+    @Query('status') status?: string,
+    @Query('trigger_type') triggerType?: CapaTriggerType,
+    @Query('trigger_id') triggerId?: string,
   ) {
-    return this.service.listForOwnership(ownership);
+    return this.service.findAll(req.user.companyId, { status, triggerType, triggerId }, ownership);
   }
 
   // analytics/trends must be BEFORE :id to avoid Express shadowing

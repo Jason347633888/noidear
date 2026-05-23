@@ -19,8 +19,8 @@ export class CustomerComplaintController {
   }
 
   @Get()
-  findAll(@Ownership() ownership: OwnershipContext, @Query('status') _status?: string) {
-    return this.service.listForOwnership(ownership);
+  findAll(@Ownership() ownership: OwnershipContext, @Request() req: AuthenticatedRequest, @Query('status') status?: string) {
+    return this.service.findAll(req.user.companyId, ownership, status);
   }
 
   @Post(':id/resolve')

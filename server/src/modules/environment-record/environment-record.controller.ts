@@ -23,9 +23,9 @@ export class EnvironmentRecordController {
   @Get()
   findAll(
     @Ownership() ownership: OwnershipContext,
-    @Query('start_date') _startDate?: string,
-    @Query('end_date') _endDate?: string,
+    @Query('start_date') startDate?: string,
+    @Query('end_date') endDate?: string,
   ) {
-    return this.service.listForOwnership(ownership);
+    return this.service.findAll(ownership, startDate, endDate);
   }
 }

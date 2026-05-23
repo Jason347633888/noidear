@@ -175,25 +175,7 @@ export class DeviationService {
     return reports;
   }
 
-  async listForOwnership(ownership: OwnershipContext) {
-    const where: Record<string, unknown> = { deletedAt: null };
-
-    if (ownership.roleCode === 'user') {
-      where['reporterId'] = ownership.userId;
-    } else if (ownership.roleCode === 'leader') {
-      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
-      if (memberIds.length === 0) return [];
-      where['reporterId'] = { in: memberIds };
-    }
-    // admin: no filter
-
-    return this.prisma.deviationReport.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
-  async findDeviationReports(query: DeviationReportQueryDto) {
+  async findDeviationReports(query: DeviationReportQueryDto, ownership?: OwnershipContext) {
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 20);
     const skip = (page - 1) * limit;
@@ -223,6 +205,11 @@ export class DeviationService {
       where.createdAt = dateFilter;
     }
 
+    if (ownership) {
+      const ownershipWhere = await this.buildOwnershipWhere(ownership);
+      Object.assign(where, ownershipWhere);
+    }
+
     const [list, total] = await Promise.all([
       this.prisma.deviationReport.findMany({
         where,
@@ -241,6 +228,17 @@ export class DeviationService {
     ]);
 
     return { list, total, page, limit };
+  }
+
+  private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
+    if (ownership.roleCode === 'admin') return {};
+    if (ownership.roleCode === 'user') {
+      return { reporterId: ownership.userId };
+    }
+    // leader
+    const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+    if (memberIds.length === 0) return { id: 'no-match' };
+    return { reporterId: { in: memberIds } };
   }
 
 }

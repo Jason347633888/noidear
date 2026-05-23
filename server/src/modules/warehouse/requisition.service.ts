@@ -17,40 +17,6 @@ export class RequisitionService {
     private readonly supplierAccess: SupplierAccessService,
   ) {}
 
-  /**
-   * Ownership-scoped list (Task 46 update).
-   * admin → all; user → applicantId = userId (FK now enforced);
-   * leader → departmentId IN managedDepartmentIds (primary) OR applicantId IN members.
-   */
-  async listForOwnership(ownership: OwnershipContext) {
-    if (ownership.roleCode === 'admin') {
-      return this.prisma.materialRequisition.findMany({
-        where: { deletedAt: null },
-        orderBy: { createdAt: 'desc' },
-      });
-    }
-    if (ownership.roleCode === 'user') {
-      return this.prisma.materialRequisition.findMany({
-        where: { deletedAt: null, applicantId: ownership.userId },
-        orderBy: { createdAt: 'desc' },
-      });
-    }
-    // leader: departmentId IN managedDepts
-    const depts = ownership.managedDepartmentIds ?? [];
-    if (depts.length === 0) return [];
-    const memberIds = await userIdsInDepts(this.prisma, depts);
-    return this.prisma.materialRequisition.findMany({
-      where: {
-        deletedAt: null,
-        OR: [
-          { departmentId: { in: depts } },
-          ...(memberIds.length > 0 ? [{ applicantId: { in: memberIds } }] : []),
-        ],
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
   async create(createDto: any) {
     const requisitionNo = this.generateRequisitionNo();
 
@@ -121,16 +87,19 @@ export class RequisitionService {
     return `REQ-${today}-${seq}`;
   }
 
-  async findAll(query: any) {
+  async findAll(query: any, ownership: OwnershipContext) {
     const page = parseInt(query.page ?? '1', 10);
     const limit = parseInt(query.limit ?? '10', 10);
     const { status } = query;
     const skip = (page - 1) * limit;
-    const where: any = { deletedAt: null };
+    const queryWhere: any = { deletedAt: null };
 
     if (status) {
-      where.status = status;
+      queryWhere.status = status;
     }
+
+    const ownershipWhere = await this.buildOwnershipWhere(ownership);
+    const where = { ...queryWhere, ...ownershipWhere };
 
     const [data, total] = await Promise.all([
       this.prisma.materialRequisition.findMany({
@@ -147,6 +116,22 @@ export class RequisitionService {
     ]);
 
     return { data, total, page, limit };
+  }
+
+  private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
+    if (ownership.roleCode === 'admin') return {};
+    if (ownership.roleCode === 'user') {
+      return { applicantId: ownership.userId };
+    }
+    // leader: departmentId IN managedDepts OR applicantId IN members
+    const depts = ownership.managedDepartmentIds ?? [];
+    if (depts.length === 0) return { id: 'no-match' };
+    const memberIds = await userIdsInDepts(this.prisma, depts);
+    const orConditions: any[] = [{ departmentId: { in: depts } }];
+    if (memberIds.length > 0) {
+      orConditions.push({ applicantId: { in: memberIds } });
+    }
+    return { OR: orConditions };
   }
 
   async findOne(id: string) {

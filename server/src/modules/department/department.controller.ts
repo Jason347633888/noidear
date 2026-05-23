@@ -9,8 +9,7 @@ import { UpdateDepartmentDTO } from './dto/update-department.dto';
 
 @ApiTags('部门管理')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin')
+@UseGuards(JwtAuthGuard)
 @Controller('departments')
 export class DepartmentController {
   constructor(private readonly departmentService: DepartmentService) {}
@@ -28,18 +27,24 @@ export class DepartmentController {
   }
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('admin')
   @ApiOperation({ summary: '创建部门' })
   async create(@Body() dto: CreateDepartmentDTO) {
     return this.departmentService.create(dto);
   }
 
   @Put(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
   @ApiOperation({ summary: '更新部门' })
   async update(@Param('id') id: string, @Body() dto: UpdateDepartmentDTO) {
     return this.departmentService.update(id, dto);
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
   @ApiOperation({ summary: '删除部门' })
   async remove(@Param('id') id: string) {
     return this.departmentService.remove(id);

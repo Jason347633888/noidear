@@ -28,32 +28,6 @@ export class NonConformanceService {
     private readonly numberSequence: QualityNumberSequenceService,
   ) {}
 
-  /**
-   * Ownership-scoped list using discoveredById FK (Task 46).
-   * admin → all; user → discoveredById = userId;
-   * leader → discoveredById IN members(managedDepartmentIds).
-   */
-  async listForOwnership(ownership: OwnershipContext) {
-    if (ownership.roleCode === 'admin') {
-      return this.prisma.nonConformance.findMany({ orderBy: { created_at: 'desc' } });
-    }
-    if (ownership.roleCode === 'user') {
-      return this.prisma.nonConformance.findMany({
-        where: { discoveredById: ownership.userId },
-        orderBy: { created_at: 'desc' },
-      });
-    }
-    // leader
-    const depts = ownership.managedDepartmentIds ?? [];
-    if (depts.length === 0) return [];
-    const memberIds = await userIdsInDepts(this.prisma, depts);
-    if (memberIds.length === 0) return [];
-    return this.prisma.nonConformance.findMany({
-      where: { discoveredById: { in: memberIds } },
-      orderBy: { created_at: 'desc' },
-    });
-  }
-
   async create(dto: CreateNcDto, userId: string, companyId: string) {
     await this.validateSourceExists(dto.source_type, dto.source_id, companyId);
 
@@ -158,12 +132,30 @@ export class NonConformanceService {
     return `CCP偏差：${ccpNo} 超出临界限；实测：${measured}${action}；CCP记录ID：${record.id}`;
   }
 
-  async findAll(companyId: string, status?: string) {
+  async findAll(companyId: string, ownership: OwnershipContext, status?: string) {
+    const ownershipWhere = await this.buildOwnershipWhere(ownership);
     return this.prisma.nonConformance.findMany({
-      where: { company_id: companyId, ...(status ? { status } : {}) },
+      where: {
+        company_id: companyId,
+        ...(status ? { status } : {}),
+        ...ownershipWhere,
+      },
       orderBy: { created_at: 'desc' },
       take: 100,
     });
+  }
+
+  private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
+    if (ownership.roleCode === 'admin') return {};
+    if (ownership.roleCode === 'user') {
+      return { discoveredById: ownership.userId };
+    }
+    // leader
+    const depts = ownership.managedDepartmentIds ?? [];
+    if (depts.length === 0) return { id: 'no-match' };
+    const memberIds = await userIdsInDepts(this.prisma, depts);
+    if (memberIds.length === 0) return { id: 'no-match' };
+    return { discoveredById: { in: memberIds } };
   }
 
   async dispose(id: string, dto: DisposeNcDto, userId: string, companyId: string) {

@@ -9,8 +9,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('用户管理')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin')
+@UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UserController {
   constructor(private userService: UserService) {}
@@ -35,24 +34,32 @@ export class UserController {
   }
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('admin')
   @ApiOperation({ summary: '创建用户' })
   async create(@Body() dto: CreateUserDTO) {
     return this.userService.create(dto);
   }
 
   @Put(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
   @ApiOperation({ summary: '更新用户' })
   async update(@Param('id') id: string, @Body() dto: UpdateUserDTO) {
     return this.userService.update(id, dto);
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
   @ApiOperation({ summary: '删除用户' })
   async remove(@Param('id') id: string) {
     return this.userService.remove(id);
   }
 
   @Post(':id/reset-password')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
   @ApiOperation({ summary: '重置用户密码' })
   async resetPassword(@Param('id') id: string) {
     return this.userService.resetPassword(id);

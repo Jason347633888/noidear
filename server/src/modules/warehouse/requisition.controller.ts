@@ -19,8 +19,8 @@ export class RequisitionController {
   }
 
   @Get()
-  findAll(@Ownership() ownership: OwnershipContext, @Query() _query: QueryRequisitionDto) {
-    return this.requisitionService.listForOwnership(ownership);
+  findAll(@Ownership() ownership: OwnershipContext, @Query() query: QueryRequisitionDto) {
+    return this.requisitionService.findAll(query, ownership);
   }
 
   @Get(':id')

@@ -22,30 +22,6 @@ export class EquipmentService {
     private readonly prisma: PrismaService,
   ) {}
 
-  /**
-   * Ownership-scoped list using responsiblePersonId FK (Task 46).
-   * admin → all; user → responsiblePersonId = userId;
-   * leader → responsiblePersonId IN members(managedDepartmentIds).
-   */
-  async listForOwnership(ownership: OwnershipContext) {
-    if (ownership.roleCode === 'admin') {
-      return this.prisma.equipment.findMany({ where: { deletedAt: null } });
-    }
-    if (ownership.roleCode === 'user') {
-      return this.prisma.equipment.findMany({
-        where: { deletedAt: null, responsiblePersonId: ownership.userId },
-      });
-    }
-    // leader
-    const depts = ownership.managedDepartmentIds ?? [];
-    if (depts.length === 0) return [];
-    const memberIds = await userIdsInDepts(this.prisma, depts);
-    if (memberIds.length === 0) return [];
-    return this.prisma.equipment.findMany({
-      where: { deletedAt: null, responsiblePersonId: { in: memberIds } },
-    });
-  }
-
   async create(dto: CreateEquipmentDto) {
     try {
       const code = await this.generateCode();
@@ -68,11 +44,13 @@ export class EquipmentService {
     }
   }
 
-  async findAll(query: QueryEquipmentDto) {
+  async findAll(query: QueryEquipmentDto, ownership: OwnershipContext) {
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 10));
     const skip = (page - 1) * limit;
-    const where = this.buildWhereClause(query);
+    const queryWhere = this.buildWhereClause(query);
+    const ownershipWhere = await this.buildOwnershipWhere(ownership);
+    const where = { ...queryWhere, ...ownershipWhere };
 
     const [data, total] = await Promise.all([
       this.prisma.equipment.findMany({
@@ -85,6 +63,19 @@ export class EquipmentService {
     ]);
 
     return { data, total, page, limit };
+  }
+
+  private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
+    if (ownership.roleCode === 'admin') return {};
+    if (ownership.roleCode === 'user') {
+      return { responsiblePersonId: ownership.userId };
+    }
+    // leader
+    const depts = ownership.managedDepartmentIds ?? [];
+    if (depts.length === 0) return { id: 'no-match' };
+    const memberIds = await userIdsInDepts(this.prisma, depts);
+    if (memberIds.length === 0) return { id: 'no-match' };
+    return { responsiblePersonId: { in: memberIds } };
   }
 
   async findOne(id: string) {

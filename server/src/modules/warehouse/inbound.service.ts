@@ -25,24 +25,6 @@ export class InboundService {
     private readonly supplierAccess: SupplierAccessService,
   ) {}
 
-  async listForOwnership(ownership: OwnershipContext) {
-    const where: Record<string, unknown> = { deletedAt: null };
-
-    if (ownership.roleCode === 'user') {
-      where['operatorId'] = ownership.userId;
-    } else if (ownership.roleCode === 'leader') {
-      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
-      if (memberIds.length === 0) return [];
-      where['operatorId'] = { in: memberIds };
-    }
-    // admin: no filter
-
-    return this.prisma.materialInbound.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
   async create(createInboundDto: CreateInboundDto, createdById?: string) {
     const { supplierId, items, remark } = createInboundDto;
     await this.supplierAccess.assertSupplierUsable(supplierId, '创建来料单');
@@ -99,11 +81,13 @@ export class InboundService {
     return Math.floor(Math.random() * 1000).toString().padStart(3, '0');
   }
 
-  async findAll(query: QueryInboundDto) {
+  async findAll(query: QueryInboundDto, ownership: OwnershipContext) {
     const { page = 1, limit = 10, status, supplierId } = query;
     const skip = (page - 1) * limit;
 
-    const where = this.buildWhereClause(status, supplierId);
+    const queryWhere = this.buildWhereClause(status, supplierId);
+    const ownershipWhere = await this.buildOwnershipWhere(ownership);
+    const where = { ...queryWhere, ...ownershipWhere };
 
     const [data, total] = await Promise.all([
       this.prisma.materialInbound.findMany({
@@ -120,6 +104,17 @@ export class InboundService {
     ]);
 
     return { data, total, page, limit };
+  }
+
+  private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
+    if (ownership.roleCode === 'admin') return {};
+    if (ownership.roleCode === 'user') {
+      return { operatorId: ownership.userId };
+    }
+    // leader
+    const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+    if (memberIds.length === 0) return { id: 'no-match' };
+    return { operatorId: { in: memberIds } };
   }
 
   private buildWhereClause(status?: string, supplierId?: string) {

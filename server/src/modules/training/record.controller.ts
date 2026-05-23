@@ -23,8 +23,8 @@ export class RecordController {
 
   @Get()
   @ApiOperation({ summary: '查询学习记录（按 ownership 范围）' })
-  async findAll(@Ownership() ownership: OwnershipContext, @Query('projectId') _projectId?: string) {
-    return this.recordService.listForOwnership(ownership);
+  async findAll(@Ownership() ownership: OwnershipContext, @Query('projectId') projectId?: string) {
+    return this.recordService.findAll(ownership, projectId);
   }
 
   @Get('my')

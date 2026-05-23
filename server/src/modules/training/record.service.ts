@@ -7,22 +7,27 @@ import { userIdsInDepts } from '../module-access/ownership-helpers';
 export class RecordService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listForOwnership(ownership: OwnershipContext) {
-    const where: Record<string, unknown> = {};
-
-    if (ownership.roleCode === 'user') {
-      where['userId'] = ownership.userId;
-    } else if (ownership.roleCode === 'leader') {
-      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
-      if (memberIds.length === 0) return [];
-      where['userId'] = { in: memberIds };
+  async findAll(ownership: OwnershipContext, projectId?: string) {
+    const ownershipWhere = await this.buildOwnershipWhere(ownership);
+    const where: Record<string, unknown> = { ...ownershipWhere };
+    if (projectId) {
+      where['projectId'] = projectId;
     }
-    // admin: no filter
-
     return this.prisma.learningRecord.findMany({
       where,
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
+    if (ownership.roleCode === 'admin') return {};
+    if (ownership.roleCode === 'user') {
+      return { userId: ownership.userId };
+    }
+    // leader
+    const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+    if (memberIds.length === 0) return { id: 'no-match' };
+    return { userId: { in: memberIds } };
   }
 
   /**

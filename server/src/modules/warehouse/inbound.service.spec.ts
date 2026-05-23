@@ -285,6 +285,8 @@ describe('InboundService', () => {
   });
 
   describe('findAll', () => {
+    const adminOwnership = { userId: 'admin-1', roleCode: 'admin' as const, departmentId: null, managedDepartmentIds: undefined };
+
     it('should return paginated inbound orders', async () => {
       // Arrange
       const query = { page: 1, limit: 10 };
@@ -301,7 +303,7 @@ describe('InboundService', () => {
       jest.spyOn(prisma.materialInbound, 'count').mockResolvedValue(1);
 
       // Act
-      const result = await service.findAll(query);
+      const result = await service.findAll(query, adminOwnership);
 
       // Assert
       expect(result).toEqual({
@@ -324,7 +326,7 @@ describe('InboundService', () => {
       jest.spyOn(prisma.materialInbound, 'count').mockResolvedValue(0);
 
       // Act
-      await service.findAll(query);
+      await service.findAll(query, adminOwnership);
 
       // Assert
       expect(prisma.materialInbound.findMany).toHaveBeenCalledWith({

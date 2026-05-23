@@ -72,11 +72,13 @@ describe('EquipmentService', () => {
   });
 
   describe('findAll', () => {
+    const adminOwnership = { userId: 'admin-1', roleCode: 'admin' as const, departmentId: null, managedDepartmentIds: undefined };
+
     it('should return paginated equipment list', async () => {
       prisma.equipment.findMany.mockResolvedValue([mockEquipment]);
       prisma.equipment.count.mockResolvedValue(1);
 
-      const result = await service.findAll({ page: 1, limit: 10 });
+      const result = await service.findAll({ page: 1, limit: 10 }, adminOwnership);
 
       expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
@@ -87,7 +89,7 @@ describe('EquipmentService', () => {
       prisma.equipment.findMany.mockResolvedValue([]);
       prisma.equipment.count.mockResolvedValue(0);
 
-      await service.findAll({ category: 'production', status: 'active' });
+      await service.findAll({ category: 'production', status: 'active' }, adminOwnership);
 
       const where = prisma.equipment.findMany.mock.calls[0][0].where;
       expect(where.category).toBe('production');
@@ -98,7 +100,7 @@ describe('EquipmentService', () => {
       prisma.equipment.findMany.mockResolvedValue([]);
       prisma.equipment.count.mockResolvedValue(0);
 
-      await service.findAll({ search: 'test' });
+      await service.findAll({ search: 'test' }, adminOwnership);
 
       const where = prisma.equipment.findMany.mock.calls[0][0].where;
       expect(where.OR).toBeDefined();
@@ -109,7 +111,7 @@ describe('EquipmentService', () => {
       prisma.equipment.findMany.mockResolvedValue([]);
       prisma.equipment.count.mockResolvedValue(0);
 
-      const result = await service.findAll({ page: -1, limit: 500 });
+      const result = await service.findAll({ page: -1, limit: 500 }, adminOwnership);
 
       expect(result.page).toBe(1);
       expect(result.limit).toBe(100);

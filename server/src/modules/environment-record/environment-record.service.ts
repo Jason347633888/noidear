@@ -2,24 +2,11 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateEnvironmentRecordDto } from './dto/create-environment-record.dto';
 import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @Injectable()
 export class EnvironmentRecordService {
   constructor(private prisma: PrismaService) {}
-
-  /**
-   * Ownership-scoped list.
-   * TODO(Task 46): EnvironmentRecord lacks an operator/inspector FK directly linked to users.
-   *   user → [] (empty-set fallback until Task 46)
-   *   leader/admin → all (no ownership filter yet)
-   */
-  async listForOwnership(ownership: OwnershipContext) {
-    if (ownership.roleCode === 'user') return [];
-    return this.prisma.environmentRecord.findMany({
-      where: {},
-      orderBy: { created_at: 'desc' },
-    });
-  }
 
   async create(dto: CreateEnvironmentRecordDto, userId: string) {
     const productionBatch = await this.prisma.productionBatch.findUnique({
@@ -59,9 +46,11 @@ export class EnvironmentRecordService {
     });
   }
 
-  async findAll(startDate?: string, endDate?: string) {
+  async findAll(ownership: OwnershipContext, startDate?: string, endDate?: string) {
+    const ownershipWhere = await this.buildOwnershipWhere(ownership);
     return this.prisma.environmentRecord.findMany({
       where: {
+        ...ownershipWhere,
         ...(startDate || endDate
           ? {
               measured_at: {
@@ -74,5 +63,19 @@ export class EnvironmentRecordService {
       orderBy: { measured_at: 'desc' },
       take: 200,
     });
+  }
+
+  private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
+    // EnvironmentRecord uses operator_id FK
+    if (ownership.roleCode === 'admin') return {};
+    if (ownership.roleCode === 'user') {
+      return { operator_id: ownership.userId };
+    }
+    // leader
+    const depts = ownership.managedDepartmentIds ?? [];
+    if (depts.length === 0) return { id: 'no-match' };
+    const memberIds = await userIdsInDepts(this.prisma, depts);
+    if (memberIds.length === 0) return { id: 'no-match' };
+    return { operator_id: { in: memberIds } };
   }
 }

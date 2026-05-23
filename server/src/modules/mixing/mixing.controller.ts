@@ -26,8 +26,8 @@ export class MixingController {
   constructor(private readonly service: MixingService) {}
 
   @Get('executions')
-  listExecutions(@Ownership() ownership: OwnershipContext, @Query() _dto: ListMixingExecutionsDto) {
-    return this.service.listForOwnership(ownership);
+  listExecutions(@Ownership() ownership: OwnershipContext, @Query() dto: ListMixingExecutionsDto) {
+    return this.service.listExecutions(dto, ownership);
   }
 
   @Post('recommend-material-batches')

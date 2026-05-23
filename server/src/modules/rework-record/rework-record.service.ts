@@ -8,24 +8,6 @@ import { userIdsInDepts } from '../module-access/ownership-helpers';
 export class ReworkRecordService {
   constructor(private prisma: PrismaService) {}
 
-  async listForOwnership(ownership: OwnershipContext) {
-    const where: Record<string, unknown> = {};
-
-    if (ownership.roleCode === 'user') {
-      where['operator_id'] = ownership.userId;
-    } else if (ownership.roleCode === 'leader') {
-      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
-      if (memberIds.length === 0) return [];
-      where['operator_id'] = { in: memberIds };
-    }
-    // admin: no filter
-
-    return this.prisma.reworkRecord.findMany({
-      where,
-      orderBy: { created_at: 'desc' },
-    });
-  }
-
   async create(dto: CreateReworkRecordDto, companyId: string) {
     const ncId = dto.nc_id?.trim();
     if (!ncId) {
@@ -55,10 +37,12 @@ export class ReworkRecordService {
     });
   }
 
-  async findAll(companyId: string, startDate?: string, endDate?: string) {
+  async findAll(companyId: string, ownership: OwnershipContext, startDate?: string, endDate?: string) {
+    const ownershipWhere = await this.buildOwnershipWhere(ownership);
     return this.prisma.reworkRecord.findMany({
       where: {
         company_id: companyId,
+        ...ownershipWhere,
         ...(startDate || endDate
           ? {
               rework_date: {
@@ -71,6 +55,17 @@ export class ReworkRecordService {
       orderBy: { rework_date: 'desc' },
       take: 200,
     });
+  }
+
+  private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
+    if (ownership.roleCode === 'admin') return {};
+    if (ownership.roleCode === 'user') {
+      return { operator_id: ownership.userId };
+    }
+    // leader
+    const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+    if (memberIds.length === 0) return { id: 'no-match' };
+    return { operator_id: { in: memberIds } };
   }
 
   async remove(id: string, companyId: string) {

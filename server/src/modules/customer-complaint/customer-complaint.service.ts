@@ -8,32 +8,6 @@ import { userIdsInDepts } from '../module-access/ownership-helpers';
 export class CustomerComplaintService {
   constructor(private prisma: PrismaService) {}
 
-  /**
-   * Ownership-scoped list using createdById FK (Task 46).
-   * admin → all; user → createdById = userId;
-   * leader → createdById IN members(managedDepartmentIds).
-   */
-  async listForOwnership(ownership: OwnershipContext) {
-    if (ownership.roleCode === 'admin') {
-      return this.prisma.customerComplaint.findMany({ orderBy: { created_at: 'desc' } });
-    }
-    if (ownership.roleCode === 'user') {
-      return this.prisma.customerComplaint.findMany({
-        where: { createdById: ownership.userId },
-        orderBy: { created_at: 'desc' },
-      });
-    }
-    // leader
-    const depts = ownership.managedDepartmentIds ?? [];
-    if (depts.length === 0) return [];
-    const memberIds = await userIdsInDepts(this.prisma, depts);
-    if (memberIds.length === 0) return [];
-    return this.prisma.customerComplaint.findMany({
-      where: { createdById: { in: memberIds } },
-      orderBy: { created_at: 'desc' },
-    });
-  }
-
   async create(dto: CreateComplaintDto, companyId: string) {
     if (!dto.production_batch_id) {
       throw new BadRequestException('生产批次不能为空');
@@ -93,12 +67,30 @@ export class CustomerComplaintService {
     });
   }
 
-  async findAll(companyId: string, status?: string) {
+  async findAll(companyId: string, ownership: OwnershipContext, status?: string) {
+    const ownershipWhere = await this.buildOwnershipWhere(ownership);
     return this.prisma.customerComplaint.findMany({
-      where: { company_id: companyId, ...(status ? { status } : {}) },
+      where: {
+        company_id: companyId,
+        ...(status ? { status } : {}),
+        ...ownershipWhere,
+      },
       orderBy: { created_at: 'desc' },
       take: 100,
     });
+  }
+
+  private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
+    if (ownership.roleCode === 'admin') return {};
+    if (ownership.roleCode === 'user') {
+      return { createdById: ownership.userId };
+    }
+    // leader
+    const depts = ownership.managedDepartmentIds ?? [];
+    if (depts.length === 0) return { id: 'no-match' };
+    const memberIds = await userIdsInDepts(this.prisma, depts);
+    if (memberIds.length === 0) return { id: 'no-match' };
+    return { createdById: { in: memberIds } };
   }
 
   async resolve(id: string, resolution: string, companyId: string) {

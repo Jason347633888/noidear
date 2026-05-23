@@ -19,8 +19,8 @@ export class NonConformanceController {
   }
 
   @Get()
-  findAll(@Ownership() ownership: OwnershipContext, @Query('status') status?: string) {
-    return this.service.listForOwnership(ownership);
+  findAll(@Ownership() ownership: OwnershipContext, @Request() req: AuthenticatedRequest, @Query('status') status?: string) {
+    return this.service.findAll(req.user.companyId, ownership, status);
   }
 
   @Patch(':id/dispose')
