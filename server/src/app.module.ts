@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ModuleAccessModule } from './modules/module-access/module-access.module';
 import { ModuleAccessGuard } from './modules/module-access/module-access.guard';
+import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -152,6 +153,8 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     ModuleAccessModule,
   ],
   providers: [
+    // JwtAuthGuard 必须排在 ModuleAccessGuard 之前，确保 req.user 在模块访问检查前已填充
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: ModuleAccessGuard },
   ],
 })

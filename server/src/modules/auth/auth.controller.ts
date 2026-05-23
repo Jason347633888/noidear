@@ -4,11 +4,13 @@ import { LoginDTO } from './dto/login.dto';
 import { ChangePasswordDTO } from './dto/change-password.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { AuthenticatedRequest } from './authenticated-user';
+import { Public } from '../../shared/decorators/public.decorator';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('login')
   async login(@Body() loginDto: LoginDTO) {
     return this.authService.login(loginDto);
