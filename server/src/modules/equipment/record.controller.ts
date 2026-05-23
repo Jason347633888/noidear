@@ -19,6 +19,8 @@ import {
   UpdateRecordDto,
   QueryRecordDto,
 } from './dto/record.dto';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import type { OwnershipContext } from '../module-access/ownership-context';
 
 @UseGuards(JwtAuthGuard)
 @ModuleKey('equipment_site')
@@ -33,8 +35,8 @@ export class RecordController {
   }
 
   @Get()
-  findAll(@Query() query: QueryRecordDto) {
-    return this.recordService.findAll(query);
+  findAll(@Query() query: QueryRecordDto, @Ownership() ownership: OwnershipContext) {
+    return this.recordService.findAll(query, ownership);
   }
 
   @Get(':id')

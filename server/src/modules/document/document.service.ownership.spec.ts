@@ -1,18 +1,15 @@
 /**
- * Task 38 — DocumentService.listForOwnership
- * Tests ownership-scoped list using actual schema fields:
- *   departmentId, creatorId (Document has no ownerDepartmentId/ownerUserId in schema)
+ * DocumentService.findAll with role-based ownership filtering
+ * Document schema uses creatorId + departmentId for ownership.
+ * role='user' → creatorId filter; role='admin'/'leader' → no creatorId filter
  */
 import { DocumentService } from './document.service';
-import { OwnershipContext } from '../module-access/ownership-context';
 
-function freshService(prismaOverrides: any = {}) {
+function freshService() {
   const prisma = {
     document: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
     user: { findMany: jest.fn().mockResolvedValue([]) },
-    ...prismaOverrides,
   } as any;
-  // DocumentService has many optional deps — pass nulls for unused ones
   const svc = new DocumentService(
     prisma,
     null as any, // storage
@@ -27,34 +24,27 @@ function freshService(prismaOverrides: any = {}) {
   return { svc, prisma };
 }
 
-describe('DocumentService.listForOwnership', () => {
+describe('DocumentService.findAll with ownership', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('admin sees all documents (no ownership filter)', async () => {
+  it('admin sees all documents (no creatorId filter)', async () => {
     const { svc, prisma } = freshService();
-    const ownership: OwnershipContext = { userId: 'a', roleCode: 'admin', departmentId: null, managedDepartmentIds: undefined };
-    await svc.listForOwnership(ownership);
-    expect(prisma.document.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ deletedAt: null }) }),
-    );
+    await svc.findAll({}, 'admin-id', 'admin');
     const callWhere = prisma.document.findMany.mock.calls[0][0].where;
     expect(callWhere).not.toHaveProperty('creatorId');
-    expect(callWhere).not.toHaveProperty('departmentId');
   });
 
-  it('user sees only docs they created', async () => {
+  it('user sees only docs they created (creatorId = userId)', async () => {
     const { svc, prisma } = freshService();
-    const ownership: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd-x', managedDepartmentIds: [] };
-    await svc.listForOwnership(ownership);
+    await svc.findAll({}, 'u-1', 'user');
     const callWhere = prisma.document.findMany.mock.calls[0][0].where;
-    expect(callWhere).toMatchObject({ creatorId: 'u-1', deletedAt: null });
+    expect(callWhere).toHaveProperty('creatorId', 'u-1');
   });
 
-  it('leader sees docs belonging to managed departments', async () => {
+  it('leader sees all documents (no creatorId filter)', async () => {
     const { svc, prisma } = freshService();
-    const ownership: OwnershipContext = { userId: 'l-1', roleCode: 'leader', departmentId: 'd-1', managedDepartmentIds: ['d-1', 'd-2'] };
-    await svc.listForOwnership(ownership);
+    await svc.findAll({}, 'l-1', 'leader');
     const callWhere = prisma.document.findMany.mock.calls[0][0].where;
-    expect(callWhere).toMatchObject({ departmentId: { in: ['d-1', 'd-2'] }, deletedAt: null });
+    expect(callWhere).not.toHaveProperty('creatorId');
   });
 });

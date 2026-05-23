@@ -66,7 +66,13 @@ export class EnvironmentRecordService {
   }
 
   private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
-    // EnvironmentRecord uses operator_id FK
+    // EnvironmentRecord uses operator_id FK.
+    // NOTE (backfill): user role only sees records where operator_id matches userId.
+    // Records created before the FK migration (or imported without operator_id) may have
+    // operator_id = null and will NOT be visible to users until backfilled.
+    // A best-effort backfill can be performed by setting operator_id to the record creator
+    // if that information is available in a separate audit log. Until then, null records
+    // are only visible to admin and leader roles.
     if (ownership.roleCode === 'admin') return {};
     if (ownership.roleCode === 'user') {
       return { operator_id: ownership.userId };

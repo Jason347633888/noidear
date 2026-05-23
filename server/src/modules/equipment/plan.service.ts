@@ -29,30 +29,6 @@ export class PlanService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Ownership-scoped list using responsiblePersonId FK (Task 46).
-   * admin → all; user → responsiblePersonId = userId;
-   * leader → responsiblePersonId IN members(managedDepartmentIds).
-   */
-  async listForOwnership(ownership: OwnershipContext) {
-    if (ownership.roleCode === 'admin') {
-      return this.prisma.maintenancePlan.findMany({ where: { deletedAt: null } });
-    }
-    if (ownership.roleCode === 'user') {
-      return this.prisma.maintenancePlan.findMany({
-        where: { deletedAt: null, responsiblePersonId: ownership.userId },
-      });
-    }
-    // leader
-    const depts = ownership.managedDepartmentIds ?? [];
-    if (depts.length === 0) return [];
-    const memberIds = await userIdsInDepts(this.prisma, depts);
-    if (memberIds.length === 0) return [];
-    return this.prisma.maintenancePlan.findMany({
-      where: { deletedAt: null, responsiblePersonId: { in: memberIds } },
-    });
-  }
-
   async generatePlansForEquipment(equipmentId: string) {
     const equipment = await this.prisma.equipment.findUnique({
       where: { id: equipmentId },
@@ -133,11 +109,22 @@ export class PlanService {
     return plan;
   }
 
-  async findAll(query: QueryPlanDto) {
+  async findAll(query: QueryPlanDto, ownership?: OwnershipContext) {
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 10));
     const skip = (page - 1) * limit;
     const where = this.buildWhereClause(query);
+
+    // Ownership scoping — MaintenancePlan.responsiblePersonId is the user FK
+    if (ownership && ownership.roleCode !== 'admin') {
+      if (ownership.roleCode === 'user') {
+        (where as any)['responsiblePersonId'] = ownership.userId;
+      } else if (ownership.roleCode === 'leader') {
+        const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+        if (memberIds.length === 0) return { data: [], total: 0, page, limit };
+        (where as any)['responsiblePersonId'] = { in: memberIds };
+      }
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.maintenancePlan.findMany({

@@ -24,27 +24,6 @@ export class FaultService {
     private readonly statsService: StatsService,
   ) {}
 
-  async listForOwnership(ownership: OwnershipContext) {
-    const where: Record<string, unknown> = {};
-
-    if (ownership.roleCode === 'user') {
-      where['OR'] = [{ reporterId: ownership.userId }, { assigneeId: ownership.userId }];
-    } else if (ownership.roleCode === 'leader') {
-      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
-      if (memberIds.length === 0) return [];
-      where['OR'] = [
-        { reporterId: { in: memberIds } },
-        { assigneeId: { in: memberIds } },
-      ];
-    }
-    // admin: no filter
-
-    return this.prisma.equipmentFault.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
   async create(dto: CreateFaultDto) {
     const faultNumber = await this.generateFaultNumber();
 
@@ -67,11 +46,28 @@ export class FaultService {
     return fault;
   }
 
-  async findAll(query: QueryFaultDto) {
+  async findAll(query: QueryFaultDto, ownership?: OwnershipContext) {
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 10));
     const skip = (page - 1) * limit;
     const where = this.buildWhereClause(query);
+
+    // Ownership scoping — EquipmentFault uses reporterId / assigneeId
+    if (ownership && ownership.roleCode !== 'admin') {
+      if (ownership.roleCode === 'user') {
+        (where as any)['OR'] = [
+          { reporterId: ownership.userId },
+          { assigneeId: ownership.userId },
+        ];
+      } else if (ownership.roleCode === 'leader') {
+        const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+        if (memberIds.length === 0) return { data: [], total: 0, page, limit };
+        (where as any)['OR'] = [
+          { reporterId: { in: memberIds } },
+          { assigneeId: { in: memberIds } },
+        ];
+      }
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.equipmentFault.findMany({
@@ -90,7 +86,7 @@ export class FaultService {
   }
 
   async findMyFaults(reporterId: string, query: QueryFaultDto) {
-    return this.findAll({ ...query, reporterId });
+    return this.findAll({ ...query, reporterId }, undefined);
   }
 
   async findOne(id: string) {

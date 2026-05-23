@@ -18,6 +18,8 @@ import { ReturnService } from '../services/return.service';
 import { CreateReturnDto, ApproveReturnDto } from '../dto/return.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
+import { Ownership } from '../../../shared/decorators/ownership.decorator';
+import type { OwnershipContext } from '../../module-access/ownership-context';
 
 @ApiTags('退料管理')
 @ModuleKey('warehouse')
@@ -44,8 +46,8 @@ export class ReturnController {
 
   @Get()
   @ApiOperation({ summary: '查询退料单列表' })
-  findAll() {
-    return this.returnService.findAll();
+  findAll(@Ownership() ownership: OwnershipContext) {
+    return this.returnService.findAll(ownership);
   }
 
   @Get(':id')

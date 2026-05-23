@@ -324,4 +324,77 @@ describe('E2E: OwnershipScope across modules (Task 47)', () => {
       expect(getData(leaderR.body).enabledModules.length).toBeGreaterThan(0);
     });
   });
+
+  // ── P0-R5-1 + P1-R5-4: GET /users and /departments accessibility + password security ──
+  describe('GET /users and /departments — accessible to all roles (no admin-only guard on GET)', () => {
+    it('leader can call GET /api/v1/users (200, not 403)', async () => {
+      const r = await request(app.getHttpServer())
+        .get('/api/v1/users')
+        .set('Authorization', `Bearer ${leaderToken}`);
+      expect([200, 304]).toContain(r.status);
+    });
+
+    it('user role can call GET /api/v1/users (200, not 403)', async () => {
+      const r = await request(app.getHttpServer())
+        .get('/api/v1/users')
+        .set('Authorization', `Bearer ${user1Token}`);
+      expect([200, 304]).toContain(r.status);
+    });
+
+    it('leader can call GET /api/v1/departments (200, not 403)', async () => {
+      const r = await request(app.getHttpServer())
+        .get('/api/v1/departments')
+        .set('Authorization', `Bearer ${leaderToken}`);
+      expect([200, 304]).toContain(r.status);
+    });
+
+    it('admin can call POST /api/v1/users to create a user (201)', async () => {
+      // Find a valid role ID for the user role
+      const userRole = await prisma.role.findFirstOrThrow({ where: { code: 'user', deletedAt: null } });
+      const r = await request(app.getHttpServer())
+        .post('/api/v1/users')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          username: `${NS}-e2e-created`,
+          password: 'Test1234!',
+          name: 'E2E Created User',
+          roleId: userRole.id,
+        });
+      expect(r.status).toBe(201);
+      // cleanup
+      await prisma.user.deleteMany({ where: { username: `${NS}-e2e-created` } });
+    });
+
+    it('leader calling POST /api/v1/users returns 403', async () => {
+      const userRole = await prisma.role.findFirstOrThrow({ where: { code: 'user', deletedAt: null } });
+      const r = await request(app.getHttpServer())
+        .post('/api/v1/users')
+        .set('Authorization', `Bearer ${leaderToken}`)
+        .send({
+          username: `${NS}-e2e-leader-attempt`,
+          password: 'Test1234!',
+          name: 'E2E Leader Attempt',
+          roleId: userRole.id,
+        });
+      expect(r.status).toBe(403);
+    });
+
+    it('GET /api/v1/users response does NOT contain a password field (P0-R5-1 security check)', async () => {
+      const r = await request(app.getHttpServer())
+        .get('/api/v1/users')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      const body = r.body;
+      // Response may be { list: [...], total, page, limit } or { data: [...] }
+      const users: any[] = body?.list ?? body?.data ?? (Array.isArray(body) ? body : []);
+      if (users.length > 0) {
+        users.forEach((u: any) => {
+          expect(u).not.toHaveProperty('password');
+          expect(u).not.toHaveProperty('loginAttempts');
+          expect(u).not.toHaveProperty('lockedUntil');
+          expect(u).not.toHaveProperty('firstFailedAt');
+        });
+      }
+    });
+  });
 });

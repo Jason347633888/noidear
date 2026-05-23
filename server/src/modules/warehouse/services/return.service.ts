@@ -15,24 +15,6 @@ export class ReturnService {
     private readonly inventoryMovementLedger: InventoryMovementLedgerService,
   ) {}
 
-  async listForOwnership(ownership: OwnershipContext) {
-    const where: Record<string, unknown> = {};
-
-    if (ownership.roleCode === 'user') {
-      where['requesterId'] = ownership.userId;
-    } else if (ownership.roleCode === 'leader') {
-      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
-      if (memberIds.length === 0) return [];
-      where['requesterId'] = { in: memberIds };
-    }
-    // admin: no filter
-
-    return this.prisma.materialReturn.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
   async create(dto: CreateReturnDto) {
     // Validate all batches exist
     for (const item of dto.items) {
@@ -237,8 +219,22 @@ export class ReturnService {
     });
   }
 
-  async findAll() {
+  async findAll(ownership?: OwnershipContext) {
+    const where: Record<string, unknown> = {};
+
+    // Ownership scoping — MaterialReturn.requesterId is the user FK
+    if (ownership && ownership.roleCode !== 'admin') {
+      if (ownership.roleCode === 'user') {
+        where['requesterId'] = ownership.userId;
+      } else if (ownership.roleCode === 'leader') {
+        const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+        if (memberIds.length === 0) return [];
+        where['requesterId'] = { in: memberIds };
+      }
+    }
+
     return this.prisma.materialReturn.findMany({
+      where,
       include: {
         items: {
           include: {

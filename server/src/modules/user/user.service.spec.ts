@@ -65,6 +65,21 @@ describe('UserService', () => {
       expect(result.page).toBe(1);
     });
 
+    it('findAll 查询应使用 select 而非 include（不暴露密码字段）', async () => {
+      prisma.user.findMany.mockResolvedValue([mockUser]);
+      prisma.user.count.mockResolvedValue(1);
+
+      await service.findAll(1, 20);
+
+      const callArg = prisma.user.findMany.mock.calls[0][0];
+      expect(callArg).toHaveProperty('select');
+      expect(callArg).not.toHaveProperty('include');
+      expect(callArg.select).not.toHaveProperty('password');
+      expect(callArg.select).not.toHaveProperty('loginAttempts');
+      expect(callArg.select).not.toHaveProperty('lockedUntil');
+      expect(callArg.select).not.toHaveProperty('firstFailedAt');
+    });
+
     it('应该支持关键字搜索', async () => {
       prisma.user.findMany.mockResolvedValue([mockUser]);
       prisma.user.count.mockResolvedValue(1);
@@ -161,6 +176,20 @@ describe('UserService', () => {
       prisma.user.findUnique.mockResolvedValue(null);
 
       await expect(service.findOne('unknown')).rejects.toThrow(NotFoundException);
+    });
+
+    it('findOne 查询应使用 select 而非 include（不暴露密码字段）', async () => {
+      prisma.user.findUnique.mockResolvedValue(mockUser);
+
+      await service.findOne('user-1');
+
+      const callArg = prisma.user.findUnique.mock.calls[0][0];
+      expect(callArg).toHaveProperty('select');
+      expect(callArg).not.toHaveProperty('include');
+      expect(callArg.select).not.toHaveProperty('password');
+      expect(callArg.select).not.toHaveProperty('loginAttempts');
+      expect(callArg.select).not.toHaveProperty('lockedUntil');
+      expect(callArg.select).not.toHaveProperty('firstFailedAt');
     });
   });
 

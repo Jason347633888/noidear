@@ -17,6 +17,8 @@ import {
   BadRequestException,
   StreamableFile,
 } from '@nestjs/common';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import type { OwnershipContext } from '../module-access/ownership-context';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { RecordService } from './record.service';
@@ -57,8 +59,8 @@ export class RecordController {
   @Get()
   @ApiOperation({ summary: '查询记录列表' })
   @ApiResponse({ status: 200, description: '查询成功' })
-  findAll(@Query() query: QueryRecordDto) {
-    return this.recordService.findAll(query);
+  findAll(@Query() query: QueryRecordDto, @Ownership() ownership: OwnershipContext) {
+    return this.recordService.findAll(query, ownership);
   }
 
   @Post('export')

@@ -4,6 +4,8 @@ import { FragileItemInspectionService } from './fragile-item-inspection.service'
 import { CreateFragileItemInspectionDto } from './dto/create-fragile-item-inspection.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import type { OwnershipContext } from '../module-access/ownership-context';
 
 @ModuleKey('equipment_site')
 @Controller('fragile-item-inspections')
@@ -20,8 +22,9 @@ export class FragileItemInspectionController {
   findAll(
     @Query('start_date') startDate?: string,
     @Query('end_date') endDate?: string,
+    @Ownership() ownership?: OwnershipContext,
   ) {
-    return this.service.findAll(startDate, endDate);
+    return this.service.findAll(startDate, endDate, ownership);
   }
 
   @Delete(':id')

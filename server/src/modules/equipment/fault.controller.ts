@@ -18,6 +18,8 @@ import {
   CompleteFaultDto,
   QueryFaultDto,
 } from './dto/fault.dto';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import type { OwnershipContext } from '../module-access/ownership-context';
 
 @UseGuards(JwtAuthGuard)
 @ModuleKey('equipment_site')
@@ -32,8 +34,8 @@ export class FaultController {
   }
 
   @Get()
-  findAll(@Query() query: QueryFaultDto) {
-    return this.faultService.findAll(query);
+  findAll(@Query() query: QueryFaultDto, @Ownership() ownership: OwnershipContext) {
+    return this.faultService.findAll(query, ownership);
   }
 
   @Get('my')

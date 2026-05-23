@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateShiftInstanceDto, CloseShiftInstanceDto } from './dto/create-shift-instance.dto';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @Injectable()
 export class ShiftInstanceService {
@@ -125,12 +127,25 @@ export class ShiftInstanceService {
     });
   }
 
-  async findAll(date?: string) {
+  async findAll(date?: string, ownership?: OwnershipContext) {
+    const where: Record<string, unknown> = {
+      company_id: '1',
+      ...(date ? { shift_date: new Date(date) } : {}),
+    };
+
+    // Ownership scoping — ShiftInstance.leader_id is the user FK
+    if (ownership && ownership.roleCode !== 'admin') {
+      if (ownership.roleCode === 'user') {
+        where['leader_id'] = ownership.userId;
+      } else if (ownership.roleCode === 'leader') {
+        const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+        if (memberIds.length === 0) return [];
+        where['leader_id'] = { in: memberIds };
+      }
+    }
+
     return this.prisma.shiftInstance.findMany({
-      where: {
-        company_id: '1',
-        ...(date ? { shift_date: new Date(date) } : {}),
-      },
+      where,
       include: {
         shift_type_ref: true,
         team: true,

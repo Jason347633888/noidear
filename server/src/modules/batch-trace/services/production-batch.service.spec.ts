@@ -316,7 +316,7 @@ describe('ProductionBatchService', () => {
   });
 });
 
-describe('ProductionBatchService.listForOwnership', () => {
+describe('ProductionBatchService.findAll with ownership', () => {
   function freshService(userFindManyResult: any[] = []) {
     const prisma: any = {
       product: { findFirst: jest.fn() },
@@ -333,25 +333,24 @@ describe('ProductionBatchService.listForOwnership', () => {
   it('admin sees all batches (no leader_id filter)', async () => {
     const { svc, prisma } = freshService();
     const o: OwnershipContext = { userId: 'a', roleCode: 'admin', departmentId: null, managedDepartmentIds: undefined };
-    await svc.listForOwnership(o);
-    expect(prisma.productionBatch.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: {} }));
+    await svc.findAll({}, o);
+    const callWhere = prisma.productionBatch.findMany.mock.calls[0][0].where;
+    expect(callWhere).not.toHaveProperty('leader_id');
   });
 
   it('user sees batches where leader_id = userId', async () => {
     const { svc, prisma } = freshService();
     const o: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd', managedDepartmentIds: [] };
-    await svc.listForOwnership(o);
-    expect(prisma.productionBatch.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { leader_id: 'u-1' } }),
-    );
+    await svc.findAll({}, o);
+    const callWhere = prisma.productionBatch.findMany.mock.calls[0][0].where;
+    expect(callWhere).toMatchObject({ leader_id: 'u-1' });
   });
 
   it('leader sees batches where leader_id IN managed-dept members', async () => {
     const { svc, prisma } = freshService([{ id: 'm-1' }, { id: 'm-2' }]);
     const o: OwnershipContext = { userId: 'l-1', roleCode: 'leader', departmentId: 'd-1', managedDepartmentIds: ['d-1'] };
-    await svc.listForOwnership(o);
-    expect(prisma.productionBatch.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { leader_id: { in: ['m-1', 'm-2'] } } }),
-    );
+    await svc.findAll({}, o);
+    const callWhere = prisma.productionBatch.findMany.mock.calls[0][0].where;
+    expect(callWhere).toMatchObject({ leader_id: { in: ['m-1', 'm-2'] } });
   });
 });

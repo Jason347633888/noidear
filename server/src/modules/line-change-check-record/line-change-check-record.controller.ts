@@ -11,6 +11,8 @@ import {
 import { LineChangeCheckRecordService } from './line-change-check-record.service';
 import { CreateLineChangeCheckRecordDto } from './dto/create-line-change-check-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import type { OwnershipContext } from '../module-access/ownership-context';
 
 @ModuleKey('production_execution')
 @Controller('line-change-check-records')
@@ -19,8 +21,8 @@ export class LineChangeCheckRecordController {
   constructor(private service: LineChangeCheckRecordService) {}
 
   @Get()
-  findAll() {
-    return this.service.findAll();
+  findAll(@Ownership() ownership: OwnershipContext) {
+    return this.service.findAll(ownership);
   }
 
   @Post()

@@ -18,6 +18,8 @@ import { ScrapService } from '../services/scrap.service';
 import { CreateScrapDto, ApproveScrapDto } from '../dto/scrap.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
+import { Ownership } from '../../../shared/decorators/ownership.decorator';
+import type { OwnershipContext } from '../../module-access/ownership-context';
 
 @ApiTags('报废管理')
 @ModuleKey('warehouse')
@@ -44,8 +46,8 @@ export class ScrapController {
 
   @Get()
   @ApiOperation({ summary: '查询报废单列表' })
-  findAll() {
-    return this.scrapService.findAll();
+  findAll(@Ownership() ownership: OwnershipContext) {
+    return this.scrapService.findAll(ownership);
   }
 
   @Get(':id')

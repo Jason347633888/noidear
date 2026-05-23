@@ -10,6 +10,8 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PlanService } from './plan.service';
 import { QueryPlanDto, CalendarQueryDto } from './dto/plan.dto';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import type { OwnershipContext } from '../module-access/ownership-context';
 
 @UseGuards(JwtAuthGuard)
 @ModuleKey('equipment_site')
@@ -18,8 +20,8 @@ export class PlanController {
   constructor(private readonly planService: PlanService) {}
 
   @Get()
-  findAll(@Query() query: QueryPlanDto) {
-    return this.planService.findAll(query);
+  findAll(@Query() query: QueryPlanDto, @Ownership() ownership: OwnershipContext) {
+    return this.planService.findAll(query, ownership);
   }
 
   @Get('calendar')

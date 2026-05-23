@@ -28,27 +28,6 @@ export class RecordService {
     @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {}
 
-  async listForOwnership(ownership: OwnershipContext) {
-    const where: Record<string, unknown> = {};
-
-    if (ownership.roleCode === 'user') {
-      where['OR'] = [{ performerId: ownership.userId }, { reviewerId: ownership.userId }];
-    } else if (ownership.roleCode === 'leader') {
-      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
-      if (memberIds.length === 0) return [];
-      where['OR'] = [
-        { performerId: { in: memberIds } },
-        { reviewerId: { in: memberIds } },
-      ];
-    }
-    // admin: no filter
-
-    return this.prisma.maintenanceRecord.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
   async create(dto: CreateRecordDto) {
     const recordNumber = await this.generateRecordNumber();
     const optional: Record<string, any> = {};
@@ -72,11 +51,28 @@ export class RecordService {
     return record;
   }
 
-  async findAll(query: QueryRecordDto) {
+  async findAll(query: QueryRecordDto, ownership?: OwnershipContext) {
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 10));
     const skip = (page - 1) * limit;
     const where = this.buildWhereClause(query);
+
+    // Ownership scoping — MaintenanceRecord uses performerId / reviewerId
+    if (ownership && ownership.roleCode !== 'admin') {
+      if (ownership.roleCode === 'user') {
+        (where as any)['OR'] = [
+          { performerId: ownership.userId },
+          { reviewerId: ownership.userId },
+        ];
+      } else if (ownership.roleCode === 'leader') {
+        const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+        if (memberIds.length === 0) return { data: [], total: 0, page, limit };
+        (where as any)['OR'] = [
+          { performerId: { in: memberIds } },
+          { reviewerId: { in: memberIds } },
+        ];
+      }
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.maintenanceRecord.findMany({

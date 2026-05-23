@@ -14,18 +14,6 @@ interface CreateBatchMaterialUsageDto {
 export class BatchMaterialUsageService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listForOwnership(ownership: OwnershipContext) {
-    const batchIds = await visibleProductionBatchIds(this.prisma, ownership);
-    if (batchIds !== undefined && batchIds.length === 0) return [];
-    const where: Record<string, unknown> = batchIds !== undefined
-      ? { productionBatchId: { in: batchIds } }
-      : {};
-    return this.prisma.batchMaterialUsage.findMany({
-      where,
-      orderBy: { usedAt: 'desc' },
-    });
-  }
-
   async create(createDto: CreateBatchMaterialUsageDto) {
     const batch = await this.prisma.productionBatch.findUnique({
       where: { id: createDto.productionBatchId },

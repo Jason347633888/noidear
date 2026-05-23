@@ -1,48 +1,117 @@
 /**
- * P0-R3-2 — DepartmentController admin-only guard via RolesGuard + @Roles('admin')
+ * DepartmentController admin-only guard — Round 4 split:
+ *   GET /departments, GET /departments/:id  → JwtAuthGuard only (all authenticated roles)
+ *   POST, PUT, DELETE → admin-only (RolesGuard + @Roles('admin'))
+ *
+ * Tests use real Reflector metadata from the controller class, not mocked metadata.
  */
-import { UnauthorizedException } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
+import { UnauthorizedException } from '@nestjs/common';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { ROLES_KEY } from '../../common/decorators/roles.decorator';
+import { DepartmentController } from './department.controller';
+import { DepartmentService } from './department.service';
 
-function makeContext(roleCode: string | undefined, classRoles: string[]) {
-  const reflector = new Reflector();
-  const guard = new RolesGuard(reflector);
+async function buildReflector(): Promise<Reflector> {
+  const module = await Test.createTestingModule({
+    controllers: [DepartmentController],
+    providers: [
+      { provide: DepartmentService, useValue: {} },
+    ],
+  }).compile();
+  return module.get<Reflector>(Reflector);
+}
 
-  jest.spyOn(reflector, 'getAllAndOverride').mockImplementation((key) => {
-    if (key === ROLES_KEY) return classRoles;
-    return undefined;
-  });
-
-  const ctx: any = {
-    getHandler: () => ({}),
-    getClass: () => ({}),
+function makeContext(
+  roleCode: string | undefined,
+  handler: Function,
+  controllerClass: Function,
+): any {
+  return {
+    getHandler: () => handler,
+    getClass: () => controllerClass,
     switchToHttp: () => ({
       getRequest: () => ({ user: roleCode ? { roleCode } : undefined }),
     }),
   };
-  return { guard, ctx };
 }
 
-describe('RolesGuard — DepartmentController admin protection', () => {
-  it('admin can access POST /departments', () => {
-    const { guard, ctx } = makeContext('admin', ['admin']);
-    expect(guard.canActivate(ctx)).toBe(true);
+describe('DepartmentController — real Reflector metadata guard checks', () => {
+  let reflector: Reflector;
+
+  beforeAll(async () => {
+    reflector = await buildReflector();
   });
 
-  it('user is blocked from POST /departments', () => {
-    const { guard, ctx } = makeContext('user', ['admin']);
-    expect(guard.canActivate(ctx)).toBe(false);
+  describe('GET /departments — no @Roles (all authenticated)', () => {
+    it('admin can access', () => {
+      const guard = new RolesGuard(reflector);
+      const ctx = makeContext('admin', DepartmentController.prototype.findAll, DepartmentController);
+      expect(guard.canActivate(ctx)).toBe(true);
+    });
+
+    it('leader can access', () => {
+      const guard = new RolesGuard(reflector);
+      const ctx = makeContext('leader', DepartmentController.prototype.findAll, DepartmentController);
+      expect(guard.canActivate(ctx)).toBe(true);
+    });
+
+    it('user role can access', () => {
+      const guard = new RolesGuard(reflector);
+      const ctx = makeContext('user', DepartmentController.prototype.findAll, DepartmentController);
+      expect(guard.canActivate(ctx)).toBe(true);
+    });
   });
 
-  it('user is blocked from DELETE /departments/:id', () => {
-    const { guard, ctx } = makeContext('user', ['admin']);
-    expect(guard.canActivate(ctx)).toBe(false);
+  describe('POST /departments — @Roles("admin") on handler', () => {
+    it('admin can create department', () => {
+      const guard = new RolesGuard(reflector);
+      const ctx = makeContext('admin', DepartmentController.prototype.create, DepartmentController);
+      expect(guard.canActivate(ctx)).toBe(true);
+    });
+
+    it('leader is blocked from POST /departments', () => {
+      const guard = new RolesGuard(reflector);
+      const ctx = makeContext('leader', DepartmentController.prototype.create, DepartmentController);
+      expect(guard.canActivate(ctx)).toBe(false);
+    });
+
+    it('user is blocked from POST /departments', () => {
+      const guard = new RolesGuard(reflector);
+      const ctx = makeContext('user', DepartmentController.prototype.create, DepartmentController);
+      expect(guard.canActivate(ctx)).toBe(false);
+    });
+
+    it('no user throws UnauthorizedException', () => {
+      const guard = new RolesGuard(reflector);
+      const ctx = makeContext(undefined, DepartmentController.prototype.create, DepartmentController);
+      expect(() => guard.canActivate(ctx)).toThrow(UnauthorizedException);
+    });
   });
 
-  it('no user throws UnauthorizedException', () => {
-    const { guard, ctx } = makeContext(undefined, ['admin']);
-    expect(() => guard.canActivate(ctx)).toThrow(UnauthorizedException);
+  describe('DELETE /departments/:id — @Roles("admin") on handler', () => {
+    it('user is blocked from DELETE /departments/:id', () => {
+      const guard = new RolesGuard(reflector);
+      const ctx = makeContext('user', DepartmentController.prototype.remove, DepartmentController);
+      expect(guard.canActivate(ctx)).toBe(false);
+    });
+  });
+
+  describe('@Roles metadata sanity check', () => {
+    it('findAll handler has no @Roles metadata', () => {
+      const roles = Reflect.getMetadata(ROLES_KEY, DepartmentController.prototype.findAll);
+      expect(roles).toBeUndefined();
+    });
+
+    it('create handler has @Roles("admin")', () => {
+      const roles = Reflect.getMetadata(ROLES_KEY, DepartmentController.prototype.create);
+      expect(roles).toEqual(['admin']);
+    });
+
+    it('remove handler has @Roles("admin")', () => {
+      const roles = Reflect.getMetadata(ROLES_KEY, DepartmentController.prototype.remove);
+      expect(roles).toEqual(['admin']);
+    });
   });
 });

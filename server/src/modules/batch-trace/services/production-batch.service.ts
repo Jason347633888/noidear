@@ -51,34 +51,22 @@ export class ProductionBatchService {
     });
   }
 
-  /**
-   * Ownership-scoped batch list.
-   * leader_id links a batch to its responsible person; Team has no departmentId.
-   * admin: all; user: leader_id = userId; leader: leader_id IN members(managedDepts)
-   */
-  async listForOwnership(ownership: OwnershipContext) {
-    const where: Record<string, unknown> = {};
-
-    if (ownership.roleCode === 'user') {
-      where['leader_id'] = ownership.userId;
-    } else if (ownership.roleCode === 'leader') {
-      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
-      if (memberIds.length === 0) return [];
-      where['leader_id'] = { in: memberIds };
-    }
-    // admin: no filter
-
-    return this.prisma.productionBatch.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
-  async findAll(query: QueryProductionBatchDto) {
+  async findAll(query: QueryProductionBatchDto, ownership?: OwnershipContext) {
     const { page = 1, limit = 10, status, search } = query;
     const skip = (page - 1) * limit;
 
     const where = this.buildWhereClause(status, search);
+
+    // Ownership scoping — ProductionBatch.leader_id is the user FK
+    if (ownership && ownership.roleCode !== 'admin') {
+      if (ownership.roleCode === 'user') {
+        where['leader_id'] = ownership.userId;
+      } else if (ownership.roleCode === 'leader') {
+        const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+        if (memberIds.length === 0) return { data: [], total: 0, page, limit };
+        where['leader_id'] = { in: memberIds };
+      }
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.productionBatch.findMany({

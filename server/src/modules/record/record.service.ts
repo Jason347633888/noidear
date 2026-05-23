@@ -78,38 +78,9 @@ export class RecordService {
   }
 
   /**
-   * 查询记录列表（分页）
+   * 查询记录列表（分页）— ownership scoped via Record.createdBy FK
    */
-  /**
-   * Ownership-scoped record list.
-   * Record.createdBy is the user FK; no departmentId on Record itself.
-   * leader: fetches member IDs from managedDepartmentIds then filters createdBy IN memberIds
-   * user: filters createdBy = userId
-   * admin: no filter
-   */
-  async listForOwnership(ownership: OwnershipContext, query: QueryRecordDto) {
-    const { page = 1, limit = 10 } = query;
-    const skip = (page - 1) * limit;
-    const where: any = {};
-
-    if (ownership.roleCode === 'user') {
-      where['createdBy'] = ownership.userId;
-    } else if (ownership.roleCode === 'leader') {
-      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
-      if (memberIds.length === 0) return { data: [], total: 0, page, limit, totalPages: 0 };
-      where['createdBy'] = { in: memberIds };
-    }
-    // admin: no filter
-
-    const [data, total] = await Promise.all([
-      this.prisma.record.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' } }),
-      this.prisma.record.count({ where }),
-    ]);
-
-    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
-  }
-
-  async findAll(query: QueryRecordDto) {
+  async findAll(query: QueryRecordDto, ownership?: OwnershipContext) {
     const { page = 1, limit = 10, status, templateId, keyword } = query;
     const skip = (page - 1) * limit;
 
@@ -133,6 +104,18 @@ export class RecordService {
 
     if (query.changeEventId) {
       where.changeEventId = query.changeEventId;
+    }
+
+    // Ownership scoping — Record.createdBy is the user FK
+    if (ownership) {
+      if (ownership.roleCode === 'user') {
+        where['createdBy'] = ownership.userId;
+      } else if (ownership.roleCode === 'leader') {
+        const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+        if (memberIds.length === 0) return { data: [], total: 0, page, limit, totalPages: 0 };
+        where['createdBy'] = { in: memberIds };
+      }
+      // admin: no filter
     }
 
     const [data, total] = await Promise.all([

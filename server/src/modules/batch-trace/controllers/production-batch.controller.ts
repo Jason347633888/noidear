@@ -19,6 +19,8 @@ import {
   ConfirmProductBatchDto,
 } from '../dto/production-batch.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { Ownership } from '../../../shared/decorators/ownership.decorator';
+import type { OwnershipContext } from '../../module-access/ownership-context';
 
 @ModuleKey('production_execution')
 @Controller('batch-trace/production-batches')
@@ -39,8 +41,8 @@ export class ProductionBatchController {
   }
 
   @Get()
-  findAll(@Query() query: QueryProductionBatchDto) {
-    return this.productionBatchService.findAll(query);
+  findAll(@Query() query: QueryProductionBatchDto, @Ownership() ownership: OwnershipContext) {
+    return this.productionBatchService.findAll(query, ownership);
   }
 
   @Get(':id')
