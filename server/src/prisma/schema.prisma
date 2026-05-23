@@ -425,7 +425,6 @@ model ApprovalTask {
   assigneeUser           User?            @relation("ApprovalTaskAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
   assigneeRoleCode       String?
   assigneeDepartmentId   String?
-  assigneePermissionCode String?
   claimMode              String           @default("DIRECT")
   status                 String           @default("PENDING")
   claimedById            String?
@@ -445,7 +444,6 @@ model ApprovalTask {
   @@index([assigneeUserId, status])
   @@index([assigneeRoleCode, status])
   @@index([assigneeDepartmentId, status])
-  @@index([assigneePermissionCode, status])
   @@map("approval_tasks")
 }
 

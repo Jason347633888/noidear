@@ -1,15 +1,24 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StepDto } from './dto/approval-definition.dto';
 
+interface SimpleLogger {
+  log(msg: string): void;
+  warn(msg: string): void;
+  error(msg: string, ...args: unknown[]): void;
+}
+
 @Injectable()
 export class ApprovalDefinitionStartupScan implements OnModuleInit {
-  private readonly logger: Logger;
+  private readonly logger: SimpleLogger;
 
-  constructor(private readonly prisma: PrismaService, logger?: Logger) {
-    this.logger = logger ?? new Logger(ApprovalDefinitionStartupScan.name);
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() loggerOverride?: SimpleLogger,
+  ) {
+    this.logger = loggerOverride ?? new Logger(ApprovalDefinitionStartupScan.name);
   }
 
   async onModuleInit() {
