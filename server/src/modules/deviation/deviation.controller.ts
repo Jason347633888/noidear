@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Query, UseGuards, Request, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { DeviationService, DeviationReportQueryDto } from './deviation.service';
@@ -5,6 +6,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { DeviationExportService } from './deviation-export.service';
 import { ExportDeviationReportsDto } from './dto/export-deviation-reports.dto';
 
+@ModuleKey('quality_compliance')
 @Controller('deviation-reports')
 @UseGuards(JwtAuthGuard)
 export class DeviationController {

@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -11,6 +12,7 @@ import { FoodSafetyCultureRecordService } from './food-safety-culture-record.ser
 import { CreateFoodSafetyCultureRecordDto } from './dto/create-food-safety-culture-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@ModuleKey('quality_compliance')
 @Controller('food-safety-culture-records')
 @UseGuards(JwtAuthGuard)
 export class FoodSafetyCultureRecordController {

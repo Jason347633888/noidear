@@ -1,8 +1,10 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Body, Query, UseGuards, Request } from '@nestjs/common';
 import { ViolationRecordService } from './violation-record.service';
 import { CreateViolationDto } from './dto/create-violation.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@ModuleKey('quality_compliance')
 @Controller('violation-records')
 @UseGuards(JwtAuthGuard)
 export class ViolationRecordController {

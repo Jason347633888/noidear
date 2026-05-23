@@ -1,9 +1,11 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Body, Query, UseGuards, Request } from '@nestjs/common';
 import { WasteService } from './waste.service';
 import { CreateDisposalDto } from './dto/create-disposal.dto';
 import { CreateWasteRecordDto } from './dto/create-waste-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@ModuleKey('quality_compliance')
 @Controller('waste')
 @UseGuards(JwtAuthGuard)
 export class WasteController {

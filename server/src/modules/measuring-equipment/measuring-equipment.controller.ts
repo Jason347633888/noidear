@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { MeasuringEquipmentService } from './measuring-equipment.service';
 import { CreateEquipmentDto } from './dto/create-equipment.dto';
@@ -5,6 +6,7 @@ import { CreateCalibrationDto } from './dto/create-calibration.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
 
+@ModuleKey('quality_compliance')
 @Controller('measuring-equipment')
 @UseGuards(JwtAuthGuard)
 export class MeasuringEquipmentController {

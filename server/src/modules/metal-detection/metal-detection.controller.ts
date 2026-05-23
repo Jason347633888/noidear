@@ -1,8 +1,10 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { MetalDetectionService } from './metal-detection.service';
 import { CreateMetalDetectionDto } from './dto/create-metal-detection.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@ModuleKey('quality_compliance')
 @Controller('metal-detections')
 @UseGuards(JwtAuthGuard)
 export class MetalDetectionController {

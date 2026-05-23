@@ -1,9 +1,11 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Delete, Body, Param, Query, Request, UseGuards } from '@nestjs/common';
 import { FragileItemInspectionService } from './fragile-item-inspection.service';
 import { CreateFragileItemInspectionDto } from './dto/create-fragile-item-inspection.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
 
+@ModuleKey('quality_compliance')
 @Controller('fragile-item-inspections')
 @UseGuards(JwtAuthGuard)
 export class FragileItemInspectionController {

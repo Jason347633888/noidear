@@ -1,8 +1,10 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Body, Query, UseGuards, Request } from '@nestjs/common';
 import { EnvironmentRecordService } from './environment-record.service';
 import { CreateEnvironmentRecordDto } from './dto/create-environment-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@ModuleKey('quality_compliance')
 @Controller('environment-records')
 @UseGuards(JwtAuthGuard)
 export class EnvironmentRecordController {
