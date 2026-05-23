@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Body, Controller, Get, NotFoundException, Param, Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
@@ -6,6 +7,7 @@ import { ApprovalEngineService } from './approval-engine.service';
 import { StartApprovalDto } from './dto';
 
 @UseGuards(JwtAuthGuard)
+@ModuleKey('work_execution')
 @Controller('approval-instances')
 export class ApprovalInstanceController {
   constructor(

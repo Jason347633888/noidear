@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { IsArray, IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { Body, Controller, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -25,6 +26,7 @@ class UpdateApprovalDefinitionDto {
 }
 
 @UseGuards(JwtAuthGuard)
+@ModuleKey('document_approval')
 @Controller('approval-definitions')
 export class ApprovalDefinitionController {
   constructor(private readonly prisma: PrismaService) {}

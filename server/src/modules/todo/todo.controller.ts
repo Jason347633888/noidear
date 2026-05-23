@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -5,6 +6,7 @@ import { TodoService } from './todo.service';
 import { QueryTodoDto } from './dto/query-todo.dto';
 
 @ApiTags('待办任务')
+@ModuleKey('work_execution')
 @Controller('todos')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()

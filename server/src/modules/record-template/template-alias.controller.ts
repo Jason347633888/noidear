@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { RecordTemplateService } from './record-template.service';
@@ -8,6 +9,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 
 @ApiTags('记录模板管理')
+@ModuleKey('document_approval')
 @Controller('templates')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()

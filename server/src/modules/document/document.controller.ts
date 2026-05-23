@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -40,6 +41,7 @@ import { DepartmentPermissionService } from '../department-permission/department
 @ApiTags('文档管理')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@ModuleKey('document_approval')
 @Controller('documents')
 export class DocumentController {
   constructor(

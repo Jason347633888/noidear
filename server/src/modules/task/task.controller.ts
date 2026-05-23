@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -23,6 +24,7 @@ import { LegacySubmitTaskDto } from './dto/legacy-submit-task.dto';
 import { QueryTaskDto } from './dto/query-task.dto';
 
 @ApiTags('任务管理')
+@ModuleKey('work_execution')
 @Controller('tasks')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()

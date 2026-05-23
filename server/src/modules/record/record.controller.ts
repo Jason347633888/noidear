@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -33,6 +34,7 @@ import { ChangeLogInterceptor } from './interceptors/change-log.interceptor';
 import { TimestampValidationInterceptor } from '../../common/interceptors/timestamp-validation.interceptor';
 
 @ApiTags('记录管理')
+@ModuleKey('document_approval')
 @Controller('records')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()

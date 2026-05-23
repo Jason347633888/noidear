@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -23,6 +24,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 
 @ApiTags('记录模板管理')
+@ModuleKey('document_approval')
 @Controller('record-templates')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()

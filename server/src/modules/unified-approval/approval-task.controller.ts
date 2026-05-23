@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Body, Controller, ForbiddenException, Get, NotFoundException, Param, Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
@@ -7,6 +8,7 @@ import { ApprovalAssignmentResolver } from './approval-assignment.resolver';
 import { ApprovalTaskActionDto, RejectApprovalTaskDto } from './dto';
 
 @UseGuards(JwtAuthGuard)
+@ModuleKey('work_execution')
 @Controller('approval-tasks')
 export class ApprovalTaskController {
   constructor(
