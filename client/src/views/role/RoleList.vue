@@ -16,11 +16,6 @@
     <div class="app-panel table-card">
       <div class="app-panel-header">
         <h3 class="app-panel-header__title">角色列表</h3>
-        <div class="app-panel-header__actions">
-          <el-button type="primary" @click="handleCreate">
-            创建角色
-          </el-button>
-        </div>
       </div>
       <div class="app-panel--padded">
 
@@ -43,17 +38,8 @@
             {{ formatDate(row.createdAt) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handlePermissions(row)">
-              权限配置
-            </el-button>
-            <el-button v-if="!isSystemRole(row)" link type="primary" @click="handleEdit(row)">
-              编辑
-            </el-button>
-            <el-button v-if="!isSystemRole(row)" link type="danger" @click="handleDelete(row)">
-              删除
-            </el-button>
             <el-tag v-if="isSystemRole(row)" size="small" effect="plain">系统内置</el-tag>
           </template>
         </el-table-column>
@@ -72,30 +58,14 @@
       </div>
       </div>
     </div>
-
-    <!-- 创建/编辑对话框 -->
-    <RoleForm
-      v-model:visible="formVisible"
-      :role="currentRole"
-      @success="handleSuccess"
-    />
-
-    <!-- 权限配置对话框 -->
-    <RolePermissions
-      v-model:visible="permissionsVisible"
-      :role="currentRole"
-      @success="handleSuccess"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import request from '@/api/request';
-import RoleForm from '@/components/role/RoleForm.vue';
 import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
-import RolePermissions from '@/components/role/RolePermissions.vue';
 import { toList, toTotal } from '@/utils/apiResponse';
 
 interface Role {
@@ -126,9 +96,6 @@ const missingSystemRoles = computed(() =>
 );
 
 const isSystemRole = (role: Role) => SYSTEM_ROLE_CODES.includes(role.code);
-const formVisible = ref(false);
-const permissionsVisible = ref(false);
-const currentRole = ref<Role | null>(null);
 
 const filterForm = reactive({
   keyword: '',
@@ -173,38 +140,6 @@ const handleReset = () => {
   handleSearch();
 };
 
-const handleCreate = () => {
-  currentRole.value = null;
-  formVisible.value = true;
-};
-
-const handleEdit = (row: Role) => {
-  currentRole.value = row;
-  formVisible.value = true;
-};
-
-const handlePermissions = (row: Role) => {
-  currentRole.value = row;
-  permissionsVisible.value = true;
-};
-
-const handleDelete = async (row: Role) => {
-  try {
-    await ElMessageBox.confirm('确定要删除该角色吗？此操作不可恢复。', '警告', {
-      type: 'warning',
-    });
-    await request.delete(`/roles/${row.id}`);
-    ElMessage.success('删除成功');
-    fetchData();
-  } catch (error) {
-    // 用户取消或删除失败（错误信息已由拦截器处理）
-  }
-};
-
-const handleSuccess = async () => {
-  await fetchData();
-};
-
 onMounted(() => {
   fetchData();
 });
@@ -224,12 +159,6 @@ onMounted(() => {
 
 .table-card {
   margin-bottom: 16px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
 .pagination-wrap {
