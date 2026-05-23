@@ -5,6 +5,8 @@ export const REGISTRY_CONFIG: RegistryConfig = {
     { path: 'auth', mode: 'prefix' },
     { path: 'liveness', mode: 'exact' },
     { path: 'module-access', mode: 'exact' },
+    // @Controller() 无路径的控制器（product-process-change, record-task）
+    { path: '', mode: 'exact' },
   ],
   adminOnly: [
     { path: 'users', mode: 'exact' },
@@ -16,6 +18,11 @@ export const REGISTRY_CONFIG: RegistryConfig = {
     { path: 'system-configs', mode: 'exact' },
     { path: 'permission-audit-logs', mode: 'exact' },
     { path: 'org-bootstrap', mode: 'exact' },
+    // 旧权限子系统（Task 22 删除前暂留）
+    { path: 'permissions', mode: 'exact' },
+    { path: 'fine-grained-permissions', mode: 'exact' },
+    { path: 'department-permissions', mode: 'exact' },
+    { path: 'user-permissions', mode: 'exact' },
   ],
   auxiliary: [
     { path: 'notifications', mode: 'exact', guard: 'authenticated' },
