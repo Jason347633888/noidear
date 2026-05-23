@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request, BadRequestException } from '@nestjs/common';
 import { ChangeEventService } from './change-event.service';
 import { ChangeEventFormTaskService } from './change-event-form-task.service';
@@ -5,6 +6,7 @@ import { CreateChangeEventDto } from './dto/create-change-event.dto';
 import { CreateVerificationDto } from './dto/create-verification.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@ModuleKey('product_rd')
 @Controller('change-events')
 @UseGuards(JwtAuthGuard)
 export class ChangeEventController {

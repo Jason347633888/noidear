@@ -1,6 +1,8 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ModelLandingService } from './model-landing.service';
 
+@ModuleKey('product_rd')
 @Controller('model-landing')
 export class ModelLandingController {
   constructor(private readonly modelLandingService: ModelLandingService) {}

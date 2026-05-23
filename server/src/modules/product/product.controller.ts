@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Body,
   Controller,
@@ -21,6 +22,7 @@ import { ProductReportDocumentDto } from './dto/product-report-document.dto';
 import { CreateLegacyProductDto } from './dto/create-legacy-product.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@ModuleKey('product_rd')
 @Controller('products')
 @UseGuards(JwtAuthGuard)
 export class ProductController {

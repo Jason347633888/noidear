@@ -1,8 +1,10 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { ChangeComplianceRecordService } from './change-compliance-record.service';
 import { CreateChangeComplianceRecordDto } from './dto/create-change-compliance-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@ModuleKey('product_rd')
 @Controller('change-compliance-records')
 @UseGuards(JwtAuthGuard)
 export class ChangeComplianceRecordController {
