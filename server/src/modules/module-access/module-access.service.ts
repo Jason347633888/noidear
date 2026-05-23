@@ -61,15 +61,17 @@ export class ModuleAccessService {
         throw new BadRequestException(`Unknown moduleKey: ${row.moduleKey}`);
       }
     }
-    for (const row of rows) {
-      for (const roleCode of ROLE_CODES_WITH_TOGGLE) {
-        const enabled = row[roleCode];
-        await this.prisma.moduleAccessConfig.upsert({
-          where: { moduleKey_roleCode: { moduleKey: row.moduleKey, roleCode } },
-          update: { enabled },
-          create: { moduleKey: row.moduleKey, roleCode, enabled },
-        });
+    await this.prisma.$transaction(async (tx) => {
+      for (const row of rows) {
+        for (const roleCode of ROLE_CODES_WITH_TOGGLE) {
+          const enabled = row[roleCode];
+          await tx.moduleAccessConfig.upsert({
+            where: { moduleKey_roleCode: { moduleKey: row.moduleKey, roleCode } },
+            update: { enabled },
+            create: { moduleKey: row.moduleKey, roleCode, enabled },
+          });
+        }
       }
-    }
+    });
   }
 }

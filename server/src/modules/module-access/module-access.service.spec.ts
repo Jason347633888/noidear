@@ -7,11 +7,18 @@ describe('ModuleAccessService', () => {
   let prisma: any;
 
   beforeEach(async () => {
+    const txMock = {
+      moduleAccessConfig: {
+        upsert: jest.fn().mockResolvedValue({}),
+      },
+    };
     prisma = {
       moduleAccessConfig: {
         findMany: jest.fn(),
         upsert: jest.fn(),
       },
+      $transaction: jest.fn().mockImplementation((fn: (tx: any) => Promise<any>) => fn(txMock)),
+      _txMock: txMock,
     };
     const mod = await Test.createTestingModule({
       providers: [ModuleAccessService, { provide: PrismaService, useValue: prisma }],
@@ -59,17 +66,42 @@ describe('ModuleAccessService', () => {
     });
   });
 
-  it('saveMatrix upserts every (moduleKey, roleCode) pair', async () => {
-    prisma.moduleAccessConfig.upsert.mockResolvedValue({});
+  it('saveMatrix upserts every (moduleKey, roleCode) pair inside a transaction', async () => {
     await service.saveMatrix([
       { moduleKey: 'warehouse', leader: false, user: true },
       { moduleKey: 'training', leader: true, user: true },
     ]);
-    expect(prisma.moduleAccessConfig.upsert).toHaveBeenCalledTimes(4);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma._txMock.moduleAccessConfig.upsert).toHaveBeenCalledTimes(4);
   });
 
-  it('saveMatrix rejects unknown moduleKey', async () => {
+  it('saveMatrix rolls back all changes when one upsert throws mid-transaction', async () => {
+    let callCount = 0;
+    prisma._txMock.moduleAccessConfig.upsert.mockImplementation(() => {
+      callCount++;
+      if (callCount === 2) throw new Error('DB error on 2nd call');
+      return Promise.resolve({});
+    });
+
+    // Override $transaction to actually propagate the error (simulate real tx rollback)
+    prisma.$transaction.mockImplementation(async (fn: (tx: any) => Promise<any>) => {
+      return fn(prisma._txMock);
+    });
+
+    await expect(
+      service.saveMatrix([
+        { moduleKey: 'warehouse', leader: false, user: true },
+        { moduleKey: 'training', leader: true, user: true },
+      ]),
+    ).rejects.toThrow('DB error on 2nd call');
+
+    // Transaction was called, meaning rollback semantics are delegated to Prisma
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('saveMatrix rejects unknown moduleKey (before any DB call)', async () => {
     await expect(service.saveMatrix([{ moduleKey: 'not_a_module' as any, leader: true, user: true }]))
       .rejects.toThrow(/unknown module/i);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });
