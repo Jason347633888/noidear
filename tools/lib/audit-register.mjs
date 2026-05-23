@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import YAML from 'yaml';
 
-const WORKSPACES = new Set(['root', 'client', 'server', 'mobile', 'packages/types', 'tools/noidear-mcp']);
+const WORKSPACES = new Set(['root', 'client', 'server', 'mobile', 'packages/types']);
 const SEVERITIES = new Set(['low', 'moderate']);
 const DECISIONS = new Set(['override', 'wait_upstream', 'replace_dependency', 'remove_capability']);
 const CODE_PATH = new Set(['yes', 'no', 'unknown']);

@@ -57,7 +57,6 @@
 - `client`：Vue 3 + Vite + Element Plus。
 - `server`：NestJS + Prisma。
 - `packages/types`：共享类型。
-- `tools/noidear-mcp`：MCP 工具服务。
 
 Node 要求来自 `package.json` 和 `.nvmrc`：
 
@@ -73,7 +72,6 @@ npm ci
 ```bash
 npm run build:server
 npm run build:client
-npm run build:mcp
 npm run typecheck:types
 npm run verify
 npm run verify:full
@@ -174,7 +172,6 @@ noidear/
 ├── client/              # Vue 3 + Vite + Element Plus
 ├── server/              # NestJS + Prisma
 ├── packages/types/      # 共享类型
-├── tools/noidear-mcp/   # MCP 工具服务
 ├── docs/                # Agent 协议、食品安全 hard gate
 └── archive/             # 历史执行资料和旧导入材料
 ```
@@ -184,7 +181,6 @@ noidear/
 - `client`
 - `server`
 - `packages/types`
-- `tools/noidear-mcp`
 
 前端信息架构以 `client/src/navigation/menu.ts` 为准。新增页面必须同时检查路由、菜单、API 适配、登录态和权限。
 
@@ -202,7 +198,6 @@ noidear/
 | 侧边菜单 | `client/src/navigation/menu.ts` |
 | 当前用户 | `client/src/stores/user.ts` |
 | 共享合同 | `packages/types/*.ts` |
-| MCP | `tools/noidear-mcp/src/` |
 
 ## 13. 文档收敛规则
 

@@ -17,10 +17,6 @@ Swagger JSON: http://localhost:3000/api/docs-json
 认证方式: POST /api/v1/auth/login { username, password } -> { token, user }
 Token 用法: Authorization: Bearer <token>
 
-## MCP 工具
-Server ID: noidear-mcp
-工具与运行约束: 见 `docs/AGENT_GUIDE.md`
-
 ## 当前高频能力
 - 受控文件与记录表单治理
 - 供应商、来料、仓储、批次与 FIFO

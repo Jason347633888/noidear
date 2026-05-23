@@ -6,8 +6,7 @@
   "workspaces": [
     "client",
     "server",
-    "packages/types",
-    "tools/noidear-mcp"
+    "packages/types"
   ],
   "engines": {
     "node": ">=20 <23",
@@ -17,14 +16,13 @@
     "install:all": "npm install",
     "build:client": "npm run build -w client",
     "build:server": "npm run prisma:generate && npm run build -w server",
-    "build:mcp": "npm run build -w tools/noidear-mcp",
     "typecheck:types": "npm run typecheck -w packages/types",
     "test:client": "npm run test -w client",
     "test:server": "npm run test -w server",
     "prisma:generate": "npm run prisma:generate -w server",
     "verify": "npm run build:server && npm run build:client",
     "lint:api-prefix": "bash tools/check-client-api-prefix.sh",
-    "verify:full": "npm run lint:api-prefix && npm run typecheck:types && npm run build:mcp && npm run build:server && npm run build:client",
+    "verify:full": "npm run lint:api-prefix && npm run typecheck:types && npm run build:server && npm run build:client",
     "security:audit:prod": "npm audit --omit=dev",
     "security:audit:raw": "npm audit",
     "security:audit:register": "node tools/check-audit-register.mjs docs/superpowers/specs/2026-05-14-audit-risk-register.yaml",

@@ -41,7 +41,7 @@ entries:
 #   - advisoryId: "GHSA-xxxx-xxxx-xxxx"
 #     severity: "moderate" # allowed: low, moderate
 #     occurrences:
-#       - workspace: "root" # allowed: root, client, server, mobile, packages/types, tools/noidear-mcp
+#       - workspace: "root" # allowed: root, client, server, mobile, packages/types
 #         packageName: "vite"
 #         packageChain:
 #           - "vite"

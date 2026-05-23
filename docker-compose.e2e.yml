@@ -131,7 +131,6 @@ services:
       - e2e_server_node_modules:/work/server/node_modules
       - e2e_mobile_node_modules:/work/mobile/node_modules
       - e2e_types_node_modules:/work/packages/types/node_modules
-      - e2e_mcp_node_modules:/work/tools/noidear-mcp/node_modules
       - npm_cache:/root/.npm
     depends_on:
       client-e2e:
@@ -149,7 +148,6 @@ volumes:
   e2e_server_node_modules:
   e2e_mobile_node_modules:
   e2e_types_node_modules:
-  e2e_mcp_node_modules:
 
 networks:
   e2e-net:

@@ -18,7 +18,6 @@
 - `client/`：Vue 3 + TypeScript + Element Plus 前端应用
 - `server/`：NestJS + Prisma 后端 API
 - `packages/types/`：前后端共享 TypeScript 类型
-- `tools/noidear-mcp/`：面向 Agent 的 MCP 工具服务
 - `docs/`：Agent 协议、食品安全主数据与追溯 hard gate
 - `archive/`：历史执行资料和旧导入材料，不作为当前事实源
 
@@ -63,8 +62,7 @@
 
 - `AGENTS.md` 作为根入口，`docs/AGENT_GUIDE.md` 承接项目操作协议
 - `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md` 作为食品安全主数据与追溯 hard gate
-- `llms.txt` 提供系统能力、API、认证和 MCP 入口摘要
-- `tools/noidear-mcp/` 提供 API 发现、调用、运维和测试类工具
+- `llms.txt` 提供系统能力、API 和认证入口摘要
 
 ---
 
@@ -76,7 +74,7 @@
 | 后端 | Node.js 20、NestJS 10、TypeScript、Prisma 5、Jest、Swagger |
 | 数据 | PostgreSQL 15、Redis 7、MinIO |
 | 部署 | Docker、Docker Compose、Nginx |
-| 自动化 | npm workspaces、MCP server、共享类型包 |
+| 自动化 | npm workspaces、共享类型包 |
 
 ---
 
@@ -164,7 +162,6 @@ npm ci
 # 构建
 npm run build:server
 npm run build:client
-npm run build:mcp
 npm run verify
 npm run typecheck:types
 
@@ -209,7 +206,6 @@ noidear/
 │   ├── src/prisma/              # Prisma schema、migrations、seed
 │   └── test/                    # 后端 E2E 测试
 ├── packages/types/              # 共享类型定义
-├── tools/noidear-mcp/           # MCP 工具服务
 ├── docs/                        # Agent 协议、食品安全 hard gate
 └── archive/                     # 历史执行资料和旧导入材料
 ```
