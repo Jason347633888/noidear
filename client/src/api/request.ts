@@ -69,6 +69,17 @@ request.interceptors.response.use(
         }
         return Promise.reject(error);
       }
+      if (status === 403) {
+        const body = error.response?.data as any;
+        const code = body?.code ?? body?.data?.code;
+        const moduleKey = body?.module ?? body?.data?.module;
+        if (code === 'MODULE_DISABLED' && moduleKey) {
+          if (routerRef) {
+            routerRef.push({ path: '/no-access', query: { module: moduleKey } });
+          }
+          return Promise.reject(error);
+        }
+      }
       const message = data?.message || '请求失败';
       ElMessage.error(message);
       return Promise.reject({ code: data?.code, message, details: data?.details });

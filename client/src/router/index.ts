@@ -717,6 +717,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/process/ProcessPrint.vue'),
     meta: { title: '研发流程打印', hideLayout: true },
   },
+  {
+    path: '/no-access',
+    name: 'NoAccess',
+    component: () => import('@/views/no-access/NoAccess.vue'),
+    meta: { public: true },
+  },
   { path: '/:pathMatch(.*)*', redirect: '/dashboard' },
 ];
 
@@ -727,7 +733,7 @@ const router = createRouter({
 
 // 导航守卫
 router.beforeEach(async (to, _from, next) => {
-  const publicPaths = ['/login'];
+  const publicPaths = ['/login', '/no-access'];
   const token = localStorage.getItem('token');
 
   if (!publicPaths.includes(to.path) && !token) {
