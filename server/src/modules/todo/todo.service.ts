@@ -24,10 +24,21 @@ const ALL_TODO_TYPES: TodoType[] = [
 export class TodoService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(userId: string, query: QueryTodoDto) {
+  /**
+   * Ownership-scoped findAll — returns paginated response {items, total, page, limit, hasMore}.
+   * admin → all todos; leader → todos of members in managed departments; user → own todos.
+   */
+  async findAll(query: QueryTodoDto, ownership: OwnershipContext) {
     const { status = 'all', type = 'all', page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
-    const where: Record<string, unknown> = { userId };
+
+    const scopeWhere = await this.buildOwnershipWhere(ownership);
+    if (scopeWhere === null) {
+      // No accessible users (e.g. leader with empty departments)
+      return { items: [], total: 0, page, limit, hasMore: false };
+    }
+
+    const where: Record<string, unknown> = { ...scopeWhere };
     if (status !== 'all') where.status = status;
     if (type !== 'all') where.type = type;
 
@@ -72,26 +83,6 @@ export class TodoService {
     return { total: pending + completed, byType, byStatus: { pending, completed } };
   }
 
-  async listForUser(ownership: OwnershipContext) {
-    if (ownership.roleCode === 'admin') {
-      return this.prisma.todoTask.findMany({});
-    }
-    if (ownership.roleCode === 'user') {
-      return this.prisma.todoTask.findMany({ where: { userId: ownership.userId } });
-    }
-    // leader: see todos of all members in managed departments
-    const memberIds = ownership.managedDepartmentIds?.length
-      ? (
-          await this.prisma.user.findMany({
-            where: { departmentId: { in: ownership.managedDepartmentIds } },
-            select: { id: true },
-          })
-        ).map((u: { id: string }) => u.id)
-      : [];
-    if (memberIds.length === 0) return [];
-    return this.prisma.todoTask.findMany({ where: { userId: { in: memberIds } } });
-  }
-
   async complete(id: string, userId: string) {
     const todo = await this.prisma.todoTask.findFirst({ where: { id, userId } });
     if (!todo) throw new NotFoundException('待办不存在');
@@ -100,5 +91,29 @@ export class TodoService {
       where: { id },
       data: { status: 'completed', completedAt: new Date(), completedBy: userId },
     });
+  }
+
+  /**
+   * Returns the Prisma where clause for ownership scoping.
+   * Returns null when no records should be visible (empty scope).
+   */
+  private async buildOwnershipWhere(
+    ownership: OwnershipContext,
+  ): Promise<Record<string, unknown> | null> {
+    if (ownership.roleCode === 'admin') {
+      return {};
+    }
+    if (ownership.roleCode === 'user') {
+      return { userId: ownership.userId };
+    }
+    // leader: todos of members in managed departments
+    const depts = ownership.managedDepartmentIds ?? [];
+    if (depts.length === 0) return null;
+    const members = await this.prisma.user.findMany({
+      where: { departmentId: { in: depts } },
+      select: { id: true },
+    });
+    if (members.length === 0) return null;
+    return { userId: { in: members.map((u: { id: string }) => u.id) } };
   }
 }

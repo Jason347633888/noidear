@@ -16,9 +16,9 @@ export class TodoController {
   constructor(private readonly todoService: TodoService) {}
 
   @Get()
-  @ApiOperation({ summary: '获取当前用户待办列表（按 ownership 范围）' })
-  findAll(@Ownership() ownership: OwnershipContext) {
-    return this.todoService.listForUser(ownership);
+  @ApiOperation({ summary: '获取当前用户待办列表（按 ownership 范围，返回分页对象）' })
+  findAll(@Query() query: QueryTodoDto, @Ownership() ownership: OwnershipContext) {
+    return this.todoService.findAll(query, ownership);
   }
 
   @Get('statistics')
