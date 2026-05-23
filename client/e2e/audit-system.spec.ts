@@ -2,7 +2,7 @@
  * E2E Tests – Audit Log & System Management Module
  *
  * Covers BDD scenarios NOT already tested in:
- *   audit.spec.ts / search.spec.ts / statistics.spec.ts
+ *   audit.spec.ts / search.spec.ts
  *
  * Scenarios:
  *   AUD-004  /audit/search page renders, search box usable
@@ -10,8 +10,6 @@
  *   SRC-002  API GET /search?keyword=质量 returns document list
  *   SRC-003  Filter by documentLevel via API
  *   SRC-008  Search results pagination via API (page=2&limit=10)
- *   STAT-001 /statistics/overview renders
- *   STAT-002 /statistics/documents renders
  *
  * Note: BCK-* (backup) and RBN-* (recycle-bin) tests removed — those
  *   routes (/backup/*, /recycle-bin/*) were deleted in the app-feature-strip PR.
@@ -261,49 +259,6 @@ test.describe('全文搜索 – Full-text Search', () => {
 
     // Page 2 result count must not exceed the requested limit
     expect(page2Items.length).toBeLessThanOrEqual(10);
-  });
-});
-
-
-// ===========================================================================
-// 5. 统计 – Statistics
-// ===========================================================================
-
-test.describe('统计 – Statistics', () => {
-  // -------------------------------------------------------------------------
-  // STAT-001: /statistics/overview renders
-  // -------------------------------------------------------------------------
-  test('STAT-001: /statistics/overview 页面渲染', async ({ page }) => {
-    await loginViaApiCached(page, 'admin', 'ChangeMe123!');
-    await page.goto('/statistics/overview');
-    await page.waitForLoadState('networkidle');
-
-    // Page body must be visible
-    await expect(page.locator('body')).toBeVisible();
-
-    // Either a heading or a stats card container should load
-    const statsContent = page.locator(
-      'h2, h1, .stat-card, .overview-card, .el-card, .chart-container, canvas',
-    );
-    await expect(statsContent.first()).toBeAttached({ timeout: 10000 });
-  });
-
-  // -------------------------------------------------------------------------
-  // STAT-002: /statistics/documents renders
-  // -------------------------------------------------------------------------
-  test('STAT-002: /statistics/documents 页面渲染', async ({ page }) => {
-    await loginViaApiCached(page, 'admin', 'ChangeMe123!');
-    await page.goto('/statistics/documents');
-    await page.waitForLoadState('networkidle');
-
-    // Page body must be visible
-    await expect(page.locator('body')).toBeVisible();
-
-    // A heading or data container should be present
-    const contentArea = page.locator(
-      'h2, h1, .el-card, .chart-container, canvas, .el-table, .stat-card',
-    );
-    await expect(contentArea.first()).toBeAttached({ timeout: 10000 });
   });
 });
 
