@@ -9,8 +9,6 @@ import { NotificationModule } from '../notification/notification.module';
 import { OperationLogModule } from '../operation-log/operation-log.module';
 import { DepartmentPermissionModule } from '../department-permission/department-permission.module';
 import { RoleModule } from '../role/role.module';
-import { StatisticsModule } from '../statistics/statistics.module';
-import { StatisticsCacheInterceptor } from '../../common/interceptors/statistics-cache.interceptor';
 import { UserPermissionModule } from '../user-permission/user-permission.module';
 import { SearchModule } from '../search/search.module';
 import { DocumentCronService } from './document-cron.service';
@@ -31,9 +29,9 @@ import type { ApprovalCallbackContext } from '../unified-approval/types';
 import { CANONICAL_DOCUMENT_STATUS } from './constants/document-control.constants';
 
 @Module({
-  imports: [ConfigModule, PrismaModule, NotificationModule, OperationLogModule, DepartmentPermissionModule, RoleModule, StatisticsModule, UserPermissionModule, SearchModule, ModelLandingModule, UnifiedApprovalModule],
+  imports: [ConfigModule, PrismaModule, NotificationModule, OperationLogModule, DepartmentPermissionModule, RoleModule, UserPermissionModule, SearchModule, ModelLandingModule, UnifiedApprovalModule],
   controllers: [DocumentController],
-  providers: [DocumentService, DocumentCronService, DocumentReferenceService, MarkdownWikilinkService, DocumentReferenceHealthService, BusinessDocumentLinkService, DocumentExpiryService, DocumentLifecycleService, DocumentControlMetadataService, RecordFormLandingService, FilePreviewService, StorageService, StatisticsCacheInterceptor, DocumentsListener, NumberRuleService],
+  providers: [DocumentService, DocumentCronService, DocumentReferenceService, MarkdownWikilinkService, DocumentReferenceHealthService, BusinessDocumentLinkService, DocumentExpiryService, DocumentLifecycleService, DocumentControlMetadataService, RecordFormLandingService, FilePreviewService, StorageService, DocumentsListener, NumberRuleService],
   exports: [DocumentService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, BusinessDocumentLinkService, DocumentExpiryService],
 })
 export class DocumentModule implements OnModuleInit {

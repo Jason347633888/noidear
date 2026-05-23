@@ -176,26 +176,6 @@ const routes: RouteRecordRaw[] = [
         name: 'Password',
         component: () => import('@/views/Password.vue'),
       },
-      {
-        path: 'statistics',
-        name: 'StatisticsIndex',
-        component: () => import('@/views/statistics/StatisticsIndex.vue'),
-      },
-      {
-        path: 'statistics/overview',
-        name: 'StatisticsOverview',
-        component: () => import('@/views/statistics/Overview.vue'),
-      },
-      {
-        path: 'statistics/documents',
-        name: 'DocumentStatistics',
-        component: () => import('@/views/statistics/DocumentStatistics.vue'),
-      },
-      {
-        path: 'statistics/tasks',
-        name: 'TaskStatistics',
-        component: () => import('@/views/statistics/TaskStatistics.vue'),
-      },
       // 用户权限管理
       {
         path: 'users/:id/permissions',

@@ -121,15 +121,6 @@ export const menuGroups: MenuEntry[] = [
     ],
   },
   {
-    title: '数据分析',
-    icon: DataAnalysis,
-    children: [
-      { path: '/statistics/overview', title: '统计概览', icon: DataAnalysis },
-      { path: '/statistics/documents', title: '文档统计', icon: DataAnalysis },
-      { path: '/statistics/tasks', title: '任务统计', icon: DataAnalysis },
-    ],
-  },
-  {
     title: '系统治理',
     icon: Setting,
     children: [
