@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -16,6 +17,7 @@ import { UpdateExternalPartyDto } from './dto/update-external-party.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
 
+@ModuleKey('warehouse')
 @Controller('external-parties')
 @UseGuards(JwtAuthGuard)
 export class ExternalPartyController {

@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Post,
@@ -12,6 +13,7 @@ import { StartExamDto } from './dto/start-exam.dto';
 import { SubmitExamDto } from './dto/submit-exam.dto';
 
 @ApiTags('培训管理 - 在线考试')
+@ModuleKey('training')
 @Controller('training/exam')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()

@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -19,6 +20,7 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 
 @ApiTags('退料管理')
+@ModuleKey('warehouse')
 @Controller('returns')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()

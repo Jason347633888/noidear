@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -26,6 +27,7 @@ import {
   SupplierControlledDocumentDto,
 } from './dto/supplier.dto';
 
+@ModuleKey('warehouse')
 @Controller('warehouse/suppliers')
 @UseGuards(JwtAuthGuard)
 export class SupplierController {

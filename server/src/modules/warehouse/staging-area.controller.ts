@@ -1,9 +1,11 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus, UseGuards, Request } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { StagingAreaService } from './staging-area.service';
 import { StageMaterialToAreaDto, ConfirmStocktakeDto } from './dto/staging-area.dto';
 
 @UseGuards(JwtAuthGuard)
+@ModuleKey('warehouse')
 @Controller('warehouse/staging-area')
 export class StagingAreaController {
   constructor(private readonly stagingAreaService: StagingAreaService) {}

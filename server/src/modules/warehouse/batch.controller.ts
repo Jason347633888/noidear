@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -12,6 +13,7 @@ import {
 import { BatchService } from './batch.service';
 import { CreateBatchDto, UpdateBatchDto, QueryBatchDto } from './dto/batch.dto';
 
+@ModuleKey('warehouse')
 @Controller('warehouse/batches')
 export class BatchController {
   constructor(private readonly batchService: BatchService) {}

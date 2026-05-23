@@ -1,9 +1,11 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequisitionService } from './requisition.service';
 import { CreateRequisitionDto, QueryRequisitionDto } from './dto/requisition.dto';
 
 @UseGuards(JwtAuthGuard)
+@ModuleKey('warehouse')
 @Controller('warehouse/requisitions')
 export class RequisitionController {
   constructor(private readonly requisitionService: RequisitionService) {}

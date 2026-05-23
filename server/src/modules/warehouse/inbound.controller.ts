@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -15,6 +16,7 @@ import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { InboundService } from './inbound.service';
 import { CreateInboundDto, QueryInboundDto } from './dto/inbound.dto';
 
+@ModuleKey('warehouse')
 @Controller('warehouse/inbound')
 @UseGuards(JwtAuthGuard)
 export class InboundController {

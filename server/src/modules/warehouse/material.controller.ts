@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -20,6 +21,7 @@ import {
 
 @ApiTags('仓库-物料管理')
 @ApiBearerAuth()
+@ModuleKey('warehouse')
 @Controller('warehouse/materials')
 export class MaterialController {
   constructor(private readonly materialService: MaterialService) {}

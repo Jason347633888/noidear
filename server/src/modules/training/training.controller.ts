@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -24,6 +25,7 @@ import { UpdateTrainingProjectDto } from './dto/update-project.dto';
 import { QueryTrainingProjectDto } from './dto/query-project.dto';
 
 @ApiTags('培训管理')
+@ModuleKey('training')
 @Controller('training')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()

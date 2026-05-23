@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -11,6 +12,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RecordService } from './record.service';
 
 @ApiTags('培训管理 - 学习记录')
+@ModuleKey('training')
 @Controller('training/records')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
