@@ -14,6 +14,8 @@ import {
 } from './dto/record.dto';
 import { PlanService } from './plan.service';
 import { StatsService } from './stats.service';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @Injectable()
 export class RecordService {
@@ -25,6 +27,27 @@ export class RecordService {
     private readonly statsService: StatsService,
     @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {}
+
+  async listForOwnership(ownership: OwnershipContext) {
+    const where: Record<string, unknown> = {};
+
+    if (ownership.roleCode === 'user') {
+      where['OR'] = [{ performerId: ownership.userId }, { reviewerId: ownership.userId }];
+    } else if (ownership.roleCode === 'leader') {
+      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+      if (memberIds.length === 0) return [];
+      where['OR'] = [
+        { performerId: { in: memberIds } },
+        { reviewerId: { in: memberIds } },
+      ];
+    }
+    // admin: no filter
+
+    return this.prisma.maintenanceRecord.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 
   async create(dto: CreateRecordDto) {
     const recordNumber = await this.generateRecordNumber();

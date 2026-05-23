@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePlanDto, QueryPlanDto, CalendarQueryDto } from './dto/plan.dto';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 interface MaintenanceLevelConfig {
   enabled: boolean;
@@ -26,6 +27,15 @@ export class PlanService {
   private readonly logger = new Logger(PlanService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * TODO Task 46: 加上 responsiblePersonId FK 后改为标准 OwnershipScope。
+   * 当前 user → []; leader/admin → 不过滤。
+   */
+  async listForOwnership(ownership: OwnershipContext) {
+    if (ownership.roleCode === 'user') return [];
+    return this.prisma.maintenancePlan.findMany({ where: { deletedAt: null } });
+  }
 
   async generatePlansForEquipment(equipmentId: string) {
     const equipment = await this.prisma.equipment.findUnique({

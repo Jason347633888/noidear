@@ -12,6 +12,8 @@ import {
   QueryFaultDto,
 } from './dto/fault.dto';
 import { StatsService } from './stats.service';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @Injectable()
 export class FaultService {
@@ -21,6 +23,27 @@ export class FaultService {
     private readonly prisma: PrismaService,
     private readonly statsService: StatsService,
   ) {}
+
+  async listForOwnership(ownership: OwnershipContext) {
+    const where: Record<string, unknown> = {};
+
+    if (ownership.roleCode === 'user') {
+      where['OR'] = [{ reporterId: ownership.userId }, { assigneeId: ownership.userId }];
+    } else if (ownership.roleCode === 'leader') {
+      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+      if (memberIds.length === 0) return [];
+      where['OR'] = [
+        { reporterId: { in: memberIds } },
+        { assigneeId: { in: memberIds } },
+      ];
+    }
+    // admin: no filter
+
+    return this.prisma.equipmentFault.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 
   async create(dto: CreateFaultDto) {
     const faultNumber = await this.generateFaultNumber();

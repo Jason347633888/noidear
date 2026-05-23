@@ -11,6 +11,7 @@ import {
   UpdateEquipmentStatusDto,
   QueryEquipmentDto,
 } from './dto/equipment.dto';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @Injectable()
 export class EquipmentService {
@@ -19,6 +20,15 @@ export class EquipmentService {
   constructor(
     private readonly prisma: PrismaService,
   ) {}
+
+  /**
+   * TODO Task 46: 加上 responsiblePersonId FK 后改为标准 OwnershipScope。
+   * 当前 user → []; leader/admin → 不过滤。
+   */
+  async listForOwnership(ownership: OwnershipContext) {
+    if (ownership.roleCode === 'user') return [];
+    return this.prisma.equipment.findMany({ where: { deletedAt: null } });
+  }
 
   async create(dto: CreateEquipmentDto) {
     try {
