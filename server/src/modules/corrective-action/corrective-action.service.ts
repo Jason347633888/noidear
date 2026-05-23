@@ -3,6 +3,8 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CapaTriggerType, CreateCapaDto } from './dto/create-capa.dto';
 import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 export interface CorrectiveActionListFilters {
   status?: string;
@@ -33,6 +35,24 @@ export class CorrectiveActionService {
     );
     return client.correctiveAction.create({
       data: { ...dto, company_id: companyId, capa_no },
+    });
+  }
+
+  async listForOwnership(ownership: OwnershipContext) {
+    const where: Record<string, unknown> = {};
+
+    if (ownership.roleCode === 'user') {
+      where['responsible_id'] = ownership.userId;
+    } else if (ownership.roleCode === 'leader') {
+      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+      if (memberIds.length === 0) return [];
+      where['responsible_id'] = { in: memberIds };
+    }
+    // admin: no filter
+
+    return this.prisma.correctiveAction.findMany({
+      where,
+      orderBy: { created_at: 'desc' },
     });
   }
 

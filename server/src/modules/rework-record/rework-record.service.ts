@@ -1,10 +1,30 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateReworkRecordDto } from './dto/create-rework-record.dto';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @Injectable()
 export class ReworkRecordService {
   constructor(private prisma: PrismaService) {}
+
+  async listForOwnership(ownership: OwnershipContext) {
+    const where: Record<string, unknown> = {};
+
+    if (ownership.roleCode === 'user') {
+      where['operator_id'] = ownership.userId;
+    } else if (ownership.roleCode === 'leader') {
+      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+      if (memberIds.length === 0) return [];
+      where['operator_id'] = { in: memberIds };
+    }
+    // admin: no filter
+
+    return this.prisma.reworkRecord.findMany({
+      where,
+      orderBy: { created_at: 'desc' },
+    });
+  }
 
   async create(dto: CreateReworkRecordDto, companyId: string) {
     const ncId = dto.nc_id?.trim();

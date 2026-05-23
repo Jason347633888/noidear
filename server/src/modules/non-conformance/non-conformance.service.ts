@@ -3,6 +3,7 @@ import { NonConformance, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateNcDto, DisposeNcDto, NcSourceType } from './dto/create-nc.dto';
 import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 type CcpDeviationInput = {
   companyId: string;
@@ -25,6 +26,21 @@ export class NonConformanceService {
     private prisma: PrismaService,
     private readonly numberSequence: QualityNumberSequenceService,
   ) {}
+
+  /**
+   * Ownership-scoped list.
+   * TODO(Task 46): NonConformance lacks discoveredById FK.
+   *   user → [] (empty-set fallback until Task 46 adds the FK)
+   *   leader → all (no ownership filter until Task 46)
+   *   admin → all
+   */
+  async listForOwnership(ownership: OwnershipContext) {
+    if (ownership.roleCode === 'user') return [];
+    return this.prisma.nonConformance.findMany({
+      where: {},
+      orderBy: { created_at: 'desc' },
+    });
+  }
 
   async create(dto: CreateNcDto, userId: string, companyId: string) {
     await this.validateSourceExists(dto.source_type, dto.source_id, companyId);

@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BusinessException, ErrorCode } from '../../common/exceptions/business.exception';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 export interface DeviationDetectionResult {
   fieldName: string;
@@ -171,6 +173,24 @@ export class DeviationService {
     }
 
     return reports;
+  }
+
+  async listForOwnership(ownership: OwnershipContext) {
+    const where: Record<string, unknown> = { deletedAt: null };
+
+    if (ownership.roleCode === 'user') {
+      where['reporterId'] = ownership.userId;
+    } else if (ownership.roleCode === 'leader') {
+      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+      if (memberIds.length === 0) return [];
+      where['reporterId'] = { in: memberIds };
+    }
+    // admin: no filter
+
+    return this.prisma.deviationReport.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async findDeviationReports(query: DeviationReportQueryDto) {

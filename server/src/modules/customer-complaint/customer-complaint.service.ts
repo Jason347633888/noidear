@@ -1,10 +1,25 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateComplaintDto } from './dto/create-complaint.dto';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @Injectable()
 export class CustomerComplaintService {
   constructor(private prisma: PrismaService) {}
+
+  /**
+   * Ownership-scoped list.
+   * TODO(Task 46): CustomerComplaint lacks createdById FK.
+   *   user → [] (empty-set fallback until Task 46)
+   *   leader/admin → all (no ownership filter yet)
+   */
+  async listForOwnership(ownership: OwnershipContext) {
+    if (ownership.roleCode === 'user') return [];
+    return this.prisma.customerComplaint.findMany({
+      where: {},
+      orderBy: { created_at: 'desc' },
+    });
+  }
 
   async create(dto: CreateComplaintDto, companyId: string) {
     if (!dto.production_batch_id) {
