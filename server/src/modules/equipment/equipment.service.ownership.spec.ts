@@ -1,14 +1,14 @@
 /**
- * Task 42 Step 3 — EquipmentService.listForOwnership empty-set fallback
- * Equipment lacks responsiblePersonId FK until Task 46.
- * user → []; leader/admin → findMany({})
+ * Task 46 update — EquipmentService.listForOwnership with responsiblePersonId FK
+ * admin → all; user → responsiblePersonId = userId; leader → IN members(managedDepts)
  */
 import { EquipmentService } from './equipment.service';
 import { OwnershipContext } from '../module-access/ownership-context';
 
-function freshService() {
+function freshService(memberIds: string[] = []) {
   const prisma: any = {
     equipment: { findMany: jest.fn().mockResolvedValue([{ id: 'eq-1' }]) },
+    user: { findMany: jest.fn().mockResolvedValue(memberIds.map((id) => ({ id }))) },
   };
   return { svc: new EquipmentService(prisma), prisma };
 }
@@ -16,25 +16,40 @@ function freshService() {
 describe('EquipmentService.listForOwnership', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('user gets [] (missing responsiblePersonId FK, deferred to Task 46)', async () => {
-    const { svc } = freshService();
-    const o: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd', managedDepartmentIds: [] };
-    expect(await svc.listForOwnership(o)).toEqual([]);
-  });
-
-  it('leader gets all equipment (empty-set fallback, deferred to Task 46)', async () => {
-    const { svc, prisma } = freshService();
-    const o: OwnershipContext = { userId: 'l-1', roleCode: 'leader', departmentId: 'd-1', managedDepartmentIds: ['d-1'] };
-    const result = await svc.listForOwnership(o);
-    expect(prisma.equipment.findMany).toHaveBeenCalled();
-    expect(result.length).toBeGreaterThan(0);
-  });
-
-  it('admin gets all equipment', async () => {
+  it('admin gets all equipment (no filter)', async () => {
     const { svc, prisma } = freshService();
     const o: OwnershipContext = { userId: 'a', roleCode: 'admin', departmentId: null, managedDepartmentIds: undefined };
     const result = await svc.listForOwnership(o);
-    expect(prisma.equipment.findMany).toHaveBeenCalled();
     expect(result.length).toBeGreaterThan(0);
+    expect(prisma.equipment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ deletedAt: null }) }),
+    );
+  });
+
+  it('user gets equipment where responsiblePersonId = userId', async () => {
+    const { svc, prisma } = freshService();
+    const o: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd', managedDepartmentIds: [] };
+    await svc.listForOwnership(o);
+    expect(prisma.equipment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { deletedAt: null, responsiblePersonId: 'u-1' } }),
+    );
+  });
+
+  it('leader gets equipment where responsiblePersonId IN members of managed depts', async () => {
+    const { svc, prisma } = freshService(['m-1', 'm-2']);
+    const o: OwnershipContext = { userId: 'l-1', roleCode: 'leader', departmentId: 'd-1', managedDepartmentIds: ['d-1'] };
+    await svc.listForOwnership(o);
+    expect(prisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { departmentId: { in: ['d-1'] } } }),
+    );
+    expect(prisma.equipment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { deletedAt: null, responsiblePersonId: { in: ['m-1', 'm-2'] } } }),
+    );
+  });
+
+  it('leader with no managed depts gets []', async () => {
+    const { svc } = freshService();
+    const o: OwnershipContext = { userId: 'l-1', roleCode: 'leader', departmentId: 'd-1', managedDepartmentIds: [] };
+    expect(await svc.listForOwnership(o)).toEqual([]);
   });
 });

@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePlanDto, QueryPlanDto, CalendarQueryDto } from './dto/plan.dto';
 import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 interface MaintenanceLevelConfig {
   enabled: boolean;
@@ -29,12 +30,27 @@ export class PlanService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * TODO Task 46: 加上 responsiblePersonId FK 后改为标准 OwnershipScope。
-   * 当前 user → []; leader/admin → 不过滤。
+   * Ownership-scoped list using responsiblePersonId FK (Task 46).
+   * admin → all; user → responsiblePersonId = userId;
+   * leader → responsiblePersonId IN members(managedDepartmentIds).
    */
   async listForOwnership(ownership: OwnershipContext) {
-    if (ownership.roleCode === 'user') return [];
-    return this.prisma.maintenancePlan.findMany({ where: { deletedAt: null } });
+    if (ownership.roleCode === 'admin') {
+      return this.prisma.maintenancePlan.findMany({ where: { deletedAt: null } });
+    }
+    if (ownership.roleCode === 'user') {
+      return this.prisma.maintenancePlan.findMany({
+        where: { deletedAt: null, responsiblePersonId: ownership.userId },
+      });
+    }
+    // leader
+    const depts = ownership.managedDepartmentIds ?? [];
+    if (depts.length === 0) return [];
+    const memberIds = await userIdsInDepts(this.prisma, depts);
+    if (memberIds.length === 0) return [];
+    return this.prisma.maintenancePlan.findMany({
+      where: { deletedAt: null, responsiblePersonId: { in: memberIds } },
+    });
   }
 
   async generatePlansForEquipment(equipmentId: string) {

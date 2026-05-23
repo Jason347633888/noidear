@@ -6,6 +6,7 @@ import { SupplierAccessService } from './services/supplier-access.service';
 import { Prisma } from '@prisma/client';
 import * as dayjs from 'dayjs';
 import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @Injectable()
 export class RequisitionService {
@@ -17,23 +18,35 @@ export class RequisitionService {
   ) {}
 
   /**
-   * TODO Task 46: applicantId 加上 FK relation 后对 user 改为标准过滤。
-   * 当前 user → []; leader → departmentId IN managedDepts; admin → 不过滤。
+   * Ownership-scoped list (Task 46 update).
+   * admin → all; user → applicantId = userId (FK now enforced);
+   * leader → departmentId IN managedDepartmentIds (primary) OR applicantId IN members.
    */
   async listForOwnership(ownership: OwnershipContext) {
-    if (ownership.roleCode === 'user') return [];
-
-    const where: Record<string, unknown> = { deletedAt: null };
-
-    if (ownership.roleCode === 'leader') {
-      const depts = ownership.managedDepartmentIds ?? [];
-      if (depts.length === 0) return [];
-      where['departmentId'] = { in: depts };
+    if (ownership.roleCode === 'admin') {
+      return this.prisma.materialRequisition.findMany({
+        where: { deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+      });
     }
-    // admin: no additional filter
-
+    if (ownership.roleCode === 'user') {
+      return this.prisma.materialRequisition.findMany({
+        where: { deletedAt: null, applicantId: ownership.userId },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+    // leader: departmentId IN managedDepts
+    const depts = ownership.managedDepartmentIds ?? [];
+    if (depts.length === 0) return [];
+    const memberIds = await userIdsInDepts(this.prisma, depts);
     return this.prisma.materialRequisition.findMany({
-      where,
+      where: {
+        deletedAt: null,
+        OR: [
+          { departmentId: { in: depts } },
+          ...(memberIds.length > 0 ? [{ applicantId: { in: memberIds } }] : []),
+        ],
+      },
       orderBy: { createdAt: 'desc' },
     });
   }

@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateNcDto, DisposeNcDto, NcSourceType } from './dto/create-nc.dto';
 import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
 import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 type CcpDeviationInput = {
   companyId: string;
@@ -28,16 +29,27 @@ export class NonConformanceService {
   ) {}
 
   /**
-   * Ownership-scoped list.
-   * TODO(Task 46): NonConformance lacks discoveredById FK.
-   *   user → [] (empty-set fallback until Task 46 adds the FK)
-   *   leader → all (no ownership filter until Task 46)
-   *   admin → all
+   * Ownership-scoped list using discoveredById FK (Task 46).
+   * admin → all; user → discoveredById = userId;
+   * leader → discoveredById IN members(managedDepartmentIds).
    */
   async listForOwnership(ownership: OwnershipContext) {
-    if (ownership.roleCode === 'user') return [];
+    if (ownership.roleCode === 'admin') {
+      return this.prisma.nonConformance.findMany({ orderBy: { created_at: 'desc' } });
+    }
+    if (ownership.roleCode === 'user') {
+      return this.prisma.nonConformance.findMany({
+        where: { discoveredById: ownership.userId },
+        orderBy: { created_at: 'desc' },
+      });
+    }
+    // leader
+    const depts = ownership.managedDepartmentIds ?? [];
+    if (depts.length === 0) return [];
+    const memberIds = await userIdsInDepts(this.prisma, depts);
+    if (memberIds.length === 0) return [];
     return this.prisma.nonConformance.findMany({
-      where: {},
+      where: { discoveredById: { in: memberIds } },
       orderBy: { created_at: 'desc' },
     });
   }

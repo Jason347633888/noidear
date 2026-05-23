@@ -2,21 +2,34 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateComplaintDto } from './dto/create-complaint.dto';
 import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @Injectable()
 export class CustomerComplaintService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Ownership-scoped list.
-   * TODO(Task 46): CustomerComplaint lacks createdById FK.
-   *   user → [] (empty-set fallback until Task 46)
-   *   leader/admin → all (no ownership filter yet)
+   * Ownership-scoped list using createdById FK (Task 46).
+   * admin → all; user → createdById = userId;
+   * leader → createdById IN members(managedDepartmentIds).
    */
   async listForOwnership(ownership: OwnershipContext) {
-    if (ownership.roleCode === 'user') return [];
+    if (ownership.roleCode === 'admin') {
+      return this.prisma.customerComplaint.findMany({ orderBy: { created_at: 'desc' } });
+    }
+    if (ownership.roleCode === 'user') {
+      return this.prisma.customerComplaint.findMany({
+        where: { createdById: ownership.userId },
+        orderBy: { created_at: 'desc' },
+      });
+    }
+    // leader
+    const depts = ownership.managedDepartmentIds ?? [];
+    if (depts.length === 0) return [];
+    const memberIds = await userIdsInDepts(this.prisma, depts);
+    if (memberIds.length === 0) return [];
     return this.prisma.customerComplaint.findMany({
-      where: {},
+      where: { createdById: { in: memberIds } },
       orderBy: { created_at: 'desc' },
     });
   }
