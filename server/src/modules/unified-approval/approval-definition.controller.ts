@@ -1,8 +1,10 @@
 import { ModuleKey } from '../../shared/decorators/module-key.decorator';
-import { Body, Controller, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
+import { validateOrReject } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateApprovalDefinitionDto, UpdateApprovalDefinitionDto } from './dto/approval-definition.dto';
+import { CreateApprovalDefinitionDto, StepDto, UpdateApprovalDefinitionDto } from './dto/approval-definition.dto';
 
 function assertAdmin(req: any) {
   const roleCode = req?.user?.roleCode;
@@ -14,6 +16,21 @@ function assertAdmin(req: any) {
 @Controller('approval-definitions')
 export class ApprovalDefinitionController {
   constructor(private readonly prisma: PrismaService) {}
+
+  private async assertStepsValid(def: { steps: unknown }) {
+    const steps = (def.steps as any[]) ?? [];
+    if (!Array.isArray(steps) || steps.length === 0) {
+      throw new BadRequestException('审批模板缺少步骤');
+    }
+    for (const raw of steps) {
+      const instance = plainToInstance(StepDto, raw);
+      try {
+        await validateOrReject(instance, { whitelist: true, forbidNonWhitelisted: true });
+      } catch (err) {
+        throw new BadRequestException(`审批模板步骤配置已失效 (invalid steps): ${JSON.stringify(err)}`);
+      }
+    }
+  }
 
   @Get()
   findAll(@Query('resourceType') resourceType?: string) {
@@ -43,14 +60,24 @@ export class ApprovalDefinitionController {
   }
 
   @Post(':id/activate')
-  activate(@Param('id') id: string, @Request() req: any) {
+  async activate(@Param('id') id: string, @Request() req: any) {
     assertAdmin(req);
+    const current = await this.prisma.approvalDefinition.findUnique({ where: { id } });
+    if (!current) throw new NotFoundException(`ApprovalDefinition ${id} not found`);
+    await this.assertStepsValid(current);
     return this.prisma.approvalDefinition.update({ where: { id }, data: { status: 'active' } });
   }
 
   @Post(':id/deactivate')
-  deactivate(@Param('id') id: string, @Request() req: any) {
+  async deactivate(@Param('id') id: string, @Request() req: any) {
     assertAdmin(req);
+    const current = await this.prisma.approvalDefinition.findUnique({ where: { id } });
+    if (!current) throw new NotFoundException(`ApprovalDefinition ${id} not found`);
+    if (current.status === 'disabled_legacy') {
+      throw new BadRequestException(
+        '该模板处于 disabled_legacy 状态，必须先修改 steps 后再 activate，禁止直接 deactivate。',
+      );
+    }
     return this.prisma.approvalDefinition.update({ where: { id }, data: { status: 'inactive' } });
   }
 }
