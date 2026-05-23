@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -18,6 +19,7 @@ import { ApprovalEngineService } from '../unified-approval/approval-engine.servi
 
 @ApiTags('流程实例')
 @UseGuards(JwtAuthGuard)
+@ModuleKey('production_execution')
 @Controller('process/instances')
 export class ProcessInstanceController {
   constructor(

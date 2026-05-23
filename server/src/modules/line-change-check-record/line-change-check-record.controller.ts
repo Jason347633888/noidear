@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -11,6 +12,7 @@ import { LineChangeCheckRecordService } from './line-change-check-record.service
 import { CreateLineChangeCheckRecordDto } from './dto/create-line-change-check-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@ModuleKey('production_execution')
 @Controller('line-change-check-records')
 @UseGuards(JwtAuthGuard)
 export class LineChangeCheckRecordController {

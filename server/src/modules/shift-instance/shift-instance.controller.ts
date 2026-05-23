@@ -1,8 +1,10 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Patch, Param, Body, Query, Req } from '@nestjs/common';
 import { ShiftInstanceService } from './shift-instance.service';
 import { ShiftCompletionService } from './shift-completion.service';
 import { CreateShiftInstanceDto, CloseShiftInstanceDto } from './dto/create-shift-instance.dto';
 
+@ModuleKey('production_execution')
 @Controller('shift-instances')
 export class ShiftInstanceController {
   constructor(

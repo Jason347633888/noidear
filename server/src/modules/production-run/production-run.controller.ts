@@ -1,7 +1,9 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Patch, Param, Body, Query } from '@nestjs/common';
 import { ProductionRunService } from './production-run.service';
 import { CreateProductionRunDto, CloseProductionRunDto } from './dto/create-production-run.dto';
 
+@ModuleKey('production_execution')
 @Controller('production-runs')
 export class ProductionRunController {
   constructor(private readonly svc: ProductionRunService) {}

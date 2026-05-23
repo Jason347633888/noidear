@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -16,6 +17,7 @@ import {
   ListMixingExecutionsDto,
 } from './dto/mixing.dto';
 
+@ModuleKey('production_execution')
 @Controller('mixing')
 @UseGuards(JwtAuthGuard)
 export class MixingController {

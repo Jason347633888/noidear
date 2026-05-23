@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -17,6 +18,7 @@ import {
   ConfirmProductBatchDto,
 } from '../dto/production-batch.dto';
 
+@ModuleKey('production_execution')
 @Controller('batch-trace/production-batches')
 export class ProductionBatchController {
   constructor(private readonly productionBatchService: ProductionBatchService) {}
