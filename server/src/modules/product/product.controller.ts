@@ -21,6 +21,8 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductReportDocumentDto } from './dto/product-report-document.dto';
 import { CreateLegacyProductDto } from './dto/create-legacy-product.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @ModuleKey('product_rd')
 @Controller('products')
@@ -54,8 +56,8 @@ export class ProductController {
   }
 
   @Post()
-  create(@Body() dto: CreateProductDto) {
-    return this.service.create(dto);
+  create(@Body() dto: CreateProductDto, @Ownership() ownership: OwnershipContext) {
+    return this.service.createForOwnership(dto, ownership);
   }
 
   @Post(':id/reports')

@@ -22,6 +22,8 @@ import { UpdateFieldsBodyDto } from './dto/update-fields-body.dto';
 import { UpdateToleranceDto } from './dto/update-tolerance.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @ApiTags('记录模板管理')
 @ModuleKey('document_approval')
@@ -36,8 +38,8 @@ export class RecordTemplateController {
   @ApiOperation({ summary: '创建记录模板' })
   @ApiResponse({ status: 201, description: '创建成功' })
   @ApiResponse({ status: 409, description: '模板编号已存在' })
-  create(@Body() createDto: CreateRecordTemplateDto) {
-    return this.templateService.create(createDto);
+  create(@Body() createDto: CreateRecordTemplateDto, @Ownership() ownership: OwnershipContext) {
+    return this.templateService.createForOwnership(createDto, ownership);
   }
 
   @Get()

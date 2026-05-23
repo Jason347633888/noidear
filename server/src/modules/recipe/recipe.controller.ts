@@ -3,6 +3,8 @@ import { Controller, Get, Post, Body, Param, Delete, Query, UseGuards, HttpCode,
 import { RecipeService } from './recipe.service';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @ModuleKey('product_rd')
 @Controller('recipes')
@@ -26,8 +28,8 @@ export class RecipeController {
   }
 
   @Post()
-  create(@Body() dto: CreateRecipeDto) {
-    return this.service.create(dto);
+  create(@Body() dto: CreateRecipeDto, @Ownership() ownership: OwnershipContext) {
+    return this.service.createForOwnership(dto, ownership);
   }
 
   @Post(':id/archive')

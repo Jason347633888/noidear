@@ -10,6 +10,7 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { MaterialService } from './material.service';
@@ -18,11 +19,15 @@ import {
   UpdateMaterialDto,
   QueryMaterialDto,
 } from './dto/material.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @ApiTags('仓库-物料管理')
 @ApiBearerAuth()
 @ModuleKey('warehouse')
 @Controller('warehouse/materials')
+@UseGuards(JwtAuthGuard)
 export class MaterialController {
   constructor(private readonly materialService: MaterialService) {}
 
@@ -37,8 +42,8 @@ export class MaterialController {
 例外情况：编码重复时抛出 409 ConflictException；categoryId 不存在时抛出 400。
     `.trim(),
   })
-  create(@Body() createMaterialDto: CreateMaterialDto) {
-    return this.materialService.create(createMaterialDto);
+  create(@Body() createMaterialDto: CreateMaterialDto, @Ownership() ownership: OwnershipContext) {
+    return this.materialService.createForOwnership(createMaterialDto, ownership);
   }
 
   @Get()
