@@ -422,9 +422,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'audit/permission-logs',
-        name: 'PermissionLogList',
-        component: () => import('@/views/audit/PermissionLogList.vue'),
-        meta: { requireRole: 'admin' },
+        redirect: '/audit/search',
       },
       {
         path: 'audit/sensitive-logs',
