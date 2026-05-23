@@ -1,28 +1,12 @@
 import { ModuleKey } from '../../shared/decorators/module-key.decorator';
-import { IsArray, IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { Body, Controller, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CreateApprovalDefinitionDto, UpdateApprovalDefinitionDto } from './dto/approval-definition.dto';
 
 function assertAdmin(req: any) {
   const roleCode = req?.user?.roleCode;
   if (roleCode !== 'admin') throw new ForbiddenException('仅管理员可操作审批定义');
-}
-
-class CreateApprovalDefinitionDto {
-  @IsString() module!: string;
-  @IsString() resourceType!: string;
-  @IsString() triggerKey!: string;
-  @IsString() name!: string;
-  @IsInt() @Min(1) version!: number;
-  @IsOptional() @IsString() @IsIn(['active', 'inactive']) status?: string;
-  @IsArray() steps!: unknown[];
-}
-
-class UpdateApprovalDefinitionDto {
-  @IsOptional() @IsString() name?: string;
-  @IsOptional() @IsString() @IsIn(['active', 'inactive']) status?: string;
-  @IsOptional() @IsArray() steps?: unknown[];
 }
 
 @UseGuards(JwtAuthGuard)
