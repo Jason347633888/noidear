@@ -148,8 +148,16 @@ const currentTitle = computed(() => route.meta.title as string || '');
 const menuItems = computed(() =>
   menuGroups.filter((g) => {
     if (g.adminOnly) return moduleAccess.roleCode === 'admin';
-    if (g.moduleKey) return moduleAccess.hasModule(g.moduleKey);
-    return true;
+    if (!g.children) {
+      // leaf group: check own moduleKey
+      return !g.moduleKey || moduleAccess.hasModule(g.moduleKey);
+    }
+    // group with children: visible if any child is visible
+    const hasVisibleChild = g.children.some((item) => {
+      const key = item.moduleKey ?? g.moduleKey;
+      return !key || moduleAccess.hasModule(key);
+    });
+    return hasVisibleChild;
   }),
 );
 

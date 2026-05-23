@@ -47,18 +47,29 @@ export class EquipmentController {
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateEquipmentDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateEquipmentDto,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    await this.equipmentService.assertOwnership(id, ownership);
     return this.equipmentService.update(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string, @Ownership() ownership: OwnershipContext) {
+    await this.equipmentService.assertOwnership(id, ownership);
     return this.equipmentService.remove(id);
   }
 
   @Put(':id/status')
-  updateStatus(@Param('id') id: string, @Body() dto: UpdateEquipmentStatusDto) {
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateEquipmentStatusDto,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    await this.equipmentService.assertOwnership(id, ownership);
     return this.equipmentService.updateStatus(id, dto);
   }
 }

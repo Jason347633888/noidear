@@ -81,7 +81,7 @@ export class UpdateApprovalDefinitionDto {
   @IsOptional() @IsString() @IsIn(['active', 'inactive'])
   status?: string;
 
-  @IsOptional() @IsArray()
+  @IsOptional() @IsArray() @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => StepDto)
   steps?: StepDto[];

@@ -1,7 +1,12 @@
 /**
  * EquipmentService.findAll ownership filtering
  * admin → all; user → responsiblePersonId = userId; leader → IN members(managedDepts)
+ *
+ * EquipmentService.assertOwnership
+ * admin → always passes; leader → passes for dept match, fails for other dept;
+ * user → passes for own equipment, fails for others
  */
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { EquipmentService } from './equipment.service';
 import { OwnershipContext } from '../module-access/ownership-context';
 import { CreateEquipmentDto, QueryEquipmentDto } from './dto/equipment.dto';
@@ -64,6 +69,61 @@ describe('EquipmentService.findAll with ownership', () => {
     const result = await svc.findAll(emptyQuery, o);
     expect(result.data).toEqual([]);
     expect(result.total).toBe(0);
+  });
+});
+
+describe('EquipmentService.assertOwnership', () => {
+  function freshServiceWithEquipment(
+    equipment: { responsiblePersonId: string | null; departmentId?: string | null } | null,
+    memberIds: string[] = [],
+  ) {
+    const prisma: any = {
+      equipment: {
+        findUnique: jest.fn().mockResolvedValue(equipment),
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      user: { findMany: jest.fn().mockResolvedValue(memberIds.map((id) => ({ id }))) },
+    };
+    return { svc: new EquipmentService(prisma), prisma };
+  }
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it('admin always passes regardless of responsiblePersonId', async () => {
+    const { svc } = freshServiceWithEquipment({ responsiblePersonId: 'other-user', departmentId: null });
+    const o: OwnershipContext = { userId: 'admin-1', roleCode: 'admin', departmentId: null, managedDepartmentIds: undefined };
+    await expect(svc.assertOwnership('eq-1', o)).resolves.toBeUndefined();
+  });
+
+  it('user passes when responsiblePersonId matches userId', async () => {
+    const { svc } = freshServiceWithEquipment({ responsiblePersonId: 'u-1', departmentId: null });
+    const o: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd-1', managedDepartmentIds: [] };
+    await expect(svc.assertOwnership('eq-1', o)).resolves.toBeUndefined();
+  });
+
+  it('user fails when responsiblePersonId does not match userId', async () => {
+    const { svc } = freshServiceWithEquipment({ responsiblePersonId: 'other-user', departmentId: null });
+    const o: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd-1', managedDepartmentIds: [] };
+    await expect(svc.assertOwnership('eq-1', o)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('leader passes when responsiblePersonId is a member of managed department', async () => {
+    const { svc } = freshServiceWithEquipment({ responsiblePersonId: 'm-1', departmentId: null }, ['m-1', 'm-2']);
+    const o: OwnershipContext = { userId: 'l-1', roleCode: 'leader', departmentId: 'd-1', managedDepartmentIds: ['d-1'] };
+    await expect(svc.assertOwnership('eq-1', o)).resolves.toBeUndefined();
+  });
+
+  it('leader fails when responsiblePersonId is not in any managed department', async () => {
+    const { svc } = freshServiceWithEquipment({ responsiblePersonId: 'other-m', departmentId: null }, ['m-1', 'm-2']);
+    const o: OwnershipContext = { userId: 'l-1', roleCode: 'leader', departmentId: 'd-1', managedDepartmentIds: ['d-1'] };
+    await expect(svc.assertOwnership('eq-1', o)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('throws NotFoundException when equipment does not exist', async () => {
+    const { svc } = freshServiceWithEquipment(null);
+    const o: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd-1', managedDepartmentIds: [] };
+    await expect(svc.assertOwnership('nonexistent', o)).rejects.toThrow(NotFoundException);
   });
 });
 

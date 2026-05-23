@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -111,6 +112,39 @@ export class EquipmentService {
     }
 
     return equipment;
+  }
+
+  /**
+   * Ownership check for single-record write operations.
+   * - admin: always allowed
+   * - leader: allowed if equipment.responsiblePersonId belongs to a member of
+   *           their managed departments
+   * - user: allowed only if equipment.responsiblePersonId === ownership.userId
+   */
+  async assertOwnership(equipmentId: string, ownership: OwnershipContext): Promise<void> {
+    if (ownership.roleCode === 'admin') return;
+
+    const equipment = await this.prisma.equipment.findUnique({
+      where: { id: equipmentId },
+      select: { responsiblePersonId: true },
+    });
+
+    if (!equipment) throw new NotFoundException('Equipment not found');
+
+    if (ownership.roleCode === 'user') {
+      if (equipment.responsiblePersonId !== ownership.userId) {
+        throw new ForbiddenException('You do not have permission to modify this equipment');
+      }
+      return;
+    }
+
+    // leader
+    const depts = ownership.managedDepartmentIds ?? [];
+    if (depts.length > 0) {
+      const memberIds = await userIdsInDepts(this.prisma, depts);
+      if (equipment.responsiblePersonId && memberIds.includes(equipment.responsiblePersonId)) return;
+    }
+    throw new ForbiddenException('You do not have permission to modify this equipment');
   }
 
   async update(id: string, dto: UpdateEquipmentDto) {
