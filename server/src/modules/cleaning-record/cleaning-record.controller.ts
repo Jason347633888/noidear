@@ -4,7 +4,7 @@ import { CleaningRecordService } from './cleaning-record.service';
 import { CreateCleaningRecordDto } from './dto/create-cleaning-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
-@ModuleKey('quality_compliance')
+@ModuleKey('equipment_site')
 @Controller('cleaning-records')
 @UseGuards(JwtAuthGuard)
 export class CleaningRecordController {

@@ -83,7 +83,9 @@ export class ProductController {
     @Body() dto: ProductReportDocumentDto,
     @UploadedFile() file: Express.Multer.File,
     @Req() req: any,
+    @Ownership() ownership: OwnershipContext,
   ) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('仅管理员可替换产品报告');
     return this.service.replaceReport(id, linkId, dto, file, req.user?.id ?? 'system');
   }
 

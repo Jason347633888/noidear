@@ -4,7 +4,7 @@ import { MedicationRecordService } from './medication-record.service';
 import { CreateMedicationDto } from './dto/create-medication.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
-@ModuleKey('quality_compliance')
+@ModuleKey('equipment_site')
 @Controller('medication-records')
 @UseGuards(JwtAuthGuard)
 export class MedicationRecordController {

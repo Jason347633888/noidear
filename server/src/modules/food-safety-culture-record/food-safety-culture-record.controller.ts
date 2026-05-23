@@ -12,7 +12,7 @@ import { FoodSafetyCultureRecordService } from './food-safety-culture-record.ser
 import { CreateFoodSafetyCultureRecordDto } from './dto/create-food-safety-culture-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
-@ModuleKey('quality_compliance')
+@ModuleKey('equipment_site')
 @Controller('food-safety-culture-records')
 @UseGuards(JwtAuthGuard)
 export class FoodSafetyCultureRecordController {

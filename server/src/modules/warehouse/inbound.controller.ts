@@ -15,6 +15,8 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { InboundService } from './inbound.service';
 import { CreateInboundDto, QueryInboundDto } from './dto/inbound.dto';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @ModuleKey('warehouse')
 @Controller('warehouse/inbound')
@@ -29,8 +31,8 @@ export class InboundController {
   }
 
   @Get()
-  findAll(@Query() query: QueryInboundDto) {
-    return this.inboundService.findAll(query);
+  findAll(@Ownership() ownership: OwnershipContext, @Query() _query: QueryInboundDto) {
+    return this.inboundService.listForOwnership(ownership);
   }
 
   @Get(':id')

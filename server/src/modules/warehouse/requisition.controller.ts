@@ -3,6 +3,8 @@ import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus, Reques
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequisitionService } from './requisition.service';
 import { CreateRequisitionDto, QueryRequisitionDto } from './dto/requisition.dto';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @UseGuards(JwtAuthGuard)
 @ModuleKey('warehouse')
@@ -17,8 +19,8 @@ export class RequisitionController {
   }
 
   @Get()
-  findAll(@Query() query: QueryRequisitionDto) {
-    return this.requisitionService.findAll(query);
+  findAll(@Ownership() ownership: OwnershipContext, @Query() _query: QueryRequisitionDto) {
+    return this.requisitionService.listForOwnership(ownership);
   }
 
   @Get(':id')

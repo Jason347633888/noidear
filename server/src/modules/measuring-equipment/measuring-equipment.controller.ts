@@ -6,7 +6,7 @@ import { CreateCalibrationDto } from './dto/create-calibration.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
 
-@ModuleKey('quality_compliance')
+@ModuleKey('equipment_site')
 @Controller('measuring-equipment')
 @UseGuards(JwtAuthGuard)
 export class MeasuringEquipmentController {

@@ -163,13 +163,13 @@ describe('TaskService.listForUser ownership', () => {
     );
   });
 
-  it('user sees only tasks in their own department', async () => {
+  it('user sees tasks in their department (departmentId filter, consistent with findOne access check)', async () => {
     const prisma = makePrisma();
     const service = new TaskService(prisma as any, null as any);
     const ownership: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd-x', managedDepartmentIds: [] };
     await service.listForUser(ownership, {});
     expect(prisma.task.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ creatorId: 'u-1' }) }),
+      expect.objectContaining({ where: expect.objectContaining({ departmentId: 'd-x' }) }),
     );
   });
 

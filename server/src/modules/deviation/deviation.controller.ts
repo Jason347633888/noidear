@@ -5,6 +5,8 @@ import { DeviationService, DeviationReportQueryDto } from './deviation.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { DeviationExportService } from './deviation-export.service';
 import { ExportDeviationReportsDto } from './dto/export-deviation-reports.dto';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @ModuleKey('quality_compliance')
 @Controller('deviation-reports')
@@ -16,8 +18,8 @@ export class DeviationController {
   ) {}
 
   @Get()
-  async findAll(@Query() query: DeviationReportQueryDto) {
-    return this.deviationService.findDeviationReports(query);
+  async findAll(@Ownership() ownership: OwnershipContext, @Query() _query: DeviationReportQueryDto) {
+    return this.deviationService.listForOwnership(ownership);
   }
 
   @Get('export')

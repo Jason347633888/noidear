@@ -18,7 +18,7 @@ import { IncomingInspectionService } from './incoming-inspection.service';
 import { CreateInspectionDto } from './dto/create-inspection.dto';
 import { InspectionReportDocumentDto } from './dto/inspection-report-document.dto';
 
-@ModuleKey('quality_compliance')
+@ModuleKey('traceability_batch')
 @Controller('incoming-inspections')
 @UseGuards(JwtAuthGuard)
 export class IncomingInspectionController {

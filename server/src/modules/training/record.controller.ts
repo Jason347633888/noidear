@@ -10,6 +10,8 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RecordService } from './record.service';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @ApiTags('培训管理 - 学习记录')
 @ModuleKey('training')
@@ -20,9 +22,9 @@ export class RecordController {
   constructor(private readonly recordService: RecordService) {}
 
   @Get()
-  @ApiOperation({ summary: '查询项目学习记录' })
-  async findProjectRecords(@Query('projectId') projectId: string, @Request() req: any) {
-    return this.recordService.findProjectRecords(projectId, req.user.id);
+  @ApiOperation({ summary: '查询学习记录（按 ownership 范围）' })
+  async findAll(@Ownership() ownership: OwnershipContext, @Query('projectId') _projectId?: string) {
+    return this.recordService.listForOwnership(ownership);
   }
 
   @Get('my')

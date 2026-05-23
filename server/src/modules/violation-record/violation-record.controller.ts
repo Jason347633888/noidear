@@ -4,7 +4,7 @@ import { ViolationRecordService } from './violation-record.service';
 import { CreateViolationDto } from './dto/create-violation.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
-@ModuleKey('quality_compliance')
+@ModuleKey('equipment_site')
 @Controller('violation-records')
 @UseGuards(JwtAuthGuard)
 export class ViolationRecordController {

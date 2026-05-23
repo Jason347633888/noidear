@@ -4,7 +4,7 @@ import { VisitorRecordService } from './visitor-record.service';
 import { CreateVisitorDto } from './dto/create-visitor.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
-@ModuleKey('quality_compliance')
+@ModuleKey('equipment_site')
 @Controller('visitor-records')
 @UseGuards(JwtAuthGuard)
 export class VisitorRecordController {

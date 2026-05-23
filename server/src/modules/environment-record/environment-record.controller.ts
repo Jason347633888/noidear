@@ -3,8 +3,10 @@ import { Controller, Get, Post, Body, Query, UseGuards, Request } from '@nestjs/
 import { EnvironmentRecordService } from './environment-record.service';
 import { CreateEnvironmentRecordDto } from './dto/create-environment-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
-@ModuleKey('quality_compliance')
+@ModuleKey('equipment_site')
 @Controller('environment-records')
 @UseGuards(JwtAuthGuard)
 export class EnvironmentRecordController {
@@ -20,9 +22,10 @@ export class EnvironmentRecordController {
 
   @Get()
   findAll(
-    @Query('start_date') startDate?: string,
-    @Query('end_date') endDate?: string,
+    @Ownership() ownership: OwnershipContext,
+    @Query('start_date') _startDate?: string,
+    @Query('end_date') _endDate?: string,
   ) {
-    return this.service.findAll(startDate, endDate);
+    return this.service.listForOwnership(ownership);
   }
 }

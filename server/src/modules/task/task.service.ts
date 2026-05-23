@@ -121,8 +121,8 @@ export class TaskService {
     } else if (ownership.roleCode === 'leader') {
       where['departmentId'] = { in: ownership.managedDepartmentIds ?? [] };
     } else {
-      // user sees tasks they created (Task has creatorId, no assigneeId per schema audit)
-      where['creatorId'] = ownership.userId;
+      // user sees all tasks assigned to their department (consistent with findOne access check)
+      where['departmentId'] = ownership.departmentId;
     }
 
     if (query.status) {

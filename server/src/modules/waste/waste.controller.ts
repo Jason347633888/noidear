@@ -5,7 +5,7 @@ import { CreateDisposalDto } from './dto/create-disposal.dto';
 import { CreateWasteRecordDto } from './dto/create-waste-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
-@ModuleKey('quality_compliance')
+@ModuleKey('equipment_site')
 @Controller('waste')
 @UseGuards(JwtAuthGuard)
 export class WasteController {

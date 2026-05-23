@@ -4,6 +4,8 @@ import { CustomerComplaintService } from './customer-complaint.service';
 import { CreateComplaintDto, ResolveComplaintDto } from './dto/create-complaint.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @ModuleKey('quality_compliance')
 @Controller('customer-complaints')
@@ -17,8 +19,8 @@ export class CustomerComplaintController {
   }
 
   @Get()
-  findAll(@Request() req: AuthenticatedRequest, @Query('status') status?: string) {
-    return this.service.findAll(req.user.companyId, status);
+  findAll(@Ownership() ownership: OwnershipContext, @Query('status') _status?: string) {
+    return this.service.listForOwnership(ownership);
   }
 
   @Post(':id/resolve')

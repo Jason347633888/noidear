@@ -4,7 +4,7 @@ import { EmergencyDrillService } from './emergency-drill.service';
 import { CreateDrillDto } from './dto/create-drill.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
-@ModuleKey('quality_compliance')
+@ModuleKey('equipment_site')
 @Controller('emergency-drills')
 @UseGuards(JwtAuthGuard)
 export class EmergencyDrillController {

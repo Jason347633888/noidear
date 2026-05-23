@@ -16,6 +16,8 @@ import {
   CreateMixingExecutionDto,
   ListMixingExecutionsDto,
 } from './dto/mixing.dto';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @ModuleKey('production_execution')
 @Controller('mixing')
@@ -24,8 +26,8 @@ export class MixingController {
   constructor(private readonly service: MixingService) {}
 
   @Get('executions')
-  listExecutions(@Query() dto: ListMixingExecutionsDto) {
-    return this.service.listExecutions(dto);
+  listExecutions(@Ownership() ownership: OwnershipContext, @Query() _dto: ListMixingExecutionsDto) {
+    return this.service.listForOwnership(ownership);
   }
 
   @Post('recommend-material-batches')

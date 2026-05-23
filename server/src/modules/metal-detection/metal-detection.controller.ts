@@ -4,7 +4,7 @@ import { MetalDetectionService } from './metal-detection.service';
 import { CreateMetalDetectionDto } from './dto/create-metal-detection.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
-@ModuleKey('quality_compliance')
+@ModuleKey('equipment_site')
 @Controller('metal-detections')
 @UseGuards(JwtAuthGuard)
 export class MetalDetectionController {

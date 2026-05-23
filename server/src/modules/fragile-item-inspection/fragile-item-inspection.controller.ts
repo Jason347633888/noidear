@@ -5,7 +5,7 @@ import { CreateFragileItemInspectionDto } from './dto/create-fragile-item-inspec
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
 
-@ModuleKey('quality_compliance')
+@ModuleKey('equipment_site')
 @Controller('fragile-item-inspections')
 @UseGuards(JwtAuthGuard)
 export class FragileItemInspectionController {

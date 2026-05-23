@@ -20,6 +20,8 @@ import {
   UpdateEquipmentStatusDto,
   QueryEquipmentDto,
 } from './dto/equipment.dto';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @UseGuards(JwtAuthGuard)
 @ModuleKey('equipment_site')
@@ -34,8 +36,8 @@ export class EquipmentController {
   }
 
   @Get()
-  findAll(@Query() query: QueryEquipmentDto) {
-    return this.equipmentService.findAll(query);
+  findAll(@Query() _query: QueryEquipmentDto, @Ownership() ownership: OwnershipContext) {
+    return this.equipmentService.listForOwnership(ownership);
   }
 
   @Get(':id')

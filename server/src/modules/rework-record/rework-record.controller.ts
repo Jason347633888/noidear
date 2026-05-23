@@ -4,8 +4,10 @@ import { ReworkRecordService } from './rework-record.service';
 import { CreateReworkRecordDto } from './dto/create-rework-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
-@ModuleKey('quality_compliance')
+@ModuleKey('equipment_site')
 @Controller('rework-records')
 @UseGuards(JwtAuthGuard)
 export class ReworkRecordController {
@@ -18,11 +20,11 @@ export class ReworkRecordController {
 
   @Get()
   findAll(
-    @Request() req: AuthenticatedRequest,
-    @Query('start_date') startDate?: string,
-    @Query('end_date') endDate?: string,
+    @Ownership() ownership: OwnershipContext,
+    @Query('start_date') _startDate?: string,
+    @Query('end_date') _endDate?: string,
   ) {
-    return this.service.findAll(req.user.companyId, startDate, endDate);
+    return this.service.listForOwnership(ownership);
   }
 
   @Delete(':id')
