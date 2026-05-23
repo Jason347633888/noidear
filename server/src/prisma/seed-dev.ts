@@ -58,6 +58,16 @@ async function main() {
     },
   });
 
+  // module-access defaults
+  const MODULE_KEYS_SEED = ['work_execution','document_approval','production_execution','product_rd','quality_compliance','equipment_site','traceability_batch','warehouse','training'] as const;
+  for (const moduleKey of MODULE_KEYS_SEED)
+    for (const roleCode of ['leader', 'user'] as const)
+      await prisma.moduleAccessConfig.upsert({
+        where: { moduleKey_roleCode: { moduleKey, roleCode } },
+        update: {},
+        create: { moduleKey, roleCode, enabled: true },
+      });
+
   console.log('✅ 开发环境演示数据补充完成！');
 }
 
