@@ -15,6 +15,7 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { SubmitTaskDto } from './dto/submit-task.dto';
 import { SaveTaskDraftDto } from './dto/save-task-draft.dto';
 import { QueryTaskDto } from './dto/query-task.dto';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 interface TemplateField {
   name: string;
@@ -106,6 +107,47 @@ export class TaskService {
     });
 
     return task;
+  }
+
+  async listForUser(ownership: OwnershipContext, query: QueryTaskDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const skip = (page - 1) * limit;
+
+    const where: Record<string, unknown> = {};
+
+    if (ownership.roleCode === 'admin') {
+      // admin sees all tasks; no ownership filter
+    } else if (ownership.roleCode === 'leader') {
+      where['departmentId'] = { in: ownership.managedDepartmentIds ?? [] };
+    } else {
+      // user sees tasks they created (Task has creatorId, no assigneeId per schema audit)
+      where['creatorId'] = ownership.userId;
+    }
+
+    if (query.status) {
+      where['status'] = query.status;
+    }
+    if (query.departmentId && ownership.roleCode === 'admin') {
+      where['departmentId'] = query.departmentId;
+    }
+
+    const [list, total] = await Promise.all([
+      this.prisma.task.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          template: true,
+          department: true,
+          creator: { select: { id: true, name: true, username: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.task.count({ where }),
+    ]);
+
+    return { list, total, page, limit };
   }
 
   async findAll(userId: string, query: QueryTaskDto) {

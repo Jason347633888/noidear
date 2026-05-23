@@ -22,6 +22,8 @@ import { SubmitTaskDto } from './dto/submit-task.dto';
 import { SaveTaskDraftDto } from './dto/save-task-draft.dto';
 import { LegacySubmitTaskDto } from './dto/legacy-submit-task.dto';
 import { QueryTaskDto } from './dto/query-task.dto';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @ApiTags('任务管理')
 @ModuleKey('work_execution')
@@ -39,9 +41,9 @@ export class TaskController {
   }
 
   @Get()
-  @ApiOperation({ summary: '获取任务列表' })
-  findAll(@Query() query: QueryTaskDto, @Request() req: any) {
-    return this.taskService.findAll(req.user.id, query);
+  @ApiOperation({ summary: '获取任务列表（按 ownership 范围）' })
+  findAll(@Query() query: QueryTaskDto, @Ownership() ownership: OwnershipContext) {
+    return this.taskService.listForUser(ownership, query);
   }
 
   // Fixed-path routes MUST be declared before the :id parameter route

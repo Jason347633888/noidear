@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueryTodoDto } from './dto/query-todo.dto';
 import { TodoType } from '@prisma/client';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 const ACTION_ROUTE_MAP: Partial<Record<TodoType, (id: string) => string>> = {
   training_attend: (id) => `/training/projects/${id}`,
@@ -69,6 +70,26 @@ export class TodoService {
     }
 
     return { total: pending + completed, byType, byStatus: { pending, completed } };
+  }
+
+  async listForUser(ownership: OwnershipContext) {
+    if (ownership.roleCode === 'admin') {
+      return this.prisma.todoTask.findMany({});
+    }
+    if (ownership.roleCode === 'user') {
+      return this.prisma.todoTask.findMany({ where: { userId: ownership.userId } });
+    }
+    // leader: see todos of all members in managed departments
+    const memberIds = ownership.managedDepartmentIds?.length
+      ? (
+          await this.prisma.user.findMany({
+            where: { departmentId: { in: ownership.managedDepartmentIds } },
+            select: { id: true },
+          })
+        ).map((u: { id: string }) => u.id)
+      : [];
+    if (memberIds.length === 0) return [];
+    return this.prisma.todoTask.findMany({ where: { userId: { in: memberIds } } });
   }
 
   async complete(id: string, userId: string) {

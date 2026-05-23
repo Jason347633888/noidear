@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TodoService } from './todo.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotFoundException, ConflictException } from '@nestjs/common';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 const mockPrisma = {
   todoTask: {
@@ -129,5 +130,34 @@ describe('TodoService', () => {
       mockPrisma.todoTask.findFirst.mockResolvedValue(makeTodo({ id: 'todo1', userId: 'user1', status: 'completed' }));
       await expect(service.complete('todo1', 'user1')).rejects.toThrow(ConflictException);
     });
+  });
+});
+
+describe('TodoService.listForUser ownership', () => {
+  const prisma = { todoTask: { findMany: jest.fn() }, user: { findMany: jest.fn() } } as any;
+  const svc = new TodoService(prisma as any);
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it('admin sees all', async () => {
+    prisma.todoTask.findMany.mockResolvedValue([]);
+    const ownership: OwnershipContext = { userId: 'a', roleCode: 'admin', departmentId: null, managedDepartmentIds: undefined };
+    await svc.listForUser(ownership);
+    expect(prisma.todoTask.findMany).toHaveBeenCalledWith({});
+  });
+
+  it('user sees only own todos', async () => {
+    prisma.todoTask.findMany.mockResolvedValue([]);
+    const ownership: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd-x', managedDepartmentIds: [] };
+    await svc.listForUser(ownership);
+    expect(prisma.todoTask.findMany).toHaveBeenCalledWith({ where: { userId: 'u-1' } });
+  });
+
+  it('leader sees todos of users in managed depts', async () => {
+    prisma.user.findMany.mockResolvedValue([{ id: 'u-1' }, { id: 'u-2' }]);
+    prisma.todoTask.findMany.mockResolvedValue([]);
+    const ownership: OwnershipContext = { userId: 'l-1', roleCode: 'leader', departmentId: 'd-1', managedDepartmentIds: ['d-1'] };
+    await svc.listForUser(ownership);
+    expect(prisma.todoTask.findMany).toHaveBeenCalledWith({ where: { userId: { in: ['u-1', 'u-2'] } } });
   });
 });

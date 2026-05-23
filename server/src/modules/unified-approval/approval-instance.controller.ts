@@ -5,6 +5,8 @@ import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalEngineService } from './approval-engine.service';
 import { StartApprovalDto } from './dto';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @UseGuards(JwtAuthGuard)
 @ModuleKey('work_execution')
@@ -21,8 +23,26 @@ export class ApprovalInstanceController {
   }
 
   @Get()
-  findAll() {
+  async findAll(@Ownership() ownership: OwnershipContext) {
+    const where: Record<string, unknown> = {};
+
+    if (ownership.roleCode === 'user') {
+      where['createdById'] = ownership.userId;
+    } else if (ownership.roleCode === 'leader') {
+      const memberIds = ownership.managedDepartmentIds?.length
+        ? (
+            await this.prisma.user.findMany({
+              where: { departmentId: { in: ownership.managedDepartmentIds } },
+              select: { id: true },
+            })
+          ).map((u: { id: string }) => u.id)
+        : [];
+      where['createdById'] = { in: memberIds };
+    }
+    // admin: no filter
+
     return this.prisma.approvalInstance.findMany({
+      where,
       include: { tasks: true },
       orderBy: { createdAt: 'desc' },
     });

@@ -1,5 +1,6 @@
 import { ConflictException } from '@nestjs/common';
 import { TaskService } from './task.service';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 describe('TaskService.submit', () => {
   const makePrisma = () => ({
@@ -139,5 +140,46 @@ describe('TaskService.submit', () => {
 
     expect(result).toEqual({ id: 'rec-3' });
     expect(prisma.taskRecord.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('TaskService.listForUser ownership', () => {
+  const makePrisma = () => ({
+    user: { findUnique: jest.fn() },
+    task: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
+    taskRecord: { findFirst: jest.fn() },
+    notification: { createMany: jest.fn() },
+  });
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it('admin sees all tasks (no where clause)', async () => {
+    const prisma = makePrisma();
+    const service = new TaskService(prisma as any, null as any);
+    const ownership: OwnershipContext = { userId: 'a', roleCode: 'admin', departmentId: null, managedDepartmentIds: undefined };
+    await service.listForUser(ownership, {});
+    expect(prisma.task.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: {} }),
+    );
+  });
+
+  it('user sees only tasks in their own department', async () => {
+    const prisma = makePrisma();
+    const service = new TaskService(prisma as any, null as any);
+    const ownership: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd-x', managedDepartmentIds: [] };
+    await service.listForUser(ownership, {});
+    expect(prisma.task.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ creatorId: 'u-1' }) }),
+    );
+  });
+
+  it('leader sees tasks of managed departments', async () => {
+    const prisma = makePrisma();
+    const service = new TaskService(prisma as any, null as any);
+    const ownership: OwnershipContext = { userId: 'l-1', roleCode: 'leader', departmentId: 'd-1', managedDepartmentIds: ['d-1', 'd-2'] };
+    await service.listForUser(ownership, {});
+    expect(prisma.task.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ departmentId: { in: ['d-1', 'd-2'] } }) }),
+    );
   });
 });

@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalEngineService } from './approval-engine.service';
 import { ApprovalAssignmentResolver } from './approval-assignment.resolver';
 import { ApprovalTaskActionDto, RejectApprovalTaskDto } from './dto';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @UseGuards(JwtAuthGuard)
 @ModuleKey('work_execution')
@@ -19,9 +20,38 @@ export class ApprovalTaskController {
 
   @Get('my-pending')
   async findMyPending(@Request() req: AuthenticatedRequest) {
+    const ownership: OwnershipContext | undefined = (req as any).ownership;
     const userId = req.user.id;
+
+    // Build a scoped where clause using ownership if available
+    const where: Record<string, unknown> = { status: 'PENDING' };
+
+    if (ownership) {
+      if (ownership.roleCode === 'user') {
+        where['assigneeUserId'] = ownership.userId;
+      } else if (ownership.roleCode === 'leader') {
+        // leader can act as assignee directly, OR oversee tasks assigned to their dept members
+        const memberIds = ownership.managedDepartmentIds?.length
+          ? (
+              await this.prisma.user.findMany({
+                where: { departmentId: { in: ownership.managedDepartmentIds } },
+                select: { id: true },
+              })
+            ).map((u: { id: string }) => u.id)
+          : [];
+        where['OR'] = [
+          { assigneeUserId: ownership.userId },
+          ...(memberIds.length ? [{ assigneeUserId: { in: memberIds } }] : []),
+          ...(ownership.managedDepartmentIds?.length
+            ? [{ assigneeDepartmentId: { in: ownership.managedDepartmentIds } }]
+            : []),
+        ];
+      }
+      // admin: no ownership filter — sees all pending tasks
+    }
+
     const rows = await this.prisma.approvalTask.findMany({
-      where: { status: 'PENDING' },
+      where,
       include: { instance: true },
       orderBy: { createdAt: 'desc' },
     });
