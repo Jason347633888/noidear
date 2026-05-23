@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { OwnershipContext } from '../../module-access/ownership-context';
+import { visibleProductionBatchIds } from '../../module-access/ownership-helpers';
 
 interface CreateBatchMaterialUsageDto {
   productionBatchId: string;
@@ -11,6 +13,18 @@ interface CreateBatchMaterialUsageDto {
 @Injectable()
 export class BatchMaterialUsageService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async listForOwnership(ownership: OwnershipContext) {
+    const batchIds = await visibleProductionBatchIds(this.prisma, ownership);
+    if (batchIds !== undefined && batchIds.length === 0) return [];
+    const where: Record<string, unknown> = batchIds !== undefined
+      ? { productionBatchId: { in: batchIds } }
+      : {};
+    return this.prisma.batchMaterialUsage.findMany({
+      where,
+      orderBy: { usedAt: 'desc' },
+    });
+  }
 
   async create(createDto: CreateBatchMaterialUsageDto) {
     const batch = await this.prisma.productionBatch.findUnique({
