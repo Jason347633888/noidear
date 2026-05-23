@@ -8,15 +8,40 @@ export class RecordService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(ownership: OwnershipContext, projectId?: string) {
+    // If projectId is given and caller is the project trainer, bypass ownership filter
+    if (projectId) {
+      const project = await this.prisma.trainingProject.findUnique({ where: { id: projectId } });
+      if (project && project.trainerId === ownership.userId) {
+        return this.fetchRecordsWithUser({ projectId }, { createdAt: 'desc' });
+      }
+    }
+
     const ownershipWhere = await this.buildOwnershipWhere(ownership);
     const where: Record<string, unknown> = { ...ownershipWhere };
     if (projectId) {
       where['projectId'] = projectId;
     }
-    return this.prisma.learningRecord.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
+    return this.fetchRecordsWithUser(where, { createdAt: 'desc' });
+  }
+
+  /**
+   * LearningRecord 没有直接关联到 User（无 Prisma relation），
+   * 手动补全 user 字段以供前端 LearningRecordTable 使用。
+   */
+  private async fetchRecordsWithUser(
+    where: Record<string, unknown>,
+    orderBy: Record<string, unknown>,
+  ) {
+    const records = await this.prisma.learningRecord.findMany({ where, orderBy });
+    if (records.length === 0) return records;
+
+    const userIds = [...new Set(records.map((r) => r.userId))];
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, username: true, name: true, department: true },
     });
+    const userMap = new Map(users.map((u) => [u.id, u]));
+    return records.map((r) => ({ ...r, user: userMap.get(r.userId) ?? null }));
   }
 
   private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {

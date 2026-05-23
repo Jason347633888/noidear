@@ -10,6 +10,7 @@ export interface MenuEntry {
   title: string;
   icon: unknown;
   badge?: 'pendingTodoCount';
+  moduleKey?: string;
   children?: MenuEntry[];
 }
 
@@ -46,8 +47,8 @@ export const menuGroups: MenuGroup[] = [
     moduleKey: 'production_execution',
     icon: List,
     children: [
-      { path: '/records', title: '记录管理', icon: Document },
-      { path: '/record-tasks/manage', title: '任务配置', icon: Setting },
+      { path: '/records', title: '记录管理', icon: Document, moduleKey: 'document_approval' },
+      { path: '/record-tasks/manage', title: '任务配置', icon: Setting, moduleKey: 'work_execution' },
       { path: '/production/workshop-staging', title: '车间暂存区', icon: Grid },
     ],
   },

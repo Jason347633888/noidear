@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import {
-  ArrayMinSize, IsArray, IsIn, IsInt, IsNotEmpty, IsOptional, IsString,
+  ArrayMinSize, IsArray, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString,
   Min, ValidateIf, ValidateNested,
 } from 'class-validator';
 
@@ -47,6 +47,15 @@ export class StepDto {
 
   @IsOptional() @IsString()
   onApproved?: string;
+
+  @IsOptional()
+  @IsString()
+  onRejected?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  dueHours?: number;
 }
 
 export class CreateApprovalDefinitionDto {

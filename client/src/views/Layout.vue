@@ -34,21 +34,22 @@
               <el-icon><component :is="item.icon" /></el-icon>
               <span>{{ item.title }}</span>
             </template>
-            <el-menu-item
-              v-for="child in item.children"
-              :key="child.path"
-              :index="child.path"
-            >
-              <el-icon><component :is="child.icon" /></el-icon>
-              <template #title>
-                <el-badge
-                  v-if="child.badge && todoStore.pendingTodoCount > 0"
-                  :value="todoStore.pendingTodoCount"
-                  :max="99"
-                >{{ child.title }}</el-badge>
-                <span v-else>{{ child.title }}</span>
-              </template>
-            </el-menu-item>
+            <template v-for="child in item.children" :key="child.path">
+              <el-menu-item
+                v-if="!child.moduleKey || moduleAccess.hasModule(child.moduleKey)"
+                :index="child.path"
+              >
+                <el-icon><component :is="child.icon" /></el-icon>
+                <template #title>
+                  <el-badge
+                    v-if="child.badge && todoStore.pendingTodoCount > 0"
+                    :value="todoStore.pendingTodoCount"
+                    :max="99"
+                  >{{ child.title }}</el-badge>
+                  <span v-else>{{ child.title }}</span>
+                </template>
+              </el-menu-item>
+            </template>
           </el-sub-menu>
         </template>
       </el-menu>
