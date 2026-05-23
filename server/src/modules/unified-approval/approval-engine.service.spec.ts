@@ -218,7 +218,6 @@ describe('ApprovalEngineService', () => {
       assigneeUserId: 'approver',
       assigneeRoleCode: null,
       assigneeDepartmentId: null,
-      assigneePermissionCode: null,
       instanceId: 'inst-1',
       instance: {
         id: 'inst-1',
@@ -277,7 +276,6 @@ describe('ApprovalEngineService', () => {
       assigneeUserId: 'approver',
       assigneeRoleCode: null,
       assigneeDepartmentId: null,
-      assigneePermissionCode: null,
       instanceId: 'inst-1',
       instance: {
         id: 'inst-1',
