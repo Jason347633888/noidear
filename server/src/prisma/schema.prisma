@@ -3398,3 +3398,18 @@ model BusinessNumberSequence {
   @@index([scope, period])
   @@map("business_number_sequences")
 }
+
+// 简化角色与模块开关
+model ModuleAccessConfig {
+  id        String   @id @default(cuid())
+  moduleKey String
+  roleCode  String   // 仅允许 'leader' | 'user'
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([moduleKey, roleCode])
+  @@index([moduleKey])
+  @@index([roleCode])
+  @@map("module_access_configs")
+}

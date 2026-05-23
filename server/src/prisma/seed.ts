@@ -857,6 +857,31 @@ async function main() {
 
   console.log(`✅ 车间区域创建完成（共 ${workshopAreas.length} 个）`);
 
+  // ── 模块开关默认配置
+  const MODULE_KEYS_SEED = [
+    'work_execution',
+    'document_approval',
+    'production_execution',
+    'product_rd',
+    'quality_compliance',
+    'equipment_site',
+    'traceability_batch',
+    'warehouse',
+    'training',
+  ] as const;
+  const ROLE_CODES_WITH_TOGGLE_SEED = ['leader', 'user'] as const;
+
+  for (const moduleKey of MODULE_KEYS_SEED) {
+    for (const roleCode of ROLE_CODES_WITH_TOGGLE_SEED) {
+      await prisma.moduleAccessConfig.upsert({
+        where: { moduleKey_roleCode: { moduleKey, roleCode } },
+        update: {},
+        create: { moduleKey, roleCode, enabled: true },
+      });
+    }
+  }
+  console.log(`✅ ModuleAccessConfig seeded (${MODULE_KEYS_SEED.length} modules × 2 roles)`);
+
   console.log('🎉 数据库种子数据填充完成！');
 }
 
