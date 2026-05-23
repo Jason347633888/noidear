@@ -33,6 +33,8 @@ export const REGISTRY_CONFIG: RegistryConfig = {
       { path: 'tasks', mode: 'exact' },
       { path: 'approval-tasks', mode: 'exact' },
       { path: 'approval-instances', mode: 'exact' },
+      { path: 'record-task-assignments', mode: 'exact' },
+      { path: 'record-task-instances', mode: 'exact' },
     ],
     document_approval: [
       { path: 'documents', mode: 'exact' },
@@ -62,6 +64,7 @@ export const REGISTRY_CONFIG: RegistryConfig = {
       { path: 'change-events', mode: 'exact' },
       { path: 'change-verification-records', mode: 'exact' },
       { path: 'change-compliance-records', mode: 'exact' },
+      { path: 'product-process-changes', mode: 'exact' },
     ],
     quality_compliance: [
       { path: 'non-conformances', mode: 'exact' },
