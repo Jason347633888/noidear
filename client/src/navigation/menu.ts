@@ -1,8 +1,8 @@
 import {
   HomeFilled, Bell, List, CircleCheck, Files, Grid, Monitor,
-  Connection, Document, Box, Goods, DataAnalysis, Setting,
+  Connection, Document, Box, Goods, Setting,
   UserFilled, WarnTriangleFilled, SetUp, Search, Odometer,
-  Delete, Cloudy, Key, RefreshLeft, Message,
+  Delete, Key, RefreshLeft, Message, DataAnalysis,
 } from '@element-plus/icons-vue';
 
 export interface MenuEntry {
@@ -13,9 +13,15 @@ export interface MenuEntry {
   children?: MenuEntry[];
 }
 
-export const menuGroups: MenuEntry[] = [
+export interface MenuGroup extends MenuEntry {
+  moduleKey?: string;
+  adminOnly?: boolean;
+}
+
+export const menuGroups: MenuGroup[] = [
   {
     title: '工作执行',
+    moduleKey: 'work_execution',
     icon: HomeFilled,
     children: [
       { path: '/dashboard', title: '工作台', icon: HomeFilled },
@@ -26,6 +32,7 @@ export const menuGroups: MenuEntry[] = [
   },
   {
     title: '文控与审批',
+    moduleKey: 'document_approval',
     icon: Files,
     children: [
       { path: '/documents', title: '体系文件中心', icon: Files },
@@ -36,6 +43,7 @@ export const menuGroups: MenuEntry[] = [
   },
   {
     title: '生产执行',
+    moduleKey: 'production_execution',
     icon: List,
     children: [
       { path: '/records', title: '记录管理', icon: Document },
@@ -48,6 +56,7 @@ export const menuGroups: MenuEntry[] = [
   },
   {
     title: '产品研发',
+    moduleKey: 'product_rd',
     icon: Grid,
     children: [
       { path: '/products', title: '产品信息', icon: Goods },
@@ -56,6 +65,7 @@ export const menuGroups: MenuEntry[] = [
   },
   {
     title: '质量与合规',
+    moduleKey: 'quality_compliance',
     icon: CircleCheck,
     children: [
       { path: '/ccp/records', title: 'CCP 监控', icon: WarnTriangleFilled },
@@ -69,6 +79,7 @@ export const menuGroups: MenuEntry[] = [
   },
   {
     title: '设备与现场',
+    moduleKey: 'equipment_site',
     icon: SetUp,
     children: [
       { path: '/equipment', title: '设备台账', icon: SetUp },
@@ -96,6 +107,7 @@ export const menuGroups: MenuEntry[] = [
   },
   {
     title: '追溯与批次',
+    moduleKey: 'traceability_batch',
     icon: Box,
     children: [
       { path: '/batch-trace', title: '批次列表', icon: Box },
@@ -107,6 +119,7 @@ export const menuGroups: MenuEntry[] = [
   },
   {
     title: '仓库管理',
+    moduleKey: 'warehouse',
     icon: Goods,
     children: [
       { path: '/warehouse/materials', title: '物料管理', icon: Goods },
@@ -115,6 +128,7 @@ export const menuGroups: MenuEntry[] = [
   },
   {
     title: '培训',
+    moduleKey: 'training',
     icon: UserFilled,
     children: [
       { path: '/training/projects', title: '培训项目', icon: UserFilled },
@@ -122,14 +136,13 @@ export const menuGroups: MenuEntry[] = [
   },
   {
     title: '系统治理',
+    adminOnly: true,
     icon: Setting,
     children: [
       { path: '/users', title: '用户管理', icon: UserFilled },
       { path: '/departments', title: '部门管理', icon: Connection },
       { path: '/roles', title: '角色管理', icon: Key },
-      { path: '/permissions', title: '权限管理', icon: Setting },
-      { path: '/admin/user-permissions', title: '用户权限授予', icon: Key },
-      { path: '/admin/permissions', title: '权限定义', icon: Setting },
+      { path: '/module-access/manage', title: '模块开关', icon: Setting },
       { path: '/notifications', title: '消息中心', icon: Message },
       { path: '/search', title: '高级搜索', icon: Search },
       { path: '/audit/search', title: '审计日志', icon: Odometer },

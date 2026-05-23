@@ -121,6 +121,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/user';
 import { useTodoStore } from '@/stores/todo';
+import { useModuleAccessStore } from '@/stores/moduleAccess';
 import {
   Document, Fold, Expand, Bell, ArrowDown,
   User, Lock, SwitchButton, HomeFilled, Files,
@@ -136,13 +137,20 @@ const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
 const todoStore = useTodoStore();
+const moduleAccess = useModuleAccessStore();
 const isCollapsed = ref(false);
 const unreadCount = ref(0);
 
 const activeMenu = computed(() => route.path);
 const currentTitle = computed(() => route.meta.title as string || '');
 
-const menuItems = menuGroups;
+const menuItems = computed(() =>
+  menuGroups.filter((g) => {
+    if (g.adminOnly) return moduleAccess.roleCode === 'admin';
+    if (g.moduleKey) return moduleAccess.hasModule(g.moduleKey);
+    return true;
+  }),
+);
 
 const handleCommand = (command: string) => {
   switch (command) {
@@ -155,6 +163,9 @@ const handleCommand = (command: string) => {
 onMounted(async () => {
   if (userStore.token && !userStore.user) {
     await userStore.fetchUser();
+  }
+  if (!moduleAccess.loaded) {
+    await moduleAccess.refresh();
   }
   fetchUnreadCount();
   todoStore.refreshPendingCount();
