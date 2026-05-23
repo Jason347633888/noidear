@@ -49,9 +49,6 @@ export const menuGroups: MenuGroup[] = [
       { path: '/records', title: '记录管理', icon: Document },
       { path: '/record-tasks/manage', title: '任务配置', icon: Setting },
       { path: '/production/workshop-staging', title: '车间暂存区', icon: Grid },
-      { path: '/warehouse/requisitions', title: '领料管理', icon: Goods },
-      { path: '/deviation-reports', title: '偏差报告', icon: WarnTriangleFilled },
-      { path: '/deviation-analytics', title: '偏差分析', icon: DataAnalysis },
     ],
   },
   {
@@ -75,6 +72,8 @@ export const menuGroups: MenuGroup[] = [
       { path: '/product-recalls', title: '产品召回', icon: WarnTriangleFilled },
       { path: '/supplier-evaluations', title: '供应商评估', icon: Goods },
       { path: '/change-events', title: '变更管理', icon: Connection },
+      { path: '/deviation-reports', title: '偏差报告', icon: WarnTriangleFilled },
+      { path: '/deviation-analytics', title: '偏差分析', icon: DataAnalysis },
     ],
   },
   {
@@ -124,6 +123,7 @@ export const menuGroups: MenuGroup[] = [
     children: [
       { path: '/warehouse/materials', title: '物料管理', icon: Goods },
       { path: '/warehouse/suppliers', title: '供应商', icon: Goods },
+      { path: '/warehouse/requisitions', title: '领料管理', icon: Goods },
     ],
   },
   {

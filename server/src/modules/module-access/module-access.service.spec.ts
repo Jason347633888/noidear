@@ -26,13 +26,26 @@ describe('ModuleAccessService', () => {
     expect(prisma.moduleAccessConfig.findMany).not.toHaveBeenCalled();
   });
 
-  it('leader sees only enabled=true modules from DB', async () => {
+  it('leader: modules with no DB row default to enabled (default-true model)', async () => {
+    // DB has warehouse=true, training=false, other 7 modules have no row → default true
     prisma.moduleAccessConfig.findMany.mockResolvedValue([
       { moduleKey: 'warehouse', roleCode: 'leader', enabled: true },
       { moduleKey: 'training', roleCode: 'leader', enabled: false },
     ]);
     const enabled = await service.getEnabledModulesFor({ roleCode: 'leader' });
-    expect(enabled).toEqual(['warehouse']);
+    // training is explicitly disabled; all others (including no-row modules) are enabled
+    expect(enabled).not.toContain('training');
+    expect(enabled).toContain('warehouse');
+    expect(enabled.length).toBe(8); // 9 total − 1 explicitly disabled
+  });
+
+  it('leader: empty DB table returns all module keys (P1-R10-1 default-true)', async () => {
+    // Fresh deploy: no rows exist yet → must NOT return [] (old broken behavior)
+    prisma.moduleAccessConfig.findMany.mockResolvedValue([]);
+    const enabled = await service.getEnabledModulesFor({ roleCode: 'leader' });
+    expect(enabled.length).toBe(9);
+    expect(enabled).toContain('warehouse');
+    expect(enabled).toContain('work_execution');
   });
 
   it('listMatrix returns 9 × 2 rows ordered by spec key order', async () => {

@@ -7,7 +7,7 @@ export const todoApi = {
   },
 
   statistics(): Promise<TodoStatisticsResponse> {
-    return request.get('/todos/statistics');
+    return request.get('/todos/statistics', { _silent: true } as any);
   },
 
   complete(id: string): Promise<TodoItem> {

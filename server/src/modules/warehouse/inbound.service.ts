@@ -37,6 +37,8 @@ export class InboundService {
           supplierId,
           status: 'draft',
           remark,
+          // Write operatorId at creation so the creator can find the record via ownership filter
+          operatorId: createdById ?? null,
         },
       });
 
