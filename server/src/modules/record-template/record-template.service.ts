@@ -1,14 +1,26 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateRecordTemplateDto } from './dto/create-record-template.dto';
 import { UpdateRecordTemplateDto } from './dto/update-record-template.dto';
 import { QueryRecordTemplateDto } from './dto/query-record-template.dto';
 import { FieldDef } from './types/fields-json.types';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @Injectable()
 export class RecordTemplateService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Ownership-guarded create — only admin may write record templates.
+   * Per spec § 通用约束第7条: guard is in service layer, not stacked on controller.
+   */
+  async createForOwnership(createDto: CreateRecordTemplateDto, ownership: OwnershipContext) {
+    if (ownership.roleCode !== 'admin') {
+      throw new ForbiddenException('仅管理员可写入记录模板');
+    }
+    return this.create(createDto);
+  }
 
   /**
    * 创建记录模板

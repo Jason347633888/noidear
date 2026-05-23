@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RecordTemplateService } from './record-template.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { ConflictException, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 describe('RecordTemplateService', () => {
   let service: RecordTemplateService;
@@ -320,5 +321,44 @@ describe('RecordTemplateService', () => {
       await expect(service.updateFields('tpl-v1', [{ name: 'x', label: 'X', type: 'text' }]))
         .rejects.toThrow('已启用模板不能原地修改字段');
     });
+  });
+});
+
+describe('RecordTemplateService write operations ownership guard', () => {
+  const prisma: any = {
+    recordTemplate: {
+      findUnique: jest.fn().mockResolvedValue(null),
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    $transaction: jest.fn(),
+  };
+
+  function freshSvc() {
+    return new RecordTemplateService(prisma as any);
+  }
+
+  beforeEach(() => jest.clearAllMocks());
+
+  const nonAdminRoles: Array<OwnershipContext['roleCode']> = ['leader', 'user'];
+
+  nonAdminRoles.forEach((roleCode) => {
+    it(`${roleCode} cannot create template — throws ForbiddenException`, async () => {
+      const svc = freshSvc();
+      const ownership: OwnershipContext = { userId: 'u', roleCode, departmentId: 'd', managedDepartmentIds: [] };
+      await expect(svc.createForOwnership({ code: 'X', name: 'N', fieldsJson: [] } as any, ownership))
+        .rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  it('admin can create template', async () => {
+    const svc = freshSvc();
+    prisma.recordTemplate.findFirst.mockResolvedValue(null);
+    prisma.recordTemplate.create.mockResolvedValue({ id: 'new-tpl' });
+    const ownership: OwnershipContext = { userId: 'a', roleCode: 'admin', departmentId: null, managedDepartmentIds: undefined };
+    const result = await svc.createForOwnership({ code: 'X', name: 'N', fieldsJson: { fields: [] } } as any, ownership);
+    expect(result).toBeDefined();
   });
 });

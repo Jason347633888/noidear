@@ -21,6 +21,7 @@ import {
   EFFECTIVE_COMPAT_STATUSES,
   isEffectiveCompatible,
 } from './constants/document-control.constants';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @Injectable()
 export class DocumentService {
@@ -125,6 +126,29 @@ export class DocumentService {
     });
 
     return withDocumentVersionLabel(convertBigIntToNumber(result));
+  }
+
+  /**
+   * Ownership-scoped document list.
+   * admin: all documents; leader: departmentId in managedDepts; user: creatorId = userId
+   * Note: Document schema uses departmentId + creatorId (no ownerDepartmentId/ownerUserId).
+   */
+  async listForOwnership(ownership: OwnershipContext) {
+    const where: Record<string, unknown> = { deletedAt: null };
+
+    if (ownership.roleCode === 'user') {
+      where['creatorId'] = ownership.userId;
+    } else if (ownership.roleCode === 'leader') {
+      const depts = ownership.managedDepartmentIds ?? [];
+      if (depts.length === 0) return [];
+      where['departmentId'] = { in: depts };
+    }
+    // admin: no additional filter
+
+    return this.prisma.document.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async findAll(query: DocumentQueryDto, userId: string, role: string) {
