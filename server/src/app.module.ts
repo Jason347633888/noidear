@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ModuleAccessModule } from './modules/module-access/module-access.module';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -154,6 +155,7 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     MixingModule,
     ProductProcessChangeModule,
     OrgBootstrapModule,
+    ModuleAccessModule,
   ],
   providers: [],
 })

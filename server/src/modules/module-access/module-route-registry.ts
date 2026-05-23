@@ -43,7 +43,7 @@ export class ModuleRouteRegistry {
     if (moduleHits.length >= 1)
       return { kind: 'module', moduleKey: moduleHits[0].key, entry: moduleHits[0].entry };
 
-    const auxEntry = this.findEntry(this.cfg.auxiliary, norm);
+    const auxEntry = this.findEntry(this.cfg.auxiliary, norm) as AuxiliaryEntry | null;
     if (auxEntry) return { kind: 'auxiliary', entry: auxEntry };
 
     return null;
