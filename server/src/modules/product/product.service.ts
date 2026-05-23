@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services';
@@ -10,6 +10,7 @@ import { ProductReportDocumentDto } from './dto/product-report-document.dto';
 import { ProductCodeGeneratorService } from './product-code-generator.service';
 import { CreateLegacyProductDto } from './dto/create-legacy-product.dto';
 import { UNFINISHED_PRODUCT_PROCESS_CHANGE_STATUSES } from '../product-process-change/product-process-change.constants';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @Injectable()
 export class ProductService {
@@ -40,6 +41,17 @@ export class ProductService {
       throw new NotFoundException(`Product ${id} not found`);
     }
     return product;
+  }
+
+  /**
+   * Ownership-guarded create — only admin may create product master data.
+   * Per spec § 通用约束第7条: guard is in service layer, not stacked on controller.
+   */
+  async createForOwnership(dto: CreateProductDto, ownership: OwnershipContext) {
+    if (ownership.roleCode !== 'admin') {
+      throw new ForbiddenException('仅管理员可写入产品主数据');
+    }
+    return this.create(dto);
   }
 
   async create(dto: CreateProductDto) {
