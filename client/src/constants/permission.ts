@@ -10,7 +10,6 @@ export const PERMISSION_RESOURCES = [
   { value: 'record', label: '记录管理' },
   { value: 'batch', label: '批次管理' },
   { value: 'deviation', label: '偏离检测' },
-  { value: 'statistics', label: '统计分析' },
 ];
 
 export const RESOURCE_LABELS: Record<string, string> = Object.fromEntries(
