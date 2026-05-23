@@ -13,6 +13,8 @@ import {
   QueryProductionBatchDto,
   ConfirmProductBatchDto,
 } from '../dto/production-batch.dto';
+import { OwnershipContext } from '../../module-access/ownership-context';
+import { userIdsInDepts } from '../../module-access/ownership-helpers';
 
 @Injectable()
 export class ProductionBatchService {
@@ -46,6 +48,29 @@ export class ProductionBatchService {
         productionDate: createDto.productionDate,
         status: 'pending',
       },
+    });
+  }
+
+  /**
+   * Ownership-scoped batch list.
+   * leader_id links a batch to its responsible person; Team has no departmentId.
+   * admin: all; user: leader_id = userId; leader: leader_id IN members(managedDepts)
+   */
+  async listForOwnership(ownership: OwnershipContext) {
+    const where: Record<string, unknown> = {};
+
+    if (ownership.roleCode === 'user') {
+      where['leader_id'] = ownership.userId;
+    } else if (ownership.roleCode === 'leader') {
+      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+      if (memberIds.length === 0) return [];
+      where['leader_id'] = { in: memberIds };
+    }
+    // admin: no filter
+
+    return this.prisma.productionBatch.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
     });
   }
 

@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { MixingService } from './mixing.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BadRequestException } from '@nestjs/common';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 describe('MixingService', () => {
   let service: MixingService;
@@ -406,5 +407,44 @@ describe('MixingService', () => {
         lines: [{ recipeLineId: 'line-flour', materialBatchId: 'mb-old', actualQuantity: 50, manualOverride: false }],
       })).rejects.toThrow(BadRequestException);
     });
+  });
+});
+
+describe('MixingService.listForOwnership', () => {
+  function freshSvc(memberIds: string[] = []) {
+    const prisma: any = {
+      mixingExecution: { findMany: jest.fn().mockResolvedValue([]) },
+      stagingAreaStock: { findMany: jest.fn() },
+      user: { findMany: jest.fn().mockResolvedValue(memberIds.map((id) => ({ id }))) },
+    };
+    return { svc: new MixingService(prisma), prisma };
+  }
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it('admin sees all executions (no operatorId filter)', async () => {
+    const { svc, prisma } = freshSvc();
+    const o: OwnershipContext = { userId: 'a', roleCode: 'admin', departmentId: null, managedDepartmentIds: undefined };
+    await svc.listForOwnership(o);
+    const callWhere = prisma.mixingExecution.findMany.mock.calls[0][0].where;
+    expect(callWhere).not.toHaveProperty('operatorId');
+  });
+
+  it('user sees only executions where operatorId = userId', async () => {
+    const { svc, prisma } = freshSvc();
+    const o: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd', managedDepartmentIds: [] };
+    await svc.listForOwnership(o);
+    expect(prisma.mixingExecution.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { operatorId: 'u-1' } }),
+    );
+  });
+
+  it('leader sees executions where operatorId IN managed-dept members', async () => {
+    const { svc, prisma } = freshSvc(['m-1', 'm-2']);
+    const o: OwnershipContext = { userId: 'l-1', roleCode: 'leader', departmentId: 'd-1', managedDepartmentIds: ['d-1'] };
+    await svc.listForOwnership(o);
+    expect(prisma.mixingExecution.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { operatorId: { in: ['m-1', 'm-2'] } } }),
+    );
   });
 });

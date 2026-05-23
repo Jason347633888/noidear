@@ -6,10 +6,35 @@ import {
   CreateMixingExecutionDto,
   ListMixingExecutionsDto,
 } from './dto/mixing.dto';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @Injectable()
 export class MixingService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Ownership-scoped mixing execution list.
+   * admin: all; user: operatorId = userId; leader: operatorId IN members(managedDepts)
+   */
+  async listForOwnership(ownership: OwnershipContext) {
+    const where: Record<string, unknown> = {};
+
+    if (ownership.roleCode === 'user') {
+      where['operatorId'] = ownership.userId;
+    } else if (ownership.roleCode === 'leader') {
+      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+      if (memberIds.length === 0) return [];
+      where['operatorId'] = { in: memberIds };
+    }
+    // admin: no filter
+
+    return this.prisma.mixingExecution.findMany({
+      where,
+      orderBy: { work_date: 'desc' },
+      take: 100,
+    });
+  }
 
   async listExecutions(dto: ListMixingExecutionsDto) {
     return this.prisma.mixingExecution.findMany({
