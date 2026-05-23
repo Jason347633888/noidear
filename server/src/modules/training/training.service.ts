@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, Optional } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 import { CreateTrainingPlanDto } from './dto/create-plan.dto';
 import { UpdateTrainingPlanDto } from './dto/update-plan.dto';
 import { QueryTrainingPlanDto } from './dto/query-plan.dto';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @Injectable()
 export class TrainingService {
@@ -284,6 +285,13 @@ export class TrainingService {
   }
 
   // ==================== 培训项目管理 ====================
+
+  async createProjectForOwnership(dto: any, ownership: OwnershipContext) {
+    if (ownership.roleCode === 'user') {
+      throw new ForbiddenException('仅管理员和负责人可管理培训项目');
+    }
+    return this.createProject(dto, ownership.userId);
+  }
 
   /**
    * 创建培训项目
