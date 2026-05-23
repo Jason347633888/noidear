@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/12</span>
+                <span class='fraction'>12/12</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/12</span>
+                <span class='fraction'>12/12</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -150,20 +150,20 @@
 <a name='L85'></a><a href='#L85'>85</a>
 <a name='L86'></a><a href='#L86'>86</a>
 <a name='L87'></a><a href='#L87'>87</a>
-<a name='L88'></a><a href='#L88'>88</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<a name='L88'></a><a href='#L88'>88</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -205,52 +205,52 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';</span>
-<span class="cstat-no" title="statement not covered" >import { IsString, IsNotEmpty, IsOptional, IsIn, IsObject } from 'class-validator';</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsOptional, IsIn, IsObject } from 'class-validator';
 import type { SensitiveDetails } from './json-types';
 &nbsp;
-<span class="cstat-no" title="statement not covered" >export class C</span>reateSensitiveLogDto {
+export class CreateSensitiveLogDto {
   @ApiProperty({ description: '用户 ID' })
   @IsString()
   @IsNotEmpty()
-<span class="cstat-no" title="statement not covered" >  userId: string;</span>
+  userId: string;
 &nbsp;
   @ApiProperty({ description: '用户名' })
   @IsString()
   @IsNotEmpty()
-<span class="cstat-no" title="statement not covered" >  username: string;</span>
+  username: string;
 &nbsp;
   @ApiProperty({
     description: '操作类型',
@@ -292,37 +292,37 @@ import type { SensitiveDetails } from './json-types';
     'verify_rectification',
     'reject_rectification',
   ])
-<span class="cstat-no" title="statement not covered" >  action: string;</span>
+  action: string;
 &nbsp;
   @ApiProperty({ description: '资源类型' })
   @IsString()
   @IsNotEmpty()
-<span class="cstat-no" title="statement not covered" >  resourceType: string;</span>
+  resourceType: string;
 &nbsp;
   @ApiProperty({ description: '资源 ID（必填）' })
   @IsString()
   @IsNotEmpty()
-<span class="cstat-no" title="statement not covered" >  resourceId: string;</span>
+  resourceId: string;
 &nbsp;
   @ApiProperty({ description: '资源名称（必填）' })
   @IsString()
   @IsNotEmpty()
-<span class="cstat-no" title="statement not covered" >  resourceName: string;</span>
+  resourceName: string;
 &nbsp;
   @ApiPropertyOptional({ description: '详细信息（Json 对象）' })
   @IsOptional()
   @IsObject() // HIGH-5: Json 字段验证
-<span class="cstat-no" title="statement not covered" >  details?: SensitiveDetails;</span>
+  details?: SensitiveDetails;
 &nbsp;
   @ApiProperty({ description: 'IP 地址（必填）' })
   @IsString()
   @IsNotEmpty()
-<span class="cstat-no" title="statement not covered" >  ipAddress: string;</span>
+  ipAddress: string;
 &nbsp;
   @ApiProperty({ description: 'User-Agent（必填）' })
   @IsString()
   @IsNotEmpty()
-<span class="cstat-no" title="statement not covered" >  userAgent: string;</span>
+  userAgent: string;
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -331,7 +331,7 @@ import type { SensitiveDetails } from './json-types';
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-08T02:26:35.658Z
+                at 2026-05-14T16:25:09.466Z
             </div>
         <script src="../../../../../prettify.js"></script>
         <script>

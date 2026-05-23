@@ -61,8 +61,11 @@ export interface PaginatedResponse<T> {
 // =========================================================================
 
 export const productionBatchApi = {
-  getList(params: { page?: number; limit?: number; status?: string; keyword?: string } = {}) {
-    return request.get<PaginatedResponse<ProductionBatch>>('/batch-trace/production-batches', { params });
+  getList(params: { page?: number; limit?: number; status?: string; keyword?: string; search?: string } = {}) {
+    const { keyword, ...rest } = params;
+    return request.get<PaginatedResponse<ProductionBatch>>('/batch-trace/production-batches', {
+      params: { ...rest, search: rest.search ?? keyword },
+    });
   },
 
   getById(id: string) {

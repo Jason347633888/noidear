@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/21</span>
+                <span class='fraction'>0/18</span>
             </div>
         
             
@@ -39,14 +39,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/8</span>
+                <span class='fraction'>0/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/19</span>
+                <span class='fraction'>0/16</span>
             </div>
         
             
@@ -115,15 +115,9 @@
 <a name='L50'></a><a href='#L50'>50</a>
 <a name='L51'></a><a href='#L51'>51</a>
 <a name='L52'></a><a href='#L52'>52</a>
-<a name='L53'></a><a href='#L53'>53</a>
-<a name='L54'></a><a href='#L54'>54</a>
-<a name='L55'></a><a href='#L55'>55</a>
-<a name='L56'></a><a href='#L56'>56</a>
-<a name='L57'></a><a href='#L57'>57</a>
-<a name='L58'></a><a href='#L58'>58</a>
-<a name='L59'></a><a href='#L59'>59</a>
-<a name='L60'></a><a href='#L60'>60</a>
-<a name='L61'></a><a href='#L61'>61</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L53'></a><a href='#L53'>53</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -136,21 +130,11 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -193,16 +177,18 @@
   Query,
   HttpCode,
   HttpStatus,
+  UseGuards,
+  Request,
 } from '@nestjs/common';
+<span class="cstat-no" title="statement not covered" >import { JwtAuthGuard } from '../auth/jwt-auth.guard';</span>
 <span class="cstat-no" title="statement not covered" >import { RecordService } from './record.service';</span>
 <span class="cstat-no" title="statement not covered" >import {</span>
   CreateRecordDto,
   UpdateRecordDto,
-  ApproveRecordDto,
-  RejectRecordDto,
   QueryRecordDto,
 } from './dto/record.dto';
 &nbsp;
+@UseGuards(JwtAuthGuard)
 @Controller('maintenance-records')
 export <span class="cstat-no" title="statement not covered" >class <span class="cstat-no" title="statement not covered" ><span class="cstat-no" title="statement not covered" >RecordController </span>{</span></span>
 <span class="fstat-no" title="function not covered" >  constructor(private readonly <span class="cstat-no" title="statement not covered" >r</span>ecordService: R</span>ecordService) {}
@@ -229,18 +215,8 @@ export <span class="cstat-no" title="statement not covered" >class <span class="
   }
 &nbsp;
   @Post(':id/submit')
-<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >  submit(</span>@Param('id') id: string) {</span>
-<span class="cstat-no" title="statement not covered" >    return this.recordService.submit(id);</span>
-  }
-&nbsp;
-  @Post(':id/approve')
-<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >  approve(</span>@Param('id') id: string, @Body() dto: ApproveRecordDto) {</span>
-<span class="cstat-no" title="statement not covered" >    return this.recordService.approve(id, dto);</span>
-  }
-&nbsp;
-  @Post(':id/reject')
-<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >  reject(</span>@Param('id') id: string, @Body() dto: RejectRecordDto) {</span>
-<span class="cstat-no" title="statement not covered" >    return this.recordService.reject(id, dto);</span>
+<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >  submit(</span>@Param('id') id: string, @Request() req: any) {</span>
+<span class="cstat-no" title="statement not covered" >    return this.recordService.submit(id, req.user?.id);</span>
   }
 }
 &nbsp;</pre></td></tr></table></pre>
@@ -250,7 +226,7 @@ export <span class="cstat-no" title="statement not covered" >class <span class="
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-08T02:26:35.658Z
+                at 2026-05-14T16:25:09.466Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

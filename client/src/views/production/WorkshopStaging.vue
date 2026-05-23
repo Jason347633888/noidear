@@ -96,6 +96,7 @@ import { ref, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import request from '@/api/request';
 import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
+import { toList } from '@/utils/apiResponse';
 
 const ZONES = ['筛粉间', '称油间', '小料房'] as const;
 
@@ -129,7 +130,7 @@ async function loadStock() {
     const res = await request.get<any>('/warehouse/staging-area/stock', {
       params: { location: activeZone.value, page: page.value, limit: limit.value },
     });
-    stockList.value = res.data ?? [];
+    stockList.value = toList<any>(res);
     total.value = res.total ?? 0;
   } catch {
     ElMessage.error('加载库存失败');

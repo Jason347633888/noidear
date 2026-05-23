@@ -162,7 +162,10 @@ export const batchApi = {
 
 export const supplierApi = {
   getList(params: { page?: number; limit?: number; keyword?: string } = {}) {
-    return request.get<PaginatedResponse<Supplier>>('/warehouse/suppliers', { params });
+    const { keyword, ...rest } = params;
+    return request.get<PaginatedResponse<Supplier>>('/warehouse/suppliers', {
+      params: { ...rest, search: keyword },
+    });
   },
 
   getById(id: string) {

@@ -33,6 +33,9 @@
 - `client/src/views/statistics/TaskStatistics.vue`
 - `client/src/views/statistics/__tests__/*.spec.ts`
 - `client/src/api/statistics.ts`
+- `client/e2e/statistics.spec.ts`（整文件，5 个用例，含 stale 的 `/statistics/dashboard` 引用——`statistics/dashboard` 路由已在前轮 `2026-05-13-api-contract-gap-repair-design.md` 删除，但 e2e 未同步清理）
+- `client/e2e/audit-system.spec.ts` 中 STAT-001（`/statistics/overview renders`，第 13、274-285 行附近）、STAT-002（`/statistics/documents renders`，第 14、286-296 行附近）两条用例——仅删 test 块，不删整个文件
+- `client/src/constants/permission.ts:13` 中 `{ value: 'statistics', label: '统计分析' }` 资源条目，被 `client/src/views/permission/FineGrainedPermission.vue:117` 渲染进权限管理 UI 的资源下拉列表
 
 后端入口：
 
@@ -47,7 +50,8 @@
 旁路依赖：
 
 - `server/src/common/interceptors/statistics-cache.interceptor.ts` 注入 `StatisticsService`，用于文档等变更后清理集中统计缓存。
-- `server/src/modules/document/document.module.ts` 引入 `StatisticsModule` 并注册 `StatisticsCacheInterceptor`。
+- `server/src/modules/document/document.module.ts` 在三处引用 `StatisticsCacheInterceptor`：第 13 行 `import`、第 34 行 `imports: [..., StatisticsModule, ...]`、第 36 行 `providers: [..., StatisticsCacheInterceptor, ...]`。三处必须同步删除，否则编译会因符号未定义而失败。
+- `StatisticsService.getCacheKey()` 使用 Redis 键前缀 `statistics:{prefix}:{hash}`，TTL 由 `CACHE_TTL`（默认 300s）控制。生产环境历史键由 TTL 自然过期，不需要手动 FLUSHDB 或 SCAN+DEL。
 - `server/src/modules/statistics/traceability-export.service.ts` 和 `GET /statistics/traceability/:batchId/pdf` 属于追溯导出能力被放错模块的历史残留。
 - 当前正式追溯模块已经存在 `server/src/modules/traceability/traceability-export.service.ts`、`TraceabilityModule` 和相关测试，因此删除集中统计模块时不得删除追溯模块自己的导出服务。
 
@@ -108,6 +112,8 @@
 - 不删除追溯模块自己的导出、快照或物料平衡能力。
 - 不新增替代统计中心、大屏、驾驶舱或统一报表模块。
 - 不做历史统计数据迁移。
+- 不为外部 API 消费者（第三方集成、移动端、CLI、MCP 层等）保留 `/api/v1/statistics/*` 向后兼容 shim；调用方需自行适配。
+- 不主动写脚本批量删除生产 DB 中可能存在的历史 `statistics:*` 权限/角色绑定记录，由运维按需手动清理。
 
 ---
 
@@ -146,11 +152,30 @@
 - `client/src/views/statistics/__tests__/Overview.spec.ts`
 - `client/src/views/statistics/__tests__/TaskStatistics.spec.ts`
 - `client/src/api/statistics.ts`
+- `client/e2e/statistics.spec.ts`（整文件删除）
+
+部分清理（删 test 块，不删整个文件）：
+
+- `client/e2e/audit-system.spec.ts`：删除文件头注释中关于 `statistics.spec.ts` 的引用，删除 STAT-001（`/statistics/overview renders`）与 STAT-002（`/statistics/documents renders`）两个 `test()` 用例块。
 
 删除后必须验证：
 
-- `rg -n "@/api/statistics|statisticsApi|/statistics/(overview|documents|tasks)|statistics/export" client/src` 无活跃命中。
+- `rg -n "@/api/statistics|statisticsApi|/statistics/(overview|documents|tasks|dashboard)|statistics/export" client/src client/e2e` 无活跃命中。
+- `rg -n "from ['\"]@/api/statistics['\"]" client/src` 无命中（覆盖 default import 写法）。
 - `client/src/views/training/statistics/StatisticsPage.vue` 仍保留，因为它属于培训模块。
+
+### 权限常量与历史权限记录
+
+`client/src/constants/permission.ts` 中导出的 `PERMISSION_RESOURCES` 数组包含 `{ value: 'statistics', label: '统计分析' }`（第 13 行），被 `client/src/views/permission/FineGrainedPermission.vue:117` 直接渲染到权限管理 UI 的资源下拉列表。
+
+处理动作：
+
+- 从 `client/src/constants/permission.ts` 的 `PERMISSION_RESOURCES` 数组中删除 `statistics` 条目，避免管理员在 UI 上继续给用户/角色分配一个已不存在的资源分类。
+
+历史权限记录处置：
+
+- 服务端 `server/prisma/seed.ts` 经 grep 确认未种入任何 `statistics` 资源的权限/角色记录，**不需要新增 cleanup migration**。
+- 生产 DB 中若管理员历史上已手动给某些角色绑定过 `statistics:read` / `statistics:export` 等记录，这些记录将变为悬挂条目，不影响系统启动与业务功能，由各租户运维按需手动清理。本轮不主动写脚本批量删除，避免误伤可能保留下来的审计痕迹。
 
 ---
 
@@ -178,11 +203,24 @@
 
 - `server/src/common/interceptors/statistics-cache.interceptor.ts`
 
-同步修改：
+同步修改 `server/src/modules/document/document.module.ts`（三处）：
 
-- `server/src/modules/document/document.module.ts` 不再 import `StatisticsModule`。
-- `server/src/modules/document/document.module.ts` 不再注册 `StatisticsCacheInterceptor`。
-- `server/src/modules/document/document.controller.ts` 不再使用 `@UseInterceptors(StatisticsCacheInterceptor)`。
+- 删除第 13 行 `import { StatisticsCacheInterceptor } from '../../common/interceptors/statistics-cache.interceptor';`。
+- 删除第 12 行 `import { StatisticsModule } from '../statistics/statistics.module';`。
+- 删除第 34 行 `imports` 数组中的 `StatisticsModule` 项。
+- 删除第 36 行 `providers` 数组中的 `StatisticsCacheInterceptor` 项（**关键**：仅删 import 而不删 providers 数组会触发 TypeScript 编译错误"无法找到名称 StatisticsCacheInterceptor"）。
+
+同步修改 `server/src/modules/document/document.controller.ts`：
+
+- 删除第 39 行 `import { StatisticsCacheInterceptor } from ...`。
+- 删除第 44 行 `@UseInterceptors(StatisticsCacheInterceptor)` 装饰器；保留同一 `@UseInterceptors` 链中的其他拦截器（若有），不要误删整行。
+
+实施者在删除前必须确认 document 子树外没有其他 controller / service 注入 `StatisticsService`、`StatisticsExportService`、`TraceabilityExportService`（这三者是 `StatisticsModule` 唯一导出的 provider）。验证命令：
+
+```bash
+rg -n "StatisticsService|StatisticsExportService" server/src --type ts
+rg -n "from.*statistics/traceability-export.service" server/src --type ts
+```
 
 原因：集中统计中心删除后，文档变更不再需要清理集中统计缓存。文档模块不应为了已删除页面保留跨域服务依赖。
 
@@ -221,9 +259,13 @@
 以下命令应无活跃命中，测试快照或历史 spec 除外：
 
 ```bash
-rg -n "title: '数据分析'|/statistics/overview|/statistics/documents|/statistics/tasks|@/api/statistics|statisticsApi" client/src
-rg -n "@Controller\\('statistics'\\)|StatisticsModule|StatisticsController|StatisticsService|StatisticsExportService|statistics-cache.interceptor" server/src
+rg -n "title: '数据分析'|/statistics/(overview|documents|tasks|dashboard)|@/api/statistics|statisticsApi" client/src client/e2e
+rg -n "from ['\"]@/api/statistics['\"]" client/src
+rg -n "PERMISSION_RESOURCES" client/src | rg -v "permission\\.ts:" && rg -n "value: 'statistics'" client/src
+rg -n "@Controller\\('statistics'\\)|StatisticsModule|StatisticsController|StatisticsService|StatisticsExportService|StatisticsCacheInterceptor|statistics-cache.interceptor" server/src
 ```
+
+第三条命令的两部分：第一部分确认 `PERMISSION_RESOURCES` 引用方仍正常工作；第二部分确认 `statistics` 资源条目已彻底删除。
 
 以下命令应仍能命中保留业务模块能力：
 
@@ -277,9 +319,11 @@ npm run test -w server -- --runInBand
 - 删除要全链路完成，不得只隐藏菜单。
 - 不得删除业务域内部统计，只删除独立统计中心。
 - 不得把 `/statistics/users` 或 `/statistics/equipment` 迁成新的全局统计 API；如果未来需要用户/设备统计，应归属到用户或设备域。
-- 删除 `StatisticsCacheInterceptor` 后，需要确认文档 controller 不再 import 已删除文件。
+- 删除 `StatisticsCacheInterceptor` 后，需要确认文档 module 和 controller 三处引用全部清理（import、imports 数组、providers 数组、装饰器）。
 - 删除后如有测试引用旧统计中心，应删除或改写测试目标，不能为了测试恢复已删除 API。
-- 当前工作区可能有其他未提交改动，实施时应只提交本轮相关文件，不回滚无关变更。
+- 当前工作区可能有其他未提交改动（如 `PermissionDefinitions.vue` / `PermissionList.vue` 的 `toList/toTotal` 重构），实施时应只提交本轮相关文件，不回滚无关变更。
+- `echarts` 依赖在 `package.json` 中保留：其他 6 处消费者（`deviation/DeviationAnalytics.vue`、`equipment/EquipmentStats.vue`、`equipment/FaultStats.vue`、`training/statistics/StatisticsPage.vue`、`document/DependencyGraph.vue`）仍在使用，不能移除依赖。
+- 生产环境 Redis 中残留的 `statistics:*` 键由 TTL（默认 300s）自然过期，实施者不要在部署后执行 FLUSHDB 或 SCAN+DEL。
 
 ---
 
@@ -288,5 +332,8 @@ npm run test -w server -- --runInBand
 - 无 TBD/TODO。
 - “彻底删除截图三页”和“保留业务模块内部统计”没有冲突。
 - 追溯导出被明确归回追溯域，不会因删除统计中心误删。
-- 文档模块与集中统计缓存的耦合有明确清理动作。
-- 验收命令覆盖前端、后端、浏览器和系统地图。
+- 文档模块与集中统计缓存的耦合在 module（import / imports 数组 / providers 数组）和 controller（import / 装饰器）两侧共四处都有明确清理动作。
+- 前端权限管理 UI 的 `PERMISSION_RESOURCES` 与 e2e 测试（`statistics.spec.ts` 整文件 + `audit-system.spec.ts` 中 STAT-001/002）均纳入删除清单。
+- 生产 DB 中可能存在的历史 `statistics:*` 权限记录处置态度已明确：seed 未种入，运维按需手动清理。
+- Redis `statistics:*` 残键处置已明确：TTL 自然过期，不手动清理。
+- 验收命令覆盖前端（含 e2e 与 default import 写法）、后端（含 interceptor 符号名）、权限常量、浏览器和系统地图。

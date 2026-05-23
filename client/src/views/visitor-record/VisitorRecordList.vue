@@ -134,6 +134,7 @@ import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import visitorRecordApi, { type VisitorRecord } from '@/api/visitor-record';
+import { toList } from '@/utils/apiResponse';
 
 const list = ref<VisitorRecord[]>([]);
 const loading = ref(false);
@@ -181,7 +182,7 @@ async function loadList() {
   loading.value = true;
   try {
     const res = await visitorRecordApi.getList(filterDate.value || undefined);
-    list.value = res.data as unknown as VisitorRecord[];
+    list.value = toList<VisitorRecord>(res);
   } catch {
     ElMessage.error('加载访客记录列表失败');
   } finally {

@@ -98,6 +98,7 @@ import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import processRecordApi, { type ProcessRecord } from '@/api/process-record';
 import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelect.vue';
+import { toList } from '@/utils/apiResponse';
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -150,7 +151,7 @@ async function loadList() {
   loading.value = true;
   try {
     const res = await processRecordApi.getByBatch(filterBatchId.value);
-    list.value = res.data as unknown as ProcessRecord[];
+    list.value = toList<ProcessRecord>(res);
   } catch {
     ElMessage.error('加载记录失败');
   } finally {

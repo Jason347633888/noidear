@@ -150,6 +150,7 @@ import nonConformanceApi, {
   getNcDispositionText,
   getNcSourceTypeText,
 } from '@/api/non-conformance';
+import { toList } from '@/utils/apiResponse';
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -212,7 +213,7 @@ async function loadList() {
   loading.value = true;
   try {
     const res = await nonConformanceApi.getList(filterStatus.value || undefined);
-    list.value = res.data as unknown as NonConformance[];
+    list.value = toList<NonConformance>(res);
   } catch {
     ElMessage.error('加载不合格品列表失败');
   } finally {

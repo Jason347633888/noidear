@@ -99,6 +99,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import request from '@/api/request';
+import { toList, toTotal } from '@/utils/apiResponse';
 
 interface PermissionDef {
   id: string;
@@ -164,8 +165,8 @@ const fetchData = async () => {
         action: filterForm.action || undefined,
       },
     });
-    tableData.value = res.list ?? [];
-    pagination.total = res.total ?? 0;
+    tableData.value = toList(res);
+    pagination.total = toTotal(res);
   } catch {
     ElMessage.error('获取权限定义列表失败');
   } finally {

@@ -201,6 +201,7 @@ import measuringEquipmentApi, {
   getCalibrationResultText,
   getCalibrationResultType,
 } from '@/api/measuring-equipment';
+import { toList } from '@/utils/apiResponse';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -285,7 +286,7 @@ async function loadList() {
   loading.value = true;
   try {
     const res = await measuringEquipmentApi.getList();
-    list.value = res.data as unknown as MeasuringEquipment[];
+    list.value = toList<MeasuringEquipment>(res);
   } catch {
     ElMessage.error('加载设备列表失败');
   } finally {
@@ -372,7 +373,7 @@ async function viewCalibrations(equipment: MeasuringEquipment) {
   loadingHistory.value = true;
   try {
     const res = await measuringEquipmentApi.getCalibrations(equipment.id);
-    calibrationHistory.value = res.data as unknown as CalibrationRecord[];
+    calibrationHistory.value = toList<CalibrationRecord>(res);
   } catch {
     ElMessage.error('加载校准历史失败');
   } finally {

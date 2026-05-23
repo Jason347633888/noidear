@@ -140,6 +140,7 @@ import customerComplaintApi, {
 } from '@/api/customer-complaint';
 import externalPartyApi, { type ExternalParty } from '@/api/external-party';
 import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelect.vue';
+import { toList } from '@/utils/apiResponse';
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -202,7 +203,7 @@ async function loadList() {
   loading.value = true;
   try {
     const res = await customerComplaintApi.getList(filterStatus.value || undefined);
-    list.value = res.data as unknown as CustomerComplaint[];
+    list.value = toList<CustomerComplaint>(res);
   } catch {
     ElMessage.error('加载投诉列表失败');
   } finally {

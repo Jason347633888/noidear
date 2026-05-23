@@ -131,6 +131,7 @@ import equipmentApi, {
   getUrgencyText,
   getUrgencyType,
 } from '@/api/equipment';
+import { toList, toTotal } from '@/utils/apiResponse';
 
 const loading = ref(false);
 const tableData = ref<EquipmentFault[]>([]);
@@ -163,8 +164,16 @@ const fetchData = async () => {
       startDate: dateRange.value?.[0] || undefined,
       endDate: dateRange.value?.[1] || undefined,
     }) as unknown as FaultListResponse;
-    tableData.value = res.list;
-    pagination.total = res.total;
+    tableData.value = toList(res as any).map((fault: any) => ({
+      ...fault,
+      faultCode: fault.faultCode ?? fault.faultNumber,
+      description: fault.description ?? fault.faultDescription,
+      photos: fault.photos ?? fault.faultPhotos ?? [],
+      reportTime: fault.reportTime ?? fault.createdAt,
+      acceptTime: fault.acceptTime ?? fault.acceptedAt,
+      completeTime: fault.completeTime ?? fault.completedAt,
+    }));
+    pagination.total = toTotal(res as any);
   } catch {
     ElMessage.error('获取报修列表失败');
   } finally {

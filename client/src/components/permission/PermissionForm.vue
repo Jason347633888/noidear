@@ -108,6 +108,13 @@ const rules: FormRules = {
   ],
 };
 
+const resetForm = () => {
+  form.resource = '';
+  form.action = '';
+  form.description = '';
+  formRef.value?.clearValidate();
+};
+
 // 监听 permission 变化，填充表单
 watch(() => props.permission, (newPermission) => {
   if (newPermission) {
@@ -118,13 +125,6 @@ watch(() => props.permission, (newPermission) => {
     resetForm();
   }
 }, { immediate: true });
-
-const resetForm = () => {
-  form.resource = '';
-  form.action = '';
-  form.description = '';
-  formRef.value?.clearValidate();
-};
 
 const handleClose = () => {
   emit('update:visible', false);

@@ -175,6 +175,7 @@ const renderCostChart = (data: Array<{ month: string; cost: number }>) => {
 };
 
 type FaultRateItem = { category: string; faultCount: number; rate: number };
+type CostItem = { month: string; cost: number };
 
 const renderFaultRateChart = (data: FaultRateItem[]) => {
   faultRateChart = ensureChart(faultRateChartRef.value, faultRateChart);
@@ -199,6 +200,16 @@ const renderFaultRateChart = (data: FaultRateItem[]) => {
   });
 };
 
+const toCostItems = (res: any): CostItem[] => {
+  const source = res?.costByMonth ?? res;
+  if (Array.isArray(source)) return source;
+  if (!source || typeof source !== 'object') return [];
+  return Object.entries(source).map(([month, cost]) => ({
+    month,
+    cost: Number(cost) || 0,
+  }));
+};
+
 const fetchOverview = async () => {
   try {
     const res = await equipmentApi.getStatsOverview() as any;
@@ -219,7 +230,7 @@ const fetchCostData = async () => {
     };
     const res = await equipmentApi.getCostStats(params) as any;
     await nextTick();
-    renderCostChart(res.costByMonth || res || []);
+    renderCostChart(toCostItems(res));
   } catch {
     ElMessage.error('获取维保成本数据失败');
   }

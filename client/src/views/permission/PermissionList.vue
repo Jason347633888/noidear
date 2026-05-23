@@ -153,6 +153,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import request from '@/api/request';
 import PermissionForm from '@/components/permission/PermissionForm.vue';
 import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
+import { toList, toTotal } from '@/utils/apiResponse';
 
 interface Permission {
   id: string;
@@ -230,8 +231,8 @@ const fetchData = async () => {
         action: filterForm.action || undefined,
       },
     });
-    tableData.value = res.list;
-    pagination.total = res.total;
+    tableData.value = toList(res);
+    pagination.total = toTotal(res);
   } catch (error) {
     ElMessage.error('获取权限列表失败');
   } finally {

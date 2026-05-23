@@ -114,6 +114,7 @@ import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import medicationRecordApi, { type MedicationRecord } from '@/api/medication-record';
+import { toList } from '@/utils/apiResponse';
 import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 const list = ref<MedicationRecord[]>([]);
@@ -157,7 +158,7 @@ async function loadList() {
   try {
     const fitForDuty = filterFitForDuty.value === '' ? undefined : filterFitForDuty.value;
     const res = await medicationRecordApi.getList(filterEmployeeId.value || undefined, fitForDuty);
-    list.value = res.data as unknown as MedicationRecord[];
+    list.value = toList<MedicationRecord>(res);
   } catch {
     ElMessage.error('加载用药记录列表失败');
   } finally {

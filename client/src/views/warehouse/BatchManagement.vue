@@ -71,6 +71,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { batchApi } from '@/api/warehouse';
+import { toList, toTotal } from '@/utils/apiResponse';
 
 const loading = ref(false);
 const tableData = ref<any[]>([]);
@@ -88,8 +89,8 @@ const fetchData = async () => {
       limit: pagination.limit,
       status: filterForm.status || undefined,
     });
-    tableData.value = res.list;
-    pagination.total = res.total;
+    tableData.value = toList(res);
+    pagination.total = toTotal(res);
   } catch (error) {
     ElMessage.error('获取批次列表失败');
   } finally {

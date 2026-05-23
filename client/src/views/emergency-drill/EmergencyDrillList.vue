@@ -144,6 +144,7 @@ import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import emergencyDrillApi, { type EmergencyDrillRecord, getDrillTypeText, getResultText } from '@/api/emergency-drill';
+import { toList } from '@/utils/apiResponse';
 
 const list = ref<EmergencyDrillRecord[]>([]);
 const loading = ref(false);
@@ -183,7 +184,7 @@ async function loadList() {
   loading.value = true;
   try {
     const res = await emergencyDrillApi.getList();
-    list.value = res.data as unknown as EmergencyDrillRecord[];
+    list.value = toList<EmergencyDrillRecord>(res);
   } catch {
     ElMessage.error('加载演练记录列表失败');
   } finally {

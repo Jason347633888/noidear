@@ -150,6 +150,7 @@ import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import fragileItemInspectionApi, { type FragileItemInspection } from '@/api/fragile-item-inspection';
 import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelect.vue';
+import { toList } from '@/utils/apiResponse';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -202,7 +203,7 @@ async function loadList() {
   try {
     const [startDate, endDate] = dateRange.value ?? [undefined, undefined];
     const res = await fragileItemInspectionApi.getList(startDate, endDate);
-    list.value = res.data as unknown as FragileItemInspection[];
+    list.value = toList<FragileItemInspection>(res);
   } catch {
     ElMessage.error('加载检查记录列表失败');
   } finally {

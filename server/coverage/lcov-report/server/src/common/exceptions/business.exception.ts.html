@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">55.17% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/29</span>
+                <span class='fraction'>16/29</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">8.33% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/24</span>
+                <span class='fraction'>2/24</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">66.66% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/3</span>
+                <span class='fraction'>2/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">69.56% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/23</span>
+                <span class='fraction'>16/23</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -105,36 +105,36 @@
 <a name='L40'></a><a href='#L40'>40</a>
 <a name='L41'></a><a href='#L41'>41</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">19x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-yes">19x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">19x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">24x</span>
+<span class="cline-any cline-yes">24x</span>
+<span class="cline-any cline-yes">24x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">24x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">19x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -145,17 +145,17 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// 自定义异常类
 &nbsp;
-<span class="cstat-no" title="statement not covered" >import { HttpStatus } from '@nestjs/common';</span>
+import { HttpStatus } from '@nestjs/common';
 &nbsp;
-<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >export enum E</span>rrorCode {</span>
-<span class="cstat-no" title="statement not covered" >  SUCCESS = 0,</span>
-<span class="cstat-no" title="statement not covered" >  VALIDATION_ERROR = 400001,</span>
-<span class="cstat-no" title="statement not covered" >  UNAUTHORIZED = 401001,</span>
-<span class="cstat-no" title="statement not covered" >  FORBIDDEN = 403001,</span>
-<span class="cstat-no" title="statement not covered" >  NOT_FOUND = 404001,</span>
-<span class="cstat-no" title="statement not covered" >  CONFLICT = 409001,</span>
-<span class="cstat-no" title="statement not covered" >  INTERNAL_ERROR = 500001,</span>
-<span class="cstat-no" title="statement not covered" >  DATABASE_ERROR = 500002,</span>
+export enum ErrorCode {
+  SUCCESS = 0,
+  VALIDATION_ERROR = 400001,
+  UNAUTHORIZED = 401001,
+  FORBIDDEN = 403001,
+  NOT_FOUND = 404001,
+  CONFLICT = 409001,
+  INTERNAL_ERROR = 500001,
+  DATABASE_ERROR = 500002,
 }
 &nbsp;
 export interface ErrorResponse {
@@ -164,17 +164,17 @@ export interface ErrorResponse {
   details?: unknown;
 }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >export class B</span>usinessException extends Error {
-<span class="fstat-no" title="function not covered" >  constructor(</span>
-    public readonly <span class="cstat-no" title="statement not covered" >code: number,</span>
-    public readonly <span class="cstat-no" title="statement not covered" >message: string,</span>
-    public readonly <span class="cstat-no" title="statement not covered" >details?: unknown,</span>
+export class BusinessException extends Error {
+  constructor(
+    public readonly code: number,
+    public readonly message: string,
+    public readonly details?: unknown,
   ) {
-<span class="cstat-no" title="statement not covered" >    super(message);</span>
+    super(message);
   }
 }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >g</span>etHttpStatus(</span>code: number): HttpStatus {
+export function <span class="fstat-no" title="function not covered" >getHttpStatus(</span>code: number): HttpStatus {
 <span class="cstat-no" title="statement not covered" >  if (code &gt;= 400001 &amp;&amp; code &lt; 400100) <span class="cstat-no" title="statement not covered" >return HttpStatus.BAD_REQUEST;</span></span>
 <span class="cstat-no" title="statement not covered" >  if (code &gt;= 401001 &amp;&amp; code &lt; 401100) <span class="cstat-no" title="statement not covered" >return HttpStatus.UNAUTHORIZED;</span></span>
 <span class="cstat-no" title="statement not covered" >  if (code &gt;= 403001 &amp;&amp; code &lt; 403100) <span class="cstat-no" title="statement not covered" >return HttpStatus.FORBIDDEN;</span></span>
@@ -190,7 +190,7 @@ export interface ErrorResponse {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-08T02:26:35.658Z
+                at 2026-05-14T16:25:09.466Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/17</span>
+                <span class='fraction'>19/19</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/15</span>
+                <span class='fraction'>17/17</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -107,20 +107,27 @@
 <a name='L42'></a><a href='#L42'>42</a>
 <a name='L43'></a><a href='#L43'>43</a>
 <a name='L44'></a><a href='#L44'>44</a>
-<a name='L45'></a><a href='#L45'>45</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -150,21 +157,26 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { Module } from '@nestjs/common';</span>
-<span class="cstat-no" title="statement not covered" >import { BatchNumberGeneratorService } from './services/batch-number-generator.service';</span>
-<span class="cstat-no" title="statement not covered" >import { ProductionBatchService } from './services/production-batch.service';</span>
-<span class="cstat-no" title="statement not covered" >import { MaterialBatchService } from './services/material-batch.service';</span>
-<span class="cstat-no" title="statement not covered" >import { BatchMaterialUsageService } from './services/batch-material-usage.service';</span>
-<span class="cstat-no" title="statement not covered" >import { MaterialUsageService } from './services/material-usage.service';</span>
-<span class="cstat-no" title="statement not covered" >import { TraceabilityService } from './services/traceability.service';</span>
-<span class="cstat-no" title="statement not covered" >import { TraceExportService } from './services/trace-export.service';</span>
-<span class="cstat-no" title="statement not covered" >import { ProductionBatchController } from './controllers/production-batch.controller';</span>
-<span class="cstat-no" title="statement not covered" >import { MaterialBatchController } from './controllers/material-batch.controller';</span>
-<span class="cstat-no" title="statement not covered" >import { MaterialUsageController } from './controllers/material-usage.controller';</span>
-<span class="cstat-no" title="statement not covered" >import { TraceController } from './controllers/trace.controller';</span>
-<span class="cstat-no" title="statement not covered" >import { TraceExportController } from './controllers/trace-export.controller';</span>
-<span class="cstat-no" title="statement not covered" >import { PrismaModule } from '../../prisma/prisma.module';</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Module } from '@nestjs/common';
+import { BatchNumberGeneratorService } from './services/batch-number-generator.service';
+import { ProductionBatchService } from './services/production-batch.service';
+import { MaterialBatchService } from './services/material-batch.service';
+import { BatchMaterialUsageService } from './services/batch-material-usage.service';
+import { MaterialUsageService } from './services/material-usage.service';
+import { TraceabilityService } from './services/traceability.service';
+import { TraceExportService } from './services/trace-export.service';
+import { BatchMixingAggregationService } from './services/batch-mixing-aggregation.service';
+import { ProductionBatchController } from './controllers/production-batch.controller';
+import { MaterialBatchController } from './controllers/material-batch.controller';
+import { MaterialUsageController } from './controllers/material-usage.controller';
+import { TraceExportController } from './controllers/trace-export.controller';
+import { BatchMixingAggregationController } from './controllers/batch-mixing-aggregation.controller';
+import { BatchMaterialUsageController } from './controllers/batch-material-usage.controller';
+import { PrismaModule } from '../../prisma/prisma.module';
 &nbsp;
 @Module({
   imports: [PrismaModule],
@@ -172,8 +184,9 @@
     ProductionBatchController,
     MaterialBatchController,
     MaterialUsageController,
-    TraceController,
     TraceExportController,
+    BatchMixingAggregationController,
+    BatchMaterialUsageController,
   ],
   providers: [
     BatchNumberGeneratorService,
@@ -183,6 +196,7 @@
     MaterialUsageService,
     TraceabilityService,
     TraceExportService,
+    BatchMixingAggregationService,
   ],
   exports: [
     BatchNumberGeneratorService,
@@ -192,9 +206,10 @@
     MaterialUsageService,
     TraceabilityService,
     TraceExportService,
+    BatchMixingAggregationService,
   ],
 })
-export <span class="cstat-no" title="statement not covered" >class <span class="cstat-no" title="statement not covered" ><span class="cstat-no" title="statement not covered" >BatchTraceModule </span>{}</span></span>
+export class BatchTraceModule {}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -202,7 +217,7 @@ export <span class="cstat-no" title="statement not covered" >class <span class="
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-08T02:26:35.658Z
+                at 2026-05-14T16:25:09.466Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

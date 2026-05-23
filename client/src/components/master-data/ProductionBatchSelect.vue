@@ -23,6 +23,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { productionBatchApi } from '@/api/batch';
+import { toList } from '@/utils/apiResponse';
 
 defineProps<{ modelValue?: string }>();
 const emit = defineEmits<{ (e: 'update:modelValue', value: string): void }>();
@@ -33,8 +34,12 @@ const options = ref<any[]>([]);
 async function search(keyword = '') {
   loading.value = true;
   try {
-    const res = await productionBatchApi.getList({ page: 1, limit: 20, keyword });
-    options.value = (res as any)?.list ?? (Array.isArray(res) ? res : []);
+    const res = await productionBatchApi.getList({
+      page: 1,
+      limit: 20,
+      search: keyword || undefined,
+    });
+    options.value = toList(res as any);
   } catch {
     options.value = [];
   } finally {

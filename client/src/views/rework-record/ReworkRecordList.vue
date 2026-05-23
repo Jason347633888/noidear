@@ -149,6 +149,7 @@ import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import reworkRecordApi, { type ReworkRecord, getVerdictTagType, getVerdictText } from '@/api/rework-record';
 import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelect.vue';
+import { toList } from '@/utils/apiResponse';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -201,7 +202,7 @@ async function loadList() {
   try {
     const [startDate, endDate] = dateRange.value ?? [undefined, undefined];
     const res = await reworkRecordApi.getList(startDate, endDate);
-    list.value = res.data as unknown as ReworkRecord[];
+    list.value = toList<ReworkRecord>(res);
   } catch {
     ElMessage.error('加载返工记录列表失败');
   } finally {

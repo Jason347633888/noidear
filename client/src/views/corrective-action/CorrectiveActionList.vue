@@ -158,6 +158,7 @@ import correctiveActionApi, {
   getCapaStatusType,
   getCapaTriggerTypeText,
 } from '@/api/corrective-action';
+import { toList } from '@/utils/apiResponse';
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -203,7 +204,7 @@ async function loadList() {
   loading.value = true;
   try {
     const res = await correctiveActionApi.getList(filterStatus.value || undefined);
-    list.value = res.data as unknown as CorrectiveAction[];
+    list.value = toList<CorrectiveAction>(res);
   } catch {
     ElMessage.error('加载 CAPA 列表失败');
   } finally {

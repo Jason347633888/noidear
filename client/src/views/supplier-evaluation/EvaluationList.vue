@@ -145,6 +145,7 @@ import supplierEvaluationApi, {
   getVerdictText,
   getVerdictType,
 } from '@/api/supplier-evaluation';
+import { toList } from '@/utils/apiResponse';
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -190,7 +191,7 @@ async function loadList() {
   loading.value = true;
   try {
     const res = await supplierEvaluationApi.getList();
-    list.value = res.data as unknown as SupplierEvaluation[];
+    list.value = toList<SupplierEvaluation>(res);
   } catch {
     ElMessage.error('加载评估记录失败');
   } finally {

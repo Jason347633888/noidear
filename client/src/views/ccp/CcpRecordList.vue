@@ -151,6 +151,7 @@ import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import ccpApi, { type CcpRecord, type CcpPoint } from '@/api/ccp';
+import { toList } from '@/utils/apiResponse';
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -229,7 +230,7 @@ async function loadRecords() {
   loading.value = true;
   try {
     const res = await ccpApi.getRecordsByBatch(id);
-    list.value = res.data as unknown as CcpRecord[];
+    list.value = toList<CcpRecord>(res);
   } catch {
     ElMessage.error('加载 CCP 记录失败');
   } finally {
@@ -241,7 +242,7 @@ async function loadMissing() {
   if (!batchId.value) return;
   try {
     const res = await ccpApi.getMissingCCPs(batchId.value);
-    missingCCPs.value = res.data as unknown as CcpPoint[];
+    missingCCPs.value = toList<CcpPoint>(res);
     if (missingCCPs.value.length === 0) {
       ElMessage.success('该批次所有 CCP 点均已填写监控记录');
     }

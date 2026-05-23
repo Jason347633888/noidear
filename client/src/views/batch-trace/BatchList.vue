@@ -116,6 +116,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { productionBatchApi } from '@/api/batch';
 import ProductRecipeSelect from '@/components/master-data/ProductRecipeSelect.vue';
+import { toList, toTotal } from '@/utils/apiResponse';
 
 const router = useRouter();
 const loading = ref(false);
@@ -159,10 +160,10 @@ const fetchData = async () => {
       page: pagination.page,
       limit: pagination.limit,
       status: filterForm.status || undefined,
-      keyword: filterForm.keyword || undefined,
+      search: filterForm.keyword || undefined,
     });
-    tableData.value = res.list;
-    pagination.total = res.total;
+    tableData.value = toList(res);
+    pagination.total = toTotal(res);
   } catch (error) {
     ElMessage.error('获取批次列表失败');
   } finally {

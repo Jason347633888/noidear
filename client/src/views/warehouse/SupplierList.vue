@@ -114,6 +114,7 @@ import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { supplierApi, type Supplier, type SupplierControlledDocument } from '@/api/warehouse';
 import filePreviewApi from '@/api/file-preview';
+import { toList, toTotal } from '@/utils/apiResponse';
 
 const loading = ref(false);
 const submitting = ref(false);
@@ -141,8 +142,8 @@ const fetchData = async () => {
   loading.value = true;
   try {
     const res: any = await supplierApi.getList({ page: pagination.page, limit: pagination.limit, keyword: filterForm.keyword || undefined });
-    tableData.value = res?.list ?? [];
-    pagination.total = res?.total ?? 0;
+    tableData.value = toList(res);
+    pagination.total = toTotal(res);
   } catch { ElMessage.error('获取供应商列表失败'); }
   finally { loading.value = false; }
 };

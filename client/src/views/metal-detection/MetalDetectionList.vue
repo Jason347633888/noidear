@@ -128,6 +128,7 @@ import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import metalDetectionApi, { type MetalDetectionLog } from '@/api/metal-detection';
 import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelect.vue';
+import { toList } from '@/utils/apiResponse';
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -180,7 +181,7 @@ async function loadList() {
   loading.value = true;
   try {
     const res = await metalDetectionApi.getByBatch(filterBatchId.value);
-    list.value = res.data as unknown as MetalDetectionLog[];
+    list.value = toList<MetalDetectionLog>(res);
   } catch {
     ElMessage.error('加载记录失败');
   } finally {

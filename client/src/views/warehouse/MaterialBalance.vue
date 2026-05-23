@@ -28,11 +28,11 @@
       </div>
       <div class="app-panel--padded">
         <el-table :data="tableData" v-loading="loading" stripe show-summary>
-          <el-table-column prop="materialCode" label="物料编码" width="120" />
-          <el-table-column prop="materialName" label="物料名称" min-width="180" />
-          <el-table-column prop="inputQuantity" label="投入量" width="100" />
-          <el-table-column prop="outputQuantity" label="产出量" width="100" />
-          <el-table-column prop="wasteQuantity" label="损耗量" width="100" />
+          <el-table-column prop="materialCode" label="批次/物料编码" width="180" />
+          <el-table-column prop="materialName" label="批次/物料名称" min-width="180" />
+          <el-table-column prop="inputQuantity" label="入库量" width="100" />
+          <el-table-column prop="outputQuantity" label="出库量" width="100" />
+          <el-table-column prop="wasteQuantity" label="报废量" width="100" />
           <el-table-column prop="balance" label="平衡差" width="100">
             <template #default="{ row }">
               <span :class="{ 'text-danger': row.balance < 0, 'text-success': row.balance >= 0 }">
@@ -70,7 +70,16 @@ const fetchData = async () => {
   loading.value = true;
   try {
     const res: any = await materialBalanceApi.check(filterForm.batchId || undefined);
-    tableData.value = res;
+    const rows = Array.isArray(res) ? res : (res?.batches ?? []);
+    tableData.value = rows.map((row: any) => ({
+      materialCode: row.materialCode ?? row.batchId,
+      materialName: row.materialName ?? row.batchId,
+      inputQuantity: row.inputQuantity ?? row.totalIn ?? 0,
+      outputQuantity: row.outputQuantity ?? row.totalOut ?? 0,
+      wasteQuantity: row.wasteQuantity ?? row.scrapped ?? 0,
+      balance: row.balance ?? row.difference ?? 0,
+      yieldRate: row.yieldRate ?? (row.isBalanced ? 100 : 0),
+    }));
   } catch (error) {
     ElMessage.error('获取物料平衡数据失败');
   } finally {

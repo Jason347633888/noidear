@@ -240,6 +240,7 @@ import wasteApi, {
   getWasteTypeText,
   getDisposalReasonText,
 } from '@/api/waste';
+import { toList } from '@/utils/apiResponse';
 import ProductionBatchSelect from '@/components/master-data/ProductionBatchSelect.vue';
 
 const activeTab = ref('disposals');
@@ -277,7 +278,7 @@ async function loadDisposals() {
   disposalLoading.value = true;
   try {
     const res = await wasteApi.getDisposals();
-    disposalList.value = res.data as unknown as WasteDisposalRecord[];
+    disposalList.value = toList<WasteDisposalRecord>(res);
   } catch {
     ElMessage.error('加载销毁记录列表失败');
   } finally {
@@ -355,7 +356,7 @@ async function loadWasteRecords() {
   wasteRecordLoading.value = true;
   try {
     const res = await wasteApi.getWasteRecords(filterWasteType.value || undefined);
-    wasteRecordList.value = res.data as unknown as WasteRecord[];
+    wasteRecordList.value = toList<WasteRecord>(res);
   } catch {
     ElMessage.error('加载废料记录列表失败');
   } finally {

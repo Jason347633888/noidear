@@ -104,6 +104,7 @@ import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import cleaningRecordApi, { type CleaningRecord, getTargetTypeText } from '@/api/cleaning-record';
+import { toList } from '@/utils/apiResponse';
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -151,7 +152,7 @@ async function loadList() {
   loading.value = true;
   try {
     const res = await cleaningRecordApi.getList(filterTargetType.value || undefined);
-    list.value = res.data as unknown as CleaningRecord[];
+    list.value = toList<CleaningRecord>(res);
   } catch {
     ElMessage.error('加载记录失败');
   } finally {

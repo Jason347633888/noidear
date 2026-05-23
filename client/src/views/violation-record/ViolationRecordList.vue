@@ -92,6 +92,7 @@ import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import violationRecordApi, { type ViolationRecord } from '@/api/violation-record';
+import { toList } from '@/utils/apiResponse';
 
 const list = ref<ViolationRecord[]>([]);
 const loading = ref(false);
@@ -130,7 +131,7 @@ async function loadList() {
   loading.value = true;
   try {
     const res = await violationRecordApi.getList(filterEmployeeId.value || undefined);
-    list.value = res.data as unknown as ViolationRecord[];
+    list.value = toList<ViolationRecord>(res);
   } catch {
     ElMessage.error('加载违规记录列表失败');
   } finally {

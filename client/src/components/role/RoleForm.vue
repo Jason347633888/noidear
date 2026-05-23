@@ -98,6 +98,13 @@ const rules: FormRules = {
   ],
 };
 
+const resetForm = () => {
+  form.code = '';
+  form.name = '';
+  form.description = '';
+  formRef.value?.clearValidate();
+};
+
 // 监听 role 变化，填充表单
 watch(() => props.role, (newRole) => {
   if (newRole) {
@@ -108,13 +115,6 @@ watch(() => props.role, (newRole) => {
     resetForm();
   }
 }, { immediate: true });
-
-const resetForm = () => {
-  form.code = '';
-  form.name = '';
-  form.description = '';
-  formRef.value?.clearValidate();
-};
 
 const handleClose = () => {
   emit('update:visible', false);

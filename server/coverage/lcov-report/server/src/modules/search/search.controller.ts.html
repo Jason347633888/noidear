@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">73.33% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/15</span>
+                <span class='fraction'>11/15</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">69.23% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/13</span>
+                <span class='fraction'>9/13</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -102,7 +102,7 @@
 <a name='L37'></a><a href='#L37'>37</a>
 <a name='L38'></a><a href='#L38'>38</a>
 <a name='L39'></a><a href='#L39'>39</a>
-<a name='L40'></a><a href='#L40'>40</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L40'></a><a href='#L40'>40</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -111,37 +111,37 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import {</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import {
   Controller,
   Post,
   Get,
@@ -150,33 +150,33 @@
   Query,
   UseGuards,
 } from '@nestjs/common';
-<span class="cstat-no" title="statement not covered" >import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';</span>
-<span class="cstat-no" title="statement not covered" >import { JwtAuthGuard } from '../auth/jwt-auth.guard';</span>
-<span class="cstat-no" title="statement not covered" >import { SearchService } from './search.service';</span>
-<span class="cstat-no" title="statement not covered" >import { SearchQueryDto } from './dto/search-query.dto';</span>
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { SearchService } from './search.service';
+import { SearchQueryDto } from './dto/search-query.dto';
 &nbsp;
 @ApiTags('全文搜索')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('search')
-export <span class="cstat-no" title="statement not covered" >class <span class="cstat-no" title="statement not covered" ><span class="cstat-no" title="statement not covered" >SearchController </span>{</span></span>
+export class SearchController {
 <span class="fstat-no" title="function not covered" >  constructor(private readonly <span class="cstat-no" title="statement not covered" >s</span>ervice: S</span>earchService) {}
 &nbsp;
   @Post('index/:documentId')
   @ApiOperation({ summary: '索引文档内容' })
-  async <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >indexDocument(</span>@Param('documentId') documentId: string) {</span>
+  async <span class="fstat-no" title="function not covered" >indexDocument(</span>@Param('documentId') documentId: string) {
 <span class="cstat-no" title="statement not covered" >    return this.service.indexDocument(documentId);</span>
   }
 &nbsp;
   @Get('query')
   @ApiOperation({ summary: '全文搜索' })
-  async <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >search(</span>@Query() query: SearchQueryDto) {</span>
+  async <span class="fstat-no" title="function not covered" >search(</span>@Query() query: SearchQueryDto) {
 <span class="cstat-no" title="statement not covered" >    return this.service.search(query);</span>
   }
 &nbsp;
   @Delete('index/:documentId')
   @ApiOperation({ summary: '删除文档索引' })
-  async <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >deleteIndex(</span>@Param('documentId') documentId: string) {</span>
+  async <span class="fstat-no" title="function not covered" >deleteIndex(</span>@Param('documentId') documentId: string) {
 <span class="cstat-no" title="statement not covered" >    return this.service.deleteIndex(documentId);</span>
   }
 }
@@ -187,7 +187,7 @@ export <span class="cstat-no" title="statement not covered" >class <span class="
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-08T02:26:35.658Z
+                at 2026-05-14T16:25:09.466Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

@@ -96,6 +96,7 @@ import request from '@/api/request';
 import RoleForm from '@/components/role/RoleForm.vue';
 import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 import RolePermissions from '@/components/role/RolePermissions.vue';
+import { toList, toTotal } from '@/utils/apiResponse';
 
 interface Role {
   id: string;
@@ -153,8 +154,8 @@ const fetchData = async () => {
         keyword: filterForm.keyword || undefined,
       },
     });
-    tableData.value = res.list;
-    pagination.total = res.total;
+    tableData.value = toList(res);
+    pagination.total = toTotal(res);
   } catch (error) {
     ElMessage.error('获取角色列表失败');
   } finally {

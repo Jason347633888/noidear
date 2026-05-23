@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/12</span>
+                <span class='fraction'>12/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>2/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/12</span>
+                <span class='fraction'>12/12</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -89,56 +89,56 @@
 <a name='L24'></a><a href='#L24'>24</a>
 <a name='L25'></a><a href='#L25'>25</a>
 <a name='L26'></a><a href='#L26'>26</a>
-<a name='L27'></a><a href='#L27'>27</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<a name='L27'></a><a href='#L27'>27</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-yes">69x</span>
+<span class="cline-any cline-yes">69x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">69x</span>
+<span class="cline-any cline-yes">69x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">12x</span>
+<span class="cline-any cline-yes">12x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">11x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">12x</span>
+<span class="cline-any cline-yes">12x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >export class S</span>nowflake {
-  private <span class="cstat-no" title="statement not covered" >sequence = 0;</span>
-  private <span class="cstat-no" title="statement not covered" >lastTimestamp = 0n;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">export class Snowflake {
+  private sequence = 0;
+  private lastTimestamp = 0n;
   private readonly workerId: number;
   private readonly datacenterId: number;
 &nbsp;
-<span class="fstat-no" title="function not covered" >  constructor(w</span>orkerId: number = <span class="branch-0 cbranch-no" title="branch not covered" >1,</span> datacenterId: number = <span class="branch-0 cbranch-no" title="branch not covered" >1)</span> {
-<span class="cstat-no" title="statement not covered" >    this.workerId = workerId;</span>
-<span class="cstat-no" title="statement not covered" >    this.datacenterId = datacenterId;</span>
+  constructor(workerId: number = <span class="branch-0 cbranch-no" title="branch not covered" >1,</span> datacenterId: number = <span class="branch-0 cbranch-no" title="branch not covered" >1)</span> {
+    this.workerId = workerId;
+    this.datacenterId = datacenterId;
   }
 &nbsp;
-<span class="fstat-no" title="function not covered" >  nextId(</span>): string {
-    const timestamp = <span class="cstat-no" title="statement not covered" >BigInt(Date.now());</span>
-<span class="cstat-no" title="statement not covered" >    if (timestamp === this.lastTimestamp) {</span>
-<span class="cstat-no" title="statement not covered" >      this.sequence = (this.sequence + 1) &amp; 4095;</span>
+  nextId(): string {
+    const timestamp = BigInt(Date.now());
+    if (timestamp === this.lastTimestamp) {
+      this.sequence = (this.sequence + 1) &amp; 4095;
     } else {
-<span class="cstat-no" title="statement not covered" >      this.sequence = 0;</span>
+      this.sequence = 0;
     }
-<span class="cstat-no" title="statement not covered" >    this.lastTimestamp = timestamp;</span>
-    const id = <span class="cstat-no" title="statement not covered" >((timestamp - 1609459200000n) &lt;&lt; 22n) |</span>
+    this.lastTimestamp = timestamp;
+    const id = ((timestamp - 1609459200000n) &lt;&lt; 22n) |
                (BigInt(this.datacenterId) &lt;&lt; 17n) |
                (BigInt(this.workerId) &lt;&lt; 12n) |
                BigInt(this.sequence);
-<span class="cstat-no" title="statement not covered" >    return id.toString();</span>
+    return id.toString();
   }
 }
 &nbsp;</pre></td></tr></table></pre>
@@ -148,7 +148,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-08T02:26:35.658Z
+                at 2026-05-14T16:25:09.466Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

@@ -1359,7 +1359,7 @@ git commit -m "feat: add noidear-chat shortcut runner"
 ### Task 10: Frontend-Derived Shortcut Registry And Domain Shortcuts
 
 **Files:**
-- Read: `docs/superpowers/specs/2026-05-22-cli-api-shortcut-coverage-matrix.md`
+- Read: `docs/superpowers/specs/2026-05-22-conversational-cli-design.md` (Shortcuts 章节含覆盖矩阵、候选清单、推导规则)
 - Create: `tools/noidear-chat/src/shortcuts/frontend-derived-shortcut-registry.json`
 - Create: `tools/noidear-chat/src/shortcuts/registry.ts`
 - Create: `tools/noidear-chat/src/shortcuts/frontend-inference.ts`

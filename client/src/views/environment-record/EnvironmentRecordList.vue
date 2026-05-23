@@ -155,6 +155,7 @@ import environmentRecordApi, {
   getRecordTypeText,
 } from '@/api/environment-record';
 import { workshopAreaApi, type WorkshopArea } from '@/api/workshop-area';
+import { toList } from '@/utils/apiResponse';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -216,7 +217,7 @@ async function loadList() {
   try {
     const [startDate, endDate] = dateRange.value ?? [undefined, undefined];
     const res = await environmentRecordApi.getList(startDate, endDate);
-    list.value = res.data as unknown as EnvironmentRecord[];
+    list.value = toList<EnvironmentRecord>(res);
   } catch {
     ElMessage.error('加载环境记录列表失败');
   } finally {
