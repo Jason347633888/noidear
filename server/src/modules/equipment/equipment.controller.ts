@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { EquipmentService } from './equipment.service';
@@ -31,8 +32,8 @@ export class EquipmentController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() dto: CreateEquipmentDto) {
-    return this.equipmentService.create(dto);
+  create(@Body() dto: CreateEquipmentDto, @Request() req: any) {
+    return this.equipmentService.create(dto, req?.user?.id);
   }
 
   @Get()

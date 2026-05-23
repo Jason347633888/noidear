@@ -22,10 +22,16 @@ export class EquipmentService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async create(dto: CreateEquipmentDto) {
+  async create(dto: CreateEquipmentDto, creatorId?: string) {
     try {
       const code = await this.generateCode();
-      const extra = this.mapDtoToData(dto);
+      // If responsiblePersonId is not provided, default to the creator so that
+      // the ownership filter always matches at least the person who created it.
+      const dtoWithDefaults: CreateEquipmentDto = {
+        ...dto,
+        responsiblePersonId: dto.responsiblePersonId ?? creatorId,
+      };
+      const extra = this.mapDtoToData(dtoWithDefaults);
       const equipment = await this.prisma.equipment.create({
         data: {
           code,

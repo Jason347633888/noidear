@@ -56,11 +56,13 @@ export class ApprovalDefinitionController {
   @Patch(':id')
   async update(@Param('id') id: string, @Body() body: UpdateApprovalDefinitionDto, @Request() req: any) {
     assertAdmin(req);
-    // If the PATCH sets status to 'active', run the same step validation as the /activate endpoint.
+    // If the PATCH sets status to 'active', validate the steps that will actually be saved:
+    // if the request includes new steps, validate those; otherwise fall back to current steps.
     if ((body as any).status === 'active') {
       const current = await this.prisma.approvalDefinition.findUnique({ where: { id } });
       if (!current) throw new NotFoundException(`ApprovalDefinition ${id} not found`);
-      await this.assertStepsValid(current);
+      const stepsToValidate = body.steps ?? (current as any).steps;
+      await this.assertStepsValid({ steps: stepsToValidate });
     }
     return this.prisma.approvalDefinition.update({ where: { id }, data: body as any });
   }

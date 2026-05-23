@@ -49,7 +49,7 @@ export const menuGroups: MenuGroup[] = [
     children: [
       { path: '/records', title: '记录管理', icon: Document, moduleKey: 'document_approval' },
       { path: '/record-tasks/manage', title: '任务配置', icon: Setting, moduleKey: 'work_execution' },
-      { path: '/production/workshop-staging', title: '车间暂存区', icon: Grid },
+      { path: '/production/workshop-staging', title: '车间暂存区', icon: Grid, moduleKey: 'warehouse' },
     ],
   },
   {
@@ -101,7 +101,7 @@ export const menuGroups: MenuGroup[] = [
       { path: '/waste', title: '废弃物管理', icon: Delete },
       { path: '/line-change-check-records', title: '换产前检查', icon: RefreshLeft },
       { path: '/food-safety-culture-records', title: '食品安全文化', icon: UserFilled },
-      { path: '/external-parties', title: '外部方档案', icon: UserFilled },
+      { path: '/external-parties', title: '外部方档案', icon: UserFilled, moduleKey: 'warehouse' },
     ],
   },
   {
