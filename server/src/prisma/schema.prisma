@@ -144,10 +144,6 @@ model User {
   notifications      Notification[]
   managedDepartments Department[]      @relation("DepartmentManager")
 
-  // P1-2: Fine-grained permission relations
-  userPermissions    UserPermission[] @relation("UserPermissions")
-  permissionsGranted UserPermission[] @relation("PermissionGrantor")
-
   // Deviation relations
   reportedDeviations DeviationReport[] @relation("DeviationReporter")
 
@@ -211,7 +207,6 @@ model Department {
   users                  User[]                  @relation("UserDepartment")
   pendingNumbers         PendingNumber[]
   documentNumberCounters DocumentNumberCounter[]
-  departmentPermissions  DepartmentPermission[]
   documents              Document[]              @relation("DocumentDepartment")
   ownedDocuments         Document[]              @relation("DocumentOwnerDepartment")
   recordTaskAssignments  RecordTaskAssignment[]  @relation("RecordTaskDepartment")
@@ -536,84 +531,8 @@ model Role {
   deletedAt   DateTime?
 
   users                  User[]                      @relation("UserRole")
-  permissions            RolePermission[]
-  fineGrainedPermissions RoleFineGrainedPermission[]
 
   @@map("roles")
-}
-
-model Permission {
-  id          String   @id @default(cuid())
-  resource    String // document, template, task, approval
-  action      String // create, read, update, delete, approve
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  roles RolePermission[]
-
-  @@unique([resource, action])
-  @@index([resource])
-  @@map("permissions")
-}
-
-model RolePermission {
-  id           String     @id @default(cuid())
-  roleId       String
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permissionId String
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  createdAt    DateTime   @default(now())
-
-  @@unique([roleId, permissionId])
-  @@index([roleId])
-  @@index([permissionId])
-  @@map("role_permissions")
-}
-
-// P1-2: 细粒度权限定义表（ABAC）
-model FineGrainedPermission {
-  id          String   @id @default(cuid())
-  code        String   @unique
-  name        String
-  category    String
-  scope       String
-  status      String   @default("active")
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  userPermissions UserPermission[]
-
-  @@index([code])
-  @@index([category])
-  @@index([scope])
-  @@index([status])
-  @@map("fine_grained_permissions")
-}
-
-// P1-2: 用户权限授予记录表
-model UserPermission {
-  id                      String                @id @default(cuid())
-  userId                  String
-  user                    User                  @relation("UserPermissions", fields: [userId], references: [id], onDelete: Cascade)
-  fineGrainedPermissionId String
-  fineGrainedPermission   FineGrainedPermission @relation(fields: [fineGrainedPermissionId], references: [id], onDelete: Cascade)
-  grantedBy               String
-  grantor                 User?                 @relation("PermissionGrantor", fields: [grantedBy], references: [id], onDelete: SetNull)
-  grantedAt               DateTime              @default(now())
-  expiresAt               DateTime?
-  reason                  String
-  resourceType            String?
-  resourceId              String?
-  createdAt               DateTime              @default(now())
-  updatedAt               DateTime              @updatedAt
-
-  @@index([userId])
-  @@index([fineGrainedPermissionId])
-  @@index([expiresAt])
-  @@index([resourceType, resourceId])
-  @@map("user_permissions")
 }
 
 // 动态表单引擎: 记录模板表
@@ -1893,39 +1812,6 @@ model TrainingArchive {
 
   @@index([projectId])
   @@map("training_archives")
-}
-
-// P1-2: 角色细粒度权限中间表
-model RoleFineGrainedPermission {
-  id        String   @id @default(cuid())
-  roleId    String
-  resource  String
-  action    String
-  allowed   Boolean  @default(true)
-  grantedBy String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@unique([roleId, resource, action])
-  @@index([roleId])
-  @@map("role_fine_grained_permissions")
-}
-
-// P1-2: 部门权限表
-model DepartmentPermission {
-  id           String     @id @default(cuid())
-  departmentId String
-  resource     String
-  action       String
-  allowed      Boolean    @default(true)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-
-  @@unique([departmentId, resource, action])
-  @@index([departmentId])
-  @@map("department_permissions")
 }
 
 // ========================================
