@@ -34,8 +34,6 @@ import { BatchConfirmRecordFormLandingDto, ConfirmRecordFormLandingDto, UpdateRe
 import { RestoreDocumentDto } from './dto/archive-document.dto';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { UnifiedPermissionGuard } from '../../shared/guards/unified-permission.guard';
-import { RequirePermission } from '../../shared/decorators/require-permission.decorator';
 import { DepartmentPermissionService } from '../department-permission/department-permission.service';
 
 @ApiTags('文档管理')
@@ -103,8 +101,6 @@ export class DocumentController {
   }
 
   @Post('record-form-index/batch-confirm-suggested')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('record_form:landing_manage')
   @ApiOperation({ summary: '批量确认选中表单的落地建议' })
   batchConfirmRecordFormLanding(@Body() dto: BatchConfirmRecordFormLandingDto, @Req() req: any) {
     return this.recordFormLandingService.batchConfirmSuggested(dto.codes, req.user?.id || 'system');
@@ -117,8 +113,6 @@ export class DocumentController {
   }
 
   @Post('record-form-index/:code/confirm')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('record_form:landing_manage')
   @ApiOperation({ summary: '确认源表单落地关系' })
   confirmRecordFormLanding(@Param('code') code: string, @Body() dto: ConfirmRecordFormLandingDto, @Req() req: any) {
     return this.recordFormLandingService.confirm(code, dto, req.user.id);
@@ -137,8 +131,6 @@ export class DocumentController {
   }
 
   @Patch('record-form-index/:code')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:control_manage')
   @ApiOperation({ summary: '维护源表单目标入口' })
   updateRecordFormIndexEntry(
     @Param('code') code: string,
@@ -148,8 +140,6 @@ export class DocumentController {
   }
 
   @Get('reference-health/issues')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:control_manage')
   @ApiOperation({ summary: '查询文档引用问题清单' })
   getReferenceHealthIssues() {
     return this.referenceHealthService.listIssues();
@@ -228,8 +218,6 @@ export class DocumentController {
   }
 
   @Post(':id/archive')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:archive')
   @ApiOperation({ summary: '归档文档' })
   async archive(
     @Param('id') id: string,
@@ -275,8 +263,6 @@ export class DocumentController {
   }
 
   @Delete(':id/permanent')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:permanent_delete')
   @ApiOperation({ summary: '物理删除文档' })
   async permanentDelete(@Param('id') id: string, @Req() req: any) {
     return this.documentService.permanentDelete(id, req.user.id);
@@ -350,8 +336,6 @@ export class DocumentController {
   }
 
   @Post(':id/revisions')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:revise')
   @ApiOperation({ summary: '发起文件修订草稿' })
   createRevision(@Param('id') id: string, @Req() req: any) {
     return this.documentService.createRevisionDraft(id, req.user.id);

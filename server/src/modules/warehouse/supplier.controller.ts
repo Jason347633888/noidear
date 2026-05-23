@@ -16,8 +16,6 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { UnifiedPermissionGuard } from '../../shared/guards/unified-permission.guard';
-import { RequirePermission } from '../../shared/decorators/require-permission.decorator';
 import { SupplierService } from './supplier.service';
 import {
   CreateSupplierDto,
@@ -75,8 +73,6 @@ export class SupplierController {
 
   @Post(':id/documents')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:control_manage')
   @UseInterceptors(FileInterceptor('file'))
   uploadDocument(
     @Param('id') id: string,
@@ -93,8 +89,6 @@ export class SupplierController {
   }
 
   @Post(':id/documents/:linkId/replace')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:control_manage')
   @UseInterceptors(FileInterceptor('file'))
   replaceDocument(
     @Param('id') id: string,
