@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -20,6 +21,7 @@ import {
 } from './dto/record.dto';
 
 @UseGuards(JwtAuthGuard)
+@ModuleKey('equipment_site')
 @Controller('maintenance-records')
 export class RecordController {
   constructor(private readonly recordService: RecordService) {}

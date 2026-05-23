@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -11,6 +12,7 @@ import { PlanService } from './plan.service';
 import { QueryPlanDto, CalendarQueryDto } from './dto/plan.dto';
 
 @UseGuards(JwtAuthGuard)
+@ModuleKey('equipment_site')
 @Controller('maintenance-plans')
 export class PlanController {
   constructor(private readonly planService: PlanService) {}

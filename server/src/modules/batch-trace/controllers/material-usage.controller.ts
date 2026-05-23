@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -15,6 +16,7 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 
 @ApiTags('批次物料关联管理')
+@ModuleKey('traceability_batch')
 @Controller('batch-trace/material-usage')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()

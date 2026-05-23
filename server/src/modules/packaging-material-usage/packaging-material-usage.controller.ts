@@ -1,8 +1,10 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { PackagingMaterialUsageService } from './packaging-material-usage.service';
 import { CreatePackagingMaterialUsageDto } from './dto/create-packaging-material-usage.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@ModuleKey('traceability_batch')
 @Controller('packaging-material-usages')
 @UseGuards(JwtAuthGuard)
 export class PackagingMaterialUsageController {

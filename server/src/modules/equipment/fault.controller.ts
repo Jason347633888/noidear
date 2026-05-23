@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -19,6 +20,7 @@ import {
 } from './dto/fault.dto';
 
 @UseGuards(JwtAuthGuard)
+@ModuleKey('equipment_site')
 @Controller('equipment/faults')
 export class FaultController {
   constructor(private readonly faultService: FaultService) {}

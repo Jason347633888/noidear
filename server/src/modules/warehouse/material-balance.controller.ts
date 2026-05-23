@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -7,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { MaterialBalanceService } from './material-balance.service';
 
+@ModuleKey('traceability_batch')
 @Controller('warehouse/material-balance')
 export class MaterialBalanceController {
   constructor(private readonly materialBalanceService: MaterialBalanceService) {}

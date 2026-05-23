@@ -1,9 +1,11 @@
+import { ModuleKey } from '../../../shared/decorators/module-key.decorator';
 import { Controller, Get, Param, Res, ParseUUIDPipe } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { TraceExportService } from '../services/trace-export.service';
 
 @ApiTags('批次追溯')
+@ModuleKey('traceability_batch')
 @Controller('batch-trace/trace')
 export class TraceExportController {
   constructor(private readonly traceExportService: TraceExportService) {}
