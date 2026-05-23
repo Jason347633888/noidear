@@ -4,6 +4,8 @@ import { NonConformanceService } from './non-conformance.service';
 import { CreateNcDto, DisposeNcDto } from './dto/create-nc.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @ModuleKey('quality_compliance')
 @Controller('non-conformances')
@@ -17,8 +19,8 @@ export class NonConformanceController {
   }
 
   @Get()
-  findAll(@Request() req: AuthenticatedRequest, @Query('status') status?: string) {
-    return this.service.findAll(req.user.companyId, status);
+  findAll(@Ownership() ownership: OwnershipContext, @Query('status') status?: string) {
+    return this.service.listForOwnership(ownership);
   }
 
   @Patch(':id/dispose')

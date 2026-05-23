@@ -27,7 +27,7 @@ export async function loginForTest(
   const loginRes = await request(app.getHttpServer())
     .post('/api/v1/auth/login')
     .send({ username, password })
-    .expect(200);
+    .expect(201);
 
   const data = getData(loginRes.body);
 
