@@ -39,7 +39,7 @@ export const menuGroups: MenuGroup[] = [
       { path: '/documents', title: '体系文件中心', icon: Files },
       { path: '/templates', title: '模板管理', icon: Grid },
       { path: '/documents/control/record-form-index', title: '记录表单索引', icon: List },
-      { path: '/approvals/history', title: '审批历史', icon: CircleCheck },
+      { path: '/approvals/history', title: '审批历史', icon: CircleCheck, moduleKey: 'work_execution' },
     ],
   },
   {
@@ -58,7 +58,7 @@ export const menuGroups: MenuGroup[] = [
     icon: Grid,
     children: [
       { path: '/products', title: '产品信息', icon: Goods },
-      { path: '/process', title: '研发流程列表', icon: List },
+      { path: '/process', title: '研发流程列表', icon: List, moduleKey: 'production_execution' },
     ],
   },
   {
@@ -72,7 +72,7 @@ export const menuGroups: MenuGroup[] = [
       { path: '/customer-complaints', title: '顾客投诉', icon: Message },
       { path: '/product-recalls', title: '产品召回', icon: WarnTriangleFilled },
       { path: '/supplier-evaluations', title: '供应商评估', icon: Goods },
-      { path: '/change-events', title: '变更管理', icon: Connection },
+      { path: '/change-events', title: '变更管理', icon: Connection, moduleKey: 'product_rd' },
       { path: '/deviation-reports', title: '偏差报告', icon: WarnTriangleFilled },
       { path: '/deviation-analytics', title: '偏差分析', icon: DataAnalysis },
     ],
@@ -110,7 +110,7 @@ export const menuGroups: MenuGroup[] = [
     icon: Box,
     children: [
       { path: '/batch-trace', title: '批次列表', icon: Box },
-      { path: '/warehouse/batches', title: '批次管理', icon: Goods },
+      { path: '/warehouse/batches', title: '批次管理', icon: Goods, moduleKey: 'warehouse' },
       { path: '/traceability', title: '追溯查询', icon: Search },
       { path: '/warehouse/material-balance', title: '物料平衡', icon: Goods },
       { path: '/incoming-inspections', title: '来料检验', icon: Document },

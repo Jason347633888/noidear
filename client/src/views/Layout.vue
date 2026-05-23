@@ -36,7 +36,7 @@
             </template>
             <template v-for="child in item.children" :key="child.path">
               <el-menu-item
-                v-if="!child.moduleKey || moduleAccess.hasModule(child.moduleKey)"
+                v-if="!(child.moduleKey ?? item.moduleKey) || moduleAccess.hasModule(child.moduleKey ?? item.moduleKey!)"
                 :index="child.path"
               >
                 <el-icon><component :is="child.icon" /></el-icon>
