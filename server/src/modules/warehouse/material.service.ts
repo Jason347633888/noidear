@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -9,10 +10,18 @@ import {
   UpdateMaterialDto,
   QueryMaterialDto,
 } from './dto/material.dto';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @Injectable()
 export class MaterialService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async createForOwnership(createMaterialDto: CreateMaterialDto, ownership: OwnershipContext) {
+    if (ownership.roleCode !== 'admin') {
+      throw new ForbiddenException('仅管理员可写入物料主数据');
+    }
+    return this.create(createMaterialDto);
+  }
 
   async create(createMaterialDto: CreateMaterialDto) {
     try {

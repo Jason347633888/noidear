@@ -5,6 +5,7 @@ import { InventoryMovementLedgerService } from './services/inventory-movement-le
 import { SupplierAccessService } from './services/supplier-access.service';
 import { Prisma } from '@prisma/client';
 import * as dayjs from 'dayjs';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @Injectable()
 export class RequisitionService {
@@ -14,6 +15,28 @@ export class RequisitionService {
     private readonly inventoryMovementLedger: InventoryMovementLedgerService,
     private readonly supplierAccess: SupplierAccessService,
   ) {}
+
+  /**
+   * TODO Task 46: applicantId 加上 FK relation 后对 user 改为标准过滤。
+   * 当前 user → []; leader → departmentId IN managedDepts; admin → 不过滤。
+   */
+  async listForOwnership(ownership: OwnershipContext) {
+    if (ownership.roleCode === 'user') return [];
+
+    const where: Record<string, unknown> = { deletedAt: null };
+
+    if (ownership.roleCode === 'leader') {
+      const depts = ownership.managedDepartmentIds ?? [];
+      if (depts.length === 0) return [];
+      where['departmentId'] = { in: depts };
+    }
+    // admin: no additional filter
+
+    return this.prisma.materialRequisition.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 
   async create(createDto: any) {
     const requisitionNo = this.generateRequisitionNo();

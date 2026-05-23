@@ -4,6 +4,8 @@ import { ApprovalEngineService } from '../../unified-approval/approval-engine.se
 import { InventoryMovementLedgerService } from './inventory-movement-ledger.service';
 import { Prisma } from '@prisma/client';
 import { CreateReturnDto, ApproveReturnDto } from '../dto/return.dto';
+import { OwnershipContext } from '../../module-access/ownership-context';
+import { userIdsInDepts } from '../../module-access/ownership-helpers';
 
 @Injectable()
 export class ReturnService {
@@ -12,6 +14,24 @@ export class ReturnService {
     @Optional() private readonly approvalEngine: ApprovalEngineService,
     private readonly inventoryMovementLedger: InventoryMovementLedgerService,
   ) {}
+
+  async listForOwnership(ownership: OwnershipContext) {
+    const where: Record<string, unknown> = {};
+
+    if (ownership.roleCode === 'user') {
+      where['requesterId'] = ownership.userId;
+    } else if (ownership.roleCode === 'leader') {
+      const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+      if (memberIds.length === 0) return [];
+      where['requesterId'] = { in: memberIds };
+    }
+    // admin: no filter
+
+    return this.prisma.materialReturn.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 
   async create(dto: CreateReturnDto) {
     // Validate all batches exist
