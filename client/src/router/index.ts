@@ -436,6 +436,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/audit/AuditSearchPage.vue'),
         meta: { requireRole: 'admin' },
       },
+      {
+        path: 'audit-logs',
+        name: 'AuditLogs',
+        component: () => import('@/views/audit/AuditSearchPage.vue'),
+        meta: { requireRole: 'admin' },
+      },
       // 高级功能模块
       {
         path: 'search',
