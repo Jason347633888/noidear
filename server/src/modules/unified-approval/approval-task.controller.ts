@@ -28,9 +28,15 @@ export class ApprovalTaskController {
 
     if (ownership) {
       if (ownership.roleCode === 'user') {
-        where['assigneeUserId'] = ownership.userId;
+        // user: direct assignment OR role-type tasks matching their roleCode
+        where['OR'] = [
+          { assigneeUserId: ownership.userId },
+          { assigneeUserId: null, assigneeRoleCode: ownership.roleCode },
+        ];
       } else if (ownership.roleCode === 'leader') {
-        // leader can act as assignee directly, OR oversee tasks assigned to their dept members
+        // leader can act as assignee directly, OR oversee tasks assigned to their dept members,
+        // OR claim ROLE-type tasks matching their roleCode,
+        // OR claim DEPARTMENT_ROLE-type tasks matching their departmentId
         const memberIds = ownership.managedDepartmentIds?.length
           ? (
               await this.prisma.user.findMany({
@@ -44,6 +50,12 @@ export class ApprovalTaskController {
           ...(memberIds.length ? [{ assigneeUserId: { in: memberIds } }] : []),
           ...(ownership.managedDepartmentIds?.length
             ? [{ assigneeDepartmentId: { in: ownership.managedDepartmentIds } }]
+            : []),
+          // ROLE-type tasks: null assigneeUserId with roleCode matching leader's role
+          { assigneeUserId: null, assigneeRoleCode: ownership.roleCode },
+          // DEPARTMENT_ROLE-type tasks: null assigneeUserId with departmentId matching leader's dept
+          ...(ownership.departmentId
+            ? [{ assigneeUserId: null, assigneeDepartmentId: ownership.departmentId }]
             : []),
         ];
       }

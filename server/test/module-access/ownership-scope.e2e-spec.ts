@@ -387,14 +387,13 @@ describe('E2E: OwnershipScope across modules (Task 47)', () => {
       const body = r.body;
       // Response may be { list: [...], total, page, limit } or { data: [...] }
       const users: any[] = body?.list ?? body?.data ?? (Array.isArray(body) ? body : []);
-      if (users.length > 0) {
-        users.forEach((u: any) => {
-          expect(u).not.toHaveProperty('password');
-          expect(u).not.toHaveProperty('loginAttempts');
-          expect(u).not.toHaveProperty('lockedUntil');
-          expect(u).not.toHaveProperty('firstFailedAt');
-        });
-      }
+      expect(users.length).toBeGreaterThan(0);
+      users.forEach((u: any) => {
+        expect(u).not.toHaveProperty('password');
+        expect(u).not.toHaveProperty('loginAttempts');
+        expect(u).not.toHaveProperty('lockedUntil');
+        expect(u).not.toHaveProperty('firstFailedAt');
+      });
     });
   });
 });

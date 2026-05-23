@@ -10,8 +10,9 @@ import { Response, Request } from 'express';
 import { BusinessException, ErrorCode } from '../exceptions/business.exception';
 
 interface ErrorResponse {
-  code: number;
+  code: number | string;
   message: string;
+  module?: string;
   details?: unknown;
   path?: string;
   timestamp?: string;
@@ -28,8 +29,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     let status: number;
     let message: string;
-    let code: number;
+    let code: number | string;
     let details: unknown;
+    let moduleKey: string | undefined;
 
     if (exception instanceof BusinessException) {
       status = getStatusFromCode(exception.code);
@@ -41,14 +43,25 @@ export class HttpExceptionFilter implements ExceptionFilter {
       const exceptionResponse = exception.getResponse();
       if (typeof exceptionResponse === 'string') {
         message = exceptionResponse;
+        code = ErrorCode.VALIDATION_ERROR + (status - 400);
       } else if (typeof exceptionResponse === 'object') {
         const obj = exceptionResponse as Record<string, unknown>;
         message = (obj.message as string) || exception.message;
         details = obj.details;
+        // Preserve string code fields (e.g. MODULE_DISABLED) from the original response
+        if (typeof obj.code === 'string') {
+          code = obj.code;
+        } else {
+          code = ErrorCode.VALIDATION_ERROR + (status - 400);
+        }
+        // Preserve module field for MODULE_DISABLED responses
+        if (typeof obj.module === 'string') {
+          moduleKey = obj.module;
+        }
       } else {
         message = exception.message;
+        code = ErrorCode.VALIDATION_ERROR + (status - 400);
       }
-      code = ErrorCode.VALIDATION_ERROR + (status - 400);
     } else if (exception instanceof Error) {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
       message = '内部服务器错误';
@@ -67,6 +80,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const errorResponse: ErrorResponse = {
       code,
       message,
+      ...(moduleKey !== undefined ? { module: moduleKey } : {}),
       details,
       path: request.url,
       timestamp: new Date().toISOString(),

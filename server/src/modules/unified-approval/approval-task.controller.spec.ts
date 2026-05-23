@@ -26,12 +26,16 @@ describe('ApprovalTaskController.findMyPending ownership', () => {
 
   beforeEach(() => jest.clearAllMocks());
 
-  it('user: findMany filters assigneeUserId = userId', async () => {
+  it('user: findMany uses OR filter with assigneeUserId = userId and ROLE-type condition', async () => {
     const { controller, prisma } = freshController();
     const ownership: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd-x', managedDepartmentIds: [] };
     await controller.findMyPending(makeReq(ownership));
-    expect(prisma.approvalTask.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ assigneeUserId: 'u-1' }) }),
+    const where = prisma.approvalTask.findMany.mock.calls[0][0].where;
+    expect(where.OR).toEqual(
+      expect.arrayContaining([
+        { assigneeUserId: 'u-1' },
+        { assigneeUserId: null, assigneeRoleCode: 'user' },
+      ]),
     );
   });
 
