@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ModuleAccessModule } from './modules/module-access/module-access.module';
+import { ModuleAccessGuard } from './modules/module-access/module-access.guard';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -157,6 +159,8 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     OrgBootstrapModule,
     ModuleAccessModule,
   ],
-  providers: [],
+  providers: [
+    { provide: APP_GUARD, useClass: ModuleAccessGuard },
+  ],
 })
 export class AppModule {}
