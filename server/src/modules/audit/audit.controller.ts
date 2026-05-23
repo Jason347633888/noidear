@@ -16,7 +16,6 @@ import { Response } from 'express';
 import { AuditService } from './audit.service';
 import {
   CreateLoginLogDto,
-  CreatePermissionLogDto,
   CreateSensitiveLogDto,
   QueryLoginLogDto,
   QueryPermissionLogDto,
@@ -44,15 +43,6 @@ export class AuditController {
     return this.auditService.createLoginLog(dto);
   }
 
-  @Post('permission-logs')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: '记录权限变更日志（仅管理员）' })
-  @ApiResponse({ status: 201, description: '权限变更日志记录成功' })
-  @ApiResponse({ status: 401, description: '未授权' })
-  @ApiResponse({ status: 403, description: '无权限' })
-  async createPermissionLog(@Body() dto: CreatePermissionLogDto) {
-    return this.auditService.createPermissionLog(dto);
-  }
 
   @Post('sensitive-logs')
   @HttpCode(HttpStatus.CREATED)

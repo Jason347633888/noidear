@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreateLoginLogDto,
-  CreatePermissionLogDto,
   CreateSensitiveLogDto,
   QueryLoginLogDto,
   QueryPermissionLogDto,
@@ -43,37 +42,6 @@ export class AuditService {
     } catch (error) {
       this.logger.error(
         `Failed to create login log: ${error.message}`,
-        error.stack,
-      );
-      throw error;
-    }
-  }
-
-  /**
-   * 记录权限变更日志
-   * BR-269: 权限变更日志永久保留
-   * BRCGS 3.5.3: 权限变更记录
-   */
-  async createPermissionLog(dto: CreatePermissionLogDto) {
-    try {
-      return await this.prisma.permissionLog.create({
-        data: {
-          operatorId: dto.operatorId,
-          operatorName: dto.operatorName,
-          targetUserId: dto.targetUserId,
-          targetUsername: dto.targetUsername,
-          action: dto.action,
-          beforeValue: dto.beforeValue,
-          afterValue: dto.afterValue,
-          reason: dto.reason,
-          approvedBy: dto.approvedBy,
-          approvedByName: dto.approvedByName,
-          ipAddress: dto.ipAddress,
-        },
-      });
-    } catch (error) {
-      this.logger.error(
-        `Failed to create permission log: ${error.message}`,
         error.stack,
       );
       throw error;
@@ -134,35 +102,6 @@ export class AuditService {
     } catch (error) {
       this.logger.error(
         `Failed to create login logs in batch: ${error.message}`,
-        error.stack,
-      );
-      throw error;
-    }
-  }
-
-  /**
-   * 批量记录权限变更日志
-   */
-  async createPermissionLogs(dtos: CreatePermissionLogDto[]) {
-    try {
-      return await this.prisma.permissionLog.createMany({
-        data: dtos.map((dto) => ({
-          operatorId: dto.operatorId,
-          operatorName: dto.operatorName,
-          targetUserId: dto.targetUserId,
-          targetUsername: dto.targetUsername,
-          action: dto.action,
-          beforeValue: dto.beforeValue,
-          afterValue: dto.afterValue,
-          reason: dto.reason,
-          approvedBy: dto.approvedBy,
-          approvedByName: dto.approvedByName,
-          ipAddress: dto.ipAddress,
-        })),
-      });
-    } catch (error) {
-      this.logger.error(
-        `Failed to create permission logs in batch: ${error.message}`,
         error.stack,
       );
       throw error;

@@ -49,24 +49,6 @@ describe('AuditService', () => {
   // TASK-359 Defect 1: IDs should be String cuid()
   // =============================================
   describe('TASK-359: PermissionLog/SensitiveLog ID type', () => {
-    it('should return string cuid ID for PermissionLog', async () => {
-      const dto = {
-        operatorId: 'user-1', operatorName: 'admin',
-        targetUserId: 'user-2', targetUsername: 'testuser',
-        action: 'assign_role', ipAddress: '127.0.0.1',
-      };
-
-      mockPrismaService.permissionLog.create.mockResolvedValue({
-        id: 'clx1234567890abcdef',
-        ...dto, beforeValue: null, afterValue: null,
-        reason: null, approvedBy: null, approvedByName: null,
-        createdAt: new Date(),
-      });
-
-      const result = await service.createPermissionLog(dto);
-      expect(typeof result.id).toBe('string');
-    });
-
     it('should return string cuid ID for SensitiveLog', async () => {
       const dto = {
         userId: 'user-1', username: 'admin',
@@ -89,31 +71,6 @@ describe('AuditService', () => {
   // TASK-359 Defect 2: Json fields accept objects
   // =============================================
   describe('TASK-359: Json fields accept objects directly', () => {
-    it('should pass beforeValue/afterValue as objects to PermissionLog', async () => {
-      const beforeRoles = ['user'];
-      const afterRoles = ['user', 'admin'];
-
-      const dto = {
-        operatorId: 'user-1', operatorName: 'admin',
-        targetUserId: 'user-2', targetUsername: 'testuser',
-        action: 'assign_role',
-        beforeValue: beforeRoles, afterValue: afterRoles,
-        reason: 'Promotion', ipAddress: '127.0.0.1',
-      };
-
-      mockPrismaService.permissionLog.create.mockResolvedValue({
-        id: 'clx123', ...dto, approvedBy: null, approvedByName: null,
-        createdAt: new Date(),
-      });
-
-      await service.createPermissionLog(dto);
-
-      const callData = mockPrismaService.permissionLog.create.mock.calls[0][0].data;
-      expect(callData.beforeValue).toEqual(beforeRoles);
-      expect(callData.afterValue).toEqual(afterRoles);
-      expect(typeof callData.beforeValue).not.toBe('string');
-    });
-
     it('should pass details as object to SensitiveLog', async () => {
       const detailsObj = { reason: 'outdated', fileSize: 1024 };
 
@@ -134,26 +91,6 @@ describe('AuditService', () => {
       const callData = mockPrismaService.sensitiveLog.create.mock.calls[0][0].data;
       expect(callData.details).toEqual(detailsObj);
       expect(typeof callData.details).toBe('object');
-    });
-
-    it('should handle undefined optional Json fields in PermissionLog', async () => {
-      const dto = {
-        operatorId: 'user-1', operatorName: 'admin',
-        targetUserId: 'user-2', targetUsername: 'testuser',
-        action: 'assign_role', ipAddress: '127.0.0.1',
-      };
-
-      mockPrismaService.permissionLog.create.mockResolvedValue({
-        id: 'clx123', ...dto, beforeValue: null, afterValue: null,
-        reason: null, approvedBy: null, approvedByName: null,
-        createdAt: new Date(),
-      });
-
-      await service.createPermissionLog(dto);
-
-      const callData = mockPrismaService.permissionLog.create.mock.calls[0][0].data;
-      expect(callData.beforeValue).toBeUndefined();
-      expect(callData.afterValue).toBeUndefined();
     });
 
     it('should handle undefined details in SensitiveLog', async () => {
@@ -315,36 +252,6 @@ describe('AuditService', () => {
     });
   });
 
-  describe('createPermissionLog', () => {
-    it('should create permission log passing data directly to Prisma', async () => {
-      const dto = {
-        operatorId: '1', operatorName: 'admin',
-        targetUserId: '2', targetUsername: 'user',
-        action: 'assign_role',
-        beforeValue: ['user'], afterValue: ['user', 'admin'],
-        reason: 'Promotion', ipAddress: '127.0.0.1',
-      };
-
-      mockPrismaService.permissionLog.create.mockResolvedValue({
-        id: 'clx-perm-1', ...dto, approvedBy: null,
-        approvedByName: null, createdAt: new Date(),
-      });
-
-      await service.createPermissionLog(dto);
-      expect(prisma.permissionLog.create).toHaveBeenCalledWith({ data: dto });
-    });
-
-    it('should throw error when database fails', async () => {
-      mockPrismaService.permissionLog.create.mockRejectedValue(new Error('Database error'));
-
-      await expect(service.createPermissionLog({
-        operatorId: '1', operatorName: 'admin',
-        targetUserId: '2', targetUsername: 'user',
-        action: 'assign_role', ipAddress: '127.0.0.1',
-      })).rejects.toThrow('Database error');
-    });
-  });
-
   describe('createSensitiveLog', () => {
     it('should create sensitive log passing data directly to Prisma', async () => {
       const dto = {
@@ -389,24 +296,6 @@ describe('AuditService', () => {
 
       expect(prisma.loginLog.createMany).toHaveBeenCalled();
       expect(result).toEqual({ count: 2 });
-    });
-  });
-
-  describe('createPermissionLogs (batch)', () => {
-    it('should pass Json fields in batch data', async () => {
-      mockPrismaService.permissionLog.createMany.mockResolvedValue({ count: 1 });
-
-      await service.createPermissionLogs([{
-        operatorId: '1', operatorName: 'admin',
-        targetUserId: '2', targetUsername: 'user2',
-        action: 'assign_role',
-        beforeValue: ['user'], afterValue: ['user', 'admin'],
-        ipAddress: '127.0.0.1',
-      }]);
-
-      const batchData = mockPrismaService.permissionLog.createMany.mock.calls[0][0].data;
-      expect(batchData[0].beforeValue).toEqual(['user']);
-      expect(batchData[0].afterValue).toEqual(['user', 'admin']);
     });
   });
 
