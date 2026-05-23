@@ -65,6 +65,7 @@ export class NonConformanceService {
         company_id: companyId,
         nc_no,
         discovered_by: userId,
+        discoveredById: userId,
         discovered_at: new Date(),
       },
     });
@@ -85,6 +86,7 @@ export class NonConformanceService {
         nc_type: 'ccp_deviation',
         description: this.buildCcpDeviationDescription(input.ccpRecord),
         discovered_by: input.userId,
+        discoveredById: input.userId,
         discovered_at: new Date(),
       },
     });
