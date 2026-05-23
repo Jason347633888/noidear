@@ -153,6 +153,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requireRole: 'admin' },
       },
       {
+        path: 'module-access/manage',
+        name: 'ModuleAccessManage',
+        component: () => import('@/views/module-access/ModuleAccessManage.vue'),
+        meta: { requireRole: 'admin' },
+      },
+      {
         path: 'password',
         name: 'Password',
         component: () => import('@/views/Password.vue'),
