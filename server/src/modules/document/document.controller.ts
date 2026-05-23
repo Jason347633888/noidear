@@ -22,7 +22,6 @@ import {
 import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
-import { ForbiddenException } from '@nestjs/common';
 import { DocumentService } from './document.service';
 import { DocumentLifecycleService } from './document-lifecycle.service';
 import { FilePreviewService } from './services';
@@ -34,7 +33,6 @@ import { BatchConfirmRecordFormLandingDto, ConfirmRecordFormLandingDto, UpdateRe
 import { RestoreDocumentDto } from './dto/archive-document.dto';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { DepartmentPermissionService } from '../department-permission/department-permission.service';
 
 @ApiTags('文档管理')
 @ApiBearerAuth()
@@ -47,7 +45,6 @@ export class DocumentController {
     private readonly lifecycleSvc: DocumentLifecycleService,
     private readonly filePreviewService: FilePreviewService,
     private readonly documentReferenceService: DocumentReferenceService,
-    private readonly departmentPermissionService: DepartmentPermissionService,
     private readonly recordFormLandingService: RecordFormLandingService,
     private readonly referenceHealthService: DocumentReferenceHealthService,
   ) {}
@@ -148,39 +145,12 @@ export class DocumentController {
   @Get(':id')
   @ApiOperation({ summary: '查询文档详情' })
   async findOne(@Param('id') id: string, @Req() req: any) {
-    const document = await this.documentService.findOne(id, req.user.id, req.user.roleCode);
-
-    // BR-356: 部门边界检查
-    // BR-357: 跨部门权限验证
-    const canAccess = await this.departmentPermissionService.canAccessDepartmentResource(
-      req.user.id,
-      document.departmentId,
-      'view',
-      'document',
-    );
-
-    if (!canAccess) {
-      throw new ForbiddenException('无权访问该部门的文档');
-    }
-
-    return document;
+    return this.documentService.findOne(id, req.user.id, req.user.roleCode);
   }
 
   @Get(':id/reference-health')
   @ApiOperation({ summary: '查询单个文档引用健康度' })
   async getDocumentReferenceHealth(@Param('id') id: string, @Req() req: any) {
-    const document = await this.documentService.findOne(id, req.user.id, req.user.roleCode);
-    const canAccess = await this.departmentPermissionService.canAccessDepartmentResource(
-      req.user.id,
-      document.departmentId,
-      'view',
-      'document',
-    );
-
-    if (!canAccess) {
-      throw new ForbiddenException('无权访问该部门的文档');
-    }
-
     return this.referenceHealthService.getDocumentHealth(id);
   }
 

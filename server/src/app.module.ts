@@ -17,10 +17,6 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { OperationLogModule } from './modules/operation-log/operation-log.module';
 import { DeviationModule } from './modules/deviation/deviation.module';
 import { RoleModule } from './modules/role/role.module';
-import { PermissionModule } from './modules/permission/permission.module';
-import { FineGrainedPermissionModule } from './modules/fine-grained-permission/fine-grained-permission.module';
-import { UserPermissionModule } from './modules/user-permission/user-permission.module';
-import { DepartmentPermissionModule } from './modules/department-permission/department-permission.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { RecordTemplateModule } from './modules/record-template/record-template.module';
 import { RecordModule } from './modules/record/record.module';
@@ -98,10 +94,6 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     OperationLogModule,
     DeviationModule,
     RoleModule,
-    PermissionModule,
-    FineGrainedPermissionModule,
-    UserPermissionModule,
-    DepartmentPermissionModule,
     RecordTemplateModule,
     RecordModule,
     WarehouseModule,

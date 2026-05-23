@@ -4,9 +4,7 @@ import { BatchTraceModule } from '../batch-trace/batch-trace.module';
 import { NotificationModule } from '../notification/notification.module';
 import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
 import { DocumentModule } from '../document/document.module';
-import { UserPermissionModule } from '../user-permission/user-permission.module';
 import { RoleModule } from '../role/role.module';
-import { DepartmentPermissionModule } from '../department-permission/department-permission.module';
 import { StorageService } from '../../common/services';
 import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
 import { MaterialController } from './material.controller';
@@ -33,7 +31,7 @@ import { InventoryMovementLedgerService } from './services/inventory-movement-le
 import { SupplierAccessService } from './services/supplier-access.service';
 
 @Module({
-  imports: [PrismaModule, BatchTraceModule, NotificationModule, UnifiedApprovalModule, DocumentModule, UserPermissionModule, RoleModule, DepartmentPermissionModule],
+  imports: [PrismaModule, BatchTraceModule, NotificationModule, UnifiedApprovalModule, DocumentModule, RoleModule],
   controllers: [MaterialController, SupplierController, InboundController, BatchController, RequisitionController, StagingAreaController, MaterialBalanceController, ReturnController, ScrapController, WarehouseTraceabilityController],
   providers: [MaterialService, SupplierService, InboundService, BatchService, RequisitionService, StagingAreaService, MaterialBalanceService, ReturnService, ScrapService, WarehouseCronService, StorageService, InventoryMovementLedgerService, SupplierAccessService],
   exports: [MaterialService, SupplierService, InboundService, BatchService, RequisitionService, StagingAreaService, MaterialBalanceService, ReturnService, ScrapService, InventoryMovementLedgerService, SupplierAccessService],
