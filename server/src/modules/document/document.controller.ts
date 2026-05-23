@@ -36,12 +36,10 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UnifiedPermissionGuard } from '../../shared/guards/unified-permission.guard';
 import { RequirePermission } from '../../shared/decorators/require-permission.decorator';
 import { DepartmentPermissionService } from '../department-permission/department-permission.service';
-import { StatisticsCacheInterceptor } from '../../common/interceptors/statistics-cache.interceptor';
 
 @ApiTags('文档管理')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@UseInterceptors(StatisticsCacheInterceptor)
 @Controller('documents')
 export class DocumentController {
   constructor(

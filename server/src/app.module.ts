@@ -19,7 +19,6 @@ import { FineGrainedPermissionModule } from './modules/fine-grained-permission/f
 import { UserPermissionModule } from './modules/user-permission/user-permission.module';
 import { DepartmentPermissionModule } from './modules/department-permission/department-permission.module';
 import { RedisModule } from './modules/redis/redis.module';
-import { StatisticsModule } from './modules/statistics/statistics.module';
 import { RecordTemplateModule } from './modules/record-template/record-template.module';
 import { RecordModule } from './modules/record/record.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
@@ -100,7 +99,6 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     FineGrainedPermissionModule,
     UserPermissionModule,
     DepartmentPermissionModule,
-    StatisticsModule,
     RecordTemplateModule,
     RecordModule,
     WarehouseModule,
