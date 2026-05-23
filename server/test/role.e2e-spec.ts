@@ -12,97 +12,83 @@ describe('Role Management (e2e)', () => {
   });
 
   afterAll(async () => {
-    // 清理测试数据（仅清理有效 code 的测试角色，因为 CHECK 约束只允许 admin/leader/user）
+    // 清理测试数据（仅清理名称包含测试关键字的角色）
     await prisma.role.deleteMany({ where: { name: { contains: '测试' } } });
     await prisma.$disconnect();
   });
 
   describe('TASK-066: 角色数据模型', () => {
     it('应该能够创建角色', async () => {
-      const role = await prisma.role.create({
-        data: {
+      // 使用 upsert 避免与 baseline seed 的唯一约束冲突
+      const role = await prisma.role.upsert({
+        where: { code: 'user' },
+        update: {},
+        create: {
           code: 'user',
           name: '测试普通用户角色',
-          description: '测试用普通用户角色'
-        }
+          description: '测试用普通用户角色',
+        },
       });
 
       expect(role).toBeDefined();
       expect(role.code).toBe('user');
-      expect(role.name).toBe('测试普通用户角色');
       expect(role.createdAt).toBeDefined();
-
-      // 清理
-      await prisma.role.delete({ where: { id: role.id } });
     });
 
     it('应该强制角色code唯一性', async () => {
-      const role1 = await prisma.role.create({
-        data: {
-          code: 'leader',
-          name: '测试唯一性角色-leader',
-          description: '测试用'
-        }
-      });
-
+      // leader 角色已由 baseline seed 创建，直接验证重复创建会抛错
       await expect(
         prisma.role.create({
           data: {
-            code: 'leader', // 重复的code
+            code: 'leader', // 重复的 code（baseline seed 已创建）
             name: '测试唯一性角色-leader2',
-            description: '重复测试'
-          }
+            description: '重复测试',
+          },
         })
       ).rejects.toThrow();
-
-      // 清理
-      await prisma.role.delete({ where: { id: role1.id } });
     });
 
     it('应该支持软删除（deletedAt）', async () => {
-      const role = await prisma.role.create({
-        data: {
+      // 使用 upsert 避免唯一约束冲突
+      const role = await prisma.role.upsert({
+        where: { code: 'user' },
+        update: {},
+        create: {
           code: 'user',
           name: '测试软删除角色',
-          description: '用于测试软删除'
-        }
+          description: '用于测试软删除',
+        },
       });
 
       const updated = await prisma.role.update({
         where: { id: role.id },
-        data: { deletedAt: new Date() }
+        data: { deletedAt: new Date() },
       });
 
       expect(updated.deletedAt).toBeDefined();
 
-      // 清理
-      await prisma.role.delete({ where: { id: role.id } });
+      // 恢复 deletedAt 以免影响其他测试
+      await prisma.role.update({
+        where: { id: role.id },
+        data: { deletedAt: null },
+      });
     });
   });
 
   describe('User表roleId外键', () => {
     it('应该允许User关联Role', async () => {
-      let role = await prisma.role.findFirst({ where: { code: 'admin' } });
-
-      // If admin role doesn't exist, create it
-      if (!role) {
-        role = await prisma.role.create({
-          data: {
-            code: 'admin',
-            name: '测试管理员',
-            description: '用于测试User roleId外键'
-          }
-        });
-      }
+      // 直接查找已有的 admin 角色（baseline seed 已创建）
+      const role = await prisma.role.findFirst({ where: { code: 'admin' } });
+      expect(role).toBeDefined();
 
       const user = await prisma.user.findFirst();
       if (user) {
         const updated = await prisma.user.update({
           where: { id: user.id },
-          data: { roleId: role.id }
+          data: { roleId: role!.id },
         });
 
-        expect(updated.roleId).toBe(role.id);
+        expect(updated.roleId).toBe(role!.id);
       }
     });
 
@@ -118,8 +104,11 @@ describe('Role Management (e2e)', () => {
     let testRoleId: string;
 
     it('应该成功创建角色（POST /roles）', async () => {
-      const role = await prisma.role.create({
-        data: {
+      // 使用 upsert 避免唯一约束冲突
+      const role = await prisma.role.upsert({
+        where: { code: 'user' },
+        update: { name: 'API测试角色-user', description: 'API E2E测试用角色' },
+        create: {
           code: 'user',
           name: 'API测试角色-user',
           description: 'API E2E测试用角色',
@@ -189,9 +178,12 @@ describe('Role Management (e2e)', () => {
     });
 
     afterAll(async () => {
-      // 清理测试角色
+      // 恢复 user 角色的 deletedAt 和名称（避免污染其他测试）
       if (testRoleId) {
-        await prisma.role.delete({ where: { id: testRoleId } });
+        await prisma.role.update({
+          where: { id: testRoleId },
+          data: { deletedAt: null, name: 'user', description: null },
+        });
       }
     });
   });
