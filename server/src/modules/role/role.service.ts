@@ -1,9 +1,6 @@
-import { Injectable, ConflictException, NotFoundException, BadRequestException, Inject, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Inject, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateRoleDto } from './dto/create-role.dto';
-import { UpdateRoleDto } from './dto/update-role.dto';
 import { QueryRoleDto } from './dto/query-role.dto';
-import { nanoid } from 'nanoid';
 import { REDIS_CLIENT } from '../redis/redis.constants';
 import Redis from 'ioredis';
 

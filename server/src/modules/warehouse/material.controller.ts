@@ -1,6 +1,7 @@
 import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
+  ForbiddenException,
   Get,
   Post,
   Body,
@@ -86,7 +87,12 @@ export class MaterialController {
     `.trim(),
   })
   @ApiParam({ name: 'id', description: '物料 ID' })
-  update(@Param('id') id: string, @Body() updateMaterialDto: UpdateMaterialDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateMaterialDto: UpdateMaterialDto,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('仅管理员可修改物料主数据');
     return this.materialService.update(id, updateMaterialDto);
   }
 
@@ -102,7 +108,8 @@ export class MaterialController {
     `.trim(),
   })
   @ApiParam({ name: 'id', description: '物料 ID' })
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: string, @Ownership() ownership: OwnershipContext) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('仅管理员可删除物料主数据');
     return this.materialService.remove(id);
   }
 }

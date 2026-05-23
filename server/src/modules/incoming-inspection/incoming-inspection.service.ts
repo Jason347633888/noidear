@@ -42,6 +42,7 @@ export class IncomingInspectionService {
       overall_result: result.overall_result,
       material_batch_id: result.material_batch_id,
       company_id: String(result.company_id),
+      inspector_id: result.inspector_id,
     });
 
     return result;

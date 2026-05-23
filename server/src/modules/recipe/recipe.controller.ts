@@ -1,5 +1,5 @@
 import { ModuleKey } from '../../shared/decorators/module-key.decorator';
-import { Controller, Get, Post, Body, Param, Delete, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, ForbiddenException, Get, Post, Body, Param, Delete, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { RecipeService } from './recipe.service';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -34,12 +34,14 @@ export class RecipeController {
 
   @Post(':id/archive')
   @HttpCode(HttpStatus.OK)
-  archive(@Param('id') id: string) {
+  archive(@Param('id') id: string, @Ownership() ownership: OwnershipContext) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('仅管理员可归档配方主数据');
     return this.service.archive(id);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: string, @Ownership() ownership: OwnershipContext) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('仅管理员可删除配方主数据');
     return this.service.remove(id);
   }
 }
