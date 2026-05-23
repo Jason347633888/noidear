@@ -8,6 +8,8 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { ModuleRouteRegistry } from './modules/module-access/module-route-registry';
+import { REGISTRY_CONFIG } from './modules/module-access/registry-config';
 
 dotenv.config();
 
@@ -80,10 +82,31 @@ async function bootstrap() {
   // Serve uploaded files as static assets
   app.useStaticAssets(path.join(__dirname, '..', 'uploads'), { prefix: '/uploads/' });
 
+  // ModuleRouteRegistry bootstrap validation
+  const registryLogger = new Logger('ModuleRouteRegistry');
+  const registry = new ModuleRouteRegistry(REGISTRY_CONFIG);
+  const controllerPaths = discoverControllerPaths(app);
+  const strict = process.env.MODULE_REGISTRY_STRICT === 'true';
+  registry.validate(controllerPaths, { strict, logger: registryLogger });
+  registryLogger.log(`Validated ${controllerPaths.length} controller paths (strict=${strict})`);
+
   const logger = new Logger('Bootstrap');
   const port = process.env.PORT || 3000;
   await app.listen(port);
   logger.log(`Server running on http://localhost:${port}`);
   logger.log(`API Docs: http://localhost:${port}/api/docs`);
+}
+
+function discoverControllerPaths(app: import('@nestjs/common').INestApplication): string[] {
+  const container = (app as any).container;
+  const modules = container.getModules?.() ?? container.modules;
+  const paths = new Set<string>();
+  modules.forEach((m: any) => {
+    m.controllers.forEach((wrapper: any) => {
+      const meta = Reflect.getMetadata?.('path', wrapper.metatype);
+      if (typeof meta === 'string') paths.add(meta);
+    });
+  });
+  return [...paths];
 }
 bootstrap();
