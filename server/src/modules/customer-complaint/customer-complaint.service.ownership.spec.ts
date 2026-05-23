@@ -54,3 +54,35 @@ describe('CustomerComplaintService.findAll with ownership', () => {
     expect(result).toEqual([]);
   });
 });
+
+describe('CustomerComplaintService.create writes createdById', () => {
+  const mockPrisma: any = {
+    productionBatch: { findUnique: jest.fn().mockResolvedValue({ id: 'batch-1', productId: 'prod-1' }) },
+    product: { findFirst: jest.fn().mockResolvedValue({ id: 'prod-1' }) },
+    externalParty: { findFirst: jest.fn().mockResolvedValue({ id: 'cust-1', name: 'Acme' }) },
+    customerComplaint: {
+      count: jest.fn().mockResolvedValue(0),
+      create: jest.fn().mockResolvedValue({ id: 'cc-new', createdById: 'u-1' }),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    user: { findMany: jest.fn().mockResolvedValue([]) },
+  };
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it('create passes userId as createdById so user can see it in findAll', async () => {
+    const svc = new CustomerComplaintService(mockPrisma);
+    const dto = {
+      production_batch_id: 'batch-1',
+      customer_id: 'cust-1',
+      complaint_type: 'quality',
+      description: 'test',
+    } as any;
+    await svc.create(dto, 'company-1', 'u-1');
+    expect(mockPrisma.customerComplaint.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ createdById: 'u-1' }),
+      }),
+    );
+  });
+});

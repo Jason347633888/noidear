@@ -5,8 +5,6 @@ export const REGISTRY_CONFIG: RegistryConfig = {
     { path: 'auth', mode: 'prefix' },
     { path: 'liveness', mode: 'exact' },
     { path: 'module-access', mode: 'exact' },
-    // @Controller() 无路径的控制器（product-process-change, record-task）
-    { path: '', mode: 'exact' },
   ],
   adminOnly: [
     { path: 'users', mode: 'exact' },

@@ -60,6 +60,7 @@ export class PlanService {
           maintenanceLevel: level,
           plannedDate,
           responsiblePerson: equipment.responsiblePerson,
+          responsiblePersonId: equipment.responsiblePersonId ?? undefined,
           reminderDays: levelConfig.reminderDays,
         },
       });
@@ -99,6 +100,7 @@ export class PlanService {
         maintenanceLevel: level as any,
         plannedDate,
         responsiblePerson: equipment.responsiblePerson,
+        responsiblePersonId: equipment.responsiblePersonId ?? undefined,
         reminderDays: levelConfig.reminderDays,
       },
     });

@@ -15,7 +15,7 @@ export class CustomerComplaintController {
 
   @Post()
   create(@Body() dto: CreateComplaintDto, @Request() req: AuthenticatedRequest) {
-    return this.service.create(dto, req.user.companyId);
+    return this.service.create(dto, req.user.companyId, req.user.id);
   }
 
   @Get()

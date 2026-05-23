@@ -2,7 +2,9 @@ import { Body, Controller, Get, Param, Post, Request, UseGuards } from '@nestjs/
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ProductProcessChangeService } from './product-process-change.service';
 import { CreateProductProcessChangeDraftBodyDto } from './dto/product-process-change.dto';
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 
+@ModuleKey('product_rd')
 @Controller()
 @UseGuards(JwtAuthGuard)
 export class ProductProcessChangeController {

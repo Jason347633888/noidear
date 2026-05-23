@@ -8,7 +8,7 @@ import { userIdsInDepts } from '../module-access/ownership-helpers';
 export class CustomerComplaintService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateComplaintDto, companyId: string) {
+  async create(dto: CreateComplaintDto, companyId: string, userId?: string) {
     if (!dto.production_batch_id) {
       throw new BadRequestException('生产批次不能为空');
     }
@@ -63,6 +63,7 @@ export class CustomerComplaintService {
         complaint_type: dto.complaint_type,
         description: dto.description,
         received_at: new Date(),
+        ...(userId ? { createdById: userId } : {}),
       },
     });
   }

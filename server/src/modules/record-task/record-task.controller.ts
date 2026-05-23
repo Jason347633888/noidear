@@ -15,7 +15,9 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { RecordTaskAssignmentService, CreateAssignmentDto } from './record-task-assignment.service';
 import { RecordTaskInstanceService } from './record-task-instance.service';
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 
+@ModuleKey('work_execution')
 @ApiTags('任务派发')
 @Controller()
 @UseGuards(JwtAuthGuard, RolesGuard)

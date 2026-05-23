@@ -44,3 +44,54 @@ describe('PlanService.findAll with ownership', () => {
     expect(callWhere).toHaveProperty('responsiblePersonId', { in: ['m-1', 'm-2'] });
   });
 });
+
+describe('PlanService auto-generation writes responsiblePersonId', () => {
+  const makeEquipment = (responsiblePersonId: string | null = 'u-1') => ({
+    id: 'eq-1',
+    code: 'EQ-001',
+    deletedAt: null,
+    status: 'active',
+    responsiblePerson: 'John',
+    responsiblePersonId,
+    activationDate: new Date('2025-01-01'),
+    maintenanceConfig: {
+      daily: { enabled: true, cycle: 1, reminderDays: 0 },
+    },
+  });
+
+  it('generatePlansForEquipment sets responsiblePersonId from equipment', async () => {
+    let planNumberSeq = 0;
+    const prisma: any = {
+      equipment: { findUnique: jest.fn().mockResolvedValue(makeEquipment('u-1')) },
+      maintenancePlan: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockImplementation((args) => Promise.resolve({ id: `mp-${++planNumberSeq}`, ...args.data })),
+      },
+    };
+    const svc = new PlanService(prisma);
+    await svc.generatePlansForEquipment('eq-1');
+    expect(prisma.maintenancePlan.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ responsiblePersonId: 'u-1' }),
+      }),
+    );
+  });
+
+  it('generateNextPlan sets responsiblePersonId from equipment', async () => {
+    let planNumberSeq = 0;
+    const prisma: any = {
+      equipment: { findUnique: jest.fn().mockResolvedValue(makeEquipment('u-2')) },
+      maintenancePlan: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockImplementation((args) => Promise.resolve({ id: `mp-${++planNumberSeq}`, ...args.data })),
+      },
+    };
+    const svc = new PlanService(prisma);
+    await svc.generateNextPlan('eq-1', 'daily', new Date());
+    expect(prisma.maintenancePlan.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ responsiblePersonId: 'u-2' }),
+      }),
+    );
+  });
+});

@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import { Test } from '@nestjs/testing';
-import { AppModule } from '../../app.module';
-import { ModuleRouteRegistry } from './module-route-registry';
-import { REGISTRY_CONFIG } from './registry-config';
+import { AppModule } from '../../src/app.module';
+import { ModuleRouteRegistry } from '../../src/modules/module-access/module-route-registry';
+import { REGISTRY_CONFIG } from '../../src/modules/module-access/registry-config';
 
 it('every controller path is covered by REGISTRY_CONFIG', async () => {
   const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();

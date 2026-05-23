@@ -4,7 +4,7 @@
  */
 import { EquipmentService } from './equipment.service';
 import { OwnershipContext } from '../module-access/ownership-context';
-import { QueryEquipmentDto } from './dto/equipment.dto';
+import { CreateEquipmentDto, QueryEquipmentDto } from './dto/equipment.dto';
 
 function freshService(memberIds: string[] = []) {
   const prisma: any = {
@@ -64,5 +64,31 @@ describe('EquipmentService.findAll with ownership', () => {
     const result = await svc.findAll(emptyQuery, o);
     expect(result.data).toEqual([]);
     expect(result.total).toBe(0);
+  });
+});
+
+describe('EquipmentService.create writes responsiblePersonId', () => {
+  it('create includes responsiblePersonId from dto so user can see equipment in findAll', async () => {
+    const prisma: any = {
+      equipment: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({ id: 'eq-new', responsiblePersonId: 'u-1' }),
+        count: jest.fn().mockResolvedValue(0),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      user: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const svc = new EquipmentService(prisma);
+    const dto: CreateEquipmentDto = {
+      name: 'Test Eq',
+      category: 'machine',
+      responsiblePersonId: 'u-1',
+    };
+    await svc.create(dto);
+    expect(prisma.equipment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ responsiblePersonId: 'u-1' }),
+      }),
+    );
   });
 });

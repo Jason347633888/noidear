@@ -180,7 +180,7 @@ export class EquipmentService {
     const dateFields = ['purchaseDate', 'activationDate', 'warrantyExpiry'] as const;
     const directFields = [
       'name', 'model', 'category', 'location',
-      'manufacturer', 'responsiblePerson', 'maintenanceConfig', 'description',
+      'manufacturer', 'responsiblePerson', 'responsiblePersonId', 'maintenanceConfig', 'description',
     ] as const;
 
     const data: Record<string, any> = {};
