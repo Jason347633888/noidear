@@ -10,6 +10,7 @@ import { ApprovalActionMetadataValidator } from './approval-action-metadata.vali
 import { ApprovalDefinitionController } from './approval-definition.controller';
 import { ApprovalInstanceController } from './approval-instance.controller';
 import { ApprovalTaskController } from './approval-task.controller';
+import { ApprovalDefinitionStartupScan } from './approval-definition.startup-scan';
 
 @Module({
   imports: [PrismaModule, NotificationModule],
@@ -21,6 +22,7 @@ import { ApprovalTaskController } from './approval-task.controller';
     ApprovalNotificationBridge,
     ApprovalCallbackRegistry,
     ApprovalActionMetadataValidator,
+    ApprovalDefinitionStartupScan,
   ],
   exports: [
     ApprovalEngineService,
