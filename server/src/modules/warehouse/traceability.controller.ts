@@ -4,11 +4,14 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { TraceabilityService } from '../batch-trace/services/traceability.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ModuleKey('traceability_batch')
 @Controller('warehouse/traceability')
+@UseGuards(JwtAuthGuard)
 export class WarehouseTraceabilityController {
   constructor(private readonly traceabilityService: TraceabilityService) {}
 

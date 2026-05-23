@@ -7,11 +7,14 @@ import {
   Param,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { BatchMaterialUsageService } from '../services/batch-material-usage.service';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 
 @ModuleKey('traceability_batch')
 @Controller('batch-trace')
+@UseGuards(JwtAuthGuard)
 export class BatchMaterialUsageController {
   constructor(private readonly batchMaterialUsageService: BatchMaterialUsageService) {}
 

@@ -9,6 +9,7 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { ProductionBatchService } from '../services/production-batch.service';
 import {
@@ -17,9 +18,11 @@ import {
   QueryProductionBatchDto,
   ConfirmProductBatchDto,
 } from '../dto/production-batch.dto';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 
 @ModuleKey('production_execution')
 @Controller('batch-trace/production-batches')
+@UseGuards(JwtAuthGuard)
 export class ProductionBatchController {
   constructor(private readonly productionBatchService: ProductionBatchService) {}
 
