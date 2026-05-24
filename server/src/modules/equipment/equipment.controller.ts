@@ -53,7 +53,7 @@ export class EquipmentController {
     @Ownership() ownership: OwnershipContext,
   ) {
     await this.equipmentService.assertOwnership(id, ownership);
-    return this.equipmentService.update(id, dto);
+    return this.equipmentService.update(id, dto, ownership);
   }
 
   @Delete(':id')

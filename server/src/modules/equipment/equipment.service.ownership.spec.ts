@@ -177,3 +177,72 @@ describe('EquipmentService.create writes responsiblePersonId', () => {
     );
   });
 });
+
+describe('EquipmentService.update responsiblePersonId guard', () => {
+  function freshUpdateService() {
+    const prisma: any = {
+      equipment: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'eq-1', deletedAt: null, responsiblePersonId: 'u-1' }),
+        update: jest.fn().mockResolvedValue({ id: 'eq-1' }),
+        findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      user: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    return { svc: new EquipmentService(prisma), prisma };
+  }
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it('admin can change responsiblePersonId via update', async () => {
+    const { svc, prisma } = freshUpdateService();
+    const adminOwnership: OwnershipContext = {
+      userId: 'admin-1',
+      roleCode: 'admin',
+      departmentId: null,
+      managedDepartmentIds: undefined,
+    };
+    const dto = { name: 'EQ Updated', responsiblePersonId: 'new-owner' };
+    await svc.update('eq-1', dto, adminOwnership);
+    expect(prisma.equipment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ responsiblePersonId: 'new-owner' }),
+      }),
+    );
+  });
+
+  it('user cannot change responsiblePersonId via update (field silently stripped)', async () => {
+    const { svc, prisma } = freshUpdateService();
+    const userOwnership: OwnershipContext = {
+      userId: 'u-1',
+      roleCode: 'user',
+      departmentId: 'd-1',
+      managedDepartmentIds: [],
+    };
+    const dto = { name: 'EQ Updated', responsiblePersonId: 'attacker-user' };
+    await svc.update('eq-1', dto, userOwnership);
+    expect(prisma.equipment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.not.objectContaining({ responsiblePersonId: 'attacker-user' }),
+      }),
+    );
+  });
+
+  it('leader cannot change responsiblePersonId via update (field silently stripped)', async () => {
+    const { svc, prisma } = freshUpdateService();
+    const leaderOwnership: OwnershipContext = {
+      userId: 'l-1',
+      roleCode: 'leader',
+      departmentId: 'd-1',
+      managedDepartmentIds: ['d-1'],
+    };
+    const dto = { name: 'EQ Updated', responsiblePersonId: 'some-other-user' };
+    await svc.update('eq-1', dto, leaderOwnership);
+    expect(prisma.equipment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.not.objectContaining({ responsiblePersonId: 'some-other-user' }),
+      }),
+    );
+  });
+});

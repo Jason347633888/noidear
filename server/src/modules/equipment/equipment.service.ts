@@ -147,9 +147,14 @@ export class EquipmentService {
     throw new ForbiddenException('You do not have permission to modify this equipment');
   }
 
-  async update(id: string, dto: UpdateEquipmentDto) {
+  async update(id: string, dto: UpdateEquipmentDto, ownership?: OwnershipContext) {
     await this.findOne(id);
-    const data = this.mapDtoToData(dto);
+    // Non-admin users cannot change responsiblePersonId to prevent ownership hijacking.
+    const sanitizedDto: UpdateEquipmentDto =
+      ownership && ownership.roleCode !== 'admin'
+        ? { ...dto, responsiblePersonId: undefined }
+        : dto;
+    const data = this.mapDtoToData(sanitizedDto);
     return this.prisma.equipment.update({ where: { id }, data });
   }
 
