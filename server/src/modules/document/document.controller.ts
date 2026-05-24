@@ -18,6 +18,7 @@ import {
   Req,
   Res,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -33,6 +34,8 @@ import { BatchConfirmRecordFormLandingDto, ConfirmRecordFormLandingDto, UpdateRe
 import { RestoreDocumentDto } from './dto/archive-document.dto';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @ApiTags('文档管理')
 @ApiBearerAuth()
@@ -99,7 +102,12 @@ export class DocumentController {
 
   @Post('record-form-index/batch-confirm-suggested')
   @ApiOperation({ summary: '批量确认选中表单的落地建议' })
-  batchConfirmRecordFormLanding(@Body() dto: BatchConfirmRecordFormLandingDto, @Req() req: any) {
+  batchConfirmRecordFormLanding(
+    @Body() dto: BatchConfirmRecordFormLandingDto,
+    @Req() req: any,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('Admin access required');
     return this.recordFormLandingService.batchConfirmSuggested(dto.codes, req.user?.id || 'system');
   }
 
@@ -111,7 +119,13 @@ export class DocumentController {
 
   @Post('record-form-index/:code/confirm')
   @ApiOperation({ summary: '确认源表单落地关系' })
-  confirmRecordFormLanding(@Param('code') code: string, @Body() dto: ConfirmRecordFormLandingDto, @Req() req: any) {
+  confirmRecordFormLanding(
+    @Param('code') code: string,
+    @Body() dto: ConfirmRecordFormLandingDto,
+    @Req() req: any,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('Admin access required');
     return this.recordFormLandingService.confirm(code, dto, req.user.id);
   }
 
@@ -132,7 +146,9 @@ export class DocumentController {
   updateRecordFormIndexEntry(
     @Param('code') code: string,
     @Body() dto: UpdateRecordFormLandingEntryDto,
+    @Ownership() ownership: OwnershipContext,
   ) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('Admin access required');
     return this.recordFormLandingService.upsertTarget(code, dto);
   }
 
