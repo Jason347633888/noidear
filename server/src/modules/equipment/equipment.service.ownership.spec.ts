@@ -128,11 +128,36 @@ describe('EquipmentService.assertOwnership', () => {
 });
 
 describe('EquipmentService.create writes responsiblePersonId', () => {
-  it('create includes responsiblePersonId from dto so user can see equipment in findAll', async () => {
+  it('create uses creatorId as responsiblePersonId (ignores dto.responsiblePersonId)', async () => {
     const prisma: any = {
       equipment: {
         findFirst: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockResolvedValue({ id: 'eq-new', responsiblePersonId: 'u-1' }),
+        create: jest.fn().mockResolvedValue({ id: 'eq-new', responsiblePersonId: 'creator-1' }),
+        count: jest.fn().mockResolvedValue(0),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      user: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const svc = new EquipmentService(prisma);
+    // dto provides a different user ID — it must be overridden by creatorId
+    const dto: CreateEquipmentDto = {
+      name: 'Test Eq',
+      category: 'machine',
+      responsiblePersonId: 'other-user',
+    };
+    await svc.create(dto, 'creator-1');
+    expect(prisma.equipment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ responsiblePersonId: 'creator-1' }),
+      }),
+    );
+  });
+
+  it('create falls back to dto.responsiblePersonId when creatorId is not provided', async () => {
+    const prisma: any = {
+      equipment: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({ id: 'eq-new', responsiblePersonId: 'dto-user' }),
         count: jest.fn().mockResolvedValue(0),
         findMany: jest.fn().mockResolvedValue([]),
       },
@@ -142,12 +167,12 @@ describe('EquipmentService.create writes responsiblePersonId', () => {
     const dto: CreateEquipmentDto = {
       name: 'Test Eq',
       category: 'machine',
-      responsiblePersonId: 'u-1',
+      responsiblePersonId: 'dto-user',
     };
     await svc.create(dto);
     expect(prisma.equipment.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ responsiblePersonId: 'u-1' }),
+        data: expect.objectContaining({ responsiblePersonId: 'dto-user' }),
       }),
     );
   });

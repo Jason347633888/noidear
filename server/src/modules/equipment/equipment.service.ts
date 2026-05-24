@@ -26,11 +26,11 @@ export class EquipmentService {
   async create(dto: CreateEquipmentDto, creatorId?: string) {
     try {
       const code = await this.generateCode();
-      // If responsiblePersonId is not provided, default to the creator so that
-      // the ownership filter always matches at least the person who created it.
+      // Always set responsiblePersonId to the authenticated creatorId to prevent FK forgery.
+      // Admin can update responsiblePersonId via the update endpoint after creation.
       const dtoWithDefaults: CreateEquipmentDto = {
         ...dto,
-        responsiblePersonId: dto.responsiblePersonId ?? creatorId,
+        responsiblePersonId: creatorId ?? dto.responsiblePersonId,
       };
       const extra = this.mapDtoToData(dtoWithDefaults);
       const equipment = await this.prisma.equipment.create({

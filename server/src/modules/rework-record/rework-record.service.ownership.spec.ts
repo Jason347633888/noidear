@@ -72,13 +72,13 @@ describe('ReworkRecordService.create writes operator_id', () => {
     expect(capturedData).toHaveProperty('operator_id', 'u-55');
   });
 
-  it('create preserves dto.operator_id when explicitly provided', async () => {
+  it('create always overrides dto.operator_id with creatorId (FK forgery prevention)', async () => {
     const capturedData: any = {};
     const prisma: any = {
       reworkRecord: {
         create: jest.fn().mockImplementation((args: any) => {
           Object.assign(capturedData, args.data);
-          return Promise.resolve({ id: 'rw-new', operator_id: 'explicit-op' });
+          return Promise.resolve({ id: 'rw-new', operator_id: 'u-55' });
         }),
         findMany: jest.fn().mockResolvedValue([]),
       },
@@ -88,6 +88,7 @@ describe('ReworkRecordService.create writes operator_id', () => {
       user: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const svc = new ReworkRecordService(prisma);
+    // Even when dto.operator_id is explicitly set to another user, it must be ignored
     const dto = {
       nc_id: 'nc-1',
       rework_date: '2026-05-24',
@@ -95,7 +96,7 @@ describe('ReworkRecordService.create writes operator_id', () => {
       operator_id: 'explicit-op',
     } as any;
     await svc.create(dto, 'company-1', 'u-55');
-    expect(capturedData).toHaveProperty('operator_id', 'explicit-op');
+    expect(capturedData).toHaveProperty('operator_id', 'u-55');
   });
 
   it('user can see own rework record via findAll after create with operator_id fallback', async () => {

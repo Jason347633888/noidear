@@ -1,4 +1,5 @@
 import { ModuleKey } from '../../shared/decorators/module-key.decorator';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
 import {
   Controller,
   Get,
@@ -17,6 +18,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { TrainingService } from './training.service';
 import { TrainingStatisticsExportService } from './training-statistics-export.service';
+import { OwnershipContext } from '../module-access/ownership-context';
 import { CreateTrainingPlanDto } from './dto/create-plan.dto';
 import { UpdateTrainingPlanDto } from './dto/update-plan.dto';
 import { QueryTrainingPlanDto } from './dto/query-plan.dto';
@@ -88,8 +90,12 @@ export class TrainingController {
 
   @Post('projects')
   @ApiOperation({ summary: '创建培训项目' })
-  async createProject(@Body() dto: CreateTrainingProjectDto, @Request() req: any) {
-    return this.trainingService.createProject(dto, req.user.id);
+  async createProject(
+    @Body() dto: CreateTrainingProjectDto,
+    @Request() req: any,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    return this.trainingService.createProjectForOwnership(dto, ownership);
   }
 
   @Get('projects')

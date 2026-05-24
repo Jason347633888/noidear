@@ -38,7 +38,9 @@ export class CorrectiveActionService {
         ...dto,
         company_id: companyId,
         capa_no,
-        ...(dto.responsible_id === undefined && userId ? { responsible_id: userId } : {}),
+        // Always override dto.responsible_id with the authenticated userId to prevent FK forgery.
+        // Admin can change responsible_id via update after creation.
+        ...(userId ? { responsible_id: userId } : {}),
       },
     });
   }

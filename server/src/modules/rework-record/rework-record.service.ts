@@ -33,7 +33,8 @@ export class ReworkRecordService {
         company_id: companyId,
         rework_date: new Date(dto.rework_date),
         rework_qty: dto.rework_qty,
-        ...(dto.operator_id === undefined && creatorId !== undefined ? { operator_id: creatorId } : {}),
+        // Always override dto.operator_id with the authenticated creatorId to prevent FK forgery.
+        ...(creatorId !== undefined ? { operator_id: creatorId } : {}),
       },
     });
   }

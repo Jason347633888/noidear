@@ -106,7 +106,7 @@ describe('RecordService.create writes performerId from creatorId', () => {
     expect(capturedData).toHaveProperty('performerId', 'u-99');
   });
 
-  it('create preserves dto.performerId when explicitly provided', async () => {
+  it('create always overrides dto.performerId with creatorId (FK forgery prevention)', async () => {
     const capturedData: any = {};
     const prisma: any = {
       maintenanceRecord: {
@@ -115,13 +115,14 @@ describe('RecordService.create writes performerId from creatorId', () => {
         findFirst: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockImplementation((args: any) => {
           Object.assign(capturedData, args.data);
-          return Promise.resolve({ id: 'rec-new', performerId: 'explicit-user' });
+          return Promise.resolve({ id: 'rec-new', performerId: 'u-99' });
         }),
       },
       user: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const stats: any = { clearCache: jest.fn().mockResolvedValue(undefined) };
     const svc = new RecordService(prisma, {} as any, stats);
+    // Even when dto.performerId is explicitly set to another user, it must be ignored
     const dto = {
       equipmentId: 'eq-1',
       maintenanceLevel: 'routine',
@@ -129,6 +130,6 @@ describe('RecordService.create writes performerId from creatorId', () => {
       performerId: 'explicit-user',
     } as any;
     await svc.create(dto, 'u-99');
-    expect(capturedData).toHaveProperty('performerId', 'explicit-user');
+    expect(capturedData).toHaveProperty('performerId', 'u-99');
   });
 });

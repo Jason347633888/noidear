@@ -70,20 +70,21 @@ describe('CorrectiveActionService.create writes responsible_id', () => {
     );
   });
 
-  it('create preserves dto.responsible_id when explicitly provided', async () => {
+  it('create always overrides dto.responsible_id with userId (FK forgery prevention)', async () => {
     const prisma: any = {
       correctiveAction: {
-        create: jest.fn().mockResolvedValue({ id: 'capa-new', responsible_id: 'other-user' }),
+        create: jest.fn().mockResolvedValue({ id: 'capa-new', responsible_id: 'u-1' }),
         findMany: jest.fn().mockResolvedValue([]),
       },
       user: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const svc = new CorrectiveActionService(prisma, numberSequenceMock as any);
+    // Even when dto.responsible_id is explicitly set to another user, it must be ignored
     const dto = { trigger_type: 'other', responsible_id: 'other-user' } as any;
     await svc.create(dto, 'u-1', 'company-1');
     expect(prisma.correctiveAction.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ responsible_id: 'other-user' }),
+        data: expect.objectContaining({ responsible_id: 'u-1' }),
       }),
     );
   });

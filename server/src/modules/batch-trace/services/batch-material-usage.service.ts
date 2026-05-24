@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OwnershipContext } from '../../module-access/ownership-context';
 import { visibleProductionBatchIds } from '../../module-access/ownership-helpers';
@@ -14,7 +14,16 @@ interface CreateBatchMaterialUsageDto {
 export class BatchMaterialUsageService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createDto: CreateBatchMaterialUsageDto) {
+  async create(createDto: CreateBatchMaterialUsageDto, ownership?: OwnershipContext) {
+    // C1: Validate productionBatchId ownership to prevent traceability chain pollution.
+    if (ownership && ownership.roleCode !== 'admin') {
+      const visibleIds = await visibleProductionBatchIds(this.prisma, ownership);
+      // visibleIds === undefined means admin (no filter needed), but we already checked roleCode !== 'admin'
+      if (visibleIds !== undefined && !visibleIds.includes(createDto.productionBatchId)) {
+        throw new ForbiddenException('Production batch not accessible');
+      }
+    }
+
     const batch = await this.prisma.productionBatch.findUnique({
       where: { id: createDto.productionBatchId },
     });

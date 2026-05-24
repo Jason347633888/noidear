@@ -172,8 +172,9 @@ export class RecordService {
     }
     if (dto.cost !== undefined) data.cost = dto.cost;
 
-    // Fallback to creatorId when performerId is not provided by caller
-    if (data.performerId === undefined && creatorId !== undefined) {
+    // Always override performerId with the authenticated creatorId to prevent FK forgery.
+    // Admins can change performerId via the update endpoint after creation.
+    if (creatorId !== undefined) {
       data.performerId = creatorId;
     }
   }
