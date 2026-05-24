@@ -14,7 +14,6 @@ describe('ChangeEventService', () => {
   };
   const eventEmitter = { emit: jest.fn() };
   const approvalEngine = { startApproval: jest.fn(), act: jest.fn() };
-  const formTasks = { generateDefaultTasks: jest.fn() };
   const relations = { validateRelations: jest.fn(), createRelations: jest.fn() };
 
   beforeEach(() => {
@@ -22,7 +21,7 @@ describe('ChangeEventService', () => {
     prisma.$transaction.mockImplementation(async (callback) => callback(prisma));
   });
 
-  it('creates change event with relations and default form tasks', async () => {
+  it('creates change event with relations', async () => {
     relations.validateRelations.mockResolvedValue(undefined);
     prisma.changeEvent.count.mockResolvedValue(0);
     prisma.changeEvent.create.mockResolvedValue({
@@ -36,15 +35,12 @@ describe('ChangeEventService', () => {
       change_type: 'recipe',
       verifications: [],
       relations: [],
-      formTasks: [],
     });
-    formTasks.generateDefaultTasks.mockResolvedValue([{ id: 'task1' }]);
     relations.createRelations.mockResolvedValue({ count: 1 });
 
     const service = new ChangeEventService(
       prisma as any,
       eventEmitter as any,
-      formTasks as any,
       relations as any,
       approvalEngine as any,
     );
@@ -63,7 +59,6 @@ describe('ChangeEventService', () => {
     expect(relations.createRelations).toHaveBeenCalledWith('change1', [
       { targetType: 'recipe', targetId: 'recipe1', targetLabel: '蛋液配方' },
     ], prisma);
-    expect(formTasks.generateDefaultTasks).toHaveBeenCalledWith('change1', 'recipe', prisma);
     expect(approvalEngine.startApproval).toHaveBeenCalledWith(
       expect.objectContaining({
         resourceType: 'change_event',
@@ -82,7 +77,6 @@ describe('ChangeEventService', () => {
     const service = new ChangeEventService(
       prisma as any,
       eventEmitter as any,
-      formTasks as any,
       relations as any,
       approvalEngine as any,
     );
@@ -115,15 +109,12 @@ describe('ChangeEventService', () => {
       change_type: 'process',
       verifications: [],
       relations: [],
-      formTasks: [],
     });
-    formTasks.generateDefaultTasks.mockResolvedValue([]);
     relations.createRelations.mockResolvedValue({ count: 0 });
 
     const service = new ChangeEventService(
       prisma as any,
       eventEmitter as any,
-      formTasks as any,
       relations as any,
       approvalEngine as any,
     );

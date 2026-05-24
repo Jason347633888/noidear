@@ -1,19 +1,17 @@
 import { forwardRef, Inject, Module, OnModuleInit } from '@nestjs/common';
 import { ChangeEventController } from './change-event.controller';
 import { ChangeEventService } from './change-event.service';
-import { ChangeEventFormTaskService } from './change-event-form-task.service';
 import { ChangeEventRelationService } from './change-event-relation.service';
 import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
 import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
-import { RecordModule } from '../record/record.module';
 import { ProductProcessChangeModule } from '../product-process-change/product-process-change.module';
 import { ProductProcessChangeService } from '../product-process-change/product-process-change.service';
 
 @Module({
-  imports: [UnifiedApprovalModule, RecordModule, forwardRef(() => ProductProcessChangeModule)],
+  imports: [UnifiedApprovalModule, forwardRef(() => ProductProcessChangeModule)],
   controllers: [ChangeEventController],
-  providers: [ChangeEventService, ChangeEventFormTaskService, ChangeEventRelationService],
-  exports: [ChangeEventService, ChangeEventFormTaskService, ChangeEventRelationService],
+  providers: [ChangeEventService, ChangeEventRelationService],
+  exports: [ChangeEventService, ChangeEventRelationService],
 })
 export class ChangeEventModule implements OnModuleInit {
   constructor(
