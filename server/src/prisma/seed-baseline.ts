@@ -174,37 +174,6 @@ async function ensureMaterialBaseline(prisma: PrismaClient): Promise<void> {
   console.log('✅ E2E 物料基线已确保（3条）');
 }
 
-async function ensureRecordTemplateBaseline(prisma: PrismaClient): Promise<void> {
-  const templateCode = 'e2e-baseline-form';
-  const existing = await prisma.recordTemplate.findFirst({
-    where: { code: templateCode, deletedAt: null },
-  });
-
-  const baselineFields = [
-    { id: 'f1', name: 'field1', type: 'text', label: '填报内容', required: true },
-  ];
-
-  if (!existing) {
-    await prisma.recordTemplate.create({
-      data: {
-        code: templateCode,
-        name: 'E2E基线表单',
-        description: 'E2E测试专用基线表单模板',
-        fieldsJson: baselineFields,
-        status: 'active',
-      },
-    });
-    console.log('✅ E2E RecordTemplate 基线已创建');
-  } else {
-    // Always sync fieldsJson and status so existing DBs get the field name fix
-    await prisma.recordTemplate.update({
-      where: { id: existing.id },
-      data: { status: 'active', fieldsJson: baselineFields },
-    });
-    console.log('✅ E2E RecordTemplate 基线已同步');
-  }
-}
-
 async function ensureTrainingPlanBaseline(prisma: PrismaClient): Promise<void> {
   // Ensure a pending_approval training plan exists for TRN-004 E2E test
   const admin = await prisma.user.findFirst({ where: { username: 'admin', deletedAt: null }, select: { id: true } });
@@ -246,7 +215,6 @@ async function main() {
 
     await ensureProcessTemplate(prisma);
     await ensureMaterialBaseline(prisma);
-    await ensureRecordTemplateBaseline(prisma);
     await ensureTrainingPlanBaseline(prisma);
   }
 

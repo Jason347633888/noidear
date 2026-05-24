@@ -40,7 +40,6 @@ export class ChangeEventRelationService {
 
     const modelByType: Record<string, any> = {
       document: this.prisma.document,
-      record_template: this.prisma.recordTemplate,
       product: this.prisma.product,
       recipe: this.prisma.recipe,
       process_step: this.prisma.processStep,
