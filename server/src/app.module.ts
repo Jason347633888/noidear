@@ -7,9 +7,6 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { DepartmentModule } from './modules/department/department.module';
 import { DocumentModule } from './modules/document/document.module';
-// P2: 已删除旧版 TemplateModule 和 TaskModule（统一动态表单期三）
-// import { TemplateModule } from './modules/template/template.module';
-// import { TaskModule } from './modules/task/task.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { OperationLogModule } from './modules/operation-log/operation-log.module';
 import { DeviationModule } from './modules/deviation/deviation.module';
@@ -19,8 +16,6 @@ import { FineGrainedPermissionModule } from './modules/fine-grained-permission/f
 import { UserPermissionModule } from './modules/user-permission/user-permission.module';
 import { DepartmentPermissionModule } from './modules/department-permission/department-permission.module';
 import { RedisModule } from './modules/redis/redis.module';
-import { RecordTemplateModule } from './modules/record-template/record-template.module';
-import { RecordModule } from './modules/record/record.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { SystemConfigModule } from './modules/system-config/system-config.module';
 import { EquipmentModule } from './modules/equipment/equipment.module';
@@ -28,7 +23,6 @@ import { AuditModule } from './modules/audit/audit.module';
 import { HealthModule } from './modules/health/health.module';
 import { TrainingModule } from './modules/training/training.module';
 import { SearchModule } from './modules/search/search.module';
-import { RecordTaskModule } from './modules/record-task/record-task.module';
 import { IncomingInspectionModule } from './modules/incoming-inspection/incoming-inspection.module';
 import { TraceabilityModule } from './modules/traceability/traceability.module';
 import { NonConformanceModule } from './modules/non-conformance/non-conformance.module';
@@ -63,10 +57,8 @@ import { PackagingMaterialUsageModule } from './modules/packaging-material-usage
 import { WorkflowTriggersModule } from './modules/workflow-triggers/workflow-triggers.module';
 import { ShiftInstanceModule } from './modules/shift-instance/shift-instance.module';
 import { ProductionRunModule } from './modules/production-run/production-run.module';
-import { ScheduledTaskModule } from './modules/scheduled-task/scheduled-task.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { TodoModule } from './modules/todo/todo.module';
-import { TaskModule } from './modules/task/task.module';
 import { UnifiedApprovalModule } from './modules/unified-approval/unified-approval.module';
 import { WorkshopAreaModule } from './modules/workshop-area/workshop-area.module';
 import { TeamShiftModule } from './modules/team-shift/team-shift.module';
@@ -88,8 +80,6 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     UserModule,
     DepartmentModule,
     DocumentModule,
-    // TemplateModule,  // P2: 已删除旧版模块（统一动态表单期三）
-    // TaskModule,      // P2: 已删除旧版模块（统一动态表单期三）
     NotificationModule,
     OperationLogModule,
     DeviationModule,
@@ -98,8 +88,6 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     FineGrainedPermissionModule,
     UserPermissionModule,
     DepartmentPermissionModule,
-    RecordTemplateModule,
-    RecordModule,
     WarehouseModule,
     SystemConfigModule,
     EquipmentModule,
@@ -107,7 +95,6 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     HealthModule,
     TrainingModule,
     SearchModule,
-    RecordTaskModule,
     IncomingInspectionModule,
     TraceabilityModule,
     NonConformanceModule,
@@ -142,10 +129,8 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     WorkflowTriggersModule,
     ShiftInstanceModule,
     ProductionRunModule,
-    ScheduledTaskModule,
     UploadModule,
     TodoModule,
-    TaskModule,
     UnifiedApprovalModule,
     WorkshopAreaModule,
     TeamShiftModule,
