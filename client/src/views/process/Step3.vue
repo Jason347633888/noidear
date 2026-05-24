@@ -162,6 +162,8 @@ const handleSubmit = async () => {
   if (!form.trialConclusion) { ElMessage.warning('请选择试验结论'); return; }
   emit('submitted', getFormData());
 };
+
+defineExpose({ validate: () => formRef.value?.validate() });
 </script>
 
 <style scoped>

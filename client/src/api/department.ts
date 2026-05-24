@@ -13,7 +13,7 @@ export interface DepartmentListParams {
 export interface CreateDepartmentPayload {
   code: string;
   name: string;
-  managerId: string;
+  managerId?: string;
 }
 
 export interface UpdateDepartmentPayload {

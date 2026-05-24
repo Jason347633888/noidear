@@ -2,7 +2,7 @@ import {
   HomeFilled, Bell, List, CircleCheck, Files, Grid, Monitor,
   Connection, Document, Box, Goods, DataAnalysis, Setting,
   UserFilled, WarnTriangleFilled, SetUp, Search, Odometer,
-  Delete, Cloudy, Key, RefreshLeft, Message,
+  Delete, Key, RefreshLeft, Message,
 } from '@element-plus/icons-vue';
 
 export interface MenuEntry {

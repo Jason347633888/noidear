@@ -22,11 +22,7 @@ describe('documentControlApi', () => {
     expect(mockGet).toHaveBeenCalledWith('/documents', { params: { documentType: 'PROCEDURE' } });
   });
 
-  it('lists record form landing index', () => {
-    documentControlApi.listRecordFormIndex({ department: '产品开发部' });
-    expect(mockGet).toHaveBeenCalledWith('/documents/record-form-index', { params: { department: '产品开发部' } });
-  });
-
+  // listRecordFormIndex was removed during dynamic form retirement.
   // Legacy workbench endpoint was removed during API contract cleanup; the
   // unified workbench data is now sourced from the deleted `/documents/control/workbench`
   // route's replacement composed of individual document/reference endpoints.

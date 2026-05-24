@@ -138,7 +138,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import { requisitionApi } from '@/api/warehouse';
 import equipmentApi, { type Equipment } from '@/api/equipment';
 import request from '@/api/request';
