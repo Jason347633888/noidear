@@ -24,14 +24,15 @@ export class FaultService {
     private readonly statsService: StatsService,
   ) {}
 
-  async create(dto: CreateFaultDto) {
+  async create(dto: CreateFaultDto, creatorId?: string) {
     const faultNumber = await this.generateFaultNumber();
 
     const fault = await this.prisma.equipmentFault.create({
       data: {
         faultNumber,
         equipmentId: dto.equipmentId,
-        reporterId: dto.reporterId,
+        // Always use creatorId when provided to prevent reporterId forgery by clients
+        reporterId: creatorId ?? dto.reporterId,
         urgencyLevel: (dto.urgencyLevel as any) ?? 'normal',
         faultDescription: dto.faultDescription,
         faultPhotos: dto.faultPhotos ?? [],
@@ -85,8 +86,8 @@ export class FaultService {
     return { data, total, page, limit };
   }
 
-  async findMyFaults(reporterId: string, query: QueryFaultDto) {
-    return this.findAll({ ...query, reporterId }, undefined);
+  async findMyFaults(userId: string, query: QueryFaultDto) {
+    return this.findAll({ ...query, reporterId: userId }, undefined);
   }
 
   async findOne(id: string) {

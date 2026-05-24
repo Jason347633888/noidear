@@ -20,7 +20,7 @@ export class ScrapService {
     private readonly inventoryMovementLedger: InventoryMovementLedgerService,
   ) {}
 
-  async create(dto: CreateScrapDto) {
+  async create(dto: CreateScrapDto, companyId?: string, creatorId?: string) {
     for (const item of dto.items) {
       const batch = await this.prisma.materialBatch.findUnique({
         where: { id: item.materialBatchId },
@@ -37,7 +37,8 @@ export class ScrapService {
     const materialScrap = await this.prisma.materialScrap.create({
       data: {
         scrapNo,
-        requesterId: dto.requesterId,
+        // Always use creatorId when provided to prevent requesterId forgery by clients
+        requesterId: creatorId ?? dto.requesterId,
         reason: dto.reason,
         items: {
           create: dto.items.map((item) => ({
@@ -67,7 +68,7 @@ export class ScrapService {
           resourceStep: 'submit',
           triggerKey: 'submit',
           title: `报废单审批：${materialScrap.scrapNo ?? materialScrap.id}`,
-          createdById: dto.requesterId,
+          createdById: creatorId ?? dto.requesterId,
         });
         await this.prisma.materialScrap.update({
           where: { id: materialScrap.id },

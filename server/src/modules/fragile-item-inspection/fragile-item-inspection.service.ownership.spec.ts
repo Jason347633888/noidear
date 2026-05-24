@@ -67,12 +67,12 @@ describe('FragileItemInspectionService.create inspector_id fallback', () => {
     expect(callData.inspector_id).toBe('creator-user-1');
   });
 
-  it('dto.inspector_id present → preserved as-is, not overwritten', async () => {
+  it('dto.inspector_id present → overwritten by creatorId (prevents ownership forgery)', async () => {
     const { svc, prisma } = freshService();
-    const dto = { ...baseDto, inspector_id: 'explicit-inspector' };
+    const dto = { ...baseDto, inspector_id: 'other-user-id' };
     await svc.create(dto as any, 'company-1', 'creator-user-1');
     const callData = prisma.fragileItemInspection.create.mock.calls[0][0].data;
-    expect(callData.inspector_id).toBe('explicit-inspector');
+    expect(callData.inspector_id).toBe('creator-user-1');
   });
 
   it('user who creates without inspector_id would appear in their own findAll', async () => {

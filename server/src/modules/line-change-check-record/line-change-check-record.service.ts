@@ -35,7 +35,8 @@ export class LineChangeCheckRecordService {
         ...dto,
         company_id: '1',
         check_date: dto.check_date ? new Date(dto.check_date) : new Date(),
-        ...(dto.inspector_id == null && creatorId ? { inspector_id: creatorId } : {}),
+        // Always use creatorId to prevent inspector_id forgery by clients
+        ...(creatorId !== undefined ? { inspector_id: creatorId } : {}),
       },
     });
   }

@@ -15,7 +15,7 @@ export class ReturnService {
     private readonly inventoryMovementLedger: InventoryMovementLedgerService,
   ) {}
 
-  async create(dto: CreateReturnDto) {
+  async create(dto: CreateReturnDto, companyId?: string, creatorId?: string) {
     // Validate all batches exist
     for (const item of dto.items) {
       const batch = await this.prisma.materialBatch.findUnique({
@@ -32,7 +32,8 @@ export class ReturnService {
     const materialReturn = await this.prisma.materialReturn.create({
       data: {
         returnNo,
-        requesterId: dto.requesterId,
+        // Always use creatorId when provided to prevent requesterId forgery by clients
+        requesterId: creatorId ?? dto.requesterId,
         reason: dto.reason,
         items: {
           create: dto.items.map((item) => ({
@@ -62,7 +63,7 @@ export class ReturnService {
           resourceStep: 'submit',
           triggerKey: 'submit',
           title: `退料单审批：${materialReturn.returnNo ?? materialReturn.id}`,
-          createdById: dto.requesterId,
+          createdById: creatorId ?? dto.requesterId,
         });
         await this.prisma.materialReturn.update({
           where: { id: materialReturn.id },

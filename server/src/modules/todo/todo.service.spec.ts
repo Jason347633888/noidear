@@ -123,6 +123,48 @@ describe('TodoService', () => {
     });
   });
 
+  describe('getStatistics ownership — leader scope edge cases', () => {
+    const prismaForLeader = {
+      todoTask: { groupBy: jest.fn() },
+      user: { findMany: jest.fn() },
+    } as any;
+    let leaderService: TodoService;
+
+    beforeEach(async () => {
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [TodoService, { provide: PrismaService, useValue: prismaForLeader }],
+      }).compile();
+      leaderService = module.get<TodoService>(TodoService);
+      jest.clearAllMocks();
+    });
+
+    it('leader with no managedDepartmentIds → getStatistics returns zeros without querying db', async () => {
+      const leaderOwnership: OwnershipContext = {
+        userId: 'leader1', roleCode: 'leader', departmentId: null, managedDepartmentIds: [],
+      };
+      const result = await leaderService.getStatistics(leaderOwnership);
+
+      expect(result.total).toBe(0);
+      expect(result.byStatus.pending).toBe(0);
+      expect(result.byStatus.completed).toBe(0);
+      // groupBy must NOT be called — early return
+      expect(prismaForLeader.todoTask.groupBy).not.toHaveBeenCalled();
+    });
+
+    it('leader with managedDepartmentIds but dept has no members → getStatistics returns zeros', async () => {
+      prismaForLeader.user.findMany.mockResolvedValue([]); // no members in dept
+      const leaderOwnership: OwnershipContext = {
+        userId: 'leader2', roleCode: 'leader', departmentId: 'd-empty', managedDepartmentIds: ['d-empty'],
+      };
+      const result = await leaderService.getStatistics(leaderOwnership);
+
+      expect(result.total).toBe(0);
+      expect(result.byStatus.pending).toBe(0);
+      expect(result.byStatus.completed).toBe(0);
+      expect(prismaForLeader.todoTask.groupBy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('complete', () => {
     it('marks pending todo as completed and writes completedBy', async () => {
       mockPrisma.todoTask.findFirst.mockResolvedValue(makeTodo({ id: 'todo1', userId: 'user1' }));

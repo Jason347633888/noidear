@@ -7,6 +7,7 @@ import {
   Param,
   UseGuards,
   ParseUUIDPipe,
+  Request,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -20,6 +21,7 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Ownership } from '../../../shared/decorators/ownership.decorator';
 import type { OwnershipContext } from '../../module-access/ownership-context';
+import { AuthenticatedRequest } from '../../auth/authenticated-user';
 
 @ApiTags('退料管理')
 @ModuleKey('warehouse')
@@ -32,8 +34,8 @@ export class ReturnController {
   @Post()
   @ApiOperation({ summary: '创建退料单' })
   @ApiResponse({ status: 201, description: '退料单创建成功' })
-  create(@Body() dto: CreateReturnDto) {
-    return this.returnService.create(dto);
+  create(@Body() dto: CreateReturnDto, @Request() req: AuthenticatedRequest) {
+    return this.returnService.create(dto, undefined, req.user.id);
   }
 
   @Post(':id/complete')

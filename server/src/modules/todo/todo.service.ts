@@ -62,7 +62,14 @@ export class TodoService {
 
   async getStatistics(ownership: OwnershipContext) {
     const scopeWhere = await this.buildOwnershipWhere(ownership);
-    const statsWhere: Record<string, unknown> = scopeWhere ?? {};
+    if (scopeWhere === null) {
+      // Leader with no managed departments (or empty depts) — no accessible scope
+      const byType: Partial<Record<TodoType, number>> = Object.fromEntries(
+        ALL_TODO_TYPES.map((t) => [t, 0]),
+      );
+      return { total: 0, byType, byStatus: { pending: 0, completed: 0 } };
+    }
+    const statsWhere: Record<string, unknown> = scopeWhere;
 
     const groups = await this.prisma.todoTask.groupBy({
       by: ['type', 'status'],

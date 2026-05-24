@@ -32,7 +32,8 @@ export class FragileItemInspectionService {
         ...dto,
         company_id: companyId,
         inspected_at: new Date(dto.inspected_at),
-        ...(dto.inspector_id == null && creatorId ? { inspector_id: creatorId } : {}),
+        // Always use creatorId to prevent inspector_id forgery by clients
+        ...(creatorId !== undefined ? { inspector_id: creatorId } : {}),
       },
     });
   }
