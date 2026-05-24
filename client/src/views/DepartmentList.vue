@@ -284,7 +284,7 @@ const handleSubmit = async () => {
     if (editingDepartment.value) {
       await updateDepartment(editingDepartment.value.id, {
         name: payload.name,
-        managerId: payload.managerId ?? undefined,
+        managerId: payload.managerId ?? null,
         status: form.status,
       });
       ElMessage.success('保存成功');

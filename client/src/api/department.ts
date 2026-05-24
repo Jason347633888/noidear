@@ -18,7 +18,7 @@ export interface CreateDepartmentPayload {
 
 export interface UpdateDepartmentPayload {
   name?: string;
-  managerId?: string;
+  managerId?: string | null;
   status?: 'active' | 'inactive';
 }
 
