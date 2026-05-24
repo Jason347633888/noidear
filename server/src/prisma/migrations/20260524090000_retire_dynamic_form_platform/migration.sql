@@ -6,23 +6,32 @@
 
 -- Step 1: Clean up orphan approval data (actions → tasks → instances → definitions)
 -- resourceType/module values used by the retired dynamic form platform
+-- Note: approval_instances has NO "module" column — module lives on approval_definitions.
+-- Use LEFT JOIN to capture instances by resourceType OR by their definition's module.
+
 DELETE FROM "approval_actions"
   WHERE "instanceId" IN (
-    SELECT id FROM "approval_instances"
-    WHERE "resourceType" IN ('record', 'task_record', 'taskRecord')
-       OR "module" IN ('record', 'task')
+    SELECT i.id FROM "approval_instances" i
+    LEFT JOIN "approval_definitions" d ON i."definitionId" = d.id
+    WHERE i."resourceType" IN ('record', 'task_record', 'taskRecord')
+       OR d."module" IN ('record', 'task')
   );
 
 DELETE FROM "approval_tasks"
   WHERE "instanceId" IN (
-    SELECT id FROM "approval_instances"
-    WHERE "resourceType" IN ('record', 'task_record', 'taskRecord')
-       OR "module" IN ('record', 'task')
+    SELECT i.id FROM "approval_instances" i
+    LEFT JOIN "approval_definitions" d ON i."definitionId" = d.id
+    WHERE i."resourceType" IN ('record', 'task_record', 'taskRecord')
+       OR d."module" IN ('record', 'task')
   );
 
 DELETE FROM "approval_instances"
-  WHERE "resourceType" IN ('record', 'task_record', 'taskRecord')
-     OR "module" IN ('record', 'task');
+  WHERE id IN (
+    SELECT i.id FROM "approval_instances" i
+    LEFT JOIN "approval_definitions" d ON i."definitionId" = d.id
+    WHERE i."resourceType" IN ('record', 'task_record', 'taskRecord')
+       OR d."module" IN ('record', 'task')
+  );
 
 DELETE FROM "approval_definitions"
   WHERE "module" IN ('record', 'task');

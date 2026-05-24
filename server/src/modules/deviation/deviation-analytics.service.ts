@@ -14,22 +14,6 @@ export interface FieldDistribution {
   percentage: number;
 }
 
-export interface DepartmentStats {
-  departmentId: string;
-  departmentName: string;
-  totalTasks: number;
-  deviationTasks: number;
-  deviationRate: number;
-}
-
-export interface TemplateStats {
-  templateId: string;
-  templateTitle: string;
-  totalTasks: number;
-  deviationTasks: number;
-  deviationRate: number;
-}
-
 export interface WordCloudData {
   text: string;
   value: number;
@@ -140,24 +124,6 @@ export class DeviationAnalyticsService {
           ? Number(((item._count.fieldName / totalCount) * 100).toFixed(2))
           : 0,
     }));
-  }
-
-  async getDeviationRateByDepartment(
-    _startDate?: Date,
-    _endDate?: Date,
-  ): Promise<DepartmentStats[]> {
-    // Dynamic task_records table has been retired. Department-level deviation
-    // metrics will be re-implemented against independent business record models.
-    return [];
-  }
-
-  async getDeviationRateByTemplate(
-    _startDate?: Date,
-    _endDate?: Date,
-  ): Promise<TemplateStats[]> {
-    // RecordTemplate / record_templates table has been retired. Template-level
-    // deviation metrics will be re-implemented against independent business models.
-    return [];
   }
 
   async getDeviationReasonWordCloud(): Promise<WordCloudData[]> {

@@ -127,27 +127,6 @@ describe('DeviationAnalyticsService', () => {
     });
   });
 
-  describe('getDeviationRateByDepartment', () => {
-    it('动态任务表已退役：返回空数组', async () => {
-      const result = await service.getDeviationRateByDepartment();
-      expect(result).toEqual([]);
-    });
-
-    it('提供日期范围参数时仍返回空数组', async () => {
-      const result = await service.getDeviationRateByDepartment(
-        new Date('2024-01-01'),
-        new Date('2024-01-31'),
-      );
-      expect(result).toEqual([]);
-    });
-  });
-
-  describe('getDeviationRateByTemplate', () => {
-    it('动态模板表已退役：返回空数组', async () => {
-      const result = await service.getDeviationRateByTemplate();
-      expect(result).toEqual([]);
-    });
-  });
 
   describe('getDeviationReasonWordCloud', () => {
     it('应该返回偏离原因词云数据', async () => {
