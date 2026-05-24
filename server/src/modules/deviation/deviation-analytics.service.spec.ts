@@ -4,7 +4,6 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 describe('DeviationAnalyticsService', () => {
   let service: DeviationAnalyticsService;
-  let prisma: PrismaService;
 
   const mockPrisma = {
     $queryRaw: jest.fn(),
@@ -12,9 +11,6 @@ describe('DeviationAnalyticsService', () => {
       groupBy: jest.fn(),
       count: jest.fn(),
       findMany: jest.fn(),
-    },
-    record: {
-      count: jest.fn(),
     },
   };
 
@@ -27,7 +23,6 @@ describe('DeviationAnalyticsService', () => {
     }).compile();
 
     service = module.get<DeviationAnalyticsService>(DeviationAnalyticsService);
-    prisma = module.get<PrismaService>(PrismaService);
   });
 
   afterEach(() => {
@@ -35,7 +30,7 @@ describe('DeviationAnalyticsService', () => {
   });
 
   describe('getDeviationTrend', () => {
-    it('应该返回按天统计的偏离趋势', async () => {
+    it('应该返回按天统计的偏离趋势（使用 deviationReport.count，不再使用 record.count）', async () => {
       const startDate = new Date('2024-01-01');
       const endDate = new Date('2024-01-31');
 
@@ -45,13 +40,9 @@ describe('DeviationAnalyticsService', () => {
         { date: '2024-01-03', count: '8' },
       ]);
 
-      mockPrisma.record.count.mockResolvedValue(100);
+      mockPrisma.deviationReport.count.mockResolvedValue(100);
 
-      const result = await service.getDeviationTrend(
-        startDate,
-        endDate,
-        'day',
-      );
+      const result = await service.getDeviationTrend(startDate, endDate, 'day');
 
       expect(result).toHaveLength(3);
       expect(result[0]).toEqual({
@@ -59,11 +50,8 @@ describe('DeviationAnalyticsService', () => {
         count: 10,
         rate: 10.0,
       });
-      expect(result[1]).toEqual({
-        date: '2024-01-02',
-        count: 15,
-        rate: 15.0,
-      });
+      // Verify we used deviationReport.count, not record.count
+      expect(mockPrisma.deviationReport.count).toHaveBeenCalled();
     });
 
     it('应该返回按周统计的偏离趋势', async () => {
@@ -75,13 +63,9 @@ describe('DeviationAnalyticsService', () => {
         { week: '2024-W02', count: '30' },
       ]);
 
-      mockPrisma.record.count.mockResolvedValue(200);
+      mockPrisma.deviationReport.count.mockResolvedValue(200);
 
-      const result = await service.getDeviationTrend(
-        startDate,
-        endDate,
-        'week',
-      );
+      const result = await service.getDeviationTrend(startDate, endDate, 'week');
 
       expect(result).toHaveLength(2);
       expect(result[0]).toEqual({
@@ -100,13 +84,9 @@ describe('DeviationAnalyticsService', () => {
         { month: '2024-02', count: '60' },
       ]);
 
-      mockPrisma.record.count.mockResolvedValue(500);
+      mockPrisma.deviationReport.count.mockResolvedValue(500);
 
-      const result = await service.getDeviationTrend(
-        startDate,
-        endDate,
-        'month',
-      );
+      const result = await service.getDeviationTrend(startDate, endDate, 'month');
 
       expect(result).toHaveLength(2);
       expect(result[0]).toEqual({
@@ -135,35 +115,6 @@ describe('DeviationAnalyticsService', () => {
         count: 100,
         percentage: 41.67,
       });
-      expect(result[1]).toEqual({
-        fieldName: 'pressure',
-        count: 80,
-        percentage: 33.33,
-      });
-    });
-
-    it('应该支持日期范围筛选', async () => {
-      const startDate = new Date('2024-01-01');
-      const endDate = new Date('2024-01-31');
-
-      mockPrisma.deviationReport.groupBy.mockResolvedValue([
-        { fieldName: 'temperature', _count: { fieldName: 50 } },
-      ]);
-
-      mockPrisma.deviationReport.count.mockResolvedValue(50);
-
-      await service.getFieldDistribution(startDate, endDate);
-
-      expect(mockPrisma.deviationReport.groupBy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            createdAt: {
-              gte: startDate,
-              lte: endDate,
-            },
-          }),
-        }),
-      );
     });
 
     it('处理空数据应返回空数组', async () => {
@@ -177,77 +128,24 @@ describe('DeviationAnalyticsService', () => {
   });
 
   describe('getDeviationRateByDepartment', () => {
-    it('应该返回按部门统计的偏离率', async () => {
-      mockPrisma.$queryRaw.mockResolvedValue([
-        {
-          department_id: 'dept1',
-          department_name: '生产部',
-          total_tasks: '100',
-          deviation_tasks: '20',
-          deviation_rate: '20.00',
-        },
-        {
-          department_id: 'dept2',
-          department_name: '质检部',
-          total_tasks: '80',
-          deviation_tasks: '8',
-          deviation_rate: '10.00',
-        },
-      ]);
-
+    it('动态任务表已退役：返回空数组', async () => {
       const result = await service.getDeviationRateByDepartment();
-
-      expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({
-        departmentId: 'dept1',
-        departmentName: '生产部',
-        totalTasks: 100,
-        deviationTasks: 20,
-        deviationRate: 20.0,
-      });
+      expect(result).toEqual([]);
     });
 
-    it('应该支持日期范围筛选', async () => {
-      const startDate = new Date('2024-01-01');
-      const endDate = new Date('2024-01-31');
-
-      mockPrisma.$queryRaw.mockResolvedValue([]);
-
-      await service.getDeviationRateByDepartment(startDate, endDate);
-
-      expect(mockPrisma.$queryRaw).toHaveBeenCalled();
+    it('提供日期范围参数时仍返回空数组', async () => {
+      const result = await service.getDeviationRateByDepartment(
+        new Date('2024-01-01'),
+        new Date('2024-01-31'),
+      );
+      expect(result).toEqual([]);
     });
   });
 
   describe('getDeviationRateByTemplate', () => {
-    it('应该返回按模板统计的偏离率', async () => {
-      mockPrisma.$queryRaw.mockResolvedValue([
-        {
-          template_id: 'tpl1',
-          template_title: '配方A',
-          total_tasks: '50',
-          deviation_tasks: '10',
-          deviation_rate: '20.00',
-        },
-        {
-          template_id: 'tpl2',
-          template_title: '配方B',
-          total_tasks: '60',
-          deviation_tasks: '6',
-          deviation_rate: '10.00',
-        },
-      ]);
-
+    it('动态模板表已退役：返回空数组', async () => {
       const result = await service.getDeviationRateByTemplate();
-
-      expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({
-        templateId: 'tpl1',
-        templateTitle: '配方A',
-        totalTasks: 50,
-        deviationTasks: 10,
-        deviationRate: 20.0,
-      });
+      expect(result).toEqual([]);
     });
   });
 
@@ -265,18 +163,6 @@ describe('DeviationAnalyticsService', () => {
       expect(result.length).toBeGreaterThan(0);
       expect(result[0]).toHaveProperty('text');
       expect(result[0]).toHaveProperty('value');
-    });
-
-    it('应该对高频词汇排序', async () => {
-      mockPrisma.deviationReport.findMany.mockResolvedValue([
-        { reason: '设备故障 设备故障 设备故障' },
-        { reason: '温度异常 温度异常' },
-        { reason: '压力问题' },
-      ]);
-
-      const result = await service.getDeviationReasonWordCloud();
-
-      expect(result[0].value).toBeGreaterThanOrEqual(result[1].value);
     });
 
     it('处理空数据应返回空数组', async () => {

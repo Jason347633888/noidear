@@ -144,28 +144,6 @@ export class TraceExportService {
       });
     });
 
-    // TASK-169: 包含关联的动态表单记录
-    if (traceData.relatedRecords && traceData.relatedRecords.length > 0) {
-      content.push({
-        text: 'Related Dynamic Form Records',
-        fontSize: 14,
-        bold: true,
-        margin: [0, 10, 0, 5],
-      });
-
-      traceData.relatedRecords.forEach((record: any, idx: number) => {
-        content.push({
-          text: [
-            { text: `${idx + 1}. ${record.template?.name || 'N/A'} (${record.number})\n`, bold: true },
-            { text: `   Status: ${record.status}\n` },
-            { text: `   Created: ${dayjs(record.createdAt).format('YYYY-MM-DD HH:mm')}\n` },
-          ],
-          fontSize: 10,
-          margin: [0, 0, 0, 5],
-        });
-      });
-    }
-
     return content;
   }
 
@@ -221,28 +199,6 @@ export class TraceExportService {
         text: 'No production batches found',
         fontSize: 10,
         margin: [0, 0, 0, 10],
-      });
-    }
-
-    // TASK-169: 包含关联的动态表单记录
-    if (traceData.relatedRecords && traceData.relatedRecords.length > 0) {
-      content.push({
-        text: 'Related Dynamic Form Records',
-        fontSize: 14,
-        bold: true,
-        margin: [0, 10, 0, 5],
-      });
-
-      traceData.relatedRecords.forEach((record: any, idx: number) => {
-        content.push({
-          text: [
-            { text: `${idx + 1}. ${record.template?.name || 'N/A'} (${record.number})\n`, bold: true },
-            { text: `   Status: ${record.status}\n` },
-            { text: `   Created: ${dayjs(record.createdAt).format('YYYY-MM-DD HH:mm')}\n` },
-          ],
-          fontSize: 10,
-          margin: [0, 0, 0, 5],
-        });
       });
     }
 
