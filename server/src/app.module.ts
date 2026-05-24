@@ -65,7 +65,6 @@ import { ShiftInstanceModule } from './modules/shift-instance/shift-instance.mod
 import { ProductionRunModule } from './modules/production-run/production-run.module';
 import { ScheduledTaskModule } from './modules/scheduled-task/scheduled-task.module';
 import { UploadModule } from './modules/upload/upload.module';
-import { ModelLandingModule } from './modules/model-landing/model-landing.module';
 import { TodoModule } from './modules/todo/todo.module';
 import { TaskModule } from './modules/task/task.module';
 import { UnifiedApprovalModule } from './modules/unified-approval/unified-approval.module';
@@ -145,7 +144,6 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     ProductionRunModule,
     ScheduledTaskModule,
     UploadModule,
-    ModelLandingModule,
     TodoModule,
     TaskModule,
     UnifiedApprovalModule,
