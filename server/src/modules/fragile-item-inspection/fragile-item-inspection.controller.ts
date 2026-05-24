@@ -15,7 +15,7 @@ export class FragileItemInspectionController {
 
   @Post()
   create(@Body() dto: CreateFragileItemInspectionDto, @Request() req: AuthenticatedRequest) {
-    return this.service.create(dto, req.user.companyId);
+    return this.service.create(dto, req.user.companyId, req.user.id);
   }
 
   @Get()

@@ -60,10 +60,13 @@ export class TodoService {
     return { items, total, page, limit, hasMore: skip + items.length < total };
   }
 
-  async getStatistics(userId: string) {
+  async getStatistics(ownership: OwnershipContext) {
+    const scopeWhere = await this.buildOwnershipWhere(ownership);
+    const statsWhere: Record<string, unknown> = scopeWhere ?? {};
+
     const groups = await this.prisma.todoTask.groupBy({
       by: ['type', 'status'],
-      where: { userId },
+      where: statsWhere,
       _count: { id: true },
     });
 

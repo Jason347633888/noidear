@@ -118,7 +118,7 @@ export class ShiftInstanceService {
         shift_type: shiftType.name,
         shift_date: shiftDate,
         team_id: teamBinding.teamId,
-        leader_id: teamBinding.leaderId,
+        leader_id: teamBinding.leaderId ?? userId,
         team_override_reason: teamBinding.overrideReason,
         opened_by: userId,
         notes: dto.notes,

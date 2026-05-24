@@ -6,11 +6,13 @@ import {
   Delete,
   Body,
   Param,
+  Request,
   UseGuards,
 } from '@nestjs/common';
 import { LineChangeCheckRecordService } from './line-change-check-record.service';
 import { CreateLineChangeCheckRecordDto } from './dto/create-line-change-check-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { Ownership } from '../../shared/decorators/ownership.decorator';
 import type { OwnershipContext } from '../module-access/ownership-context';
 
@@ -26,8 +28,8 @@ export class LineChangeCheckRecordController {
   }
 
   @Post()
-  create(@Body() dto: CreateLineChangeCheckRecordDto) {
-    return this.service.create(dto);
+  create(@Body() dto: CreateLineChangeCheckRecordDto, @Request() req: AuthenticatedRequest) {
+    return this.service.create(dto, req.user.id);
   }
 
   @Delete(':id')

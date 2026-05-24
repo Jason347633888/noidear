@@ -8,7 +8,7 @@ import { userIdsInDepts } from '../module-access/ownership-helpers';
 export class FragileItemInspectionService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateFragileItemInspectionDto, companyId: string) {
+  async create(dto: CreateFragileItemInspectionDto, companyId: string, creatorId?: string) {
     const productionBatch = await this.prisma.productionBatch.findUnique({
       where: { id: dto.production_batch_id },
       select: { id: true, productId: true },
@@ -32,6 +32,7 @@ export class FragileItemInspectionService {
         ...dto,
         company_id: companyId,
         inspected_at: new Date(dto.inspected_at),
+        ...(dto.inspector_id == null && creatorId ? { inspector_id: creatorId } : {}),
       },
     });
   }

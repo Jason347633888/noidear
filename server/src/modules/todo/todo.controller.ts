@@ -23,8 +23,8 @@ export class TodoController {
 
   @Get('statistics')
   @ApiOperation({ summary: '获取当前用户待办统计（用于 badge）' })
-  getStatistics(@Request() req: any) {
-    return this.todoService.getStatistics(req.user.id);
+  getStatistics(@Ownership() ownership: OwnershipContext) {
+    return this.todoService.getStatistics(ownership);
   }
 
   @Post(':id/complete')

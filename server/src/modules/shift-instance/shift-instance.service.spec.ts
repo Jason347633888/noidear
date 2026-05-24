@@ -125,7 +125,8 @@ describe('ShiftInstanceService', () => {
           shift_type: '白班',
           shift_date: new Date('2026-04-22'),
           team_id: undefined,
-          leader_id: undefined,
+          // No schedule → no leaderId → falls back to creator userId so user can see own shift.
+          leader_id: 'user1',
           team_override_reason: undefined,
           opened_by: 'user1',
           notes: undefined,
@@ -213,7 +214,7 @@ describe('ShiftInstanceService', () => {
         shift_type_id: 'shift-day',
         shift_type: '白班',
         team_id: null,
-        leader_id: null,
+        leader_id: 'user1',
       });
 
       await service.create({ shiftTypeId: 'shift-day', shift_date: '2026-05-02' }, 'user1');
@@ -221,7 +222,9 @@ describe('ShiftInstanceService', () => {
       expect(mockPrisma.shiftInstance.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           team_id: undefined,
-          leader_id: undefined,
+          // When no schedule provides a leaderId, falls back to the creator (userId)
+          // so the creator can see their own shift in findAll (which filters by leader_id).
+          leader_id: 'user1',
           team_override_reason: undefined,
         }),
         include: { shift_type_ref: true, team: true },

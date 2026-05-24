@@ -86,13 +86,14 @@ describe('TodoService', () => {
   });
 
   describe('getStatistics', () => {
-    it('returns all TodoType keys with zero-fill and byStatus counts', async () => {
+    it('returns all TodoType keys with zero-fill and byStatus counts (user scope)', async () => {
       mockPrisma.todoTask.groupBy.mockResolvedValue([
         { type: 'training_attend', status: 'pending', _count: { id: 3 } },
         { type: 'approval', status: 'completed', _count: { id: 1 } },
       ]);
 
-      const result = await service.getStatistics('user1');
+      const userOwnership: OwnershipContext = { userId: 'user1', roleCode: 'user', departmentId: null, managedDepartmentIds: [] };
+      const result = await service.getStatistics(userOwnership);
 
       expect(result.byStatus.pending).toBe(3);
       expect(result.byStatus.completed).toBe(1);
@@ -104,6 +105,21 @@ describe('TodoService', () => {
       expect(result.byType['change_execution_failed']).toBe(0);
       // audit_rectification was removed; key must be absent from the zero-fill map.
       expect((result.byType as Record<string, number>).audit_rectification).toBeUndefined();
+      // Verify the groupBy where clause uses userId scope
+      expect(mockPrisma.todoTask.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { userId: 'user1' } }),
+      );
+    });
+
+    it('admin getStatistics uses empty where (all todos)', async () => {
+      mockPrisma.todoTask.groupBy.mockResolvedValue([]);
+
+      const adminOwnership: OwnershipContext = { userId: 'admin1', roleCode: 'admin', departmentId: null, managedDepartmentIds: undefined };
+      await service.getStatistics(adminOwnership);
+
+      expect(mockPrisma.todoTask.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({ where: {} }),
+      );
     });
   });
 
