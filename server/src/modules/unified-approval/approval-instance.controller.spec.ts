@@ -253,3 +253,96 @@ describe('ApprovalInstanceController.findByResource task-candidate expansion', (
     expect(result).toHaveLength(0);
   });
 });
+
+describe('ApprovalInstanceController DEPT_ROLE AND-matching', () => {
+  function freshController(instances: any[] = []) {
+    const prisma = {
+      approvalInstance: {
+        findMany: jest.fn().mockResolvedValue(instances),
+        findUnique: jest.fn(),
+      },
+      user: { findMany: jest.fn().mockResolvedValue([]) },
+    } as any;
+    const engine = {} as any;
+    const controller = new ApprovalInstanceController(prisma, engine);
+    return { controller, prisma };
+  }
+
+  beforeEach(() => jest.clearAllMocks());
+
+  // P1-R17-1 新增测试 1：DEPT_ROLE 任务中 roleCode 匹配但 departmentId 不匹配 → 应被拒绝
+  it('DEPT_ROLE task: roleCode matches but departmentId does NOT match → findOne returns 403', async () => {
+    const instance = {
+      id: 'i-dept-role-1',
+      createdById: 'u-creator',
+      tasks: [{ assigneeUserId: null, assigneeRoleCode: 'leader', assigneeDepartmentId: 'd-target' }],
+    };
+    const { controller, prisma } = freshController();
+    prisma.approvalInstance.findUnique.mockResolvedValue(instance);
+    // 用户 roleCode=leader 匹配，但 departmentId=d-other 不匹配 d-target
+    const ownership: OwnershipContext = { userId: 'u-wrong-dept-leader', roleCode: 'leader', departmentId: 'd-other', managedDepartmentIds: ['d-other'] };
+    await expect(controller.findOne('i-dept-role-1', ownership)).rejects.toThrow(ForbiddenException);
+  });
+
+  // P1-R17-1 新增测试 2：DEPT_ROLE 任务中 departmentId 匹配但 roleCode 不匹配 → 应被拒绝
+  it('DEPT_ROLE task: departmentId matches but roleCode does NOT match → findOne returns 403', async () => {
+    const instance = {
+      id: 'i-dept-role-2',
+      createdById: 'u-creator',
+      tasks: [{ assigneeUserId: null, assigneeRoleCode: 'leader', assigneeDepartmentId: 'd-target' }],
+    };
+    const { controller, prisma } = freshController();
+    prisma.approvalInstance.findUnique.mockResolvedValue(instance);
+    // 用户 departmentId=d-target 匹配，但 roleCode=user 不匹配 leader
+    const ownership: OwnershipContext = { userId: 'u-right-dept-wrong-role', roleCode: 'user', departmentId: 'd-target', managedDepartmentIds: [] };
+    await expect(controller.findOne('i-dept-role-2', ownership)).rejects.toThrow(ForbiddenException);
+  });
+
+  // P1-R17-1 新增测试 3：DEPT_ROLE 任务中 roleCode 和 departmentId 都匹配 → 应能访问
+  it('DEPT_ROLE task: both roleCode AND departmentId match → findOne succeeds', async () => {
+    const instance = {
+      id: 'i-dept-role-3',
+      createdById: 'u-creator',
+      tasks: [{ assigneeUserId: null, assigneeRoleCode: 'leader', assigneeDepartmentId: 'd-target' }],
+    };
+    const { controller, prisma } = freshController();
+    prisma.approvalInstance.findUnique.mockResolvedValue(instance);
+    const ownership: OwnershipContext = { userId: 'u-correct-leader', roleCode: 'leader', departmentId: 'd-target', managedDepartmentIds: ['d-target'] };
+    const result = await controller.findOne('i-dept-role-3', ownership);
+    expect(result).toEqual(instance);
+  });
+
+  // P1-R17-1 新增测试 4：DEPT_ROLE 任务 findByResource - roleCode 匹配但 departmentId 不匹配 → 被过滤
+  it('DEPT_ROLE task: roleCode matches but departmentId does NOT match → filtered out in findByResource', async () => {
+    const instances = [
+      {
+        id: 'i-dept-role-4',
+        createdById: 'u-creator',
+        resourceType: 'order',
+        resourceId: 'r-1',
+        tasks: [{ assigneeUserId: null, assigneeRoleCode: 'leader', assigneeDepartmentId: 'd-target' }],
+      },
+    ];
+    const { controller } = freshController(instances);
+    const ownership: OwnershipContext = { userId: 'u-wrong-dept-leader', roleCode: 'leader', departmentId: 'd-other', managedDepartmentIds: ['d-other'] };
+    const result = await controller.findByResource('order', 'r-1', ownership);
+    expect(result).toHaveLength(0);
+  });
+
+  // P1-R17-1 新增测试 5：DEPT_ROLE 任务 findByResource - departmentId 匹配但 roleCode 不匹配 → 被过滤
+  it('DEPT_ROLE task: departmentId matches but roleCode does NOT match → filtered out in findByResource', async () => {
+    const instances = [
+      {
+        id: 'i-dept-role-5',
+        createdById: 'u-creator',
+        resourceType: 'order',
+        resourceId: 'r-1',
+        tasks: [{ assigneeUserId: null, assigneeRoleCode: 'leader', assigneeDepartmentId: 'd-target' }],
+      },
+    ];
+    const { controller } = freshController(instances);
+    const ownership: OwnershipContext = { userId: 'u-right-dept-wrong-role', roleCode: 'user', departmentId: 'd-target', managedDepartmentIds: [] };
+    const result = await controller.findByResource('order', 'r-1', ownership);
+    expect(result).toHaveLength(0);
+  });
+});

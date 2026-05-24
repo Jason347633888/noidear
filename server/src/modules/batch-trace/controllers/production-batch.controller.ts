@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { ProductionBatchService } from '../services/production-batch.service';
 import {
@@ -21,6 +22,7 @@ import {
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { Ownership } from '../../../shared/decorators/ownership.decorator';
 import type { OwnershipContext } from '../../module-access/ownership-context';
+import { AuthenticatedRequest } from '../../auth/authenticated-user';
 
 @ModuleKey('production_execution')
 @Controller('batch-trace/production-batches')
@@ -30,8 +32,8 @@ export class ProductionBatchController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createDto: CreateProductionBatchDto) {
-    return this.productionBatchService.create(createDto);
+  create(@Body() createDto: CreateProductionBatchDto, @Request() req: AuthenticatedRequest) {
+    return this.productionBatchService.create(createDto, req.user.id);
   }
 
   @Post('confirm')

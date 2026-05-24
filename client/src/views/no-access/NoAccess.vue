@@ -56,11 +56,11 @@ function moduleHomePath(key: string): string {
   switch (key) {
     case 'work_execution': return '/dashboard';
     case 'document_approval': return '/documents';
-    case 'production_execution': return '/records';
+    case 'production_execution': return '/process';
     case 'product_rd': return '/products';
     case 'quality_compliance': return '/non-conformances';
     case 'equipment_site': return '/equipment';
-    case 'traceability_batch': return '/batch-trace';
+    case 'traceability_batch': return '/traceability';
     case 'warehouse': return '/warehouse/materials';
     case 'training': return '/training/projects';
     default: return '/dashboard';

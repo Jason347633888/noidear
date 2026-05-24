@@ -109,7 +109,7 @@ export const menuGroups: MenuGroup[] = [
     moduleKey: 'traceability_batch',
     icon: Box,
     children: [
-      { path: '/batch-trace', title: '批次列表', icon: Box },
+      { path: '/batch-trace', title: '批次列表', icon: Box, moduleKey: 'production_execution' },
       { path: '/warehouse/batches', title: '批次管理', icon: Goods, moduleKey: 'warehouse' },
       { path: '/traceability', title: '追溯查询', icon: Search },
       { path: '/warehouse/material-balance', title: '物料平衡', icon: Goods },

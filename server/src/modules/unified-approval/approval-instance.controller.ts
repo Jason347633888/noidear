@@ -115,11 +115,16 @@ export class ApprovalInstanceController {
 
   private isTaskCandidate(tasks: ApprovalTaskRecord[] | undefined, ownership: OwnershipContext): boolean {
     if (!tasks || tasks.length === 0) return false;
-    return tasks.some(
-      (task) =>
-        (task.assigneeUserId !== null && task.assigneeUserId === ownership.userId) ||
-        (task.assigneeRoleCode !== null && task.assigneeRoleCode === ownership.roleCode) ||
-        (task.assigneeDepartmentId !== null && task.assigneeDepartmentId === ownership.departmentId),
-    );
+    return tasks.some((task) => {
+      // 直接指派给用户：仅匹配 userId
+      if (task.assigneeUserId !== null) {
+        return task.assigneeUserId === ownership.userId;
+      }
+      // 同时设置 roleCode 和 departmentId（DEPT_ROLE 类型）：必须两者都匹配
+      // 仅设置其中一项：匹配该项即可
+      const roleMatch = task.assigneeRoleCode === null || task.assigneeRoleCode === ownership.roleCode;
+      const deptMatch = task.assigneeDepartmentId === null || task.assigneeDepartmentId === ownership.departmentId;
+      return roleMatch && deptMatch && (task.assigneeRoleCode !== null || task.assigneeDepartmentId !== null);
+    });
   }
 }

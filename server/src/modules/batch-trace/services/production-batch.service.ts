@@ -23,7 +23,7 @@ export class ProductionBatchService {
     private readonly batchNumberGenerator: BatchNumberGeneratorService,
   ) {}
 
-  async create(createDto: CreateProductionBatchDto) {
+  async create(createDto: CreateProductionBatchDto, creatorId?: string) {
     const product = await this.prisma.product.findFirst({
       where: { id: createDto.productId, company_id: '1', status: 'active', deleted_at: null },
     });
@@ -47,6 +47,7 @@ export class ProductionBatchService {
         plannedQuantity: createDto.plannedQuantity,
         productionDate: createDto.productionDate,
         status: 'pending',
+        ...(creatorId !== undefined ? { leader_id: creatorId } : {}),
       },
     });
   }
