@@ -1,5 +1,18 @@
 import { ModuleKey } from '../../shared/decorators/module-key.decorator';
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  ForbiddenException,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { RecordTemplateService } from './record-template.service';
 import { CreateRecordTemplateDto } from './dto/create-record-template.dto';
@@ -7,6 +20,8 @@ import { UpdateRecordTemplateDto } from './dto/update-record-template.dto';
 import { QueryRecordTemplateDto } from './dto/query-record-template.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @ApiTags('记录模板管理')
 @ModuleKey('document_approval')
@@ -21,8 +36,9 @@ export class TemplateAliasController {
   @ApiOperation({ summary: '创建记录模板' })
   @ApiResponse({ status: 201, description: '创建成功' })
   @ApiResponse({ status: 409, description: '模板编号已存在' })
-  create(@Body() createDto: CreateRecordTemplateDto) {
-    return this.templateService.create(createDto);
+  create(@Body() createDto: CreateRecordTemplateDto, @Ownership() ownership: OwnershipContext) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('Admin access required');
+    return this.templateService.createForOwnership(createDto, ownership);
   }
 
   @Get()
@@ -45,7 +61,12 @@ export class TemplateAliasController {
   @ApiOperation({ summary: '更新记录模板' })
   @ApiResponse({ status: 200, description: '更新成功' })
   @ApiResponse({ status: 404, description: '模板不存在' })
-  update(@Param('id') id: string, @Body() updateDto: UpdateRecordTemplateDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateRecordTemplateDto,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('Admin access required');
     return this.templateService.update(id, updateDto);
   }
 
@@ -54,7 +75,8 @@ export class TemplateAliasController {
   @ApiOperation({ summary: '归档记录模板' })
   @ApiResponse({ status: 200, description: '归档成功' })
   @ApiResponse({ status: 404, description: '模板不存在' })
-  archive(@Param('id') id: string) {
+  archive(@Param('id') id: string, @Ownership() ownership: OwnershipContext) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('Admin access required');
     return this.templateService.archive(id);
   }
 
@@ -63,7 +85,12 @@ export class TemplateAliasController {
   @ApiOperation({ summary: '创建模板新版本' })
   @ApiResponse({ status: 201, description: '版本创建成功' })
   @ApiResponse({ status: 404, description: '模板不存在' })
-  createNewVersion(@Param('id') id: string, @Body() updateDto: UpdateRecordTemplateDto) {
+  createNewVersion(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateRecordTemplateDto,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('Admin access required');
     return this.templateService.createNewVersion(id, updateDto);
   }
 
@@ -77,7 +104,8 @@ export class TemplateAliasController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: '删除记录模板' })
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: string, @Ownership() ownership: OwnershipContext) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('Admin access required');
     return this.templateService.remove(id);
   }
 }
