@@ -97,7 +97,7 @@
         <el-descriptions-item label="期望值">{{ currentReport.expectedValue }}</el-descriptions-item>
         <el-descriptions-item label="实际值">{{ currentReport.actualValue }}</el-descriptions-item>
         <el-descriptions-item label="偏离量">
-          {{ currentReport.deviationValue > 0 ? '+' : '' }}{{ currentReport.deviationValue.toFixed(2) }}
+          {{ currentReport.deviationAmount > 0 ? '+' : '' }}{{ currentReport.deviationAmount.toFixed(2) }}
         </el-descriptions-item>
         <el-descriptions-item label="偏离率">
           <el-tag :type="getDeviationRateType(currentReport.deviationRate)" size="small">

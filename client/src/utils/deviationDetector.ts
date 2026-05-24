@@ -51,16 +51,16 @@ export function detectDeviations(
 
     // 检测是否偏离
     if (actualValue < minAllowed || actualValue > maxAllowed) {
-      const deviationValue = actualValue - expectedValue;
-      const deviationRate = expectedValue !== 0 
-        ? (deviationValue / expectedValue) * 100 
+      const deviationAmount = actualValue - expectedValue;
+      const deviationRate = expectedValue !== 0
+        ? (deviationAmount / expectedValue) * 100
         : 0;
 
       deviations.push({
         fieldName: config.fieldName,
         expectedValue,
         actualValue,
-        deviationValue,
+        deviationAmount,
         deviationRate,
         toleranceType: config.toleranceType,
         toleranceMin: config.toleranceMin,

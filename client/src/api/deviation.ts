@@ -12,7 +12,7 @@ export interface DeviationReport {
   fieldName: string;
   expectedValue: number;
   actualValue: number;
-  deviationValue: number;
+  deviationAmount: number;
   deviationRate: number;
   status: 'pending' | 'approved' | 'rejected';
   reason: string;
