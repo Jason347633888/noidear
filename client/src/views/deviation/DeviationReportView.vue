@@ -181,7 +181,7 @@ const fetchData = async () => {
   try {
     const params: any = {
       page: pagination.page,
-      pageSize: pagination.pageSize,
+      limit: pagination.pageSize,
     };
 
     if (filterForm.status) {
@@ -196,7 +196,7 @@ const fetchData = async () => {
     }
 
     const res = await deviationApi.getDeviationReports(params);
-    tableData.value = res.items || [];
+    tableData.value = res.list || [];
     pagination.total = res.total || 0;
   } catch {
     ElMessage.error('获取偏离报告列表失败');

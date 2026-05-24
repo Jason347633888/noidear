@@ -11,7 +11,7 @@
 
 ## 项目概览
 
-`noidear` 是一个食品安全与质量管理 SaaS 原型/平台，覆盖从体系文件、记录表单、产品研发、仓储批次到追溯查询的完整业务链路。当前事实以代码为准；283 张四级记录表单的落地映射由 `server/src/modules/model-landing/generated/model-landing.generated.ts` 和相关 spec artifact 表达。
+`noidear` 是一个食品安全与质量管理 SaaS 原型/平台，覆盖从体系文件、记录表单、产品研发、仓储批次到追溯查询的完整业务链路。当前事实以代码为准；各独立业务 `*Record` 模型直接承载记录采集，动态表单平台（model-landing / RecordTemplate / Record 等）已于 2026-05-24 退役，见 `docs/adr/0001-retire-dynamic-form-platform.md`。
 
 当前代码库包含：
 
@@ -29,7 +29,7 @@
 
 - 体系文件管理、版本控制、审批、归档、作废
 - 记录表单索引、编号规则、文控工作台、阅读确认、培训需求、影响分析
-- 动态表单、字段组件、记录填报、任务派发、逾期与锁定控制
+- 各独立业务 `*Record` 模型直接承载记录采集（动态表单平台已退役，见 ADR 0001）
 
 ### 食品安全主链路
 
@@ -179,8 +179,7 @@ npm run test:e2e -w client
 npm run traceability:test -w server
 npm run traceability:verify -w server
 
-# Model Landing artifact 验证
-npm run model-landing:verify -w server
+# Model Landing artifact 验证（已随动态表单平台退役，命令不再存在）
 ```
 
 ---

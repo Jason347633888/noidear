@@ -38,10 +38,10 @@ export default {
    */
   getDeviationReports(params: DeviationReportListParams) {
     return request.get<{
-      items: DeviationReport[];
+      list: DeviationReport[];
       total: number;
       page: number;
-      pageSize: number;
+      limit: number;
     }>('/deviation-reports', { params });
   },
 
