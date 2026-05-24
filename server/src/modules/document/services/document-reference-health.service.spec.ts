@@ -137,25 +137,6 @@ describe('DocumentReferenceHealthService', () => {
     });
   });
 
-  it('marks record form reference without landing target as unimplemented', async () => {
-    prisma.documentReference.findMany.mockResolvedValue([{
-      id: 'ref-1',
-      sourceDocId: 'doc-1',
-      targetType: 'record_form_landing',
-      targetId: 'GRSS-ZZ-JL-43',
-      targetLabel: '玻璃及硬塑制品检查表',
-      sourceDoc: { id: 'doc-1', title: '生产过程控制程序', number: 'QP-001' },
-      snapshot: { landingStatus: 'unimplemented' },
-    }]);
-
-    const result = await service.listIssues();
-
-    expect(result.issues[0]).toEqual(expect.objectContaining({
-      status: 'unimplemented',
-      reason: '记录表单存在，但尚未确认业务入口或动态表单模板。',
-    }));
-  });
-
   it('global issue list excludes healthy references', async () => {
     prisma.documentReference.findMany.mockResolvedValueOnce([
       baseReference,

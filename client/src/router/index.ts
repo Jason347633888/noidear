@@ -54,32 +54,6 @@ const routes: RouteRecordRaw[] = [
         redirect: '/documents',
       },
       {
-        path: 'documents/control/record-form-index',
-        name: 'RecordFormLandingIndex',
-        component: () => import('@/views/documents/RecordFormLandingIndex.vue'),
-        meta: { title: '记录表单索引' },
-      },
-      {
-        path: 'templates',
-        name: 'Templates',
-        component: () => import('@/views/templates/TemplateList.vue'),
-      },
-      {
-        path: 'templates/create',
-        name: 'TemplateCreate',
-        component: () => import('@/views/templates/TemplateEdit.vue'),
-      },
-      {
-        path: 'templates/:id/edit',
-        name: 'TemplateEdit',
-        component: () => import('@/views/templates/TemplateEdit.vue'),
-      },
-      {
-        path: 'templates/:id/tolerance',
-        name: 'ToleranceConfig',
-        component: () => import('@/views/templates/ToleranceConfig.vue'),
-      },
-      {
         path: 'deviation-reports',
         name: 'DeviationReports',
         component: () => import('@/views/deviation/DeviationReportView.vue'),
@@ -108,21 +82,6 @@ const routes: RouteRecordRaw[] = [
         path: 'approvals/history',
         name: 'ApprovalHistory',
         component: () => import('@/views/approvals/ApprovalHistory.vue'),
-      },
-      {
-        path: 'tasks',
-        name: 'TaskList',
-        component: () => import('@/views/tasks/TaskList.vue'),
-      },
-      {
-        path: 'tasks/create',
-        name: 'TaskCreate',
-        component: () => import('@/views/tasks/TaskCreate.vue'),
-      },
-      {
-        path: 'tasks/:id',
-        name: 'TaskDetail',
-        component: () => import('@/views/tasks/TaskDetail.vue'),
       },
       {
         path: 'i18n',
@@ -196,59 +155,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/permission/PermissionDefinitions.vue'),
         meta: { title: '权限定义', requiresAdmin: true },
       },
-      // 表单设计器（旧路径兼容）
-      {
-        path: 'templates/designer',
-        name: 'TemplateDesigner',
-        component: () => import('@/views/templates/TemplateDesigner.vue'),
-      },
-      // RecordTemplate 拖拽式设计器（REQUIREMENTS P2）
-      {
-        path: 'record-templates/:id/designer',
-        name: 'RecordTemplateDesigner',
-        component: () => import('@/views/templates/TemplateDesigner.vue'),
-        meta: { title: '表单设计器' },
-      },
       {
         path: 'my-todos',
         name: 'MyTodos',
         component: () => import('@/views/my-todos/MyTodos.vue'),
         meta: { title: '我的待办' },
-      },
-      // 记录模块
-      {
-        path: 'records',
-        name: 'Records',
-        component: () => import('@/views/record/RecordList.vue'),
-      },
-      {
-        path: 'records/:id',
-        name: 'RecordDetail',
-        component: () => import('@/views/record/RecordDetail.vue'),
-      },
-      {
-        path: 'records/fill/:templateId',
-        name: 'RecordFill',
-        component: () => import('@/views/records/RecordFill.vue'),
-        meta: { title: '填写记录' },
-      },
-      {
-        path: 'records/task/:instanceId',
-        name: 'RecordTaskFill',
-        component: () => import('@/views/records/RecordFill.vue'),
-        meta: { title: '填写任务' },
-      },
-      {
-        path: 'record-tasks/my',
-        name: 'RecordTaskInstanceList',
-        component: () => import('@/views/record-tasks/RecordTaskInstanceList.vue'),
-        meta: { title: '待填任务' },
-      },
-      {
-        path: 'record-tasks/manage',
-        name: 'RecordTaskAssignmentList',
-        component: () => import('@/views/record-tasks/RecordTaskAssignmentList.vue'),
-        meta: { title: '任务配置' },
       },
       // 批次追溯模块
       {

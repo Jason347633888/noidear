@@ -9,7 +9,6 @@ export interface ToleranceFieldConfig {
 
 export interface DeviationReport {
   id: string;
-  taskRecordId: string;
   fieldName: string;
   expectedValue: number;
   actualValue: number;
@@ -46,17 +45,4 @@ export default {
     }>('/deviation-reports', { params });
   },
 
-  /**
-   * 更新模板公差配置（路由迁到 record-templates 正式 API）
-   */
-  updateToleranceConfig(templateId: string, data: { fields: ToleranceFieldConfig[] }) {
-    return request.put(`/record-templates/${templateId}/tolerance`, data);
-  },
-
-  /**
-   * 获取模板公差配置（路由迁到 record-templates 正式 API）
-   */
-  getToleranceConfig(templateId: string) {
-    return request.get<{ fields: ToleranceFieldConfig[] }>(`/record-templates/${templateId}/tolerance`);
-  },
 };
