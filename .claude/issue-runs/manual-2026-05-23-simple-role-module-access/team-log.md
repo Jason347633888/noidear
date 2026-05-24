@@ -1,5 +1,37 @@
 # Team Log: simple-role-module-access
 
+## 2026-05-24 Round 23 Implementation (head c4d70af6)
+
+implementer_status: standby_waiting_for_review_feedback
+
+### 修复内容
+- F1-R23：material-usage controller POST 端点补 C1 batch ownership 验证，非 admin 用户写入他人 productionBatchId → 403，transaction 不触发，materialBatch.update 不调用
+- F2-R23：equipment PUT/:id 非 admin 时从 dto 剥离 responsiblePersonId，controller 传递 ownership 给 service.update
+
+### 测试结果
+- 新增 5 个测试（F1: 2 个，F2: 3 个）
+- 全量：1241 passed, 0 failed
+- tsc: 0 errors
+- client build: 成功
+
+---
+
+## 2026-05-24 Round 22 Implementation (head 9ac93949)
+
+implementer_status: standby_waiting_for_review_feedback
+
+### 修复内容
+- H1-a/b/c/d：四个服务的所有者 FK 均改为始终覆盖 dto（忽略客户端提供的所有者字段）
+- C1：batch-material-usage 添加 productionBatchId 所有权前置验证，非 admin 用户写入他人批次 → 403
+- H2：training controller createProject 改调 createProjectForOwnership，user-role 守卫正常触发
+
+### 验证
+- tsc --noEmit: 0 errors
+- jest --forceExit: 1236 passed, 0 failed
+- client build: ✓
+
+
+
 ## 2026-05-24 Round 12 Review (head 5fe7ea9f)
 
 ### Reviewer 审查结论
