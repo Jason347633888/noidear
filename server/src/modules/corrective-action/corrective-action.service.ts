@@ -34,7 +34,12 @@ export class CorrectiveActionService {
       tx,
     );
     return client.correctiveAction.create({
-      data: { ...dto, company_id: companyId, capa_no },
+      data: {
+        ...dto,
+        company_id: companyId,
+        capa_no,
+        ...(dto.responsible_id === undefined && userId ? { responsible_id: userId } : {}),
+      },
     });
   }
 

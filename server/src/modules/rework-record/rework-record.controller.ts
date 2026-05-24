@@ -15,7 +15,7 @@ export class ReworkRecordController {
 
   @Post()
   create(@Body() dto: CreateReworkRecordDto, @Request() req: AuthenticatedRequest) {
-    return this.service.create(dto, req.user.companyId);
+    return this.service.create(dto, req.user.companyId, req.user.id);
   }
 
   @Get()

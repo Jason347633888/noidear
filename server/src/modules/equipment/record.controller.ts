@@ -21,6 +21,7 @@ import {
 } from './dto/record.dto';
 import { Ownership } from '../../shared/decorators/ownership.decorator';
 import type { OwnershipContext } from '../module-access/ownership-context';
+import { AuthenticatedRequest } from '../auth/authenticated-user';
 
 @UseGuards(JwtAuthGuard)
 @ModuleKey('equipment_site')
@@ -30,8 +31,8 @@ export class RecordController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() dto: CreateRecordDto) {
-    return this.recordService.create(dto);
+  create(@Body() dto: CreateRecordDto, @Request() req: AuthenticatedRequest) {
+    return this.recordService.create(dto, req.user.id);
   }
 
   @Get()

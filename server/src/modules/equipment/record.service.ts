@@ -28,10 +28,10 @@ export class RecordService {
     @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {}
 
-  async create(dto: CreateRecordDto) {
+  async create(dto: CreateRecordDto, creatorId?: string) {
     const recordNumber = await this.generateRecordNumber();
     const optional: Record<string, any> = {};
-    this.applyOptionalFields(optional, dto);
+    this.applyOptionalFields(optional, dto, creatorId);
 
     const record = await this.prisma.maintenanceRecord.create({
       data: {
@@ -161,16 +161,21 @@ export class RecordService {
     }
   }
 
-  private applyOptionalFields(data: Record<string, any>, dto: CreateRecordDto) {
+  private applyOptionalFields(data: Record<string, any>, dto: CreateRecordDto, creatorId?: string) {
     const optionalFields = [
       'planId', 'content', 'beforeStatus', 'afterStatus',
-      'photos', 'performerSignature', 'performerId',
+      'photos', 'performerSignature', 'performerId', 'reviewerId',
     ] as const;
 
     for (const field of optionalFields) {
-      if (dto[field] !== undefined) data[field] = dto[field];
+      if ((dto as any)[field] !== undefined) data[field] = (dto as any)[field];
     }
     if (dto.cost !== undefined) data.cost = dto.cost;
+
+    // Fallback to creatorId when performerId is not provided by caller
+    if (data.performerId === undefined && creatorId !== undefined) {
+      data.performerId = creatorId;
+    }
   }
 
   private async generateRecordNumber(): Promise<string> {

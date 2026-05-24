@@ -57,3 +57,78 @@ describe('RecordService (MaintenanceRecord).findAll with ownership', () => {
     );
   });
 });
+
+describe('RecordService.create writes performerId from creatorId', () => {
+  const buildPrisma = () => ({
+    maintenanceRecord: {
+      findMany: jest.fn().mockResolvedValue([]),
+      count: jest.fn().mockResolvedValue(0),
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue({ id: 'rec-1', performerId: 'u-99' }),
+    },
+    user: { findMany: jest.fn().mockResolvedValue([]) },
+  });
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it('admin sees all maintenance records (no OR filter)', async () => {
+    const prisma: any = buildPrisma();
+    const stats: any = { clearCache: jest.fn().mockResolvedValue(undefined) };
+    const svc = new RecordService(prisma, {} as any, stats);
+    const o: OwnershipContext = { userId: 'a', roleCode: 'admin', departmentId: null, managedDepartmentIds: undefined };
+    await svc.findAll({}, o);
+    const callWhere = prisma.maintenanceRecord.findMany.mock.calls[0][0].where;
+    expect(callWhere).not.toHaveProperty('OR');
+  });
+
+  it('create falls back to creatorId as performerId when dto does not provide it', async () => {
+    const capturedData: any = {};
+    const prisma: any = {
+      maintenanceRecord: {
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockImplementation((args: any) => {
+          Object.assign(capturedData, args.data);
+          return Promise.resolve({ id: 'rec-new', performerId: 'u-99' });
+        }),
+      },
+      user: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const stats: any = { clearCache: jest.fn().mockResolvedValue(undefined) };
+    const svc = new RecordService(prisma, {} as any, stats);
+    const dto = {
+      equipmentId: 'eq-1',
+      maintenanceLevel: 'routine',
+      maintenanceDate: '2026-05-24',
+    } as any;
+    await svc.create(dto, 'u-99');
+    expect(capturedData).toHaveProperty('performerId', 'u-99');
+  });
+
+  it('create preserves dto.performerId when explicitly provided', async () => {
+    const capturedData: any = {};
+    const prisma: any = {
+      maintenanceRecord: {
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockImplementation((args: any) => {
+          Object.assign(capturedData, args.data);
+          return Promise.resolve({ id: 'rec-new', performerId: 'explicit-user' });
+        }),
+      },
+      user: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const stats: any = { clearCache: jest.fn().mockResolvedValue(undefined) };
+    const svc = new RecordService(prisma, {} as any, stats);
+    const dto = {
+      equipmentId: 'eq-1',
+      maintenanceLevel: 'routine',
+      maintenanceDate: '2026-05-24',
+      performerId: 'explicit-user',
+    } as any;
+    await svc.create(dto, 'u-99');
+    expect(capturedData).toHaveProperty('performerId', 'explicit-user');
+  });
+});

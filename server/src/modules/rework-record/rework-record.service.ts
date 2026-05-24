@@ -8,7 +8,7 @@ import { userIdsInDepts } from '../module-access/ownership-helpers';
 export class ReworkRecordService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateReworkRecordDto, companyId: string) {
+  async create(dto: CreateReworkRecordDto, companyId: string, creatorId?: string) {
     const ncId = dto.nc_id?.trim();
     if (!ncId) {
       throw new BadRequestException('关联不合格记录不能为空');
@@ -33,6 +33,7 @@ export class ReworkRecordService {
         company_id: companyId,
         rework_date: new Date(dto.rework_date),
         rework_qty: dto.rework_qty,
+        ...(dto.operator_id === undefined && creatorId !== undefined ? { operator_id: creatorId } : {}),
       },
     });
   }

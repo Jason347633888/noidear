@@ -100,7 +100,7 @@ export class MixingService {
     return `MIX-${date}-${String(count + 1).padStart(4, '0')}`;
   }
 
-  async createExecution(dto: CreateMixingExecutionDto) {
+  async createExecution(dto: CreateMixingExecutionDto, operatorId?: string) {
     const recipeLineIds = dto.lines.map((l) => l.recipeLineId);
     if (new Set(recipeLineIds).size !== recipeLineIds.length) {
       throw new BadRequestException('配方明细存在重复项');
@@ -108,7 +108,7 @@ export class MixingService {
 
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        return await this._doCreateExecution(dto);
+        return await this._doCreateExecution(dto, operatorId);
       } catch (error) {
         if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002' && attempt < 2) {
           continue;
@@ -122,7 +122,7 @@ export class MixingService {
     throw new ConflictException('执行号生成冲突，请重试');
   }
 
-  private async _doCreateExecution(dto: CreateMixingExecutionDto) {
+  private async _doCreateExecution(dto: CreateMixingExecutionDto, operatorId?: string) {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const recipe = await tx.recipe.findFirst({
@@ -178,6 +178,7 @@ export class MixingService {
             actual_weight: dto.actualWeight,
             status: 'confirmed',
             confirmedAt: new Date(),
+            ...(operatorId !== undefined ? { operatorId } : {}),
           },
         });
 
