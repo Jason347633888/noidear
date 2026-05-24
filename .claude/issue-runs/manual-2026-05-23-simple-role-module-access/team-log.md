@@ -652,3 +652,82 @@ implementer_status: standby_waiting_for_review_feedback
 - `requisition` findOne/submit/complete 无所有权检查（pre-existing IDOR），已记录，非本 PR 引入，不在修复范围
 
 implementer_status: standby_waiting_for_review_feedback
+
+## 2026-05-24 Round 20 实现 (head fde95e47)
+
+### 修复内容
+
+**P2-F1: FragileItemInspection create 不写 inspector_id**
+- `fragile-item-inspection.service.ts`: `create(dto, companyId, creatorId?)` 新增可选第三参数；当 `dto.inspector_id == null && creatorId` 时写入 `inspector_id: creatorId`
+- `fragile-item-inspection.controller.ts`: 传入 `req.user.id` 作为 creatorId
+- `fragile-item-inspection.service.ownership.spec.ts`: 新增 3 个 create 测试（无 inspector_id 时回退 creatorId、有 inspector_id 时保留、创建者在 findAll 中可见）
+
+**P2-F2: LineChangeCheckRecord create 不写 inspector_id**
+- `line-change-check-record.service.ts`: `create(dto, creatorId?)` 新增可选第二参数；同等 fallback 逻辑
+- `line-change-check-record.controller.ts`: 注入 `@Request() req: AuthenticatedRequest`，传入 `req.user.id`
+- `line-change-check-record.service.ownership.spec.ts`: 新增 3 个 create 测试，同 F1 模式
+
+**P2-F3: ShiftInstance leader_id 字段不匹配**
+- `shift-instance.service.ts`: `leader_id: teamBinding.leaderId ?? userId` — 当排班无 leaderId 时回退创建者为 leader_id，确保用户可在 findAll 中看到自己创建的班次
+- `shift-instance.service.spec.ts`: 更新 2 个既有测试（无排班时 leader_id 改为 userId）
+- `shift-instance.service.ownership.spec.ts`: 新增 2 个 create 测试（无排班 fallback 到 userId、有排班使用排班 leaderId）
+
+**P1-D2: Todo getStatistics 范围不一致**
+- `todo.service.ts`: `getStatistics(userId: string)` 改为 `getStatistics(ownership: OwnershipContext)`，应用 `buildOwnershipWhere(ownership)` 与 findAll 保持一致
+- `todo.controller.ts`: 传入 `@Ownership() ownership` 替代 `req.user.id`；complete() 保持不变
+- `todo.service.spec.ts`: 更新 getStatistics 测试使用 OwnershipContext，新增 admin 范围测试
+
+### 验证结果
+
+- `npx tsc --noEmit`: 0 errors
+- `npx jest --forceExit`: 186 suites, 1221 tests, 0 failures
+- `client npm run build`: 构建成功 (0 errors)
+- head: fde95e474e357ba62fe2cc35969b958efdc7ddd2
+- PR: https://github.com/Jason347633888/noidear/pull/217
+
+### 剩余风险
+
+- `requisition` findOne/submit/complete 无所有权检查（pre-existing IDOR），已记录，非本 PR 引入
+
+implementer_status: standby_waiting_for_review_feedback
+
+---
+
+## 2026-05-24 Round 21 实现 (head 66f90f27)
+
+### 修复摘要
+
+**F1: todo getStatistics 范围泄漏**
+- `todo.service.ts`: `getStatistics()` 当 `buildOwnershipWhere()` 返回 `null` 时立即返回零值结构（`{ total: 0, byType: {...zeros}, byStatus: { pending: 0, completed: 0 } }`），不再做 `?? {}` 回退到全量查询
+- `todo.service.spec.ts`: 新增 2 个测试：(a) leader 无 managedDepartmentIds → 返回零值且不调用 groupBy；(b) leader 有 dept 但 dept 无成员 → 返回零值且不调用 groupBy
+
+**F2: FragileItemInspection + LineChangeCheckRecord inspector_id 可被客户端伪造**
+- `fragile-item-inspection.service.ts`: `create()` 改为始终写 `creatorId`（`creatorId !== undefined ? { inspector_id: creatorId } : {}`），忽略 `dto.inspector_id`
+- `line-change-check-record.service.ts`: 同上
+- 更新对应 ownership spec 中"dto.inspector_id present → preserved as-is"测试为"dto.inspector_id present → overwritten by creatorId"
+
+**F3: equipment fault create 未注入 req.user.id；/my 路径允许查询他人 fault**
+- `fault.service.ts`: `create(dto)` → `create(dto, creatorId?)`, 写 `reporterId: creatorId ?? dto.reporterId`；`findMyFaults(reporterId)` → `findMyFaults(userId)` 直接接受 userId
+- `fault.controller.ts`: create 注入 `@Request() req` 传 `req.user.id`；findMyFaults 移除 `@Query('reporterId')`，改注入 `@Request() req` 传 `req.user.id`
+- `fault.service.spec.ts`: 新增 create 测试（creatorId 覆盖 dto.reporterId）+ findMyFaults 测试（传入 userId 直接用于 filter，reporterId query 参数无效）
+
+**F4: warehouse return + scrap create 允许客户端控制 requesterId**
+- `return.service.ts`: `create(dto)` → `create(dto, companyId?, creatorId?)`, 写 `requesterId: creatorId ?? dto.requesterId`
+- `return.controller.ts`: create 注入 `@Request() req` 传 `req.user.id` 给 service
+- `scrap.service.ts`: 同 return 模式
+- `scrap.controller.ts`: 同 return 模式
+- `return.service.spec.ts` / `scrap.service.spec.ts`: 各新增 create 测试断言 dto.requesterId 被 creatorId 覆盖
+
+### 验证结果
+
+- `npx tsc --noEmit`: 0 errors
+- `npx jest --forceExit`: 186 suites, 1227 tests, 0 failures
+- `client npm run build`: 构建成功 (0 errors)
+- head: 66f90f2721903b8be1fadc21b0e4f39d583aae20
+- PR: https://github.com/Jason347633888/noidear/pull/217
+
+### 剩余风险
+
+- Return/Scrap service 中 approval `createdById` 也从 `dto.requesterId` 改为 `creatorId ?? dto.requesterId`，与 requesterId 保持一致
+
+implementer_status: standby_waiting_for_review_feedback
