@@ -136,16 +136,16 @@ const fetchTrendData = async () => {
     trendChartInstance.setOption({
       title: { text: '偏离趋势分析', left: 'center' },
       tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-      legend: { data: ['偏离数量', '偏离率'], top: 30 },
+      legend: { data: ['偏离数量', '偏差报告占比'], top: 30 },
       grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
       xAxis: { type: 'category', data: dates, axisLabel: { rotate: 45 } },
       yAxis: [
         { type: 'value', name: '偏离数量', position: 'left' },
-        { type: 'value', name: '偏离率 (%)', position: 'right', max: 100 },
+        { type: 'value', name: '偏差报告占比 (%)', position: 'right', max: 100 },
       ],
       series: [
         { name: '偏离数量', type: 'bar', data: counts, itemStyle: { color: '#409EFF' } },
-        { name: '偏离率', type: 'line', yAxisIndex: 1, data: rates, smooth: true, itemStyle: { color: '#F56C6C' } },
+        { name: '偏差报告占比', type: 'line', yAxisIndex: 1, data: rates, smooth: true, itemStyle: { color: '#F56C6C' } },
       ],
     });
   }

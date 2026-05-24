@@ -61,6 +61,7 @@ noidear 早期使用动态表单引擎（RecordTemplate / Record / RecordTaskAss
 - 历史动态表单数据（records 表）将因 DROP TABLE 而不可查询。已通过 CASCADE 迁移 SQL 处理，历史数据需提前导出备份（由 ops 负责）。
 - DeviationReport 的 recordId/templateId 字段已删除，历史偏差报告将失去与原始表单的 FK 关联；业务接受该历史断链（偏差报告本身字段数据完整保留）。
 - 偏离率（部门/模板）面板已从本次 PR 同步下线（`/deviation-analytics` 页面中"偏离率（部门）"和"偏离率（模板）"两张面板及对应的 `rate-by-department` / `rate-by-template` API 端点已移除）。该功能依赖已退役的 task_records / record_templates 表，等独立业务模型重建后恢复。
+- DeviationReport 写入链路（动态填报回调中的 detectDeviations → createDeviationReports → 起 approval）已随 RecordService 退役。本 PR 保留 DeviationReport 只读、列表/详情、字段分布/词云/趋势图与导出；新偏差报告写入路径待独立业务模型重建后恢复。deviation_report approval definition 暂保留以支持历史数据审批流转。
 
 ## 实现
 
