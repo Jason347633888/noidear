@@ -8,6 +8,12 @@ import { StartApprovalDto } from './dto';
 import { Ownership } from '../../shared/decorators/ownership.decorator';
 import { OwnershipContext } from '../module-access/ownership-context';
 
+interface ApprovalTaskRecord {
+  assigneeUserId: string | null;
+  assigneeRoleCode: string | null;
+  assigneeDepartmentId: string | null;
+}
+
 @UseGuards(JwtAuthGuard)
 @ModuleKey('work_execution')
 @Controller('approval-instances')
@@ -65,7 +71,10 @@ export class ApprovalInstanceController {
     }
 
     const allowedIds = await this.resolveAllowedCreatorIds(ownership);
-    return records.filter((r: { createdById: string }) => allowedIds.has(r.createdById));
+    return records.filter(
+      (r: { createdById: string; tasks?: ApprovalTaskRecord[] }) =>
+        allowedIds.has(r.createdById) || this.isTaskCandidate(r.tasks, ownership),
+    );
   }
 
   @Get(':id')
@@ -78,7 +87,9 @@ export class ApprovalInstanceController {
 
     if (ownership.roleCode !== 'admin') {
       const allowedIds = await this.resolveAllowedCreatorIds(ownership);
-      if (!allowedIds.has(record.createdById)) {
+      const isCreatorOrSubordinate = allowedIds.has(record.createdById);
+      const isCandidate = this.isTaskCandidate((record as any).tasks ?? [], ownership);
+      if (!isCreatorOrSubordinate && !isCandidate) {
         throw new ForbiddenException('Access denied to this approval instance');
       }
     }
@@ -100,5 +111,15 @@ export class ApprovalInstanceController {
         ).map((u: { id: string }) => u.id)
       : [];
     return new Set(memberIds);
+  }
+
+  private isTaskCandidate(tasks: ApprovalTaskRecord[] | undefined, ownership: OwnershipContext): boolean {
+    if (!tasks || tasks.length === 0) return false;
+    return tasks.some(
+      (task) =>
+        (task.assigneeUserId !== null && task.assigneeUserId === ownership.userId) ||
+        (task.assigneeRoleCode !== null && task.assigneeRoleCode === ownership.roleCode) ||
+        (task.assigneeDepartmentId !== null && task.assigneeDepartmentId === ownership.departmentId),
+    );
   }
 }

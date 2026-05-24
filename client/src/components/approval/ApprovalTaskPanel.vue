@@ -63,7 +63,8 @@ async function load() {
   try {
     const instance = await unifiedApprovalApi.getInstance(props.approvalInstanceId);
     tasks.value = (instance as any).tasks ?? [];
-  } catch {
+  } catch (err) {
+    console.warn('Failed to load approval instance:', err);
     tasks.value = [];
   }
 }
