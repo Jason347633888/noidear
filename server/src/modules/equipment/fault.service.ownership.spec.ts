@@ -1,50 +1,58 @@
 /**
- * Task 42 Step 2 — FaultService (EquipmentFault).listForOwnership
- * EquipmentFault.reporterId / assigneeId are the user FKs.
+ * FaultService.findAll with ownership filtering
+ * EquipmentFault uses reporterId / assigneeId as user FKs.
  */
 import { FaultService } from './fault.service';
 import { OwnershipContext } from '../module-access/ownership-context';
 
 function freshService(memberIds: string[] = []) {
+  const statsService: any = { clearCache: jest.fn().mockResolvedValue(undefined) };
   const prisma: any = {
-    equipmentFault: { findMany: jest.fn().mockResolvedValue([]) },
+    equipmentFault: {
+      findMany: jest.fn().mockResolvedValue([]),
+      count: jest.fn().mockResolvedValue(0),
+    },
     user: { findMany: jest.fn().mockResolvedValue(memberIds.map((id) => ({ id }))) },
   };
-  const stats: any = {};
-  return { svc: new FaultService(prisma, stats), prisma };
+  return { svc: new FaultService(prisma, statsService), prisma };
 }
 
-describe('FaultService (EquipmentFault).listForOwnership', () => {
+describe('FaultService.findAll with ownership', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('admin sees all faults (no user filter)', async () => {
+  it('admin sees all faults (no OR filter)', async () => {
     const { svc, prisma } = freshService();
     const o: OwnershipContext = { userId: 'a', roleCode: 'admin', departmentId: null, managedDepartmentIds: undefined };
-    await svc.listForOwnership(o);
+    await svc.findAll({}, o);
     const callWhere = prisma.equipmentFault.findMany.mock.calls[0][0].where;
-    expect(callWhere).not.toHaveProperty('reporterId');
-    expect(callWhere).not.toHaveProperty('assigneeId');
+    expect(callWhere).not.toHaveProperty('OR');
   });
 
-  it('user sees faults they reported or are assigned to', async () => {
+  it('user sees faults where reporterId or assigneeId = userId', async () => {
     const { svc, prisma } = freshService();
     const o: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd', managedDepartmentIds: [] };
-    await svc.listForOwnership(o);
-    expect(prisma.equipmentFault.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { OR: [{ reporterId: 'u-1' }, { assigneeId: 'u-1' }] },
-      }),
+    await svc.findAll({}, o);
+    const callWhere = prisma.equipmentFault.findMany.mock.calls[0][0].where;
+    expect(callWhere).toHaveProperty('OR');
+    expect(callWhere.OR).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ reporterId: 'u-1' }),
+        expect.objectContaining({ assigneeId: 'u-1' }),
+      ]),
     );
   });
 
-  it('leader sees faults of managed-dept members', async () => {
+  it('leader sees faults for managed dept members', async () => {
     const { svc, prisma } = freshService(['m-1', 'm-2']);
     const o: OwnershipContext = { userId: 'l-1', roleCode: 'leader', departmentId: 'd-1', managedDepartmentIds: ['d-1'] };
-    await svc.listForOwnership(o);
-    expect(prisma.equipmentFault.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { OR: [{ reporterId: { in: ['m-1', 'm-2'] } }, { assigneeId: { in: ['m-1', 'm-2'] } }] },
-      }),
+    await svc.findAll({}, o);
+    const callWhere = prisma.equipmentFault.findMany.mock.calls[0][0].where;
+    expect(callWhere).toHaveProperty('OR');
+    expect(callWhere.OR).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ reporterId: { in: ['m-1', 'm-2'] } }),
+        expect.objectContaining({ assigneeId: { in: ['m-1', 'm-2'] } }),
+      ]),
     );
   });
 });

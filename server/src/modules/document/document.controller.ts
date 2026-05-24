@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -17,11 +18,11 @@ import {
   Req,
   Res,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
-import { ForbiddenException } from '@nestjs/common';
 import { DocumentService } from './document.service';
 import { DocumentLifecycleService } from './document-lifecycle.service';
 import { FilePreviewService } from './services';
@@ -33,13 +34,13 @@ import { BatchConfirmRecordFormLandingDto, ConfirmRecordFormLandingDto, UpdateRe
 import { RestoreDocumentDto } from './dto/archive-document.dto';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { UnifiedPermissionGuard } from '../../shared/guards/unified-permission.guard';
-import { RequirePermission } from '../../shared/decorators/require-permission.decorator';
-import { DepartmentPermissionService } from '../department-permission/department-permission.service';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @ApiTags('文档管理')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@ModuleKey('document_approval')
 @Controller('documents')
 export class DocumentController {
   constructor(
@@ -47,7 +48,6 @@ export class DocumentController {
     private readonly lifecycleSvc: DocumentLifecycleService,
     private readonly filePreviewService: FilePreviewService,
     private readonly documentReferenceService: DocumentReferenceService,
-    private readonly departmentPermissionService: DepartmentPermissionService,
     private readonly recordFormLandingService: RecordFormLandingService,
     private readonly referenceHealthService: DocumentReferenceHealthService,
   ) {}
@@ -101,10 +101,13 @@ export class DocumentController {
   }
 
   @Post('record-form-index/batch-confirm-suggested')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('record_form:landing_manage')
   @ApiOperation({ summary: '批量确认选中表单的落地建议' })
-  batchConfirmRecordFormLanding(@Body() dto: BatchConfirmRecordFormLandingDto, @Req() req: any) {
+  batchConfirmRecordFormLanding(
+    @Body() dto: BatchConfirmRecordFormLandingDto,
+    @Req() req: any,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('Admin access required');
     return this.recordFormLandingService.batchConfirmSuggested(dto.codes, req.user?.id || 'system');
   }
 
@@ -115,10 +118,14 @@ export class DocumentController {
   }
 
   @Post('record-form-index/:code/confirm')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('record_form:landing_manage')
   @ApiOperation({ summary: '确认源表单落地关系' })
-  confirmRecordFormLanding(@Param('code') code: string, @Body() dto: ConfirmRecordFormLandingDto, @Req() req: any) {
+  confirmRecordFormLanding(
+    @Param('code') code: string,
+    @Body() dto: ConfirmRecordFormLandingDto,
+    @Req() req: any,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('Admin access required');
     return this.recordFormLandingService.confirm(code, dto, req.user.id);
   }
 
@@ -135,19 +142,17 @@ export class DocumentController {
   }
 
   @Patch('record-form-index/:code')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:control_manage')
   @ApiOperation({ summary: '维护源表单目标入口' })
   updateRecordFormIndexEntry(
     @Param('code') code: string,
     @Body() dto: UpdateRecordFormLandingEntryDto,
+    @Ownership() ownership: OwnershipContext,
   ) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('Admin access required');
     return this.recordFormLandingService.upsertTarget(code, dto);
   }
 
   @Get('reference-health/issues')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:control_manage')
   @ApiOperation({ summary: '查询文档引用问题清单' })
   getReferenceHealthIssues() {
     return this.referenceHealthService.listIssues();
@@ -156,39 +161,12 @@ export class DocumentController {
   @Get(':id')
   @ApiOperation({ summary: '查询文档详情' })
   async findOne(@Param('id') id: string, @Req() req: any) {
-    const document = await this.documentService.findOne(id, req.user.id, req.user.roleCode);
-
-    // BR-356: 部门边界检查
-    // BR-357: 跨部门权限验证
-    const canAccess = await this.departmentPermissionService.canAccessDepartmentResource(
-      req.user.id,
-      document.departmentId,
-      'view',
-      'document',
-    );
-
-    if (!canAccess) {
-      throw new ForbiddenException('无权访问该部门的文档');
-    }
-
-    return document;
+    return this.documentService.findOne(id, req.user.id, req.user.roleCode);
   }
 
   @Get(':id/reference-health')
   @ApiOperation({ summary: '查询单个文档引用健康度' })
   async getDocumentReferenceHealth(@Param('id') id: string, @Req() req: any) {
-    const document = await this.documentService.findOne(id, req.user.id, req.user.roleCode);
-    const canAccess = await this.departmentPermissionService.canAccessDepartmentResource(
-      req.user.id,
-      document.departmentId,
-      'view',
-      'document',
-    );
-
-    if (!canAccess) {
-      throw new ForbiddenException('无权访问该部门的文档');
-    }
-
     return this.referenceHealthService.getDocumentHealth(id);
   }
 
@@ -226,8 +204,6 @@ export class DocumentController {
   }
 
   @Post(':id/archive')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:archive')
   @ApiOperation({ summary: '归档文档' })
   async archive(
     @Param('id') id: string,
@@ -273,8 +249,6 @@ export class DocumentController {
   }
 
   @Delete(':id/permanent')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:permanent_delete')
   @ApiOperation({ summary: '物理删除文档' })
   async permanentDelete(@Param('id') id: string, @Req() req: any) {
     return this.documentService.permanentDelete(id, req.user.id);
@@ -348,8 +322,6 @@ export class DocumentController {
   }
 
   @Post(':id/revisions')
-  @UseGuards(UnifiedPermissionGuard)
-  @RequirePermission('document:revise')
   @ApiOperation({ summary: '发起文件修订草稿' })
   createRevision(@Param('id') id: string, @Req() req: any) {
     return this.documentService.createRevisionDraft(id, req.user.id);

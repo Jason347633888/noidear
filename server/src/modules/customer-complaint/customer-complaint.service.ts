@@ -1,12 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateComplaintDto } from './dto/create-complaint.dto';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @Injectable()
 export class CustomerComplaintService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateComplaintDto, companyId: string) {
+  async create(dto: CreateComplaintDto, companyId: string, userId?: string) {
     if (!dto.production_batch_id) {
       throw new BadRequestException('生产批次不能为空');
     }
@@ -61,16 +63,35 @@ export class CustomerComplaintService {
         complaint_type: dto.complaint_type,
         description: dto.description,
         received_at: new Date(),
+        ...(userId ? { createdById: userId } : {}),
       },
     });
   }
 
-  async findAll(companyId: string, status?: string) {
+  async findAll(companyId: string, ownership: OwnershipContext, status?: string) {
+    const ownershipWhere = await this.buildOwnershipWhere(ownership);
     return this.prisma.customerComplaint.findMany({
-      where: { company_id: companyId, ...(status ? { status } : {}) },
+      where: {
+        company_id: companyId,
+        ...(status ? { status } : {}),
+        ...ownershipWhere,
+      },
       orderBy: { created_at: 'desc' },
       take: 100,
     });
+  }
+
+  private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
+    if (ownership.roleCode === 'admin') return {};
+    if (ownership.roleCode === 'user') {
+      return { createdById: ownership.userId };
+    }
+    // leader
+    const depts = ownership.managedDepartmentIds ?? [];
+    if (depts.length === 0) return { id: 'no-match' };
+    const memberIds = await userIdsInDepts(this.prisma, depts);
+    if (memberIds.length === 0) return { id: 'no-match' };
+    return { createdById: { in: memberIds } };
   }
 
   async resolve(id: string, resolution: string, companyId: string) {

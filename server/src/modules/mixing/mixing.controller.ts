@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -7,6 +8,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Request,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { MixingService } from './mixing.service';
@@ -15,15 +17,19 @@ import {
   CreateMixingExecutionDto,
   ListMixingExecutionsDto,
 } from './dto/mixing.dto';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { AuthenticatedRequest } from '../auth/authenticated-user';
 
+@ModuleKey('production_execution')
 @Controller('mixing')
 @UseGuards(JwtAuthGuard)
 export class MixingController {
   constructor(private readonly service: MixingService) {}
 
   @Get('executions')
-  listExecutions(@Query() dto: ListMixingExecutionsDto) {
-    return this.service.listExecutions(dto);
+  listExecutions(@Ownership() ownership: OwnershipContext, @Query() dto: ListMixingExecutionsDto) {
+    return this.service.listExecutions(dto, ownership);
   }
 
   @Post('recommend-material-batches')
@@ -33,7 +39,7 @@ export class MixingController {
 
   @Post('executions')
   @HttpCode(HttpStatus.CREATED)
-  createExecution(@Body() dto: CreateMixingExecutionDto) {
-    return this.service.createExecution(dto);
+  createExecution(@Body() dto: CreateMixingExecutionDto, @Request() req: AuthenticatedRequest) {
+    return this.service.createExecution(dto, req.user.id);
   }
 }

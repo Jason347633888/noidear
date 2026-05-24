@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TodoService } from './todo.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotFoundException, ConflictException } from '@nestjs/common';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 const mockPrisma = {
   todoTask: {
@@ -32,11 +33,13 @@ describe('TodoService', () => {
   });
 
   describe('findAll', () => {
+    const userOwnership: OwnershipContext = { userId: 'user1', roleCode: 'user', departmentId: null, managedDepartmentIds: [] };
+
     it('returns paginated items with computed actionRoute', async () => {
       mockPrisma.todoTask.findMany.mockResolvedValue([makeTodo()]);
       mockPrisma.todoTask.count.mockResolvedValue(1);
 
-      const result = await service.findAll('user1', { status: 'all', type: 'all', page: 1, limit: 20 });
+      const result = await service.findAll({ status: 'all', type: 'all', page: 1, limit: 20 }, userOwnership);
 
       expect(result.items).toHaveLength(1);
       expect(result.items[0].actionRoute).toBe('/training/projects/proj1');
@@ -51,7 +54,7 @@ describe('TodoService', () => {
       mockPrisma.todoTask.findMany.mockResolvedValue([makeTodo({ type: 'inventory' })]);
       mockPrisma.todoTask.count.mockResolvedValue(1);
 
-      const result = await service.findAll('user1', { status: 'all', type: 'all', page: 1, limit: 20 });
+      const result = await service.findAll({ status: 'all', type: 'all', page: 1, limit: 20 }, userOwnership);
       expect(result.items[0].actionRoute).toBeNull();
     });
 
@@ -59,7 +62,7 @@ describe('TodoService', () => {
       mockPrisma.todoTask.findMany.mockResolvedValue([makeTodo({ type: 'document_renewal', relatedId: 'doc1' })]);
       mockPrisma.todoTask.count.mockResolvedValue(1);
 
-      const result = await service.findAll('user1', { status: 'all', type: 'all', page: 1, limit: 20 });
+      const result = await service.findAll({ status: 'all', type: 'all', page: 1, limit: 20 }, userOwnership);
       expect(result.items[0].actionRoute).toBe('/documents/doc1');
     });
 
@@ -69,7 +72,7 @@ describe('TodoService', () => {
       ]);
       mockPrisma.todoTask.count.mockResolvedValue(1);
 
-      const result = await service.findAll('user1', { status: 'all', type: 'all', page: 1, limit: 20 });
+      const result = await service.findAll({ status: 'all', type: 'all', page: 1, limit: 20 }, userOwnership);
       expect(result.items[0].actionRoute).toBe('/products/by-plan/plan-99');
     });
 
@@ -77,19 +80,20 @@ describe('TodoService', () => {
       mockPrisma.todoTask.findMany.mockResolvedValue(new Array(5).fill(makeTodo()));
       mockPrisma.todoTask.count.mockResolvedValue(10);
 
-      const result = await service.findAll('user1', { status: 'all', type: 'all', page: 1, limit: 5 });
+      const result = await service.findAll({ status: 'all', type: 'all', page: 1, limit: 5 }, userOwnership);
       expect(result.hasMore).toBe(true);
     });
   });
 
   describe('getStatistics', () => {
-    it('returns all TodoType keys with zero-fill and byStatus counts', async () => {
+    it('returns all TodoType keys with zero-fill and byStatus counts (user scope)', async () => {
       mockPrisma.todoTask.groupBy.mockResolvedValue([
         { type: 'training_attend', status: 'pending', _count: { id: 3 } },
         { type: 'approval', status: 'completed', _count: { id: 1 } },
       ]);
 
-      const result = await service.getStatistics('user1');
+      const userOwnership: OwnershipContext = { userId: 'user1', roleCode: 'user', departmentId: null, managedDepartmentIds: [] };
+      const result = await service.getStatistics(userOwnership);
 
       expect(result.byStatus.pending).toBe(3);
       expect(result.byStatus.completed).toBe(1);
@@ -101,6 +105,63 @@ describe('TodoService', () => {
       expect(result.byType['change_execution_failed']).toBe(0);
       // audit_rectification was removed; key must be absent from the zero-fill map.
       expect((result.byType as Record<string, number>).audit_rectification).toBeUndefined();
+      // Verify the groupBy where clause uses userId scope
+      expect(mockPrisma.todoTask.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { userId: 'user1' } }),
+      );
+    });
+
+    it('admin getStatistics uses empty where (all todos)', async () => {
+      mockPrisma.todoTask.groupBy.mockResolvedValue([]);
+
+      const adminOwnership: OwnershipContext = { userId: 'admin1', roleCode: 'admin', departmentId: null, managedDepartmentIds: undefined };
+      await service.getStatistics(adminOwnership);
+
+      expect(mockPrisma.todoTask.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({ where: {} }),
+      );
+    });
+  });
+
+  describe('getStatistics ownership — leader scope edge cases', () => {
+    const prismaForLeader = {
+      todoTask: { groupBy: jest.fn() },
+      user: { findMany: jest.fn() },
+    } as any;
+    let leaderService: TodoService;
+
+    beforeEach(async () => {
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [TodoService, { provide: PrismaService, useValue: prismaForLeader }],
+      }).compile();
+      leaderService = module.get<TodoService>(TodoService);
+      jest.clearAllMocks();
+    });
+
+    it('leader with no managedDepartmentIds → getStatistics returns zeros without querying db', async () => {
+      const leaderOwnership: OwnershipContext = {
+        userId: 'leader1', roleCode: 'leader', departmentId: null, managedDepartmentIds: [],
+      };
+      const result = await leaderService.getStatistics(leaderOwnership);
+
+      expect(result.total).toBe(0);
+      expect(result.byStatus.pending).toBe(0);
+      expect(result.byStatus.completed).toBe(0);
+      // groupBy must NOT be called — early return
+      expect(prismaForLeader.todoTask.groupBy).not.toHaveBeenCalled();
+    });
+
+    it('leader with managedDepartmentIds but dept has no members → getStatistics returns zeros', async () => {
+      prismaForLeader.user.findMany.mockResolvedValue([]); // no members in dept
+      const leaderOwnership: OwnershipContext = {
+        userId: 'leader2', roleCode: 'leader', departmentId: 'd-empty', managedDepartmentIds: ['d-empty'],
+      };
+      const result = await leaderService.getStatistics(leaderOwnership);
+
+      expect(result.total).toBe(0);
+      expect(result.byStatus.pending).toBe(0);
+      expect(result.byStatus.completed).toBe(0);
+      expect(prismaForLeader.todoTask.groupBy).not.toHaveBeenCalled();
     });
   });
 
@@ -129,5 +190,50 @@ describe('TodoService', () => {
       mockPrisma.todoTask.findFirst.mockResolvedValue(makeTodo({ id: 'todo1', userId: 'user1', status: 'completed' }));
       await expect(service.complete('todo1', 'user1')).rejects.toThrow(ConflictException);
     });
+  });
+});
+
+describe('TodoService.findAll ownership', () => {
+  const prisma = {
+    todoTask: { findMany: jest.fn(), count: jest.fn() },
+    user: { findMany: jest.fn() },
+  } as any;
+  const svc = new TodoService(prisma as any);
+  const baseQuery = { status: 'all' as const, type: 'all' as const, page: 1, limit: 20 };
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it('admin sees all', async () => {
+    prisma.todoTask.findMany.mockResolvedValue([]);
+    prisma.todoTask.count.mockResolvedValue(0);
+    const ownership: OwnershipContext = { userId: 'a', roleCode: 'admin', departmentId: null, managedDepartmentIds: undefined };
+    const result = await svc.findAll(baseQuery, ownership);
+    expect(result.items).toEqual([]);
+    expect(prisma.todoTask.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: {} }),
+    );
+  });
+
+  it('user sees only own todos', async () => {
+    prisma.todoTask.findMany.mockResolvedValue([]);
+    prisma.todoTask.count.mockResolvedValue(0);
+    const ownership: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd-x', managedDepartmentIds: [] };
+    const result = await svc.findAll(baseQuery, ownership);
+    expect(result.items).toEqual([]);
+    expect(prisma.todoTask.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'u-1' } }),
+    );
+  });
+
+  it('leader sees todos of users in managed depts', async () => {
+    prisma.user.findMany.mockResolvedValue([{ id: 'u-1' }, { id: 'u-2' }]);
+    prisma.todoTask.findMany.mockResolvedValue([]);
+    prisma.todoTask.count.mockResolvedValue(0);
+    const ownership: OwnershipContext = { userId: 'l-1', roleCode: 'leader', departmentId: 'd-1', managedDepartmentIds: ['d-1'] };
+    const result = await svc.findAll(baseQuery, ownership);
+    expect(result.items).toEqual([]);
+    expect(prisma.todoTask.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: { in: ['u-1', 'u-2'] } } }),
+    );
   });
 });

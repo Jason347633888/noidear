@@ -1,5 +1,7 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
+  ForbiddenException,
   Get,
   Post,
   Put,
@@ -21,8 +23,11 @@ import { UpdateFieldsBodyDto } from './dto/update-fields-body.dto';
 import { UpdateToleranceDto } from './dto/update-tolerance.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @ApiTags('记录模板管理')
+@ModuleKey('document_approval')
 @Controller('record-templates')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
@@ -34,8 +39,8 @@ export class RecordTemplateController {
   @ApiOperation({ summary: '创建记录模板' })
   @ApiResponse({ status: 201, description: '创建成功' })
   @ApiResponse({ status: 409, description: '模板编号已存在' })
-  create(@Body() createDto: CreateRecordTemplateDto) {
-    return this.templateService.create(createDto);
+  create(@Body() createDto: CreateRecordTemplateDto, @Ownership() ownership: OwnershipContext) {
+    return this.templateService.createForOwnership(createDto, ownership);
   }
 
   @Get()
@@ -61,7 +66,12 @@ export class RecordTemplateController {
 
   @Put(':templateId/tolerance')
   @ApiOperation({ summary: '更新记录模板字段容差配置' })
-  updateTolerance(@Param('templateId') templateId: string, @Body() body: UpdateToleranceDto) {
+  updateTolerance(
+    @Param('templateId') templateId: string,
+    @Body() body: UpdateToleranceDto,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('仅管理员可修改记录模板');
     return this.templateService.updateTolerance(templateId, body);
   }
 
@@ -70,7 +80,12 @@ export class RecordTemplateController {
   @ApiOperation({ summary: '更新记录模板' })
   @ApiResponse({ status: 200, description: '更新成功' })
   @ApiResponse({ status: 404, description: '模板不存在' })
-  update(@Param('id') id: string, @Body() updateDto: UpdateRecordTemplateDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateRecordTemplateDto,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('仅管理员可修改记录模板');
     return this.templateService.update(id, updateDto);
   }
 
@@ -79,7 +94,8 @@ export class RecordTemplateController {
   @ApiOperation({ summary: '归档记录模板' })
   @ApiResponse({ status: 200, description: '归档成功' })
   @ApiResponse({ status: 404, description: '模板不存在' })
-  archive(@Param('id') id: string) {
+  archive(@Param('id') id: string, @Ownership() ownership: OwnershipContext) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('仅管理员可归档记录模板');
     return this.templateService.archive(id);
   }
 
@@ -91,7 +107,12 @@ export class RecordTemplateController {
   @ApiOperation({ summary: '创建模板新版本' })
   @ApiResponse({ status: 201, description: '版本创建成功' })
   @ApiResponse({ status: 404, description: '模板不存在' })
-  createNewVersion(@Param('id') id: string, @Body() updateDto: UpdateRecordTemplateDto) {
+  createNewVersion(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateRecordTemplateDto,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('仅管理员可修改记录模板');
     return this.templateService.createNewVersion(id, updateDto);
   }
 
@@ -108,28 +129,40 @@ export class RecordTemplateController {
   @Put(':id/fields')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '更新草稿模板字段' })
-  updateFields(@Param('id') id: string, @Body() body: UpdateFieldsBodyDto) {
+  updateFields(
+    @Param('id') id: string,
+    @Body() body: UpdateFieldsBodyDto,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('仅管理员可修改记录模板');
     return this.templateService.updateFields(id, body.fields);
   }
 
   @Post(':id/revisions')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: '发起模板改版草稿' })
-  createRevision(@Param('id') id: string, @Body() updateDto: UpdateRecordTemplateDto) {
+  createRevision(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateRecordTemplateDto,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('仅管理员可修改记录模板');
     return this.templateService.createRevision(id, updateDto);
   }
 
   @Post(':id/activate')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '启用模板版本' })
-  activateRevision(@Param('id') id: string, @Req() req: any) {
+  activateRevision(@Param('id') id: string, @Req() req: any, @Ownership() ownership: OwnershipContext) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('仅管理员可启用记录模板');
     return this.templateService.activateRevision(id, req.user.id);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: '删除记录模板' })
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: string, @Ownership() ownership: OwnershipContext) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('仅管理员可删除记录模板');
     return this.templateService.remove(id);
   }
 }

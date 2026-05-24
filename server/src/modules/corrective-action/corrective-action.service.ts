@@ -3,6 +3,8 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CapaTriggerType, CreateCapaDto } from './dto/create-capa.dto';
 import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 export interface CorrectiveActionListFilters {
   status?: string;
@@ -32,15 +34,24 @@ export class CorrectiveActionService {
       tx,
     );
     return client.correctiveAction.create({
-      data: { ...dto, company_id: companyId, capa_no },
+      data: {
+        ...dto,
+        company_id: companyId,
+        capa_no,
+        // Always override dto.responsible_id with the authenticated userId to prevent FK forgery.
+        // Admin can change responsible_id via update after creation.
+        ...(userId ? { responsible_id: userId } : {}),
+      },
     });
   }
 
-  async findAll(companyId: string, filters: CorrectiveActionListFilters = {}) {
+  async findAll(companyId: string, filters: CorrectiveActionListFilters = {}, ownership?: OwnershipContext) {
     const { status, triggerType, triggerId } = filters;
     if ((triggerType && !triggerId) || (!triggerType && triggerId)) {
       throw new BadRequestException('trigger_type 和 trigger_id 必须同时提供');
     }
+
+    const ownershipWhere = ownership ? await this.buildOwnershipWhere(ownership) : {};
 
     return this.prisma.correctiveAction.findMany({
       where: {
@@ -49,10 +60,22 @@ export class CorrectiveActionService {
         ...(triggerType && triggerId
           ? { trigger_type: triggerType, trigger_id: triggerId }
           : {}),
+        ...ownershipWhere,
       },
       orderBy: { created_at: 'desc' },
       take: 100,
     });
+  }
+
+  private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
+    if (ownership.roleCode === 'admin') return {};
+    if (ownership.roleCode === 'user') {
+      return { responsible_id: ownership.userId };
+    }
+    // leader
+    const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+    if (memberIds.length === 0) return { id: 'no-match' };
+    return { responsible_id: { in: memberIds } };
   }
 
   private async validateTriggerSource(

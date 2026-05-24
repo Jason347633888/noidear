@@ -1,9 +1,11 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { CcpService } from './ccp.service';
 import { CreateCcpRecordDto } from './dto/create-ccp-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
 
+@ModuleKey('quality_compliance')
 @Controller('ccp')
 @UseGuards(JwtAuthGuard)
 export class CcpController {

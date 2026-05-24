@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -11,6 +12,8 @@ import {
   UpdateEquipmentStatusDto,
   QueryEquipmentDto,
 } from './dto/equipment.dto';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @Injectable()
 export class EquipmentService {
@@ -20,10 +23,16 @@ export class EquipmentService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async create(dto: CreateEquipmentDto) {
+  async create(dto: CreateEquipmentDto, creatorId?: string) {
     try {
       const code = await this.generateCode();
-      const extra = this.mapDtoToData(dto);
+      // Always set responsiblePersonId to the authenticated creatorId to prevent FK forgery.
+      // Admin can update responsiblePersonId via the update endpoint after creation.
+      const dtoWithDefaults: CreateEquipmentDto = {
+        ...dto,
+        responsiblePersonId: creatorId ?? dto.responsiblePersonId,
+      };
+      const extra = this.mapDtoToData(dtoWithDefaults);
       const equipment = await this.prisma.equipment.create({
         data: {
           code,
@@ -42,11 +51,13 @@ export class EquipmentService {
     }
   }
 
-  async findAll(query: QueryEquipmentDto) {
+  async findAll(query: QueryEquipmentDto, ownership: OwnershipContext) {
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 10));
     const skip = (page - 1) * limit;
-    const where = this.buildWhereClause(query);
+    const queryWhere = this.buildWhereClause(query);
+    const ownershipWhere = await this.buildOwnershipWhere(ownership);
+    const where = { ...queryWhere, ...ownershipWhere };
 
     const [data, total] = await Promise.all([
       this.prisma.equipment.findMany({
@@ -59,6 +70,19 @@ export class EquipmentService {
     ]);
 
     return { data, total, page, limit };
+  }
+
+  private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
+    if (ownership.roleCode === 'admin') return {};
+    if (ownership.roleCode === 'user') {
+      return { responsiblePersonId: ownership.userId };
+    }
+    // leader
+    const depts = ownership.managedDepartmentIds ?? [];
+    if (depts.length === 0) return { id: 'no-match' };
+    const memberIds = await userIdsInDepts(this.prisma, depts);
+    if (memberIds.length === 0) return { id: 'no-match' };
+    return { responsiblePersonId: { in: memberIds } };
   }
 
   async findOne(id: string) {
@@ -90,9 +114,47 @@ export class EquipmentService {
     return equipment;
   }
 
-  async update(id: string, dto: UpdateEquipmentDto) {
+  /**
+   * Ownership check for single-record write operations.
+   * - admin: always allowed
+   * - leader: allowed if equipment.responsiblePersonId belongs to a member of
+   *           their managed departments
+   * - user: allowed only if equipment.responsiblePersonId === ownership.userId
+   */
+  async assertOwnership(equipmentId: string, ownership: OwnershipContext): Promise<void> {
+    if (ownership.roleCode === 'admin') return;
+
+    const equipment = await this.prisma.equipment.findUnique({
+      where: { id: equipmentId },
+      select: { responsiblePersonId: true },
+    });
+
+    if (!equipment) throw new NotFoundException('Equipment not found');
+
+    if (ownership.roleCode === 'user') {
+      if (equipment.responsiblePersonId !== ownership.userId) {
+        throw new ForbiddenException('You do not have permission to modify this equipment');
+      }
+      return;
+    }
+
+    // leader
+    const depts = ownership.managedDepartmentIds ?? [];
+    if (depts.length > 0) {
+      const memberIds = await userIdsInDepts(this.prisma, depts);
+      if (equipment.responsiblePersonId && memberIds.includes(equipment.responsiblePersonId)) return;
+    }
+    throw new ForbiddenException('You do not have permission to modify this equipment');
+  }
+
+  async update(id: string, dto: UpdateEquipmentDto, ownership?: OwnershipContext) {
     await this.findOne(id);
-    const data = this.mapDtoToData(dto);
+    // Non-admin users cannot change responsiblePersonId to prevent ownership hijacking.
+    const sanitizedDto: UpdateEquipmentDto =
+      ownership && ownership.roleCode !== 'admin'
+        ? { ...dto, responsiblePersonId: undefined }
+        : dto;
+    const data = this.mapDtoToData(sanitizedDto);
     return this.prisma.equipment.update({ where: { id }, data });
   }
 
@@ -163,7 +225,7 @@ export class EquipmentService {
     const dateFields = ['purchaseDate', 'activationDate', 'warrantyExpiry'] as const;
     const directFields = [
       'name', 'model', 'category', 'location',
-      'manufacturer', 'responsiblePerson', 'maintenanceConfig', 'description',
+      'manufacturer', 'responsiblePerson', 'responsiblePersonId', 'maintenanceConfig', 'description',
     ] as const;
 
     const data: Record<string, any> = {};

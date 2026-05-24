@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePlanDto, QueryPlanDto, CalendarQueryDto } from './dto/plan.dto';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 interface MaintenanceLevelConfig {
   enabled: boolean;
@@ -58,6 +60,7 @@ export class PlanService {
           maintenanceLevel: level,
           plannedDate,
           responsiblePerson: equipment.responsiblePerson,
+          responsiblePersonId: equipment.responsiblePersonId ?? undefined,
           reminderDays: levelConfig.reminderDays,
         },
       });
@@ -97,6 +100,7 @@ export class PlanService {
         maintenanceLevel: level as any,
         plannedDate,
         responsiblePerson: equipment.responsiblePerson,
+        responsiblePersonId: equipment.responsiblePersonId ?? undefined,
         reminderDays: levelConfig.reminderDays,
       },
     });
@@ -107,11 +111,22 @@ export class PlanService {
     return plan;
   }
 
-  async findAll(query: QueryPlanDto) {
+  async findAll(query: QueryPlanDto, ownership?: OwnershipContext) {
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 10));
     const skip = (page - 1) * limit;
     const where = this.buildWhereClause(query);
+
+    // Ownership scoping — MaintenancePlan.responsiblePersonId is the user FK
+    if (ownership && ownership.roleCode !== 'admin') {
+      if (ownership.roleCode === 'user') {
+        (where as any)['responsiblePersonId'] = ownership.userId;
+      } else if (ownership.roleCode === 'leader') {
+        const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+        if (memberIds.length === 0) return { data: [], total: 0, page, limit };
+        (where as any)['responsiblePersonId'] = { in: memberIds };
+      }
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.maintenancePlan.findMany({

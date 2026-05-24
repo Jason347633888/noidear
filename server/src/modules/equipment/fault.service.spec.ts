@@ -65,6 +65,19 @@ describe('FaultService', () => {
       expect(result.faultNumber).toBeDefined();
       expect(prisma.equipmentFault.create).toHaveBeenCalled();
     });
+
+    it('writes creatorId as reporterId, ignores dto.reporterId', async () => {
+      prisma.equipmentFault.findFirst.mockResolvedValue(null);
+      prisma.equipmentFault.create.mockResolvedValue(mockFault);
+
+      await service.create(
+        { equipmentId: 'eq-1', reporterId: 'dto-reporter-id', faultDescription: 'broken' },
+        'req-user-id',
+      );
+
+      const callData = prisma.equipmentFault.create.mock.calls[0][0].data;
+      expect(callData.reporterId).toBe('req-user-id');
+    });
   });
 
   describe('findAll', () => {
@@ -98,6 +111,17 @@ describe('FaultService', () => {
 
       const where = prisma.equipmentFault.findMany.mock.calls[0][0].where;
       expect(where.reporterId).toBe('user-1');
+    });
+
+    it('uses passed userId directly, not from query params (prevents other-user snooping)', async () => {
+      prisma.equipmentFault.findMany.mockResolvedValue([]);
+      prisma.equipmentFault.count.mockResolvedValue(0);
+
+      // Caller passes req.user.id ('current-user'), any reporterId in query is irrelevant
+      await service.findMyFaults('current-user', { reporterId: 'other-user' } as any);
+
+      const where = prisma.equipmentFault.findMany.mock.calls[0][0].where;
+      expect(where.reporterId).toBe('current-user');
     });
   });
 

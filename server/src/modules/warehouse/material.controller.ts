@@ -1,5 +1,7 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
+  ForbiddenException,
   Get,
   Post,
   Body,
@@ -9,6 +11,7 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { MaterialService } from './material.service';
@@ -17,10 +20,15 @@ import {
   UpdateMaterialDto,
   QueryMaterialDto,
 } from './dto/material.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @ApiTags('仓库-物料管理')
 @ApiBearerAuth()
+@ModuleKey('warehouse')
 @Controller('warehouse/materials')
+@UseGuards(JwtAuthGuard)
 export class MaterialController {
   constructor(private readonly materialService: MaterialService) {}
 
@@ -35,8 +43,8 @@ export class MaterialController {
 例外情况：编码重复时抛出 409 ConflictException；categoryId 不存在时抛出 400。
     `.trim(),
   })
-  create(@Body() createMaterialDto: CreateMaterialDto) {
-    return this.materialService.create(createMaterialDto);
+  create(@Body() createMaterialDto: CreateMaterialDto, @Ownership() ownership: OwnershipContext) {
+    return this.materialService.createForOwnership(createMaterialDto, ownership);
   }
 
   @Get()
@@ -79,7 +87,12 @@ export class MaterialController {
     `.trim(),
   })
   @ApiParam({ name: 'id', description: '物料 ID' })
-  update(@Param('id') id: string, @Body() updateMaterialDto: UpdateMaterialDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateMaterialDto: UpdateMaterialDto,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('仅管理员可修改物料主数据');
     return this.materialService.update(id, updateMaterialDto);
   }
 
@@ -95,7 +108,8 @@ export class MaterialController {
     `.trim(),
   })
   @ApiParam({ name: 'id', description: '物料 ID' })
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: string, @Ownership() ownership: OwnershipContext) {
+    if (ownership.roleCode !== 'admin') throw new ForbiddenException('仅管理员可删除物料主数据');
     return this.materialService.remove(id);
   }
 }

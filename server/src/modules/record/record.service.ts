@@ -9,6 +9,8 @@ import { CreateRecordDto } from './dto/create-record.dto';
 import { UpdateRecordDto } from './dto/update-record.dto';
 import { QueryRecordDto } from './dto/query-record.dto';
 import { QueryChangeLogDto } from './dto/query-change-log.dto';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @Injectable()
 export class RecordService {
@@ -76,9 +78,9 @@ export class RecordService {
   }
 
   /**
-   * 查询记录列表（分页）
+   * 查询记录列表（分页）— ownership scoped via Record.createdBy FK
    */
-  async findAll(query: QueryRecordDto) {
+  async findAll(query: QueryRecordDto, ownership?: OwnershipContext) {
     const { page = 1, limit = 10, status, templateId, keyword } = query;
     const skip = (page - 1) * limit;
 
@@ -102,6 +104,18 @@ export class RecordService {
 
     if (query.changeEventId) {
       where.changeEventId = query.changeEventId;
+    }
+
+    // Ownership scoping — Record.createdBy is the user FK
+    if (ownership) {
+      if (ownership.roleCode === 'user') {
+        where['createdBy'] = ownership.userId;
+      } else if (ownership.roleCode === 'leader') {
+        const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+        if (memberIds.length === 0) return { data: [], total: 0, page, limit, totalPages: 0 };
+        where['createdBy'] = { in: memberIds };
+      }
+      // admin: no filter
     }
 
     const [data, total] = await Promise.all([

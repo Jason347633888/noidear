@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -17,6 +18,7 @@ import { IncomingInspectionService } from './incoming-inspection.service';
 import { CreateInspectionDto } from './dto/create-inspection.dto';
 import { InspectionReportDocumentDto } from './dto/inspection-report-document.dto';
 
+@ModuleKey('traceability_batch')
 @Controller('incoming-inspections')
 @UseGuards(JwtAuthGuard)
 export class IncomingInspectionController {

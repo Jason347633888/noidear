@@ -144,10 +144,6 @@ model User {
   notifications      Notification[]
   managedDepartments Department[]      @relation("DepartmentManager")
 
-  // P1-2: Fine-grained permission relations
-  userPermissions    UserPermission[] @relation("UserPermissions")
-  permissionsGranted UserPermission[] @relation("PermissionGrantor")
-
   // Deviation relations
   reportedDeviations DeviationReport[] @relation("DeviationReporter")
 
@@ -193,6 +189,13 @@ model User {
 
   ownedDocuments Document[] @relation("DocumentOwnerUser")
 
+  // Ownership FK relations (Task 46)
+  responsibleEquipment        Equipment[]           @relation("EquipmentResponsible")
+  responsibleMaintenancePlans MaintenancePlan[]     @relation("MaintenancePlanResponsible")
+  discoveredNonConformances   NonConformance[]      @relation("NonConformanceDiscoverer")
+  createdComplaints           CustomerComplaint[]   @relation("CustomerComplaintCreator")
+  materialRequisitions        MaterialRequisition[] @relation("MaterialRequisitionApplicant")
+
   @@map("users")
 }
 
@@ -211,7 +214,6 @@ model Department {
   users                  User[]                  @relation("UserDepartment")
   pendingNumbers         PendingNumber[]
   documentNumberCounters DocumentNumberCounter[]
-  departmentPermissions  DepartmentPermission[]
   documents              Document[]              @relation("DocumentDepartment")
   ownedDocuments         Document[]              @relation("DocumentOwnerDepartment")
   recordTaskAssignments  RecordTaskAssignment[]  @relation("RecordTaskDepartment")
@@ -425,7 +427,6 @@ model ApprovalTask {
   assigneeUser           User?            @relation("ApprovalTaskAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
   assigneeRoleCode       String?
   assigneeDepartmentId   String?
-  assigneePermissionCode String?
   claimMode              String           @default("DIRECT")
   status                 String           @default("PENDING")
   claimedById            String?
@@ -445,7 +446,6 @@ model ApprovalTask {
   @@index([assigneeUserId, status])
   @@index([assigneeRoleCode, status])
   @@index([assigneeDepartmentId, status])
-  @@index([assigneePermissionCode, status])
   @@map("approval_tasks")
 }
 
@@ -538,84 +538,8 @@ model Role {
   deletedAt   DateTime?
 
   users                  User[]                      @relation("UserRole")
-  permissions            RolePermission[]
-  fineGrainedPermissions RoleFineGrainedPermission[]
 
   @@map("roles")
-}
-
-model Permission {
-  id          String   @id @default(cuid())
-  resource    String // document, template, task, approval
-  action      String // create, read, update, delete, approve
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  roles RolePermission[]
-
-  @@unique([resource, action])
-  @@index([resource])
-  @@map("permissions")
-}
-
-model RolePermission {
-  id           String     @id @default(cuid())
-  roleId       String
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permissionId String
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  createdAt    DateTime   @default(now())
-
-  @@unique([roleId, permissionId])
-  @@index([roleId])
-  @@index([permissionId])
-  @@map("role_permissions")
-}
-
-// P1-2: 细粒度权限定义表（ABAC）
-model FineGrainedPermission {
-  id          String   @id @default(cuid())
-  code        String   @unique
-  name        String
-  category    String
-  scope       String
-  status      String   @default("active")
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  userPermissions UserPermission[]
-
-  @@index([code])
-  @@index([category])
-  @@index([scope])
-  @@index([status])
-  @@map("fine_grained_permissions")
-}
-
-// P1-2: 用户权限授予记录表
-model UserPermission {
-  id                      String                @id @default(cuid())
-  userId                  String
-  user                    User                  @relation("UserPermissions", fields: [userId], references: [id], onDelete: Cascade)
-  fineGrainedPermissionId String
-  fineGrainedPermission   FineGrainedPermission @relation(fields: [fineGrainedPermissionId], references: [id], onDelete: Cascade)
-  grantedBy               String
-  grantor                 User?                 @relation("PermissionGrantor", fields: [grantedBy], references: [id], onDelete: SetNull)
-  grantedAt               DateTime              @default(now())
-  expiresAt               DateTime?
-  reason                  String
-  resourceType            String?
-  resourceId              String?
-  createdAt               DateTime              @default(now())
-  updatedAt               DateTime              @updatedAt
-
-  @@index([userId])
-  @@index([fineGrainedPermissionId])
-  @@index([expiresAt])
-  @@index([resourceType, resourceId])
-  @@map("user_permissions")
 }
 
 // 动态表单引擎: 记录模板表
@@ -911,6 +835,7 @@ model MaterialRequisition {
   requisitionType    RequisitionType // production(生产领料), maintenance(维修领料), other(其他)
   status             RequisitionStatus @default(draft) // draft, pending, approved, rejected, completed
   applicantId        String
+  applicant          User              @relation("MaterialRequisitionApplicant", fields: [applicantId], references: [id], onDelete: Restrict)
   departmentId       String?
   remark             String?
   targetZone         String? // 目标车间区域：筛粉间 | 称油间 | 小料房
@@ -931,6 +856,7 @@ model MaterialRequisition {
   @@index([createdAt])
   @@index([requisitionType])
   @@index([equipmentId])
+  @@index([applicantId])
   @@index([approvalInstanceId])
   @@map("material_requisitions")
 }
@@ -1486,23 +1412,25 @@ enum FaultStatus {
 
 // TASK-209: 设备台账表
 model Equipment {
-  id                String          @id @default(cuid())
-  code              String          @unique // 设备编号 EQ-{YYYYMMDD}-{序号}
-  name              String // 设备名称
-  model             String? // 设备型号
-  category          String // 设备分类
-  location          String? // 设备位置
-  manufacturer      String? // 制造商
-  purchaseDate      DateTime? // 购买日期
-  activationDate    DateTime? // 启用日期
-  warrantyExpiry    DateTime? // 保修到期日期
-  responsiblePerson String? // 责任人ID
-  maintenanceConfig Json? // 分级保养配置 JSON
-  status            EquipmentStatus @default(active)
-  description       String? // 设备描述
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  deletedAt         DateTime?
+  id                    String          @id @default(cuid())
+  code                  String          @unique // 设备编号 EQ-{YYYYMMDD}-{序号}
+  name                  String // 设备名称
+  model                 String? // 设备型号
+  category              String // 设备分类
+  location              String? // 设备位置
+  manufacturer          String? // 制造商
+  purchaseDate          DateTime? // 购买日期
+  activationDate        DateTime? // 启用日期
+  warrantyExpiry        DateTime? // 保修到期日期
+  responsiblePerson     String? // 责任人姓名（旧 text 字段，保留兼容）
+  responsiblePersonId   String? // 责任人 FK（Task 46 新增）
+  responsiblePersonUser User?           @relation("EquipmentResponsible", fields: [responsiblePersonId], references: [id], onDelete: SetNull)
+  maintenanceConfig     Json? // 分级保养配置 JSON
+  status                EquipmentStatus @default(active)
+  description           String? // 设备描述
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  deletedAt             DateTime?
 
   // 反向关系
   maintenancePlans     MaintenancePlan[]
@@ -1514,28 +1442,31 @@ model Equipment {
   @@index([category])
   @@index([status])
   @@index([responsiblePerson])
+  @@index([responsiblePersonId])
   @@index([location])
   @@map("equipment")
 }
 
 // TASK-210: 维护计划表
 model MaintenancePlan {
-  id                String                @id @default(cuid())
-  planNumber        String                @unique // 计划编号 MP-{YYYYMMDD}-{序号}
-  equipmentId       String
-  equipment         Equipment             @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
-  maintenanceLevel  MaintenanceLevel // 保养级别
-  plannedDate       DateTime // 计划日期
-  dueDate           DateTime? // 截止日期
-  status            MaintenancePlanStatus @default(pending)
-  responsiblePerson String? // 责任人ID
-  todoTaskId        String? // 关联待办任务ID
-  reminderDays      Int                   @default(0) // 提前提醒天数
-  description       String? // 计划描述
-  completedAt       DateTime?
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
-  deletedAt         DateTime?
+  id                    String                @id @default(cuid())
+  planNumber            String                @unique // 计划编号 MP-{YYYYMMDD}-{序号}
+  equipmentId           String
+  equipment             Equipment             @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  maintenanceLevel      MaintenanceLevel // 保养级别
+  plannedDate           DateTime // 计划日期
+  dueDate               DateTime? // 截止日期
+  status                MaintenancePlanStatus @default(pending)
+  responsiblePerson     String? // 责任人姓名（旧 text 字段，保留兼容）
+  responsiblePersonId   String? // 责任人 FK（Task 46 新增）
+  responsiblePersonUser User?                 @relation("MaintenancePlanResponsible", fields: [responsiblePersonId], references: [id], onDelete: SetNull)
+  todoTaskId            String? // 关联待办任务ID
+  reminderDays          Int                   @default(0) // 提前提醒天数
+  description           String? // 计划描述
+  completedAt           DateTime?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  deletedAt             DateTime?
 
   // 反向关系
   maintenanceRecords MaintenanceRecord[]
@@ -1545,6 +1476,7 @@ model MaintenancePlan {
   @@index([plannedDate])
   @@index([status])
   @@index([responsiblePerson])
+  @@index([responsiblePersonId])
   @@map("maintenance_plans")
 }
 
@@ -1895,39 +1827,6 @@ model TrainingArchive {
 
   @@index([projectId])
   @@map("training_archives")
-}
-
-// P1-2: 角色细粒度权限中间表
-model RoleFineGrainedPermission {
-  id        String   @id @default(cuid())
-  roleId    String
-  resource  String
-  action    String
-  allowed   Boolean  @default(true)
-  grantedBy String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@unique([roleId, resource, action])
-  @@index([roleId])
-  @@map("role_fine_grained_permissions")
-}
-
-// P1-2: 部门权限表
-model DepartmentPermission {
-  id           String     @id @default(cuid())
-  departmentId String
-  resource     String
-  action       String
-  allowed      Boolean    @default(true)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-
-  @@unique([departmentId, resource, action])
-  @@index([departmentId])
-  @@map("department_permissions")
 }
 
 // ========================================
@@ -2562,29 +2461,32 @@ model InspectionItem {
 // ─── 质量合规 ─────────────────────────────────────
 
 model NonConformance {
-  id             String    @id @default(cuid())
-  company_id     String
-  nc_no          String
-  source_type    String // 'material_batch'|'production_batch'|'product'
-  source_id      String
-  nc_type        String?
-  description    String
-  qty            Decimal?  @db.Decimal(14, 4)
-  unit           String?
-  discovered_at  DateTime
-  discovered_by  String?
-  disposition    String? // 'rework'|'destroy'|'concession'|'return'
-  disposition_by String?
-  disposition_at DateTime?
-  status         String    @default("open") // 'open'|'dispositioned'|'closed'
-  created_at     DateTime  @default(now())
-  updated_at     DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  company_id       String
+  nc_no            String
+  source_type      String // 'material_batch'|'production_batch'|'product'
+  source_id        String
+  nc_type          String?
+  description      String
+  qty              Decimal?  @db.Decimal(14, 4)
+  unit             String?
+  discovered_at    DateTime
+  discovered_by    String? // 发现人姓名（旧 text 字段，保留兼容）
+  discoveredById   String? // 发现人 FK（Task 46 新增）
+  discoveredByUser User?     @relation("NonConformanceDiscoverer", fields: [discoveredById], references: [id], onDelete: SetNull)
+  disposition      String? // 'rework'|'destroy'|'concession'|'return'
+  disposition_by   String?
+  disposition_at   DateTime?
+  status           String    @default("open") // 'open'|'dispositioned'|'closed'
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
 
   rework_records ReworkRecord[]
 
   @@unique([company_id, nc_no])
   @@index([company_id, status])
   @@index([company_id, source_type, source_id])
+  @@index([discoveredById])
 }
 
 model CorrectiveAction {
@@ -2645,12 +2547,15 @@ model CustomerComplaint {
   status              String          @default("open")
   resolution          String?
   closed_at           DateTime?
+  createdById         String? // 创建人 FK（Task 46 新增）
+  createdByUser       User?           @relation("CustomerComplaintCreator", fields: [createdById], references: [id], onDelete: SetNull)
   created_at          DateTime        @default(now())
   updated_at          DateTime        @updatedAt
 
   @@unique([company_id, complaint_no])
   @@index([production_batch_id])
   @@index([customer_id])
+  @@index([createdById])
 }
 
 model ReworkRecord {
@@ -3397,4 +3302,19 @@ model BusinessNumberSequence {
   @@unique([company_id, scope, period])
   @@index([scope, period])
   @@map("business_number_sequences")
+}
+
+// 简化角色与模块开关
+model ModuleAccessConfig {
+  id        String   @id @default(cuid())
+  moduleKey String
+  roleCode  String   // 仅允许 'leader' | 'user'
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([moduleKey, roleCode])
+  @@index([moduleKey])
+  @@index([roleCode])
+  @@map("module_access_configs")
 }

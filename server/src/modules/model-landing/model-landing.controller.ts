@@ -1,7 +1,11 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
+import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { ModelLandingService } from './model-landing.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@ModuleKey('product_rd')
 @Controller('model-landing')
+@UseGuards(JwtAuthGuard)
 export class ModelLandingController {
   constructor(private readonly modelLandingService: ModelLandingService) {}
 

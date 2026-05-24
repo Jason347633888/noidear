@@ -1,8 +1,10 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { TeamShiftService } from './team-shift.service';
 import { CreateTeamDto, CreateShiftTypeDto, CreateTeamScheduleDto } from './dto/team-shift.dto';
 
+@ModuleKey('production_execution')
 @Controller('team-shifts')
 @UseGuards(JwtAuthGuard)
 export class TeamShiftController {

@@ -1,9 +1,13 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequisitionService } from './requisition.service';
 import { CreateRequisitionDto, QueryRequisitionDto } from './dto/requisition.dto';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @UseGuards(JwtAuthGuard)
+@ModuleKey('warehouse')
 @Controller('warehouse/requisitions')
 export class RequisitionController {
   constructor(private readonly requisitionService: RequisitionService) {}
@@ -15,8 +19,8 @@ export class RequisitionController {
   }
 
   @Get()
-  findAll(@Query() query: QueryRequisitionDto) {
-    return this.requisitionService.findAll(query);
+  findAll(@Ownership() ownership: OwnershipContext, @Query() query: QueryRequisitionDto) {
+    return this.requisitionService.findAll(query, ownership);
   }
 
   @Get(':id')

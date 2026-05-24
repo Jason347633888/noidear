@@ -1,9 +1,13 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { CustomerComplaintService } from './customer-complaint.service';
 import { CreateComplaintDto, ResolveComplaintDto } from './dto/create-complaint.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
+@ModuleKey('quality_compliance')
 @Controller('customer-complaints')
 @UseGuards(JwtAuthGuard)
 export class CustomerComplaintController {
@@ -11,12 +15,12 @@ export class CustomerComplaintController {
 
   @Post()
   create(@Body() dto: CreateComplaintDto, @Request() req: AuthenticatedRequest) {
-    return this.service.create(dto, req.user.companyId);
+    return this.service.create(dto, req.user.companyId, req.user.id);
   }
 
   @Get()
-  findAll(@Request() req: AuthenticatedRequest, @Query('status') status?: string) {
-    return this.service.findAll(req.user.companyId, status);
+  findAll(@Ownership() ownership: OwnershipContext, @Request() req: AuthenticatedRequest, @Query('status') status?: string) {
+    return this.service.findAll(req.user.companyId, ownership, status);
   }
 
   @Post(':id/resolve')

@@ -87,6 +87,24 @@ describe('ReturnService', () => {
 
       await expect(service.create(dto)).rejects.toThrow(NotFoundException);
     });
+
+    it('writes creatorId as requesterId, ignores dto.requesterId (prevents ownership forgery)', async () => {
+      const dto = {
+        items: [{ materialBatchId: 'batch-1', quantity: 10 }],
+        reason: 'test',
+        requesterId: 'dto-requester-id',
+      };
+      const mockBatch = { id: 'batch-1', batchNumber: 'BATCH-001' };
+      const mockReturn = { id: 'ret-1', returnNo: 'RET-001', requesterId: 'req-user-id', items: [] };
+      jest.spyOn(prisma.materialBatch, 'findUnique').mockResolvedValue(mockBatch as any);
+      jest.spyOn(prisma.materialReturn, 'count').mockResolvedValue(0);
+      jest.spyOn(prisma.materialReturn, 'create').mockResolvedValue(mockReturn as any);
+
+      await service.create(dto, undefined, 'req-user-id');
+
+      const callData = (prisma.materialReturn.create as jest.Mock).mock.calls[0][0].data;
+      expect(callData.requesterId).toBe('req-user-id');
+    });
   });
 
   describe('approve', () => {

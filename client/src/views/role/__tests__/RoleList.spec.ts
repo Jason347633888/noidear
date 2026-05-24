@@ -1,14 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { nextTick } from 'vue';
 
 const mockGet = vi.fn();
-const mockDelete = vi.fn();
 
 vi.mock('@/api/request', () => ({
   default: {
     get: (...args: unknown[]) => mockGet(...args),
-    delete: (...args: unknown[]) => mockDelete(...args),
   },
 }));
 
@@ -18,7 +15,6 @@ vi.mock('vue-router', () => ({
 
 vi.mock('element-plus', () => ({
   ElMessage: { success: vi.fn(), error: vi.fn() },
-  ElMessageBox: { confirm: vi.fn() },
 }));
 
 const stubs: Record<string, any> = {
@@ -30,8 +26,9 @@ const stubs: Record<string, any> = {
   'el-table': { template: '<div><slot /></div>', props: ['data'] },
   'el-table-column': { template: '<div />' },
   'el-pagination': { template: '<div />' },
-  RoleForm: { template: '<div />' },
-  RolePermissions: { template: '<div />' },
+  'el-alert': { template: '<div />' },
+  'el-tag': { template: '<span />' },
+  PageHeaderBlock: { template: '<div />' },
 };
 
 import RoleList from '../RoleList.vue';
@@ -79,7 +76,7 @@ describe('RoleList', () => {
     await (wrapper.vm as any).handleSearch();
     await flushPromises();
 
-    expect(mockGet).toHaveBeenCalledWith('/roles', 
+    expect(mockGet).toHaveBeenCalledWith('/roles',
       expect.objectContaining({ params: expect.objectContaining({ keyword: '测试' }) })
     );
   });
@@ -90,33 +87,6 @@ describe('RoleList', () => {
     (wrapper.vm as any).filterForm.keyword = '测试';
     (wrapper.vm as any).handleReset();
     expect((wrapper.vm as any).filterForm.keyword).toBe('');
-  });
-
-  it('open create', async () => {
-    const wrapper = w();
-    await flushPromises();
-    (wrapper.vm as any).handleCreate();
-    await nextTick();
-    expect((wrapper.vm as any).formVisible).toBe(true);
-  });
-
-  it('open edit', async () => {
-    const wrapper = w();
-    await flushPromises();
-    (wrapper.vm as any).handleEdit(mockRole);
-    await nextTick();
-    expect((wrapper.vm as any).formVisible).toBe(true);
-  });
-
-  it('delete role', async () => {
-    const { ElMessageBox, ElMessage } = await import('element-plus');
-    (ElMessageBox.confirm as any).mockResolvedValue(true);
-    mockDelete.mockResolvedValue({});
-    const wrapper = w();
-    await flushPromises();
-    await (wrapper.vm as any).handleDelete(mockRole);
-    await flushPromises();
-    expect(mockDelete).toHaveBeenCalledWith(`/roles/${mockRole.id}`);
   });
 
   it('error handling', async () => {

@@ -21,6 +21,7 @@ import {
   EFFECTIVE_COMPAT_STATUSES,
   isEffectiveCompatible,
 } from './constants/document-control.constants';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @Injectable()
 export class DocumentService {

@@ -1,5 +1,5 @@
 /**
- * Task 38 — RecordService.listForOwnership
+ * RecordService.findAll with ownership filtering
  * Record.createdBy is the FK (String), no departmentId on Record directly.
  * leader: needs member lookup via user.departmentId; user: direct createdBy filter.
  */
@@ -16,13 +16,13 @@ function freshService(userFindManyResult: any[] = []) {
   return { svc, prisma };
 }
 
-describe('RecordService.listForOwnership', () => {
+describe('RecordService.findAll with ownership', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('admin sees all records (no createdBy filter)', async () => {
     const { svc, prisma } = freshService();
     const ownership: OwnershipContext = { userId: 'a', roleCode: 'admin', departmentId: null, managedDepartmentIds: undefined };
-    await svc.listForOwnership(ownership, {});
+    await svc.findAll({}, ownership);
     const callWhere = prisma.record.findMany.mock.calls[0][0].where;
     expect(callWhere).not.toHaveProperty('createdBy');
   });
@@ -30,7 +30,7 @@ describe('RecordService.listForOwnership', () => {
   it('user sees only records they created', async () => {
     const { svc, prisma } = freshService();
     const ownership: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd-x', managedDepartmentIds: [] };
-    await svc.listForOwnership(ownership, {});
+    await svc.findAll({}, ownership);
     const callWhere = prisma.record.findMany.mock.calls[0][0].where;
     expect(callWhere).toMatchObject({ createdBy: 'u-1' });
   });
@@ -38,7 +38,7 @@ describe('RecordService.listForOwnership', () => {
   it('leader sees records created by members of managed depts', async () => {
     const { svc, prisma } = freshService([{ id: 'm-1' }, { id: 'm-2' }]);
     const ownership: OwnershipContext = { userId: 'l-1', roleCode: 'leader', departmentId: 'd-1', managedDepartmentIds: ['d-1'] };
-    await svc.listForOwnership(ownership, {});
+    await svc.findAll({}, ownership);
     const callWhere = prisma.record.findMany.mock.calls[0][0].where;
     expect(callWhere).toMatchObject({ createdBy: { in: ['m-1', 'm-2'] } });
   });

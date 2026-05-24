@@ -1,9 +1,11 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Body, Param, Request, UseGuards } from '@nestjs/common';
 import { SupplierEvaluationService } from './supplier-evaluation.service';
 import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
 
+@ModuleKey('quality_compliance')
 @Controller('supplier-evaluations')
 @UseGuards(JwtAuthGuard)
 export class SupplierEvaluationController {

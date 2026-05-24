@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -16,7 +17,10 @@ import { CapaTriggerType, CreateCapaDto } from './dto/create-capa.dto';
 import { CreateVerificationDto } from './dto/create-verification.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
+@ModuleKey('quality_compliance')
 @Controller('corrective-actions')
 @UseGuards(JwtAuthGuard)
 export class CorrectiveActionController {
@@ -36,16 +40,13 @@ export class CorrectiveActionController {
 
   @Get()
   findAll(
+    @Ownership() ownership: OwnershipContext,
     @Request() req: AuthenticatedRequest,
     @Query('status') status?: string,
     @Query('trigger_type') triggerType?: CapaTriggerType,
     @Query('trigger_id') triggerId?: string,
   ) {
-    return this.service.findAll(req.user.companyId, {
-      status,
-      triggerType,
-      triggerId,
-    });
+    return this.service.findAll(req.user.companyId, { status, triggerType, triggerId }, ownership);
   }
 
   // analytics/trends must be BEFORE :id to avoid Express shadowing

@@ -3,6 +3,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { ProductionBatchService } from './production-batch.service';
 import { BatchNumberGeneratorService } from './batch-number-generator.service';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { OwnershipContext } from '../../module-access/ownership-context';
 
 const mockPrisma = {
   product: {
@@ -312,5 +313,44 @@ describe('ProductionBatchService', () => {
         where: { id: 'r1', product_id: 'p1', company_id: '1', status: 'active' },
       });
     });
+  });
+});
+
+describe('ProductionBatchService.findAll with ownership', () => {
+  function freshService(userFindManyResult: any[] = []) {
+    const prisma: any = {
+      product: { findFirst: jest.fn() },
+      recipe: { findFirst: jest.fn() },
+      productionBatch: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
+      user: { findMany: jest.fn().mockResolvedValue(userFindManyResult) },
+    };
+    const batchGen: any = { generateBatchNumber: jest.fn() };
+    return { svc: new ProductionBatchService(prisma, batchGen), prisma };
+  }
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it('admin sees all batches (no leader_id filter)', async () => {
+    const { svc, prisma } = freshService();
+    const o: OwnershipContext = { userId: 'a', roleCode: 'admin', departmentId: null, managedDepartmentIds: undefined };
+    await svc.findAll({}, o);
+    const callWhere = prisma.productionBatch.findMany.mock.calls[0][0].where;
+    expect(callWhere).not.toHaveProperty('leader_id');
+  });
+
+  it('user sees batches where leader_id = userId', async () => {
+    const { svc, prisma } = freshService();
+    const o: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd', managedDepartmentIds: [] };
+    await svc.findAll({}, o);
+    const callWhere = prisma.productionBatch.findMany.mock.calls[0][0].where;
+    expect(callWhere).toMatchObject({ leader_id: 'u-1' });
+  });
+
+  it('leader sees batches where leader_id IN managed-dept members', async () => {
+    const { svc, prisma } = freshService([{ id: 'm-1' }, { id: 'm-2' }]);
+    const o: OwnershipContext = { userId: 'l-1', roleCode: 'leader', departmentId: 'd-1', managedDepartmentIds: ['d-1'] };
+    await svc.findAll({}, o);
+    const callWhere = prisma.productionBatch.findMany.mock.calls[0][0].where;
+    expect(callWhere).toMatchObject({ leader_id: { in: ['m-1', 'm-2'] } });
   });
 });

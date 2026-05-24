@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -15,9 +16,12 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @ApiTags('流程实例')
 @UseGuards(JwtAuthGuard)
+@ModuleKey('production_execution')
 @Controller('process/instances')
 export class ProcessInstanceController {
   constructor(
@@ -26,9 +30,23 @@ export class ProcessInstanceController {
   ) {}
 
   @Get()
-  @ApiOperation({ summary: '获取流程实例列表' })
-  async findAll() {
+  @ApiOperation({ summary: '获取流程实例列表（ownership 范围）' })
+  async findAll(@Request() req: AuthenticatedRequest) {
+    const ownership: OwnershipContext | undefined = (req as any).ownership;
+    const where: Record<string, unknown> = {};
+
+    if (ownership) {
+      if (ownership.roleCode === 'user') {
+        where['createdById'] = ownership.userId;
+      } else if (ownership.roleCode === 'leader') {
+        const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+        where['createdById'] = memberIds.length > 0 ? { in: memberIds } : { in: [] };
+      }
+      // admin: no filter
+    }
+
     const instances = await this.prisma.processInstance.findMany({
+      where,
       include: { stepData: true },
     });
     return { code: 0, data: instances, message: 'success' };

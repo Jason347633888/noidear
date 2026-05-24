@@ -13,6 +13,8 @@ import {
   QueryProductionBatchDto,
   ConfirmProductBatchDto,
 } from '../dto/production-batch.dto';
+import { OwnershipContext } from '../../module-access/ownership-context';
+import { userIdsInDepts } from '../../module-access/ownership-helpers';
 
 @Injectable()
 export class ProductionBatchService {
@@ -21,7 +23,7 @@ export class ProductionBatchService {
     private readonly batchNumberGenerator: BatchNumberGeneratorService,
   ) {}
 
-  async create(createDto: CreateProductionBatchDto) {
+  async create(createDto: CreateProductionBatchDto, creatorId?: string) {
     const product = await this.prisma.product.findFirst({
       where: { id: createDto.productId, company_id: '1', status: 'active', deleted_at: null },
     });
@@ -45,15 +47,27 @@ export class ProductionBatchService {
         plannedQuantity: createDto.plannedQuantity,
         productionDate: createDto.productionDate,
         status: 'pending',
+        ...(creatorId !== undefined ? { leader_id: creatorId } : {}),
       },
     });
   }
 
-  async findAll(query: QueryProductionBatchDto) {
+  async findAll(query: QueryProductionBatchDto, ownership?: OwnershipContext) {
     const { page = 1, limit = 10, status, search } = query;
     const skip = (page - 1) * limit;
 
     const where = this.buildWhereClause(status, search);
+
+    // Ownership scoping — ProductionBatch.leader_id is the user FK
+    if (ownership && ownership.roleCode !== 'admin') {
+      if (ownership.roleCode === 'user') {
+        where['leader_id'] = ownership.userId;
+      } else if (ownership.roleCode === 'leader') {
+        const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+        if (memberIds.length === 0) return { data: [], total: 0, page, limit };
+        where['leader_id'] = { in: memberIds };
+      }
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.productionBatch.findMany({
@@ -129,7 +143,7 @@ export class ProductionBatchService {
     return batch;
   }
 
-  async confirmProductBatch(dto: ConfirmProductBatchDto) {
+  async confirmProductBatch(dto: ConfirmProductBatchDto, creatorId?: string) {
     const existing = await this.prisma.productionBatch.findUnique({
       where: { batchNumber: dto.batchNumber },
     });
@@ -169,6 +183,7 @@ export class ProductionBatchService {
           team_id: dto.teamId,
           shift_type_id: dto.shiftTypeId,
           status: 'completed',
+          ...(creatorId !== undefined ? { leader_id: creatorId } : {}),
         },
       });
     } catch (error) {

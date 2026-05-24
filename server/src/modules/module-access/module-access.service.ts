@@ -30,14 +30,17 @@ export class ModuleAccessService {
     if (opts.roleCode === 'admin') return [...MODULE_KEYS];
     if (!ROLE_CODES_WITH_TOGGLE.includes(opts.roleCode as RoleCodeWithToggle)) return [];
 
+    // Fetch all rows for this role (not just enabled ones) so we can apply default-true logic
     const rows = await this.prisma.moduleAccessConfig.findMany({
-      where: { roleCode: opts.roleCode, enabled: true },
-      select: { moduleKey: true },
+      where: { roleCode: opts.roleCode },
+      select: { moduleKey: true, enabled: true },
     });
-    return rows
-      .filter((r: { moduleKey: string; enabled?: boolean }) => r.enabled !== false)
-      .map((r: { moduleKey: string }) => r.moduleKey as ModuleKey)
-      .filter((k: ModuleKey) => MODULE_KEYS.includes(k));
+    const lookup = new Map<string, boolean>();
+    rows.forEach((r: { moduleKey: string; enabled: boolean }) => lookup.set(r.moduleKey, r.enabled));
+
+    // Default-deny is opt-in: a module with no DB row defaults to enabled (true).
+    // Only explicit enabled=false rows disable a module.
+    return MODULE_KEYS.filter((key) => lookup.get(key) !== false);
   }
 
   async listMatrix(): Promise<MatrixRow[]> {
@@ -58,15 +61,17 @@ export class ModuleAccessService {
         throw new BadRequestException(`Unknown moduleKey: ${row.moduleKey}`);
       }
     }
-    for (const row of rows) {
-      for (const roleCode of ROLE_CODES_WITH_TOGGLE) {
-        const enabled = row[roleCode];
-        await this.prisma.moduleAccessConfig.upsert({
-          where: { moduleKey_roleCode: { moduleKey: row.moduleKey, roleCode } },
-          update: { enabled },
-          create: { moduleKey: row.moduleKey, roleCode, enabled },
-        });
+    await this.prisma.$transaction(async (tx) => {
+      for (const row of rows) {
+        for (const roleCode of ROLE_CODES_WITH_TOGGLE) {
+          const enabled = row[roleCode];
+          await tx.moduleAccessConfig.upsert({
+            where: { moduleKey_roleCode: { moduleKey: row.moduleKey, roleCode } },
+            update: { enabled },
+            create: { moduleKey: row.moduleKey, roleCode, enabled },
+          });
+        }
       }
-    }
+    });
   }
 }

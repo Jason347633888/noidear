@@ -1,8 +1,10 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { DeviationAnalyticsService } from './deviation-analytics.service';
 import { TrendQueryDto, DateRangeDto } from './dto/deviation-analytics.dto';
 
+@ModuleKey('quality_compliance')
 @Controller('deviation-analytics')
 @UseGuards(JwtAuthGuard)
 export class DeviationAnalyticsController {

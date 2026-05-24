@@ -9,6 +9,8 @@ import { ApprovalEngineService } from '../../unified-approval/approval-engine.se
 import { InventoryMovementLedgerService } from './inventory-movement-ledger.service';
 import { Prisma } from '@prisma/client';
 import { CreateScrapDto, ApproveScrapDto } from '../dto/scrap.dto';
+import { OwnershipContext } from '../../module-access/ownership-context';
+import { userIdsInDepts } from '../../module-access/ownership-helpers';
 
 @Injectable()
 export class ScrapService {
@@ -18,7 +20,7 @@ export class ScrapService {
     private readonly inventoryMovementLedger: InventoryMovementLedgerService,
   ) {}
 
-  async create(dto: CreateScrapDto) {
+  async create(dto: CreateScrapDto, companyId?: string, creatorId?: string) {
     for (const item of dto.items) {
       const batch = await this.prisma.materialBatch.findUnique({
         where: { id: item.materialBatchId },
@@ -35,7 +37,8 @@ export class ScrapService {
     const materialScrap = await this.prisma.materialScrap.create({
       data: {
         scrapNo,
-        requesterId: dto.requesterId,
+        // Always use creatorId when provided to prevent requesterId forgery by clients
+        requesterId: creatorId ?? dto.requesterId,
         reason: dto.reason,
         items: {
           create: dto.items.map((item) => ({
@@ -65,7 +68,7 @@ export class ScrapService {
           resourceStep: 'submit',
           triggerKey: 'submit',
           title: `报废单审批：${materialScrap.scrapNo ?? materialScrap.id}`,
-          createdById: dto.requesterId,
+          createdById: creatorId ?? dto.requesterId,
         });
         await this.prisma.materialScrap.update({
           where: { id: materialScrap.id },
@@ -217,8 +220,22 @@ export class ScrapService {
     });
   }
 
-  async findAll() {
+  async findAll(ownership?: OwnershipContext) {
+    const where: Record<string, unknown> = {};
+
+    // Ownership scoping — MaterialScrap.requesterId is the user FK
+    if (ownership && ownership.roleCode !== 'admin') {
+      if (ownership.roleCode === 'user') {
+        where['requesterId'] = ownership.userId;
+      } else if (ownership.roleCode === 'leader') {
+        const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+        if (memberIds.length === 0) return [];
+        where['requesterId'] = { in: memberIds };
+      }
+    }
+
     return this.prisma.materialScrap.findMany({
+      where,
       include: {
         items: {
           include: {

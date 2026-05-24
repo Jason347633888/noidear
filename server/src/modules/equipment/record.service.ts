@@ -14,6 +14,8 @@ import {
 } from './dto/record.dto';
 import { PlanService } from './plan.service';
 import { StatsService } from './stats.service';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @Injectable()
 export class RecordService {
@@ -26,10 +28,10 @@ export class RecordService {
     @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {}
 
-  async create(dto: CreateRecordDto) {
+  async create(dto: CreateRecordDto, creatorId?: string) {
     const recordNumber = await this.generateRecordNumber();
     const optional: Record<string, any> = {};
-    this.applyOptionalFields(optional, dto);
+    this.applyOptionalFields(optional, dto, creatorId);
 
     const record = await this.prisma.maintenanceRecord.create({
       data: {
@@ -49,11 +51,28 @@ export class RecordService {
     return record;
   }
 
-  async findAll(query: QueryRecordDto) {
+  async findAll(query: QueryRecordDto, ownership?: OwnershipContext) {
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 10));
     const skip = (page - 1) * limit;
     const where = this.buildWhereClause(query);
+
+    // Ownership scoping — MaintenanceRecord uses performerId / reviewerId
+    if (ownership && ownership.roleCode !== 'admin') {
+      if (ownership.roleCode === 'user') {
+        (where as any)['OR'] = [
+          { performerId: ownership.userId },
+          { reviewerId: ownership.userId },
+        ];
+      } else if (ownership.roleCode === 'leader') {
+        const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+        if (memberIds.length === 0) return { data: [], total: 0, page, limit };
+        (where as any)['OR'] = [
+          { performerId: { in: memberIds } },
+          { reviewerId: { in: memberIds } },
+        ];
+      }
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.maintenanceRecord.findMany({
@@ -142,16 +161,22 @@ export class RecordService {
     }
   }
 
-  private applyOptionalFields(data: Record<string, any>, dto: CreateRecordDto) {
+  private applyOptionalFields(data: Record<string, any>, dto: CreateRecordDto, creatorId?: string) {
     const optionalFields = [
       'planId', 'content', 'beforeStatus', 'afterStatus',
-      'photos', 'performerSignature', 'performerId',
+      'photos', 'performerSignature', 'performerId', 'reviewerId',
     ] as const;
 
     for (const field of optionalFields) {
-      if (dto[field] !== undefined) data[field] = dto[field];
+      if ((dto as any)[field] !== undefined) data[field] = (dto as any)[field];
     }
     if (dto.cost !== undefined) data.cost = dto.cost;
+
+    // Always override performerId with the authenticated creatorId to prevent FK forgery.
+    // Admins can change performerId via the update endpoint after creation.
+    if (creatorId !== undefined) {
+      data.performerId = creatorId;
+    }
   }
 
   private async generateRecordNumber(): Promise<string> {

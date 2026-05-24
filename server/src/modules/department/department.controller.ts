@@ -2,6 +2,8 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } fro
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { DepartmentService } from './department.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CreateDepartmentDTO } from './dto/create-department.dto';
 import { UpdateDepartmentDTO } from './dto/update-department.dto';
 
@@ -25,18 +27,24 @@ export class DepartmentController {
   }
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('admin')
   @ApiOperation({ summary: '创建部门' })
   async create(@Body() dto: CreateDepartmentDTO) {
     return this.departmentService.create(dto);
   }
 
   @Put(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
   @ApiOperation({ summary: '更新部门' })
   async update(@Param('id') id: string, @Body() dto: UpdateDepartmentDTO) {
     return this.departmentService.update(id, dto);
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
   @ApiOperation({ summary: '删除部门' })
   async remove(@Param('id') id: string) {
     return this.departmentService.remove(id);

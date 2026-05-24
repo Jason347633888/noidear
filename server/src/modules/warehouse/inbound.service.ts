@@ -12,6 +12,8 @@ import { InventoryMovementLedgerService } from './services/inventory-movement-le
 import { SupplierAccessService } from './services/supplier-access.service';
 import { Prisma } from '@prisma/client';
 import * as dayjs from 'dayjs';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @Injectable()
 export class InboundService {
@@ -35,6 +37,8 @@ export class InboundService {
           supplierId,
           status: 'draft',
           remark,
+          // Write operatorId at creation so the creator can find the record via ownership filter
+          operatorId: createdById ?? null,
         },
       });
 
@@ -79,11 +83,13 @@ export class InboundService {
     return Math.floor(Math.random() * 1000).toString().padStart(3, '0');
   }
 
-  async findAll(query: QueryInboundDto) {
+  async findAll(query: QueryInboundDto, ownership: OwnershipContext) {
     const { page = 1, limit = 10, status, supplierId } = query;
     const skip = (page - 1) * limit;
 
-    const where = this.buildWhereClause(status, supplierId);
+    const queryWhere = this.buildWhereClause(status, supplierId);
+    const ownershipWhere = await this.buildOwnershipWhere(ownership);
+    const where = { ...queryWhere, ...ownershipWhere };
 
     const [data, total] = await Promise.all([
       this.prisma.materialInbound.findMany({
@@ -100,6 +106,17 @@ export class InboundService {
     ]);
 
     return { data, total, page, limit };
+  }
+
+  private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
+    if (ownership.roleCode === 'admin') return {};
+    if (ownership.roleCode === 'user') {
+      return { operatorId: ownership.userId };
+    }
+    // leader
+    const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+    if (memberIds.length === 0) return { id: 'no-match' };
+    return { operatorId: { in: memberIds } };
   }
 
   private buildWhereClause(status?: string, supplierId?: string) {

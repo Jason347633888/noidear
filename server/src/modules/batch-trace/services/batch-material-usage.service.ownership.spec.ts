@@ -1,58 +1,129 @@
 /**
- * Task 43 — BatchMaterialUsageService.listForOwnership
- * Filters batchMaterialUsage by visibleProductionBatchIds upstream filter.
- * admin → no filter; user → leader_id = userId on ProductionBatch;
- * leader → leader_id IN memberIds on ProductionBatch
+ * BatchMaterialUsageService — productionBatchId ownership validation (C1 fix).
+ * Regular users cannot write a batch-material-usage record for a production batch
+ * they do not own, preventing food safety traceability chain pollution.
  */
+import { ForbiddenException } from '@nestjs/common';
 import { BatchMaterialUsageService } from './batch-material-usage.service';
 import { OwnershipContext } from '../../module-access/ownership-context';
 
-function freshService(batchIds: string[] = [], memberIds: string[] = []) {
-  const prisma: any = {
+const BASE_DTO = {
+  productionBatchId: 'pb-1',
+  materialBatchId: 'mb-1',
+  recipeLineId: 'line-1',
+  quantity: 10,
+};
+
+function buildPrisma(opts: {
+  visibleBatchIds?: string[];
+  memberIds?: string[];
+} = {}) {
+  const { visibleBatchIds = ['pb-1'], memberIds = [] } = opts;
+  return {
     productionBatch: {
-      findMany: jest.fn().mockResolvedValue(batchIds.map((id) => ({ id }))),
+      findUnique: jest.fn().mockResolvedValue({ id: 'pb-1', recipeId: 'r-1' }),
+      findMany: jest.fn().mockResolvedValue(visibleBatchIds.map((id) => ({ id }))),
     },
-    batchMaterialUsage: { findMany: jest.fn().mockResolvedValue([]) },
-    user: { findMany: jest.fn().mockResolvedValue(memberIds.map((id) => ({ id }))) },
+    recipeLine: {
+      findFirst: jest.fn().mockResolvedValue({
+        id: 'line-1',
+        recipe_id: 'r-1',
+        material_id: 'mat-1',
+        area_id: 'area-1',
+        area_name_snapshot: '测试区',
+      }),
+    },
+    materialBatch: {
+      findUnique: jest.fn().mockResolvedValue({ id: 'mb-1', materialId: 'mat-1' }),
+    },
+    batchMaterialUsage: {
+      create: jest.fn().mockResolvedValue({ id: 'usage-1' }),
+    },
+    user: {
+      findMany: jest.fn().mockResolvedValue(memberIds.map((id: string) => ({ id }))),
+    },
   };
-  return { svc: new BatchMaterialUsageService(prisma), prisma };
 }
 
-describe('BatchMaterialUsageService.listForOwnership', () => {
+describe('BatchMaterialUsageService.create ownership (C1)', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('admin gets all usages (no batch filter)', async () => {
-    const { svc, prisma } = freshService();
-    const o: OwnershipContext = { userId: 'a', roleCode: 'admin', departmentId: null, managedDepartmentIds: undefined };
-    await svc.listForOwnership(o);
-    const callWhere = prisma.batchMaterialUsage.findMany.mock.calls[0][0].where;
-    expect(callWhere).not.toHaveProperty('productionBatchId');
+  it('admin can write to any productionBatchId regardless of ownership', async () => {
+    const prisma: any = buildPrisma();
+    const svc = new BatchMaterialUsageService(prisma);
+    const ownership: OwnershipContext = {
+      userId: 'admin-1',
+      roleCode: 'admin',
+      departmentId: null,
+      managedDepartmentIds: undefined,
+    };
+    await expect(svc.create(BASE_DTO, ownership)).resolves.toEqual({ id: 'usage-1' });
+    expect(prisma.batchMaterialUsage.create).toHaveBeenCalled();
   });
 
-  it('user gets usages for their batches', async () => {
-    const { svc, prisma } = freshService(['pb-1', 'pb-2']);
-    const o: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd', managedDepartmentIds: [] };
-    await svc.listForOwnership(o);
-    expect(prisma.productionBatch.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { leader_id: 'u-1' } }),
-    );
-    expect(prisma.batchMaterialUsage.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { productionBatchId: { in: ['pb-1', 'pb-2'] } } }),
-    );
+  it('user can write to a productionBatch they own (leader_id = userId)', async () => {
+    const prisma: any = buildPrisma({ visibleBatchIds: ['pb-1'] });
+    const svc = new BatchMaterialUsageService(prisma);
+    const ownership: OwnershipContext = {
+      userId: 'u-1',
+      roleCode: 'user',
+      departmentId: 'd-1',
+      managedDepartmentIds: [],
+    };
+    await expect(svc.create(BASE_DTO, ownership)).resolves.toEqual({ id: 'usage-1' });
   });
 
-  it('user with no batches gets []', async () => {
-    const { svc } = freshService([]);
-    const o: OwnershipContext = { userId: 'u-2', roleCode: 'user', departmentId: 'd', managedDepartmentIds: [] };
-    expect(await svc.listForOwnership(o)).toEqual([]);
+  it('user cannot write to a productionBatch they do not own → ForbiddenException', async () => {
+    const prisma: any = buildPrisma({ visibleBatchIds: ['pb-other'] }); // pb-1 not visible
+    const svc = new BatchMaterialUsageService(prisma);
+    const ownership: OwnershipContext = {
+      userId: 'u-1',
+      roleCode: 'user',
+      departmentId: 'd-1',
+      managedDepartmentIds: [],
+    };
+    const dto = { ...BASE_DTO, productionBatchId: 'pb-1' };
+    await expect(svc.create(dto, ownership)).rejects.toThrow(ForbiddenException);
+    expect(prisma.batchMaterialUsage.create).not.toHaveBeenCalled();
   });
 
-  it('leader gets usages for managed-dept members batches', async () => {
-    const { svc, prisma } = freshService(['pb-3'], ['m-1', 'm-2']);
-    const o: OwnershipContext = { userId: 'l-1', roleCode: 'leader', departmentId: 'd-1', managedDepartmentIds: ['d-1'] };
-    await svc.listForOwnership(o);
-    expect(prisma.batchMaterialUsage.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { productionBatchId: { in: ['pb-3'] } } }),
-    );
+  it('leader can write to a productionBatch owned by a managed-dept member', async () => {
+    // leader's members own pb-1
+    const prisma: any = buildPrisma({ visibleBatchIds: ['pb-1'], memberIds: ['u-1'] });
+    const svc = new BatchMaterialUsageService(prisma);
+    const ownership: OwnershipContext = {
+      userId: 'l-1',
+      roleCode: 'leader',
+      departmentId: 'd-1',
+      managedDepartmentIds: ['d-1'],
+    };
+    await expect(svc.create(BASE_DTO, ownership)).resolves.toEqual({ id: 'usage-1' });
+  });
+
+  it('leader cannot write to a productionBatch outside managed depts → ForbiddenException', async () => {
+    // leader's members do not own pb-1
+    const prisma: any = buildPrisma({ visibleBatchIds: ['pb-other'], memberIds: ['u-1'] });
+    const svc = new BatchMaterialUsageService(prisma);
+    const ownership: OwnershipContext = {
+      userId: 'l-1',
+      roleCode: 'leader',
+      departmentId: 'd-1',
+      managedDepartmentIds: ['d-1'],
+    };
+    await expect(svc.create(BASE_DTO, ownership)).rejects.toThrow(ForbiddenException);
+    expect(prisma.batchMaterialUsage.create).not.toHaveBeenCalled();
+  });
+
+  it('no ownership context (legacy/internal calls) skips check and succeeds', async () => {
+    const prisma: any = buildPrisma();
+    const svc = new BatchMaterialUsageService(prisma);
+    await expect(svc.create(BASE_DTO)).resolves.toEqual({ id: 'usage-1' });
+    expect(prisma.batchMaterialUsage.create).toHaveBeenCalled();
+  });
+
+  it('does not expose a listForOwnership method', () => {
+    const prisma: any = buildPrisma();
+    const svc = new BatchMaterialUsageService(prisma);
+    expect((svc as any).listForOwnership).toBeUndefined();
   });
 });

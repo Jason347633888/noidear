@@ -2,13 +2,16 @@ import { Body, Controller, Get, Param, Post, Request, UseGuards } from '@nestjs/
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ProductProcessChangeService } from './product-process-change.service';
 import { CreateProductProcessChangeDraftBodyDto } from './dto/product-process-change.dto';
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 
-@Controller()
+@ModuleKey('product_rd')
+@Controller('product-process-changes')
 @UseGuards(JwtAuthGuard)
 export class ProductProcessChangeController {
   constructor(private readonly service: ProductProcessChangeService) {}
 
-  @Post('/products/:productId/process-changes')
+  // POST /product-process-changes/:productId/draft  (formerly /products/:productId/process-changes)
+  @Post(':productId/draft')
   createDraft(
     @Param('productId') productId: string,
     @Body() dto: CreateProductProcessChangeDraftBodyDto,
@@ -20,7 +23,7 @@ export class ProductProcessChangeController {
     );
   }
 
-  @Post('/product-process-changes/:planId/submit')
+  @Post(':planId/submit')
   submit(
     @Param('planId') planId: string,
     @Request() req: { user: { id: string } },
@@ -28,7 +31,7 @@ export class ProductProcessChangeController {
     return this.service.submitForApproval(planId, req.user.id);
   }
 
-  @Post('/product-process-changes/:planId/retry')
+  @Post(':planId/retry')
   retry(
     @Param('planId') planId: string,
     @Request() req: { user: { id: string } },
@@ -36,7 +39,7 @@ export class ProductProcessChangeController {
     return this.service.retryFailed(planId, req.user.id);
   }
 
-  @Get('/product-process-changes/:planId')
+  @Get(':planId')
   getByPlanId(@Param('planId') planId: string) {
     return this.service.getByPlanId(planId);
   }

@@ -87,6 +87,23 @@ describe('ScrapService', () => {
 
       await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
     });
+
+    it('writes creatorId as requesterId, ignores dto.requesterId (prevents ownership forgery)', async () => {
+      const mockBatch = { id: 'batch-1' };
+      const mockScrap = { id: 'scrap-1', scrapNo: 'SCRAP-001', requesterId: 'req-user-id', status: 'draft' };
+      prisma.materialBatch.findUnique = jest.fn().mockResolvedValue(mockBatch);
+      prisma.materialScrap.count = jest.fn().mockResolvedValue(0);
+      prisma.materialScrap.create = jest.fn().mockResolvedValue(mockScrap);
+
+      await service.create(
+        { ...createDto, requesterId: 'dto-requester-id' },
+        undefined,
+        'req-user-id',
+      );
+
+      const callData = (prisma.materialScrap.create as jest.Mock).mock.calls[0][0].data;
+      expect(callData.requesterId).toBe('req-user-id');
+    });
   });
 
   describe('approve', () => {

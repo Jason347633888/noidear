@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -5,6 +6,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ApiTags('流程模板')
 @UseGuards(JwtAuthGuard)
+@ModuleKey('production_execution')
 @Controller('process/templates')
 export class ProcessTemplateController {
   constructor(private readonly prisma: PrismaService) {}

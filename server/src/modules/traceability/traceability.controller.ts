@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { QueryTraceabilityDto } from './dto/query-traceability.dto';
@@ -7,6 +8,7 @@ import { CreateTraceabilityExportDto } from './dto/create-traceability-export.dt
 import { CreateTraceabilitySnapshotDto } from './dto/create-traceability-snapshot.dto';
 import { TraceabilityService } from './traceability.service';
 
+@ModuleKey('traceability_batch')
 @Controller('traceability')
 @UseGuards(JwtAuthGuard)
 export class TraceabilityController {

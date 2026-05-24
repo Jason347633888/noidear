@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -16,6 +17,7 @@ import { CreateQuestionDto } from './dto/create-question.dto';
 import { UpdateQuestionDto } from './dto/update-question.dto';
 
 @ApiTags('培训管理 - 考试题目')
+@ModuleKey('training')
 @Controller('training/questions')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()

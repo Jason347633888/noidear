@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -6,6 +7,7 @@ import {
   Param,
   UseGuards,
   ParseUUIDPipe,
+  Request,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,8 +19,12 @@ import { ReturnService } from '../services/return.service';
 import { CreateReturnDto, ApproveReturnDto } from '../dto/return.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
+import { Ownership } from '../../../shared/decorators/ownership.decorator';
+import type { OwnershipContext } from '../../module-access/ownership-context';
+import { AuthenticatedRequest } from '../../auth/authenticated-user';
 
 @ApiTags('退料管理')
+@ModuleKey('warehouse')
 @Controller('returns')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
@@ -28,8 +34,8 @@ export class ReturnController {
   @Post()
   @ApiOperation({ summary: '创建退料单' })
   @ApiResponse({ status: 201, description: '退料单创建成功' })
-  create(@Body() dto: CreateReturnDto) {
-    return this.returnService.create(dto);
+  create(@Body() dto: CreateReturnDto, @Request() req: AuthenticatedRequest) {
+    return this.returnService.create(dto, undefined, req.user.id);
   }
 
   @Post(':id/complete')
@@ -42,8 +48,8 @@ export class ReturnController {
 
   @Get()
   @ApiOperation({ summary: '查询退料单列表' })
-  findAll() {
-    return this.returnService.findAll();
+  findAll(@Ownership() ownership: OwnershipContext) {
+    return this.returnService.findAll(ownership);
   }
 
   @Get(':id')

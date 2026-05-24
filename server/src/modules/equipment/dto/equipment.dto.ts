@@ -47,6 +47,10 @@ export class CreateEquipmentDto {
   @IsOptional()
   responsiblePerson?: string;
 
+  @IsString()
+  @IsOptional()
+  responsiblePersonId?: string;
+
   @IsObject()
   @IsOptional()
   maintenanceConfig?: Record<string, any>;
@@ -92,6 +96,10 @@ export class UpdateEquipmentDto {
   @IsString()
   @IsOptional()
   responsiblePerson?: string;
+
+  @IsString()
+  @IsOptional()
+  responsiblePersonId?: string;
 
   @IsObject()
   @IsOptional()

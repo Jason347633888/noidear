@@ -115,6 +115,45 @@ describe('InboundService', () => {
       expect(supplierAccess.assertSupplierUsable).toHaveBeenCalledWith('supplier-001', '创建来料单');
     });
 
+    it('should write operatorId at creation so creator can see the record via ownership filter', async () => {
+      // Arrange: P2-R10-4 regression — operatorId must be set at create time
+      const createDto = {
+        supplierId: 'supplier-001',
+        items: [
+          {
+            materialId: 'material-001',
+            quantity: 10,
+            supplierBatchNo: 'SUP-001',
+            productionDate: new Date('2026-01-01'),
+            expiryDate: new Date('2027-01-01'),
+          },
+        ],
+      };
+      const userId = 'user-abc';
+
+      let capturedData: any;
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
+        return callback({
+          materialInbound: {
+            create: jest.fn().mockImplementation(async (args: any) => {
+              capturedData = args.data;
+              return { id: 'inbound-xyz', inboundNo: 'IN-20260524-001', ...args.data };
+            }),
+          },
+          materialInboundItem: {
+            createMany: jest.fn().mockResolvedValue({ count: 1 }),
+          },
+        });
+      });
+
+      // Act
+      await service.create(createDto, userId);
+
+      // Assert: operatorId must be written at creation time
+      expect(capturedData).toBeDefined();
+      expect(capturedData.operatorId).toBe(userId);
+    });
+
     it('should reject inbound creation when supplier is not usable', async () => {
       const createDto = {
         supplierId: 'supplier-001',
@@ -285,6 +324,8 @@ describe('InboundService', () => {
   });
 
   describe('findAll', () => {
+    const adminOwnership = { userId: 'admin-1', roleCode: 'admin' as const, departmentId: null, managedDepartmentIds: undefined };
+
     it('should return paginated inbound orders', async () => {
       // Arrange
       const query = { page: 1, limit: 10 };
@@ -301,7 +342,7 @@ describe('InboundService', () => {
       jest.spyOn(prisma.materialInbound, 'count').mockResolvedValue(1);
 
       // Act
-      const result = await service.findAll(query);
+      const result = await service.findAll(query, adminOwnership);
 
       // Assert
       expect(result).toEqual({
@@ -324,7 +365,7 @@ describe('InboundService', () => {
       jest.spyOn(prisma.materialInbound, 'count').mockResolvedValue(0);
 
       // Act
-      await service.findAll(query);
+      await service.findAll(query, adminOwnership);
 
       // Assert
       expect(prisma.materialInbound.findMany).toHaveBeenCalledWith({

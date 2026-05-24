@@ -1,12 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateFragileItemInspectionDto } from './dto/create-fragile-item-inspection.dto';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @Injectable()
 export class FragileItemInspectionService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateFragileItemInspectionDto, companyId: string) {
+  async create(dto: CreateFragileItemInspectionDto, companyId: string, creatorId?: string) {
     const productionBatch = await this.prisma.productionBatch.findUnique({
       where: { id: dto.production_batch_id },
       select: { id: true, productId: true },
@@ -30,23 +32,38 @@ export class FragileItemInspectionService {
         ...dto,
         company_id: companyId,
         inspected_at: new Date(dto.inspected_at),
+        // Always use creatorId to prevent inspector_id forgery by clients
+        ...(creatorId !== undefined ? { inspector_id: creatorId } : {}),
       },
     });
   }
 
-  async findAll(startDate?: string, endDate?: string) {
+  async findAll(startDate?: string, endDate?: string, ownership?: OwnershipContext) {
+    const where: Record<string, unknown> = {
+      company_id: '1',
+      ...(startDate || endDate
+        ? {
+            inspected_at: {
+              ...(startDate ? { gte: new Date(startDate) } : {}),
+              ...(endDate ? { lte: new Date(endDate) } : {}),
+            },
+          }
+        : {}),
+    };
+
+    // Ownership scoping — FragileItemInspection.inspector_id is the user FK
+    if (ownership && ownership.roleCode !== 'admin') {
+      if (ownership.roleCode === 'user') {
+        where['inspector_id'] = ownership.userId;
+      } else if (ownership.roleCode === 'leader') {
+        const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+        if (memberIds.length === 0) return [];
+        where['inspector_id'] = { in: memberIds };
+      }
+    }
+
     return this.prisma.fragileItemInspection.findMany({
-      where: {
-        company_id: '1',
-        ...(startDate || endDate
-          ? {
-              inspected_at: {
-                ...(startDate ? { gte: new Date(startDate) } : {}),
-                ...(endDate ? { lte: new Date(endDate) } : {}),
-              },
-            }
-          : {}),
-      },
+      where,
       orderBy: { inspected_at: 'desc' },
       take: 200,
     });

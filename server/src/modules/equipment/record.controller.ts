@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -18,21 +19,25 @@ import {
   UpdateRecordDto,
   QueryRecordDto,
 } from './dto/record.dto';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import type { OwnershipContext } from '../module-access/ownership-context';
+import { AuthenticatedRequest } from '../auth/authenticated-user';
 
 @UseGuards(JwtAuthGuard)
+@ModuleKey('equipment_site')
 @Controller('maintenance-records')
 export class RecordController {
   constructor(private readonly recordService: RecordService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() dto: CreateRecordDto) {
-    return this.recordService.create(dto);
+  create(@Body() dto: CreateRecordDto, @Request() req: AuthenticatedRequest) {
+    return this.recordService.create(dto, req.user.id);
   }
 
   @Get()
-  findAll(@Query() query: QueryRecordDto) {
-    return this.recordService.findAll(query);
+  findAll(@Query() query: QueryRecordDto, @Ownership() ownership: OwnershipContext) {
+    return this.recordService.findAll(query, ownership);
   }
 
   @Get(':id')

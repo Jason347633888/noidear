@@ -1,8 +1,12 @@
-import { Controller, Get, Post, Patch, Param, Body, Query } from '@nestjs/common';
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
+import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ProductionRunService } from './production-run.service';
 import { CreateProductionRunDto, CloseProductionRunDto } from './dto/create-production-run.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@ModuleKey('production_execution')
 @Controller('production-runs')
+@UseGuards(JwtAuthGuard)
 export class ProductionRunController {
   constructor(private readonly svc: ProductionRunService) {}
 

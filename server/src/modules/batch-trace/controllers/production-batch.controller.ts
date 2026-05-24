@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -8,6 +9,8 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UseGuards,
+  Request,
 } from '@nestjs/common';
 import { ProductionBatchService } from '../services/production-batch.service';
 import {
@@ -16,26 +19,32 @@ import {
   QueryProductionBatchDto,
   ConfirmProductBatchDto,
 } from '../dto/production-batch.dto';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { Ownership } from '../../../shared/decorators/ownership.decorator';
+import type { OwnershipContext } from '../../module-access/ownership-context';
+import { AuthenticatedRequest } from '../../auth/authenticated-user';
 
+@ModuleKey('production_execution')
 @Controller('batch-trace/production-batches')
+@UseGuards(JwtAuthGuard)
 export class ProductionBatchController {
   constructor(private readonly productionBatchService: ProductionBatchService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createDto: CreateProductionBatchDto) {
-    return this.productionBatchService.create(createDto);
+  create(@Body() createDto: CreateProductionBatchDto, @Request() req: AuthenticatedRequest) {
+    return this.productionBatchService.create(createDto, req.user.id);
   }
 
   @Post('confirm')
   @HttpCode(HttpStatus.CREATED)
-  confirmProductBatch(@Body() dto: ConfirmProductBatchDto) {
-    return this.productionBatchService.confirmProductBatch(dto);
+  confirmProductBatch(@Body() dto: ConfirmProductBatchDto, @Request() req: AuthenticatedRequest) {
+    return this.productionBatchService.confirmProductBatch(dto, req.user.id);
   }
 
   @Get()
-  findAll(@Query() query: QueryProductionBatchDto) {
-    return this.productionBatchService.findAll(query);
+  findAll(@Query() query: QueryProductionBatchDto, @Ownership() ownership: OwnershipContext) {
+    return this.productionBatchService.findAll(query, ownership);
   }
 
   @Get(':id')

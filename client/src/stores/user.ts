@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import request from '@/api/request';
+import { useModuleAccessStore } from '@/stores/moduleAccess';
 
 interface CurrentUser {
   id: string;
@@ -34,6 +35,8 @@ export const useUserStore = defineStore('user', {
         this.token = data.token;
         this.user = data.user;
         localStorage.setItem('token', this.token);
+        // Refresh module access for the newly logged-in user to avoid stale state
+        await useModuleAccessStore().refresh();
         return true;
       } catch (err: any) {
         this.error = err.response?.data?.message || '用户名或密码错误';
@@ -52,6 +55,8 @@ export const useUserStore = defineStore('user', {
       }
     },
     logout() {
+      // Reset module access store before clearing user state so it's cleared for the next login
+      useModuleAccessStore().reset();
       this.user = null;
       this.token = '';
       this.error = '';

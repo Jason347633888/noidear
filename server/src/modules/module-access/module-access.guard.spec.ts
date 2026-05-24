@@ -1,6 +1,8 @@
 import { Reflector } from '@nestjs/core';
 import { ModuleAccessGuard, MODULE_DISABLED_CODE } from './module-access.guard';
 import { ModuleKey } from '../../shared/decorators/module-key.decorator';
+import { HttpExceptionFilter } from '../../common/filters/http-exception.filter';
+import { ArgumentsHost, HttpException } from '@nestjs/common';
 
 function buildCtx(handler: any, user: any) {
   const req: any = { user };
@@ -94,5 +96,63 @@ describe('ModuleAccessGuard', () => {
     await guard.canActivate(ctx);
     expect(ownership.resolve).not.toHaveBeenCalled();
     expect(req.ownership.userId).toBe('pre-set');
+  });
+
+  /**
+   * P1-R6-2: Verify that HttpExceptionFilter preserves the string `code` and `module` fields
+   * thrown by ModuleAccessGuard so client-side checking of `body.code === 'MODULE_DISABLED'`
+   * and `body.module` works correctly.
+   */
+  describe('MODULE_DISABLED response passes through HttpExceptionFilter intact', () => {
+    function captureFilterOutput(exception: HttpException) {
+      const filter = new HttpExceptionFilter();
+      let captured: Record<string, unknown> = {};
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn().mockImplementation((body: Record<string, unknown>) => {
+          captured = body;
+        }),
+      };
+      const host: ArgumentsHost = {
+        switchToHttp: () => ({
+          getResponse: () => mockResponse,
+          getRequest: () => ({ url: '/test' }),
+        }),
+        // stubs for unused ArgumentsHost methods
+        getArgs: jest.fn(),
+        getArgByIndex: jest.fn(),
+        switchToRpc: jest.fn(),
+        switchToWs: jest.fn(),
+        getType: jest.fn(),
+      } as unknown as ArgumentsHost;
+      filter.catch(exception, host);
+      return { captured, mockResponse };
+    }
+
+    it('HTTP response body contains code: MODULE_DISABLED (string) after filter', () => {
+      const exception = new HttpException(
+        { code: MODULE_DISABLED_CODE, module: 'warehouse', message: '模块已关闭: warehouse' },
+        403,
+      );
+      const { captured, mockResponse } = captureFilterOutput(exception);
+      expect(mockResponse.status).toHaveBeenCalledWith(403);
+      expect(captured.code).toBe(MODULE_DISABLED_CODE);
+    });
+
+    it('HTTP response body contains module field after filter', () => {
+      const exception = new HttpException(
+        { code: MODULE_DISABLED_CODE, module: 'warehouse', message: '模块已关闭: warehouse' },
+        403,
+      );
+      const { captured } = captureFilterOutput(exception);
+      expect(captured.module).toBe('warehouse');
+    });
+
+    it('non-string code (numeric) is NOT treated as MODULE_DISABLED', () => {
+      const exception = new HttpException({ message: 'Forbidden' }, 403);
+      const { captured } = captureFilterOutput(exception);
+      expect(captured.code).not.toBe(MODULE_DISABLED_CODE);
+      expect(typeof captured.code).toBe('number');
+    });
   });
 });

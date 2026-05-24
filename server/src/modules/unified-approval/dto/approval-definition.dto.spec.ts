@@ -57,4 +57,40 @@ describe('CreateApprovalDefinitionDto', () => {
     const e = await errs({ ...valid, status: 'disabled_legacy' });
     expect(e.length).toBeGreaterThan(0);
   });
+
+  it('accepts StepDto with onRejected and dueHours', async () => {
+    const e = await errs({
+      ...valid,
+      steps: [{
+        ...valid.steps[0],
+        onRejected: 'rejected_callback',
+        dueHours: 24,
+      }],
+    });
+    expect(e.length).toBe(0);
+  });
+
+  it('accepts StepDto with onRejected only (no dueHours)', async () => {
+    const e = await errs({
+      ...valid,
+      steps: [{ ...valid.steps[0], onRejected: 'some_action' }],
+    });
+    expect(e.length).toBe(0);
+  });
+
+  it('accepts StepDto with dueHours 0 (boundary)', async () => {
+    const e = await errs({
+      ...valid,
+      steps: [{ ...valid.steps[0], dueHours: 0 }],
+    });
+    expect(e.length).toBe(0);
+  });
+
+  it('rejects negative dueHours', async () => {
+    const e = await errs({
+      ...valid,
+      steps: [{ ...valid.steps[0], dueHours: -1 }],
+    });
+    expect(e.length).toBeGreaterThan(0);
+  });
 });

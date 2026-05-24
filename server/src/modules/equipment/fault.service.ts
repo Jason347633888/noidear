@@ -12,6 +12,8 @@ import {
   QueryFaultDto,
 } from './dto/fault.dto';
 import { StatsService } from './stats.service';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @Injectable()
 export class FaultService {
@@ -22,14 +24,15 @@ export class FaultService {
     private readonly statsService: StatsService,
   ) {}
 
-  async create(dto: CreateFaultDto) {
+  async create(dto: CreateFaultDto, creatorId?: string) {
     const faultNumber = await this.generateFaultNumber();
 
     const fault = await this.prisma.equipmentFault.create({
       data: {
         faultNumber,
         equipmentId: dto.equipmentId,
-        reporterId: dto.reporterId,
+        // Always use creatorId when provided to prevent reporterId forgery by clients
+        reporterId: creatorId ?? dto.reporterId,
         urgencyLevel: (dto.urgencyLevel as any) ?? 'normal',
         faultDescription: dto.faultDescription,
         faultPhotos: dto.faultPhotos ?? [],
@@ -44,11 +47,28 @@ export class FaultService {
     return fault;
   }
 
-  async findAll(query: QueryFaultDto) {
+  async findAll(query: QueryFaultDto, ownership?: OwnershipContext) {
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 10));
     const skip = (page - 1) * limit;
     const where = this.buildWhereClause(query);
+
+    // Ownership scoping — EquipmentFault uses reporterId / assigneeId
+    if (ownership && ownership.roleCode !== 'admin') {
+      if (ownership.roleCode === 'user') {
+        (where as any)['OR'] = [
+          { reporterId: ownership.userId },
+          { assigneeId: ownership.userId },
+        ];
+      } else if (ownership.roleCode === 'leader') {
+        const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+        if (memberIds.length === 0) return { data: [], total: 0, page, limit };
+        (where as any)['OR'] = [
+          { reporterId: { in: memberIds } },
+          { assigneeId: { in: memberIds } },
+        ];
+      }
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.equipmentFault.findMany({
@@ -66,8 +86,8 @@ export class FaultService {
     return { data, total, page, limit };
   }
 
-  async findMyFaults(reporterId: string, query: QueryFaultDto) {
-    return this.findAll({ ...query, reporterId });
+  async findMyFaults(userId: string, query: QueryFaultDto) {
+    return this.findAll({ ...query, reporterId: userId }, undefined);
   }
 
   async findOne(id: string) {

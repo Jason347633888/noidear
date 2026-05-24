@@ -1,8 +1,10 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { StatsService } from './stats.service';
 
 @UseGuards(JwtAuthGuard)
+@ModuleKey('equipment_site')
 @Controller('equipment/stats')
 export class StatsController {
   constructor(private readonly statsService: StatsService) {}

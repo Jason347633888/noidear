@@ -1,6 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @Injectable()
 export class RecipeService {
@@ -61,6 +62,17 @@ export class RecipeService {
       where: { id },
       data: { status: 'archived' },
     });
+  }
+
+  /**
+   * Ownership-guarded create — only admin may create recipe master data.
+   * Per spec § 通用约束第7条: guard is in service layer, not stacked on controller.
+   */
+  async createForOwnership(dto: CreateRecipeDto, ownership: OwnershipContext) {
+    if (ownership.roleCode !== 'admin') {
+      throw new ForbiddenException('仅管理员可写入配方主数据');
+    }
+    return this.create(dto);
   }
 
   async create(dto: CreateRecipeDto) {

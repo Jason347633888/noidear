@@ -1,5 +1,5 @@
 /**
- * Task 46 update — NonConformanceService.listForOwnership with discoveredById FK
+ * NonConformanceService.findAll with ownership filtering using discoveredById FK
  * admin → all; user → discoveredById = userId; leader → IN members(managedDepts)
  */
 import { NonConformanceService } from './non-conformance.service';
@@ -14,43 +14,44 @@ function freshService(memberIds: string[] = []) {
   return { svc: new NonConformanceService(prisma, seq), prisma };
 }
 
-describe('NonConformanceService.listForOwnership', () => {
+describe('NonConformanceService.findAll with ownership', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('admin gets all records (no filter)', async () => {
+  it('admin gets all records (no discoveredById filter)', async () => {
     const { svc, prisma } = freshService();
     const o: OwnershipContext = { userId: 'a', roleCode: 'admin', departmentId: null, managedDepartmentIds: undefined };
-    const result = await svc.listForOwnership(o);
+    const result = await svc.findAll('company-1', o);
     expect(result.length).toBeGreaterThan(0);
-    expect(prisma.nonConformance.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ orderBy: { created_at: 'desc' } }),
-    );
+    const callWhere = prisma.nonConformance.findMany.mock.calls[0][0].where;
+    expect(callWhere).not.toHaveProperty('discoveredById');
   });
 
   it('user gets records where discoveredById = userId', async () => {
     const { svc, prisma } = freshService();
     const o: OwnershipContext = { userId: 'u-1', roleCode: 'user', departmentId: 'd', managedDepartmentIds: [] };
-    await svc.listForOwnership(o);
+    await svc.findAll('company-1', o);
     expect(prisma.nonConformance.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { discoveredById: 'u-1' } }),
+      expect.objectContaining({ where: expect.objectContaining({ discoveredById: 'u-1' }) }),
     );
   });
 
   it('leader gets records where discoveredById IN members of managed depts', async () => {
     const { svc, prisma } = freshService(['m-1']);
     const o: OwnershipContext = { userId: 'l-1', roleCode: 'leader', departmentId: 'd-1', managedDepartmentIds: ['d-1'] };
-    await svc.listForOwnership(o);
+    await svc.findAll('company-1', o);
     expect(prisma.user.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { departmentId: { in: ['d-1'] } } }),
     );
     expect(prisma.nonConformance.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { discoveredById: { in: ['m-1'] } } }),
+      expect.objectContaining({ where: expect.objectContaining({ discoveredById: { in: ['m-1'] } }) }),
     );
   });
 
-  it('leader with no managed depts gets []', async () => {
-    const { svc } = freshService();
+  it('leader with no managed depts gets empty results', async () => {
+    const { svc, prisma } = freshService();
+    prisma.nonConformance.findMany.mockResolvedValue([]);
     const o: OwnershipContext = { userId: 'l-1', roleCode: 'leader', departmentId: 'd-1', managedDepartmentIds: [] };
-    expect(await svc.listForOwnership(o)).toEqual([]);
+    const result = await svc.findAll('company-1', o);
+    expect(result).toEqual([]);
   });
 });

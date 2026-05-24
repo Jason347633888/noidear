@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -15,6 +16,7 @@ import {
   ConfirmBatchMixingAggregationDto,
 } from '../dto/batch-mixing-aggregation.dto';
 
+@ModuleKey('production_execution')
 @Controller('batch-trace/batch-mixing-aggregations')
 @UseGuards(JwtAuthGuard)
 export class BatchMixingAggregationController {

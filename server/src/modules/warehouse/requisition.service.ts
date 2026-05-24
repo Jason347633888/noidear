@@ -5,6 +5,8 @@ import { InventoryMovementLedgerService } from './services/inventory-movement-le
 import { SupplierAccessService } from './services/supplier-access.service';
 import { Prisma } from '@prisma/client';
 import * as dayjs from 'dayjs';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @Injectable()
 export class RequisitionService {
@@ -85,16 +87,19 @@ export class RequisitionService {
     return `REQ-${today}-${seq}`;
   }
 
-  async findAll(query: any) {
+  async findAll(query: any, ownership: OwnershipContext) {
     const page = parseInt(query.page ?? '1', 10);
     const limit = parseInt(query.limit ?? '10', 10);
     const { status } = query;
     const skip = (page - 1) * limit;
-    const where: any = { deletedAt: null };
+    const queryWhere: any = { deletedAt: null };
 
     if (status) {
-      where.status = status;
+      queryWhere.status = status;
     }
+
+    const ownershipWhere = await this.buildOwnershipWhere(ownership);
+    const where = { ...queryWhere, ...ownershipWhere };
 
     const [data, total] = await Promise.all([
       this.prisma.materialRequisition.findMany({
@@ -111,6 +116,22 @@ export class RequisitionService {
     ]);
 
     return { data, total, page, limit };
+  }
+
+  private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
+    if (ownership.roleCode === 'admin') return {};
+    if (ownership.roleCode === 'user') {
+      return { applicantId: ownership.userId };
+    }
+    // leader: departmentId IN managedDepts OR applicantId IN members
+    const depts = ownership.managedDepartmentIds ?? [];
+    if (depts.length === 0) return { id: 'no-match' };
+    const memberIds = await userIdsInDepts(this.prisma, depts);
+    const orConditions: any[] = [{ departmentId: { in: depts } }];
+    if (memberIds.length > 0) {
+      orConditions.push({ applicantId: { in: memberIds } });
+    }
+    return { OR: orConditions };
   }
 
   async findOne(id: string) {

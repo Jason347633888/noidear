@@ -18,6 +18,7 @@ export class WorkflowTriggersService {
     overall_result: string;
     material_batch_id: string;
     company_id: string;
+    inspector_id?: string;
   }) {
     if (payload.overall_result !== 'fail') return;
 
@@ -45,6 +46,8 @@ export class WorkflowTriggersService {
           status: 'open',
           description: `来料检验不合格，自动创建 - 检验单ID: ${payload.id}`,
           discovered_at: new Date(),
+          discovered_by: payload.inspector_id ?? null,
+          discoveredById: payload.inspector_id ?? null,
         },
       });
 

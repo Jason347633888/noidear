@@ -8,7 +8,6 @@ interface CanActInput {
     assigneeUserId?: string | null;
     assigneeRoleCode?: string | null;
     assigneeDepartmentId?: string | null;
-    assigneePermissionCode?: string | null;
     status: string;
   };
 }
@@ -18,18 +17,15 @@ export class ApprovalAssignmentResolver {
   constructor(private readonly prisma: PrismaService) {}
 
   async resolveAssignment(assignment: ApprovalAssignmentDefinition): Promise<ResolvedAssignment> {
-    if (assignment.type === 'user') {
+    if (assignment.type === 'USER') {
       if (!assignment.userId) throw new NotFoundException('审批定义缺少 userId');
       return { assignment, assigneeUserIds: [assignment.userId], claimMode: 'DIRECT' };
     }
 
-    if (assignment.type === 'role') {
+    if (assignment.type === 'ROLE') {
       if (!assignment.roleCode) throw new NotFoundException('审批定义缺少 roleCode');
       const users = await this.prisma.user.findMany({
-        where: {
-          status: 'active',
-          roleObj: { code: assignment.roleCode },
-        },
+        where: { status: 'active', roleObj: { code: assignment.roleCode } },
         select: { id: true },
       });
       return {
@@ -40,44 +36,23 @@ export class ApprovalAssignmentResolver {
       };
     }
 
-    if (assignment.type === 'department') {
-      const department = assignment.departmentId
-        ? { id: assignment.departmentId }
-        : await this.prisma.department.findUnique({
-            where: { code: assignment.departmentCode ?? '' },
-            select: { id: true },
-          });
-      if (!department?.id) throw new NotFoundException('审批定义找不到部门');
-
-      const users = await this.prisma.user.findMany({
-        where: { status: 'active', departmentId: department.id },
-        select: { id: true },
-      });
-      return {
-        assignment,
-        assigneeUserIds: users.map((u: { id: string }) => u.id),
-        assigneeDepartmentId: department.id,
-        claimMode: 'CLAIMABLE',
-      };
-    }
-
-    if (assignment.type === 'permission') {
-      if (!assignment.permissionCode) throw new NotFoundException('审批定义缺少 permissionCode');
+    if (assignment.type === 'DEPARTMENT_ROLE') {
+      if (!assignment.departmentId || !assignment.roleCode) {
+        throw new NotFoundException('审批定义缺少 departmentId 或 roleCode');
+      }
       const users = await this.prisma.user.findMany({
         where: {
           status: 'active',
-          userPermissions: {
-            some: {
-              fineGrainedPermission: { code: assignment.permissionCode },
-            },
-          },
+          departmentId: assignment.departmentId,
+          roleObj: { code: assignment.roleCode },
         },
         select: { id: true },
       });
       return {
         assignment,
         assigneeUserIds: users.map((u: { id: string }) => u.id),
-        assigneePermissionCode: assignment.permissionCode,
+        assigneeRoleCode: assignment.roleCode,
+        assigneeDepartmentId: assignment.departmentId,
         claimMode: 'CLAIMABLE',
       };
     }
@@ -89,30 +64,28 @@ export class ApprovalAssignmentResolver {
     if (input.task.status !== 'PENDING') {
       throw new ForbiddenException('审批任务不是待处理状态');
     }
-
     const user = (await this.prisma.user.findUnique({
       where: { id: input.userId },
-      include: {
-        roleObj: true,
-        userPermissions: { include: { fineGrainedPermission: true } },
-      },
+      include: { roleObj: true },
     })) as any;
     if (!user) throw new ForbiddenException('用户不存在');
-
-    const roleCode = (user.roleObj as any)?.code as string;
+    const roleCode = user.roleObj?.code as string | undefined;
     if (!roleCode) throw new ForbiddenException('用户缺少正式角色');
     if (roleCode === 'admin') return;
+
     if (input.task.assigneeUserId && input.task.assigneeUserId === input.userId) return;
-    if (input.task.assigneeRoleCode && input.task.assigneeRoleCode === roleCode) return;
-    if (input.task.assigneeDepartmentId && input.task.assigneeDepartmentId === user.departmentId) return;
-    if (
-      input.task.assigneePermissionCode &&
-      (user.userPermissions as any[]).some(
-        (p: any) => p.fineGrainedPermission?.code === input.task.assigneePermissionCode,
-      )
-    ) {
-      return;
+    if (input.task.assigneeRoleCode && input.task.assigneeRoleCode === roleCode) {
+      if (input.task.assigneeDepartmentId) {
+        if (input.task.assigneeDepartmentId === user.departmentId) return;
+      } else {
+        return;
+      }
     }
+    if (
+      input.task.assigneeDepartmentId &&
+      !input.task.assigneeRoleCode &&
+      input.task.assigneeDepartmentId === user.departmentId
+    ) return;
 
     throw new ForbiddenException('无权处理该审批任务');
   }

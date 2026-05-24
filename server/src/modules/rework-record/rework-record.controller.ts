@@ -1,9 +1,13 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { ReworkRecordService } from './rework-record.service';
 import { CreateReworkRecordDto } from './dto/create-rework-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
+@ModuleKey('equipment_site')
 @Controller('rework-records')
 @UseGuards(JwtAuthGuard)
 export class ReworkRecordController {
@@ -11,16 +15,17 @@ export class ReworkRecordController {
 
   @Post()
   create(@Body() dto: CreateReworkRecordDto, @Request() req: AuthenticatedRequest) {
-    return this.service.create(dto, req.user.companyId);
+    return this.service.create(dto, req.user.companyId, req.user.id);
   }
 
   @Get()
   findAll(
+    @Ownership() ownership: OwnershipContext,
     @Request() req: AuthenticatedRequest,
     @Query('start_date') startDate?: string,
     @Query('end_date') endDate?: string,
   ) {
-    return this.service.findAll(req.user.companyId, startDate, endDate);
+    return this.service.findAll(req.user.companyId, ownership, startDate, endDate);
   }
 
   @Delete(':id')

@@ -22,17 +22,6 @@ export interface RoleListResponse {
   limit: number;
 }
 
-export interface CreateRolePayload {
-  code: string;
-  name: string;
-  description?: string;
-}
-
-export interface UpdateRolePayload {
-  name?: string;
-  description?: string;
-}
-
 export const SYSTEM_ROLE_CODES = ['admin', 'leader', 'user'] as const;
 
 export function sortSystemRolesFirst<T extends { code: string }>(roles: T[]): T[] {
@@ -69,27 +58,5 @@ export default {
 
   getRoleById(id: string) {
     return request.get<Role>(`/roles/${id}`);
-  },
-
-  createRole(payload: CreateRolePayload) {
-    return request.post<Role>('/roles', payload);
-  },
-
-  updateRole(id: string, payload: UpdateRolePayload) {
-    return request.put<Role>(`/roles/${id}`, payload);
-  },
-
-  deleteRole(id: string) {
-    return request.delete(`/roles/${id}`);
-  },
-
-  getRolePermissions(roleId: string) {
-    return request.get<{ id: string; resource: string; action: string; description: string }[]>(
-      `/roles/${roleId}/permissions`,
-    );
-  },
-
-  assignPermissions(roleId: string, permissionIds: string[]) {
-    return request.post(`/roles/${roleId}/permissions`, { permissionIds });
   },
 };

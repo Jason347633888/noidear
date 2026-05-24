@@ -2,7 +2,40 @@
   <div class="audit-search-page">
     <PageHeaderBlock eyebrow="系统治理" title="审计日志" description="跨类型搜索系统审计日志" />
 
+    <!-- 模式切换 -->
+    <el-tabs v-model="activeTab" class="audit-tabs">
+      <el-tab-pane label="系统操作搜索" name="ops" />
+      <el-tab-pane label="权限变更（历史）" name="perm" />
+    </el-tabs>
+
+    <!-- 权限变更历史表 -->
+    <template v-if="activeTab === 'perm'">
+      <el-card class="result-card">
+        <template #header>
+          <div class="card-header">
+            <el-icon><Setting /></el-icon>
+            <span>权限变更日志（历史存档）</span>
+          </div>
+        </template>
+        <el-table :data="permRows" stripe size="small" v-loading="permLoading">
+          <el-table-column prop="operatorName" label="操作人" width="120" />
+          <el-table-column prop="targetUsername" label="目标用户" width="120" />
+          <el-table-column prop="action" label="操作类型" width="160">
+            <template #default="{ row }">
+              <el-tag type="warning" size="small">{{ formatPermissionAction(row.action) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="beforeValue" label="变更前" min-width="120" />
+          <el-table-column prop="afterValue" label="变更后" min-width="120" />
+          <el-table-column prop="createdAt" label="时间" width="160">
+            <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+          </el-table-column>
+        </el-table>
+      </el-card>
+    </template>
+
     <!-- 搜索表单 -->
+    <template v-if="activeTab === 'ops'">
     <el-card class="filter-card">
       <el-form :model="filterForm" label-width="80px">
         <el-row :gutter="20">
@@ -183,16 +216,38 @@
       :title="detailTitle"
       :data="selectedLog"
     />
+    </template><!-- end ops tab -->
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive, computed, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Search, Refresh, Key, Setting, Warning } from '@element-plus/icons-vue';
 import dayjs from 'dayjs';
 import { searchLogs, type LoginLog, type PermissionLog, type SensitiveLog } from '@/api/audit';
 import LogDetailDialog from '@/components/audit/LogDetailDialog.vue';
+import request from '@/api/request';
+
+const activeTab = ref<'ops' | 'perm'>('ops');
+const permRows = ref<Record<string, unknown>[]>([]);
+const permLoading = ref(false);
+
+async function loadPerm() {
+  permLoading.value = true;
+  try {
+    const r = await request.get<Record<string, unknown>[]>('/permission-audit-logs');
+    permRows.value = Array.isArray(r) ? r : [];
+  } catch {
+    ElMessage.error('加载权限变更历史失败');
+  } finally {
+    permLoading.value = false;
+  }
+}
+
+watch(activeTab, (t) => {
+  if (t === 'perm' && permRows.value.length === 0) loadPerm();
+});
 
 const loading = ref(false);
 const hasSearched = ref(false);

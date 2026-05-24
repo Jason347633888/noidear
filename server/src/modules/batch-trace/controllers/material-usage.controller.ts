@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -13,8 +14,11 @@ import { MaterialUsageService } from '../services/material-usage.service';
 import { CreateMaterialUsageDto, QueryMaterialUsageDto } from '../dto/material-usage.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
+import { Ownership } from '../../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../../module-access/ownership-context';
 
 @ApiTags('批次物料关联管理')
+@ModuleKey('traceability_batch')
 @Controller('batch-trace/material-usage')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
@@ -26,8 +30,8 @@ export class MaterialUsageController {
   @ApiResponse({ status: 201, description: '创建成功' })
   @ApiResponse({ status: 404, description: '批次不存在' })
   @ApiResponse({ status: 400, description: '库存不足' })
-  create(@Body() createDto: CreateMaterialUsageDto) {
-    return this.service.create(createDto);
+  create(@Body() createDto: CreateMaterialUsageDto, @Ownership() ownership: OwnershipContext) {
+    return this.service.create(createDto, ownership);
   }
 
   @Get()

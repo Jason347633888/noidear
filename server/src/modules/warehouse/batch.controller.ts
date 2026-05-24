@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -8,11 +9,15 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { BatchService } from './batch.service';
 import { CreateBatchDto, UpdateBatchDto, QueryBatchDto } from './dto/batch.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@ModuleKey('warehouse')
 @Controller('warehouse/batches')
+@UseGuards(JwtAuthGuard)
 export class BatchController {
   constructor(private readonly batchService: BatchService) {}
 

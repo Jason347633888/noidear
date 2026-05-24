@@ -1,4 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ModuleAccessModule } from './modules/module-access/module-access.module';
+import { ModuleAccessGuard } from './modules/module-access/module-access.guard';
+import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -14,10 +18,6 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { OperationLogModule } from './modules/operation-log/operation-log.module';
 import { DeviationModule } from './modules/deviation/deviation.module';
 import { RoleModule } from './modules/role/role.module';
-import { PermissionModule } from './modules/permission/permission.module';
-import { FineGrainedPermissionModule } from './modules/fine-grained-permission/fine-grained-permission.module';
-import { UserPermissionModule } from './modules/user-permission/user-permission.module';
-import { DepartmentPermissionModule } from './modules/department-permission/department-permission.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { RecordTemplateModule } from './modules/record-template/record-template.module';
 import { RecordModule } from './modules/record/record.module';
@@ -95,10 +95,6 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     OperationLogModule,
     DeviationModule,
     RoleModule,
-    PermissionModule,
-    FineGrainedPermissionModule,
-    UserPermissionModule,
-    DepartmentPermissionModule,
     RecordTemplateModule,
     RecordModule,
     WarehouseModule,
@@ -154,7 +150,12 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     MixingModule,
     ProductProcessChangeModule,
     OrgBootstrapModule,
+    ModuleAccessModule,
   ],
-  providers: [],
+  providers: [
+    // JwtAuthGuard 必须排在 ModuleAccessGuard 之前，确保 req.user 在模块访问检查前已填充
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: ModuleAccessGuard },
+  ],
 })
 export class AppModule {}

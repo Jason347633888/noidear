@@ -138,63 +138,30 @@ const routes: RouteRecordRaw[] = [
         path: 'users',
         name: 'Users',
         component: () => import('@/views/UserList.vue'),
+        meta: { requireRole: 'admin' },
       },
       {
         path: 'departments',
         name: 'Departments',
         component: () => import('@/views/DepartmentList.vue'),
-        meta: { title: '部门管理' },
+        meta: { title: '部门管理', requireRole: 'admin' },
       },
       {
         path: 'roles',
         name: 'Roles',
         component: () => import('@/views/role/RoleList.vue'),
+        meta: { requireRole: 'admin' },
       },
       {
-        path: 'permissions',
-        name: 'Permissions',
-        component: () => import('@/views/permission/PermissionList.vue'),
-      },
-      // P1-2 细粒度权限配置
-      {
-        path: 'permissions/fine-grained',
-        name: 'FineGrainedPermission',
-        component: () => import('@/views/permission/FineGrainedPermission.vue'),
-      },
-      {
-        path: 'permissions/department',
-        name: 'DepartmentPermission',
-        component: () => import('@/views/permission/DepartmentPermission.vue'),
-      },
-      {
-        path: 'permissions/audit-log',
-        name: 'PermissionAuditLog',
-        component: () => import('@/views/permission/PermissionAuditLog.vue'),
+        path: 'module-access/manage',
+        name: 'ModuleAccessManage',
+        component: () => import('@/views/module-access/ModuleAccessManage.vue'),
+        meta: { requireRole: 'admin' },
       },
       {
         path: 'password',
         name: 'Password',
         component: () => import('@/views/Password.vue'),
-      },
-      // 用户权限管理
-      {
-        path: 'users/:id/permissions',
-        name: 'UserPermissions',
-        component: () => import('@/views/permission/UserPermissions.vue'),
-      },
-      // 用户权限管理总览（P1-2 细粒度权限）
-      {
-        path: 'admin/user-permissions',
-        name: 'UserPermissionsManager',
-        component: () => import('@/views/permission/UserPermissionsManager.vue'),
-        meta: { title: '用户权限管理', requiresAdmin: true },
-      },
-      // 权限定义列表（P1-2 细粒度权限）
-      {
-        path: 'admin/permissions',
-        name: 'PermissionDefinitions',
-        component: () => import('@/views/permission/PermissionDefinitions.vue'),
-        meta: { title: '权限定义', requiresAdmin: true },
       },
       // 表单设计器（旧路径兼容）
       {
@@ -451,21 +418,29 @@ const routes: RouteRecordRaw[] = [
         path: 'audit/login-logs',
         name: 'LoginLogList',
         component: () => import('@/views/audit/LoginLogList.vue'),
+        meta: { requireRole: 'admin' },
       },
       {
         path: 'audit/permission-logs',
-        name: 'PermissionLogList',
-        component: () => import('@/views/audit/PermissionLogList.vue'),
+        redirect: '/audit/search',
       },
       {
         path: 'audit/sensitive-logs',
         name: 'SensitiveLogList',
         component: () => import('@/views/audit/SensitiveLogList.vue'),
+        meta: { requireRole: 'admin' },
       },
       {
         path: 'audit/search',
         name: 'AuditSearch',
         component: () => import('@/views/audit/AuditSearchPage.vue'),
+        meta: { requireRole: 'admin' },
+      },
+      {
+        path: 'audit-logs',
+        name: 'AuditLogs',
+        component: () => import('@/views/audit/AuditSearchPage.vue'),
+        meta: { requireRole: 'admin' },
       },
       // 高级功能模块
       {
@@ -717,6 +692,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/process/ProcessPrint.vue'),
     meta: { title: '研发流程打印', hideLayout: true },
   },
+  {
+    path: '/no-access',
+    name: 'NoAccess',
+    component: () => import('@/views/no-access/NoAccess.vue'),
+    meta: { public: true },
+  },
   { path: '/:pathMatch(.*)*', redirect: '/dashboard' },
 ];
 
@@ -727,7 +708,7 @@ const router = createRouter({
 
 // 导航守卫
 router.beforeEach(async (to, _from, next) => {
-  const publicPaths = ['/login'];
+  const publicPaths = ['/login', '/no-access'];
   const token = localStorage.getItem('token');
 
   if (!publicPaths.includes(to.path) && !token) {
@@ -743,10 +724,10 @@ router.beforeEach(async (to, _from, next) => {
 
   }
 
-  if (to.meta?.requiresAdmin) {
+  if (to.meta?.requireRole === 'admin') {
     const userStore = useUserStore();
-    if (!userStore.isAdmin) {
-      next('/dashboard');
+    if (userStore.user?.roleCode !== 'admin') {
+      next({ path: '/no-access' });
       return;
     }
   }

@@ -1,9 +1,13 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { NonConformanceService } from './non-conformance.service';
 import { CreateNcDto, DisposeNcDto } from './dto/create-nc.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
+@ModuleKey('quality_compliance')
 @Controller('non-conformances')
 @UseGuards(JwtAuthGuard)
 export class NonConformanceController {
@@ -15,8 +19,8 @@ export class NonConformanceController {
   }
 
   @Get()
-  findAll(@Request() req: AuthenticatedRequest, @Query('status') status?: string) {
-    return this.service.findAll(req.user.companyId, status);
+  findAll(@Ownership() ownership: OwnershipContext, @Request() req: AuthenticatedRequest, @Query('status') status?: string) {
+    return this.service.findAll(req.user.companyId, ownership, status);
   }
 
   @Patch(':id/dispose')

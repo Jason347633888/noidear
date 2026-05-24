@@ -21,10 +21,22 @@ export class UserService {
     this.snowflake = new Snowflake(1, 1);
   }
 
-  private readonly userInclude = {
+  // SECURITY: explicit select to exclude sensitive fields (password, loginAttempts, lockedUntil, firstFailedAt)
+  private readonly userSelect = {
+    id: true,
+    username: true,
+    name: true,
+    status: true,
+    departmentId: true,
+    roleId: true,
+    superiorId: true,
+    company_id: true,
+    createdAt: true,
+    updatedAt: true,
+    deletedAt: true,
     roleObj: { select: { id: true, code: true, name: true } },
     department: { select: { id: true, name: true, status: true } },
-  };
+  } as const;
 
   async findAll(page = 1, limit = 20, keyword?: string, departmentId?: string, role?: string, status?: string) {
     const conditions: object[] = [];
@@ -49,7 +61,7 @@ export class UserService {
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: this.userInclude,
+        select: this.userSelect,
       }),
       this.prisma.user.count({ where }),
     ]);
@@ -57,7 +69,7 @@ export class UserService {
   }
 
   async findOne(id: string) {
-    const user = await this.prisma.user.findUnique({ where: { id }, include: this.userInclude });
+    const user = await this.prisma.user.findUnique({ where: { id }, select: this.userSelect });
     if (!user) throw new NotFoundException('用户不存在');
     return user;
   }
@@ -118,7 +130,7 @@ export class UserService {
         roleId: role.id,
         superiorId: dto.superiorId,
       },
-      include: this.userInclude,
+      select: this.userSelect,
     });
   }
 
@@ -135,7 +147,7 @@ export class UserService {
       data.roleId = role.id;
     }
     Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
-    const updated = await this.prisma.user.update({ where: { id }, data, include: this.userInclude });
+    const updated = await this.prisma.user.update({ where: { id }, data, select: this.userSelect });
 
     // BR-319: 用户离职数据转交 — 状态变为 inactive 时转交未完成工作流任务给直属上级
     if (dto.status === 'inactive') {

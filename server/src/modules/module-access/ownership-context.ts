@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
+// NOTE: OwnershipContext 当前不含 companyId，系统以单租户模式运行（company_id = '1'）。
+// 跨租户隔离待后续迭代实现。
 export interface OwnershipContext {
   userId: string;
   roleCode: 'admin' | 'leader' | 'user';

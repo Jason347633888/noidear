@@ -1,12 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateReworkRecordDto } from './dto/create-rework-record.dto';
+import { OwnershipContext } from '../module-access/ownership-context';
+import { userIdsInDepts } from '../module-access/ownership-helpers';
 
 @Injectable()
 export class ReworkRecordService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateReworkRecordDto, companyId: string) {
+  async create(dto: CreateReworkRecordDto, companyId: string, creatorId?: string) {
     const ncId = dto.nc_id?.trim();
     if (!ncId) {
       throw new BadRequestException('关联不合格记录不能为空');
@@ -31,14 +33,18 @@ export class ReworkRecordService {
         company_id: companyId,
         rework_date: new Date(dto.rework_date),
         rework_qty: dto.rework_qty,
+        // Always override dto.operator_id with the authenticated creatorId to prevent FK forgery.
+        ...(creatorId !== undefined ? { operator_id: creatorId } : {}),
       },
     });
   }
 
-  async findAll(companyId: string, startDate?: string, endDate?: string) {
+  async findAll(companyId: string, ownership: OwnershipContext, startDate?: string, endDate?: string) {
+    const ownershipWhere = await this.buildOwnershipWhere(ownership);
     return this.prisma.reworkRecord.findMany({
       where: {
         company_id: companyId,
+        ...ownershipWhere,
         ...(startDate || endDate
           ? {
               rework_date: {
@@ -51,6 +57,17 @@ export class ReworkRecordService {
       orderBy: { rework_date: 'desc' },
       take: 200,
     });
+  }
+
+  private async buildOwnershipWhere(ownership: OwnershipContext): Promise<Record<string, unknown>> {
+    if (ownership.roleCode === 'admin') return {};
+    if (ownership.roleCode === 'user') {
+      return { operator_id: ownership.userId };
+    }
+    // leader
+    const memberIds = await userIdsInDepts(this.prisma, ownership.managedDepartmentIds);
+    if (memberIds.length === 0) return { id: 'no-match' };
+    return { operator_id: { in: memberIds } };
   }
 
   async remove(id: string, companyId: string) {

@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Body, Controller, Get, Param, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
@@ -6,6 +7,7 @@ import { CreateProductRecallDto, CreateProductRecallNotificationDto } from './dt
 import { QueryProductRecallDto } from './dto/query-product-recall.dto';
 import { MarkNotificationSentDto, RecallCancelDto, RecallCompleteDto } from './dto/transition-product-recall.dto';
 
+@ModuleKey('quality_compliance')
 @Controller('product-recalls')
 @UseGuards(JwtAuthGuard)
 export class ProductRecallController {

@@ -1,10 +1,14 @@
-import { Controller, Get, Param, Res, ParseUUIDPipe } from '@nestjs/common';
+import { ModuleKey } from '../../../shared/decorators/module-key.decorator';
+import { Controller, Get, Param, Res, ParseUUIDPipe, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { TraceExportService } from '../services/trace-export.service';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 
 @ApiTags('批次追溯')
+@ModuleKey('traceability_batch')
 @Controller('batch-trace/trace')
+@UseGuards(JwtAuthGuard)
 export class TraceExportController {
   constructor(private readonly traceExportService: TraceExportService) {}
 

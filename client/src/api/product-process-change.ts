@@ -17,7 +17,7 @@ export interface CreateProductProcessChangeDraftPayload {
 export const productProcessChangeApi = {
   createDraft(productId: string, payload: CreateProductProcessChangeDraftPayload) {
     return request.post<ProductProcessChangePlan>(
-      `/products/${productId}/process-changes`,
+      `/product-process-changes/${productId}/draft`,
       payload,
     );
   },

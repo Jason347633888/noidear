@@ -1,10 +1,14 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Query, UseGuards, Request, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { DeviationService, DeviationReportQueryDto } from './deviation.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { DeviationExportService } from './deviation-export.service';
 import { ExportDeviationReportsDto } from './dto/export-deviation-reports.dto';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
+@ModuleKey('quality_compliance')
 @Controller('deviation-reports')
 @UseGuards(JwtAuthGuard)
 export class DeviationController {
@@ -14,8 +18,8 @@ export class DeviationController {
   ) {}
 
   @Get()
-  async findAll(@Query() query: DeviationReportQueryDto) {
-    return this.deviationService.findDeviationReports(query);
+  async findAll(@Ownership() ownership: OwnershipContext, @Query() query: DeviationReportQueryDto) {
+    return this.deviationService.findDeviationReports(query, ownership);
   }
 
   @Get('export')

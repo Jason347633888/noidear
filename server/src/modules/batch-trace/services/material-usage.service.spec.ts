@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MaterialUsageService } from './material-usage.service';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { OwnershipContext } from '../../module-access/ownership-context';
 
 describe('MaterialUsageService', () => {
   let service: MaterialUsageService;
@@ -211,6 +212,55 @@ describe('MaterialUsageService', () => {
       jest.spyOn(prisma.materialBatch, 'findUnique').mockResolvedValue(mockMaterialBatch as any);
 
       await expect(service.create(dto)).rejects.toThrow(BadRequestException);
+    });
+
+    it('non-admin accessing other user productionBatchId → ForbiddenException, materialBatch.update not called', async () => {
+      const dto = {
+        productionBatchId: 'prod-other',
+        materialBatchId: 'mat-1',
+        recipeLineId: 'line-1',
+        quantity: 10,
+      };
+      const ownership: OwnershipContext = {
+        userId: 'u-1',
+        roleCode: 'user',
+        departmentId: null,
+        managedDepartmentIds: [],
+      };
+      // productionBatch.findMany for visibleProductionBatchIds → user only sees prod-own
+      (prisma as any).productionBatch.findMany = jest.fn().mockResolvedValue([{ id: 'prod-own' }]);
+
+      await expect(service.create(dto, ownership)).rejects.toThrow(ForbiddenException);
+      expect(prisma.materialBatch.update).not.toHaveBeenCalled();
+    });
+
+    it('admin can write to any productionBatchId (no ownership filter)', async () => {
+      const dto = {
+        productionBatchId: 'prod-any',
+        materialBatchId: 'mat-1',
+        recipeLineId: 'line-1',
+        quantity: 10,
+      };
+      const adminOwnership: OwnershipContext = {
+        userId: 'admin-1',
+        roleCode: 'admin',
+        departmentId: null,
+        managedDepartmentIds: undefined,
+      };
+      const mockProductionBatch = { id: 'prod-any', batchNumber: 'PROD-ANY', recipeId: 'recipe-1' };
+      const mockRecipeLine = { id: 'line-1', recipe_id: 'recipe-1', material_id: 'mat-id-1', area_id: 'area-1', area_name_snapshot: '搅料间' };
+      const mockMaterialBatch = { id: 'mat-1', materialId: 'mat-id-1', quantity: 50, status: 'normal' };
+      const mockUsage = { id: 'usage-1', ...dto };
+
+      jest.spyOn(prisma.productionBatch, 'findUnique').mockResolvedValue(mockProductionBatch as any);
+      jest.spyOn(prisma.recipeLine, 'findFirst').mockResolvedValue(mockRecipeLine as any);
+      jest.spyOn(prisma.materialBatch, 'findUnique').mockResolvedValue(mockMaterialBatch as any);
+      jest.spyOn(prisma.batchMaterialUsage, 'create').mockResolvedValue(mockUsage as any);
+      jest.spyOn(prisma.materialBatch, 'update').mockResolvedValue({} as any);
+
+      const result = await service.create(dto, adminOwnership);
+      expect(result).toEqual(mockUsage);
+      expect(prisma.materialBatch.update).toHaveBeenCalled();
     });
   });
 

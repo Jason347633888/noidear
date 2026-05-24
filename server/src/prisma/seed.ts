@@ -100,160 +100,6 @@ async function main() {
 
   console.log('✅ 系统角色与默认负责人创建完成');
 
-  // 4. 创建细粒度权限定义（TASK-235）
-  const permissions = [
-    // 文档权限
-    {
-      id: 'perm_001',
-      code: 'view:department:document',
-      name: '查看本部门文档',
-      category: 'document',
-      scope: 'department',
-      status: 'active',
-      description: '可查看本部门的文档',
-    },
-    {
-      id: 'perm_002',
-      code: 'view:cross_department:document',
-      name: '跨部门查看文档',
-      category: 'document',
-      scope: 'cross_department',
-      status: 'active',
-      description: '可跨部门查看其他部门的文档',
-    },
-    {
-      id: 'perm_003',
-      code: 'create:department:document',
-      name: '创建本部门文档',
-      category: 'document',
-      scope: 'department',
-      status: 'active',
-      description: '可创建本部门的文档',
-    },
-    {
-      id: 'perm_004',
-      code: 'edit:department:document',
-      name: '编辑本部门文档',
-      category: 'document',
-      scope: 'department',
-      status: 'active',
-      description: '可编辑本部门的文档',
-    },
-    {
-      id: 'perm_005',
-      code: 'delete:department:document',
-      name: '删除本部门文档',
-      category: 'document',
-      scope: 'department',
-      status: 'active',
-      description: '可删除本部门的文档',
-    },
-    {
-      id: 'perm_013',
-      code: 'document:control_manage',
-      name: '文控中心管理',
-      category: 'document',
-      scope: 'cross_department',
-      status: 'active',
-      description: '可维护文控中心治理数据、记录表单落地入口、阅读要求、培训需求和影响评审',
-    },
-    {
-      id: 'perm_014',
-      code: 'document:number_rule_manage',
-      name: '文件编号规则管理',
-      category: 'document',
-      scope: 'cross_department',
-      status: 'active',
-      description: '可配置和管理文件编号规则，包括格式、序号位数和分隔符设置',
-    },
-    {
-      id: 'perm_015',
-      code: 'record_form:landing_manage',
-      name: '记录表单落地管理',
-      category: 'record_form',
-      scope: 'cross_department',
-      status: 'active',
-      description: '可确认和管理源表单落地关系，包括落地策略和字段覆盖配置',
-    },
-    // 记录权限
-    {
-      id: 'perm_006',
-      code: 'view:cross_department:record',
-      name: '跨部门查看记录',
-      category: 'record',
-      scope: 'cross_department',
-      status: 'active',
-      description: '可跨部门查看其他部门的记录',
-    },
-    {
-      id: 'perm_007',
-      code: 'fill:cross_department:record',
-      name: '跨部门填写记录',
-      category: 'record',
-      scope: 'cross_department',
-      status: 'active',
-      description: '可跨部门填写其他部门的记录',
-    },
-    // 任务权限
-    {
-      id: 'perm_008',
-      code: 'assign:cross_department:task',
-      name: '跨部门分配任务',
-      category: 'task',
-      scope: 'cross_department',
-      status: 'active',
-      description: '可跨部门分配任务',
-    },
-    // 审批权限
-    {
-      id: 'perm_009',
-      code: 'approve:cross_department:approval',
-      name: '跨部门审批',
-      category: 'approval',
-      scope: 'cross_department',
-      status: 'active',
-      description: '可跨部门审批文档和记录',
-    },
-    // 系统权限
-    {
-      id: 'perm_010',
-      code: 'manage:global:user',
-      name: '全局用户管理',
-      category: 'system',
-      scope: 'global',
-      status: 'active',
-      description: '可管理所有部门的用户',
-    },
-    {
-      id: 'perm_011',
-      code: 'manage:global:role',
-      name: '全局角色管理',
-      category: 'system',
-      scope: 'global',
-      status: 'active',
-      description: '可管理所有角色和权限',
-    },
-    {
-      id: 'perm_012',
-      code: 'manage:global:department',
-      name: '全局部门管理',
-      category: 'system',
-      scope: 'global',
-      status: 'active',
-      description: '可管理所有部门',
-    },
-  ];
-
-  for (const permission of permissions) {
-    await prisma.fineGrainedPermission.upsert({
-      where: { code: permission.code },
-      update: {},
-      create: permission,
-    });
-  }
-
-  console.log(`✅ 细粒度权限定义创建完成（共 ${permissions.length} 个）`);
-
   // 4. 创建物料分类（TASK-181）
   const rawMaterialCategory = await prisma.materialCategory.upsert({
     where: { code: 'RAW' },
@@ -473,7 +319,7 @@ async function main() {
           stepKey: 'document-level1',
           stepName: '一级文件审批',
           mode: 'sequential',
-          assignments: [{ type: 'role', roleCode: 'gm', label: '总经理' }],
+          assignments: [{ type: 'ROLE', roleCode: 'leader', label: '总经理（placeholder）' }],
           rejectPolicy: 'reject_instance',
           onApproved: 'document.approvalApproved',
           onRejected: 'document.approvalRejected',
@@ -491,7 +337,7 @@ async function main() {
           stepKey: 'document-level2',
           stepName: '二级文件审批',
           mode: 'sequential',
-          assignments: [{ type: 'role', roleCode: 'leader', label: '部门负责人' }],
+          assignments: [{ type: 'ROLE', roleCode: 'leader', label: '部门负责人（placeholder）' }],
           rejectPolicy: 'reject_instance',
           onApproved: 'document.approvalApproved',
           onRejected: 'document.approvalRejected',
@@ -509,7 +355,7 @@ async function main() {
           stepKey: 'document-level3',
           stepName: '三级文件审批',
           mode: 'sequential',
-          assignments: [{ type: 'role', roleCode: 'leader', label: '部门负责人' }],
+          assignments: [{ type: 'ROLE', roleCode: 'leader', label: '部门负责人（placeholder）' }],
           rejectPolicy: 'reject_instance',
           onApproved: 'document.approvalApproved',
           onRejected: 'document.approvalRejected',
@@ -528,11 +374,11 @@ async function main() {
           stepName: '产品开发评审会签',
           mode: 'countersign_all',
           assignments: [
-            { type: 'role', roleCode: 'quality', label: '品质部' },
-            { type: 'role', roleCode: 'manufacture', label: '制造部' },
-            { type: 'role', roleCode: 'purchase', label: '采购部' },
-            { type: 'role', roleCode: 'development', label: '产品开发部' },
-            { type: 'role', roleCode: 'gm', label: '总经理' },
+            { type: 'ROLE', roleCode: 'leader', label: '品质部（placeholder）' },
+            { type: 'ROLE', roleCode: 'leader', label: '制造部（placeholder）' },
+            { type: 'ROLE', roleCode: 'leader', label: '采购部（placeholder）' },
+            { type: 'ROLE', roleCode: 'leader', label: '产品开发部（placeholder）' },
+            { type: 'ROLE', roleCode: 'leader', label: '总经理（placeholder）' },
           ],
           rejectPolicy: 'reject_instance',
           onApproved: 'process.stepApproved',
@@ -550,7 +396,7 @@ async function main() {
           stepKey: 'record-submit',
           stepName: '记录审批',
           mode: 'single',
-          assignments: [{ type: 'permission', permissionCode: 'approve:record', label: '记录审批人' }],
+          assignments: [{ type: 'ROLE', roleCode: 'leader', label: '记录审批人（placeholder）' }],
           rejectPolicy: 'reject_instance',
           onApproved: 'record.submitApproved',
         },
@@ -567,7 +413,7 @@ async function main() {
           stepKey: 'task-record-submit',
           stepName: '任务记录审批',
           mode: 'single',
-          assignments: [{ type: 'permission', permissionCode: 'approve:task_record', label: '任务记录审批人' }],
+          assignments: [{ type: 'ROLE', roleCode: 'leader', label: '任务记录审批人（placeholder）' }],
           rejectPolicy: 'reject_instance',
           onApproved: 'taskRecord.approvalApproved',
           onRejected: 'taskRecord.approvalRejected',
@@ -585,7 +431,7 @@ async function main() {
           stepKey: 'warehouse-requisition',
           stepName: '领料审批',
           mode: 'single',
-          assignments: [{ type: 'permission', permissionCode: 'approve:warehouse', label: '仓储审批人' }],
+          assignments: [{ type: 'ROLE', roleCode: 'leader', label: '仓储审批人（placeholder）' }],
           rejectPolicy: 'reject_instance',
           onApproved: 'warehouse.requisitionApproved',
           onRejected: 'warehouse.requisitionRejected',
@@ -603,7 +449,7 @@ async function main() {
           stepKey: 'warehouse-inbound',
           stepName: '入库审批',
           mode: 'single',
-          assignments: [{ type: 'permission', permissionCode: 'approve:warehouse', label: '仓储审批人' }],
+          assignments: [{ type: 'ROLE', roleCode: 'leader', label: '仓储审批人（placeholder）' }],
           rejectPolicy: 'reject_instance',
           onApproved: 'warehouse.inboundApproved',
           onRejected: 'warehouse.inboundRejected',
@@ -621,7 +467,7 @@ async function main() {
           stepKey: 'warehouse-return',
           stepName: '退料审批',
           mode: 'single',
-          assignments: [{ type: 'permission', permissionCode: 'approve:warehouse', label: '仓储审批人' }],
+          assignments: [{ type: 'ROLE', roleCode: 'leader', label: '仓储审批人（placeholder）' }],
           rejectPolicy: 'reject_instance',
           onApproved: 'warehouse.returnApproved',
           onRejected: 'warehouse.returnRejected',
@@ -639,7 +485,7 @@ async function main() {
           stepKey: 'warehouse-scrap',
           stepName: '报废审批',
           mode: 'single',
-          assignments: [{ type: 'permission', permissionCode: 'approve:warehouse', label: '仓储审批人' }],
+          assignments: [{ type: 'ROLE', roleCode: 'leader', label: '仓储审批人（placeholder）' }],
           rejectPolicy: 'reject_instance',
           onApproved: 'warehouse.scrapApproved',
           onRejected: 'warehouse.scrapRejected',
@@ -657,7 +503,7 @@ async function main() {
           stepKey: 'training-plan',
           stepName: '培训计划审批',
           mode: 'single',
-          assignments: [{ type: 'permission', permissionCode: 'approve:training_plan', label: '培训审批人' }],
+          assignments: [{ type: 'ROLE', roleCode: 'leader', label: '培训审批人（placeholder）' }],
           rejectPolicy: 'reject_instance',
           onApproved: 'training.planApproved',
           onRejected: 'training.planRejected',
@@ -675,7 +521,7 @@ async function main() {
           stepKey: 'maintenance-record',
           stepName: '维保审核',
           mode: 'single',
-          assignments: [{ type: 'permission', permissionCode: 'approve:maintenance_record', label: '设备审核人' }],
+          assignments: [{ type: 'ROLE', roleCode: 'leader', label: '设备审核人（placeholder）' }],
           rejectPolicy: 'reject_instance',
           onApproved: 'equipment.maintenanceApproved',
           onRejected: 'equipment.maintenanceRejected',
@@ -693,7 +539,7 @@ async function main() {
           stepKey: 'capa-verify-close',
           stepName: 'CAPA验证',
           mode: 'single',
-          assignments: [{ type: 'permission', permissionCode: 'approve:capa', label: 'CAPA验证人' }],
+          assignments: [{ type: 'ROLE', roleCode: 'leader', label: 'CAPA验证人（placeholder）' }],
           rejectPolicy: 'reject_instance',
           onApproved: 'capa.verificationApproved',
         },
@@ -710,7 +556,7 @@ async function main() {
           stepKey: 'deviation-submit',
           stepName: '偏离审批',
           mode: 'single',
-          assignments: [{ type: 'permission', permissionCode: 'approve:deviation', label: '偏离审批人' }],
+          assignments: [{ type: 'ROLE', roleCode: 'leader', label: '偏离审批人（placeholder）' }],
           rejectPolicy: 'reject_instance',
           onApproved: 'deviation.approvalApproved',
           onRejected: 'deviation.approvalRejected',
@@ -728,7 +574,7 @@ async function main() {
           stepKey: 'change-event-review',
           stepName: '变更审批',
           mode: 'single',
-          assignments: [{ type: 'permission', permissionCode: 'approve:change_event', label: '变更审批人' }],
+          assignments: [{ type: 'ROLE', roleCode: 'leader', label: '变更审批人（placeholder）' }],
           rejectPolicy: 'reject_instance',
           onApproved: 'changeEvent.approvalApproved',
           onRejected: 'changeEvent.approvalRejected',
@@ -746,7 +592,7 @@ async function main() {
           stepKey: 'product-recall-review',
           stepName: '召回审批',
           mode: 'single',
-          assignments: [{ type: 'permission', permissionCode: 'approve:product_recall', label: '召回审批人' }],
+          assignments: [{ type: 'ROLE', roleCode: 'leader', label: '召回审批人（placeholder）' }],
           rejectPolicy: 'reject_instance',
           onApproved: 'productRecall.approvalApproved',
           onRejected: 'productRecall.approvalRejected',
@@ -773,19 +619,19 @@ async function main() {
   // Individual process step definitions (steps 1/2/5 = single approver; 6/7 = countersign_all)
   type StepDef = { triggerKey: string; name: string; stepName: string; mode: string; assignments: { type: string; roleCode: string; label: string }[] };
   const processApprovalDefinitions: StepDef[] = [
-    { triggerKey: 'step:1', name: '新产品开发申请审批', stepName: '总经理审批', mode: 'single', assignments: [{ type: 'role', roleCode: 'gm', label: '总经理' }] },
-    { triggerKey: 'step:2', name: '新产品开发计划审批', stepName: '研发经理审批', mode: 'single', assignments: [{ type: 'role', roleCode: 'manager', label: '研发经理' }] },
-    { triggerKey: 'step:5', name: '产品标签信息确认', stepName: '总经理确认', mode: 'single', assignments: [{ type: 'role', roleCode: 'gm', label: '总经理' }] },
+    { triggerKey: 'step:1', name: '新产品开发申请审批', stepName: '总经理审批', mode: 'single', assignments: [{ type: 'ROLE', roleCode: 'leader', label: '总经理（placeholder）' }] },
+    { triggerKey: 'step:2', name: '新产品开发计划审批', stepName: '研发经理审批', mode: 'single', assignments: [{ type: 'ROLE', roleCode: 'leader', label: '研发经理（placeholder）' }] },
+    { triggerKey: 'step:5', name: '产品标签信息确认', stepName: '总经理确认', mode: 'single', assignments: [{ type: 'ROLE', roleCode: 'leader', label: '总经理（placeholder）' }] },
     {
       triggerKey: 'step:6', name: '产品操作规程审批', stepName: '品质部+制造部会签', mode: 'countersign_all',
-      assignments: [{ type: 'role', roleCode: 'quality', label: '品质部' }, { type: 'role', roleCode: 'manufacture', label: '制造部' }],
+      assignments: [{ type: 'ROLE', roleCode: 'leader', label: '品质部（placeholder）' }, { type: 'ROLE', roleCode: 'leader', label: '制造部（placeholder）' }],
     },
     {
       triggerKey: 'step:7', name: '产品验证记录三人会签', stepName: '制造部+品质部+食品安全组长会签', mode: 'countersign_all',
       assignments: [
-        { type: 'role', roleCode: 'manufacture', label: '制造部' },
-        { type: 'role', roleCode: 'quality', label: '品质部' },
-        { type: 'role', roleCode: 'food_safety_leader', label: '食品安全组长' },
+        { type: 'ROLE', roleCode: 'leader', label: '制造部（placeholder）' },
+        { type: 'ROLE', roleCode: 'leader', label: '品质部（placeholder）' },
+        { type: 'ROLE', roleCode: 'leader', label: '食品安全组长（placeholder）' },
       ],
     },
   ];
@@ -836,6 +682,7 @@ async function main() {
   }
 
   console.log(`✅ 统一审批定义配置完成（共 ${approvalDefinitions.length + processApprovalDefinitions.length} 个）`);
+  console.warn('⚠️ Approval definitions seeded with placeholder USER/ROLE assignments; admins must rebuild via UI.');
 
   // 车间区域基础数据
   const workshopAreas = [
@@ -856,6 +703,31 @@ async function main() {
   }
 
   console.log(`✅ 车间区域创建完成（共 ${workshopAreas.length} 个）`);
+
+  // ── 模块开关默认配置
+  const MODULE_KEYS_SEED = [
+    'work_execution',
+    'document_approval',
+    'production_execution',
+    'product_rd',
+    'quality_compliance',
+    'equipment_site',
+    'traceability_batch',
+    'warehouse',
+    'training',
+  ] as const;
+  const ROLE_CODES_WITH_TOGGLE_SEED = ['leader', 'user'] as const;
+
+  for (const moduleKey of MODULE_KEYS_SEED) {
+    for (const roleCode of ROLE_CODES_WITH_TOGGLE_SEED) {
+      await prisma.moduleAccessConfig.upsert({
+        where: { moduleKey_roleCode: { moduleKey, roleCode } },
+        update: {},
+        create: { moduleKey, roleCode, enabled: true },
+      });
+    }
+  }
+  console.log(`✅ ModuleAccessConfig seeded (${MODULE_KEYS_SEED.length} modules × 2 roles)`);
 
   console.log('🎉 数据库种子数据填充完成！');
 }

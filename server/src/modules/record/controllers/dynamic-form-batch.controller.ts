@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -18,6 +19,7 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { DynamicFormBatchService } from '../services/dynamic-form-batch.service';
 
 @ApiTags('动态表单批次关联')
+@ModuleKey('document_approval')
 @Controller('dynamic-forms')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()

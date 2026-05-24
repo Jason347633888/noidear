@@ -34,21 +34,22 @@
               <el-icon><component :is="item.icon" /></el-icon>
               <span>{{ item.title }}</span>
             </template>
-            <el-menu-item
-              v-for="child in item.children"
-              :key="child.path"
-              :index="child.path"
-            >
-              <el-icon><component :is="child.icon" /></el-icon>
-              <template #title>
-                <el-badge
-                  v-if="child.badge && todoStore.pendingTodoCount > 0"
-                  :value="todoStore.pendingTodoCount"
-                  :max="99"
-                >{{ child.title }}</el-badge>
-                <span v-else>{{ child.title }}</span>
-              </template>
-            </el-menu-item>
+            <template v-for="child in item.children" :key="child.path">
+              <el-menu-item
+                v-if="!(child.moduleKey ?? item.moduleKey) || moduleAccess.hasModule(child.moduleKey ?? item.moduleKey!)"
+                :index="child.path"
+              >
+                <el-icon><component :is="child.icon" /></el-icon>
+                <template #title>
+                  <el-badge
+                    v-if="child.badge && todoStore.pendingTodoCount > 0"
+                    :value="todoStore.pendingTodoCount"
+                    :max="99"
+                  >{{ child.title }}</el-badge>
+                  <span v-else>{{ child.title }}</span>
+                </template>
+              </el-menu-item>
+            </template>
           </el-sub-menu>
         </template>
       </el-menu>
@@ -121,6 +122,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/user';
 import { useTodoStore } from '@/stores/todo';
+import { useModuleAccessStore } from '@/stores/moduleAccess';
 import {
   Document, Fold, Expand, Bell, ArrowDown,
   User, Lock, SwitchButton, HomeFilled, Files,
@@ -136,13 +138,28 @@ const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
 const todoStore = useTodoStore();
+const moduleAccess = useModuleAccessStore();
 const isCollapsed = ref(false);
 const unreadCount = ref(0);
 
 const activeMenu = computed(() => route.path);
 const currentTitle = computed(() => route.meta.title as string || '');
 
-const menuItems = menuGroups;
+const menuItems = computed(() =>
+  menuGroups.filter((g) => {
+    if (g.adminOnly) return moduleAccess.roleCode === 'admin';
+    if (!g.children) {
+      // leaf group: check own moduleKey
+      return !g.moduleKey || moduleAccess.hasModule(g.moduleKey);
+    }
+    // group with children: visible if any child is visible
+    const hasVisibleChild = g.children.some((item) => {
+      const key = item.moduleKey ?? g.moduleKey;
+      return !key || moduleAccess.hasModule(key);
+    });
+    return hasVisibleChild;
+  }),
+);
 
 const handleCommand = (command: string) => {
   switch (command) {
@@ -155,6 +172,9 @@ const handleCommand = (command: string) => {
 onMounted(async () => {
   if (userStore.token && !userStore.user) {
     await userStore.fetchUser();
+  }
+  if (!moduleAccess.loaded) {
+    await moduleAccess.refresh();
   }
   fetchUnreadCount();
   todoStore.refreshPendingCount();

@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -6,6 +7,7 @@ import {
   Param,
   UseGuards,
   ParseUUIDPipe,
+  Request,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,8 +19,12 @@ import { ScrapService } from '../services/scrap.service';
 import { CreateScrapDto, ApproveScrapDto } from '../dto/scrap.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
+import { Ownership } from '../../../shared/decorators/ownership.decorator';
+import type { OwnershipContext } from '../../module-access/ownership-context';
+import { AuthenticatedRequest } from '../../auth/authenticated-user';
 
 @ApiTags('报废管理')
+@ModuleKey('warehouse')
 @Controller('scraps')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
@@ -28,8 +34,8 @@ export class ScrapController {
   @Post()
   @ApiOperation({ summary: '创建报废单' })
   @ApiResponse({ status: 201, description: '报废单创建成功' })
-  create(@Body() dto: CreateScrapDto) {
-    return this.scrapService.create(dto);
+  create(@Body() dto: CreateScrapDto, @Request() req: AuthenticatedRequest) {
+    return this.scrapService.create(dto, undefined, req.user.id);
   }
 
   @Post(':id/complete')
@@ -42,8 +48,8 @@ export class ScrapController {
 
   @Get()
   @ApiOperation({ summary: '查询报废单列表' })
-  findAll() {
-    return this.scrapService.findAll();
+  findAll(@Ownership() ownership: OwnershipContext) {
+    return this.scrapService.findAll(ownership);
   }
 
   @Get(':id')

@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -16,6 +17,8 @@ import {
   BadRequestException,
   StreamableFile,
 } from '@nestjs/common';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import type { OwnershipContext } from '../module-access/ownership-context';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { RecordService } from './record.service';
@@ -33,6 +36,7 @@ import { ChangeLogInterceptor } from './interceptors/change-log.interceptor';
 import { TimestampValidationInterceptor } from '../../common/interceptors/timestamp-validation.interceptor';
 
 @ApiTags('记录管理')
+@ModuleKey('document_approval')
 @Controller('records')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
@@ -55,8 +59,8 @@ export class RecordController {
   @Get()
   @ApiOperation({ summary: '查询记录列表' })
   @ApiResponse({ status: 200, description: '查询成功' })
-  findAll(@Query() query: QueryRecordDto) {
-    return this.recordService.findAll(query);
+  findAll(@Query() query: QueryRecordDto, @Ownership() ownership: OwnershipContext) {
+    return this.recordService.findAll(query, ownership);
   }
 
   @Post('export')

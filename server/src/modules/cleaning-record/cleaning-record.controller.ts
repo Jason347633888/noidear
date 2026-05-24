@@ -1,8 +1,10 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { Controller, Get, Post, Body, Query, UseGuards, Request } from '@nestjs/common';
 import { CleaningRecordService } from './cleaning-record.service';
 import { CreateCleaningRecordDto } from './dto/create-cleaning-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@ModuleKey('equipment_site')
 @Controller('cleaning-records')
 @UseGuards(JwtAuthGuard)
 export class CleaningRecordController {

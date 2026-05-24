@@ -1,237 +1,161 @@
-# Handoff
+# Handoff: simple-role-module-access (Round 23 Repairs — 已更新)
 
-## PR 信息
+## Branch
+`feat/simple-role-module-access`
 
-- **PR URL**: https://github.com/Jason347633888/noidear/pull/217
-- **Branch**: `feat/simple-role-module-access`
-- **Head SHA**: `d565581a`（repair round 1 完成）
-- **Worktree**: `/Users/jiashenglin/Desktop/project/noidear/.worktrees/feat-simple-role-module-access`
+## Head SHA
+`c4d70af6`
 
-## 完成的 Tasks
+## PR
+#217
 
-全部 47 个原始 Task + Reviewer P0/P1 修复：
+## Round 23 修复摘要
 
-- **Tasks 1-47**: 已在前一会话提交
-- **Repair Round 1**: 修复 Reviewer 返回的全部 P0（7 项）+ P1（1 项）阻塞
+### F1-R23 material-usage controller 补 C1 batch ownership 验证
+- `material-usage.controller.ts`：`create` handler 注入 `@Ownership() ownership: OwnershipContext`，传给 service
+- `material-usage.service.ts`：`create(dto, ownership?)` — 非 admin 用户先调用 `visibleProductionBatchIds()`，不在可见集内则在 transaction 前抛 `ForbiddenException`（防止 materialBatch.update 被执行）
+- `material-usage.service.spec.ts`：新增 2 个测试用例（non-admin 访问他人 batch → ForbiddenException，materialBatch.update 未调用；admin 任意 batch → 成功）
 
-## Repair Round 1 修复清单
-
-| 编号 | 修复内容 | Commit |
-|------|----------|--------|
-| P0-1 | 全局守卫顺序：新增 `@Public()` decorator，JwtAuthGuard 注册为首个全局 APP_GUARD，auth/login 和 liveness 标 @Public() | 8b2ead9a |
-| P0-2 | role.service.ts：删除 assignPermissions、revokePermission、getRolePermissions 及 include:{permissions} 引用 | a4320db6 |
-| P0-4 | role.controller.ts：仅保留 GET /roles 和 GET /roles/:id，删除 POST/PUT/DELETE 和权限路由 | a4320db6 |
-| P0-3 | 前端：删除 permission.ts、RolePermissions.vue；role.ts 删除权限和 CUD 导出；RoleList.vue 删除创建/编辑/删除/权限入口；更新测试 | 631c995a |
-| P0-5 | 4 个 controller 的 @Post() create 接入 createForOwnership(dto, ownership) | 8a6c7275 |
-| P0-6 | GET /todos 恢复分页响应契约 {items,total,page,limit,hasMore}，ownership 范围过滤合并到 findAll | 4f9fe134 |
-| P0-7 | NonConformance create/createFromCcpDeviation 补写 discoveredById FK | 8eb20558 |
-| P1-1 | 10 个 @ModuleKey controller 补 @UseGuards(JwtAuthGuard) | d565581a |
+### F2-R23 equipment PUT/:id 非 admin 不能改 responsiblePersonId
+- `equipment.service.ts`：`update(id, dto, ownership?)` — 非 admin 时在调用 `mapDtoToData` 前将 `dto.responsiblePersonId` 置 undefined（immutable 模式，原 dto 不变）
+- `equipment.controller.ts`：`update` handler 传递 `ownership` 给 `service.update`
+- `equipment.service.ownership.spec.ts`：新增 3 个测试（admin 可改 responsiblePersonId → 成功写入；user 尝试改 → 字段被剥离；leader 尝试改 → 字段被剥离）
 
 ## 验证结果
+- `npx tsc --noEmit`：0 errors
+- `npx jest --forceExit`：1241 passed, 0 failed (↑5 新测试)
+- `client npm run build`：✓ built in 5.78s, 0 errors
 
-| 验证项 | 结果 |
+## 剩余风险
+- 无新增风险
+
+---
+
+# Handoff: simple-role-module-access (Round 22 Repairs — 已更新)
+
+## Branch
+`feat/simple-role-module-access`
+
+## Head SHA
+`9ac93949`
+
+## PR
+#217
+
+## Round 22 修复摘要
+
+### H1-a corrective-action
+- `corrective-action.service.ts`：`create` 方法始终写 `responsible_id: userId`，不再允许 `dto.responsible_id` 覆盖
+- `corrective-action.service.ownership.spec.ts`：更新 "preserves dto" 断言为 "always overrides dto" 断言
+
+### H1-b rework-record
+- `rework-record.service.ts`：`create` 方法始终写 `operator_id: creatorId`，不再允许 `dto.operator_id` 覆盖
+- `rework-record.service.ownership.spec.ts`：同步更新测试断言
+
+### H1-c equipment
+- `equipment.service.ts`：`create` 方法中 `responsiblePersonId: creatorId ?? dto.responsiblePersonId`（creatorId 优先）
+- `equipment.service.ownership.spec.ts`：重写 create 测试，验证 dto 被忽略；新增无 creatorId 时 fallback 测试
+
+### H1-d equipment/record (MaintenanceRecord)
+- `record.service.ts`：`applyOptionalFields` 中始终写 `performerId = creatorId`（当 creatorId 存在时）
+- `record.service.ownership.spec.ts`：更新 "preserves dto.performerId" 为 "overrides dto.performerId"
+
+### C1 batch-material-usage
+- `batch-material-usage.controller.ts`：inject `@Ownership()` 并传入 service
+- `batch-material-usage.service.ts`：`create(dto, ownership?)` — 非 admin 用户先调用 `visibleProductionBatchIds`，不在可见集内则抛 `ForbiddenException`
+- `batch-material-usage.service.ownership.spec.ts`：完整重写，含 admin/user/leader 正反 6 个测试用例
+
+### H2 training controller
+- `training.controller.ts`：`createProject` 注入 `@Ownership()`，调用 `createProjectForOwnership(dto, ownership)` 代替 `createProject(dto, userId)`
+- `training.controller.spec.ts`：新增 createProject 路由测试 2 个（admin 成功路径 + user 403 路径）
+
+## 验证结果
+- `npx tsc --noEmit`：0 errors
+- `npx jest --forceExit`：1236 passed, 0 failed
+- `client npm run build`：✓ built in 6.01s, 0 errors
+
+## 剩余风险
+- 无已知风险
+
+---
+
+# Handoff: simple-role-module-access (Round 8 Repairs)
+
+## Branch
+`feat/simple-role-module-access`
+
+## Head SHA
+`5e040496`
+
+## PR
+#217
+
+## Round 8 修复摘要
+
+### P0 — Registry 启动崩溃（无 base path 控制器）
+
+**RecordTaskController 拆分：**
+- 新增 `server/src/modules/record-task/record-task-assignment.controller.ts`（`@Controller('record-task-assignments')`，`@ModuleKey('work_execution')`）
+- 新增 `server/src/modules/record-task/record-task-instance.controller.ts`（`@Controller('record-task-instances')`，`@ModuleKey('work_execution')`）
+- `record-task.module.ts` 改为注册这两个新控制器，移除旧 `RecordTaskController`
+- `registry-config.ts` 的 `work_execution` 添加 `record-task-assignments` 和 `record-task-instances`
+
+**ProductProcessChangeController 路径统一：**
+- `@Controller()` → `@Controller('product-process-changes')`
+- `createDraft` 路由从 `POST /products/:productId/process-changes` 改为 `POST /product-process-changes/:productId/draft`
+- `submit/retry/getByPlanId` 路由去掉 `/product-process-changes` 前缀，变为相对路径
+- 前端 `client/src/api/product-process-change.ts` 更新 `createDraft` URL
+- `registry-config.ts` 的 `product_rd` 添加 `product-process-changes`
+
+### P1 — role.e2e-spec.ts 移除已删除表引用
+
+- 完全重写 `server/test/role.e2e-spec.ts`
+- 删除所有 `prisma.permission`、`prisma.rolePermission` 引用（TASK-067、TASK-068、Role Permissions API 三个 describe 块全部移除）
+- 修正所有 role.code 使用有效枚举值（`'admin'`/`'leader'`/`'user'`），不再使用 `'test_admin_role'` 等无效值
+- 修正 `afterAll` 清理逻辑
+
+### P2 — migration preflight DELETE
+
+- `20260523100001_role_code_check_constraint/migration.sql` 在 `ADD CONSTRAINT` 前添加 `DELETE FROM roles WHERE code NOT IN ('admin', 'leader', 'user')` 及说明注释
+
+## Round 7 修复摘要
+
+### P1-R7-1 — coverage.e2e-spec.ts import 路径修正
+- 文件：`server/test/module-access/coverage.e2e-spec.ts`
+- 修正 3 处 import：`../../app.module`、`../../src/modules/module-access/module-route-registry`、`../../src/modules/module-access/registry-config`
+- 验证：`jest --config=jest.e2e.config.js coverage.e2e-spec.ts` 不再报 "Cannot find module"，失败原因变为 DB 连接未配置（预期）
+
+### P1-R7-2 — @ModuleKey 补充到无 base path 控制器
+- `RecordTaskController` 加 `@ModuleKey('work_execution')`
+- `ProductProcessChangeController` 加 `@ModuleKey('product_rd')`
+- `registry-config.ts` 移除 `{ path: '', mode: 'exact' }` hack
+
+### P2-R7-3 — customer-complaint create 写 createdById
+- `CustomerComplaintService.create(dto, companyId, userId?)` 加第三参数，写入 `createdById`
+- `CustomerComplaintController.create` 传 `req.user.id`
+- 测试：`customer-complaint.service.ownership.spec.ts` 新增 `create writes createdById` 场景
+
+### P2-R7-4 — equipment responsiblePersonId FK 写入
+- `CreateEquipmentDto` / `UpdateEquipmentDto` 新增 `responsiblePersonId?: string`
+- `mapDtoToData()` 的 `directFields` 加入 `responsiblePersonId`
+- 测试：`equipment.service.ownership.spec.ts` 新增 `create with responsiblePersonId` 场景
+
+### P2-R7-5 — 维保计划自动生成写 responsiblePersonId
+- `generatePlansForEquipment` / `generateNextPlan` 写 `equipment.responsiblePersonId`
+- 测试：`plan.service.ownership.spec.ts` 新增 2 个自动生成场景
+
+## 验证结果（Round 8）
+
+| 检查项 | 结果 |
 |--------|------|
-| `npx tsc --noEmit`（server） | **0 错误** |
-| `npm run test -w server`（全量单元测试） | **144 suites, 1078 tests, 全部通过** |
-| `npm run build:client`（前端构建） | **0 错误（构建成功）** |
-| 所有 @ModuleKey controller 均有 JwtAuthGuard | **验证通过（rg 无缺漏）** |
-
-## 修改文件摘要（Repair Round 1）
-
-### 新增文件
-- `server/src/shared/decorators/public.decorator.ts`
-
-### 服务端修改
-- `server/src/app.module.ts` — 注册 JwtAuthGuard 为全局首个 APP_GUARD
-- `server/src/modules/auth/jwt-auth.guard.ts` — 支持 @Public() 跳过
-- `server/src/modules/auth/auth.controller.ts` — /auth/login 加 @Public()
-- `server/src/modules/health/liveness.controller.ts` — /liveness 加 @Public()
-- `server/src/modules/role/role.service.ts` — 删除权限相关方法，删除 include:{permissions}
-- `server/src/modules/role/role.controller.ts` — 仅保留 GET list/detail
-- `server/src/modules/non-conformance/non-conformance.service.ts` — create/createFromCcpDeviation 补 discoveredById
-- `server/src/modules/product/product.controller.ts` — create → createForOwnership
-- `server/src/modules/recipe/recipe.controller.ts` — create → createForOwnership
-- `server/src/modules/warehouse/material.controller.ts` — create → createForOwnership，补 JwtAuthGuard
-- `server/src/modules/record-template/record-template.controller.ts` — create → createForOwnership
-- `server/src/modules/todo/todo.service.ts` — findAll(query, ownership) 合并 ownership 过滤，返回分页对象
-- `server/src/modules/todo/todo.controller.ts` — findAll 调用 service.findAll(query, ownership)
-- 10 个 @ModuleKey controller 补 JwtAuthGuard（model-landing, shift-instance, production-run, warehouse/traceability, warehouse/batch, warehouse/material-balance, batch-trace x4）
-
-### 前端修改
-- `client/src/api/permission.ts` — 删除（整文件）
-- `client/src/components/role/RolePermissions.vue` — 删除（整文件）
-- `client/src/api/role.ts` — 删除权限和 CUD 相关导出
-- `client/src/views/role/RoleList.vue` — 删除创建/编辑/删除/权限配置入口
-- `client/src/views/role/__tests__/RoleList.spec.ts` — 更新测试
-- `client/src/views/role/__tests__/RoleList-bootstrap.spec.ts` — 更新测试
-
-## Repair Round 2 修复清单（2026-05-24）
-
-| 编号 | 修复内容 |
-|------|----------|
-| P0-NEW-1 (todo) | todo.service.spec.ts 第一个 describe 修正为 `findAll(query, ownership)` 签名；第二个 describe 由 `listForUser(ownership)` 改为 `findAll(baseQuery, ownership)` |
-| P0-NEW-1 (role) | role.service.spec.ts 删除 create/update/remove/assignPermissions/revokePermission/getRolePermissions 用例；修正 findOne 断言（无 include）；清理 unused imports |
-| P0-NEW-2 | product/recipe/record-template/material controller 所有写路由（update/archive/remove/createLegacy/uploadReport/tolerance/fields/revisions/activate）加 admin guard，非 admin 返回 403 |
-| P0-NEW-3 | workflow-triggers.service.ts 补 discoveredById/discovered_by；incoming-inspection.service.ts emit payload 补 inspector_id |
-| P1-NEW-1 | ownership-context.ts 添加单租户注释说明 |
-| chore | 删除 dead DTOs（create-role.dto.ts/update-role.dto.ts/assign-permissions.dto.ts）和 RoleForm.vue；清理 role.service.ts 未使用 imports |
-
-**Head SHA**: `bd255c10`
-
-## Round 2 验证结果
-
-| 验证项 | 结果 |
-|--------|------|
-| `npx tsc --noEmit`（server） | **0 错误** |
-| `npx jest --forceExit`（全量） | **174 suites, 1102 tests 通过；1 suite fail（coverage.spec.ts，需 DB，预期允许）** |
-| `npm run build:client` | **0 错误（构建成功）** |
-
-## Repair Round 3 修复清单（2026-05-24）
-
-| 编号 | 修复内容 | 文件 |
-|------|----------|------|
-| P0-R3-1 | product.controller `replaceReport` 补 admin guard（`@Ownership() ownership` + ForbiddenException），补 controller spec | product.controller.ts, product.controller.spec.ts |
-| P0-R3-2 | user/department/operation-log controller 加 `@UseGuards(JwtAuthGuard, RolesGuard)` + `@Roles('admin')`，补 admin-guard spec | user.controller.ts, department.controller.ts, operation-log.controller.ts |
-| P0-R3-3 | 11 个 controller GET 列表路由接入 `listForOwnership(ownership)`（equipment, environment-record, corrective-action, rework-record, customer-complaint, deviation, training/record, warehouse/requisition, warehouse/inbound, mixing），补 equipment.controller.ownership.spec | 各 controller.ts |
-| P1-R3-4 | task.service `listForUser` user 角色从 `creatorId` 改为 `departmentId` 过滤，更新旧断言，补 department-filter spec | task.service.ts, task.service.spec.ts |
-| P2-R3-5 | @ModuleKey + registry-config + menu.ts 三方对齐：environment-records/metal-detections/rework-records/waste/fragile-item-inspections/violation-records/visitor-records/emergency-drills/food-safety-culture-records/measuring-equipment/medication-records/cleaning-records 从 quality_compliance → equipment_site；incoming-inspections 从 quality_compliance → traceability_batch；packaging-material-usages 在 menu 从 equipment_site → traceability_batch；补 menu-registry-consistency.spec | 13 个 controller.ts, registry-config.ts, menu.ts |
-
-**Head SHA**: `5e71a8f5`
-
-## Round 3 验证结果
-
-| 验证项 | 结果 |
-|--------|------|
-| `npx tsc --noEmit`（server） | **0 错误** |
-| `npx jest --forceExit`（全量） | **180 suites pass, 1121 tests 通过；1 suite fail（coverage.spec.ts，需 DB，预期允许）** |
-| `npm run build:client` | **0 错误（构建成功）** |
-| `@Roles('admin')` 验证 | user.controller.ts ✓, department.controller.ts ✓ |
-| `listForOwnership` 验证 | equipment.controller.ts ✓ |
-
-## Repair Round 4 修复清单（2026-05-24）
-
-| 编号 | 修复内容 | 文件 |
-|------|----------|------|
-| P0-R4-1 | 11 个模块将 listForOwnership 合并进 findAll：ownership where 条件与 query 过滤叠加，保留分页契约 {data,total,page,limit}。equipment/inbound/requisition 返回分页对象，其余返回数组（原契约）。删除独立的 listForOwnership 方法 | equipment/environment-record/corrective-action/rework-record/non-conformance/customer-complaint/warehouse-inbound/warehouse-requisition/deviation/training-record 的 service.ts + controller.ts |
-| P0-R4-2 | mixing.listExecutions 恢复 ListMixingExecutionsDto 的 productId/status 过滤和 include:{area,lines}，同时叠加 ownership 条件，修复食品安全数据归集错误 | mixing.service.ts, mixing.controller.ts |
-| P1-R4-3 | DepartmentController 拆分 class-level @Roles('admin')：GET 方法仅 JwtAuthGuard，POST/PUT/DELETE 保持 admin-only，修复 leader 加载部门列表问题 | department.controller.ts |
-| P1-R4-4 | UserController 同理拆分：GET/GET:id 仅 JwtAuthGuard，写操作保持 admin-only，修复 training 候选人加载问题 | user.controller.ts |
-| chore | 更新全部 ownership spec 文件（equipment/environment-record/corrective-action/rework-record/non-conformance/customer-complaint/deviation/inbound/requisition/training/mixing）以匹配新接口签名 | 12 个 *.ownership.spec.ts |
-
-**Head SHA**: `89308844`
-
-## Round 4 验证结果
-
-| 验证项 | 结果 |
-|--------|------|
-| `npx tsc --noEmit`（server） | **0 错误** |
-| `npx jest --forceExit`（全量） | **180 suites pass, 1121 tests 通过；1 suite fail（coverage.spec.ts，需 DB，预期允许）** |
-| `npm run build:client` | **0 错误（构建成功）** |
-| 分页契约保留（equipment） | `total\|page\|limit` 存在于 equipment.service.ts ✓ |
-| department GET 不再 admin-only | GET 无 @Roles 装饰器 ✓ |
-| user GET 不再 admin-only | GET 无 @Roles 装饰器 ✓ |
-| mixing include:{area,lines} 保留 | mixing.service.ts listExecutions 包含 include ✓ |
-
-## Repair Round 6 修复清单（2026-05-24）
-
-| 编号 | 修复内容 | 文件 |
-|------|----------|------|
-| P0-R6-1 | approval-task.controller.ts user/leader OR 分支增加 `{assigneeUserId: null, assigneeRoleCode}` 和 `{assigneeUserId: null, assigneeDepartmentId}` 条件；更新 approval-task.controller.spec.ts 旧断言；新增 approval-task.service.ownership.spec.ts（8 个 ownership-scope 测试） | approval-task.controller.ts, .spec.ts, .service.ownership.spec.ts |
-| P1-R6-2 | http-exception.filter.ts：当 exceptionResponse.code 是字符串时直接透传，不覆盖为数字；透传 module 字段；新增 3 个 filter 集成测试验证 MODULE_DISABLED 路径 | http-exception.filter.ts, module-access.guard.spec.ts |
-| P1-R6-3 | user.ts logout() 调用 useModuleAccessStore().reset()；login() 成功后调用 await useModuleAccessStore().refresh() | client/src/stores/user.ts |
-| P1-R6-4 | 将 coverage.spec.ts 移至 server/test/module-access/coverage.e2e-spec.ts（e2e 套件），从单测中排除 | server/src/modules/module-access/coverage.spec.ts (删除), server/test/module-access/coverage.e2e-spec.ts (新增) |
-| P3 | ownership-scope.e2e-spec.ts:390 软断言改为 expect(users.length).toBeGreaterThan(0) | server/test/module-access/ownership-scope.e2e-spec.ts |
-
-**Head SHA**: `fbb23f0d`
-
-## Round 6 验证结果
-
-| 验证项 | 结果 |
-|--------|------|
-| `npx tsc --noEmit`（server） | **0 错误** |
-| `npx jest --forceExit`（全量单元测试） | **184 suites, 1153 tests 全部通过；coverage.spec.ts 不再出现** |
-| `npm run build:client` | **0 错误（构建成功）** |
-| coverage.spec.ts 不在 unit test 列表中 | `npx jest --listTests | grep coverage` 仅见 approval-callback-coverage.spec.ts（无关文件）✓ |
+| `npx tsc --noEmit` | 0 错误 |
+| `npx jest --forceExit` | 1157 tests passed, 184 suites |
+| `npm run build:client` | 构建成功，0 errors |
+| `grep @Controller() server/src` | 只剩未注册的旧 record-task.controller.ts 文件（不在任何模块中） |
 
 ## 剩余风险
 
-### 1. migration 手动应用（原有）
-- 迁移 `20260524000000_ownership_fk_fields` 通过 `prisma migrate resolve --applied` 标记
-- 生产部署需确认在目标 DB 执行该迁移 SQL
-
-### 2. E2E 测试覆盖
-- ownership-scope.e2e-spec.ts 和 coverage.e2e-spec.ts 需要在真实 DB 环境下运行验证完整链路
-- 建议 Reviewer 关注 POST /non-conformances → GET /non-conformances 链路是否完整
-
-### 3. P0-NEW-2 admin guard 位置
-- 本次选择在 controller 层添加 guard（vs service 层）以避免破坏现有 service 单元测试
-- service 层 `createForOwnership` 保持 service-layer 风格，其他写方法的 guard 在 controller 层
-- 如需统一风格，可后续重构将 guard 移至 service 层（非阻塞）
-
-## Repair Round 9 修复清单（2026-05-24）
-
-| 编号 | 修复内容 | 文件 |
-|------|----------|------|
-| P0-R9-1 | migration.sql 替换 DELETE 为 DO $$ RAISE EXCEPTION $$ preflight 块，migration 现在遇到自定义 role code 时失败抛错而非静默删除数据 | server/src/prisma/migrations/20260523100001_role_code_check_constraint/migration.sql |
-| P1a-R9 | 从 OperationLogModule 移除 PermissionAuditLogController 注册，并删除重复文件；GET /permission-audit-logs 仅由 AuditModule 的 PermissionLogReadonlyController 处理（返回数组，与 AuditSearchPage.vue 一致） | server/src/modules/operation-log/operation-log.module.ts, permission-audit-log.controller.ts（已删除）|
-| P1b-R9 | role.e2e-spec.ts 将 `prisma.role.create()` 改为 `upsert()`，唯一性断言改为直接对已有 seeded leader 重复创建来触发约束；移除可能污染 DB 的 afterAll delete | server/test/role.e2e-spec.ts |
-
-**Head SHA**: `0c9accc8`
-
-## Round 9 验证结果
-
-| 验证项 | 结果 |
-|--------|------|
-| `npx tsc --noEmit`（server） | **0 错误** |
-| `npx jest --forceExit`（全量单元测试） | **184 suites, 1157 tests 全部通过** |
-| `npm run build:client` | **0 错误（构建成功）** |
-| `grep -rn "permission-audit-logs" server/src --include="*.controller.ts"` | **仅 1 个结果（PermissionLogReadonlyController）** |
-| migration SQL 包含 DO $$ RAISE EXCEPTION $$ | **验证通过** |
-
-## Repair Round 11 修复清单（2026-05-24）
-
-| 编号 | 修复内容 | 文件 |
-|------|----------|------|
-| P1-R11-1 | StepDto 新增 `onRejected?: string` 和 `dueHours?: number`，补 `IsNumber` import；补 dto spec 4 个用例（含边界值和负数拒绝） | approval-definition.dto.ts, approval-definition.dto.spec.ts |
-| P2-R11-2 | record.service.ts `findAll` 增加 trainer 旁路逻辑（projectId 存在且 trainerId 匹配时绕过 ownership），通过 `fetchRecordsWithUser` 手动 userMap 方式补全 user 字段（LearningRecord 无 Prisma relation）；更新 ownership spec 覆盖 trainer bypass、user 字段补全、非 trainer 仍受 ownership 过滤 | record.service.ts, record.service.ownership.spec.ts |
-| P2-R11-3 | MenuEntry 接口新增 `moduleKey?: string`；menu.ts `生产执行` 分组下 `/records` 设 `moduleKey: 'document_approval'`、`/record-tasks/manage` 设 `moduleKey: 'work_execution'`；Layout.vue 子菜单渲染改为 `v-for + template`，每个子项有独立 moduleKey 时优先用自身的判断 | menu.ts, Layout.vue |
-
-**Head SHA**: `5fe7ea9f`
-
-## Round 11 验证结果
-
-| 验证项 | 结果 |
-|--------|------|
-| `npx tsc --noEmit`（server） | **0 错误** |
-| `npx jest --forceExit`（全量单元测试） | **184 suites, 1166 tests 全部通过** |
-| `npm run build:client` | **0 错误（构建成功）** |
-| `grep -n "onRejected\|dueHours" approval-definition.dto.ts` | **第 53 和 58 行均存在** |
-| `grep -n "user.*findMany\|fetchRecordsWithUser" record.service.ts` | **fetchRecordsWithUser 方法存在，user.findMany 被调用** |
-
-## 剩余风险（Round 11 追加）
-
-- `LearningRecord` 模型目前无 Prisma relation 指向 `User`，user 字段由手动 userMap 补全。若后续加 schema relation，可改回 Prisma include 方式（当前逻辑完全等价）。
-- 子菜单 moduleKey 过滤仅针对已发现的两个跨模块路由，其余分组如仍有类似情况，需在 menu.ts 逐项标注。
-
-## Repair Round 15 修复清单（2026-05-24）
-
-| 编号 | 修复内容 | 文件 |
-|------|----------|------|
-| PR-NEW-1 | approval-instance.controller.ts 的 findByResource 和 findOne 添加 @Ownership()；admin 直通；user 只能访问自己的实例；leader 只能访问所属管理部门成员创建的实例；findOne 对无权限情况抛 ForbiddenException（非 NotFoundException）；提取 resolveAllowedCreatorIds 私有方法复用；新增 findByResource 和 findOne 三角色 ownership spec | approval-instance.controller.ts, approval-instance.controller.spec.ts |
-| PR-NEW-2 | module-access.service.ts saveMatrix 的 upsert 循环包裹在 prisma.$transaction 中，改用 tx.moduleAccessConfig.upsert；新增事务成功提交测试 + 中途抛错时整体失败（模拟 rollback）测试；saveMatrix 未知 moduleKey 拒绝测试补充验证在事务之前校验 | module-access.service.ts, module-access.service.spec.ts |
-
-**Head SHA**: `952a9215`
-
-## Round 15 验证结果
-
-| 验证项 | 结果 |
-|--------|------|
-| `npx tsc --noEmit`（server） | **0 错误** |
-| `npx jest --forceExit`（全量单元测试） | **184 suites, 1179 tests 全部通过** |
-| `npm run build:client` | **0 错误（构建成功）** |
-
-## 剩余风险（Round 15 追加）
-
-- `findByResource` 对 user/leader 返回过滤后数组（非 403），因为多实例 by-resource 是 list 语义，过滤后空数组是合法结果。
-- saveMatrix 事务实际 rollback 语义由 Prisma 保证；单元测试验证错误传播，DB 级 rollback 依赖 Prisma 内部实现（已是标准行为）。
-- `onApproved` 缺失契约是 master 既有问题，非本 PR 引入，已记入 closeout notes。
+- `server/src/modules/record-task/record-task.controller.ts` 旧文件仍存在（已从模块中移除，不会被 Nest 加载），可以安全删除，但不影响 startup
+- `createDraft` API URL 变更（`/products/:id/process-changes` → `/product-process-changes/:id/draft`），前端已同步更新，但需确认没有其他客户端（移动端/第三方）使用旧 URL
+- e2e 测试需要真实 DB 才能完整运行，CI 中需 DATABASE_URL 配置
+- P3（Optional）：`client/src/stores/user.ts` 中 `fetchUser()` 恢复 session 后调用 `moduleAccessStore.refresh()` 未实现，不影响正确性，仅影响 page refresh 后菜单短暂 stale

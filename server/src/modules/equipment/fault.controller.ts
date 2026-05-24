@@ -1,3 +1,4 @@
+import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
   Get,
@@ -8,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { FaultService } from './fault.service';
@@ -17,26 +19,30 @@ import {
   CompleteFaultDto,
   QueryFaultDto,
 } from './dto/fault.dto';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import type { OwnershipContext } from '../module-access/ownership-context';
+import { AuthenticatedRequest } from '../auth/authenticated-user';
 
 @UseGuards(JwtAuthGuard)
+@ModuleKey('equipment_site')
 @Controller('equipment/faults')
 export class FaultController {
   constructor(private readonly faultService: FaultService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() dto: CreateFaultDto) {
-    return this.faultService.create(dto);
+  create(@Body() dto: CreateFaultDto, @Request() req: AuthenticatedRequest) {
+    return this.faultService.create(dto, req.user.id);
   }
 
   @Get()
-  findAll(@Query() query: QueryFaultDto) {
-    return this.faultService.findAll(query);
+  findAll(@Query() query: QueryFaultDto, @Ownership() ownership: OwnershipContext) {
+    return this.faultService.findAll(query, ownership);
   }
 
   @Get('my')
-  findMyFaults(@Query('reporterId') reporterId: string, @Query() query: QueryFaultDto) {
-    return this.faultService.findMyFaults(reporterId, query);
+  findMyFaults(@Request() req: AuthenticatedRequest, @Query() query: QueryFaultDto) {
+    return this.faultService.findMyFaults(req.user.id, query);
   }
 
   @Get('stats')
