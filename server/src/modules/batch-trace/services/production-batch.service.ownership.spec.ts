@@ -64,3 +64,66 @@ describe('ProductionBatchService create → leader_id ownership', () => {
     expect(callData).not.toHaveProperty('leader_id');
   });
 });
+
+describe('ProductionBatchService confirmProductBatch → leader_id ownership', () => {
+  function freshConfirmService() {
+    const prisma: any = {
+      product: { findFirst: jest.fn().mockResolvedValue({ id: 'p1', name: '蛋糕', status: 'active', deleted_at: null }) },
+      recipe: { findFirst: jest.fn().mockResolvedValue({ id: 'r1', version: 1, status: 'active', product_id: 'p1', version_note: null }) },
+      productionBatch: {
+        findUnique: jest.fn().mockResolvedValue(null), // 不存在，可以创建
+        create: jest.fn().mockResolvedValue({ id: 'pb-confirm', leader_id: 'u-creator', status: 'completed' }),
+        findMany: jest.fn().mockResolvedValue([{ id: 'pb-confirm', leader_id: 'u-creator' }]),
+        count: jest.fn().mockResolvedValue(1),
+      },
+      user: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const batchGen: any = { generateBatchNumber: jest.fn().mockResolvedValue('PROD-2026-001') };
+    return { svc: new ProductionBatchService(prisma, batchGen), prisma };
+  }
+
+  const confirmDto = {
+    batchNumber: 'PROD-2026-001',
+    productId: 'p1',
+    recipeId: 'r1',
+    actualQuantity: 100,
+    unit: 'kg',
+    productionDate: '2026-05-01',
+    packagedAt: '2026-05-02',
+    warehousedAt: '2026-05-03',
+    packageMachine: 'M-01',
+    teamId: 't1',
+    shiftTypeId: 's1',
+  };
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it('confirmProductBatch writes leader_id when creatorId is provided', async () => {
+    const { svc, prisma } = freshConfirmService();
+    await svc.confirmProductBatch(confirmDto, 'u-creator');
+    const callData = prisma.productionBatch.create.mock.calls[0][0].data;
+    expect(callData).toHaveProperty('leader_id', 'u-creator');
+  });
+
+  it('confirmed batch is visible to creator in findAll', async () => {
+    const { svc, prisma } = freshConfirmService();
+    await svc.confirmProductBatch(confirmDto, 'u-creator');
+    const ownershipAsCreator: OwnershipContext = {
+      userId: 'u-creator',
+      roleCode: 'user',
+      departmentId: 'd-1',
+      managedDepartmentIds: [],
+    };
+    const result = await svc.findAll({}, ownershipAsCreator);
+    expect(result.total).toBeGreaterThan(0);
+    const callWhere = prisma.productionBatch.findMany.mock.calls[0][0].where;
+    expect(callWhere).toHaveProperty('leader_id', 'u-creator');
+  });
+
+  it('confirmProductBatch without creatorId does NOT write leader_id', async () => {
+    const { svc, prisma } = freshConfirmService();
+    await svc.confirmProductBatch(confirmDto);
+    const callData = prisma.productionBatch.create.mock.calls[0][0].data;
+    expect(callData).not.toHaveProperty('leader_id');
+  });
+});

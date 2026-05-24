@@ -38,8 +38,8 @@ export class ProductionBatchController {
 
   @Post('confirm')
   @HttpCode(HttpStatus.CREATED)
-  confirmProductBatch(@Body() dto: ConfirmProductBatchDto) {
-    return this.productionBatchService.confirmProductBatch(dto);
+  confirmProductBatch(@Body() dto: ConfirmProductBatchDto, @Request() req: AuthenticatedRequest) {
+    return this.productionBatchService.confirmProductBatch(dto, req.user.id);
   }
 
   @Get()

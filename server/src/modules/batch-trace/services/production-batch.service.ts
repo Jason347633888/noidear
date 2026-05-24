@@ -143,7 +143,7 @@ export class ProductionBatchService {
     return batch;
   }
 
-  async confirmProductBatch(dto: ConfirmProductBatchDto) {
+  async confirmProductBatch(dto: ConfirmProductBatchDto, creatorId?: string) {
     const existing = await this.prisma.productionBatch.findUnique({
       where: { batchNumber: dto.batchNumber },
     });
@@ -183,6 +183,7 @@ export class ProductionBatchService {
           team_id: dto.teamId,
           shift_type_id: dto.shiftTypeId,
           status: 'completed',
+          ...(creatorId !== undefined ? { leader_id: creatorId } : {}),
         },
       });
     } catch (error) {
