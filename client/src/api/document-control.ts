@@ -78,25 +78,6 @@ export interface DocumentListResponse {
   limit: number;
 }
 
-export interface RecordFormLandingEntry {
-  code: string;
-  formName: string;
-  department: string;
-  templateGroupId: string;
-  groupName?: string;
-  entities: string[];
-  chain: string;
-  basis: string;
-  landingEntry?: {
-    targetModule?: string;
-    targetModel?: string;
-    targetRoute?: string;
-    targetTemplateId?: string;
-    landingStrategy?: string;
-    relatedDocIds?: string[];
-    notes?: string;
-  } | null;
-}
 
 export interface WorkbenchResponse {
   pendingReview: DocumentControlDocument[];
@@ -104,7 +85,6 @@ export interface WorkbenchResponse {
   expiringExternalFiles: DocumentControlDocument[];
   obsoleteReferences: DocumentReference[];
   brokenReferences: DocumentReference[];
-  missingLandingTargets: unknown[];
   missingMetadata: DocumentControlDocument[];
   counts: Record<string, number>;
 }
@@ -115,10 +95,6 @@ export type WorkbenchIssueType =
   | 'expiringExternalFiles'
   | 'obsoleteReferences'
   | 'brokenReferences'
-  | 'missingLandingTargets'
-  | 'unconfirmedLandingTargets'
-  | 'partialFieldCoverage'
-  | 'unimplementedRecordReferences'
   | 'missingMetadata'
   | 'trainingNeeds'
   | 'openImpactItems';
@@ -162,30 +138,6 @@ export const documentControlApi = {
 
   getReferences(documentId: string) {
     return request.get(`/documents/${documentId}/references`);
-  },
-
-  listRecordFormIndex(params?: { keyword?: string; department?: string; templateGroupId?: string }) {
-    return request.get<RecordFormLandingEntry[]>('/documents/record-form-index', { params });
-  },
-
-  updateRecordFormIndex(code: string, payload: Record<string, unknown>) {
-    return request.patch(`/documents/record-form-index/${code}`, payload);
-  },
-
-  getRecordFormLandingSuggestion(code: string) {
-    return request.get(`/documents/record-form-index/${code}/suggestion`);
-  },
-
-  confirmRecordFormLanding(code: string, payload: Record<string, unknown>) {
-    return request.post(`/documents/record-form-index/${code}/confirm`, payload);
-  },
-
-  batchConfirmRecordFormLanding(codes: string[]) {
-    return request.post('/documents/record-form-index/batch-confirm-suggested', { codes });
-  },
-
-  getRecordFormFieldCoverage(code: string) {
-    return request.get(`/documents/record-form-index/${code}/field-coverage`);
   },
 
   updateMarkdown(documentId: string, payload: { contentMd: string }) {

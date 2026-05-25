@@ -43,6 +43,7 @@ export interface ProductRecall {
   completed_at: string | null;
   batches?: ProductRecallBatch[];
   notifications?: ProductRecallNotification[];
+  evidence?: Array<{ id: string; title: string; evidence_type: string; notes?: string }>;
 }
 
 export interface CreateProductRecallPayload {

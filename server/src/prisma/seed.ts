@@ -386,41 +386,6 @@ async function main() {
       ],
     },
     {
-      module: 'record',
-      resourceType: 'record',
-      triggerKey: 'submit',
-      name: '记录提交审批',
-      version: 1,
-      steps: [
-        {
-          stepKey: 'record-submit',
-          stepName: '记录审批',
-          mode: 'single',
-          assignments: [{ type: 'ROLE', roleCode: 'leader', label: '记录审批人（placeholder）' }],
-          rejectPolicy: 'reject_instance',
-          onApproved: 'record.submitApproved',
-        },
-      ],
-    },
-    {
-      module: 'task',
-      resourceType: 'task_record',
-      triggerKey: 'submit',
-      name: '任务记录审批',
-      version: 1,
-      steps: [
-        {
-          stepKey: 'task-record-submit',
-          stepName: '任务记录审批',
-          mode: 'single',
-          assignments: [{ type: 'ROLE', roleCode: 'leader', label: '任务记录审批人（placeholder）' }],
-          rejectPolicy: 'reject_instance',
-          onApproved: 'taskRecord.approvalApproved',
-          onRejected: 'taskRecord.approvalRejected',
-        },
-      ],
-    },
-    {
       module: 'warehouse',
       resourceType: 'material_requisition',
       triggerKey: 'submit',

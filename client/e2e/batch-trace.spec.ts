@@ -496,33 +496,7 @@ test.describe('BT — 批次追溯补充', () => {
     expect(Array.isArray(usages)).toBeTruthy();
   });
 
-  // BT-021: 反向追溯结果包含关联的动态表单记录
-  test('BT-021: 反向追溯结果包含动态表单记录', async ({ request }) => {
-    const token = await btToken(request);
-    const batchId = await getFirstBatchId(request, token);
-    if (!batchId) {
-      test.skip(true, '无批次数据 — 跳过 BT-021');
-      return;
-    }
-
-    const res = await request.get(
-      `${apiBaseUrl()}/batches/${batchId}/backward-trace`,
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-    if (!res.ok()) {
-      test.skip(true, `反向追溯接口失败 (${res.status()}) — 跳过 BT-021`);
-      return;
-    }
-    const body = await res.json();
-    const traceData = body?.data ?? body;
-    // Should include records/tasks field (dynamic form records)
-    const hasRecords =
-      traceData.records !== undefined ||
-      traceData.tasks !== undefined ||
-      traceData.formRecords !== undefined ||
-      traceData.dynamicRecords !== undefined;
-    expect(hasRecords, '追溯结果应包含动态表单记录字段').toBe(true);
-  });
+  // BT-021 已与动态表单平台同退役（见 ADR 0001）
 
   // BT-022: 反向追溯包含 Mixing 执行记录
   test('BT-022: 反向追溯结果包含混料/加工执行记录', async ({ request }) => {

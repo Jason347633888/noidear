@@ -26,7 +26,7 @@
       <el-table-column label="偏离量" width="100">
         <template #default="{ row }">
           <span class="deviation-value">
-            {{ row.deviationValue > 0 ? '+' : '' }}{{ row.deviationValue.toFixed(2) }}
+            {{ row.deviationAmount > 0 ? '+' : '' }}{{ row.deviationAmount.toFixed(2) }}
           </span>
         </template>
       </el-table-column>
@@ -78,7 +78,7 @@ export interface DeviationField {
   fieldName: string;
   expectedValue: number;
   actualValue: number;
-  deviationValue: number;
+  deviationAmount: number;
   deviationRate: number;
   toleranceType: 'range' | 'percentage';
   toleranceMin: number;

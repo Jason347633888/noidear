@@ -7,7 +7,6 @@ describe('ShiftCompletionService', () => {
 
   const mockPrisma = {
     productionRun: { findMany: jest.fn() },
-    recordTemplate: { findMany: jest.fn() },
   };
 
   beforeEach(async () => {
@@ -21,38 +20,25 @@ describe('ShiftCompletionService', () => {
     service = module.get(ShiftCompletionService);
   });
 
-  it('should return 100% when all mandatory templates are filled', async () => {
-    mockPrisma.recordTemplate.findMany.mockResolvedValue([
-      { code: 'TPL-A', name: 'Template A' },
-    ]);
+  it('should return 100% completion rate (no dynamic templates)', async () => {
     mockPrisma.productionRun.findMany.mockResolvedValue([{
       id: 'r1',
       product: { name: 'ProductX' },
       production_line: '1',
       status: 'active',
-      records: [{ template: { code: 'TPL-A' } }],
     }]);
 
     const result = await service.getCompletionStatus('shift1');
     expect(result[0].completion_rate).toBe('100.0');
     expect(result[0].missing_templates).toHaveLength(0);
+    expect(result[0].total_mandatory).toBe(0);
+    expect(result[0].filled).toBe(0);
   });
 
-  it('should list missing templates when unfilled', async () => {
-    mockPrisma.recordTemplate.findMany.mockResolvedValue([
-      { code: 'TPL-A', name: 'A' },
-      { code: 'TPL-B', name: 'B' },
-    ]);
-    mockPrisma.productionRun.findMany.mockResolvedValue([{
-      id: 'r1',
-      product: { name: 'X' },
-      production_line: '1',
-      status: 'active',
-      records: [{ template: { code: 'TPL-A' } }],
-    }]);
+  it('should return empty array when no runs', async () => {
+    mockPrisma.productionRun.findMany.mockResolvedValue([]);
 
     const result = await service.getCompletionStatus('shift1');
-    expect(result[0].completion_rate).toBe('50.0');
-    expect(result[0].missing_templates[0].code).toBe('TPL-B');
+    expect(result).toEqual([]);
   });
 });

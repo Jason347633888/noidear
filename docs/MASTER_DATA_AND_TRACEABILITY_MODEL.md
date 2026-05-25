@@ -12,20 +12,19 @@
 - `server/src/modules/product/`
 - `server/src/modules/process/`
 - `server/src/modules/recipe/`
-- `server/src/modules/model-landing/`
 - `packages/types/traceability.ts`
 - `client/src/api/traceability.ts`
 
-283 张源表单的落地映射当前由 model-landing artifact 表达：
+283 张源表单的历史落地映射参考资料（只读，不作当前实现合同）：
 
 - `archive/superpowers/specs/2026-04-24-model-landing-layer-design.md`
 - `archive/superpowers/specs/2026-04-24-model-landing-layer-form-expansion.csv`
-- `server/src/modules/model-landing/generated/model-landing.generated.ts`
+
+**注：** `model-landing` 模块已于 2026-05-24 退役（见 `docs/adr/0001-retire-dynamic-form-platform.md`）。`model-landing:verify` 脚本已删除，不再执行。
 
 验证命令：
 
 ```bash
-npm run model-landing:verify -w server
 npm run traceability:verify -w server
 ```
 
@@ -35,7 +34,7 @@ npm run traceability:verify -w server
 2. 批次数据必须能回到主数据。
 3. 过程记录可以引用主数据和批次，但不能复制主数据事实。
 4. 追溯链路使用桥接表表达，不在页面、导出或 JSON 字段中手写第二套关系。
-5. `RecordTemplate` / `Record` 用于动态记录表单，不替代核心主数据和批次账。
+5. 独立业务 `*Record` 模型（EnvironmentRecord、CleaningRecord 等）原生对接追溯主链，不需要动态表单引擎中转。
 6. 新审批默认使用 `ApprovalInstance` / `ApprovalTask`。
 
 ## 3. 对象分类
@@ -168,13 +167,9 @@ Supplier
 - 对象需要查询、统计、权限控制或生命周期状态。
 - 对象字段会参与业务规则。
 
-使用 `RecordTemplate` / `Record` 的情况：
+**注：** 动态表单引擎（RecordTemplate / Record）已退役。新业务记录需求应使用独立业务记录模型（`*Record`），原生对接追溯主链。
 
-- 表单结构变化频繁。
-- 主要用途是填报、归档、检查或留痕。
-- 不作为主数据、批次、库存或追溯事实源。
-
-若一张源表单包含主数据字段和检查记录，应拆分：主数据进入独立模型，检查项进入记录表单或业务记录模型。
+若一张源表单包含主数据字段和检查记录，应拆分：主数据进入独立模型，检查项进入独立业务记录模型。
 
 ## 8. 文控与业务对象
 
@@ -184,8 +179,7 @@ Supplier
 - 版本：`DocumentVersion`
 - 发放：`DocumentIssuance`
 - 业务对象与文件关系：`BusinessDocumentLink`
-- 记录模板：`RecordTemplate`
-- 填报记录：`Record`
+- 填报记录：各独立业务 `*Record` 模型
 
 体系文件可以说明业务要求，但不能替代运行时业务事实。运行时事实应落在对应业务模型中。
 
@@ -224,7 +218,5 @@ Supplier
 - 是否新增了平行主数据。
 - 是否复制了批次编号但没有外键或稳定引用。
 - 是否绕过 `BatchMaterialUsage` 构造投料关系。
-- 是否让 `Record.data` 成为库存、批次或追溯事实源。
 - 是否破坏 `packages/types/traceability.ts`。
-- 是否需要更新 `model-landing.generated.ts` 并运行验证。
 - 是否需要补充迁移、seed 或兼容脚本。

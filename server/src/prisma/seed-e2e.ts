@@ -848,131 +848,13 @@ async function seedFoodSafetyChain(adminId: string): Promise<void> {
   console.log('   ✓ 食品安全链路已就绪');
 }
 
-// ──────────────────────────────────────────────────────────────────────────
-// 7. 成员用户任务实例（TSK-MY-002, BDD-TSK-006）
-// ──────────────────────────────────────────────────────────────────────────
-async function seedTaskInstances(adminId: string, memberId: string | null): Promise<void> {
-  console.log('── 任务实例 (RecordTaskInstance)...');
-
-  const userId = memberId ?? adminId;
-
-  // 需要先有 RecordTemplate
-  const template = await prisma.recordTemplate.findFirst({
-    where: { status: 'active' },
-    select: { id: true },
-  });
-  if (!template) {
-    console.warn('   ⚠ 无活跃 RecordTemplate，跳过任务实例 seed');
-    return;
-  }
-
-  // 需要先有 Department
-  const department = await prisma.department.findFirst({
-    select: { id: true },
-  });
-  if (!department) {
-    console.warn('   ⚠ 无部门数据，跳过任务实例 seed');
-    return;
-  }
-
-  // 查找或创建 RecordTaskAssignment
-  let assignment = await prisma.recordTaskAssignment.findFirst({
-    where: {
-      templateId: template.id,
-      departmentId: department.id,
-      title: 'E2E 测试填报任务',
-    },
-  });
-
-  if (!assignment) {
-    try {
-      assignment = await prisma.recordTaskAssignment.create({
-        data: {
-          templateId: template.id,
-          title: 'E2E 测试填报任务',
-          departmentId: department.id,
-          isPeriodic: false,
-          status: 'active',
-          creatorId: adminId,
-        },
-      });
-    } catch (err: any) {
-      console.warn(`   ⚠ RecordTaskAssignment 创建失败: ${err.message}`);
-      return;
-    }
-  }
-
-  // 创建任务实例（pending 状态，给成员用户）
-  const existingInstance = await prisma.recordTaskInstance.findFirst({
-    where: { assignmentId: assignment.id, status: 'pending' },
-  });
-
-  if (!existingInstance) {
-    try {
-      await prisma.recordTaskInstance.create({
-        data: {
-          assignmentId: assignment.id,
-          deadline: daysLater(7),
-          status: 'pending',
-        },
-      });
-      console.log('   ✓ 任务实例: 1 条新增 (pending)');
-    } catch (err: any) {
-      console.warn(`   ⚠ 任务实例创建失败: ${err.message}`);
-    }
-  } else {
-    console.log('   ✓ 任务实例已存在，跳过');
-  }
-
-  // 创建 locked 状态任务实例（for BDD-TSK-006）
-  const existingLocked = await prisma.recordTaskInstance.findFirst({
-    where: { assignmentId: assignment.id, status: 'locked' },
-  });
-
-  if (!existingLocked) {
-    try {
-      await prisma.recordTaskInstance.create({
-        data: {
-          assignmentId: assignment.id,
-          deadline: daysLater(3),
-          status: 'locked',
-        },
-      });
-      console.log('   ✓ 任务实例: 1 条新增 (locked)');
-    } catch (err: any) {
-      // locked may not be a valid status — try submitted instead
-      try {
-        await prisma.recordTaskInstance.create({
-          data: {
-            assignmentId: assignment.id,
-            deadline: daysLater(3),
-            status: 'submitted',
-          },
-        });
-        console.log('   ✓ 任务实例: 1 条新增 (submitted)');
-      } catch {
-        console.warn(`   ⚠ locked 任务实例创建失败: ${err.message}`);
-      }
-    }
-  }
-}
 
 // ──────────────────────────────────────────────────────────────────────────
-// 8. 偏差报告（DEV-006 — 状态流转验证）
-//    DeviationReport 需要 Record → 尽量使用已有 Record
+// 7. 偏差报告（DEV-006 — 状态流转验证）
+//    动态表单平台退役后，DeviationReport 不再关联 Record/RecordTemplate
 // ──────────────────────────────────────────────────────────────────────────
 async function seedDeviationReports(adminId: string): Promise<void> {
   console.log('── 偏差报告 (DeviationReport)...');
-
-  // DeviationReport 依赖 Record，需查已有记录
-  const record = await prisma.record.findFirst({
-    select: { id: true, templateId: true },
-  });
-
-  if (!record) {
-    console.warn('   ⚠ 无 Record 数据，跳过 DeviationReport seed');
-    return;
-  }
 
   const deviations = [
     { id: 'e2e-dev-pending-001', status: 'pending' },
@@ -988,8 +870,6 @@ async function seedDeviationReports(adminId: string): Promise<void> {
         await prisma.deviationReport.create({
           data: {
             id: dev.id,
-            recordId: record.id,
-            templateId: record.templateId,
             fieldName: 'temperature',
             expectedValue: '25',
             actualValue: '35',
@@ -1047,7 +927,6 @@ async function main() {
   await seedMaterialBatches();
   await seedProductionBatches();
   await seedApprovalDefinitions(adminId);
-  await seedTaskInstances(adminId, memberId);
   await seedDeviationReports(adminId);
   await seedFoodSafetyChain(adminId);
   await resetTrainingPlanFixture(adminId);

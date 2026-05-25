@@ -125,10 +125,7 @@ import { useTodoStore } from '@/stores/todo';
 import { useModuleAccessStore } from '@/stores/moduleAccess';
 import {
   Document, Fold, Expand, Bell, ArrowDown,
-  User, Lock, SwitchButton, HomeFilled, Files,
-  Grid, List, CircleCheck, Message, UserFilled,
-  DataAnalysis, Setting, Connection, Box, Goods, Key,
-  SetUp, WarnTriangleFilled, Monitor, Cloudy, Search, Odometer, Delete, RefreshLeft,
+  User, Lock, SwitchButton,
 } from '@element-plus/icons-vue';
 
 import request from '@/api/request';

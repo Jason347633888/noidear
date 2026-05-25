@@ -9,8 +9,6 @@ describe('DeviationAnalyticsController', () => {
   const mockDeviationAnalyticsService = {
     getDeviationTrend: jest.fn(),
     getFieldDistribution: jest.fn(),
-    getDeviationRateByDepartment: jest.fn(),
-    getDeviationRateByTemplate: jest.fn(),
     getDeviationReasonWordCloud: jest.fn(),
   };
 
@@ -98,56 +96,6 @@ describe('DeviationAnalyticsController', () => {
         undefined,
         undefined,
       );
-    });
-  });
-
-  describe('getRateByDepartment', () => {
-    it('应该返回部门偏离率数据', async () => {
-      const mockData = [
-        {
-          departmentId: 'dept1',
-          departmentName: '生产部',
-          totalTasks: 100,
-          deviationTasks: 20,
-          deviationRate: 20.0,
-        },
-      ];
-
-      mockDeviationAnalyticsService.getDeviationRateByDepartment.mockResolvedValue(
-        mockData,
-      );
-
-      const result = await controller.getRateByDepartment({});
-
-      expect(result).toEqual({
-        success: true,
-        data: mockData,
-      });
-    });
-  });
-
-  describe('getRateByTemplate', () => {
-    it('应该返回模板偏离率数据', async () => {
-      const mockData = [
-        {
-          templateId: 'tpl1',
-          templateTitle: '配方A',
-          totalTasks: 50,
-          deviationTasks: 10,
-          deviationRate: 20.0,
-        },
-      ];
-
-      mockDeviationAnalyticsService.getDeviationRateByTemplate.mockResolvedValue(
-        mockData,
-      );
-
-      const result = await controller.getRateByTemplate({});
-
-      expect(result).toEqual({
-        success: true,
-        data: mockData,
-      });
     });
   });
 

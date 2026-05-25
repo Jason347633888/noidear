@@ -15,9 +15,6 @@ import {
 import {
   DOCUMENT_RELATION_TYPES,
   DOCUMENT_TYPES,
-  FIELD_COVERAGE_STATUSES,
-  LANDING_CONFIRMATION_STATUSES,
-  LANDING_STATUSES,
   NUMBER_RULE_SCOPES,
   REFERENCE_TARGET_TYPES,
   SOURCE_FOLDERS,
@@ -134,44 +131,6 @@ export class CreateGenericDocumentReferenceDto {
   snapshot?: Record<string, unknown>;
 }
 
-export class UpdateRecordFormLandingEntryDto {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  targetModule?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  targetModel?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  targetRoute?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  targetTemplateId?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  landingStrategy?: string;
-
-  @ApiPropertyOptional({ type: [String] })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  relatedDocIds?: string[];
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  notes?: string;
-}
-
 export class WorkbenchQueryDto {
   @ApiPropertyOptional({ default: 30 })
   @IsOptional()
@@ -185,10 +144,6 @@ export const WORKBENCH_ISSUE_TYPES = [
   'expiringExternalFiles',
   'obsoleteReferences',
   'brokenReferences',
-  'missingLandingTargets',
-  'unconfirmedLandingTargets',
-  'partialFieldCoverage',
-  'unimplementedRecordReferences',
   'missingMetadata',
   'trainingNeeds',
   'openImpactItems',
@@ -282,34 +237,3 @@ export class UpsertNumberRuleDto {
   resetPolicy?: string;
 }
 
-export class BatchConfirmRecordFormLandingDto {
-  @IsArray()
-  @IsString({ each: true })
-  codes!: string[];
-}
-
-export class ConfirmRecordFormLandingDto extends UpdateRecordFormLandingEntryDto {
-  @IsIn(LANDING_STATUSES)
-  landingStatus!: string;
-
-  @IsOptional()
-  @IsIn(LANDING_CONFIRMATION_STATUSES)
-  confirmationStatus?: string;
-
-  @IsOptional()
-  @IsString()
-  confidence?: string;
-
-  @IsOptional()
-  @IsIn(FIELD_COVERAGE_STATUSES)
-  fieldCoverageStatus?: string;
-
-  @IsOptional()
-  @IsObject()
-  fieldCoverageSummary?: Record<string, unknown>;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  primaryRoute?: string;
-}

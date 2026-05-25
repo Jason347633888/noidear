@@ -26,7 +26,7 @@
           <el-form-item label="关键词">
             <el-input
               v-model="filterForm.keyword"
-              placeholder="字段名/任务ID"
+              placeholder="字段名"
               clearable
               style="width: 200px;"
             />
@@ -43,7 +43,6 @@
       <div class="app-panel--padded">
         <el-table :data="tableData" stripe border>
           <el-table-column prop="id" label="报告ID" width="180" show-overflow-tooltip />
-          <el-table-column prop="taskRecordId" label="任务记录ID" width="180" show-overflow-tooltip />
           <el-table-column prop="fieldName" label="偏离字段" width="120" />
           <el-table-column label="期望值" width="100">
             <template #default="{ row }">{{ row.expectedValue }}</template>
@@ -94,12 +93,11 @@
     <el-dialog v-model="detailVisible" title="偏离报告详情" width="600px">
       <el-descriptions :column="1" border v-if="currentReport">
         <el-descriptions-item label="报告ID">{{ currentReport.id }}</el-descriptions-item>
-        <el-descriptions-item label="任务记录ID">{{ currentReport.taskRecordId }}</el-descriptions-item>
         <el-descriptions-item label="字段名">{{ currentReport.fieldName }}</el-descriptions-item>
         <el-descriptions-item label="期望值">{{ currentReport.expectedValue }}</el-descriptions-item>
         <el-descriptions-item label="实际值">{{ currentReport.actualValue }}</el-descriptions-item>
         <el-descriptions-item label="偏离量">
-          {{ currentReport.deviationValue > 0 ? '+' : '' }}{{ currentReport.deviationValue.toFixed(2) }}
+          {{ currentReport.deviationAmount > 0 ? '+' : '' }}{{ currentReport.deviationAmount.toFixed(2) }}
         </el-descriptions-item>
         <el-descriptions-item label="偏离率">
           <el-tag :type="getDeviationRateType(currentReport.deviationRate)" size="small">
@@ -183,7 +181,7 @@ const fetchData = async () => {
   try {
     const params: any = {
       page: pagination.page,
-      pageSize: pagination.pageSize,
+      limit: pagination.pageSize,
     };
 
     if (filterForm.status) {
@@ -198,7 +196,7 @@ const fetchData = async () => {
     }
 
     const res = await deviationApi.getDeviationReports(params);
-    tableData.value = res.items || [];
+    tableData.value = res.list || [];
     pagination.total = res.total || 0;
   } catch {
     ElMessage.error('获取偏离报告列表失败');

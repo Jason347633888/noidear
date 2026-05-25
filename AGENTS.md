@@ -28,7 +28,7 @@ Trigger topics include:
 - traceability, forward trace, backward trace, material balance
 - recall, complaint, nonconformance, rework
 - warehouse / manufacturing / QA / QC / R&D cross-module linkage
-- deciding between `RecordTemplate/Record` and independent business tables
+- independent business record tables (EnvironmentRecord, CleaningRecord, etc.)
 
 ## Root Entry Responsibility
 
@@ -47,7 +47,7 @@ For operating rules, continue in:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **noidear** (21025 symbols, 36995 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **noidear** (20728 symbols, 36429 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

@@ -17,8 +17,6 @@ import {
   FileTypeValidator,
   Req,
   Res,
-  BadRequestException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -27,15 +25,11 @@ import { DocumentService } from './document.service';
 import { DocumentLifecycleService } from './document-lifecycle.service';
 import { FilePreviewService } from './services';
 import { DocumentReferenceService } from './services/document-reference.service';
-import { RecordFormLandingService } from './services/record-form-landing.service';
 import { DocumentReferenceHealthService } from './services/document-reference-health.service';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, CreateGenericDocumentReferenceDto, UpdateMarkdownDto } from './dto';
-import { BatchConfirmRecordFormLandingDto, ConfirmRecordFormLandingDto, UpdateRecordFormLandingEntryDto } from './dto/document-control.dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { Ownership } from '../../shared/decorators/ownership.decorator';
-import { OwnershipContext } from '../module-access/ownership-context';
 
 @ApiTags('文档管理')
 @ApiBearerAuth()
@@ -48,7 +42,6 @@ export class DocumentController {
     private readonly lifecycleSvc: DocumentLifecycleService,
     private readonly filePreviewService: FilePreviewService,
     private readonly documentReferenceService: DocumentReferenceService,
-    private readonly recordFormLandingService: RecordFormLandingService,
     private readonly referenceHealthService: DocumentReferenceHealthService,
   ) {}
 
@@ -84,72 +77,6 @@ export class DocumentController {
   @ApiOperation({ summary: '查询即将到期复审的文件' })
   getDueSoon(@Query('days') days?: string) {
     return this.lifecycleSvc.getDueSoon(days ? parseInt(days, 10) : 30);
-  }
-
-  // =============================
-  // Task 6: 记录表单落地索引
-  // =============================
-
-  @Get('record-form-index')
-  @ApiOperation({ summary: '查询04记录表单落地索引' })
-  listRecordFormIndex(
-    @Query('keyword') keyword?: string,
-    @Query('department') department?: string,
-    @Query('templateGroupId') templateGroupId?: string,
-  ) {
-    return this.recordFormLandingService.list({ keyword, department, templateGroupId });
-  }
-
-  @Post('record-form-index/batch-confirm-suggested')
-  @ApiOperation({ summary: '批量确认选中表单的落地建议' })
-  batchConfirmRecordFormLanding(
-    @Body() dto: BatchConfirmRecordFormLandingDto,
-    @Req() req: any,
-    @Ownership() ownership: OwnershipContext,
-  ) {
-    if (ownership.roleCode !== 'admin') throw new ForbiddenException('Admin access required');
-    return this.recordFormLandingService.batchConfirmSuggested(dto.codes, req.user?.id || 'system');
-  }
-
-  @Get('record-form-index/:code/suggestion')
-  @ApiOperation({ summary: '获取源表单落地建议' })
-  getRecordFormLandingSuggestion(@Param('code') code: string) {
-    return this.recordFormLandingService.suggest(code);
-  }
-
-  @Post('record-form-index/:code/confirm')
-  @ApiOperation({ summary: '确认源表单落地关系' })
-  confirmRecordFormLanding(
-    @Param('code') code: string,
-    @Body() dto: ConfirmRecordFormLandingDto,
-    @Req() req: any,
-    @Ownership() ownership: OwnershipContext,
-  ) {
-    if (ownership.roleCode !== 'admin') throw new ForbiddenException('Admin access required');
-    return this.recordFormLandingService.confirm(code, dto, req.user.id);
-  }
-
-  @Get('record-form-index/:code/field-coverage')
-  @ApiOperation({ summary: '查询源表单字段覆盖差异' })
-  getRecordFormFieldCoverage(@Param('code') code: string) {
-    return this.recordFormLandingService.getFieldCoverage(code);
-  }
-
-  @Get('record-form-index/:code')
-  @ApiOperation({ summary: '查询单张源表单落地信息' })
-  getRecordFormIndexEntry(@Param('code') code: string) {
-    return this.recordFormLandingService.get(code);
-  }
-
-  @Patch('record-form-index/:code')
-  @ApiOperation({ summary: '维护源表单目标入口' })
-  updateRecordFormIndexEntry(
-    @Param('code') code: string,
-    @Body() dto: UpdateRecordFormLandingEntryDto,
-    @Ownership() ownership: OwnershipContext,
-  ) {
-    if (ownership.roleCode !== 'admin') throw new ForbiddenException('Admin access required');
-    return this.recordFormLandingService.upsertTarget(code, dto);
   }
 
   @Get('reference-health/issues')

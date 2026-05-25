@@ -164,7 +164,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import request from '@/api/request';
 import { Search, RefreshRight, Plus, Edit, Key } from '@element-plus/icons-vue';
@@ -203,7 +203,6 @@ interface DepartmentItem {
 }
 
 const route = useRoute();
-const router = useRouter();
 const loading = ref(false);
 const creating = ref(false);
 const showCreateDialog = ref(false);

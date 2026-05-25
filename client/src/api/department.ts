@@ -13,12 +13,12 @@ export interface DepartmentListParams {
 export interface CreateDepartmentPayload {
   code: string;
   name: string;
-  managerId: string;
+  managerId?: string;
 }
 
 export interface UpdateDepartmentPayload {
   name?: string;
-  managerId?: string;
+  managerId?: string | null;
   status?: 'active' | 'inactive';
 }
 

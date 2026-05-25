@@ -58,61 +58,6 @@
         </div>
       </el-col>
 
-      <!-- 偏离率（部门维度）-->
-      <el-col :span="12" class="chart-section">
-        <div class="app-panel">
-          <div class="app-panel-header">
-            <h3 class="app-panel-header__title">偏离率（部门）</h3>
-          </div>
-          <div class="app-panel--padded">
-            <el-table
-              :data="departmentStats"
-              stripe
-              style="width: 100%"
-              max-height="400"
-            >
-              <el-table-column label="部门" prop="departmentName" />
-              <el-table-column label="总任务数" prop="totalTasks" width="100" />
-              <el-table-column label="偏离任务数" prop="deviationTasks" width="100" />
-              <el-table-column label="偏离率" width="100">
-                <template #default="{ row }">
-                  <el-tag :type="getTagType(row.deviationRate)" effect="dark">
-                    {{ row.deviationRate.toFixed(2) }}%
-                  </el-tag>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-        </div>
-      </el-col>
-
-      <!-- 偏离率（模板维度）-->
-      <el-col :span="12" class="chart-section">
-        <div class="app-panel">
-          <div class="app-panel-header">
-            <h3 class="app-panel-header__title">偏离率（模板）</h3>
-          </div>
-          <div class="app-panel--padded">
-            <el-table
-              :data="templateStats"
-              stripe
-              style="width: 100%"
-              max-height="400"
-            >
-              <el-table-column label="模板" prop="templateTitle" />
-              <el-table-column label="总任务数" prop="totalTasks" width="100" />
-              <el-table-column label="偏离任务数" prop="deviationTasks" width="100" />
-              <el-table-column label="偏离率" width="100">
-                <template #default="{ row }">
-                  <el-tag :type="getTagType(row.deviationRate)" effect="dark">
-                    {{ row.deviationRate.toFixed(2) }}%
-                  </el-tag>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-        </div>
-      </el-col>
     </el-row>
   </div>
 </template>
@@ -123,7 +68,6 @@ import * as echarts from 'echarts';
 import 'echarts-wordcloud';
 import dayjs from 'dayjs';
 import deviationAnalyticsApi from '@/api/deviation-analytics';
-import type { DepartmentStats, TemplateStats } from '@/api/deviation-analytics';
 
 const dateRange = ref<[string, string]>([
   dayjs().subtract(30, 'day').format('YYYY-MM-DD'),
@@ -139,9 +83,6 @@ const wordcloudChartRef = ref<HTMLDivElement | null>(null);
 let trendChartInstance: echarts.ECharts | null = null;
 let fieldChartInstance: echarts.ECharts | null = null;
 let wordcloudChartInstance: echarts.ECharts | null = null;
-
-const departmentStats = ref<DepartmentStats[]>([]);
-const templateStats = ref<TemplateStats[]>([]);
 
 onMounted(() => {
   initCharts();
@@ -180,8 +121,6 @@ const fetchAllData = async () => {
   await Promise.all([
     fetchTrendData(),
     fetchFieldDistribution(),
-    fetchDepartmentStats(),
-    fetchTemplateStats(),
     fetchWordCloudData(),
   ]);
 };
@@ -197,16 +136,16 @@ const fetchTrendData = async () => {
     trendChartInstance.setOption({
       title: { text: '偏离趋势分析', left: 'center' },
       tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-      legend: { data: ['偏离数量', '偏离率'], top: 30 },
+      legend: { data: ['偏离数量', '偏差报告占比'], top: 30 },
       grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
       xAxis: { type: 'category', data: dates, axisLabel: { rotate: 45 } },
       yAxis: [
         { type: 'value', name: '偏离数量', position: 'left' },
-        { type: 'value', name: '偏离率 (%)', position: 'right', max: 100 },
+        { type: 'value', name: '偏差报告占比 (%)', position: 'right', max: 100 },
       ],
       series: [
         { name: '偏离数量', type: 'bar', data: counts, itemStyle: { color: '#409EFF' } },
-        { name: '偏离率', type: 'line', yAxisIndex: 1, data: rates, smooth: true, itemStyle: { color: '#F56C6C' } },
+        { name: '偏差报告占比', type: 'line', yAxisIndex: 1, data: rates, smooth: true, itemStyle: { color: '#F56C6C' } },
       ],
     });
   }
@@ -234,22 +173,6 @@ const fetchFieldDistribution = async () => {
   }
 };
 
-const fetchDepartmentStats = async () => {
-  const params = dateRange.value && dateRange.value.length === 2
-    ? { startDate: dateRange.value[0], endDate: dateRange.value[1] }
-    : undefined;
-  const res = await deviationAnalyticsApi.getRateByDepartment(params);
-  if (res.success) departmentStats.value = res.data;
-};
-
-const fetchTemplateStats = async () => {
-  const params = dateRange.value && dateRange.value.length === 2
-    ? { startDate: dateRange.value[0], endDate: dateRange.value[1] }
-    : undefined;
-  const res = await deviationAnalyticsApi.getRateByTemplate(params);
-  if (res.success) templateStats.value = res.data;
-};
-
 const fetchWordCloudData = async () => {
   const res = await deviationAnalyticsApi.getReasonWordCloud();
   if (res.success && wordcloudChartInstance) {
@@ -275,11 +198,6 @@ const fetchWordCloudData = async () => {
   }
 };
 
-const getTagType = (rate: number) => {
-  if (rate >= 20) return 'danger';
-  if (rate >= 10) return 'warning';
-  return 'success';
-};
 </script>
 
 <style scoped lang="scss">

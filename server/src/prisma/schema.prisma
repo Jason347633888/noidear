@@ -147,13 +147,6 @@ model User {
   // Deviation relations
   reportedDeviations DeviationReport[] @relation("DeviationReporter")
 
-  // Dynamic Form Engine relations
-  recordsCreated Record[]          @relation("RecordCreator")
-  recordChanges  RecordChangeLog[] @relation("RecordChanger")
-
-  // Record Task relations
-  recordTaskAssignments RecordTaskAssignment[] @relation("RecordTaskCreator")
-
   // Warehouse & Batch Traceability relations
   stockRecords     StockRecord[]         @relation("StockRecordOperator")
   stagingRecords   StagingAreaRecord[]   @relation("StagingRecordOperator")
@@ -181,11 +174,6 @@ model User {
 
   // Training Management System relations
   todoTasks TodoTask[] @relation("UserTodoTasks")
-
-  // Task Flow relations
-  tasksCreated         Task[]       @relation("TaskCreator")
-  taskRecordsSubmitted TaskRecord[] @relation("TaskRecordSubmitter")
-  taskRecordsApproved  TaskRecord[] @relation("TaskRecordApprover")
 
   ownedDocuments Document[] @relation("DocumentOwnerUser")
 
@@ -216,11 +204,6 @@ model Department {
   documentNumberCounters DocumentNumberCounter[]
   documents              Document[]              @relation("DocumentDepartment")
   ownedDocuments         Document[]              @relation("DocumentOwnerDepartment")
-  recordTaskAssignments  RecordTaskAssignment[]  @relation("RecordTaskDepartment")
-
-  // Task Flow relations
-  tasks Task[] @relation("TaskDepartment")
-
   @@map("departments")
 }
 
@@ -499,9 +482,6 @@ model Notification {
 
 model DeviationReport {
   id                 String    @id
-  recordId           String
-  record             Record    @relation(fields: [recordId], references: [id], onDelete: Cascade)
-  templateId         String
   fieldName          String
   expectedValue      String
   actualValue        String
@@ -542,152 +522,7 @@ model Role {
   @@map("roles")
 }
 
-// 动态表单引擎: 记录模板表
-model RecordTemplate {
-  id             String    @id @default(cuid())
-  code           String
-  name           String
-  fieldsJson     Json
-  version        Int       @default(1)
-  retentionYears Int       @default(5)
-  status         String    @default("active")
-  description    String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  deletedAt      DateTime?
 
-  isMandatory Boolean @default(false)
-
-  // 偏差检测配置
-  deviationEnabled Boolean @default(false)
-
-  // TASK-169: 批次关联配置
-  batchLinkEnabled Boolean @default(false) // 是否启用批次关联
-  batchLinkType    String? // "production"; legacy rows may contain "finished_goods"
-  batchLinkField   String? // 哪个字段存储批次号
-
-  // 统一审批集成
-  approvalRequired Boolean @default(false)
-
-  // 字段容差配置（API contract cleanup）
-  toleranceJson Json?
-
-  records         Record[]
-  taskAssignments RecordTaskAssignment[]
-  tasks           Task[]
-  landingEntries  RecordFormLandingEntry[]
-  changeFormTasks ChangeEventFormTask[]
-
-  // Document control governance: template versioning
-  templateFamilyId String?
-  baseCode         String?
-  versionStatus    String           @default("active")
-  supersedesId     String?
-  supersedes       RecordTemplate?  @relation("RecordTemplateVersions", fields: [supersedesId], references: [id], onDelete: SetNull)
-  supersededBy     RecordTemplate[] @relation("RecordTemplateVersions")
-  effectiveAt      DateTime?
-  retiredAt        DateTime?
-  approvedBy       String?
-  approvedAt       DateTime?
-
-  @@unique([templateFamilyId, version])
-  @@index([code])
-  @@index([status])
-  @@index([baseCode])
-  @@index([templateFamilyId])
-  @@index([versionStatus])
-  @@map("record_templates")
-}
-
-// 动态表单引擎: 记录实例表（含外键修复）
-model Record {
-  id             String         @id @default(cuid())
-  templateId     String
-  template       RecordTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
-  number         String         @unique
-  dataJson       Json
-  status         String         @default("draft")
-  retentionUntil DateTime?
-  createdBy      String
-  creator        User?          @relation("RecordCreator", fields: [createdBy], references: [id], onDelete: SetNull)
-  submittedAt    DateTime?
-  approvedAt     DateTime?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  deletedAt      DateTime?
-
-  // TASK-169: 批次关联
-  relatedBatchType   String? // "production"; legacy rows may contain "finished_goods"
-  relatedBatchId     String? // 批次 ID
-  relatedBatchNumber String? // 批次号（冗余，加速查询）
-  productionBatchId  String?
-  productionBatch    ProductionBatch? @relation("RecordProductionBatch", fields: [productionBatchId], references: [id], onDelete: SetNull)
-  // TASK-9: finishedGoodsBatchId column kept in DB for historical audit trail, but removed from Prisma model
-
-  // 统一审批关联（workflow 旧字段已剔除）
-  approvalInstanceId String?
-
-  // 任务实例关联
-  taskInstanceId String?
-  taskInstance   RecordTaskInstance? @relation(fields: [taskInstanceId], references: [id], onDelete: SetNull)
-
-  // 签字和离线字段
-  signatureTimestamp DateTime?
-  offlineFilled      Boolean   @default(false)
-  autoArchiveStatus  String    @default("active")
-
-  // ShiftInstance & ProductionRun 关联
-  shift_instance_id String?
-  shift_instance    ShiftInstance? @relation(fields: [shift_instance_id], references: [id], onDelete: SetNull)
-  production_run_id String?
-  production_run    ProductionRun? @relation(fields: [production_run_id], references: [id], onDelete: SetNull)
-  document_no       String?
-  entity_links      Json?
-
-  changeLogs       RecordChangeLog[]
-  deviationReports DeviationReport[]
-
-  usageType               String?
-  sourceType              String?
-  sourceId                String?
-  changeEventId           String?
-  changeEvent             ChangeEvent?            @relation("ChangeEventRecords", fields: [changeEventId], references: [id], onDelete: SetNull)
-  changeFormTasks         ChangeEventFormTask[]
-  product_recall_evidence ProductRecallEvidence[]
-
-  @@index([templateId])
-  @@index([number])
-  @@index([status])
-  @@index([retentionUntil])
-  @@index([relatedBatchNumber])
-  @@index([productionBatchId])
-  @@index([taskInstanceId])
-  @@index([shift_instance_id])
-  @@index([production_run_id])
-  @@index([approvalInstanceId])
-  @@index([usageType])
-  @@index([sourceType, sourceId])
-  @@index([changeEventId])
-  @@map("records")
-}
-
-// 动态表单引擎: 记录变更历史表（含外键修复）
-model RecordChangeLog {
-  id        String   @id @default(cuid())
-  recordId  String
-  record    Record   @relation(fields: [recordId], references: [id], onDelete: Cascade)
-  oldData   Json
-  newData   Json
-  changedBy String
-  changer   User?    @relation("RecordChanger", fields: [changedBy], references: [id], onDelete: SetNull)
-  changedAt DateTime @default(now())
-  reason    String
-  createdAt DateTime @default(now())
-
-  @@index([recordId])
-  @@index([changedAt])
-  @@map("record_change_logs")
-}
 
 // ========================================
 // 仓库管理系统 + 批次追溯系统
@@ -1267,8 +1102,6 @@ model ProductionBatch {
   materialUsages      BatchMaterialUsage[]
   // 物料平衡记录
   materialBalances    MaterialBalance[]    @relation("MaterialBalanceProductionBatch")
-  // TASK-169: 动态表单记录关联
-  relatedRecords      Record[]             @relation("RecordProductionBatch")
   customer_complaints CustomerComplaint[]
 
   // 班组排班扩展字段
@@ -1829,49 +1662,6 @@ model TrainingArchive {
   @@map("training_archives")
 }
 
-// ========================================
-// 任务派发系统 (Record Task System)
-// ========================================
-
-model RecordTaskAssignment {
-  id                 String               @id @default(cuid())
-  templateId         String
-  template           RecordTemplate       @relation(fields: [templateId], references: [id])
-  title              String
-  departmentId       String
-  department         Department           @relation("RecordTaskDepartment", fields: [departmentId], references: [id])
-  isPeriodic         Boolean              @default(false)
-  periodType         String?
-  periodConfig       Json?
-  cron_expression    String?
-  source_document_id String?
-  last_triggered_at  DateTime?
-  status             String               @default("active")
-  creatorId          String
-  creator            User                 @relation("RecordTaskCreator", fields: [creatorId], references: [id])
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  instances          RecordTaskInstance[]
-
-  @@index([departmentId])
-  @@index([status])
-  @@map("record_task_assignments")
-}
-
-model RecordTaskInstance {
-  id           String               @id @default(cuid())
-  assignmentId String
-  assignment   RecordTaskAssignment @relation(fields: [assignmentId], references: [id])
-  deadline     DateTime
-  status       String               @default("pending")
-  createdAt    DateTime             @default(now())
-  records      Record[]
-
-  @@index([assignmentId])
-  @@index([status])
-  @@index([deadline])
-  @@map("record_task_instances")
-}
 
 // ========================================
 // RD-001: 产品研发流程模块
@@ -2005,40 +1795,6 @@ model BusinessDocumentLink {
   @@map("business_document_links")
 }
 
-model RecordFormLandingEntry {
-  id               String          @id @default(cuid())
-  sourceCode       String          @unique
-  targetModule     String?
-  targetModel      String?
-  targetRoute      String?
-  targetTemplateId String?
-  targetTemplate   RecordTemplate? @relation(fields: [targetTemplateId], references: [id], onDelete: SetNull)
-  landingStrategy  String?
-  relatedDocIds    String[]        @default([])
-  notes            String?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-
-  // Document control governance fields
-  landingStatus        String    @default("unimplemented")
-  confirmationStatus   String    @default("unconfirmed")
-  confidence           String?
-  confirmedBy          String?
-  confirmedAt          DateTime?
-  fieldCoverageStatus  String    @default("unknown")
-  fieldCoverageSummary Json?
-  primaryRoute         String?
-  sourceFormVersion    String?
-
-  @@index([targetModule])
-  @@index([targetModel])
-  @@index([landingStrategy])
-  @@index([targetTemplateId])
-  @@index([landingStatus])
-  @@index([confirmationStatus])
-  @@index([fieldCoverageStatus])
-  @@map("record_form_landing_entries")
-}
 
 // ─── 追溯链支撑 ───────────────────────────────────
 
@@ -2775,9 +2531,7 @@ model ChangeEvent {
   created_at    DateTime                   @default(now())
   updated_at    DateTime                   @updatedAt
 
-  records                  Record[]                  @relation("ChangeEventRecords")
   relations                ChangeEventRelation[]
-  formTasks                ChangeEventFormTask[]
   productProcessChangePlan ProductProcessChangePlan?
   execution                ChangeEventExecution?
 
@@ -2873,29 +2627,6 @@ model ChangeEventRelation {
   @@map("change_event_relations")
 }
 
-model ChangeEventFormTask {
-  id             String         @id @default(cuid())
-  changeEventId  String
-  changeEvent    ChangeEvent    @relation(fields: [changeEventId], references: [id], onDelete: Cascade)
-  templateId     String
-  template       RecordTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
-  recordId       String?
-  record         Record?        @relation(fields: [recordId], references: [id], onDelete: SetNull)
-  sourceFormCode String
-  title          String
-  status         String         @default("pending")
-  required       Boolean        @default(true)
-  sortOrder      Int            @default(0)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-
-  @@unique([changeEventId, templateId])
-  @@index([changeEventId])
-  @@index([templateId])
-  @@index([recordId])
-  @@index([status])
-  @@map("change_event_form_tasks")
-}
 
 model WasteDisposalRecord {
   id              String   @id @default(cuid())
@@ -3080,7 +2811,6 @@ model ShiftInstance {
   updated_at           DateTime  @updatedAt
 
   production_runs ProductionRun[]
-  records         Record[]
 
   @@unique([company_id, shift_type, shift_date])
   @@unique([company_id, shift_type_id, shift_date])
@@ -3109,7 +2839,6 @@ model ProductionRun {
   created_at        DateTime      @default(now())
   updated_at        DateTime      @updatedAt
 
-  records                   Record[]
   production_batches        ProductionBatch[]
   line_change_check_records LineChangeCheckRecord[]
 
@@ -3138,55 +2867,6 @@ model TraceabilitySnapshot {
   @@map("traceability_snapshots")
 }
 
-// ========================================
-// One-time Task Flow (TASK-FLOW)
-// ========================================
-
-model Task {
-  id           String         @id @default(cuid())
-  templateId   String
-  template     RecordTemplate @relation(fields: [templateId], references: [id])
-  departmentId String
-  department   Department     @relation("TaskDepartment", fields: [departmentId], references: [id])
-  deadline     DateTime
-  status       String         @default("pending")
-  title        String?
-  description  String?
-  creatorId    String
-  creator      User           @relation("TaskCreator", fields: [creatorId], references: [id])
-  draftData    Json?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  records      TaskRecord[]
-
-  @@index([departmentId])
-  @@index([status])
-  @@map("tasks")
-}
-
-model TaskRecord {
-  id                 String    @id @default(cuid())
-  taskId             String
-  task               Task      @relation(fields: [taskId], references: [id])
-  templateId         String
-  dataJson           Json      @default("{}")
-  submitterId        String
-  submitter          User      @relation("TaskRecordSubmitter", fields: [submitterId], references: [id])
-  status             String    @default("pending")
-  approvalInstanceId String?
-  submittedAt        DateTime  @default(now())
-  approvedAt         DateTime?
-  approverId         String?
-  approver           User?     @relation("TaskRecordApprover", fields: [approverId], references: [id])
-  comment            String?
-  hasDeviation       Boolean   @default(false)
-  deviationCount     Int       @default(0)
-  deviationReasons   Json?
-
-  @@index([taskId])
-  @@index([approvalInstanceId])
-  @@map("task_records")
-}
 
 // GAP-311: ProductRecall independent model
 
@@ -3277,8 +2957,6 @@ model ProductRecallEvidence {
   recall_id                String
   recall                   ProductRecall @relation(fields: [recall_id], references: [id], onDelete: Cascade)
   evidence_type            String
-  record_id                String?
-  record                   Record?       @relation(fields: [record_id], references: [id], onDelete: SetNull)
   traceability_snapshot_id String?
   external_ref             String?
   title                    String
@@ -3286,7 +2964,6 @@ model ProductRecallEvidence {
   created_at               DateTime      @default(now())
 
   @@index([company_id, recall_id])
-  @@index([record_id])
   @@map("product_recall_evidence")
 }
 

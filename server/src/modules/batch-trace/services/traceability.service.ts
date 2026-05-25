@@ -28,20 +28,6 @@ export class TraceabilityService {
       },
     });
 
-    // TASK-169: 查询关联的动态表单记录
-    const relatedRecords = await this.prisma.record.findMany({
-      where: { productionBatchId },
-      include: {
-        template: {
-          select: {
-            name: true,
-            code: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
     return {
       productionBatch,
       materialBatches: materialUsages.map((u: any) => ({
@@ -49,7 +35,6 @@ export class TraceabilityService {
         usedQuantity: u.quantity,
         usedAt: u.usedAt,
       })),
-      relatedRecords, // TASK-169: 包含关联的动态表单记录
       traceTime: new Date(),
     };
   }
@@ -157,23 +142,6 @@ export class TraceabilityService {
       },
     });
 
-    const productionBatchIds = usages.map((u: any) => u.productionBatchId);
-
-    // TASK-9: finishedGoodsBatch removed — query records directly via productionBatchId
-    // TASK-169: 查询关联的动态表单记录
-    const relatedRecords = await this.prisma.record.findMany({
-      where: { productionBatchId: { in: productionBatchIds } },
-      include: {
-        template: {
-          select: {
-            name: true,
-            code: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
     return {
       materialBatch,
       productionBatches: usages.map((u: any) => ({
@@ -183,9 +151,7 @@ export class TraceabilityService {
         productionDate: u.productionBatch.productionDate,
         usedQuantity: u.quantity,
         usedAt: u.usedAt,
-        // TASK-9: finishedGoods field removed from forward trace result
       })),
-      relatedRecords, // TASK-169: 包含关联的动态表单记录
       traceTime: new Date(),
     };
   }

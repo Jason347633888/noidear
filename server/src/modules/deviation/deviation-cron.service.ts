@@ -34,7 +34,6 @@ export class DeviationCronService {
           fieldName: true,
           deviationType: true,
           deviationRate: true,
-          templateId: true,
         },
       });
 
@@ -45,14 +44,14 @@ export class DeviationCronService {
         },
         totalCount: reports.length,
         byType: {} as Record<string, number>,
-        byTemplate: {} as Record<string, number>,
+        byFieldName: {} as Record<string, number>,
         avgDeviationRate: 0,
       };
 
       let totalRate = 0;
       for (const r of reports) {
         stats.byType[r.deviationType] = (stats.byType[r.deviationType] ?? 0) + 1;
-        stats.byTemplate[r.templateId] = (stats.byTemplate[r.templateId] ?? 0) + 1;
+        stats.byFieldName[r.fieldName] = (stats.byFieldName[r.fieldName] ?? 0) + 1;
         totalRate += r.deviationRate;
       }
 

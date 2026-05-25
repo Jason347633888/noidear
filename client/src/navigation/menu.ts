@@ -1,8 +1,8 @@
 import {
   HomeFilled, Bell, List, CircleCheck, Files, Grid, Monitor,
-  Connection, Document, Box, Goods, Setting,
+  Connection, Document, Box, Goods, DataAnalysis, Setting,
   UserFilled, WarnTriangleFilled, SetUp, Search, Odometer,
-  Delete, Key, RefreshLeft, Message, DataAnalysis,
+  Delete, Key, RefreshLeft, Message,
 } from '@element-plus/icons-vue';
 
 export interface MenuEntry {
@@ -27,7 +27,6 @@ export const menuGroups: MenuGroup[] = [
     children: [
       { path: '/dashboard', title: '工作台', icon: HomeFilled },
       { path: '/my-todos', title: '我的待办', icon: Bell, badge: 'pendingTodoCount' },
-      { path: '/record-tasks/my', title: '待填任务', icon: List },
       { path: '/approvals/pending', title: '待我审批', icon: CircleCheck },
     ],
   },
@@ -37,9 +36,7 @@ export const menuGroups: MenuGroup[] = [
     icon: Files,
     children: [
       { path: '/documents', title: '体系文件中心', icon: Files },
-      { path: '/templates', title: '模板管理', icon: Grid },
-      { path: '/documents/control/record-form-index', title: '记录表单索引', icon: List },
-      { path: '/approvals/history', title: '审批历史', icon: CircleCheck, moduleKey: 'work_execution' },
+      { path: '/approvals/history', title: '审批历史', icon: CircleCheck },
     ],
   },
   {
@@ -47,9 +44,10 @@ export const menuGroups: MenuGroup[] = [
     moduleKey: 'production_execution',
     icon: List,
     children: [
-      { path: '/records', title: '记录管理', icon: Document, moduleKey: 'document_approval' },
-      { path: '/record-tasks/manage', title: '任务配置', icon: Setting, moduleKey: 'work_execution' },
       { path: '/production/workshop-staging', title: '车间暂存区', icon: Grid, moduleKey: 'warehouse' },
+      { path: '/warehouse/requisitions', title: '领料管理', icon: Goods },
+      { path: '/deviation-reports', title: '偏差报告', icon: WarnTriangleFilled },
+      { path: '/deviation-analytics', title: '偏差分析', icon: DataAnalysis },
     ],
   },
   {
@@ -73,8 +71,6 @@ export const menuGroups: MenuGroup[] = [
       { path: '/product-recalls', title: '产品召回', icon: WarnTriangleFilled },
       { path: '/supplier-evaluations', title: '供应商评估', icon: Goods },
       { path: '/change-events', title: '变更管理', icon: Connection, moduleKey: 'product_rd' },
-      { path: '/deviation-reports', title: '偏差报告', icon: WarnTriangleFilled },
-      { path: '/deviation-analytics', title: '偏差分析', icon: DataAnalysis },
     ],
   },
   {
@@ -124,7 +120,6 @@ export const menuGroups: MenuGroup[] = [
     children: [
       { path: '/warehouse/materials', title: '物料管理', icon: Goods },
       { path: '/warehouse/suppliers', title: '供应商', icon: Goods },
-      { path: '/warehouse/requisitions', title: '领料管理', icon: Goods },
     ],
   },
   {

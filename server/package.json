@@ -22,15 +22,11 @@
     "prisma:seed-dev": "ts-node src/prisma/seed-dev.ts",
     "prisma:reset": "prisma db push --force-reset --schema=src/prisma/schema.prisma && npm run prisma:seed:baseline",
     "docker:init": "prisma db push --schema=src/prisma/schema.prisma && npm run prisma:seed:baseline",
-    "seed:templates": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/seed-templates.ts",
     "documents:import-vault": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/import-vault-system-documents.ts",
-    "model-landing:generate": "tsx scripts/generate-model-landing-artifacts.ts",
-    "model-landing:verify": "tsx scripts/verify-model-landing-artifacts.ts",
     "traceability:test": "jest traceability-query.service.spec.ts traceability-balance.service.spec.ts traceability-linkage.service.spec.ts traceability-export.service.spec.ts --runInBand",
     "traceability:contract:test": "jest traceability-contract.mapper.spec.ts --runInBand",
     "traceability:e2e": "bash scripts/run-e2e.sh traceability-contract.e2e-spec.ts traceability-query.e2e-spec.ts",
     "traceability:verify": "npm run traceability:test && npm run traceability:contract:test && npm run traceability:e2e",
-    "recall:migrate-records": "ts-node scripts/migrate-product-recall-records.ts",
     "seed:e2e": "ts-node src/prisma/seed-e2e.ts"
   },
   "dependencies": {

@@ -31,10 +31,6 @@ describe('DeviationAnalyticsController (Integration)', () => {
         groupBy: jest.fn().mockResolvedValue([]),
         count: jest.fn().mockResolvedValue(0),
       },
-      record: {
-        findMany: jest.fn().mockResolvedValue([]),
-        count: jest.fn().mockResolvedValue(0),
-      },
       $queryRaw: jest.fn().mockResolvedValue([]),
       $queryRawUnsafe: jest.fn().mockResolvedValue([]),
     };
@@ -114,28 +110,6 @@ describe('DeviationAnalyticsController (Integration)', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-    });
-  });
-
-  describe('GET /deviation-analytics/rate-by-department', () => {
-    it('应该返回部门偏离率数据', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/deviation-analytics/rate-by-department')
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-    });
-  });
-
-  describe('GET /deviation-analytics/rate-by-template', () => {
-    it('应该返回模板偏离率数据', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/deviation-analytics/rate-by-template')
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
     });
   });
 

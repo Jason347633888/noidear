@@ -52,17 +52,13 @@ export const REFERENCE_TARGET_TYPES = [
   'document',
   'unresolved_document',
   'conflict_document',
-  'record_form_landing',
-  'unresolved_record_form',
-  'conflict_record_form',
-  'record_template',
   'business_module',
   'business_object',
 ] as const;
 
 export type ReferenceTargetType = (typeof REFERENCE_TARGET_TYPES)[number];
 
-export const NUMBER_RULE_SCOPES = ['document', 'record_template'] as const;
+export const NUMBER_RULE_SCOPES = ['document'] as const;
 export type NumberRuleScope = typeof NUMBER_RULE_SCOPES[number];
 
 /**

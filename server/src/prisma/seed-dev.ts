@@ -19,15 +19,6 @@ async function main() {
     await prisma.document.upsert({ where: { id: doc.id }, update: {}, create: doc });
   }
 
-  console.log('📋 创建模板数据...');
-  await prisma.recordTemplate.createMany({
-    data: [
-      { code: 'TMPL-001', name: '温度记录表', fieldsJson: {}, description: '生产车间温度监控记录' },
-      { code: 'TMPL-002', name: '巡检记录表', fieldsJson: {}, description: '日常巡检检查记录' },
-    ] as any,
-    skipDuplicates: true,
-  });
-
   console.log('📝 创建审计日志...');
   await prisma.loginLog.createMany({
     data: [

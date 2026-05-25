@@ -164,11 +164,6 @@ const fetchPlanDetail = async () => {
   }
 };
 
-// Handle back
-const handleBack = () => {
-  router.back();
-};
-
 // Handle edit
 const handleEdit = () => {
   if (!plan.value) return;
