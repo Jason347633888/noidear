@@ -15,23 +15,21 @@ import { DocumentCronService } from './document-cron.service';
 import { DocumentReferenceService } from './services/document-reference.service';
 import { DocumentLifecycleService } from './document-lifecycle.service';
 import { DocumentControlMetadataService } from './services/document-control-metadata.service';
-import { RecordFormLandingService } from './services/record-form-landing.service';
 import { MarkdownWikilinkService } from './services/markdown-wikilink.service';
 import { DocumentReferenceHealthService } from './services/document-reference-health.service';
 import { BusinessDocumentLinkService } from './services/business-document-link.service';
 import { DocumentExpiryService } from './services/document-expiry.service';
 import { NumberRuleService } from './services/number-rule.service';
 import { PrismaModule } from '../../prisma/prisma.module';
-import { ModelLandingModule } from '../model-landing/model-landing.module';
 import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
 import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
 import type { ApprovalCallbackContext } from '../unified-approval/types';
 import { CANONICAL_DOCUMENT_STATUS } from './constants/document-control.constants';
 
 @Module({
-  imports: [ConfigModule, PrismaModule, NotificationModule, OperationLogModule, DepartmentPermissionModule, RoleModule, UserPermissionModule, SearchModule, ModelLandingModule, UnifiedApprovalModule],
+  imports: [ConfigModule, PrismaModule, NotificationModule, OperationLogModule, DepartmentPermissionModule, RoleModule, UserPermissionModule, SearchModule, UnifiedApprovalModule],
   controllers: [DocumentController],
-  providers: [DocumentService, DocumentCronService, DocumentReferenceService, MarkdownWikilinkService, DocumentReferenceHealthService, BusinessDocumentLinkService, DocumentExpiryService, DocumentLifecycleService, DocumentControlMetadataService, RecordFormLandingService, FilePreviewService, StorageService, DocumentsListener, NumberRuleService],
+  providers: [DocumentService, DocumentCronService, DocumentReferenceService, MarkdownWikilinkService, DocumentReferenceHealthService, BusinessDocumentLinkService, DocumentExpiryService, DocumentLifecycleService, DocumentControlMetadataService, FilePreviewService, StorageService, DocumentsListener, NumberRuleService],
   exports: [DocumentService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, BusinessDocumentLinkService, DocumentExpiryService],
 })
 export class DocumentModule implements OnModuleInit {

@@ -37,9 +37,9 @@ describe('Layout navigation grouping', () => {
 
     expect(source).toContain("path: '/dashboard'");
     expect(source).toContain("path: '/my-todos'");
-    expect(source).toContain("path: '/record-tasks/my'");
     expect(source).toContain("path: '/approvals/pending'");
     expect(source).toContain("path: '/approvals/history'");
+    // /record-tasks/my was removed during dynamic form retirement
   });
 });
 

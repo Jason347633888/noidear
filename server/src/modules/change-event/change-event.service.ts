@@ -3,7 +3,6 @@ import { Prisma } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
-import { ChangeEventFormTaskService } from './change-event-form-task.service';
 import { ChangeEventRelationService } from './change-event-relation.service';
 import { CreateChangeEventDto } from './dto/create-change-event.dto';
 import { CreateVerificationDto } from './dto/create-verification.dto';
@@ -15,7 +14,6 @@ export class ChangeEventService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly formTaskService: ChangeEventFormTaskService,
     private readonly relationService: ChangeEventRelationService,
     private readonly approvalEngine: ApprovalEngineService,
   ) {}
@@ -84,14 +82,6 @@ export class ChangeEventService {
       });
 
       await this.relationService.createRelations(created.id, dto.relations ?? [], db);
-      // Multi-scope plans (e.g. recipe + process + haccp) must NOT collapse
-      // into a single change_type — the per-scope union of form codes is
-      // what the user actually needs to fill.
-      if (options?.scopes && options.scopes.length > 0) {
-        await this.formTaskService.generateDefaultTasksForScopes(created.id, options.scopes, db);
-      } else {
-        await this.formTaskService.generateDefaultTasks(created.id, dto.change_type, db);
-      }
 
       return created;
     };
@@ -138,13 +128,6 @@ export class ChangeEventService {
       include: {
         verifications: true,
         relations: true,
-        formTasks: {
-          include: {
-            template: { select: { id: true, code: true, name: true, status: true } },
-            record: { select: { id: true, number: true, status: true, createdAt: true } },
-          },
-          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-        },
       },
       orderBy: { created_at: 'desc' },
     });
@@ -156,13 +139,6 @@ export class ChangeEventService {
       include: {
         verifications: true,
         relations: true,
-        formTasks: {
-          include: {
-            template: { select: { id: true, code: true, name: true, status: true } },
-            record: { select: { id: true, number: true, status: true, createdAt: true } },
-          },
-          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-        },
       },
     });
   }

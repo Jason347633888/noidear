@@ -1,6 +1,6 @@
 # Agent 操作指南
 
-本文档是 `noidear` 唯一的顶层项目操作协议。`AGENTS.md` 是短入口；本文件承接当前代码事实、运行方式、食品安全 hard gate、追溯与 model-landing 约束。
+本文档是 `noidear` 唯一的顶层项目操作协议。`AGENTS.md` 是短入口；本文件承接当前代码事实、运行方式、食品安全 hard gate、追溯约束。
 
 ## 1. 当前权威链
 
@@ -18,12 +18,11 @@
 
 任务涉及以下内容时，必须先读 `docs/MASTER_DATA_AND_TRACEABILITY_MODEL.md`，再做设计、实现或 schema 决策：
 
-- 食品安全 SaaS、283 张源表单、记录表单、模板。
+- 食品安全 SaaS、源表单落地映射、独立业务记录表。
 - 产品、物料、供应商、客户、员工、位置。
 - 物料批次、生产批次、投料、配方、工序、CCP。
 - 正追、反追、物料平衡、召回、投诉、不合格、返工、CAPA。
 - 仓储、制造、QA/QC、研发跨模块链路。
-- 判断 `RecordTemplate/Record` 与独立业务表的边界。
 
 ## 3. 业务对象判断
 
@@ -34,9 +33,10 @@
 - 桥接关系：`BatchMaterialUsage`、`RecipeLine`、`PackagingMaterialUsage`、`BusinessDocumentLink`。
 - 过程/检验记录：`IncomingInspection`、`CCPRecord`、`EnvironmentRecord`、`ProcessMonitorRecord`、`MetalDetectionLog`。
 - 治理记录：`NonConformance`、`CorrectiveAction`、`CustomerComplaint`、`ProductRecall`、`ManagementReview`。
-- 动态表单：`RecordTemplate`、`Record`、`RecordTaskAssignment`、`RecordTaskInstance`。
+- 独立业务记录：各 `*Record` 模型（EnvironmentRecord、CleaningRecord、ViolationRecord 等），已原生对接追溯主链，不需要动态表单引擎。
 
 不得为已有主数据或批次链路创建平行事实源。
+动态表单平台（RecordTemplate / Record / RecordTaskAssignment / RecordTaskInstance / Task / TaskRecord / ModelLanding）已于 2026-05-24 退役，不要在新功能中引用这些已删除的模型。
 
 ## 4. 命名口径
 
@@ -149,21 +149,16 @@ npm run traceability:test -w server
 npm run traceability:verify -w server
 ```
 
-## 10. Model Landing 合同
+## 10. 源表单落地说明（已退役）
 
-当任务依赖 283 张表单落地映射时，当前运行时真实来源为：
+动态表单平台（model-landing 模块、RecordFormLandingEntry、model-landing:verify 脚本）已于 2026-05-24 退役。
 
+历史参考资料已保留于 `archive/superpowers/`，仅用于背景理解：
 - `archive/superpowers/specs/2026-04-24-model-landing-layer-design.md`
 - `archive/superpowers/specs/2026-04-24-model-landing-layer-form-expansion.csv`
-- `server/src/modules/model-landing/generated/model-landing.generated.ts`
 
-在信任 generated artifact 前运行：
-
-```bash
-npm run model-landing:verify -w server
-```
-
-除非冻结 spec 显式更新，不要重新分类 283 张表单。
+不再执行 `model-landing:verify`，不再更新 RecordFormLandingEntry 数据。
+283 张源表单的业务字段已通过独立 `*Record` 模型原生落地，以 `archive/` 历史资料为参考，不作为当前实现合同。
 
 ## 11. 项目结构速查
 

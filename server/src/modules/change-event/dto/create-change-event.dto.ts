@@ -30,7 +30,7 @@ export class ChangeEventRelationDto {
 }
 
 export class CreateChangeEventDto {
-  @IsIn(['document', 'record_form', 'product', 'recipe', 'process', 'equipment', 'supplier', 'haccp', 'other'])
+  @IsIn(['document', 'product', 'recipe', 'process', 'equipment', 'supplier', 'haccp', 'other'])
   change_type: string;
 
   @IsString()

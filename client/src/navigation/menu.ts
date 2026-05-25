@@ -2,7 +2,7 @@ import {
   HomeFilled, Bell, List, CircleCheck, Files, Grid, Monitor,
   Connection, Document, Box, Goods, DataAnalysis, Setting,
   UserFilled, WarnTriangleFilled, SetUp, Search, Odometer,
-  Delete, Cloudy, Key, RefreshLeft, Message,
+  Delete, Key, RefreshLeft, Message,
 } from '@element-plus/icons-vue';
 
 export interface MenuEntry {
@@ -20,7 +20,6 @@ export const menuGroups: MenuEntry[] = [
     children: [
       { path: '/dashboard', title: '工作台', icon: HomeFilled },
       { path: '/my-todos', title: '我的待办', icon: Bell, badge: 'pendingTodoCount' },
-      { path: '/record-tasks/my', title: '待填任务', icon: List },
       { path: '/approvals/pending', title: '待我审批', icon: CircleCheck },
     ],
   },
@@ -29,8 +28,6 @@ export const menuGroups: MenuEntry[] = [
     icon: Files,
     children: [
       { path: '/documents', title: '体系文件中心', icon: Files },
-      { path: '/templates', title: '模板管理', icon: Grid },
-      { path: '/documents/control/record-form-index', title: '记录表单索引', icon: List },
       { path: '/approvals/history', title: '审批历史', icon: CircleCheck },
     ],
   },
@@ -38,8 +35,6 @@ export const menuGroups: MenuEntry[] = [
     title: '生产执行',
     icon: List,
     children: [
-      { path: '/records', title: '记录管理', icon: Document },
-      { path: '/record-tasks/manage', title: '任务配置', icon: Setting },
       { path: '/production/workshop-staging', title: '车间暂存区', icon: Grid },
       { path: '/warehouse/requisitions', title: '领料管理', icon: Goods },
       { path: '/deviation-reports', title: '偏差报告', icon: WarnTriangleFilled },

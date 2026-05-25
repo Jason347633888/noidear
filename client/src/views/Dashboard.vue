@@ -12,7 +12,7 @@
         </p>
         <div class="hero-actions">
           <el-button type="primary" @click="router.push('/my-todos')">进入全部待办</el-button>
-          <el-button plain @click="router.push('/record-tasks/my')">查看待填任务</el-button>
+          <el-button plain @click="router.push('/approvals/pending')">查看待审批</el-button>
         </div>
       </div>
 
@@ -232,7 +232,7 @@ import { useUserStore } from '@/stores/user';
 import { useTodoStore } from '@/stores/todo';
 import request from '@/api/request';
 import { todoApi } from '@/api/todo';
-import type { TodoItem, TodoPriority, TodoType } from '@/types/todo';
+import type { TodoItem } from '@/types/todo';
 import {
   todoTypeLabels,
   priorityWeights,
@@ -291,9 +291,9 @@ const pendingApprovals = ref<ApprovalItem[]>([]);
 
 const quickActions = [
   {
-    path: '/record-tasks/my',
-    label: '待填记录',
-    description: '直接进入记录任务列表',
+    path: '/approvals/pending',
+    label: '待审批',
+    description: '处理待我审批的事项',
     icon: EditPen,
     tone: 'amber',
   },

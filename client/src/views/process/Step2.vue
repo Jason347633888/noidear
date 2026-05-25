@@ -202,6 +202,8 @@ const confirmPicker = () => {
   }
   pickerVisible.value = false;
 };
+
+defineExpose({ validate: () => formRef.value?.validate() });
 </script>
 
 <style scoped>

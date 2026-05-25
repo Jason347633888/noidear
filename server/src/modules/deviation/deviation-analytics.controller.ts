@@ -44,40 +44,6 @@ export class DeviationAnalyticsController {
     };
   }
 
-  @Get('rate-by-department')
-  async getRateByDepartment(@Query() query: DateRangeDto) {
-    const startDate = query.startDate ? new Date(query.startDate) : undefined;
-    const endDate = query.endDate ? new Date(query.endDate) : undefined;
-
-    const data =
-      await this.deviationAnalyticsService.getDeviationRateByDepartment(
-        startDate,
-        endDate,
-      );
-
-    return {
-      success: true,
-      data,
-    };
-  }
-
-  @Get('rate-by-template')
-  async getRateByTemplate(@Query() query: DateRangeDto) {
-    const startDate = query.startDate ? new Date(query.startDate) : undefined;
-    const endDate = query.endDate ? new Date(query.endDate) : undefined;
-
-    const data =
-      await this.deviationAnalyticsService.getDeviationRateByTemplate(
-        startDate,
-        endDate,
-      );
-
-    return {
-      success: true,
-      data,
-    };
-  }
-
   @Get('reason-wordcloud')
   async getReasonWordCloud() {
     const data =

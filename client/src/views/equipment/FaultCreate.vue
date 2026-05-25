@@ -190,6 +190,9 @@ const handleNext = () => {
 };
 
 const handleSubmit = async () => {
+  const valid = await formRef.value?.validate().catch(() => false);
+  if (!valid) return;
+
   try {
     await ElMessageBox.confirm('确认提交报修单？', '确认提交');
   } catch {

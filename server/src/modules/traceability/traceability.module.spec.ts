@@ -5,7 +5,6 @@ import { TraceabilityLinkageService } from './traceability-linkage.service';
 import { TraceabilityExportService } from './traceability-export.service';
 import { TraceabilityBalanceService } from './traceability-balance.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ModelLandingService } from '../model-landing/model-landing.service';
 import { ProductRecallService } from '../product-recall/product-recall.service';
 
 describe('TraceabilityModule', () => {
@@ -14,8 +13,6 @@ describe('TraceabilityModule', () => {
       imports: [TraceabilityModule],
     })
       .overrideProvider(PrismaService)
-      .useValue({})
-      .overrideProvider(ModelLandingService)
       .useValue({})
       .overrideProvider(ProductRecallService)
       .useValue({ create: jest.fn() })

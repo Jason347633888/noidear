@@ -1,5 +1,4 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { ModelLandingService } from '../model-landing/model-landing.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueryTraceabilityDto } from './dto/query-traceability.dto';
 import {
@@ -18,7 +17,6 @@ type TraceQueryResult = ReturnType<typeof buildTraceResult>;
 export class TraceabilityQueryService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly modelLandingService: ModelLandingService,
   ) {}
 
   async query(dto: QueryTraceabilityDto, currentUser: any): Promise<TraceQueryResult> {
