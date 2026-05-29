@@ -29,4 +29,19 @@ describe('WorkshopAreaService', () => {
     });
     expect(result.type).toBe('temperature_point');
   });
+
+  it('creates an area point with parentId undefined when omitted', async () => {
+    const prisma = {
+      workshopArea: {
+        create: jest.fn().mockResolvedValue({ id: 'area-2', company_id: 'tenant-1', code: 'ROOM-01', name: '配料间', type: 'room', parentId: null }),
+      },
+    };
+    const service = new WorkshopAreaService(prisma as any);
+    await service.create({ company_id: 'tenant-1', code: 'ROOM-01', name: '配料间', type: 'room' } as any);
+    expect(prisma.workshopArea.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ company_id: 'tenant-1', code: 'ROOM-01', name: '配料间', type: 'room' }),
+    });
+    const callArg = prisma.workshopArea.create.mock.calls[0][0];
+    expect(callArg.data.parentId).toBeUndefined();
+  });
 });
