@@ -3,7 +3,6 @@ import {
   BadRequestException,
   ConflictException,
   NotFoundException,
-  Optional,
 } from '@nestjs/common';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -20,7 +19,7 @@ import { BatchMaterialUsageService } from '../batch-trace/services/batch-materia
 export class MixingService {
   constructor(
     private readonly prisma: PrismaService,
-    @Optional() private readonly batchMaterialUsageService?: BatchMaterialUsageService,
+    private readonly batchMaterialUsageService?: BatchMaterialUsageService,
   ) {}
 
   async listExecutions(dto: ListMixingExecutionsDto, ownership: OwnershipContext) {
@@ -173,15 +172,49 @@ export class MixingService {
         }
 
         // Validate the optional ProductionBatch link before any writes so the
-        // trace bridge only attaches to a real batch. Absent productionBatchId
-        // keeps legacy behaviour (no usage records generated).
+        // trace bridge only attaches to a CORRECT batch. A real but mismatched
+        // batch (different product/recipe/status) would produce a plausible-
+        // looking but WRONG trace chain — worse than no link. Absent
+        // productionBatchId keeps legacy behaviour (no usage records generated).
         if (dto.productionBatchId) {
           const productionBatch = await tx.productionBatch.findUnique({
             where: { id: dto.productionBatchId },
-            select: { id: true },
+            select: {
+              id: true,
+              productId: true,
+              recipeId: true,
+              status: true,
+              planItemId: true,
+            },
           });
           if (!productionBatch) {
             throw new NotFoundException('生产批次不存在');
+          }
+          if (productionBatch.productId !== dto.productId) {
+            throw new BadRequestException('生产批次产品与配料执行产品不一致');
+          }
+          if (productionBatch.recipeId !== dto.recipeId) {
+            throw new BadRequestException('生产批次配方与配料执行配方不一致');
+          }
+          if (
+            productionBatch.status === 'completed' ||
+            productionBatch.status === 'cancelled'
+          ) {
+            throw new BadRequestException('生产批次已完成或已取消，无法关联配料执行');
+          }
+          if (productionBatch.planItemId) {
+            const planItem = await tx.productionPlanItem.findUnique({
+              where: { id: productionBatch.planItemId },
+              select: { id: true, productId: true, recipeId: true },
+            });
+            if (planItem) {
+              if (planItem.productId !== dto.productId) {
+                throw new BadRequestException('生产计划项产品与配料执行产品不一致');
+              }
+              if (planItem.recipeId && planItem.recipeId !== dto.recipeId) {
+                throw new BadRequestException('生产计划项配方与配料执行配方不一致');
+              }
+            }
           }
         }
 
