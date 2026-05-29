@@ -624,7 +624,6 @@ model MaterialBatch {
   scrapItems           MaterialScrapItem[]       @relation("ScrapBatches")
 
   // 食品安全扩展字段
-  supplier_lot_no   String? // 供应商批号
   storage_confirmed Boolean            @default(false)
   // 库存流向状态（仓储操作触发），独立于质量状态 status(BatchStatus)
   // BatchStatus = QC 质量/锁定状态；LotInventoryStatus = 库存流向状态
