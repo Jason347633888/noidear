@@ -1150,12 +1150,17 @@ model ProductionBatch {
 
   product_recall_batches ProductRecallBatch[]
 
+  // Task 6: 计划项回链（产品批次在包装/成品入库阶段创建后回链到计划项）
+  planItemId String?
+  planItem   ProductionPlanItem? @relation("PlanItemProductionBatches", fields: [planItemId], references: [id])
+
   @@index([batchNumber])
   @@index([productionDate])
   @@index([status])
   @@index([production_run_id])
   @@index([productId])
   @@index([recipeId])
+  @@index([planItemId])
   @@map("production_batches")
 }
 
@@ -3037,4 +3042,70 @@ model ModuleAccessConfig {
   @@index([moduleKey])
   @@index([roleCode])
   @@map("module_access_configs")
+}
+
+// ========================================
+// 生产计划 (Production Plan) — Task 6
+// ========================================
+
+model ProductionPlan {
+  id           String    @id @default(cuid())
+  company_id   String
+  planNo       String
+  planDate     DateTime
+  lineId       String?
+  status       String    @default("draft")
+  createdById  String?
+  releasedAt   DateTime?
+  releasedById String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  items ProductionPlanItem[]
+
+  @@unique([company_id, planNo])
+  @@index([company_id, status])
+  @@map("production_plans")
+}
+
+model ProductionPlanItem {
+  id         String         @id @default(cuid())
+  planId     String
+  plan       ProductionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  productId  String
+  recipeId   String?
+  plannedQty Decimal        @db.Decimal(14, 4)
+  unit       String
+  lineId     String?
+  shiftId    String?
+  status     String         @default("planned")
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  tasks             ProductionTask[]
+  productionBatches ProductionBatch[] @relation("PlanItemProductionBatches")
+
+  @@index([planId])
+  @@index([productId])
+  @@map("production_plan_items")
+}
+
+model ProductionTask {
+  id             String             @id @default(cuid())
+  planItemId     String
+  planItem       ProductionPlanItem @relation(fields: [planItemId], references: [id], onDelete: Cascade)
+  taskType       String
+  resourceType   String?
+  resourceId     String?
+  assigneeRole   String?
+  assigneeUserId String?
+  dueAt          DateTime?
+  status         String             @default("pending")
+  completedAt    DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@unique([planItemId, taskType, resourceType, resourceId])
+  @@index([status, dueAt])
+  @@map("production_tasks")
 }

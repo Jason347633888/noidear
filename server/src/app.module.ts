@@ -66,6 +66,7 @@ import { MixingModule } from './modules/mixing/mixing.module';
 import { ProductProcessChangeModule } from './modules/product-process-change/product-process-change.module';
 import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module';
 import { CompanyModule } from './modules/company/company.module';
+import { ProductionPlanModule } from './modules/production-plan/production-plan.module';
 
 @Module({
   imports: [
@@ -135,6 +136,7 @@ import { CompanyModule } from './modules/company/company.module';
     ProductProcessChangeModule,
     OrgBootstrapModule,
     CompanyModule,
+    ProductionPlanModule,
     ModuleAccessModule,
   ],
   providers: [

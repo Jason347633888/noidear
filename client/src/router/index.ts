@@ -128,6 +128,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/my-todos/MyTodos.vue'),
         meta: { title: '我的待办' },
       },
+      {
+        path: 'production-plans',
+        name: 'ProductionPlanWorkbench',
+        component: () => import('@/views/production-plan/ProductionPlanWorkbench.vue'),
+        meta: { title: '生产计划' },
+      },
       // 批次追溯模块
       {
         path: 'batch-trace',

@@ -182,7 +182,9 @@ export class ProductionBatchService {
           packageMachine: dto.packageMachine,
           team_id: dto.teamId,
           shift_type_id: dto.shiftTypeId,
-          status: 'completed',
+          // Task 6: "confirm" means the batch number has STARTED, not finished.
+          // Batch-close / finished-goods intake is owned by Task 9.
+          status: 'in_progress',
           ...(creatorId !== undefined ? { leader_id: creatorId } : {}),
         },
       });
