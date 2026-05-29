@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -139,10 +144,20 @@ export class IncomingInspectionService {
         },
       });
 
-      await tx.materialInboundItem.update({
-        where: { id: item.id },
+      // Authoritative concurrency guard: an atomic conditional claim on the
+      // inbound item. Only ONE concurrent transaction can flip createdBatchId
+      // from null. Under Postgres READ COMMITTED a second tx blocks on the row
+      // lock held by the first, then re-evaluates `createdBatchId = null`
+      // against the committed row → 0 rows matched → count 0 → throw →
+      // rollback, undoing the just-created batch. This serializes releases so
+      // only one batch/movement/stockRecord is ever created per inbound item.
+      const claim = await tx.materialInboundItem.updateMany({
+        where: { id: materialInboundItemId, createdBatchId: null },
         data: { createdBatchId: batch.id, disposition: inspection.disposition },
       });
+      if (claim.count === 0) {
+        throw new ConflictException('Material inbound item already released');
+      }
 
       await this.inventoryMovementLedger.recordMaterialBatchMovement(
         {

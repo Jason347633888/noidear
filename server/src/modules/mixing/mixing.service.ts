@@ -1,4 +1,10 @@
-import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -8,10 +14,14 @@ import {
 } from './dto/mixing.dto';
 import { OwnershipContext } from '../module-access/ownership-context';
 import { userIdsInDepts } from '../module-access/ownership-helpers';
+import { BatchMaterialUsageService } from '../batch-trace/services/batch-material-usage.service';
 
 @Injectable()
 export class MixingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly batchMaterialUsageService?: BatchMaterialUsageService,
+  ) {}
 
   async listExecutions(dto: ListMixingExecutionsDto, ownership: OwnershipContext) {
     const ownershipWhere = await this.buildOwnershipWhere(ownership);
@@ -162,6 +172,19 @@ export class MixingService {
           }
         }
 
+        // Validate the optional ProductionBatch link before any writes so the
+        // trace bridge only attaches to a real batch. Absent productionBatchId
+        // keeps legacy behaviour (no usage records generated).
+        if (dto.productionBatchId) {
+          const productionBatch = await tx.productionBatch.findUnique({
+            where: { id: dto.productionBatchId },
+            select: { id: true },
+          });
+          if (!productionBatch) {
+            throw new NotFoundException('生产批次不存在');
+          }
+        }
+
         const recipeLines = await tx.recipeLine.findMany({
           where: { recipe_id: dto.recipeId },
         });
@@ -179,6 +202,9 @@ export class MixingService {
             status: 'confirmed',
             confirmedAt: new Date(),
             ...(operatorId !== undefined ? { operatorId } : {}),
+            ...(dto.productionBatchId !== undefined
+              ? { productionBatchId: dto.productionBatchId }
+              : {}),
           },
         });
 
@@ -209,10 +235,7 @@ export class MixingService {
             throw new BadRequestException('配料区库存不足或已被并发占用');
           }
 
-          // Future trace bridge: once MixingExecution gains a ProductionBatch
-          // link, call BatchMaterialUsageService.createFromMixingLine here with
-          // the created line's id so the traceability chain is auto-generated.
-          await tx.mixingExecutionLine.create({
+          const createdLine = await tx.mixingExecutionLine.create({
             data: {
               executionId: execution.id,
               recipeLineId: input.recipeLineId,
@@ -226,6 +249,23 @@ export class MixingService {
               overrideReason: input.overrideReason,
             },
           });
+
+          // Trace bridge: when a ProductionBatch is linked, auto-generate the
+          // BatchMaterialUsage record inside this same transaction so the
+          // material batches consumed are queryable via the ProductionBatch.
+          if (dto.productionBatchId && this.batchMaterialUsageService) {
+            await this.batchMaterialUsageService.createFromMixingLine(
+              {
+                productionBatchId: dto.productionBatchId,
+                materialBatchId: input.materialBatchId,
+                quantity: input.actualQuantity,
+                executionLineId: createdLine.id,
+                recipeLineId: input.recipeLineId,
+                area_id: dto.areaId,
+              },
+              tx,
+            );
+          }
         }
 
         return tx.mixingExecution.findUnique({

@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OwnershipContext } from '../../module-access/ownership-context';
 import { visibleProductionBatchIds } from '../../module-access/ownership-helpers';
@@ -72,12 +73,13 @@ export class BatchMaterialUsageService {
    * traceability chain. executionLineId is mandatory for every new write so the
    * same material batch can be recorded multiple times across distinct lines.
    */
-  async createFromMixingLine(dto: CreateFromMixingLineDto) {
+  async createFromMixingLine(dto: CreateFromMixingLineDto, tx?: Prisma.TransactionClient) {
     if (!dto.executionLineId) {
       throw new BadRequestException('executionLineId is required for new batch material usage');
     }
 
-    return this.prisma.batchMaterialUsage.create({
+    const client = tx ?? this.prisma;
+    return client.batchMaterialUsage.create({
       data: {
         productionBatchId: dto.productionBatchId,
         materialBatchId: dto.materialBatchId,

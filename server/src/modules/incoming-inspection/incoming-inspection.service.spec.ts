@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services';
 import { BusinessDocumentLinkService } from '../document/services/business-document-link.service';
@@ -135,7 +135,7 @@ describe('IncomingInspectionService incoming inspection gate', () => {
               findFirst: jest.fn(),
               update: jest.fn(),
             },
-            materialInboundItem: { findUnique: jest.fn(), update: jest.fn() },
+            materialInboundItem: { findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
             material: { findUnique: jest.fn() },
             materialBatch: { create: jest.fn() },
             stockRecord: { create: jest.fn() },
@@ -231,7 +231,7 @@ describe('IncomingInspectionService incoming inspection gate', () => {
 
       const txClient = {
         materialBatch: { create: jest.fn().mockResolvedValue({ id: 'batch-1' }) },
-        materialInboundItem: { update: jest.fn() },
+        materialInboundItem: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
         stockRecord: { create: jest.fn() },
         incomingInspection: { update: jest.fn() },
       };
@@ -266,8 +266,11 @@ describe('IncomingInspectionService incoming inspection gate', () => {
           relatedType: 'incoming_inspection',
         }),
       });
-      expect(txClient.materialInboundItem.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'item-1' }, data: expect.objectContaining({ createdBatchId: 'batch-1' }) }),
+      expect(txClient.materialInboundItem.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'item-1', createdBatchId: null },
+          data: expect.objectContaining({ createdBatchId: 'batch-1' }),
+        }),
       );
       expect(txClient.incomingInspection.update).toHaveBeenCalledWith({
         where: { id: 'insp-1' },
@@ -296,6 +299,33 @@ describe('IncomingInspectionService incoming inspection gate', () => {
       expect(prisma.$transaction).not.toHaveBeenCalled();
       expect(batchNumberGenerator.generateBatchNumber).not.toHaveBeenCalled();
       expect(inventoryMovementLedger.recordMaterialBatchMovement).not.toHaveBeenCalled();
+    });
+
+    it('concurrency loser: in-tx claim matches zero rows → throws and writes no ledger/stock/backlink', async () => {
+      prisma.incomingInspection.findFirst.mockResolvedValue({ ...baseInspection });
+      prisma.materialInboundItem.findUnique.mockResolvedValue({ ...baseItem });
+      prisma.material.findUnique.mockResolvedValue({ unit: 'kg' });
+      batchNumberGenerator.generateBatchNumber.mockResolvedValue('MB-20260529-002');
+
+      // A concurrent transaction already claimed the inbound item: the
+      // conditional updateMany matches 0 rows, so the claim fails.
+      const txClient = {
+        materialBatch: { create: jest.fn().mockResolvedValue({ id: 'batch-2' }) },
+        materialInboundItem: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        stockRecord: { create: jest.fn() },
+        incomingInspection: { update: jest.fn() },
+      };
+      mockTx(txClient);
+
+      await expect(service.releaseFinalInspection('item-1', '1', 'user-1')).rejects.toThrow(
+        ConflictException,
+      );
+
+      // The claim fails BEFORE any ledger / stock / backlink writes happen, so
+      // no second batch/movement/stockRecord can ever be created.
+      expect(inventoryMovementLedger.recordMaterialBatchMovement).not.toHaveBeenCalled();
+      expect(txClient.stockRecord.create).not.toHaveBeenCalled();
+      expect(txClient.incomingInspection.update).not.toHaveBeenCalled();
     });
   });
 });

@@ -861,22 +861,25 @@ model MixingExecution {
   team_id        String?
   planned_weight Float?
   actual_weight  Float
-  status         MixingExecutionStatus    @default(confirmed)
-  operatorId     String?
-  confirmedAt    DateTime?
-  note           String?
-  recipe         Recipe                   @relation(fields: [recipeId], references: [id])
-  product        Product                  @relation(fields: [productId], references: [id])
-  area           WorkshopArea             @relation(fields: [area_id], references: [id])
-  shift_type     ShiftType?               @relation(fields: [shift_type_id], references: [id], onDelete: SetNull)
-  lines          MixingExecutionLine[]
-  aggregations   BatchMixingAggregation[]
-  createdAt      DateTime                 @default(now())
-  updatedAt      DateTime                 @updatedAt
+  status            MixingExecutionStatus    @default(confirmed)
+  operatorId        String?
+  confirmedAt       DateTime?
+  note              String?
+  productionBatchId String?
+  productionBatch   ProductionBatch?         @relation(fields: [productionBatchId], references: [id])
+  recipe            Recipe                   @relation(fields: [recipeId], references: [id])
+  product           Product                  @relation(fields: [productId], references: [id])
+  area              WorkshopArea             @relation(fields: [area_id], references: [id])
+  shift_type        ShiftType?               @relation(fields: [shift_type_id], references: [id], onDelete: SetNull)
+  lines             MixingExecutionLine[]
+  aggregations      BatchMixingAggregation[]
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
 
   @@index([work_date, area_id])
   @@index([recipeId])
   @@index([shift_type_id])
+  @@index([productionBatchId])
   @@map("mixing_executions")
 }
 
@@ -1118,6 +1121,7 @@ model ProductionBatch {
   team                    Team?                    @relation(fields: [team_id], references: [id])
   shift_type              ShiftType?               @relation(fields: [shift_type_id], references: [id])
   aggregations            BatchMixingAggregation[]
+  mixingExecutions        MixingExecution[]
   packagingMaterialUsages PackagingMaterialUsage[]
 
   // 食品安全扩展字段

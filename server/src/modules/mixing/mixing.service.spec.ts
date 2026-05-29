@@ -24,6 +24,7 @@ describe('MixingService', () => {
       recipeLine: { findMany: jest.fn() },
       mixingExecution: { create: jest.fn(), findUnique: jest.fn(), count: jest.fn() },
       mixingExecutionLine: { create: jest.fn() },
+      productionBatch: { findUnique: jest.fn() },
       $transaction: jest.fn(),
     };
 
@@ -406,6 +407,90 @@ describe('MixingService', () => {
         actualWeight: 50,
         lines: [{ recipeLineId: 'line-flour', materialBatchId: 'mb-old', actualQuantity: 50, manualOverride: false }],
       })).rejects.toThrow(BadRequestException);
+    });
+
+    it('generates a BatchMaterialUsage per line via the trace bridge when productionBatchId is provided', async () => {
+      const batchMaterialUsageService = { createFromMixingLine: jest.fn().mockResolvedValue({ id: 'usage-1' }) };
+      const svc = new MixingService(prisma as any, batchMaterialUsageService as any);
+
+      prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+      prisma.recipe.findFirst.mockResolvedValue({ id: 'recipe-1', product_id: 'product-1', status: 'active' });
+      prisma.productionBatch.findUnique.mockResolvedValue({ id: 'pb-1' });
+      prisma.recipeLine.findMany.mockResolvedValue([
+        { id: 'line-flour', material_id: 'mat-flour', qty_per_batch: 50 },
+      ]);
+      prisma.mixingExecution.count.mockResolvedValue(0);
+      prisma.mixingExecution.create.mockResolvedValue({ id: 'mix-1' });
+      prisma.stagingAreaStock.findFirst.mockResolvedValue({
+        id: 'stock-1',
+        batchId: 'mb-old',
+        quantity: 80,
+        batch: { materialId: 'mat-flour' },
+      });
+      prisma.stagingAreaStock.updateMany.mockResolvedValue({ count: 1 });
+      prisma.mixingExecutionLine.create.mockResolvedValue({ id: 'exec-line-1' });
+      prisma.mixingExecution.findUnique.mockResolvedValue({ id: 'mix-1', productionBatchId: 'pb-1', lines: [] });
+
+      await svc.createExecution({
+        recipeId: 'recipe-1',
+        productId: 'product-1',
+        areaId: 'area-small',
+        workDate: '2026-04-30',
+        actualWeight: 50,
+        productionBatchId: 'pb-1',
+        lines: [{ recipeLineId: 'line-flour', materialBatchId: 'mb-old', actualQuantity: 50, manualOverride: false }],
+      } as any);
+
+      // The ProductionBatch link is persisted on the execution so usages are
+      // queryable via the ProductionBatch afterwards.
+      expect(prisma.mixingExecution.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ productionBatchId: 'pb-1' }),
+      });
+      expect(batchMaterialUsageService.createFromMixingLine).toHaveBeenCalledTimes(1);
+      expect(batchMaterialUsageService.createFromMixingLine).toHaveBeenCalledWith(
+        expect.objectContaining({
+          productionBatchId: 'pb-1',
+          materialBatchId: 'mb-old',
+          quantity: 50,
+          executionLineId: 'exec-line-1',
+          recipeLineId: 'line-flour',
+        }),
+        prisma,
+      );
+    });
+
+    it('does not generate BatchMaterialUsage when productionBatchId is absent', async () => {
+      const batchMaterialUsageService = { createFromMixingLine: jest.fn() };
+      const svc = new MixingService(prisma as any, batchMaterialUsageService as any);
+
+      prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+      prisma.recipe.findFirst.mockResolvedValue({ id: 'recipe-1', product_id: 'product-1', status: 'active' });
+      prisma.recipeLine.findMany.mockResolvedValue([
+        { id: 'line-flour', material_id: 'mat-flour', qty_per_batch: 50 },
+      ]);
+      prisma.mixingExecution.count.mockResolvedValue(0);
+      prisma.mixingExecution.create.mockResolvedValue({ id: 'mix-1' });
+      prisma.stagingAreaStock.findFirst.mockResolvedValue({
+        id: 'stock-1',
+        batchId: 'mb-old',
+        quantity: 80,
+        batch: { materialId: 'mat-flour' },
+      });
+      prisma.stagingAreaStock.updateMany.mockResolvedValue({ count: 1 });
+      prisma.mixingExecutionLine.create.mockResolvedValue({ id: 'exec-line-1' });
+      prisma.mixingExecution.findUnique.mockResolvedValue({ id: 'mix-1', lines: [] });
+
+      await svc.createExecution({
+        recipeId: 'recipe-1',
+        productId: 'product-1',
+        areaId: 'area-small',
+        workDate: '2026-04-30',
+        actualWeight: 50,
+        lines: [{ recipeLineId: 'line-flour', materialBatchId: 'mb-old', actualQuantity: 50, manualOverride: false }],
+      } as any);
+
+      expect(prisma.productionBatch.findUnique).not.toHaveBeenCalled();
+      expect(batchMaterialUsageService.createFromMixingLine).not.toHaveBeenCalled();
     });
   });
 });
