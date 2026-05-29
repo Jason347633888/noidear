@@ -897,6 +897,7 @@ model MixingExecutionLine {
   material           Material         @relation(fields: [materialId], references: [id])
   materialBatch      MaterialBatch    @relation(fields: [materialBatchId], references: [id])
   stagingAreaStock   StagingAreaStock @relation(fields: [stagingAreaStockId], references: [id])
+  batchMaterialUsages BatchMaterialUsage[]
   createdAt          DateTime         @default(now())
 
   @@index([executionId])
@@ -1179,12 +1180,14 @@ model BatchMaterialUsage {
   area_id           String?
   area              WorkshopArea?   @relation("BatchUsageArea", fields: [area_id], references: [id], onDelete: SetNull)
   areaNameSnapshot  String?
+  executionLineId   String?
+  executionLine     MixingExecutionLine? @relation(fields: [executionLineId], references: [id], onDelete: SetNull)
 
-  @@unique([productionBatchId, materialBatchId]) // 复合唯一索引
   @@index([productionBatchId])
   @@index([materialBatchId])
   @@index([recipeLineId])
   @@index([area_id])
+  @@index([productionBatchId, materialBatchId, executionLineId])
   @@map("batch_material_usages")
 }
 

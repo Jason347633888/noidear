@@ -209,6 +209,9 @@ export class MixingService {
             throw new BadRequestException('配料区库存不足或已被并发占用');
           }
 
+          // Future trace bridge: once MixingExecution gains a ProductionBatch
+          // link, call BatchMaterialUsageService.createFromMixingLine here with
+          // the created line's id so the traceability chain is auto-generated.
           await tx.mixingExecutionLine.create({
             data: {
               executionId: execution.id,
