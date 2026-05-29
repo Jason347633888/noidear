@@ -1976,6 +1976,8 @@ model WorkshopArea {
   company_id String
   code       String
   name       String
+  type       String
+  parentId   String?
   status     String    @default("active")
   sort_order Int       @default(0)
   created_at DateTime  @default(now())
@@ -1992,6 +1994,7 @@ model WorkshopArea {
   @@unique([company_id, code])
   @@unique([company_id, name])
   @@index([status])
+  @@index([company_id, type])
   @@map("workshop_areas")
 }
 

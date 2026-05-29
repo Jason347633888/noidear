@@ -1,7 +1,7 @@
 import { ModuleKey } from '../../shared/decorators/module-key.decorator';
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { WorkshopAreaService } from './workshop-area.service';
+import { CreateWorkshopAreaInput, WorkshopAreaService } from './workshop-area.service';
 
 @UseGuards(JwtAuthGuard)
 @ModuleKey('quality_compliance')
@@ -12,5 +12,10 @@ export class WorkshopAreaController {
   @Get()
   findActive() {
     return this.service.findActive();
+  }
+
+  @Post()
+  create(@Body() body: CreateWorkshopAreaInput) {
+    return this.service.create(body);
   }
 }

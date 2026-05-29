@@ -15,4 +15,18 @@ describe('WorkshopAreaService', () => {
       orderBy: [{ sort_order: 'asc' }, { name: 'asc' }],
     });
   });
+
+  it('creates an area point without introducing a separate AreaPoint model', async () => {
+    const prisma = {
+      workshopArea: {
+        create: jest.fn().mockResolvedValue({ id: 'area-1', company_id: 'tenant-1', code: 'FRIDGE-01', name: '一号冰柜', type: 'temperature_point', parentId: 'room-1' }),
+      },
+    };
+    const service = new WorkshopAreaService(prisma as any);
+    const result = await service.create({ company_id: 'tenant-1', code: 'FRIDGE-01', name: '一号冰柜', type: 'temperature_point', parentId: 'room-1' } as any);
+    expect(prisma.workshopArea.create).toHaveBeenCalledWith({
+      data: { company_id: 'tenant-1', code: 'FRIDGE-01', name: '一号冰柜', type: 'temperature_point', parentId: 'room-1' },
+    });
+    expect(result.type).toBe('temperature_point');
+  });
 });
