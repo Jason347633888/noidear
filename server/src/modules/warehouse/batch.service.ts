@@ -120,6 +120,10 @@ export class BatchService {
     });
   }
 
+  findBySupplierBatchNo(supplierBatchNo: string, _companyId?: string) {
+    return this.prisma.materialBatch.findMany({ where: { supplierBatchNo } });
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async lockExpiredBatchesCron() {
     const locked = await this.lockExpiredBatches();

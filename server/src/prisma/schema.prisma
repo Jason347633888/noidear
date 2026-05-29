@@ -624,7 +624,6 @@ model MaterialBatch {
   scrapItems           MaterialScrapItem[]       @relation("ScrapBatches")
 
   // 食品安全扩展字段
-  supplier_lot_no   String? // 供应商批号
   storage_confirmed Boolean            @default(false)
   // 库存流向状态（仓储操作触发），独立于质量状态 status(BatchStatus)
   // BatchStatus = QC 质量/锁定状态；LotInventoryStatus = 库存流向状态
@@ -862,22 +861,25 @@ model MixingExecution {
   team_id        String?
   planned_weight Float?
   actual_weight  Float
-  status         MixingExecutionStatus    @default(confirmed)
-  operatorId     String?
-  confirmedAt    DateTime?
-  note           String?
-  recipe         Recipe                   @relation(fields: [recipeId], references: [id])
-  product        Product                  @relation(fields: [productId], references: [id])
-  area           WorkshopArea             @relation(fields: [area_id], references: [id])
-  shift_type     ShiftType?               @relation(fields: [shift_type_id], references: [id], onDelete: SetNull)
-  lines          MixingExecutionLine[]
-  aggregations   BatchMixingAggregation[]
-  createdAt      DateTime                 @default(now())
-  updatedAt      DateTime                 @updatedAt
+  status            MixingExecutionStatus    @default(confirmed)
+  operatorId        String?
+  confirmedAt       DateTime?
+  note              String?
+  productionBatchId String?
+  productionBatch   ProductionBatch?         @relation(fields: [productionBatchId], references: [id])
+  recipe            Recipe                   @relation(fields: [recipeId], references: [id])
+  product           Product                  @relation(fields: [productId], references: [id])
+  area              WorkshopArea             @relation(fields: [area_id], references: [id])
+  shift_type        ShiftType?               @relation(fields: [shift_type_id], references: [id], onDelete: SetNull)
+  lines             MixingExecutionLine[]
+  aggregations      BatchMixingAggregation[]
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
 
   @@index([work_date, area_id])
   @@index([recipeId])
   @@index([shift_type_id])
+  @@index([productionBatchId])
   @@map("mixing_executions")
 }
 
@@ -898,6 +900,7 @@ model MixingExecutionLine {
   material           Material         @relation(fields: [materialId], references: [id])
   materialBatch      MaterialBatch    @relation(fields: [materialBatchId], references: [id])
   stagingAreaStock   StagingAreaStock @relation(fields: [stagingAreaStockId], references: [id])
+  batchMaterialUsages BatchMaterialUsage[]
   createdAt          DateTime         @default(now())
 
   @@index([executionId])
@@ -989,6 +992,8 @@ model MaterialInboundItem {
   expiryDate      DateTime
   createdBatchId  String? // 入库完成后创建的批次ID
   createdBatch    MaterialBatch?  @relation("InboundCreatedBatch", fields: [createdBatchId], references: [id], onDelete: SetNull)
+  disposition     String? // 来料检验放行处置（如 concession 让步接收）
+  inspections     IncomingInspection[]
   createdAt       DateTime        @default(now())
 
   @@index([inboundId])
@@ -1116,6 +1121,7 @@ model ProductionBatch {
   team                    Team?                    @relation(fields: [team_id], references: [id])
   shift_type              ShiftType?               @relation(fields: [shift_type_id], references: [id])
   aggregations            BatchMixingAggregation[]
+  mixingExecutions        MixingExecution[]
   packagingMaterialUsages PackagingMaterialUsage[]
 
   // 食品安全扩展字段
@@ -1149,12 +1155,17 @@ model ProductionBatch {
 
   product_recall_batches ProductRecallBatch[]
 
+  // Task 6: 计划项回链（产品批次在包装/成品入库阶段创建后回链到计划项）
+  planItemId String?
+  planItem   ProductionPlanItem? @relation("PlanItemProductionBatches", fields: [planItemId], references: [id])
+
   @@index([batchNumber])
   @@index([productionDate])
   @@index([status])
   @@index([production_run_id])
   @@index([productId])
   @@index([recipeId])
+  @@index([planItemId])
   @@map("production_batches")
 }
 
@@ -1173,12 +1184,14 @@ model BatchMaterialUsage {
   area_id           String?
   area              WorkshopArea?   @relation("BatchUsageArea", fields: [area_id], references: [id], onDelete: SetNull)
   areaNameSnapshot  String?
+  executionLineId   String?
+  executionLine     MixingExecutionLine? @relation(fields: [executionLineId], references: [id], onDelete: SetNull)
 
-  @@unique([productionBatchId, materialBatchId]) // 复合唯一索引
   @@index([productionBatchId])
   @@index([materialBatchId])
   @@index([recipeLineId])
   @@index([area_id])
+  @@index([productionBatchId, materialBatchId, executionLineId])
   @@map("batch_material_usages")
 }
 
@@ -1818,22 +1831,27 @@ model SupplierDocument {
 }
 
 model IncomingInspection {
-  id                String                     @id @default(cuid())
-  company_id        Int
-  material_batch_id String
-  material_batch    MaterialBatch              @relation(fields: [material_batch_id], references: [id])
-  inspected_at      DateTime
-  inspector_id      String?
-  sample_qty        Decimal?                   @db.Decimal(14, 4)
-  sample_unit       String?
-  overall_result    String // 'pass'|'fail'|'conditional_pass'
-  disposition       String?
-  disposition_by    String?
-  notes             String?
-  results           IncomingInspectionResult[]
-  created_at        DateTime                   @default(now())
-  updated_at        DateTime                   @updatedAt
+  id                       String                     @id @default(cuid())
+  company_id               String
+  material_batch_id        String?
+  material_batch           MaterialBatch?             @relation(fields: [material_batch_id], references: [id])
+  material_inbound_item_id String?
+  material_inbound_item    MaterialInboundItem?       @relation(fields: [material_inbound_item_id], references: [id])
+  is_final                 Boolean                    @default(false)
+  inspected_at             DateTime
+  inspector_id             String?
+  sample_qty               Decimal?                   @db.Decimal(14, 4)
+  sample_unit              String?
+  overall_result           String // 'pass'|'fail'|'conditional_pass'
+  disposition              String?
+  disposition_by           String?
+  notes                    String?
+  results                  IncomingInspectionResult[]
+  created_at               DateTime                   @default(now())
+  updated_at               DateTime                   @updatedAt
 
+  @@index([company_id, material_inbound_item_id])
+  @@index([company_id, material_batch_id])
   @@map("incoming_inspections")
 }
 
@@ -1976,6 +1994,8 @@ model WorkshopArea {
   company_id String
   code       String
   name       String
+  type       String
+  parentId   String?
   status     String    @default("active")
   sort_order Int       @default(0)
   created_at DateTime  @default(now())
@@ -1992,6 +2012,7 @@ model WorkshopArea {
   @@unique([company_id, code])
   @@unique([company_id, name])
   @@index([status])
+  @@index([company_id, type])
   @@map("workshop_areas")
 }
 
@@ -2192,6 +2213,7 @@ model InspectionStandard {
   version       String?
   status        String           @default("active")
   items         InspectionItem[]
+  inspection_records InspectionRecord[]
   created_at    DateTime         @default(now())
   updated_at    DateTime         @updatedAt
 
@@ -2210,8 +2232,51 @@ model InspectionItem {
   spec_max    Decimal?           @db.Decimal(14, 4)
   spec_text   String?
   is_critical Boolean            @default(false)
+  inspection_record_items InspectionRecordItem[]
 
   @@map("inspection_items")
+}
+
+model InspectionRecord {
+  id             String              @id @default(cuid())
+  company_id     String
+  standard_id    String?
+  standard       InspectionStandard? @relation(fields: [standard_id], references: [id], onDelete: SetNull)
+  object_type    String
+  object_id      String
+  inspected_at   DateTime
+  inspector_id   String?
+  overall_result String
+  status         String              @default("submitted")
+  source_task_id String?
+  created_at     DateTime            @default(now())
+  updated_at     DateTime            @updatedAt
+  items          InspectionRecordItem[]
+
+  @@index([company_id, object_type, object_id])
+  @@index([standard_id])
+  @@map("inspection_records")
+}
+
+model InspectionRecordItem {
+  id                 String            @id @default(cuid())
+  record_id          String
+  record             InspectionRecord  @relation(fields: [record_id], references: [id], onDelete: Cascade)
+  inspection_item_id String?
+  inspection_item    InspectionItem?   @relation(fields: [inspection_item_id], references: [id], onDelete: SetNull)
+  item_name          String
+  actual_value       String?
+  unit               String?
+  text_result        String?
+  judgment           String
+  standard_snapshot  Json?
+  remark             String?
+  evidence_file_id   String?
+  created_at         DateTime          @default(now())
+
+  @@index([record_id])
+  @@index([inspection_item_id])
+  @@map("inspection_record_items")
 }
 
 // ─── 质量合规 ─────────────────────────────────────
@@ -2220,8 +2285,9 @@ model NonConformance {
   id               String    @id @default(cuid())
   company_id       String
   nc_no            String
-  source_type      String // 'material_batch'|'production_batch'|'product'
+  source_type      String // 'material_batch'|'production_batch'|'product'|'inspection_record'
   source_id        String
+  source_item_id   String? // FK to InspectionRecordItem.id when source_type='inspection_record'
   nc_type          String?
   description      String
   qty              Decimal?  @db.Decimal(14, 4)
@@ -2241,7 +2307,7 @@ model NonConformance {
 
   @@unique([company_id, nc_no])
   @@index([company_id, status])
-  @@index([company_id, source_type, source_id])
+  @@index([company_id, source_type, source_id, source_item_id])
   @@index([discoveredById])
 }
 
@@ -2861,10 +2927,58 @@ model TraceabilitySnapshot {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // Task 9: bounded trace-context snapshot (immutable trace result)
+  rootObjectType   String?
+  rootObjectId     String?
+  snapshotData     Json?
+  fileId           String?
+  snapshotPurpose  String  @default("evidence_export") // evidence_export | preview
+  readinessStatus  String  @default("complete") // complete | incomplete
+  readinessReasons Json?
+
   productRecalls ProductRecall[] @relation("ProductRecallTraceabilitySnapshot")
 
   @@index([company_id])
   @@map("traceability_snapshots")
+}
+
+// Task 9: evidence file pointer (the rendered binary lives here, NOT in Document)
+model EvidenceFile {
+  id             String   @id @default(cuid())
+  company_id     String
+  resourceType   String
+  resourceId     String
+  resourceItemId String?
+  fileName       String
+  filePath       String
+  fileHash       String?
+  mimeType       String?
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  @@index([company_id, resourceType, resourceId])
+  @@map("evidence_files")
+}
+
+// Task 9: evidence export event (links to an immutable snapshot; NOT a file table)
+model EvidenceExport {
+  id               String   @id @default(cuid())
+  company_id       String
+  resourceType     String // first release: "production_batch"
+  resourceId       String
+  snapshotId       String
+  templateVersion  String?
+  exportScope      String   @default("main_chain_evidence")
+  dataSnapshot     Json
+  approvalSnapshot Json?
+  attachmentIndex  Json?
+  summaryFormat    String   @default("pdf")
+  fileId           String?
+  exportedById     String?
+  exportedAt       DateTime @default(now())
+
+  @@index([company_id, resourceType, resourceId])
+  @@map("evidence_exports")
 }
 
 
@@ -2981,6 +3095,40 @@ model BusinessNumberSequence {
   @@map("business_number_sequences")
 }
 
+// ========================================
+// Company Tenant & Profile (multi-tenant foundation)
+// ========================================
+
+model CompanyTenant {
+  id              String   @id @default(cuid())
+  name            String
+  timezone        String   @default("Asia/Shanghai")
+  retentionPolicy String   @default("default_food_safety")
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  profile         CompanyProfile?
+
+  @@map("company_tenants")
+}
+
+model CompanyProfile {
+  id                      String        @id @default(cuid())
+  company_id              String        @unique
+  company                 CompanyTenant @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  legalName               String?
+  unifiedSocialCreditCode String?
+  manufacturerName        String?
+  manufacturerAddress     String?
+  manufacturerPhone       String?
+  originPlace             String?
+  foodProductionLicense   String?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  @@map("company_profiles")
+}
+
 // 简化角色与模块开关
 model ModuleAccessConfig {
   id        String   @id @default(cuid())
@@ -2994,4 +3142,70 @@ model ModuleAccessConfig {
   @@index([moduleKey])
   @@index([roleCode])
   @@map("module_access_configs")
+}
+
+// ========================================
+// 生产计划 (Production Plan) — Task 6
+// ========================================
+
+model ProductionPlan {
+  id           String    @id @default(cuid())
+  company_id   String
+  planNo       String
+  planDate     DateTime
+  lineId       String?
+  status       String    @default("draft")
+  createdById  String?
+  releasedAt   DateTime?
+  releasedById String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  items ProductionPlanItem[]
+
+  @@unique([company_id, planNo])
+  @@index([company_id, status])
+  @@map("production_plans")
+}
+
+model ProductionPlanItem {
+  id         String         @id @default(cuid())
+  planId     String
+  plan       ProductionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  productId  String
+  recipeId   String?
+  plannedQty Decimal        @db.Decimal(14, 4)
+  unit       String
+  lineId     String?
+  shiftId    String?
+  status     String         @default("planned")
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  tasks             ProductionTask[]
+  productionBatches ProductionBatch[] @relation("PlanItemProductionBatches")
+
+  @@index([planId])
+  @@index([productId])
+  @@map("production_plan_items")
+}
+
+model ProductionTask {
+  id             String             @id @default(cuid())
+  planItemId     String
+  planItem       ProductionPlanItem @relation(fields: [planItemId], references: [id], onDelete: Cascade)
+  taskType       String
+  resourceType   String?
+  resourceId     String?
+  assigneeRole   String?
+  assigneeUserId String?
+  dueAt          DateTime?
+  status         String             @default("pending")
+  completedAt    DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@unique([planItemId, taskType, resourceType, resourceId])
+  @@index([status, dueAt])
+  @@map("production_tasks")
 }

@@ -231,6 +231,12 @@ export const requisitionApi = {
 // Staging Area APIs
 // =========================================================================
 
+export interface AreaStocktakeItem {
+  batchId: string;
+  actualQuantity: number;
+  note?: string;
+}
+
 export const stagingAreaApi = {
   getStock(params?: { areaId?: string; materialId?: string; page?: number; limit?: number }) {
     return request.get('/warehouse/staging-area/stock', { params });
@@ -251,6 +257,19 @@ export const stagingAreaApi = {
     note?: string;
   }) {
     return request.post('/warehouse/staging-area/stocktakes', data);
+  },
+
+  /** Area-level batch stocktake: submits many batches for one area/shift/date in one call. */
+  confirmAreaStocktake(data: {
+    areaId: string;
+    workDate: string;
+    shiftTypeId: string;
+    kind: 'shift_start' | 'shift_end';
+    teamId?: string;
+    operatorId?: string;
+    items: AreaStocktakeItem[];
+  }) {
+    return request.post('/warehouse/staging-area/stocktakes/area', data);
   },
 };
 

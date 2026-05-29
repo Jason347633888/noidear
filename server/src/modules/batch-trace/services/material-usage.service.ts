@@ -98,6 +98,17 @@ export class MaterialUsageService {
       throw new NotFoundException('关联记录不存在');
     }
 
+    // Defense-in-depth: usages created by the mixing trace bridge carry an
+    // executionLineId. They are auto-generated trace facts whose quantities
+    // were decremented from StagingAreaStock (not MaterialBatch), so deleting
+    // one would destroy a trace fact AND wrongly inflate MaterialBatch.quantity.
+    // Reversals must go through a dedicated correction flow.
+    if (usage.executionLineId != null) {
+      throw new ForbiddenException(
+        'Auto-generated trace-bridge material usage cannot be deleted; reversals must go through a dedicated correction flow',
+      );
+    }
+
     return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.materialBatch.update({
         where: { id: usage.materialBatchId },

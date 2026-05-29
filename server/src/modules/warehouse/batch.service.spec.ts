@@ -360,4 +360,19 @@ describe('BatchService', () => {
       expect(prisma.materialBatch.update).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('findBySupplierBatchNo', () => {
+    it('uses supplierBatchNo as the only runtime supplier lot field', async () => {
+      const prisma = {
+        materialBatch: { findMany: jest.fn().mockResolvedValue([{ id: 'batch-1', supplierBatchNo: 'SUP-LOT-1' }]) },
+      };
+      const service = new BatchService(prisma as any);
+      const batches = await service.findBySupplierBatchNo('SUP-LOT-1', 'tenant-1');
+      expect(prisma.materialBatch.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ supplierBatchNo: 'SUP-LOT-1' }),
+      }));
+      expect(JSON.stringify(prisma.materialBatch.findMany.mock.calls)).not.toContain('supplier_lot_no');
+      expect(batches[0].supplierBatchNo).toBe('SUP-LOT-1');
+    });
+  });
 });

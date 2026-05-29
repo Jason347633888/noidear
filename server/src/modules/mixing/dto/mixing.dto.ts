@@ -83,6 +83,10 @@ export class CreateMixingExecutionDto {
   @Min(0.000001)
   actualWeight!: number;
 
+  @IsOptional()
+  @IsString()
+  productionBatchId?: string;
+
   @ArrayNotEmpty()
   @ValidateNested({ each: true })
   @Type(() => MixingLineInputDto)

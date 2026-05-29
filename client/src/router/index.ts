@@ -112,6 +112,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requireRole: 'admin' },
       },
       {
+        path: 'companies/:companyId/settings',
+        name: 'CompanySettings',
+        component: () => import('@/views/company/CompanySettings.vue'),
+        meta: { title: '公司配置', requireRole: 'admin' },
+      },
+      {
         path: 'password',
         name: 'Password',
         component: () => import('@/views/Password.vue'),
@@ -121,6 +127,12 @@ const routes: RouteRecordRaw[] = [
         name: 'MyTodos',
         component: () => import('@/views/my-todos/MyTodos.vue'),
         meta: { title: '我的待办' },
+      },
+      {
+        path: 'production-plans',
+        name: 'ProductionPlanWorkbench',
+        component: () => import('@/views/production-plan/ProductionPlanWorkbench.vue'),
+        meta: { title: '生产计划' },
       },
       // 批次追溯模块
       {
@@ -504,6 +516,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/incoming-inspection/IncomingInspectionList.vue'),
         meta: { title: '来料检验' },
       },
+      // 通用检验工作台
+      {
+        path: 'inspection-records',
+        name: 'InspectionRecordWorkbench',
+        component: () => import('@/views/inspection-record/InspectionRecordWorkbench.vue'),
+        meta: { title: '通用检验工作台' },
+      },
       // 产品目录模块
       {
         path: 'products',
@@ -587,6 +606,13 @@ const routes: RouteRecordRaw[] = [
         name: 'ShiftDashboard',
         component: () => import('@/views/shift/ShiftDashboard.vue'),
         meta: { title: '班次看板' },
+      },
+      // 首发闭环烟测导航
+      {
+        path: 'first-release-smoke',
+        name: 'FirstReleaseSmoke',
+        component: () => import('@/views/first-release/FirstReleaseSmoke.vue'),
+        meta: { title: '首发闭环检查', requiresAuth: true },
       },
     ],
   },

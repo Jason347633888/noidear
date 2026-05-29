@@ -5,10 +5,8 @@ import {
   Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { BatchNumberGeneratorService } from '../batch-trace/services/batch-number-generator.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 import { CreateInboundDto, QueryInboundDto } from './dto/inbound.dto';
-import { InventoryMovementLedgerService } from './services/inventory-movement-ledger.service';
 import { SupplierAccessService } from './services/supplier-access.service';
 import { Prisma } from '@prisma/client';
 import * as dayjs from 'dayjs';
@@ -19,9 +17,7 @@ import { userIdsInDepts } from '../module-access/ownership-helpers';
 export class InboundService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly batchNumberGenerator: BatchNumberGeneratorService,
     @Optional() private readonly approvalEngine: ApprovalEngineService,
-    private readonly inventoryMovementLedger: InventoryMovementLedgerService,
     private readonly supplierAccess: SupplierAccessService,
   ) {}
 
@@ -166,6 +162,10 @@ export class InboundService {
     });
   }
 
+  // Completing an inbound only transitions its status. Material batches, the
+  // InventoryMovement ledger entry and the StockRecord balance projection are
+  // now created exclusively when a FINAL incoming inspection is released
+  // (IncomingInspectionService.releaseFinalInspection), gating stock on QC.
   async complete(id: string, operatorId: string) {
     const inbound = await this.findOne(id);
 
@@ -173,63 +173,13 @@ export class InboundService {
       throw new BadRequestException('Only approved inbound can be completed');
     }
 
-    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      for (const item of inbound.items) {
-        const batchNumber = await this.batchNumberGenerator.generateBatchNumber('material');
-
-        const batch = await tx.materialBatch.create({
-          data: {
-            batchNumber,
-            materialId: item.materialId,
-            supplierBatchNo: item.supplierBatchNo,
-            supplierId: inbound.supplierId,
-            productionDate: item.productionDate,
-            expiryDate: item.expiryDate,
-            quantity: item.quantity,
-            status: 'normal',
-          },
-        });
-
-        await tx.stockRecord.create({
-          data: {
-            batchId: batch.id,
-            recordType: 'in',
-            quantity: item.quantity,
-            relatedId: inbound.id,
-            relatedType: 'inbound',
-            operatorId,
-          },
-        });
-
-        await this.inventoryMovementLedger.recordMaterialBatchMovement(
-          {
-            movementType: 'receive',
-            batchId: batch.id,
-            quantity: item.quantity,
-            unit: 'kg',
-            refType: 'inbound',
-            refId: inbound.id,
-            operatorId,
-            movedAt: new Date(),
-            notes: '来料入库',
-          },
-          tx,
-        );
-
-        await tx.materialInboundItem.update({
-          where: { id: item.id },
-          data: { createdBatchId: batch.id },
-        });
-      }
-
-      return tx.materialInbound.update({
-        where: { id },
-        data: {
-          status: 'completed',
-          completedAt: new Date(),
-          operatorId,
-        },
-      });
+    return this.prisma.materialInbound.update({
+      where: { id },
+      data: {
+        status: 'completed',
+        completedAt: new Date(),
+        operatorId,
+      },
     });
   }
 }

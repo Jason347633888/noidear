@@ -3,6 +3,7 @@ import { MixingService } from './mixing.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BadRequestException } from '@nestjs/common';
 import { OwnershipContext } from '../module-access/ownership-context';
+import { BatchMaterialUsageService } from '../batch-trace/services/batch-material-usage.service';
 
 describe('MixingService', () => {
   let service: MixingService;
@@ -24,6 +25,8 @@ describe('MixingService', () => {
       recipeLine: { findMany: jest.fn() },
       mixingExecution: { create: jest.fn(), findUnique: jest.fn(), count: jest.fn() },
       mixingExecutionLine: { create: jest.fn() },
+      productionBatch: { findUnique: jest.fn() },
+      productionPlanItem: { findUnique: jest.fn() },
       $transaction: jest.fn(),
     };
 
@@ -31,6 +34,10 @@ describe('MixingService', () => {
       providers: [
         MixingService,
         { provide: PrismaService, useValue: prisma },
+        // The bridge dependency is now a REQUIRED Nest provider (the @Optional()
+        // decorator was removed so a wiring regression fails loudly at bootstrap).
+        // These tests do not exercise the bridge, so a stub is sufficient.
+        { provide: BatchMaterialUsageService, useValue: { createFromMixingLine: jest.fn() } },
       ],
     }).compile();
 
@@ -406,6 +413,251 @@ describe('MixingService', () => {
         actualWeight: 50,
         lines: [{ recipeLineId: 'line-flour', materialBatchId: 'mb-old', actualQuantity: 50, manualOverride: false }],
       })).rejects.toThrow(BadRequestException);
+    });
+
+    it('generates a BatchMaterialUsage per line via the trace bridge when productionBatchId is provided', async () => {
+      const batchMaterialUsageService = { createFromMixingLine: jest.fn().mockResolvedValue({ id: 'usage-1' }) };
+      const svc = new MixingService(prisma as any, batchMaterialUsageService as any);
+
+      prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+      prisma.recipe.findFirst.mockResolvedValue({ id: 'recipe-1', product_id: 'product-1', status: 'active' });
+      prisma.productionBatch.findUnique.mockResolvedValue({
+        id: 'pb-1',
+        productId: 'product-1',
+        recipeId: 'recipe-1',
+        status: 'in_progress',
+        planItemId: null,
+      });
+      prisma.recipeLine.findMany.mockResolvedValue([
+        { id: 'line-flour', material_id: 'mat-flour', qty_per_batch: 50 },
+      ]);
+      prisma.mixingExecution.count.mockResolvedValue(0);
+      prisma.mixingExecution.create.mockResolvedValue({ id: 'mix-1' });
+      prisma.stagingAreaStock.findFirst.mockResolvedValue({
+        id: 'stock-1',
+        batchId: 'mb-old',
+        quantity: 80,
+        batch: { materialId: 'mat-flour' },
+      });
+      prisma.stagingAreaStock.updateMany.mockResolvedValue({ count: 1 });
+      prisma.mixingExecutionLine.create.mockResolvedValue({ id: 'exec-line-1' });
+      prisma.mixingExecution.findUnique.mockResolvedValue({ id: 'mix-1', productionBatchId: 'pb-1', lines: [] });
+
+      await svc.createExecution({
+        recipeId: 'recipe-1',
+        productId: 'product-1',
+        areaId: 'area-small',
+        workDate: '2026-04-30',
+        actualWeight: 50,
+        productionBatchId: 'pb-1',
+        lines: [{ recipeLineId: 'line-flour', materialBatchId: 'mb-old', actualQuantity: 50, manualOverride: false }],
+      } as any);
+
+      // The ProductionBatch link is persisted on the execution so usages are
+      // queryable via the ProductionBatch afterwards.
+      expect(prisma.mixingExecution.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ productionBatchId: 'pb-1' }),
+      });
+      expect(batchMaterialUsageService.createFromMixingLine).toHaveBeenCalledTimes(1);
+      expect(batchMaterialUsageService.createFromMixingLine).toHaveBeenCalledWith(
+        expect.objectContaining({
+          productionBatchId: 'pb-1',
+          materialBatchId: 'mb-old',
+          quantity: 50,
+          executionLineId: 'exec-line-1',
+          recipeLineId: 'line-flour',
+        }),
+        prisma,
+      );
+    });
+
+    it('does not generate BatchMaterialUsage when productionBatchId is absent', async () => {
+      const batchMaterialUsageService = { createFromMixingLine: jest.fn() };
+      const svc = new MixingService(prisma as any, batchMaterialUsageService as any);
+
+      prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+      prisma.recipe.findFirst.mockResolvedValue({ id: 'recipe-1', product_id: 'product-1', status: 'active' });
+      prisma.recipeLine.findMany.mockResolvedValue([
+        { id: 'line-flour', material_id: 'mat-flour', qty_per_batch: 50 },
+      ]);
+      prisma.mixingExecution.count.mockResolvedValue(0);
+      prisma.mixingExecution.create.mockResolvedValue({ id: 'mix-1' });
+      prisma.stagingAreaStock.findFirst.mockResolvedValue({
+        id: 'stock-1',
+        batchId: 'mb-old',
+        quantity: 80,
+        batch: { materialId: 'mat-flour' },
+      });
+      prisma.stagingAreaStock.updateMany.mockResolvedValue({ count: 1 });
+      prisma.mixingExecutionLine.create.mockResolvedValue({ id: 'exec-line-1' });
+      prisma.mixingExecution.findUnique.mockResolvedValue({ id: 'mix-1', lines: [] });
+
+      await svc.createExecution({
+        recipeId: 'recipe-1',
+        productId: 'product-1',
+        areaId: 'area-small',
+        workDate: '2026-04-30',
+        actualWeight: 50,
+        lines: [{ recipeLineId: 'line-flour', materialBatchId: 'mb-old', actualQuantity: 50, manualOverride: false }],
+      } as any);
+
+      expect(prisma.productionBatch.findUnique).not.toHaveBeenCalled();
+      expect(batchMaterialUsageService.createFromMixingLine).not.toHaveBeenCalled();
+    });
+
+    it('rejects when productionBatch product does not match dto product (no usage created)', async () => {
+      const batchMaterialUsageService = { createFromMixingLine: jest.fn() };
+      const svc = new MixingService(prisma as any, batchMaterialUsageService as any);
+
+      prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+      prisma.recipe.findFirst.mockResolvedValue({ id: 'recipe-1', product_id: 'product-1', status: 'active' });
+      prisma.productionBatch.findUnique.mockResolvedValue({
+        id: 'pb-1',
+        productId: 'product-other',
+        recipeId: 'recipe-1',
+        status: 'in_progress',
+        planItemId: null,
+      });
+
+      await expect(
+        svc.createExecution({
+          recipeId: 'recipe-1',
+          productId: 'product-1',
+          areaId: 'area-small',
+          workDate: '2026-04-30',
+          actualWeight: 50,
+          productionBatchId: 'pb-1',
+          lines: [{ recipeLineId: 'line-flour', materialBatchId: 'mb-old', actualQuantity: 50, manualOverride: false }],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.mixingExecution.create).not.toHaveBeenCalled();
+      expect(batchMaterialUsageService.createFromMixingLine).not.toHaveBeenCalled();
+    });
+
+    it('rejects when productionBatch recipe does not match dto recipe (no usage created)', async () => {
+      const batchMaterialUsageService = { createFromMixingLine: jest.fn() };
+      const svc = new MixingService(prisma as any, batchMaterialUsageService as any);
+
+      prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+      prisma.recipe.findFirst.mockResolvedValue({ id: 'recipe-1', product_id: 'product-1', status: 'active' });
+      prisma.productionBatch.findUnique.mockResolvedValue({
+        id: 'pb-1',
+        productId: 'product-1',
+        recipeId: 'recipe-other',
+        status: 'in_progress',
+        planItemId: null,
+      });
+
+      await expect(
+        svc.createExecution({
+          recipeId: 'recipe-1',
+          productId: 'product-1',
+          areaId: 'area-small',
+          workDate: '2026-04-30',
+          actualWeight: 50,
+          productionBatchId: 'pb-1',
+          lines: [{ recipeLineId: 'line-flour', materialBatchId: 'mb-old', actualQuantity: 50, manualOverride: false }],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.mixingExecution.create).not.toHaveBeenCalled();
+      expect(batchMaterialUsageService.createFromMixingLine).not.toHaveBeenCalled();
+    });
+
+    it('rejects when productionBatch status is completed (no usage created)', async () => {
+      const batchMaterialUsageService = { createFromMixingLine: jest.fn() };
+      const svc = new MixingService(prisma as any, batchMaterialUsageService as any);
+
+      prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+      prisma.recipe.findFirst.mockResolvedValue({ id: 'recipe-1', product_id: 'product-1', status: 'active' });
+      prisma.productionBatch.findUnique.mockResolvedValue({
+        id: 'pb-1',
+        productId: 'product-1',
+        recipeId: 'recipe-1',
+        status: 'completed',
+        planItemId: null,
+      });
+
+      await expect(
+        svc.createExecution({
+          recipeId: 'recipe-1',
+          productId: 'product-1',
+          areaId: 'area-small',
+          workDate: '2026-04-30',
+          actualWeight: 50,
+          productionBatchId: 'pb-1',
+          lines: [{ recipeLineId: 'line-flour', materialBatchId: 'mb-old', actualQuantity: 50, manualOverride: false }],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.mixingExecution.create).not.toHaveBeenCalled();
+      expect(batchMaterialUsageService.createFromMixingLine).not.toHaveBeenCalled();
+    });
+
+    it('rejects when productionBatch status is cancelled (no usage created)', async () => {
+      const batchMaterialUsageService = { createFromMixingLine: jest.fn() };
+      const svc = new MixingService(prisma as any, batchMaterialUsageService as any);
+
+      prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+      prisma.recipe.findFirst.mockResolvedValue({ id: 'recipe-1', product_id: 'product-1', status: 'active' });
+      prisma.productionBatch.findUnique.mockResolvedValue({
+        id: 'pb-1',
+        productId: 'product-1',
+        recipeId: 'recipe-1',
+        status: 'cancelled',
+        planItemId: null,
+      });
+
+      await expect(
+        svc.createExecution({
+          recipeId: 'recipe-1',
+          productId: 'product-1',
+          areaId: 'area-small',
+          workDate: '2026-04-30',
+          actualWeight: 50,
+          productionBatchId: 'pb-1',
+          lines: [{ recipeLineId: 'line-flour', materialBatchId: 'mb-old', actualQuantity: 50, manualOverride: false }],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.mixingExecution.create).not.toHaveBeenCalled();
+      expect(batchMaterialUsageService.createFromMixingLine).not.toHaveBeenCalled();
+    });
+
+    it('rejects when linked productionPlanItem product mismatches dto product (no usage created)', async () => {
+      const batchMaterialUsageService = { createFromMixingLine: jest.fn() };
+      const svc = new MixingService(prisma as any, batchMaterialUsageService as any);
+
+      prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+      prisma.recipe.findFirst.mockResolvedValue({ id: 'recipe-1', product_id: 'product-1', status: 'active' });
+      prisma.productionBatch.findUnique.mockResolvedValue({
+        id: 'pb-1',
+        productId: 'product-1',
+        recipeId: 'recipe-1',
+        status: 'in_progress',
+        planItemId: 'plan-item-1',
+      });
+      prisma.productionPlanItem.findUnique.mockResolvedValue({
+        id: 'plan-item-1',
+        productId: 'product-other',
+        recipeId: 'recipe-1',
+      });
+
+      await expect(
+        svc.createExecution({
+          recipeId: 'recipe-1',
+          productId: 'product-1',
+          areaId: 'area-small',
+          workDate: '2026-04-30',
+          actualWeight: 50,
+          productionBatchId: 'pb-1',
+          lines: [{ recipeLineId: 'line-flour', materialBatchId: 'mb-old', actualQuantity: 50, manualOverride: false }],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.mixingExecution.create).not.toHaveBeenCalled();
+      expect(batchMaterialUsageService.createFromMixingLine).not.toHaveBeenCalled();
     });
   });
 });

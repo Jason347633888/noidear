@@ -65,6 +65,9 @@ import { TeamShiftModule } from './modules/team-shift/team-shift.module';
 import { MixingModule } from './modules/mixing/mixing.module';
 import { ProductProcessChangeModule } from './modules/product-process-change/product-process-change.module';
 import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module';
+import { CompanyModule } from './modules/company/company.module';
+import { ProductionPlanModule } from './modules/production-plan/production-plan.module';
+import { InspectionRecordModule } from './modules/inspection-record/inspection-record.module';
 
 @Module({
   imports: [
@@ -133,6 +136,9 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
     MixingModule,
     ProductProcessChangeModule,
     OrgBootstrapModule,
+    CompanyModule,
+    ProductionPlanModule,
+    InspectionRecordModule,
     ModuleAccessModule,
   ],
   providers: [

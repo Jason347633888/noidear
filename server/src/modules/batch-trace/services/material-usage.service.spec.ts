@@ -323,5 +323,25 @@ describe('MaterialUsageService', () => {
 
       await expect(service.remove(id)).rejects.toThrow(NotFoundException);
     });
+
+    it('should throw ForbiddenException for an auto-generated trace-bridge usage (executionLineId set) and not mutate inventory', async () => {
+      const id = 'usage-bridge';
+      const mockUsage = {
+        id,
+        productionBatchId: 'prod-1',
+        materialBatchId: 'mat-1',
+        quantity: 10,
+        executionLineId: 'exec-line-1',
+      };
+
+      jest.spyOn(prisma.batchMaterialUsage, 'findUnique').mockResolvedValue(mockUsage as any);
+      jest.spyOn(prisma.materialBatch, 'update').mockResolvedValue({} as any);
+      jest.spyOn(prisma.batchMaterialUsage, 'delete').mockResolvedValue(mockUsage as any);
+
+      await expect(service.remove(id)).rejects.toThrow(ForbiddenException);
+
+      expect(prisma.materialBatch.update).not.toHaveBeenCalled();
+      expect(prisma.batchMaterialUsage.delete).not.toHaveBeenCalled();
+    });
   });
 });

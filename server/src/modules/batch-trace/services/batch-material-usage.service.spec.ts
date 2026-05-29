@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { BatchMaterialUsageService } from './batch-material-usage.service';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('BatchMaterialUsageService', () => {
   let service: BatchMaterialUsageService;
@@ -130,6 +130,31 @@ describe('BatchMaterialUsageService', () => {
         quantity: 10,
       },
     });
+  });
+
+  it('allows the same material batch to be used twice when executionLineId differs', async () => {
+    const prisma = {
+      batchMaterialUsage: {
+        create: jest.fn()
+          .mockResolvedValueOnce({ id: 'usage-1', executionLineId: 'line-1' })
+          .mockResolvedValueOnce({ id: 'usage-2', executionLineId: 'line-2' }),
+      },
+    };
+    const service = new BatchMaterialUsageService(prisma as any);
+    await service.createFromMixingLine({ productionBatchId: 'pb-1', materialBatchId: 'mb-1', quantity: 10, executionLineId: 'line-1' } as any);
+    await service.createFromMixingLine({ productionBatchId: 'pb-1', materialBatchId: 'mb-1', quantity: 5, executionLineId: 'line-2' } as any);
+    expect(prisma.batchMaterialUsage.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects createFromMixingLine without executionLineId', async () => {
+    const prisma = {
+      batchMaterialUsage: { create: jest.fn() },
+    };
+    const service = new BatchMaterialUsageService(prisma as any);
+    await expect(
+      service.createFromMixingLine({ productionBatchId: 'pb-1', materialBatchId: 'mb-1', quantity: 10 } as any),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.batchMaterialUsage.create).not.toHaveBeenCalled();
   });
 
   describe('getProductionBatchMaterials', () => {

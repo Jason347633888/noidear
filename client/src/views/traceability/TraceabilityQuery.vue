@@ -23,6 +23,22 @@
       </div>
     </div>
 
+    <div class="evidence-export-bar">
+      <span class="toolbar-label">一键证据导出</span>
+      <el-input
+        v-model="evidenceBatchId"
+        size="small"
+        placeholder="生产批次ID"
+        style="width: 220px"
+      />
+      <el-button
+        size="small"
+        type="primary"
+        :loading="evidenceLoading"
+        @click="runEvidenceExport"
+      >生成证据快照</el-button>
+    </div>
+
     <ObjectTraceQueryPanel v-if="activeEntry === 'object'" @submit="runObjectQuery" />
     <ScenarioWorkbenchPanel v-else @submit="runScenarioQuery" />
 
@@ -49,6 +65,8 @@ const activeEntry = ref<'object' | 'scenario'>('object');
 const activeView = ref<'ledger' | 'graph'>('ledger');
 const result = ref<TraceQueryResult | null>(null);
 const error = ref('');
+const evidenceBatchId = ref('');
+const evidenceLoading = ref(false);
 
 const runObjectQuery = async (payload: any) => {
   error.value = '';
@@ -107,6 +125,26 @@ const createExport = async (exportMode: 'simple' | 'fullPackage') => {
     ElMessage.error('导出失败');
   }
 };
+
+const runEvidenceExport = async () => {
+  if (!evidenceBatchId.value) {
+    ElMessage.warning('请输入生产批次ID');
+    return;
+  }
+  evidenceLoading.value = true;
+  try {
+    const snapshot = await traceabilityApi.exportProductionBatchEvidence(evidenceBatchId.value);
+    if (snapshot.readinessStatus === 'complete') {
+      ElMessage.success('证据快照与导出已生成');
+    } else {
+      ElMessage.warning(`生成的是预览快照（未就绪）：${(snapshot.readinessReasons ?? []).join('；')}`);
+    }
+  } catch {
+    ElMessage.error('证据快照生成失败');
+  } finally {
+    evidenceLoading.value = false;
+  }
+};
 </script>
 
 <style scoped>
@@ -130,5 +168,12 @@ const createExport = async (exportMode: 'simple' | 'fullPackage') => {
 .toolbar-label {
   font-size: 12px;
   color: #7f8c8d;
+}
+
+.evidence-export-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 </style>

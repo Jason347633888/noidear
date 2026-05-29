@@ -1,17 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { InboundService } from './inbound.service';
-import { BatchNumberGeneratorService } from '../batch-trace/services/batch-number-generator.service';
-import { InventoryMovementLedgerService } from './services/inventory-movement-ledger.service';
 import { SupplierAccessService } from './services/supplier-access.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import * as dayjs from 'dayjs';
 
 describe('InboundService', () => {
   let service: InboundService;
   let prisma: PrismaService;
-  let batchNumberGenerator: BatchNumberGeneratorService;
-  let inventoryMovementLedger: InventoryMovementLedgerService;
   let supplierAccess: SupplierAccessService;
 
   beforeEach(async () => {
@@ -41,16 +36,6 @@ describe('InboundService', () => {
           },
         },
         {
-          provide: BatchNumberGeneratorService,
-          useValue: {
-            generateBatchNumber: jest.fn(),
-          },
-        },
-        {
-          provide: InventoryMovementLedgerService,
-          useValue: { recordMaterialBatchMovement: jest.fn() },
-        },
-        {
           provide: SupplierAccessService,
           useValue: {
             assertSupplierUsable: jest.fn(),
@@ -61,8 +46,6 @@ describe('InboundService', () => {
 
     service = module.get<InboundService>(InboundService);
     prisma = module.get<PrismaService>(PrismaService);
-    batchNumberGenerator = module.get<BatchNumberGeneratorService>(BatchNumberGeneratorService);
-    inventoryMovementLedger = module.get<InventoryMovementLedgerService>(InventoryMovementLedgerService);
     supplierAccess = module.get<SupplierAccessService>(SupplierAccessService);
   });
 
@@ -227,8 +210,9 @@ describe('InboundService', () => {
   });
 
   describe('complete', () => {
-    it('should complete inbound and create batches', async () => {
-      // Arrange
+    it('should only transition status to completed without creating any batch/stock', async () => {
+      // Batches/stock are now gated behind a final incoming inspection release,
+      // so complete() must no longer create MaterialBatch/StockRecord/ledger entries.
       const mockInbound = {
         id: 'inbound-001',
         status: 'approved',
@@ -246,66 +230,27 @@ describe('InboundService', () => {
         ],
       };
 
-      const mockBatch = {
-        id: 'batch-001',
-        batchNumber: 'BATCH-20260215-001',
-        quantity: 100,
-      };
-
       jest.spyOn(prisma.materialInbound, 'findUnique').mockResolvedValue(mockInbound as any);
-      jest.spyOn(batchNumberGenerator, 'generateBatchNumber').mockResolvedValue('BATCH-20260215-001');
-      jest.spyOn(inventoryMovementLedger, 'recordMaterialBatchMovement').mockResolvedValue({} as any);
-
-      const txClient = {
-        materialBatch: { create: jest.fn().mockResolvedValue(mockBatch) },
-        stockRecord: { create: jest.fn() },
-        materialInboundItem: { update: jest.fn() },
-        materialInbound: {
-          update: jest.fn().mockResolvedValue({ ...mockInbound, status: 'completed' }),
-        },
-      };
-
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
-        return callback(txClient);
-      });
+      jest
+        .spyOn(prisma.materialInbound, 'update')
+        .mockResolvedValue({ ...mockInbound, status: 'completed' } as any);
 
       // Act
       const result = await service.complete('inbound-001', 'user-001');
 
-      // Assert
+      // Assert: status transition only, no batch/stock/ledger side-effects
       expect(result.status).toBe('completed');
-      expect(batchNumberGenerator.generateBatchNumber).toHaveBeenCalledWith('material');
-      expect(prisma.$transaction).toHaveBeenCalled();
-      expect(txClient.materialBatch.create).toHaveBeenCalledWith({
+      expect(prisma.materialInbound.update).toHaveBeenCalledWith({
+        where: { id: 'inbound-001' },
         data: {
-          batchNumber: 'BATCH-20260215-001',
-          materialId: 'material-001',
-          supplierBatchNo: 'SUP-001',
-          supplierId: 'supplier-001',
-          productionDate: new Date('2026-01-01'),
-          expiryDate: new Date('2026-07-01'),
-          quantity: 100,
-          status: 'normal',
-        },
-      });
-      expect(txClient.stockRecord.create).toHaveBeenCalledWith({
-        data: {
-          batchId: 'batch-001',
-          recordType: 'in',
-          quantity: 100,
-          relatedId: 'inbound-001',
-          relatedType: 'inbound',
+          status: 'completed',
+          completedAt: expect.any(Date),
           operatorId: 'user-001',
         },
       });
-      expect(txClient.materialInboundItem.update).toHaveBeenCalledWith({
-        where: { id: 'item-001' },
-        data: { createdBatchId: 'batch-001' },
-      });
-      expect(inventoryMovementLedger.recordMaterialBatchMovement).toHaveBeenCalledWith(
-        expect.objectContaining({ movementType: 'receive', batchId: mockBatch.id }),
-        txClient,
-      );
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.materialBatch.create).not.toHaveBeenCalled();
+      expect(prisma.stockRecord.create).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestException if not approved', async () => {

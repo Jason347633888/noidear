@@ -246,7 +246,7 @@ describe('ProductionBatchService', () => {
       const mockBatch = {
         id: 'batch-pkg-001',
         batchNumber: 'PROD-PKG-001',
-        status: 'completed',
+        status: 'in_progress',
       };
       mockPrisma.productionBatch.create.mockResolvedValue(mockBatch);
 
@@ -277,7 +277,7 @@ describe('ProductionBatchService', () => {
           packageMachine: 'PKG-M-01',
           team_id: 'team-1',
           shift_type_id: 'shift-1',
-          status: 'completed',
+          status: 'in_progress',
         },
       });
     });

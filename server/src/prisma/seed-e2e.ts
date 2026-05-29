@@ -649,12 +649,10 @@ async function seedProductionBatches(): Promise<string[]> {
   ];
 
   for (const usage of usageRows) {
-    const existing = await prisma.batchMaterialUsage.findUnique({
+    const existing = await prisma.batchMaterialUsage.findFirst({
       where: {
-        productionBatchId_materialBatchId: {
-          productionBatchId: usage.productionBatchId,
-          materialBatchId: usage.materialBatchId,
-        },
+        productionBatchId: usage.productionBatchId,
+        materialBatchId: usage.materialBatchId,
       },
     });
 
