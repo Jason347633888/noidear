@@ -2923,10 +2923,58 @@ model TraceabilitySnapshot {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // Task 9: bounded trace-context snapshot (immutable trace result)
+  rootObjectType   String?
+  rootObjectId     String?
+  snapshotData     Json?
+  fileId           String?
+  snapshotPurpose  String  @default("evidence_export") // evidence_export | preview
+  readinessStatus  String  @default("complete") // complete | incomplete
+  readinessReasons Json?
+
   productRecalls ProductRecall[] @relation("ProductRecallTraceabilitySnapshot")
 
   @@index([company_id])
   @@map("traceability_snapshots")
+}
+
+// Task 9: evidence file pointer (the rendered binary lives here, NOT in Document)
+model EvidenceFile {
+  id             String   @id @default(cuid())
+  company_id     String
+  resourceType   String
+  resourceId     String
+  resourceItemId String?
+  fileName       String
+  filePath       String
+  fileHash       String?
+  mimeType       String?
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  @@index([company_id, resourceType, resourceId])
+  @@map("evidence_files")
+}
+
+// Task 9: evidence export event (links to an immutable snapshot; NOT a file table)
+model EvidenceExport {
+  id               String   @id @default(cuid())
+  company_id       String
+  resourceType     String // first release: "production_batch"
+  resourceId       String
+  snapshotId       String
+  templateVersion  String?
+  exportScope      String   @default("main_chain_evidence")
+  dataSnapshot     Json
+  approvalSnapshot Json?
+  attachmentIndex  Json?
+  summaryFormat    String   @default("pdf")
+  fileId           String?
+  exportedById     String?
+  exportedAt       DateTime @default(now())
+
+  @@index([company_id, resourceType, resourceId])
+  @@map("evidence_exports")
 }
 
 
