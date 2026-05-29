@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { StageMaterialToAreaDto, ConfirmStocktakeDto } from './dto/staging-area.dto';
+import { StageMaterialToAreaDto, ConfirmStocktakeDto, ConfirmAreaStocktakeDto } from './dto/staging-area.dto';
 
 export const WORKSHOP_ZONES = ['筛粉间', '称油间', '小料房'] as const;
 export type WorkshopZone = typeof WORKSHOP_ZONES[number];
@@ -242,6 +242,53 @@ export class StagingAreaService {
     });
   }
 
+  /**
+   * Resolve the baseline (book_quantity) for a stocktake row.
+   *
+   * - kind === 'shift_start': compare against the latest *confirmed* shift_end
+   *   for the same area + batch from a previous shift.  If none exists, fall
+   *   back to the current StagingAreaStock quantity (or 0 when stock is also
+   *   absent — first-ever shift).
+   * - kind === 'shift_end' | 'handover': use the current StagingAreaStock
+   *   quantity (existing behaviour).
+   */
+  private async resolveBookQuantity(
+    dto: Pick<ConfirmStocktakeDto, 'areaId' | 'batchId' | 'kind'>,
+  ): Promise<number> {
+    if (dto.kind === 'shift_start') {
+      const prevShiftEnd = await this.prisma.stagingAreaStocktake.findFirst({
+        where: {
+          area_id: dto.areaId,
+          batchId: dto.batchId,
+          kind: 'shift_end',
+          status: { in: ['confirmed', 'exception'] },
+        },
+        orderBy: [{ work_date: 'desc' }, { createdAt: 'desc' }],
+        select: { actual_quantity: true },
+      });
+
+      if (prevShiftEnd) {
+        return prevShiftEnd.actual_quantity;
+      }
+
+      // Fall back to current stock quantity when no prior shift_end exists
+      const stock = await this.prisma.stagingAreaStock.findUnique({
+        where: { batchId_area_id: { batchId: dto.batchId, area_id: dto.areaId } },
+        select: { quantity: true },
+      });
+      return stock?.quantity ?? 0;
+    }
+
+    // shift_end and handover: use current stock quantity (original behaviour)
+    const stock = await this.prisma.stagingAreaStock.findUnique({
+      where: { batchId_area_id: { batchId: dto.batchId, area_id: dto.areaId } },
+    });
+    if (!stock) {
+      throw new BadRequestException('配料区没有该原辅料批次库存');
+    }
+    return stock.quantity;
+  }
+
   async confirmStocktake(dto: ConfirmStocktakeDto) {
     const existing = await this.prisma.stagingAreaStocktake.findFirst({
       where: {
@@ -256,14 +303,8 @@ export class StagingAreaService {
       throw new BadRequestException('该班次该物料批次已完成盘点，请勿重复提交');
     }
 
-    const stock = await this.prisma.stagingAreaStock.findUnique({
-      where: { batchId_area_id: { batchId: dto.batchId, area_id: dto.areaId } },
-    });
-    if (!stock) {
-      throw new BadRequestException('配料区没有该原辅料批次库存');
-    }
-
-    const difference = dto.actualQuantity - stock.quantity;
+    const bookQuantity = await this.resolveBookQuantity(dto);
+    const difference = dto.actualQuantity - bookQuantity;
 
     return this.prisma.stagingAreaStocktake.create({
       data: {
@@ -271,7 +312,7 @@ export class StagingAreaService {
         batchId: dto.batchId,
         kind: dto.kind,
         status: Math.abs(difference) < 0.0001 ? 'confirmed' : 'exception',
-        book_quantity: stock.quantity,
+        book_quantity: bookQuantity,
         actual_quantity: dto.actualQuantity,
         difference,
         work_date: new Date(dto.workDate),
@@ -282,5 +323,112 @@ export class StagingAreaService {
         note: dto.note,
       },
     });
+  }
+
+  /**
+   * Area-level batch stocktake: submit many stocktake rows in one call.
+   * Each item (batchId + actualQuantity + optional note) becomes one
+   * StagingAreaStocktake row, reusing the per-batch baseline logic.
+   * All rows are created inside a single transaction for atomicity.
+   */
+  async confirmAreaStocktake(dto: ConfirmAreaStocktakeDto) {
+    if (!dto.items || dto.items.length === 0) {
+      throw new BadRequestException('盘点明细不能为空');
+    }
+
+    const workDateObj = new Date(dto.workDate);
+    const confirmedAt = new Date();
+
+    return this.prisma.$transaction(async (tx) => {
+      const results: any[] = [];
+
+      for (const item of dto.items) {
+        // Dedup check within transaction
+        const existing = await tx.stagingAreaStocktake.findFirst({
+          where: {
+            area_id: dto.areaId,
+            batchId: item.batchId,
+            kind: dto.kind,
+            work_date: workDateObj,
+            shift_type_id: dto.shiftTypeId,
+          },
+        });
+        if (existing) {
+          throw new BadRequestException(
+            `批次 ${item.batchId} 在该班次已完成盘点，请勿重复提交`,
+          );
+        }
+
+        // Resolve baseline using same logic as single confirmStocktake
+        const bookQuantity = await this.resolveBookQuantityTx(tx, {
+          areaId: dto.areaId,
+          batchId: item.batchId,
+          kind: dto.kind,
+        });
+
+        const difference = item.actualQuantity - bookQuantity;
+
+        const row = await tx.stagingAreaStocktake.create({
+          data: {
+            area_id: dto.areaId,
+            batchId: item.batchId,
+            kind: dto.kind,
+            status: Math.abs(difference) < 0.0001 ? 'confirmed' : 'exception',
+            book_quantity: bookQuantity,
+            actual_quantity: item.actualQuantity,
+            difference,
+            work_date: workDateObj,
+            shift_type_id: dto.shiftTypeId,
+            team_id: dto.teamId,
+            operatorId: dto.operatorId,
+            confirmed_at: confirmedAt,
+            note: item.note,
+          },
+        });
+        results.push(row);
+      }
+
+      return results;
+    });
+  }
+
+  /**
+   * Prisma-transaction-aware version of resolveBookQuantity.
+   * Accepts a tx client so it participates in the caller's transaction.
+   */
+  private async resolveBookQuantityTx(
+    tx: any,
+    dto: Pick<ConfirmStocktakeDto, 'areaId' | 'batchId' | 'kind'>,
+  ): Promise<number> {
+    if (dto.kind === 'shift_start') {
+      const prevShiftEnd = await tx.stagingAreaStocktake.findFirst({
+        where: {
+          area_id: dto.areaId,
+          batchId: dto.batchId,
+          kind: 'shift_end',
+          status: { in: ['confirmed', 'exception'] },
+        },
+        orderBy: [{ work_date: 'desc' }, { createdAt: 'desc' }],
+        select: { actual_quantity: true },
+      });
+
+      if (prevShiftEnd) {
+        return prevShiftEnd.actual_quantity;
+      }
+
+      const stock = await tx.stagingAreaStock.findUnique({
+        where: { batchId_area_id: { batchId: dto.batchId, area_id: dto.areaId } },
+        select: { quantity: true },
+      });
+      return stock?.quantity ?? 0;
+    }
+
+    const stock = await tx.stagingAreaStock.findUnique({
+      where: { batchId_area_id: { batchId: dto.batchId, area_id: dto.areaId } },
+    });
+    if (!stock) {
+      throw new BadRequestException('配料区没有该原辅料批次库存');
+    }
+    return stock.quantity;
   }
 }
