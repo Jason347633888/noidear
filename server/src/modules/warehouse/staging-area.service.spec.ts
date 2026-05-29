@@ -342,6 +342,58 @@ describe('StagingAreaService - shift_start baseline from previous shift_end', ()
         data: expect.objectContaining({ book_quantity: 90, actual_quantity: 90, difference: 0 }),
       })
     );
+
+    // The prior shift_end lookup must be bounded to work_date <= selected work date
+    expect(localPrisma.stagingAreaStocktake.findFirst).toHaveBeenNthCalledWith(2,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          kind: 'shift_end',
+          status: { in: ['confirmed', 'exception'] },
+          work_date: { lte: new Date('2026-05-01') },
+        }),
+        orderBy: [{ work_date: 'desc' }, { createdAt: 'desc' }],
+      })
+    );
+  });
+
+  it('shift_start does NOT use a future shift_end as baseline; falls back to current stock', async () => {
+    // The future shift_end is bounded out by work_date <= workDate, so the
+    // prior-shift_end query returns null and the service falls back to stock.
+    localPrisma.stagingAreaStocktake.findFirst
+      .mockResolvedValueOnce(null) // dedup check
+      .mockResolvedValueOnce(null); // bounded query: future shift_end excluded -> null
+
+    localPrisma.stagingAreaStock.findUnique.mockResolvedValue({ id: 'stock-1', quantity: 40 });
+    localPrisma.stagingAreaStocktake.create.mockResolvedValue({
+      status: 'confirmed',
+      book_quantity: 40,
+      actual_quantity: 40,
+      difference: 0,
+    });
+
+    await localService.confirmStocktake({
+      areaId: 'area-small',
+      batchId: 'mb-future',
+      kind: StagingStocktakeKind.shift_start,
+      workDate: '2026-05-10', // a future shift_end dated 2026-05-11 must be ignored
+      shiftTypeId: 'shift-day',
+      actualQuantity: 40,
+    });
+
+    // Baseline came from current stock (40), NOT a future shift_end
+    expect(localPrisma.stagingAreaStocktake.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ book_quantity: 40, difference: 0 }),
+      })
+    );
+    // And the prior-shift_end query was upper-bounded by work_date
+    expect(localPrisma.stagingAreaStocktake.findFirst).toHaveBeenNthCalledWith(2,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          work_date: { lte: new Date('2026-05-10') },
+        }),
+      })
+    );
   });
 
   it('shift_start falls back to StagingAreaStock.quantity when no previous shift_end exists', async () => {

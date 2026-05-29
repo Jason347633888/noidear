@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StageMaterialToAreaDto, ConfirmStocktakeDto, ConfirmAreaStocktakeDto } from './dto/staging-area.dto';
 
@@ -245,23 +246,31 @@ export class StagingAreaService {
   /**
    * Resolve the baseline (book_quantity) for a stocktake row.
    *
-   * - kind === 'shift_start': compare against the latest *confirmed* shift_end
-   *   for the same area + batch from a previous shift.  If none exists, fall
-   *   back to the current StagingAreaStock quantity (or 0 when stock is also
-   *   absent — first-ever shift).
+   * - kind === 'shift_start': compare against the nearest *prior* confirmed
+   *   (or exception) shift_end for the same area + batch whose work_date is
+   *   on/before the selected work date (上一班交出量). Bounded by
+   *   `work_date <= workDate` so a backdated/corrected shift_start never picks
+   *   a future shift_end as baseline. If none exists, fall back to the current
+   *   StagingAreaStock quantity (or 0 when stock is also absent — first shift).
    * - kind === 'shift_end' | 'handover': use the current StagingAreaStock
    *   quantity (existing behaviour).
+   *
+   * Accepts either PrismaService or a transaction client so the same logic is
+   * reused by both the single and area-level stocktake paths.
    */
   private async resolveBookQuantity(
+    client: PrismaService | Prisma.TransactionClient,
     dto: Pick<ConfirmStocktakeDto, 'areaId' | 'batchId' | 'kind'>,
+    workDate: Date,
   ): Promise<number> {
     if (dto.kind === 'shift_start') {
-      const prevShiftEnd = await this.prisma.stagingAreaStocktake.findFirst({
+      const prevShiftEnd = await client.stagingAreaStocktake.findFirst({
         where: {
           area_id: dto.areaId,
           batchId: dto.batchId,
           kind: 'shift_end',
           status: { in: ['confirmed', 'exception'] },
+          work_date: { lte: workDate },
         },
         orderBy: [{ work_date: 'desc' }, { createdAt: 'desc' }],
         select: { actual_quantity: true },
@@ -272,7 +281,7 @@ export class StagingAreaService {
       }
 
       // Fall back to current stock quantity when no prior shift_end exists
-      const stock = await this.prisma.stagingAreaStock.findUnique({
+      const stock = await client.stagingAreaStock.findUnique({
         where: { batchId_area_id: { batchId: dto.batchId, area_id: dto.areaId } },
         select: { quantity: true },
       });
@@ -280,7 +289,7 @@ export class StagingAreaService {
     }
 
     // shift_end and handover: use current stock quantity (original behaviour)
-    const stock = await this.prisma.stagingAreaStock.findUnique({
+    const stock = await client.stagingAreaStock.findUnique({
       where: { batchId_area_id: { batchId: dto.batchId, area_id: dto.areaId } },
     });
     if (!stock) {
@@ -303,7 +312,8 @@ export class StagingAreaService {
       throw new BadRequestException('该班次该物料批次已完成盘点，请勿重复提交');
     }
 
-    const bookQuantity = await this.resolveBookQuantity(dto);
+    const workDate = new Date(dto.workDate);
+    const bookQuantity = await this.resolveBookQuantity(this.prisma, dto, workDate);
     const difference = dto.actualQuantity - bookQuantity;
 
     return this.prisma.stagingAreaStocktake.create({
@@ -360,11 +370,11 @@ export class StagingAreaService {
         }
 
         // Resolve baseline using same logic as single confirmStocktake
-        const bookQuantity = await this.resolveBookQuantityTx(tx, {
-          areaId: dto.areaId,
-          batchId: item.batchId,
-          kind: dto.kind,
-        });
+        const bookQuantity = await this.resolveBookQuantity(
+          tx,
+          { areaId: dto.areaId, batchId: item.batchId, kind: dto.kind },
+          workDateObj,
+        );
 
         const difference = item.actualQuantity - bookQuantity;
 
@@ -390,45 +400,5 @@ export class StagingAreaService {
 
       return results;
     });
-  }
-
-  /**
-   * Prisma-transaction-aware version of resolveBookQuantity.
-   * Accepts a tx client so it participates in the caller's transaction.
-   */
-  private async resolveBookQuantityTx(
-    tx: any,
-    dto: Pick<ConfirmStocktakeDto, 'areaId' | 'batchId' | 'kind'>,
-  ): Promise<number> {
-    if (dto.kind === 'shift_start') {
-      const prevShiftEnd = await tx.stagingAreaStocktake.findFirst({
-        where: {
-          area_id: dto.areaId,
-          batchId: dto.batchId,
-          kind: 'shift_end',
-          status: { in: ['confirmed', 'exception'] },
-        },
-        orderBy: [{ work_date: 'desc' }, { createdAt: 'desc' }],
-        select: { actual_quantity: true },
-      });
-
-      if (prevShiftEnd) {
-        return prevShiftEnd.actual_quantity;
-      }
-
-      const stock = await tx.stagingAreaStock.findUnique({
-        where: { batchId_area_id: { batchId: dto.batchId, area_id: dto.areaId } },
-        select: { quantity: true },
-      });
-      return stock?.quantity ?? 0;
-    }
-
-    const stock = await tx.stagingAreaStock.findUnique({
-      where: { batchId_area_id: { batchId: dto.batchId, area_id: dto.areaId } },
-    });
-    if (!stock) {
-      throw new BadRequestException('配料区没有该原辅料批次库存');
-    }
-    return stock.quantity;
   }
 }
