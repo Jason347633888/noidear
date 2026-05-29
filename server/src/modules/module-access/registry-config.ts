@@ -16,6 +16,7 @@ export const REGISTRY_CONFIG: RegistryConfig = {
     { path: 'system-configs', mode: 'exact' },
     { path: 'permission-audit-logs', mode: 'exact' },
     { path: 'org-bootstrap', mode: 'exact' },
+    { path: 'companies', mode: 'exact' },
     // 旧权限子系统（Task 22 删除前暂留）
     { path: 'permissions', mode: 'exact' },
     { path: 'fine-grained-permissions', mode: 'exact' },
@@ -56,6 +57,7 @@ export const REGISTRY_CONFIG: RegistryConfig = {
       { path: 'shift-instances', mode: 'exact' },
       { path: 'team-shifts', mode: 'exact' },
       { path: 'line-change-check-records', mode: 'exact' },
+      { path: 'production-plans', mode: 'exact' },
     ],
     product_rd: [
       { path: 'products', mode: 'exact' },
@@ -76,6 +78,7 @@ export const REGISTRY_CONFIG: RegistryConfig = {
       { path: 'supplier-evaluations', mode: 'exact' },
       { path: 'ccp', mode: 'exact' },
       { path: 'workshop-areas', mode: 'exact' },
+      { path: 'inspection-records', mode: 'exact' },
     ],
     equipment_site: [
       { path: 'equipment', mode: 'exact' },
