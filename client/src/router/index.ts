@@ -607,6 +607,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/shift/ShiftDashboard.vue'),
         meta: { title: '班次看板' },
       },
+      // 首发闭环烟测导航
+      {
+        path: 'first-release-smoke',
+        name: 'FirstReleaseSmoke',
+        component: () => import('@/views/first-release/FirstReleaseSmoke.vue'),
+        meta: { title: '首发闭环检查', requiresAuth: true },
+      },
     ],
   },
   // 打印页（无 Layout）
