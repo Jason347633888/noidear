@@ -12,7 +12,9 @@ export interface InspectionResult {
 
 export interface IncomingInspection {
   id: string;
-  material_batch_id: string;
+  material_batch_id: string | null;
+  material_inbound_item_id: string | null;
+  is_final: boolean;
   overall_result: string;
   sample_qty: number | null;
   sample_unit: string | null;
@@ -44,8 +46,9 @@ export interface InspectionReportDocument {
 }
 
 export interface CreateInspectionPayload {
-  material_batch_id: string;
+  material_inbound_item_id: string;
   overall_result: string;
+  is_final?: boolean;
   sample_qty?: number;
   sample_unit?: string;
   disposition?: string;
@@ -84,6 +87,12 @@ const incomingInspectionApi = {
 
   create(payload: CreateInspectionPayload) {
     return request.post<IncomingInspection>('/incoming-inspections', payload);
+  },
+
+  releaseFinalInspection(materialInboundItemId: string) {
+    return request.post<{ released: boolean; batchId: string | null }>(
+      `/incoming-inspections/release/${materialInboundItemId}`,
+    );
   },
 
   getByBatch(batchId: string) {

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean, IsArray, ValidateNested, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsArray, ValidateNested, IsNumber, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class InspectionResultDto {
@@ -15,10 +15,15 @@ export class InspectionResultDto {
 
 export class CreateInspectionDto {
   @IsString()
-  material_batch_id: string;
+  @IsNotEmpty()
+  material_inbound_item_id: string;
 
   @IsString()
   overall_result: string; // 'pass'|'fail'|'conditional_pass'
+
+  @IsOptional()
+  @IsBoolean()
+  is_final?: boolean;
 
   @IsOptional()
   @IsNumber()

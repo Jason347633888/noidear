@@ -2,7 +2,6 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import IncomingInspectionList from '../IncomingInspectionList.vue';
 import incomingInspectionApi from '@/api/incoming-inspection';
-import { batchApi } from '@/api/warehouse';
 
 vi.mock('@/api/incoming-inspection', () => ({
   default: {
@@ -12,12 +11,6 @@ vi.mock('@/api/incoming-inspection', () => ({
   },
   getOverallResultText: (value: string) => ({ pass: '合格', fail: '不合格', conditional_pass: '有条件合格' }[value] || value),
   getOverallResultTagType: (value: string) => (value === 'pass' ? 'success' : value === 'fail' ? 'danger' : 'warning'),
-}));
-
-vi.mock('@/api/warehouse', () => ({
-  batchApi: {
-    getList: vi.fn(),
-  },
 }));
 
 vi.mock('@/api/file-preview', () => ({
@@ -38,17 +31,6 @@ vi.mock('element-plus', async () => {
   };
 });
 
-const batchRows = [
-  {
-    id: 'batch-1',
-    batchNumber: 'MB-2026-001',
-    quantity: 120,
-    status: 'normal',
-    material: { id: 'mat-1', name: '白砂糖', code: 'M-SUGAR', category: 'raw', unit: 'kg', currentStock: 120, status: 'active', createdAt: '', updatedAt: '' },
-    supplier: { id: 'sup-1', name: '合格供应商', code: 'S-001', status: 'active', createdAt: '' },
-  },
-];
-
 const stubs = {
   PageHeaderBlock: {
     template: '<header><slot /><slot name="actions" /></header>',
@@ -68,8 +50,9 @@ const stubs = {
     props: ['modelValue', 'placeholder', 'filterable', 'remote', 'remoteMethod', 'loading', 'clearable', 'reserveKeyword', 'style'],
   },
   'el-option': { template: '<option :value="value">{{ label }}</option>', props: ['label', 'value'] },
-  'el-input': { template: '<input :value="modelValue" :placeholder="placeholder" @input="$emit(\'update:modelValue\', $event.target.value)" />', props: ['modelValue', 'placeholder', 'type', 'rows', 'style'] },
+  'el-input': { template: '<input :value="modelValue" :placeholder="placeholder" @input="$emit(\'update:modelValue\', $event.target.value)" />', props: ['modelValue', 'placeholder', 'type', 'rows', 'clearable', 'style'] },
   'el-input-number': { template: '<input type="number" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />', props: ['modelValue', 'min', 'placeholder', 'style'] },
+  'el-switch': { template: '<input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />', props: ['modelValue'] },
   'el-divider': { template: '<hr />', props: ['contentPosition'] },
 };
 
@@ -78,34 +61,31 @@ describe('IncomingInspectionList', () => {
     vi.clearAllMocks();
     vi.mocked(incomingInspectionApi.getList).mockResolvedValue([]);
     vi.mocked(incomingInspectionApi.create).mockResolvedValue({} as any);
-    vi.mocked(batchApi.getList).mockResolvedValue({ list: batchRows, total: 1, page: 1, limit: 20 } as any);
   });
 
-  it('uses a searchable material batch selector instead of a free text batch id input', async () => {
+  it('collects the inbound item id instead of a material batch selector', async () => {
     const wrapper = mount(IncomingInspectionList, { global: { stubs } });
     await flushPromises();
 
     await wrapper.find('button').trigger('click');
     await flushPromises();
 
-    expect(batchApi.getList).toHaveBeenCalledWith({ page: 1, limit: 20, status: 'normal' });
-    expect(wrapper.text()).toContain('物料批次');
-    expect(wrapper.text()).not.toContain('物料批次ID');
-    expect(wrapper.find('input[placeholder="请输入物料批次 ID"]').exists()).toBe(false);
-    expect(wrapper.find('select[data-placeholder="请选择物料批次"]').exists()).toBe(true);
-    expect(wrapper.text()).toContain('MB-2026-001 / 白砂糖');
+    expect(wrapper.text()).toContain('入库明细ID');
+    expect(wrapper.text()).not.toContain('物料批次');
+    expect(wrapper.find('input[placeholder="请输入待检验的入库明细ID"]').exists()).toBe(true);
   });
 
-  it('submits the selected MaterialBatch id as material_batch_id', async () => {
+  it('submits material_inbound_item_id (never material_batch_id) on create', async () => {
     const wrapper = mount(IncomingInspectionList, { global: { stubs } });
     await flushPromises();
 
     await wrapper.find('button').trigger('click');
     await flushPromises();
 
+    const inboundItemInput = wrapper.find('input[placeholder="请输入待检验的入库明细ID"]');
+    await inboundItemInput.setValue('item-1');
     const selects = wrapper.findAll('select');
-    await selects[0].setValue('batch-1');
-    await selects[1].setValue('pass');
+    await selects[0].setValue('pass');
 
     const confirmButtons = wrapper.findAll('button');
     await confirmButtons[confirmButtons.length - 1].trigger('click');
@@ -113,9 +93,11 @@ describe('IncomingInspectionList', () => {
 
     expect(incomingInspectionApi.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        material_batch_id: 'batch-1',
+        material_inbound_item_id: 'item-1',
         overall_result: 'pass',
       }),
     );
+    const payload = vi.mocked(incomingInspectionApi.create).mock.calls[0][0];
+    expect(payload).not.toHaveProperty('material_batch_id');
   });
 });

@@ -989,6 +989,8 @@ model MaterialInboundItem {
   expiryDate      DateTime
   createdBatchId  String? // 入库完成后创建的批次ID
   createdBatch    MaterialBatch?  @relation("InboundCreatedBatch", fields: [createdBatchId], references: [id], onDelete: SetNull)
+  disposition     String? // 来料检验放行处置（如 concession 让步接收）
+  inspections     IncomingInspection[]
   createdAt       DateTime        @default(now())
 
   @@index([inboundId])
@@ -1818,22 +1820,27 @@ model SupplierDocument {
 }
 
 model IncomingInspection {
-  id                String                     @id @default(cuid())
-  company_id        Int
-  material_batch_id String
-  material_batch    MaterialBatch              @relation(fields: [material_batch_id], references: [id])
-  inspected_at      DateTime
-  inspector_id      String?
-  sample_qty        Decimal?                   @db.Decimal(14, 4)
-  sample_unit       String?
-  overall_result    String // 'pass'|'fail'|'conditional_pass'
-  disposition       String?
-  disposition_by    String?
-  notes             String?
-  results           IncomingInspectionResult[]
-  created_at        DateTime                   @default(now())
-  updated_at        DateTime                   @updatedAt
+  id                       String                     @id @default(cuid())
+  company_id               String
+  material_batch_id        String?
+  material_batch           MaterialBatch?             @relation(fields: [material_batch_id], references: [id])
+  material_inbound_item_id String?
+  material_inbound_item    MaterialInboundItem?       @relation(fields: [material_inbound_item_id], references: [id])
+  is_final                 Boolean                    @default(false)
+  inspected_at             DateTime
+  inspector_id             String?
+  sample_qty               Decimal?                   @db.Decimal(14, 4)
+  sample_unit              String?
+  overall_result           String // 'pass'|'fail'|'conditional_pass'
+  disposition              String?
+  disposition_by           String?
+  notes                    String?
+  results                  IncomingInspectionResult[]
+  created_at               DateTime                   @default(now())
+  updated_at               DateTime                   @updatedAt
 
+  @@index([company_id, material_inbound_item_id])
+  @@index([company_id, material_batch_id])
   @@map("incoming_inspections")
 }
 
