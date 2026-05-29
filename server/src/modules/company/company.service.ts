@@ -28,7 +28,8 @@ export class CompanyService {
     return tenant;
   }
 
-  upsertProfile(companyId: string, dto: UpsertCompanyProfileDto) {
+  async upsertProfile(companyId: string, dto: UpsertCompanyProfileDto) {
+    await this.getTenant(companyId);
     return this.prisma.companyProfile.upsert({
       where: { company_id: companyId },
       create: { company_id: companyId, ...dto },

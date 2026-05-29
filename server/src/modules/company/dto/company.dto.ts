@@ -1,7 +1,7 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateTenantDto {
-  @IsString() name: string;
+  @IsString() @IsNotEmpty() name: string;
   @IsOptional() @IsString() timezone?: string;
 }
 
