@@ -1,6 +1,13 @@
 .DS_Store
 node_modules/
 .worktrees/
+
+# Environment files (never commit secrets)
+.env
+.env.local
+.env.*.local
+server/.env
+client/.env
 client/.env.e2e
 client/dist/
 server/dist/
