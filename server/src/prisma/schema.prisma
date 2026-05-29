@@ -2981,6 +2981,40 @@ model BusinessNumberSequence {
   @@map("business_number_sequences")
 }
 
+// ========================================
+// Company Tenant & Profile (multi-tenant foundation)
+// ========================================
+
+model CompanyTenant {
+  id              String   @id @default(cuid())
+  name            String
+  timezone        String   @default("Asia/Shanghai")
+  retentionPolicy String   @default("default_food_safety")
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  profile         CompanyProfile?
+
+  @@map("company_tenants")
+}
+
+model CompanyProfile {
+  id                      String        @id @default(cuid())
+  company_id              String        @unique
+  company                 CompanyTenant @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  legalName               String?
+  unifiedSocialCreditCode String?
+  manufacturerName        String?
+  manufacturerAddress     String?
+  manufacturerPhone       String?
+  originPlace             String?
+  foodProductionLicense   String?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  @@map("company_profiles")
+}
+
 // 简化角色与模块开关
 model ModuleAccessConfig {
   id        String   @id @default(cuid())

@@ -112,6 +112,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requireRole: 'admin' },
       },
       {
+        path: 'companies/:companyId/settings',
+        name: 'CompanySettings',
+        component: () => import('@/views/company/CompanySettings.vue'),
+        meta: { title: '公司配置', requireRole: 'admin' },
+      },
+      {
         path: 'password',
         name: 'Password',
         component: () => import('@/views/Password.vue'),
