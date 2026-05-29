@@ -2209,6 +2209,7 @@ model InspectionStandard {
   version       String?
   status        String           @default("active")
   items         InspectionItem[]
+  inspection_records InspectionRecord[]
   created_at    DateTime         @default(now())
   updated_at    DateTime         @updatedAt
 
@@ -2227,8 +2228,51 @@ model InspectionItem {
   spec_max    Decimal?           @db.Decimal(14, 4)
   spec_text   String?
   is_critical Boolean            @default(false)
+  inspection_record_items InspectionRecordItem[]
 
   @@map("inspection_items")
+}
+
+model InspectionRecord {
+  id             String              @id @default(cuid())
+  company_id     String
+  standard_id    String?
+  standard       InspectionStandard? @relation(fields: [standard_id], references: [id], onDelete: SetNull)
+  object_type    String
+  object_id      String
+  inspected_at   DateTime
+  inspector_id   String?
+  overall_result String
+  status         String              @default("submitted")
+  source_task_id String?
+  created_at     DateTime            @default(now())
+  updated_at     DateTime            @updatedAt
+  items          InspectionRecordItem[]
+
+  @@index([company_id, object_type, object_id])
+  @@index([standard_id])
+  @@map("inspection_records")
+}
+
+model InspectionRecordItem {
+  id                 String            @id @default(cuid())
+  record_id          String
+  record             InspectionRecord  @relation(fields: [record_id], references: [id], onDelete: Cascade)
+  inspection_item_id String?
+  inspection_item    InspectionItem?   @relation(fields: [inspection_item_id], references: [id], onDelete: SetNull)
+  item_name          String
+  actual_value       String?
+  unit               String?
+  text_result        String?
+  judgment           String
+  standard_snapshot  Json?
+  remark             String?
+  evidence_file_id   String?
+  created_at         DateTime          @default(now())
+
+  @@index([record_id])
+  @@index([inspection_item_id])
+  @@map("inspection_record_items")
 }
 
 // ─── 质量合规 ─────────────────────────────────────
@@ -2237,8 +2281,9 @@ model NonConformance {
   id               String    @id @default(cuid())
   company_id       String
   nc_no            String
-  source_type      String // 'material_batch'|'production_batch'|'product'
+  source_type      String // 'material_batch'|'production_batch'|'product'|'inspection_record'
   source_id        String
+  source_item_id   String? // FK to InspectionRecordItem.id when source_type='inspection_record'
   nc_type          String?
   description      String
   qty              Decimal?  @db.Decimal(14, 4)
@@ -2258,7 +2303,7 @@ model NonConformance {
 
   @@unique([company_id, nc_no])
   @@index([company_id, status])
-  @@index([company_id, source_type, source_id])
+  @@index([company_id, source_type, source_id, source_item_id])
   @@index([discoveredById])
 }
 

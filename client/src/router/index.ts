@@ -516,6 +516,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/incoming-inspection/IncomingInspectionList.vue'),
         meta: { title: '来料检验' },
       },
+      // 通用检验工作台
+      {
+        path: 'inspection-records',
+        name: 'InspectionRecordWorkbench',
+        component: () => import('@/views/inspection-record/InspectionRecordWorkbench.vue'),
+        meta: { title: '通用检验工作台' },
+      },
       // 产品目录模块
       {
         path: 'products',

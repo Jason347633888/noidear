@@ -67,6 +67,7 @@ import { ProductProcessChangeModule } from './modules/product-process-change/pro
 import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module';
 import { CompanyModule } from './modules/company/company.module';
 import { ProductionPlanModule } from './modules/production-plan/production-plan.module';
+import { InspectionRecordModule } from './modules/inspection-record/inspection-record.module';
 
 @Module({
   imports: [
@@ -137,6 +138,7 @@ import { ProductionPlanModule } from './modules/production-plan/production-plan.
     OrgBootstrapModule,
     CompanyModule,
     ProductionPlanModule,
+    InspectionRecordModule,
     ModuleAccessModule,
   ],
   providers: [
