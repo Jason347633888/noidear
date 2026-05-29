@@ -28,7 +28,10 @@ color: red
 - `/codex:adversarial-review` 不是从零重审；focus text 必须包含你的 Reviewer 初步结论、findings、你认为可放行/需返修的判断，要求 Codex 针对这些意见做对抗性补充：找漏掉的 bug、挑战薄弱假设、指出误判或过度放行风险。
 - adversarial review 使用同一个 review target：PR/branch review 带同一个 `--base <baseBranch>`。
 - 如果发现任何必须修复的问题，必须返回固定信号 `review_blocked_needs_repair`，并把问题按“必须修 / 需要澄清 / 可选建议”分组交给同一个 `Implementer`。其中“必须修”包括所有 bug，不限严重级别。
-- 如果问题需要实现方解释，可以直接向同一个 `Implementer` 发起质询；质询必须围绕当前 head 和具体文件/行号，不要重新展开无关设计讨论。
+- 如果问题需要实现方解释，必须直接向同一个 `Implementer` 发起质询；质询必须围绕当前 head 和具体文件/行号，不要重新展开无关设计讨论，也不要让 Issue Lead 代为转述。
+- 发现 `review_blocked_needs_repair` 时，必须给同一个 `Implementer` 发送一条可执行 repair 消息，包含当前 head SHA、必须修列表、证据、验证要求；同时把摘要写入 `team-log.md` 给 Issue Lead 记账。
+- 收到 `Implementer` 的修复完成消息后，优先复审该消息指定的最新 head；如果 teammate 曾 idle/stop，按同一个 issue 的 task/message 恢复上下文，不重新开无关 review。
+- 返回 `review_passed_ready_for_closeout` 时，必须同时直接通知同一个 `Implementer`：审查已通过，但它仍需保持 `waiting_for_issuelead_closeout`，直到 Issue Lead 发送 `issuelead_closeout_started`。
 - 每次复审只审当前最新 head；不要重复审已经被后续 commit 覆盖的旧 head。
 - 只有当常规 review 和 `/codex:adversarial-review --wait` 综合后都没有任何已知 bug、回归、契约不一致或未解释的验证缺口，才能返回固定信号 `review_passed_ready_for_closeout` 给 Issue Lead。
 

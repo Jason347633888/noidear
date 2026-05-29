@@ -57,7 +57,7 @@ cd /Users/jiashenglin/Desktop/project/worktrees/noidear/<issue-id-or-slug>
 
 ## 完成信号
 
-实现完成后不要退出、不要结束自己的 issue 上下文、不要要求用户重新启动你。你必须进入后台待命状态，等待 Reviewer 反馈或 Issue Lead 派回 repair。
+你的任务不是“执行完 implementation plan 就结束”。你的任务是长生命周期任务：执行 implementation plan、等待 Reviewer 反馈、处理所有返修、等待 Reviewer pass、继续等待 Issue Lead 的 `issuelead_closeout_started` 信号。没有该信号前，不得把自己的任务标记 complete，不得退出当前 session。
 
 先向 Issue Lead 返回固定信号：
 
@@ -73,13 +73,15 @@ implementation_ready_for_review
 - 验证命令和结果
 - 剩余风险
 
-随后把自己的状态写入 `team-log.md`：
+随后把自己的状态写入 `team-log.md`，并保持当前 session 等待 Reviewer 消息：
 
 ```text
-implementer_status: standby_waiting_for_review_feedback
+implementer_status: waiting_for_reviewer_response
 ```
 
-在 Issue Lead 或 Reviewer 给出下一条 repair/review-blocker 指令前，不要主动清理 worktree、不要关闭 PR/branch、不要删除临时上下文记录。
+在 Issue Lead 或 Reviewer 给出下一条 repair/review-blocker 指令前，不要主动清理 worktree、不要关闭 PR/branch、不要删除临时上下文记录、不要结束任务。
+
+同时确认同 issue 的 wait task 仍存在；如果不存在，要求 Issue Lead 创建“等待 Reviewer 反馈、处理返修，并等待 Issue Lead closeout 信号”的后续 task，避免 teammate 因无任务而被替换。
 
 如果无法进入 review，返回固定信号：
 
@@ -93,6 +95,13 @@ implementation_blocked
 
 - 你必须保持同一个 issue/team 上下文参与返修循环；不要让 Issue Lead 新建另一个 Implementer 来接手你的 PR，除非你明确不可恢复。
 - 收到 `Reviewer` 的 `review_blocked_needs_repair` 后，必须处理 Reviewer 标为“必须修”的全部问题；所有 bug、回归、契约不一致、数据风险、权限风险、迁移风险、测试断言失真或验证缺口都必须修复或补齐验证，不按是否阻塞合并来跳过。
-- 如果 reviewer finding 不清楚或你认为技术判断有误，先向同一个 `Reviewer` 质询，要求其给出文件/行号/运行时证据；不要盲改。
-- 如果 reviewer finding 成立，修复后运行相关验证，更新 `handoff.md`、`team-log.md`，并再次返回 `implementation_ready_for_review`。
+- 如果 reviewer finding 不清楚或你认为技术判断有误，必须直接向同一个 `Reviewer` 发送质询消息，要求其给出文件/行号/运行时证据；不要让 Issue Lead 代为转述，不要盲改。
+- 如果 reviewer finding 成立，修复后运行相关验证，更新 `handoff.md`、`team-log.md`，并直接通知同一个 `Reviewer` 复审当前 head；同时再次返回 `implementation_ready_for_review` 给 Issue Lead。
 - 每次返修必须保留同一个 PR/branch 链路，除非 Issue Lead 明确要求新分支。
+- Reviewer 返回 `review_passed_ready_for_closeout` 后，你仍不得退出。必须把状态写为 `waiting_for_issuelead_closeout`，继续等待 Issue Lead 明确发送：
+
+```text
+issuelead_closeout_started
+```
+
+- 收到 `issuelead_closeout_started` 后，才允许停止等待；此后由 Issue Lead 调用 `finishing-a-development-branch` 做最终收口。

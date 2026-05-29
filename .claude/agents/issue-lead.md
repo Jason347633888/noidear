@@ -36,6 +36,16 @@ color: purple
 - 输入是“合并 / 收尾 / 清理 / closeout”：进入 closeout，不 spawn teammate；由 Issue Lead 直接收口。
 - 如果无法判断，只问：“这是要先讨论设计，还是已有 plan 可以直接执行？”
 
+## Agent-Team 长生命周期协议
+
+- Issue Lead 创建 implementation task 时，任务边界必须覆盖完整生命周期：执行 implementation plan、等待 Reviewer 审查、处理返修、等待 Issue Lead closeout 信号。不得只创建“执行 plan”这种短任务。
+- Issue Lead 必须同时创建或保留一个同 issue 的 wait task，指向同一个 `Implementer`，内容为“等待 Reviewer 反馈、处理返修，并等待 Issue Lead closeout 信号”；该 task 在 `issuelead_closeout_started` 前不得关闭。
+- `Implementer` 完成实现后不得标记自己的 task complete，只能进入 `waiting_for_reviewer_response`；Reviewer pass 后也不得退出，只能进入 `waiting_for_issuelead_closeout`。
+- `Reviewer` 发现问题时，必须直接向同一个 `Implementer` 发送 review/repair 消息，并抄写摘要到 `team-log.md`；Issue Lead 只负责确认 wait task 仍存在。
+- `Implementer` 对 finding 有疑问时，必须直接向同一个 `Reviewer` 质询；修完后也必须直接通知同一个 `Reviewer` 复审当前 head，并同步 `implementation_ready_for_review` 给 Issue Lead。
+- 如果 `Implementer` 准备 idle/stop，但尚未收到 `issuelead_closeout_started`，视为流程错误；Issue Lead 必须要求它继续等待，不新建替代 teammate，除非原 teammate 明确不可恢复。
+- 所有跨 teammate 对话都必须沉淀到 `.claude/issue-runs/<issue-id>/team-log.md`，至少记录消息发送方、接收方、head SHA、问题摘要和下一步。
+
 ## Closeout 强制规则
 
 - Issue Lead 进入 closeout 时，必须实际调用 `finishing-a-development-branch` skill；不能只写“按该 skill 思路处理”，也不能用手写 git/PR 检查替代。
@@ -45,13 +55,14 @@ color: purple
 ## 自动交接协议
 
 - `Implementer` 报告 `implementation_ready_for_review` 后，Issue Lead 必须立即创建或唤回 `Reviewer`，把 `handoff.md`、PR URL、branch、head SHA、验证结果和剩余风险交给 Reviewer。
-- `Implementer` 报告 `implementation_ready_for_review` 后，Issue Lead 必须把它标记为 `standby_waiting_for_review_feedback`，不得 clean up 或新建替代 Implementer。
+- `Implementer` 报告 `implementation_ready_for_review` 后，Issue Lead 必须把它标记为 `waiting_for_reviewer_response`，不得 clean up、不得标记 complete、不得新建替代 Implementer。
 - 只有当 `Implementer` 明确报告 blocked、plan/code 冲突、验证失败、未生成 PR/head，Issue Lead 才能暂停 review 交接，并把阻塞写入 `team-log.md`。
 - 不要等待用户再说“安排 review”。implementation 阶段的默认下一步就是 Reviewer 只读审查。
 - Reviewer 报告 `review_blocked_needs_repair` 时，Issue Lead 派回同一个 `Implementer` 做 repair；Reviewer 和 Implementer 可以围绕任何已知 bug、回归、契约不一致、验证缺口直接质询/澄清，但每一轮必须更新 `team-log.md`。
 - Implementer 完成 repair 后再次报告 `implementation_ready_for_review`，Issue Lead 再唤回同一个 `Reviewer` 复审当前 head。
 - 这个 repair/re-review 循环持续到 Reviewer 明确报告 `review_passed_ready_for_closeout`。
-- 只有 Reviewer 明确报告 `review_passed_ready_for_closeout`，Issue Lead 才能进入等待用户 closeout 指令状态；此时不自动合并、不自动 clean up。
+- 只有 Reviewer 明确报告 `review_passed_ready_for_closeout`，Issue Lead 才能进入等待用户 closeout 指令状态；此时不自动合并、不自动 clean up，也不释放 Implementer。
+- 用户明确要求 closeout 且 Issue Lead 开始调用 `finishing-a-development-branch` 前，Issue Lead 必须先向 Implementer 发送 `issuelead_closeout_started`，允许其从 `waiting_for_issuelead_closeout` 结束等待。
 
 ## Issue-run 短期记忆
 
@@ -109,7 +120,7 @@ color: purple
 - Design Final Digest 前，不写 implementation plan。
 - Plan Final Digest 前，不执行代码。
 - Implementation 完成后必须自动进入 Reviewer 审查，不需要用户手动提醒。
-- Implementation 完成后 `Implementer` 保持后台待命；只有用户明确 closeout 或 Issue Lead 判定 teammate 不可恢复时，才允许释放。
+- Implementation 完成后 `Implementer` 保持原 session 待命；Reviewer pass 后继续等待 Issue Lead 的 `issuelead_closeout_started` 信号。只有该信号出现，或 Issue Lead 判定 teammate 不可恢复时，才允许释放。
 - Review 发现任何已知 bug、回归、契约不一致或验证缺口时，Reviewer 和 Implementer 必须循环质询/返修，直到 Reviewer 明确 `review_passed_ready_for_closeout`。
 - Reviewer 只读审查，不 patch、不 commit、不 push、不 merge。
 - 只有 Reviewer 明确 `review_passed_ready_for_closeout` 且用户明确说“关闭这个 issue / 收尾 / closeout”，Issue Lead 才能开始 closeout；开始 closeout 的第一步必须实际调用 `finishing-a-development-branch`，否则停止收口。

@@ -1297,11 +1297,10 @@ export const REGISTRY_CONFIG: RegistryConfig = {
     ],
     document_approval: [
       { path: 'documents', mode: 'exact' },
-      { path: 'templates', mode: 'exact' },
+      // NOTE(2026-05-24): 'templates', 'dynamic-forms', 'record-templates', 'records' 已在
+      // dynamic-form-retirement (branch: codex/retire-dynamic-forms) 中退役。
+      // module-access 落地时不要将这些路径写入 registry-config.ts。
       { path: 'approval-definitions', mode: 'exact' },
-      { path: 'dynamic-forms', mode: 'exact' },
-      { path: 'record-templates', mode: 'exact' },
-      { path: 'records', mode: 'exact' },
     ],
     production_execution: [
       { path: 'batch-trace/production-batches', mode: 'exact' },
@@ -1319,7 +1318,7 @@ export const REGISTRY_CONFIG: RegistryConfig = {
     product_rd: [
       { path: 'products', mode: 'exact' },
       { path: 'recipes', mode: 'exact' },
-      { path: 'model-landing', mode: 'exact' },
+      // NOTE(2026-05-24): 'model-landing' 已在 dynamic-form-retirement 中退役，不要写入 registry-config.ts。
       { path: 'change-events', mode: 'exact' },
       { path: 'change-verification-records', mode: 'exact' },
       { path: 'change-compliance-records', mode: 'exact' },
@@ -1469,7 +1468,8 @@ export class TodoController { /* … */ }
 - [ ] **Step 2: Tag controllers — `document_approval`**
 
 - `documents.controller.ts` → `@ModuleKey('document_approval')`
-- `templates.controller.ts`, `approval-definition.controller.ts`, `dynamic-forms.controller.ts`, `record-template.controller.ts`, `records.controller.ts` likewise.
+- `approval-definition.controller.ts` likewise.
+- **RETIRED (2026-05-24):** `templates.controller.ts`, `dynamic-forms.controller.ts`, `record-template.controller.ts`, `records.controller.ts` — 已在 dynamic-form-retirement 中删除，不需要打标签。
 
 - [ ] **Step 3: Tag — `production_execution`**
 
@@ -1485,7 +1485,8 @@ export class TodoController { /* … */ }
 
 - [ ] **Step 4: Tag — `product_rd`**
 
-- `product.controller.ts`, `recipe.controller.ts`, `model-landing.controller.ts`, `change-event.controller.ts`, `change-verification-record.controller.ts`, `change-compliance-record.controller.ts`
+- `product.controller.ts`, `recipe.controller.ts`, `change-event.controller.ts`, `change-verification-record.controller.ts`, `change-compliance-record.controller.ts`
+- **RETIRED (2026-05-24):** `model-landing.controller.ts` — 已在 dynamic-form-retirement 中删除，不需要打标签。
 
 - [ ] **Step 5: Tag — `quality_compliance`**
 
