@@ -12,8 +12,10 @@ import {
   Request,
 } from '@nestjs/common';
 import { ExternalPartyService } from './external-party.service';
+import { ExternalPartyEvaluationService } from './external-party-evaluation.service';
 import { CreateExternalPartyDto } from './dto/create-external-party.dto';
 import { UpdateExternalPartyDto } from './dto/update-external-party.dto';
+import { CreateExternalPartyEvaluationDto } from './dto/create-external-party-evaluation.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
 
@@ -21,7 +23,10 @@ import { AuthenticatedRequest } from '../auth/authenticated-user';
 @Controller('external-parties')
 @UseGuards(JwtAuthGuard)
 export class ExternalPartyController {
-  constructor(private service: ExternalPartyService) {}
+  constructor(
+    private service: ExternalPartyService,
+    private evaluationService: ExternalPartyEvaluationService,
+  ) {}
 
   @Get()
   findAll(@Request() req: AuthenticatedRequest, @Query('party_type') partyType?: string) {
@@ -46,5 +51,24 @@ export class ExternalPartyController {
   @Delete(':id')
   remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.service.remove(id, req.user.companyId);
+  }
+
+  @Get('evaluations')
+  findAllEvaluations(@Request() req: AuthenticatedRequest) {
+    return this.evaluationService.findAll(req.user.companyId);
+  }
+
+  @Get(':id/evaluations')
+  findEvaluationsByParty(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.evaluationService.findByParty(id, req.user.companyId);
+  }
+
+  @Post(':id/evaluations')
+  createEvaluation(
+    @Param('id') id: string,
+    @Body() dto: CreateExternalPartyEvaluationDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.evaluationService.create(req.user.companyId, { ...dto, external_party_id: id });
   }
 }
