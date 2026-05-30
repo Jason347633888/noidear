@@ -7,11 +7,12 @@ import { ProductCodeGeneratorService } from './product-code-generator.service';
 import { MaterialAllergenProfileService } from './material-allergen-profile.service';
 import { ProductAllergenSummaryService } from './product-allergen-summary.service';
 import { ProductRiskZoneService } from './product-risk-zone.service';
+import { ProductValidationService } from './product-validation.service';
 
 @Module({
   imports: [DocumentModule],
   controllers: [ProductController],
-  providers: [ProductService, StorageService, ProductCodeGeneratorService, MaterialAllergenProfileService, ProductAllergenSummaryService, ProductRiskZoneService],
-  exports: [ProductService, ProductCodeGeneratorService, MaterialAllergenProfileService, ProductAllergenSummaryService, ProductRiskZoneService],
+  providers: [ProductService, StorageService, ProductCodeGeneratorService, MaterialAllergenProfileService, ProductAllergenSummaryService, ProductRiskZoneService, ProductValidationService],
+  exports: [ProductService, ProductCodeGeneratorService, MaterialAllergenProfileService, ProductAllergenSummaryService, ProductRiskZoneService, ProductValidationService],
 })
 export class ProductModule {}

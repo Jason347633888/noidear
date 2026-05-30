@@ -3558,6 +3558,26 @@ model MaterialAllergenProfile {
   @@map("material_allergen_profiles")
 }
 
+// ── Phase 12 Task 6: ProductValidationRecord ─────────────────────────────────
+
+model ProductValidationRecord {
+  id                   String    @id @default(cuid())
+  company_id           String
+  product_id           String
+  recipe_id            String?
+  validation_type      String
+  inspection_record_id String?
+  change_event_id      String?
+  conclusion           String
+  conclusion_by        String?
+  concluded_at         DateTime?
+  evidence_file_id     String?
+  created_at           DateTime  @default(now())
+
+  @@index([company_id, product_id, validation_type])
+  @@map("product_validation_records")
+}
+
 // ── Phase 12 Task 4: ProductRiskZone ──────────────────────────────────────────
 
 model ProductRiskZone {
