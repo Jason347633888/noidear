@@ -3335,6 +3335,35 @@ model BusinessNumberSequence {
   @@map("business_number_sequences")
 }
 
+// Phase 14 Task 2: Traceability Drill workflow
+model TraceabilityDrill {
+  id                       String    @id @default(cuid())
+  company_id               String
+  drill_type               String
+  drill_date               DateTime  @db.Date
+  planned_start            DateTime?
+  planned_end              DateTime?
+  actual_start             DateTime?
+  actual_end               DateTime?
+  simulated_case           String?
+  root_object_type         String
+  root_object_id           String
+  traceability_snapshot_id String?
+  participants             String[]
+  reviewer_id              String?
+  approver_id              String?
+  conclusion               String?
+  conclusion_at            DateTime?
+  capa_id                  String?
+  status                   String    @default("planned")
+  created_at               DateTime  @default(now())
+  updated_at               DateTime  @updatedAt
+
+  @@index([company_id, drill_date, status])
+  @@index([root_object_type, root_object_id])
+  @@map("traceability_drills")
+}
+
 // ========================================
 // Company Tenant & Profile (multi-tenant foundation)
 // ========================================
