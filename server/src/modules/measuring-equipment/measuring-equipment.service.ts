@@ -1,11 +1,22 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { MeasuringEquipment } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateEquipmentDto } from './dto/create-equipment.dto';
 import { CreateCalibrationDto } from './dto/create-calibration.dto';
 
+const CALIBRATION_RESULT_FAIL = 'fail';
+const STATUS_NORMAL = 'normal';
+const STATUS_FAILED = 'failed';
+
 @Injectable()
 export class MeasuringEquipmentService {
   constructor(private prisma: PrismaService) {}
+
+  getOverdueStatus(equipment: Pick<MeasuringEquipment, 'next_calibration_at' | 'status'>): boolean {
+    if (!equipment.next_calibration_at) return false;
+    if (equipment.status !== STATUS_NORMAL) return false;
+    return equipment.next_calibration_at < new Date();
+  }
 
   async createEquipment(dto: CreateEquipmentDto, companyId: string) {
     return this.prisma.measuringEquipment.create({
@@ -14,7 +25,7 @@ export class MeasuringEquipmentService {
   }
 
   async findAllEquipment(companyId: string) {
-    return this.prisma.measuringEquipment.findMany({
+    const rows = await this.prisma.measuringEquipment.findMany({
       where: { company_id: companyId, status: { not: 'scrapped' } },
       include: {
         calibration_records: {
@@ -24,6 +35,11 @@ export class MeasuringEquipmentService {
       },
       orderBy: { name: 'asc' },
     });
+
+    return rows.map((eq) => ({
+      ...eq,
+      isOverdue: this.getOverdueStatus(eq),
+    }));
   }
 
   async findOverdue(companyId: string) {
@@ -44,28 +60,48 @@ export class MeasuringEquipmentService {
       throw new NotFoundException('计量器具不存在');
     }
 
+    const calibratedAt = new Date(dto.calibrated_at);
+    const validUntil = new Date(dto.valid_until);
+    const isFail = dto.result === CALIBRATION_RESULT_FAIL;
+
     const record = await this.prisma.calibrationRecord.create({
       data: {
         company_id: companyId,
         measuring_equipment_id: dto.measuring_equipment_id,
-        calibrated_at: new Date(dto.calibrated_at),
-        valid_until: new Date(dto.valid_until),
+        calibrated_at: calibratedAt,
+        valid_until: validUntil,
         result: dto.result,
         calibration_body: dto.calibration_body,
         certificate_no: dto.certificate_no,
         notes: dto.notes,
       },
     });
-    // 更新设备的下次校准日期
+
     await this.prisma.measuringEquipment.update({
       where: { id: dto.measuring_equipment_id },
       data: {
-        last_calibrated_at: new Date(dto.calibrated_at),
-        next_calibration_at: new Date(dto.valid_until),
-        status: dto.result === 'fail' ? 'overdue' : 'normal',
+        last_calibrated_at: calibratedAt,
+        next_calibration_at: validUntil,
+        status: isFail ? STATUS_FAILED : STATUS_NORMAL,
       },
     });
+
     return record;
+  }
+
+  async findById(equipmentId: string, companyId: string) {
+    const equipment = await this.prisma.measuringEquipment.findFirst({
+      where: { id: equipmentId, company_id: companyId },
+      include: {
+        calibration_records: { orderBy: { calibrated_at: 'desc' } },
+      },
+    });
+    if (!equipment) throw new NotFoundException('计量器具不存在');
+
+    return {
+      ...equipment,
+      isOverdue: this.getOverdueStatus(equipment),
+    };
   }
 
   async findCalibrationsByEquipment(equipmentId: string, companyId: string) {
