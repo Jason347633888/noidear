@@ -3601,3 +3601,52 @@ model ProductRiskZone {
   @@index([company_id, product_id, status])
   @@map("product_risk_zones")
 }
+
+// ── Phase 13 Task 2: RetainedSample ──────────────────────────────────────────
+
+model RetainedSample {
+  id                       String    @id @default(cuid())
+  company_id               String
+  sample_type              String
+  product_id               String?
+  material_batch_id        String?
+  production_batch_id      String?
+  sample_code              String
+  sample_qty               Decimal   @db.Decimal(14, 4)
+  unit                     String
+  retained_at              DateTime
+  retention_period         String?
+  expires_at               DateTime?
+  storage_condition        String?
+  storage_area_id          String?
+  status                   String    @default("retained")
+  disposal_action          String?
+  disposed_at              DateTime?
+  appeared_in_source_forms String[]  @default([])
+  source_form_version      String?
+  source_form_field_group  String?
+  created_at               DateTime  @default(now())
+  updated_at               DateTime  @updatedAt
+  inspections              RetainedSampleInspection[]
+
+  @@unique([company_id, sample_code])
+  @@index([company_id, sample_type, status])
+  @@index([company_id, production_batch_id])
+  @@map("retained_samples")
+}
+
+model RetainedSampleInspection {
+  id               String   @id @default(cuid())
+  company_id       String
+  sample_id        String
+  inspected_at     DateTime
+  inspector_id     String?
+  result           String
+  notes            String?
+  created_at       DateTime @default(now())
+
+  sample RetainedSample @relation(fields: [sample_id], references: [id])
+
+  @@index([company_id, sample_id])
+  @@map("retained_sample_inspections")
+}
