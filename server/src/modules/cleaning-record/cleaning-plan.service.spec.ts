@@ -63,7 +63,7 @@ function makePlanItem(overrides: Record<string, unknown> = {}) {
 function createPrismaMock(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     workshopArea: {
-      findFirst: jest.fn().mockResolvedValue({ id: 'area-1', name: '灌装间A' }),
+      findUnique: jest.fn().mockResolvedValue({ id: 'area-1', name: '灌装间A' }),
     },
     cleaningPlanTemplate: {
       create: jest.fn().mockResolvedValue(makeTemplate()),
@@ -175,7 +175,7 @@ describe('CleaningPlanService', () => {
     it('throws NotFoundException when area point does not exist', async () => {
       const prisma = createPrismaMock({
         workshopArea: {
-          findFirst: jest.fn().mockResolvedValue(null),
+          findUnique: jest.fn().mockResolvedValue(null),
         },
       });
       const service = new CleaningPlanService(prisma);
@@ -191,6 +191,7 @@ describe('CleaningPlanService', () => {
   describe('activatePlan', () => {
     it('activates one plan per area point, retiring any existing active plan', async () => {
       const existingActive = makePlan({ status: 'active', id: 'old-plan-1' });
+      let capturedTx: any;
       const prisma = createPrismaMock({
         cleaningPlan: {
           findUnique: jest.fn().mockResolvedValue(makePlan({ status: 'draft' })),
@@ -200,7 +201,7 @@ describe('CleaningPlanService', () => {
           create: jest.fn(),
         },
         $transaction: jest.fn().mockImplementation((fn: (tx: any) => Promise<unknown>) => {
-          const tx = {
+          capturedTx = {
             cleaningPlan: {
               findMany: jest.fn().mockResolvedValue([existingActive]),
               update: jest.fn().mockResolvedValue(makePlan({ status: 'active' })),
@@ -210,14 +211,19 @@ describe('CleaningPlanService', () => {
               createMany: jest.fn().mockResolvedValue({ count: 0 }),
             },
           };
-          return fn(tx);
+          return fn(capturedTx);
         }),
       });
       const service = new CleaningPlanService(prisma);
+      const plan = makePlan({ status: 'draft' });
 
       const result = await service.activatePlan('plan-1');
 
       expect(result.status).toBe('active');
+      expect(capturedTx.cleaningPlan.updateMany).toHaveBeenCalledWith({
+        where: { area_point_id: plan.area_point_id, company_id: plan.company_id, status: 'active' },
+        data: { status: 'retired', effective_to: expect.any(Date) },
+      });
     });
 
     it('rejects activating a second overlapping active plan for the same area point', async () => {

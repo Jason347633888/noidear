@@ -31,4 +31,5 @@ export class CloneTemplateToPlanDto {
   @IsString() area_point_id: string;
   @IsString() version: string;
   @IsDateString() effective_from: string;
+  @IsOptional() @IsString() frequency?: string;
 }

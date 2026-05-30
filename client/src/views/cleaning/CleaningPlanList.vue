@@ -346,11 +346,11 @@ function openTemplateDialog() {
 }
 
 function addTemplateItem() {
-  templateForm.items.push({ target_name: '', target_type: 'equipment', method: '', requires_disinfection: false });
+  templateForm.items = [...templateForm.items, { target_name: '', target_type: 'equipment', method: '', requires_disinfection: false }];
 }
 
 function removeTemplateItem(index: number) {
-  templateForm.items.splice(index, 1);
+  templateForm.items = templateForm.items.filter((_, i) => i !== index);
 }
 
 async function handleCreateTemplate() {

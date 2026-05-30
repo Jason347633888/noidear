@@ -51,6 +51,7 @@ export class CleaningPlanService {
     areaPointId: string,
     version: string,
     effectiveFrom: Date,
+    frequency: string = 'daily',
   ) {
     const template = await this.prisma.cleaningPlanTemplate.findUnique({
       where: { id: templateId },
@@ -59,7 +60,7 @@ export class CleaningPlanService {
       throw new NotFoundException(`清洁计划模板不存在: ${templateId}`);
     }
 
-    const area = await this.prisma.workshopArea.findFirst({
+    const area = await this.prisma.workshopArea.findUnique({
       where: { id: areaPointId },
     });
     if (!area) {
@@ -74,7 +75,7 @@ export class CleaningPlanService {
         area_point_id: areaPointId,
         template_id: templateId,
         version,
-        frequency: 'daily',
+        frequency,
         effective_from: effectiveFrom,
         status: 'draft',
       },
@@ -120,8 +121,8 @@ export class CleaningPlanService {
       const activePlans = await tx.cleaningPlan.findMany({
         where: {
           area_point_id: plan.area_point_id,
+          company_id: plan.company_id,
           status: 'active',
-          id: { not: planId },
         },
       });
 
@@ -129,8 +130,8 @@ export class CleaningPlanService {
         await tx.cleaningPlan.updateMany({
           where: {
             area_point_id: plan.area_point_id,
+            company_id: plan.company_id,
             status: 'active',
-            id: { not: planId },
           },
           data: {
             status: 'retired',

@@ -41,6 +41,7 @@ export class CleaningPlanController {
       dto.area_point_id,
       dto.version,
       new Date(dto.effective_from),
+      dto.frequency,
     );
   }
 
