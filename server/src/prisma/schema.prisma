@@ -3331,3 +3331,31 @@ model SanitizerConcentrationCheck {
   @@index([company_id, area_point_id, checked_at])
   @@map("sanitizer_concentration_checks")
 }
+
+model QualityInspectionTask {
+  id                     String    @id @default(cuid())
+  company_id             String
+  work_date              DateTime  @db.Date
+  shift_type             String?
+  area_point_id          String?
+  production_batch_id    String?
+  task_type              String
+  target_resource_type   String
+  target_resource_id     String?
+  standard_id            String?
+  assignee_role          String?
+  assignee_user_id       String?
+  due_at                 DateTime?
+  status                 String    @default("pending")
+  completed_resource_type String?
+  completed_resource_id  String?
+  skipped_reason         String?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  @@index([company_id, work_date, status])
+  @@index([area_point_id, work_date])
+  @@index([production_batch_id, status])
+  @@index([target_resource_type, target_resource_id])
+  @@map("quality_inspection_tasks")
+}
