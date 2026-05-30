@@ -81,6 +81,7 @@ function makeRecordItem(overrides: Record<string, unknown> = {}) {
     target_type: 'equipment',
     method_snapshot: '湿式清洁',
     requires_disinfection: true,
+    is_mandatory: true,
     completed: false,
     completed_at: null,
     actual_concentration: null,
@@ -254,6 +255,34 @@ describe('CleaningRecordService', () => {
       const service = new CleaningRecordService(prisma);
 
       await expect(service.submitRecord('record-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('allows submit when only optional items are pending', async () => {
+      const mandatoryPass = makeRecordItem({ id: 'rec-item-1', is_mandatory: true, result: 'pass', completed: true });
+      const optionalPending = makeRecordItem({ id: 'rec-item-2', is_mandatory: false, result: 'pending', completed: false });
+      const prisma = createPrismaMock({
+        cleaningRecordItem: {
+          findUnique: jest.fn().mockResolvedValue(mandatoryPass),
+          update: jest.fn(),
+          findMany: jest.fn().mockResolvedValue([mandatoryPass, optionalPending]),
+        },
+        cleaningRecord: {
+          findUnique: jest.fn().mockResolvedValue(makeRecord({ status: 'draft', items: [mandatoryPass, optionalPending] })),
+          update: jest.fn().mockResolvedValue(makeRecord({ status: 'submitted', is_pass: true })),
+          create: jest.fn(),
+          findMany: jest.fn().mockResolvedValue([]),
+        },
+      });
+      const service = new CleaningRecordService(prisma);
+
+      const result = await service.submitRecord('record-1');
+
+      expect(prisma.cleaningRecord.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'submitted' }),
+        }),
+      );
+      expect(result).toBeDefined();
     });
 
     it('sets is_pass true when all items pass', async () => {

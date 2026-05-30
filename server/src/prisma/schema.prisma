@@ -2533,6 +2533,7 @@ model CleaningRecordItem {
   target_type          String
   method_snapshot      String?
   requires_disinfection Boolean       @default(false)
+  is_mandatory         Boolean        @default(true)
   completed            Boolean        @default(false)
   completed_at         DateTime?
   actual_concentration Decimal?       @db.Decimal(14, 4)

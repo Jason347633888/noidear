@@ -91,6 +91,7 @@ export class CleaningRecordService {
             target_type: item.target_type,
             method_snapshot: item.method ?? null,
             requires_disinfection: item.requires_disinfection,
+            is_mandatory: item.is_mandatory,
             completed: false,
             result: 'pending',
           })),
@@ -140,11 +141,11 @@ export class CleaningRecordService {
       throw new NotFoundException(`清洁记录不存在: ${recordId}`);
     }
 
-    // Validate all items
+    // Validate items — optional items (is_mandatory=false) may remain pending
     const items = record.items;
-    const mandatoryPending = items.filter((i) => !i.completed && i.result === 'pending');
+    const mandatoryPending = items.filter((i) => i.is_mandatory && !i.completed && i.result === 'pending');
     if (mandatoryPending.length > 0) {
-      throw new BadRequestException(`还有 ${mandatoryPending.length} 个清洁项目未完成`);
+      throw new BadRequestException(`还有 ${mandatoryPending.length} 个必填清洁项目未完成`);
     }
 
     const failedWithoutRemark = items.filter((i) => i.result === 'fail' && !i.remark);
@@ -152,12 +153,13 @@ export class CleaningRecordService {
       throw new BadRequestException('不合格项目必须填写备注');
     }
 
-    const allItemsHaveResult = items.every((i) => i.result === 'pass' || i.result === 'fail');
-    if (!allItemsHaveResult) {
-      throw new BadRequestException('所有清洁项目必须记录结果（pass 或 fail）');
+    const mandatoryItems = items.filter((i) => i.is_mandatory);
+    const allMandatoryHaveResult = mandatoryItems.every((i) => i.result === 'pass' || i.result === 'fail');
+    if (!allMandatoryHaveResult) {
+      throw new BadRequestException('所有必填清洁项目必须记录结果（pass 或 fail）');
     }
 
-    const isPass = items.length > 0 && items.every((i) => i.result === 'pass');
+    const isPass = mandatoryItems.length > 0 && mandatoryItems.every((i) => i.result === 'pass');
 
     return this.prisma.cleaningRecord.update({
       where: { id: recordId },
