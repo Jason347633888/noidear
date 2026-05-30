@@ -1,14 +1,14 @@
 import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import { MAX_TRACE_DEPTH } from '../evidence-snapshot.helpers';
+import { MAX_TRACE_DEPTH, SUPPORTED_ROOT_TYPES, type RootObjectType } from '../evidence-snapshot.helpers';
 
 /**
- * Task 9: request to build a bounded trace-context snapshot.
- * First release accepts exactly one root type: production_batch.
+ * Task 9 + Task 14-3: request to build a bounded trace-context snapshot.
+ * Supports rootObjectType: production_batch, material_batch, product_recall, traceability_drill.
  */
 export class CreateTraceContextSnapshotDto {
   @IsString()
-  @IsIn(['production_batch'])
-  rootObjectType!: 'production_batch';
+  @IsIn(SUPPORTED_ROOT_TYPES)
+  rootObjectType!: RootObjectType;
 
   @IsString()
   rootObjectId!: string;

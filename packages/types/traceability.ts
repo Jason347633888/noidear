@@ -228,6 +228,67 @@ export interface TraceExportResult {
   meta: Record<string, unknown>;
 }
 
+export type TraceRootObjectType = 'production_batch' | 'material_batch' | 'product_recall' | 'traceability_drill';
+
+export interface TraceContextSnapshotRoot {
+  type: TraceRootObjectType;
+  id: string;
+  label: string;
+  display: Record<string, unknown>;
+}
+
+export interface TraceContextSnapshotInspection {
+  id: string;
+  recordNo: string | null;
+  result: string | null;
+  inspectedAt: string | null;
+}
+
+export interface TraceContextSnapshotNonConformance {
+  id: string;
+  ncNo: string | null;
+  status: string | null;
+  sourceType: string | null;
+  sourceId: string | null;
+}
+
+export interface TraceContextSnapshotCorrectiveAction {
+  id: string;
+  capaNo: string | null;
+  status: string | null;
+}
+
+export interface TraceContextSnapshotApproval {
+  id: string;
+  approverId: string | null;
+  status: string | null;
+  approvedAt: string | null;
+}
+
+export interface TraceContextSnapshotEvidenceFile {
+  id: string;
+  fileName: string | null;
+  filePath: string | null;
+  mimeType: string | null;
+}
+
+/**
+ * Full snapshot output shape for createTraceContextSnapshot.
+ * All rootObjectType values produce this same structure.
+ */
+export interface TraceContextSnapshotData {
+  depth: number;
+  root: TraceContextSnapshotRoot;
+  upstream: unknown[];
+  downstream: unknown[];
+  inspections: TraceContextSnapshotInspection[];
+  nonConformances: TraceContextSnapshotNonConformance[];
+  correctiveActions: TraceContextSnapshotCorrectiveAction[];
+  approvals: TraceContextSnapshotApproval[];
+  evidenceFiles: TraceContextSnapshotEvidenceFile[];
+  generatedAt: string;
+}
+
 export interface SnapshotCreateRequest {
   sourceQueryRef: string;
   snapshotType: 'query' | 'balance' | 'export';
