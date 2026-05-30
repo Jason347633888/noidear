@@ -4,6 +4,7 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { BatchNumberGeneratorService } from './batch-number-generator.service';
@@ -223,8 +224,13 @@ export class ProductionBatchService {
     });
   }
 
-  async getReleaseReadiness(productionBatchId: string): Promise<ReleaseReadiness> {
-    const batch = await this.prisma.productionBatch.findUnique({
+  async getReleaseReadiness(
+    productionBatchId: string,
+    prismaClient?: PrismaClient | Prisma.TransactionClient,
+  ): Promise<ReleaseReadiness> {
+    const client = prismaClient ?? this.prisma;
+
+    const batch = await client.productionBatch.findUnique({
       where: { id: productionBatchId },
       include: { product: { select: { id: true, product_type: true, company_id: true } } },
     });
@@ -237,7 +243,7 @@ export class ProductionBatchService {
     const blockers: ReleaseBlocker[] = [];
 
     // Only count submitted inspection records — drafts do not satisfy the gate.
-    const inspectionRecords = await this.prisma.inspectionRecord.findMany({
+    const inspectionRecords = await client.inspectionRecord.findMany({
       where: {
         ...(companyId ? { company_id: companyId } : {}),
         object_type: 'production_batch',
@@ -278,7 +284,7 @@ export class ProductionBatchService {
     // Query NCs that are not yet closed — 'open' (undisposed) and 'dispositioned' both
     // represent unresolved non-conformances. The dispose() flow always moves status from
     // 'open' → 'dispositioned', so a concession NC will always be 'dispositioned'.
-    const unresolvedNCs = await this.prisma.nonConformance.findMany({
+    const unresolvedNCs = await client.nonConformance.findMany({
       where: {
         ...(companyId ? { company_id: companyId } : {}),
         source_type: 'production_batch',
@@ -312,7 +318,7 @@ export class ProductionBatchService {
         continue;
       }
 
-      const approvalInstance = await this.prisma.approvalInstance.findFirst({
+      const approvalInstance = await client.approvalInstance.findFirst({
         where: {
           resourceType: 'non_conformance',
           resourceId: nc.id,
@@ -332,7 +338,7 @@ export class ProductionBatchService {
 
     const isFinishedProduct = batch.product?.product_type === FINISHED_PRODUCT_TYPE;
     if (isFinishedProduct) {
-      const retainedSample = await this.prisma.retainedSample.findFirst({
+      const retainedSample = await client.retainedSample.findFirst({
         where: {
           ...(companyId ? { company_id: companyId } : {}),
           production_batch_id: productionBatchId,
@@ -368,7 +374,7 @@ export class ProductionBatchService {
       }
 
       // Re-check readiness inside the transaction to close the TOCTOU window.
-      const readiness = await this.getReleaseReadiness(productionBatchId);
+      const readiness = await this.getReleaseReadiness(productionBatchId, tx);
 
       if (!readiness.ready) {
         throw new BadRequestException({
