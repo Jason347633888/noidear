@@ -184,6 +184,9 @@ model User {
   createdComplaints           CustomerComplaint[]   @relation("CustomerComplaintCreator")
   materialRequisitions        MaterialRequisition[] @relation("MaterialRequisitionApplicant")
 
+  // Phase 13 Task 6: 批次放行反向关系
+  releasedProductionBatches ProductionBatch[] @relation("ProductionBatchReleasedBy")
+
   @@map("users")
 }
 
@@ -1162,6 +1165,10 @@ model ProductionBatch {
   planItemId String?
   planItem   ProductionPlanItem? @relation("PlanItemProductionBatches", fields: [planItemId], references: [id])
 
+  // Phase 13 Task 6: 批次放行操作人 FK（不写旧 released_by Int? 字段）
+  released_by_id String?
+  releasedByUser User?   @relation("ProductionBatchReleasedBy", fields: [released_by_id], references: [id], onDelete: SetNull)
+
   @@index([batchNumber])
   @@index([productionDate])
   @@index([status])
@@ -1169,6 +1176,7 @@ model ProductionBatch {
   @@index([productId])
   @@index([recipeId])
   @@index([planItemId])
+  @@index([released_by_id])
   @@map("production_batches")
 }
 

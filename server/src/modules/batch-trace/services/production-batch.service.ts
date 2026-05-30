@@ -16,6 +16,20 @@ import {
 import { OwnershipContext } from '../../module-access/ownership-context';
 import { userIdsInDepts } from '../../module-access/ownership-helpers';
 
+const FINISHED_PRODUCT_TYPE = 'finished_product';
+
+interface ReleaseBlocker {
+  code: string;
+  message: string;
+  resourceType: string;
+  resourceId: string;
+}
+
+interface ReleaseReadiness {
+  ready: boolean;
+  blockers: ReleaseBlocker[];
+}
+
 @Injectable()
 export class ProductionBatchService {
   constructor(
@@ -206,6 +220,140 @@ export class ProductionBatchService {
     return this.prisma.productionBatch.update({
       where: { id },
       data: updateDto,
+    });
+  }
+
+  async getReleaseReadiness(productionBatchId: string): Promise<ReleaseReadiness> {
+    const batch = await this.prisma.productionBatch.findUnique({
+      where: { id: productionBatchId },
+      include: { product: { select: { id: true, product_type: true } } },
+    });
+
+    if (!batch || batch.deletedAt) {
+      throw new NotFoundException('Production batch not found');
+    }
+
+    const blockers: ReleaseBlocker[] = [];
+
+    const inspectionRecords = await this.prisma.inspectionRecord.findMany({
+      where: { object_type: 'production_batch', object_id: productionBatchId },
+      include: {
+        items: {
+          include: { inspection_item: { select: { id: true, is_critical: true } } },
+        },
+      },
+    });
+
+    if (inspectionRecords.length === 0) {
+      blockers.push({
+        code: 'missing_product_inspection',
+        message: '缺少成品检验记录',
+        resourceType: 'production_batch',
+        resourceId: productionBatchId,
+      });
+    }
+
+    for (const record of inspectionRecords) {
+      for (const item of record.items) {
+        if (item.judgment === 'fail' && item.inspection_item?.is_critical) {
+          blockers.push({
+            code: 'failed_safety_critical_inspection',
+            message: `安全关键检验项目不合格，不可让步放行（检验记录 ${record.id}）`,
+            resourceType: 'inspection_record',
+            resourceId: record.id,
+          });
+        }
+      }
+    }
+
+    const hasCriticalFailure = blockers.some(b => b.code === 'failed_safety_critical_inspection');
+
+    const openNCs = await this.prisma.nonConformance.findMany({
+      where: {
+        source_type: 'production_batch',
+        source_id: productionBatchId,
+        status: 'open',
+      },
+    });
+
+    for (const nc of openNCs) {
+      if (!nc.disposition) {
+        blockers.push({
+          code: 'open_non_conformance_without_disposition',
+          message: `不合格品尚未处置（NC ${nc.nc_no}）`,
+          resourceType: 'non_conformance',
+          resourceId: nc.id,
+        });
+        continue;
+      }
+
+      if (nc.disposition !== 'concession') {
+        blockers.push({
+          code: 'non_conformance_disposition_not_concession',
+          message: `不合格品处置方式为"${nc.disposition}"，不满足让步放行条件（NC ${nc.nc_no}）`,
+          resourceType: 'non_conformance',
+          resourceId: nc.id,
+        });
+        continue;
+      }
+
+      if (hasCriticalFailure) {
+        continue;
+      }
+
+      const approvalInstance = await this.prisma.approvalInstance.findFirst({
+        where: {
+          resourceType: 'non_conformance',
+          resourceId: nc.id,
+          status: 'APPROVED',
+        },
+      });
+
+      if (!approvalInstance) {
+        blockers.push({
+          code: 'concession_without_approved_approval_instance',
+          message: `让步处置未获批准（NC ${nc.nc_no}）`,
+          resourceType: 'non_conformance',
+          resourceId: nc.id,
+        });
+      }
+    }
+
+    const isFinishedProduct = batch.product?.product_type === FINISHED_PRODUCT_TYPE;
+    if (isFinishedProduct) {
+      const retainedSample = await this.prisma.retainedSample.findFirst({
+        where: { production_batch_id: productionBatchId },
+      });
+
+      if (!retainedSample) {
+        blockers.push({
+          code: 'missing_retained_sample',
+          message: '成品批次缺少留样记录',
+          resourceType: 'production_batch',
+          resourceId: productionBatchId,
+        });
+      }
+    }
+
+    return { ready: blockers.length === 0, blockers };
+  }
+
+  async releaseProductionBatch(productionBatchId: string, releasedBy: string) {
+    const readiness = await this.getReleaseReadiness(productionBatchId);
+
+    if (!readiness.ready) {
+      throw new BadRequestException({
+        message: '批次放行检查未通过',
+        blockers: readiness.blockers,
+      });
+    }
+
+    return this.prisma.productionBatch.update({
+      where: { id: productionBatchId },
+      data: {
+        released_at: new Date(),
+        released_by_id: releasedBy,
+      },
     });
   }
 }

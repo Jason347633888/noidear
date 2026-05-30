@@ -316,6 +316,310 @@ describe('ProductionBatchService', () => {
   });
 });
 
+describe('ProductionBatchService — getReleaseReadiness + releaseProductionBatch', () => {
+  function buildPrisma(overrides: Partial<Record<string, any>> = {}) {
+    return {
+      product: { findFirst: jest.fn(), findUnique: jest.fn() },
+      recipe: { findFirst: jest.fn() },
+      productionBatch: {
+        create: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      inspectionRecord: { findMany: jest.fn().mockResolvedValue([]) },
+      nonConformance: { findMany: jest.fn().mockResolvedValue([]) },
+      retainedSample: { findFirst: jest.fn().mockResolvedValue(null) },
+      approvalInstance: { findFirst: jest.fn().mockResolvedValue(null) },
+      ...overrides,
+    } as any;
+  }
+
+  const BATCH_ID = 'batch-release-001';
+  const PRODUCT_ID = 'prod-001';
+
+  function batchBase(productType = 'finished_product') {
+    return {
+      id: BATCH_ID,
+      batchNumber: 'PROD-TEST-001',
+      productId: PRODUCT_ID,
+      productName: '成品A',
+      deletedAt: null,
+      released_at: null,
+      product: { id: PRODUCT_ID, product_type: productType },
+    };
+  }
+
+  function makeService(prisma: any) {
+    const batchGen: any = { generateBatchNumber: jest.fn() };
+    return new ProductionBatchService(prisma, batchGen);
+  }
+
+  beforeEach(() => jest.clearAllMocks());
+
+  describe('getReleaseReadiness', () => {
+    it('returns ready=false with missing_product_inspection when no inspection records exist', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(batchBase());
+      prisma.inspectionRecord.findMany.mockResolvedValue([]);
+      prisma.nonConformance.findMany.mockResolvedValue([]);
+      prisma.retainedSample.findFirst.mockResolvedValue({ id: 'rs-1' });
+
+      const svc = makeService(prisma);
+      const result = await svc.getReleaseReadiness(BATCH_ID);
+
+      expect(result.ready).toBe(false);
+      expect(result.blockers.some(b => b.code === 'missing_product_inspection')).toBe(true);
+    });
+
+    it('returns ready=false with failed_safety_critical_inspection when a critical item failed', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(batchBase());
+      prisma.inspectionRecord.findMany.mockResolvedValue([
+        {
+          id: 'ir-1',
+          overall_result: 'fail',
+          items: [
+            {
+              id: 'iri-1',
+              judgment: 'fail',
+              inspection_item: { id: 'ii-1', is_critical: true },
+            },
+          ],
+        },
+      ]);
+      prisma.nonConformance.findMany.mockResolvedValue([]);
+      prisma.retainedSample.findFirst.mockResolvedValue({ id: 'rs-1' });
+
+      const svc = makeService(prisma);
+      const result = await svc.getReleaseReadiness(BATCH_ID);
+
+      expect(result.ready).toBe(false);
+      expect(result.blockers.some(b => b.code === 'failed_safety_critical_inspection')).toBe(true);
+    });
+
+    it('returns ready=false with open_non_conformance_without_disposition for open NC without disposition', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(batchBase());
+      prisma.inspectionRecord.findMany.mockResolvedValue([
+        { id: 'ir-1', overall_result: 'pass', items: [] },
+      ]);
+      prisma.nonConformance.findMany.mockResolvedValue([
+        { id: 'nc-1', status: 'open', disposition: null, source_type: 'production_batch', source_id: BATCH_ID },
+      ]);
+      prisma.retainedSample.findFirst.mockResolvedValue({ id: 'rs-1' });
+
+      const svc = makeService(prisma);
+      const result = await svc.getReleaseReadiness(BATCH_ID);
+
+      expect(result.ready).toBe(false);
+      expect(result.blockers.some(b => b.code === 'open_non_conformance_without_disposition')).toBe(true);
+    });
+
+    it('returns ready=false with non_conformance_disposition_not_concession for non-concession disposition', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(batchBase());
+      prisma.inspectionRecord.findMany.mockResolvedValue([
+        { id: 'ir-1', overall_result: 'pass', items: [] },
+      ]);
+      prisma.nonConformance.findMany.mockResolvedValue([
+        { id: 'nc-1', status: 'open', disposition: 'rework', source_type: 'production_batch', source_id: BATCH_ID },
+      ]);
+      prisma.retainedSample.findFirst.mockResolvedValue({ id: 'rs-1' });
+
+      const svc = makeService(prisma);
+      const result = await svc.getReleaseReadiness(BATCH_ID);
+
+      expect(result.ready).toBe(false);
+      expect(result.blockers.some(b => b.code === 'non_conformance_disposition_not_concession')).toBe(true);
+    });
+
+    it('returns ready=false with concession_without_approved_approval_instance when concession NC has no approved instance', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(batchBase());
+      prisma.inspectionRecord.findMany.mockResolvedValue([
+        { id: 'ir-1', overall_result: 'pass', items: [] },
+      ]);
+      prisma.nonConformance.findMany.mockResolvedValue([
+        {
+          id: 'nc-1',
+          status: 'open',
+          disposition: 'concession',
+          source_type: 'production_batch',
+          source_id: BATCH_ID,
+        },
+      ]);
+      prisma.retainedSample.findFirst.mockResolvedValue({ id: 'rs-1' });
+      prisma.approvalInstance.findFirst.mockResolvedValue(null);
+
+      const svc = makeService(prisma);
+      const result = await svc.getReleaseReadiness(BATCH_ID);
+
+      expect(result.ready).toBe(false);
+      expect(result.blockers.some(b => b.code === 'concession_without_approved_approval_instance')).toBe(true);
+    });
+
+    it('conditional release: non-safety-critical NC with concession + approved ApprovalInstance → ready=true', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(batchBase());
+      prisma.inspectionRecord.findMany.mockResolvedValue([
+        { id: 'ir-1', overall_result: 'pass', items: [] },
+      ]);
+      prisma.nonConformance.findMany.mockResolvedValue([
+        {
+          id: 'nc-1',
+          status: 'open',
+          disposition: 'concession',
+          source_type: 'production_batch',
+          source_id: BATCH_ID,
+        },
+      ]);
+      prisma.retainedSample.findFirst.mockResolvedValue({ id: 'rs-1' });
+      prisma.approvalInstance.findFirst.mockResolvedValue({
+        id: 'ai-1',
+        status: 'APPROVED',
+        completedAt: new Date(),
+      });
+
+      const svc = makeService(prisma);
+      const result = await svc.getReleaseReadiness(BATCH_ID);
+
+      expect(result.ready).toBe(true);
+      expect(result.blockers).toHaveLength(0);
+    });
+
+    it('returns ready=false with missing_retained_sample for finished_product batch without retained sample', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(batchBase('finished_product'));
+      prisma.inspectionRecord.findMany.mockResolvedValue([
+        { id: 'ir-1', overall_result: 'pass', items: [] },
+      ]);
+      prisma.nonConformance.findMany.mockResolvedValue([]);
+      prisma.retainedSample.findFirst.mockResolvedValue(null);
+
+      const svc = makeService(prisma);
+      const result = await svc.getReleaseReadiness(BATCH_ID);
+
+      expect(result.ready).toBe(false);
+      expect(result.blockers.some(b => b.code === 'missing_retained_sample')).toBe(true);
+    });
+
+    it('does not require retained sample for non-finished_product batch', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(batchBase('semi_finished'));
+      prisma.inspectionRecord.findMany.mockResolvedValue([
+        { id: 'ir-1', overall_result: 'pass', items: [] },
+      ]);
+      prisma.nonConformance.findMany.mockResolvedValue([]);
+      prisma.retainedSample.findFirst.mockResolvedValue(null);
+
+      const svc = makeService(prisma);
+      const result = await svc.getReleaseReadiness(BATCH_ID);
+
+      expect(result.ready).toBe(true);
+      expect(result.blockers).toHaveLength(0);
+    });
+
+    it('returns ready=true when all checks pass (finished_product with retained sample)', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(batchBase('finished_product'));
+      prisma.inspectionRecord.findMany.mockResolvedValue([
+        {
+          id: 'ir-1',
+          overall_result: 'pass',
+          items: [{ id: 'iri-1', judgment: 'pass', inspection_item: { id: 'ii-1', is_critical: false } }],
+        },
+      ]);
+      prisma.nonConformance.findMany.mockResolvedValue([]);
+      prisma.retainedSample.findFirst.mockResolvedValue({ id: 'rs-1' });
+
+      const svc = makeService(prisma);
+      const result = await svc.getReleaseReadiness(BATCH_ID);
+
+      expect(result.ready).toBe(true);
+      expect(result.blockers).toHaveLength(0);
+    });
+
+    it('throws NotFoundException when batch does not exist', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(null);
+
+      const svc = makeService(prisma);
+      await expect(svc.getReleaseReadiness(BATCH_ID)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('releaseProductionBatch', () => {
+    const RELEASER_ID = 'user-releaser-1';
+
+    it('fails with BadRequestException when blockers exist', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(batchBase());
+      prisma.inspectionRecord.findMany.mockResolvedValue([]);
+      prisma.nonConformance.findMany.mockResolvedValue([]);
+      prisma.retainedSample.findFirst.mockResolvedValue({ id: 'rs-1' });
+
+      const svc = makeService(prisma);
+      await expect(svc.releaseProductionBatch(BATCH_ID, RELEASER_ID)).rejects.toThrow(BadRequestException);
+    });
+
+    it('writes released_at and released_by_id when all checks pass', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(batchBase('finished_product'));
+      prisma.inspectionRecord.findMany.mockResolvedValue([
+        { id: 'ir-1', overall_result: 'pass', items: [] },
+      ]);
+      prisma.nonConformance.findMany.mockResolvedValue([]);
+      prisma.retainedSample.findFirst.mockResolvedValue({ id: 'rs-1' });
+      prisma.productionBatch.update.mockResolvedValue({
+        ...batchBase('finished_product'),
+        released_at: new Date(),
+        released_by_id: RELEASER_ID,
+      });
+
+      const svc = makeService(prisma);
+      const result = await svc.releaseProductionBatch(BATCH_ID, RELEASER_ID);
+
+      expect(prisma.productionBatch.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: BATCH_ID },
+          data: expect.objectContaining({
+            released_at: expect.any(Date),
+            released_by_id: RELEASER_ID,
+          }),
+        }),
+      );
+      expect(result.released_by_id).toBe(RELEASER_ID);
+    });
+
+    it('does NOT write the legacy released_by Int field', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(batchBase('finished_product'));
+      prisma.inspectionRecord.findMany.mockResolvedValue([
+        { id: 'ir-1', overall_result: 'pass', items: [] },
+      ]);
+      prisma.nonConformance.findMany.mockResolvedValue([]);
+      prisma.retainedSample.findFirst.mockResolvedValue({ id: 'rs-1' });
+      prisma.productionBatch.update.mockResolvedValue({ ...batchBase(), released_by_id: RELEASER_ID });
+
+      const svc = makeService(prisma);
+      await svc.releaseProductionBatch(BATCH_ID, RELEASER_ID);
+
+      const updateCall = prisma.productionBatch.update.mock.calls[0][0];
+      expect(updateCall.data).not.toHaveProperty('released_by');
+    });
+
+    it('throws NotFoundException when batch does not exist', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(null);
+
+      const svc = makeService(prisma);
+      await expect(svc.releaseProductionBatch(BATCH_ID, RELEASER_ID)).rejects.toThrow(NotFoundException);
+    });
+  });
+});
+
 describe('ProductionBatchService.findAll with ownership', () => {
   function freshService(userFindManyResult: any[] = []) {
     const prisma: any = {
