@@ -2821,6 +2821,7 @@ model VisitorRecord {
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
   deleted_at    DateTime?
+  access_declarations VisitorAccessDeclaration[] @relation("VisitorRecordDeclarations")
 
   @@map("visitor_records")
 }
@@ -3760,4 +3761,45 @@ model ShelfLifeStudyPoint {
   @@index([status, planned_at])
   @@index([inspection_record_id])
   @@map("shelf_life_study_points")
+}
+
+// ── Phase 15 Task 4: AccessDeclaration ───────────────────────────────────────
+
+model AccessDeclaration {
+  id                  String   @id @default(cuid())
+  company_id          String
+  declaration_type    String
+  subject_type        String
+  subject_id          String?
+  subject_snapshot    Json?
+  declaration_content Json
+  declared_by         String?
+  declared_at         DateTime
+  approved_by         String?
+  approved_at         DateTime?
+  approval_conclusion String?
+  approval_opinion    String?
+  evidence_file_id    String?
+  status              String   @default("declared")
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+  visitor_links       VisitorAccessDeclaration[]
+
+  @@index([company_id, declaration_type, status])
+  @@index([subject_type, subject_id])
+  @@map("access_declarations")
+}
+
+model VisitorAccessDeclaration {
+  id                   String            @id @default(cuid())
+  visitor_record_id    String
+  access_declaration_id String
+  created_at           DateTime          @default(now())
+  visitor_record       VisitorRecord     @relation("VisitorRecordDeclarations", fields: [visitor_record_id], references: [id], onDelete: Cascade)
+  access_declaration   AccessDeclaration @relation(fields: [access_declaration_id], references: [id], onDelete: Cascade)
+
+  @@unique([visitor_record_id, access_declaration_id])
+  @@index([visitor_record_id])
+  @@index([access_declaration_id])
+  @@map("visitor_access_declarations")
 }

@@ -69,6 +69,7 @@ import { CompanyModule } from './modules/company/company.module';
 import { ProductionPlanModule } from './modules/production-plan/production-plan.module';
 import { InspectionRecordModule } from './modules/inspection-record/inspection-record.module';
 import { RetainedSampleModule } from './modules/retained-sample/retained-sample.module';
+import { AccessDeclarationModule } from './modules/access-declaration/access-declaration.module';
 
 @Module({
   imports: [
@@ -141,6 +142,7 @@ import { RetainedSampleModule } from './modules/retained-sample/retained-sample.
     ProductionPlanModule,
     InspectionRecordModule,
     RetainedSampleModule,
+    AccessDeclarationModule,
     ModuleAccessModule,
   ],
   providers: [
