@@ -5,7 +5,9 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  CompleteRetainedSampleInspectionDto,
   CreateRetainedSampleDto,
+  CreateRetainedSampleInspectionDto,
   ListRetainedSamplesDto,
 } from './dto/retained-sample.dto';
 
@@ -127,6 +129,89 @@ export class RetainedSampleService {
         disposed_at: disposedAt,
       },
       include: { inspections: true },
+    });
+  }
+
+  async createInspectionForSample(
+    sampleId: string,
+    dto: CreateRetainedSampleInspectionDto,
+    companyId: string,
+  ) {
+    const sample = await this.prisma.retainedSample.findFirst({
+      where: { id: sampleId, company_id: companyId },
+    });
+
+    if (!sample) {
+      throw new BadRequestException(`Retained sample ${sampleId} not found`);
+    }
+
+    if (sample.status === 'disposed') {
+      throw new BadRequestException(
+        `Retained sample ${sampleId} is disposed and cannot be inspected`,
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const inspectionRecord = await tx.inspectionRecord.create({
+        data: {
+          company_id: companyId,
+          standard_id: null,
+          object_type: 'retained_sample',
+          object_id: sampleId,
+          inspected_at: new Date(),
+          inspector_id: null,
+          overall_result: 'pending',
+          status: 'submitted',
+          source_task_id: null,
+          items: { create: [] },
+        },
+        include: { items: true },
+      });
+
+      const sampleInspection = await tx.retainedSampleInspection.create({
+        data: {
+          retained_sample_id: sampleId,
+          inspection_type: dto.inspection_type,
+          inspection_record_id: inspectionRecord.id,
+        },
+      });
+
+      const updated = await tx.retainedSample.update({
+        where: { id: sampleId },
+        data: { status: 'inspecting' },
+        include: { inspections: true },
+      });
+
+      return { sample: updated, sampleInspection, inspectionRecord };
+    });
+  }
+
+  async completeInspectionForSample(
+    inspectionId: string,
+    dto: CompleteRetainedSampleInspectionDto,
+    sampleId: string,
+    companyId: string,
+  ) {
+    if (!dto.processed_disposition?.trim()) {
+      throw new BadRequestException('processed_disposition is required to complete inspection');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.retainedSampleInspection.update({
+        where: { id: inspectionId },
+        data: {
+          processed_disposition: dto.processed_disposition,
+          processed_at: new Date(),
+          processed_by: dto.processed_by ?? null,
+        },
+      });
+
+      await tx.retainedSample.update({
+        where: { id: sampleId },
+        data: { status: 'retained' },
+      });
+
+      return updated;
     });
   }
 

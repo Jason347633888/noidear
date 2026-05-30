@@ -3635,18 +3635,20 @@ model RetainedSample {
   @@map("retained_samples")
 }
 
+// ── Phase 13 Task 3: RetainedSampleInspection (revised) ──────────────────────
+
 model RetainedSampleInspection {
-  id               String   @id @default(cuid())
-  company_id       String
-  sample_id        String
-  inspected_at     DateTime
-  inspector_id     String?
-  result           String
-  notes            String?
-  created_at       DateTime @default(now())
+  id                    String    @id @default(cuid())
+  retained_sample_id    String
+  retained_sample       RetainedSample @relation(fields: [retained_sample_id], references: [id], onDelete: Cascade)
+  inspection_type       String
+  inspection_record_id  String
+  processed_disposition String?
+  processed_at          DateTime?
+  processed_by          String?
+  created_at            DateTime  @default(now())
 
-  sample RetainedSample @relation(fields: [sample_id], references: [id])
-
-  @@index([company_id, sample_id])
+  @@index([retained_sample_id])
+  @@index([inspection_record_id])
   @@map("retained_sample_inspections")
 }

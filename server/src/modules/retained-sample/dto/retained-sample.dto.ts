@@ -90,6 +90,26 @@ export class DisposeRetainedSampleDto {
   disposed_at!: Date;
 }
 
+export class CreateRetainedSampleInspectionDto {
+  @IsString()
+  @IsNotEmpty()
+  inspection_type!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  inspection_record_id!: string;
+}
+
+export class CompleteRetainedSampleInspectionDto {
+  @IsString()
+  @IsNotEmpty()
+  processed_disposition!: string;
+
+  @IsOptional()
+  @IsString()
+  processed_by?: string;
+}
+
 export class ListRetainedSamplesDto {
   @IsOptional()
   @IsString()
