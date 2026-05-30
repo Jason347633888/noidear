@@ -81,9 +81,10 @@ type UsageFacts = {
 
 type InspectionFact = {
   id: string;
-  record_no?: string | null;
-  result?: string | null;
-  inspectedAt?: Date | string | null;
+  /** Maps to InspectionRecord.overall_result */
+  overall_result?: string | null;
+  /** Maps to InspectionRecord.inspected_at */
+  inspected_at?: Date | string | null;
 };
 
 type NonConformanceFact = {
@@ -102,9 +103,11 @@ type CorrectiveActionFact = {
 
 type ApprovalFact = {
   id: string;
-  approverId?: string | null;
+  /** Maps to ApprovalInstance.createdById */
+  createdById?: string | null;
   status?: string | null;
-  approvedAt?: Date | string | null;
+  /** Maps to ApprovalInstance.completedAt */
+  completedAt?: Date | string | null;
 };
 
 type EvidenceFileFact = {
@@ -207,12 +210,18 @@ export function buildMaterialBatchSnapshotData(input: {
   });
 }
 
+type ProductRecallBatchFact = {
+  production_batch_id: string;
+  batch_number_snapshot?: string | null;
+  product_name_snapshot?: string | null;
+};
+
 type ProductRecallFacts = {
   id: string;
   recall_no: string;
   status?: string | null;
-  product_id?: string | null;
-  batch_ids?: string[] | null;
+  /** Populated via include: { batches } — ProductRecall has no product_id scalar */
+  batches?: ProductRecallBatchFact[] | null;
 };
 
 /**
@@ -223,6 +232,12 @@ export function buildProductRecallSnapshotData(input: {
   depth: number;
   related?: SnapshotRelatedFacts;
 }) {
+  const batches = (input.recall.batches ?? []).map((b) => ({
+    productionBatchId: b.production_batch_id,
+    batchNumberSnapshot: b.batch_number_snapshot ?? null,
+    productNameSnapshot: b.product_name_snapshot ?? null,
+  }));
+
   return buildSnapshotOutput({
     rootType: 'product_recall',
     rootId: input.recall.id,
@@ -230,8 +245,7 @@ export function buildProductRecallSnapshotData(input: {
     rootDisplay: {
       recallNo: input.recall.recall_no,
       status: input.recall.status ?? null,
-      productId: input.recall.product_id ?? null,
-      batchIds: input.recall.batch_ids ?? [],
+      batches,
     },
     depth: input.depth,
     upstream: [],
@@ -242,10 +256,12 @@ export function buildProductRecallSnapshotData(input: {
 
 type TraceabilityDrillFacts = {
   id: string;
-  drill_no?: string | null;
+  /** TraceabilityDrill has no drill_no column; label is derived from drill_type + drill_date */
   status?: string | null;
   drill_type?: string | null;
   drill_date?: Date | string | null;
+  root_object_type?: string | null;
+  root_object_id?: string | null;
 };
 
 /**
@@ -256,15 +272,23 @@ export function buildTraceabilityDrillSnapshotData(input: {
   depth: number;
   related?: SnapshotRelatedFacts;
 }) {
+  // TraceabilityDrill has no drill_no. Compose a human-readable label from drill_type + drill_date.
+  const drillDateStr = input.drill.drill_date ? toIso(input.drill.drill_date)?.slice(0, 10) ?? null : null;
+  const rootLabel =
+    input.drill.drill_type && drillDateStr
+      ? `${input.drill.drill_type}@${drillDateStr}`
+      : input.drill.id;
+
   return buildSnapshotOutput({
     rootType: 'traceability_drill',
     rootId: input.drill.id,
-    rootLabel: input.drill.drill_no ?? input.drill.id,
+    rootLabel,
     rootDisplay: {
-      drillNo: input.drill.drill_no ?? null,
       status: input.drill.status ?? null,
       drillType: input.drill.drill_type ?? null,
       drillDate: toIso(input.drill.drill_date),
+      rootObjectType: input.drill.root_object_type ?? null,
+      rootObjectId: input.drill.root_object_id ?? null,
     },
     depth: input.depth,
     upstream: [],
@@ -309,9 +333,8 @@ function buildSnapshotOutput(input: {
 function mapInspections(items?: InspectionFact[]) {
   return (items ?? []).map((r) => ({
     id: r.id,
-    recordNo: r.record_no ?? null,
-    result: r.result ?? null,
-    inspectedAt: toIso(r.inspectedAt),
+    result: r.overall_result ?? null,
+    inspectedAt: toIso(r.inspected_at),
   }));
 }
 
@@ -336,9 +359,9 @@ function mapCorrectiveActions(items?: CorrectiveActionFact[]) {
 function mapApprovals(items?: ApprovalFact[]) {
   return (items ?? []).map((a) => ({
     id: a.id,
-    approverId: a.approverId ?? null,
+    approverId: a.createdById ?? null,
     status: a.status ?? null,
-    approvedAt: toIso(a.approvedAt),
+    approvedAt: toIso(a.completedAt),
   }));
 }
 

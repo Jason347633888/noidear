@@ -190,6 +190,12 @@ export class TraceabilityService {
         return this.createProductRecallSnapshot(base);
       case 'traceability_drill':
         return this.createTraceabilityDrillSnapshot(base);
+      default: {
+        // isSupportedRootType() guards above, so this branch should be unreachable.
+        // Throw rather than return undefined so TypeScript and runtime both fail loudly.
+        const exhausted: never = rootObjectType as never;
+        throw new BadRequestException(`Unhandled rootObjectType: ${exhausted}`);
+      }
     }
   }
 
@@ -294,6 +300,7 @@ export class TraceabilityService {
   private async createProductRecallSnapshot(dto: ResolvedSnapshotInput) {
     const recall = await this.prisma.productRecall.findFirst({
       where: { id: dto.rootObjectId },
+      include: { batches: { select: { production_batch_id: true, batch_number_snapshot: true, product_name_snapshot: true } } },
     });
     if (!recall) {
       throw new NotFoundException(`Product recall ${dto.rootObjectId} not found`);
@@ -372,22 +379,27 @@ export class TraceabilityService {
       return { inspections: [], nonConformances: [], correctiveActions: [], approvals: [], evidenceFiles: [] };
     }
 
-    const [inspections, nonConformances, correctiveActions, approvals, evidenceFiles] = await Promise.all([
+    const [inspections, nonConformances, evidenceFiles] = await Promise.all([
       this.loadInspections(companyId, sourceType, sourceIds),
       this.loadNonConformances(companyId, sourceType, sourceIds),
-      this.loadCorrectiveActions(companyId, sourceType, sourceIds),
-      this.loadApprovals(companyId, sourceType, sourceIds),
       this.loadEvidenceFiles(companyId, sourceType, sourceIds),
+    ]);
+
+    // CAPAs link via trigger_id (NC id), so we need NC ids from the already-loaded NCs.
+    const ncIds = nonConformances.map((nc: { id: string }) => nc.id);
+    const [correctiveActions, approvals] = await Promise.all([
+      this.loadCorrectiveActions(companyId, sourceType, sourceIds, ncIds),
+      this.loadApprovals(companyId, sourceType, sourceIds),
     ]);
 
     return { inspections, nonConformances, correctiveActions, approvals, evidenceFiles };
   }
 
-  private async loadInspections(companyId: string, _sourceType: string, sourceIds: string[]) {
+  private async loadInspections(companyId: string, sourceType: string, sourceIds: string[]) {
     try {
-      return await (this.prisma as any).inspectionRecord.findMany({
-        where: { company_id: companyId, source_id: { in: sourceIds } },
-        select: { id: true, record_no: true, result: true, inspectedAt: true },
+      return await this.prisma.inspectionRecord.findMany({
+        where: { company_id: companyId, object_type: sourceType, object_id: { in: sourceIds } },
+        select: { id: true, overall_result: true, inspected_at: true },
       });
     } catch {
       return [];
@@ -405,10 +417,23 @@ export class TraceabilityService {
     }
   }
 
-  private async loadCorrectiveActions(companyId: string, _sourceType: string, sourceIds: string[]) {
+  /**
+   * CorrectiveAction links to its trigger via trigger_type/trigger_id, not via
+   * a direct source_id column. Loading CAPAs for a batch or recall requires
+   * first resolving the NC ids for those objects, then querying CAPAs with
+   * trigger_type='non_conformance' and trigger_id in those NC ids.
+   *
+   * That two-hop join requires the NC ids which are already available from
+   * loadNonConformances. To avoid a separate DB round-trip here we accept an
+   * optional ncIds param populated by the caller from the already-loaded NCs.
+   */
+  private async loadCorrectiveActions(companyId: string, _sourceType: string, _sourceIds: string[], ncIds: string[] = []) {
+    if (!ncIds.length) {
+      return [];
+    }
     try {
-      return await (this.prisma as any).correctiveAction.findMany({
-        where: { company_id: companyId, source_id: { in: sourceIds } },
+      return await this.prisma.correctiveAction.findMany({
+        where: { company_id: companyId, trigger_type: 'non_conformance', trigger_id: { in: ncIds } },
         select: { id: true, capa_no: true, status: true },
       });
     } catch {
@@ -416,11 +441,11 @@ export class TraceabilityService {
     }
   }
 
-  private async loadApprovals(companyId: string, _sourceType: string, sourceIds: string[]) {
+  private async loadApprovals(_companyId: string, sourceType: string, sourceIds: string[]) {
     try {
-      return await (this.prisma as any).approvalRecord.findMany({
-        where: { company_id: companyId, resource_id: { in: sourceIds } },
-        select: { id: true, approverId: true, status: true, approvedAt: true },
+      return await this.prisma.approvalInstance.findMany({
+        where: { resourceType: sourceType, resourceId: { in: sourceIds } },
+        select: { id: true, createdById: true, status: true, completedAt: true },
       });
     } catch {
       return [];

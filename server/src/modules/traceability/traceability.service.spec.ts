@@ -1,4 +1,33 @@
 import { TraceabilityService } from './traceability.service';
+import { normalizeTraceDepth, DEFAULT_TRACE_DEPTH, MAX_TRACE_DEPTH } from './evidence-snapshot.helpers';
+
+describe('normalizeTraceDepth (depth enforcement spec)', () => {
+  it('defaults to DEFAULT_TRACE_DEPTH (3) when depth is undefined', () => {
+    expect(normalizeTraceDepth(undefined)).toBe(DEFAULT_TRACE_DEPTH);
+    expect(DEFAULT_TRACE_DEPTH).toBe(3);
+  });
+
+  it('defaults to DEFAULT_TRACE_DEPTH (3) when depth is 0', () => {
+    expect(normalizeTraceDepth(0)).toBe(DEFAULT_TRACE_DEPTH);
+  });
+
+  it('clamps to MAX_TRACE_DEPTH (6) when depth exceeds the maximum', () => {
+    expect(normalizeTraceDepth(10)).toBe(MAX_TRACE_DEPTH);
+    expect(normalizeTraceDepth(7)).toBe(MAX_TRACE_DEPTH);
+    expect(MAX_TRACE_DEPTH).toBe(6);
+  });
+
+  it('returns depth as-is for valid values between 1 and 6', () => {
+    expect(normalizeTraceDepth(1)).toBe(1);
+    expect(normalizeTraceDepth(3)).toBe(3);
+    expect(normalizeTraceDepth(6)).toBe(6);
+  });
+
+  it('truncates fractional values', () => {
+    expect(normalizeTraceDepth(3.9)).toBe(3);
+    expect(normalizeTraceDepth(6.1)).toBe(6);
+  });
+});
 
 describe('TraceabilityService recall actions', () => {
   it('delegates recallAssessment actions to TraceabilityLinkageService', async () => {
@@ -165,9 +194,12 @@ describe('TraceabilityService trace-context snapshot (Task 9)', () => {
       },
       batchMaterialUsage: { findMany: jest.fn().mockResolvedValue([]) },
       nonConformance: { findMany: jest.fn().mockResolvedValue([]) },
+      // InspectionRecord schema: object_type/object_id/overall_result/inspected_at (no source_id/record_no)
       inspectionRecord: { findMany: jest.fn().mockResolvedValue([]) },
+      // CorrectiveAction links via trigger_type/trigger_id, loaded via NC ids
       correctiveAction: { findMany: jest.fn().mockResolvedValue([]) },
-      approvalRecord: { findMany: jest.fn().mockResolvedValue([]) },
+      // ApprovalInstance (not approvalRecord) — resourceType/resourceId/status/completedAt/createdById
+      approvalInstance: { findMany: jest.fn().mockResolvedValue([]) },
       evidenceFile: {
         create: jest.fn().mockResolvedValue({ id: 'file-2' }),
         findMany: jest.fn().mockResolvedValue([]),
@@ -229,22 +261,30 @@ describe('TraceabilityService trace-context snapshot (Task 9)', () => {
     });
   });
 
-  it('accepts product_recall as rootObjectType', async () => {
+  it('accepts product_recall as rootObjectType and stores real batch linkage', async () => {
+    // ProductRecall has NO product_id scalar and NO batch_ids array.
+    // Batch linkage is via the ProductRecallBatch relation (must be included).
     const prisma = buildPrisma({
       productRecall: {
         findFirst: jest.fn().mockResolvedValue({
           id: 'pr-1',
           recall_no: 'RC-2026-0001',
           status: 'open',
-          product_id: 'p-1',
-          batch_ids: ['pb-1'],
+          // batches comes from include: { batches: { select: {...} } }
+          batches: [
+            {
+              production_batch_id: 'pb-1',
+              batch_number_snapshot: 'PB-001',
+              product_name_snapshot: 'Cookie',
+            },
+          ],
         }),
       },
       batchMaterialUsage: { findMany: jest.fn().mockResolvedValue([]) },
       nonConformance: { findMany: jest.fn().mockResolvedValue([]) },
       inspectionRecord: { findMany: jest.fn().mockResolvedValue([]) },
       correctiveAction: { findMany: jest.fn().mockResolvedValue([]) },
-      approvalRecord: { findMany: jest.fn().mockResolvedValue([]) },
+      approvalInstance: { findMany: jest.fn().mockResolvedValue([]) },
       evidenceFile: {
         create: jest.fn().mockResolvedValue({ id: 'file-3' }),
         findMany: jest.fn().mockResolvedValue([]),
@@ -284,24 +324,39 @@ describe('TraceabilityService trace-context snapshot (Task 9)', () => {
     } as any);
 
     expect(snapshot.id).toBe('snapshot-pr-1');
+    // Verify real batch linkage is stored in snapshotData (not product_id/batch_ids scalars)
+    const savedData = prisma.traceabilitySnapshot.create.mock.calls[0][0].data.snapshotData as any;
+    expect(savedData.root.display.batches).toHaveLength(1);
+    expect(savedData.root.display.batches[0]).toMatchObject({
+      productionBatchId: 'pb-1',
+      batchNumberSnapshot: 'PB-001',
+      productNameSnapshot: 'Cookie',
+    });
+    // Verify no product_id/batch_ids scalars from the non-existent columns
+    expect(savedData.root.display.productId).toBeUndefined();
+    expect(savedData.root.display.batchIds).toBeUndefined();
   });
 
-  it('accepts traceability_drill as rootObjectType', async () => {
+  it('accepts traceability_drill as rootObjectType and derives label from drill_type + drill_date', async () => {
+    // TraceabilityDrill schema has NO drill_no column.
+    // Label is derived from drill_type + drill_date.
     const prisma = buildPrisma({
       traceabilityDrill: {
         findFirst: jest.fn().mockResolvedValue({
           id: 'td-1',
-          drill_no: 'TD-2026-0001',
+          // No drill_no — that column does not exist in the schema.
           status: 'completed',
           drill_type: 'forward',
           drill_date: new Date('2026-05-28'),
+          root_object_type: 'production_batch',
+          root_object_id: 'pb-99',
         }),
       },
       batchMaterialUsage: { findMany: jest.fn().mockResolvedValue([]) },
       nonConformance: { findMany: jest.fn().mockResolvedValue([]) },
       inspectionRecord: { findMany: jest.fn().mockResolvedValue([]) },
       correctiveAction: { findMany: jest.fn().mockResolvedValue([]) },
-      approvalRecord: { findMany: jest.fn().mockResolvedValue([]) },
+      approvalInstance: { findMany: jest.fn().mockResolvedValue([]) },
       evidenceFile: {
         create: jest.fn().mockResolvedValue({ id: 'file-4' }),
         findMany: jest.fn().mockResolvedValue([]),
@@ -314,7 +369,7 @@ describe('TraceabilityService trace-context snapshot (Task 9)', () => {
           readinessStatus: 'complete',
           snapshotPurpose: 'evidence_export',
           snapshotData: {
-            root: { type: 'traceability_drill', id: 'td-1', label: 'TD-2026-0001' },
+            root: { type: 'traceability_drill', id: 'td-1', label: 'forward@2026-05-28' },
             upstream: [],
             downstream: [],
             inspections: [],
@@ -341,6 +396,12 @@ describe('TraceabilityService trace-context snapshot (Task 9)', () => {
     } as any);
 
     expect(snapshot.id).toBe('snapshot-td-1');
+    // Verify label is derived from drill_type + drill_date (no drill_no in schema)
+    const savedData = prisma.traceabilitySnapshot.create.mock.calls[0][0].data.snapshotData as any;
+    expect(savedData.root.label).toBe('forward@2026-05-28');
+    // Verify root_object_type/root_object_id are stored in display
+    expect(savedData.root.display.rootObjectType).toBe('production_batch');
+    expect(savedData.root.display.rootObjectId).toBe('pb-99');
   });
 
   it('snapshot output for production_batch includes full shape with generatedAt', async () => {
@@ -472,5 +533,78 @@ describe('TraceabilityService trace-context snapshot (Task 9)', () => {
       }),
     );
     expect(prisma.evidenceExport.create).not.toHaveBeenCalled();
+  });
+
+  it('loadInspections queries real InspectionRecord schema fields (object_type/object_id/overall_result/inspected_at)', async () => {
+    // This test exists to catch schema drift. If InspectionRecord field names change,
+    // this test will fail before the broken query is silently swallowed by catch {}.
+    const inspectionRecord = { findMany: jest.fn().mockResolvedValue([
+      { id: 'ir-1', overall_result: 'pass', inspected_at: new Date('2026-05-28T10:00:00.000Z') },
+    ]) };
+    const prisma = buildPrisma({
+      inspectionRecord,
+      approvalInstance: { findMany: jest.fn().mockResolvedValue([]) },
+    });
+    const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
+
+    await service.createTraceContextSnapshot({
+      company_id: 'tenant-1',
+      rootObjectType: 'production_batch',
+      rootObjectId: 'pb-1',
+      maxDepth: 3,
+    } as any);
+
+    // Verify the query uses object_type/object_id (not source_id/record_no which don't exist)
+    expect(inspectionRecord.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          object_type: expect.any(String),
+          object_id: expect.objectContaining({ in: expect.any(Array) }),
+        }),
+        select: expect.objectContaining({
+          overall_result: true,
+          inspected_at: true,
+        }),
+      }),
+    );
+    // Verify the snapshot encodes the inspection correctly
+    const savedData = prisma.traceabilitySnapshot.create.mock.calls[0][0].data.snapshotData as any;
+    expect(savedData.inspections).toHaveLength(1);
+    expect(savedData.inspections[0]).toMatchObject({ id: 'ir-1', result: 'pass' });
+  });
+
+  it('loadApprovals queries real ApprovalInstance model (not approvalRecord which does not exist)', async () => {
+    const approvalInstance = { findMany: jest.fn().mockResolvedValue([
+      { id: 'ai-1', createdById: 'user-1', status: 'APPROVED', completedAt: new Date('2026-05-28T12:00:00.000Z') },
+    ]) };
+    const prisma = buildPrisma({
+      approvalInstance,
+      inspectionRecord: { findMany: jest.fn().mockResolvedValue([]) },
+    });
+    const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
+
+    await service.createTraceContextSnapshot({
+      company_id: 'tenant-1',
+      rootObjectType: 'production_batch',
+      rootObjectId: 'pb-1',
+    } as any);
+
+    // Verify the query uses ApprovalInstance schema fields (resourceType/resourceId)
+    expect(approvalInstance.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          resourceType: expect.any(String),
+          resourceId: expect.objectContaining({ in: expect.any(Array) }),
+        }),
+        select: expect.objectContaining({
+          createdById: true,
+          status: true,
+          completedAt: true,
+        }),
+      }),
+    );
+    const savedData = prisma.traceabilitySnapshot.create.mock.calls[0][0].data.snapshotData as any;
+    expect(savedData.approvals).toHaveLength(1);
+    expect(savedData.approvals[0]).toMatchObject({ id: 'ai-1', approverId: 'user-1', status: 'APPROVED' });
   });
 });
