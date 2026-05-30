@@ -138,18 +138,22 @@ export class MeasuringEquipmentService {
         },
       });
 
-      await tx.calibrationPointReading.createMany({
-        data: dto.readings.map((r) => ({
-          calibration_record_id: created.id,
-          position: r.position,
-          standard_value: r.standard_value,
-          measured_value: r.measured_value,
-          tolerance: r.tolerance ?? null,
-          error_value: r.error_value ?? null,
-          judgment: r.judgment,
-          evidence_file_id: r.evidence_file_id ?? null,
-        })),
-      });
+      const createdReadings = await Promise.all(
+        dto.readings.map((r) =>
+          tx.calibrationPointReading.create({
+            data: {
+              calibration_record_id: created.id,
+              position: r.position,
+              standard_value: r.standard_value,
+              measured_value: r.measured_value,
+              tolerance: r.tolerance ?? null,
+              error_value: r.error_value ?? null,
+              judgment: r.judgment,
+              evidence_file_id: r.evidence_file_id ?? null,
+            },
+          }),
+        ),
+      );
 
       await tx.measuringEquipment.update({
         where: { id: dto.measuring_equipment_id },
@@ -160,15 +164,23 @@ export class MeasuringEquipmentService {
         },
       });
 
-      return created;
+      return { created, createdReadings };
     });
 
     if (result === CALIBRATION_RESULT_FAIL && dto.userId) {
-      const failedReadings = dto.readings.filter((r) => r.judgment === CALIBRATION_RESULT_FAIL);
-      for (const reading of failedReadings) {
+      const failedPairs = dto.readings.reduce<Array<{ reading: typeof dto.readings[number]; dbId: string }>>(
+        (acc, r, i) => {
+          if (r.judgment === CALIBRATION_RESULT_FAIL) {
+            acc.push({ reading: r, dbId: record.createdReadings[i].id });
+          }
+          return acc;
+        },
+        [],
+      );
+      for (const { reading, dbId } of failedPairs) {
         await this.ncService.createFromCalibrationReading({
-          calibrationRecordId: record.id,
-          readingId: reading.position,
+          calibrationRecordId: record.created.id,
+          readingId: dbId,
           companyId,
           userId: dto.userId,
           description: `校准点 ${reading.position} 不合格：标准值 ${reading.standard_value}，实测值 ${reading.measured_value}`,
@@ -176,7 +188,7 @@ export class MeasuringEquipmentService {
       }
     }
 
-    return record;
+    return record.created;
   }
 
   async findById(equipmentId: string, companyId: string) {

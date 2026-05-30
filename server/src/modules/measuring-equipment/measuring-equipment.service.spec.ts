@@ -259,10 +259,13 @@ describe('MeasuringEquipmentService', () => {
     it('sets result to pass when all readings pass', async () => {
       prisma.measuringEquipment.findFirst.mockResolvedValue({ id: 'eq1', company_id: 'company-1' });
       const createdRecord = { id: 'cal1', result: 'pass' };
+      const mockCreate = jest.fn()
+        .mockResolvedValueOnce({ id: 'r1' })
+        .mockResolvedValueOnce({ id: 'r2' });
       prisma.$transaction.mockImplementation(async (fn: (tx: any) => Promise<any>) =>
         fn({
           calibrationRecord: { create: jest.fn().mockResolvedValue(createdRecord) },
-          calibrationPointReading: { createMany: jest.fn().mockResolvedValue({ count: 2 }) },
+          calibrationPointReading: { create: mockCreate },
           measuringEquipment: { update: jest.fn().mockResolvedValue({}) },
         }),
       );
@@ -278,10 +281,13 @@ describe('MeasuringEquipmentService', () => {
     it('sets result to fail when any reading has judgment fail', async () => {
       prisma.measuringEquipment.findFirst.mockResolvedValue({ id: 'eq1', company_id: 'company-1' });
       const createdRecord = { id: 'cal2', result: 'fail' };
+      const mockCreate = jest.fn()
+        .mockResolvedValueOnce({ id: 'r1' })
+        .mockResolvedValueOnce({ id: 'r2' });
       prisma.$transaction.mockImplementation(async (fn: (tx: any) => Promise<any>) =>
         fn({
           calibrationRecord: { create: jest.fn().mockResolvedValue(createdRecord) },
-          calibrationPointReading: { createMany: jest.fn().mockResolvedValue({ count: 2 }) },
+          calibrationPointReading: { create: mockCreate },
           measuringEquipment: { update: jest.fn().mockResolvedValue({}) },
         }),
       );
@@ -297,11 +303,13 @@ describe('MeasuringEquipmentService', () => {
     it('creates NonConformance for each failed reading when result is fail', async () => {
       prisma.measuringEquipment.findFirst.mockResolvedValue({ id: 'eq1', company_id: 'company-1' });
       const createdRecord = { id: 'cal3', result: 'fail' };
-      const mockCreateMany = jest.fn().mockResolvedValue({ count: 2 });
+      const mockCreate = jest.fn()
+        .mockResolvedValueOnce({ id: 'r1' })   // P1 (pass)
+        .mockResolvedValueOnce({ id: 'r2' });  // P2 (fail)
       prisma.$transaction.mockImplementation(async (fn: (tx: any) => Promise<any>) =>
         fn({
           calibrationRecord: { create: jest.fn().mockResolvedValue(createdRecord) },
-          calibrationPointReading: { createMany: mockCreateMany },
+          calibrationPointReading: { create: mockCreate },
           measuringEquipment: { update: jest.fn().mockResolvedValue({}) },
         }),
       );
@@ -319,6 +327,59 @@ describe('MeasuringEquipmentService', () => {
           calibrationRecordId: 'cal3',
           companyId: 'company-1',
           userId: 'user1',
+        }),
+      );
+    });
+
+    it('uses per-item create (not createMany) so DB-generated ids are available', async () => {
+      prisma.measuringEquipment.findFirst.mockResolvedValue({ id: 'eq1', company_id: 'company-1' });
+      const createdRecord = { id: 'cal-x', result: 'pass' };
+      const mockCreate = jest.fn()
+        .mockResolvedValueOnce({ id: 'reading-id-1' })
+        .mockResolvedValueOnce({ id: 'reading-id-2' });
+      const mockCreateMany = jest.fn();
+      prisma.$transaction.mockImplementation(async (fn: (tx: any) => Promise<any>) =>
+        fn({
+          calibrationRecord: { create: jest.fn().mockResolvedValue(createdRecord) },
+          calibrationPointReading: { create: mockCreate, createMany: mockCreateMany },
+          measuringEquipment: { update: jest.fn().mockResolvedValue({}) },
+        }),
+      );
+
+      await service.createCalibrationRecordWithReadings(
+        { ...baseDto, readings: passReadings },
+        'company-1',
+      );
+
+      expect(mockCreate).toHaveBeenCalledTimes(passReadings.length);
+      expect(mockCreateMany).not.toHaveBeenCalled();
+    });
+
+    it('passes DB row id (not position label) as readingId when creating NC for failed reading', async () => {
+      prisma.measuringEquipment.findFirst.mockResolvedValue({ id: 'eq1', company_id: 'company-1' });
+      const createdRecord = { id: 'cal-y', result: 'fail' };
+      // failReadings: P1=pass, P2=fail
+      const mockCreate = jest.fn()
+        .mockResolvedValueOnce({ id: 'db-reading-id-1' })   // P1
+        .mockResolvedValueOnce({ id: 'db-reading-id-2' });  // P2 (the failing one)
+      prisma.$transaction.mockImplementation(async (fn: (tx: any) => Promise<any>) =>
+        fn({
+          calibrationRecord: { create: jest.fn().mockResolvedValue(createdRecord) },
+          calibrationPointReading: { create: mockCreate },
+          measuringEquipment: { update: jest.fn().mockResolvedValue({}) },
+        }),
+      );
+      ncServiceMock.createFromCalibrationReading.mockResolvedValue({ id: 'nc-1' });
+
+      await service.createCalibrationRecordWithReadings(
+        { ...baseDto, readings: failReadings, userId: 'user1' },
+        'company-1',
+      );
+
+      expect(ncServiceMock.createFromCalibrationReading).toHaveBeenCalledTimes(1);
+      expect(ncServiceMock.createFromCalibrationReading).toHaveBeenCalledWith(
+        expect.objectContaining({
+          readingId: 'db-reading-id-2',
         }),
       );
     });
