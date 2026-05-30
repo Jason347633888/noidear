@@ -137,8 +137,24 @@ export class NonConformanceService {
         throw new BadRequestException('消毒液浓度检查记录来源不存在');
       }
     },
-    cleaning_record: async () => {
-      throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');
+    // ── Phase 10 Task 6: CleaningRecord ───────────────────────────────────────
+    cleaning_record: async (sourceId, companyId, db, sourceItemId) => {
+      const record = await db.cleaningRecord.findUnique({
+        where: { id: sourceId },
+        select: { id: true, company_id: true },
+      });
+      if (!record || record.company_id !== companyId) {
+        throw new BadRequestException('清洁记录来源不存在');
+      }
+      if (sourceItemId) {
+        const item = await db.cleaningRecordItem.findUnique({
+          where: { id: sourceItemId },
+          select: { id: true, record_id: true },
+        });
+        if (!item || item.record_id !== sourceId) {
+          throw new BadRequestException('清洁记录子项不存在');
+        }
+      }
     },
     calibration_record: async () => {
       throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');

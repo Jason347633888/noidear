@@ -2010,6 +2010,7 @@ model WorkshopArea {
   environmentRecords            EnvironmentRecord[]             @relation("EnvironmentRecordLocation")
   sanitizerConcentrationChecks  SanitizerConcentrationCheck[]   @relation("SanitizerCheckAreaPoint")
   cleaningPlans                 CleaningPlan[]                  @relation("CleaningPlanAreaPoint")
+  cleaningRecords               CleaningRecord[]                @relation("CleaningRecordAreaPoint")
 
   @@unique([company_id, code])
   @@unique([company_id, name])
@@ -2500,19 +2501,50 @@ model MetalDetectionLog {
 }
 
 model CleaningRecord {
-  id              String   @id @default(cuid())
-  company_id      String
-  target_type     String // 'area'|'equipment'|'utensil'|'facility'
-  target_name     String
-  cleaning_method String?
-  disinfectant    String?
-  concentration   String?
-  cleaning_date   DateTime @db.Date
-  operator_id     String?
-  verifier_id     String?
-  is_pass         Boolean
-  notes           String?
-  created_at      DateTime @default(now())
+  id               String        @id @default(cuid())
+  company_id       String
+  target_type      String // 'area'|'equipment'|'utensil'|'facility'
+  target_name      String
+  area_point_id    String?
+  area_point       WorkshopArea? @relation("CleaningRecordAreaPoint", fields: [area_point_id], references: [id], onDelete: SetNull)
+  equipment_id     String?
+  cleaning_plan_id String?
+  cleaning_plan    CleaningPlan? @relation(fields: [cleaning_plan_id], references: [id], onDelete: SetNull)
+  cleaning_date    DateTime      @db.Date
+  operator_id      String?
+  verifier_id      String?
+  is_pass          Boolean
+  status           String        @default("draft")
+  notes            String?
+  items            CleaningRecordItem[]
+  created_at       DateTime      @default(now())
+
+  @@index([company_id, area_point_id, cleaning_date])
+  @@map("cleaning_records")
+}
+
+model CleaningRecordItem {
+  id                   String         @id @default(cuid())
+  record_id            String
+  record               CleaningRecord @relation(fields: [record_id], references: [id], onDelete: Cascade)
+  plan_item_id         String?
+  plan_item            CleaningPlanItem? @relation(fields: [plan_item_id], references: [id], onDelete: SetNull)
+  target_name          String
+  target_type          String
+  method_snapshot      String?
+  requires_disinfection Boolean       @default(false)
+  completed            Boolean        @default(false)
+  completed_at         DateTime?
+  actual_concentration Decimal?       @db.Decimal(14, 4)
+  sanitizer_check_id   String?
+  result               String         @default("pending")
+  remark               String?
+  evidence_file_id     String?
+  created_at           DateTime       @default(now())
+
+  @@index([record_id])
+  @@index([sanitizer_check_id])
+  @@map("cleaning_record_items")
 }
 
 model CleaningPlanTemplate {
@@ -2548,6 +2580,7 @@ model CleaningPlan {
   status             String                @default("draft")
   approvalInstanceId String?
   items              CleaningPlanItem[]
+  records            CleaningRecord[]
   created_at         DateTime              @default(now())
   updated_at         DateTime              @updatedAt
 
@@ -2556,20 +2589,21 @@ model CleaningPlan {
 }
 
 model CleaningPlanItem {
-  id                   String       @id @default(cuid())
+  id                   String               @id @default(cuid())
   plan_id              String
-  plan                 CleaningPlan @relation(fields: [plan_id], references: [id], onDelete: Cascade)
+  plan                 CleaningPlan         @relation(fields: [plan_id], references: [id], onDelete: Cascade)
   target_name          String
   target_type          String
   method               String?
-  requires_disinfection Boolean     @default(false)
+  requires_disinfection Boolean             @default(false)
   disinfectant         String?
-  target_concentration Decimal?     @db.Decimal(14, 4)
+  target_concentration Decimal?             @db.Decimal(14, 4)
   normal_range         String?
-  is_mandatory         Boolean      @default(true)
-  requires_verification Boolean     @default(false)
-  sequence             Int          @default(0)
-  created_at           DateTime     @default(now())
+  is_mandatory         Boolean              @default(true)
+  requires_verification Boolean             @default(false)
+  sequence             Int                  @default(0)
+  created_at           DateTime             @default(now())
+  cleaningRecordItems  CleaningRecordItem[]
 
   @@index([plan_id])
   @@map("cleaning_plan_items")
