@@ -196,6 +196,16 @@ export class NonConformanceService {
     laundry_work_record: async () => {
       throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');
     },
+    // ── Phase 11 Task 6: EquipmentUsageRecord ────────────────────────────────
+    equipment_usage_record: async (sourceId, companyId, db) => {
+      const record = await db.equipmentUsageRecord.findUnique({
+        where: { id: sourceId },
+        select: { id: true, company_id: true },
+      });
+      if (!record || record.company_id !== companyId) {
+        throw new BadRequestException('设备使用记录来源不存在');
+      }
+    },
   };
 
   private async validateSourceExists(

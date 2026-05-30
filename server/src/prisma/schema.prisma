@@ -1285,6 +1285,8 @@ model Equipment {
   maintenanceRecords   MaintenanceRecord[]
   equipmentFaults      EquipmentFault[]
   materialRequisitions MaterialRequisition[]
+  acceptanceRecords    EquipmentAcceptanceRecord[] @relation("EquipmentAcceptanceRecords")
+  usageRecords         EquipmentUsageRecord[]      @relation("EquipmentUsageRecords")
 
   @@index([code])
   @@index([category])
@@ -1422,6 +1424,45 @@ model EquipmentFault {
   @@index([reportTime])
   @@index([assigneeId])
   @@map("equipment_faults")
+}
+
+// Task 6: 设备验收记录表
+model EquipmentAcceptanceRecord {
+  id                  String    @id @default(cuid())
+  company_id          String
+  equipmentId         String
+  equipment           Equipment @relation("EquipmentAcceptanceRecords", fields: [equipmentId], references: [id], onDelete: Restrict)
+  accepted_at         DateTime
+  accepted_by         String?
+  result              String
+  checklist_snapshot  Json?
+  evidence_file_id    String?
+  approvalInstanceId  String?
+  created_at          DateTime  @default(now())
+
+  @@index([company_id, equipmentId, accepted_at])
+  @@map("equipment_acceptance_records")
+}
+
+// Task 6: 设备使用记录表
+model EquipmentUsageRecord {
+  id                     String     @id @default(cuid())
+  company_id             String
+  equipmentId            String?
+  equipment              Equipment? @relation("EquipmentUsageRecords", fields: [equipmentId], references: [id], onDelete: SetNull)
+  measuringEquipmentId   String?
+  used_from              DateTime
+  used_to                DateTime?
+  purpose                String
+  sample_reference       String?
+  operatorId             String?
+  equipment_status_after String
+  notes                  String?
+  created_at             DateTime   @default(now())
+
+  @@index([company_id, equipmentId, used_from])
+  @@index([company_id, measuringEquipmentId, used_from])
+  @@map("equipment_usage_records")
 }
 
 // ========================================

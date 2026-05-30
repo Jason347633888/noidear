@@ -2,6 +2,7 @@ import { Module, OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { NotificationModule } from '../notification/notification.module';
 import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
+import { QualityNumberSequenceModule } from '../quality-number-sequence/quality-number-sequence.module';
 import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
 import { StorageService } from '../../common/services/storage.service';
 import { EquipmentController } from './equipment.controller';
@@ -17,9 +18,11 @@ import { StatsService } from './stats.service';
 import { UploadController } from './upload.controller';
 import { TodoService } from './todo.service';
 import { SchedulerService } from './scheduler.service';
+import { EquipmentAcceptanceService } from './equipment-acceptance.service';
+import { EquipmentUsageService } from './equipment-usage.service';
 
 @Module({
-  imports: [PrismaModule, NotificationModule, UnifiedApprovalModule],
+  imports: [PrismaModule, NotificationModule, UnifiedApprovalModule, QualityNumberSequenceModule],
   controllers: [
     EquipmentController,
     PlanController,
@@ -37,6 +40,8 @@ import { SchedulerService } from './scheduler.service';
     StorageService,
     TodoService,
     SchedulerService,
+    EquipmentAcceptanceService,
+    EquipmentUsageService,
   ],
   exports: [
     EquipmentService,
@@ -45,6 +50,8 @@ import { SchedulerService } from './scheduler.service';
     FaultService,
     StatsService,
     TodoService,
+    EquipmentAcceptanceService,
+    EquipmentUsageService,
   ],
 })
 export class EquipmentModule implements OnModuleInit {
