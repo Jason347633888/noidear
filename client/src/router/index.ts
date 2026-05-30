@@ -214,6 +214,46 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/traceability/TraceabilityQuery.vue'),
         meta: { title: '追溯查询', requiresAuth: true },
       },
+      // 追溯查询工作台（Task 7: Phase 14）
+      {
+        path: 'traceability/query',
+        name: 'TraceabilityQueryPage',
+        component: () => import('@/views/traceability/TraceabilityQueryPage.vue'),
+        meta: { title: '追溯查询工作台', requiresAuth: true },
+      },
+      // 追溯演练模块
+      {
+        path: 'traceability/drills',
+        name: 'TraceabilityDrillList',
+        component: () => import('@/views/traceability/TraceabilityDrillList.vue'),
+        meta: { title: '追溯演练', requiresAuth: true },
+      },
+      {
+        path: 'traceability/drills/:id',
+        name: 'TraceabilityDrillDetail',
+        component: () => import('@/views/traceability/TraceabilityDrillDetail.vue'),
+        meta: { title: '演练详情', requiresAuth: true },
+      },
+      // 召回模块（新路径）
+      {
+        path: 'recalls',
+        name: 'RecallList',
+        component: () => import('@/views/recall/RecallList.vue'),
+        meta: { title: '产品召回', requiresAuth: true },
+      },
+      {
+        path: 'recalls/:id',
+        name: 'RecallDetail',
+        component: () => import('@/views/recall/RecallDetail.vue'),
+        meta: { title: '召回详情', requiresAuth: true },
+      },
+      // 证据导出中心
+      {
+        path: 'evidence/exports',
+        name: 'EvidenceExportCenter',
+        component: () => import('@/views/evidence/EvidenceExportCenter.vue'),
+        meta: { title: '证据导出中心', requiresAuth: true },
+      },
       // 设备管理模块
       {
         path: 'equipment',

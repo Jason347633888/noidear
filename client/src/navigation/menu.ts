@@ -142,7 +142,10 @@ export const menuGroups: MenuGroup[] = [
     children: [
       { path: '/batch-trace', title: '批次列表', icon: Box, moduleKey: 'production_execution' },
       { path: '/warehouse/batches', title: '批次管理', icon: Goods, moduleKey: 'warehouse' },
-      { path: '/traceability', title: '追溯查询', icon: Search },
+      { path: '/traceability/query', title: '追溯查询', icon: Search },
+      { path: '/traceability/drills', title: '追溯演练', icon: RefreshLeft },
+      { path: '/recalls', title: '产品召回', icon: WarnTriangleFilled },
+      { path: '/evidence/exports', title: '证据导出中心', icon: Files },
       { path: '/warehouse/material-balance', title: '物料平衡', icon: Goods },
       { path: '/incoming-inspections', title: '来料检验', icon: Document },
       { path: '/packaging-material-usages', title: '包装材料用量', icon: Grid },
