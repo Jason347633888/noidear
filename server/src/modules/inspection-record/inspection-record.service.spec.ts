@@ -1,8 +1,12 @@
 import { InspectionRecordService } from './inspection-record.service';
+import { INSPECTION_APPLIES_TO, INSPECTION_OBJECT_COMPATIBILITY } from './inspection-record.constants';
 
 describe('InspectionRecordService', () => {
   it('creates nonconformance for failed inspection item with source_item_id', async () => {
     const prisma = {
+      inspectionStandard: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'standard-1', applies_to: 'material' }),
+      },
       inspectionRecord: {
         create: jest.fn().mockResolvedValue({
           id: 'record-1',
@@ -114,5 +118,134 @@ describe('InspectionRecordService', () => {
       2,
       { data: expect.objectContaining({ source_item_id: 'item-3b', nc_no: 'NC-2026-0002' }) },
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// InspectionStandard applies_to expansion tests
+// ---------------------------------------------------------------------------
+
+function makeStandardPrisma(stdRecord: Record<string, unknown>) {
+  return {
+    inspectionStandard: {
+      findUnique: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue(stdRecord),
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    inspectionRecord: {
+      create: jest.fn().mockResolvedValue({ id: 'rec-1', items: [] }),
+    },
+    nonConformance: { create: jest.fn() },
+    $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(makeStandardPrisma(stdRecord))),
+  };
+}
+
+describe('INSPECTION_APPLIES_TO constants', () => {
+  it('exports all required applies_to values', () => {
+    const expected = [
+      'material',
+      'product',
+      'area_point',
+      'equipment',
+      'supplier',
+      'water',
+      'vehicle',
+      'personnel',
+      'retained_sample',
+      'shelf_life_study',
+    ];
+    expect([...INSPECTION_APPLIES_TO].sort()).toEqual([...expected].sort());
+  });
+
+  it('INSPECTION_OBJECT_COMPATIBILITY covers every applies_to value', () => {
+    for (const appliesTo of INSPECTION_APPLIES_TO) {
+      expect(INSPECTION_OBJECT_COMPATIBILITY).toHaveProperty(appliesTo);
+      expect(INSPECTION_OBJECT_COMPATIBILITY[appliesTo].length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('InspectionRecordService – object_type compatibility validation', () => {
+  function makeService(standardAppliesTo: string | null) {
+    const prisma = {
+      inspectionStandard: {
+        findUnique: jest.fn().mockResolvedValue(
+          standardAppliesTo !== null
+            ? { id: 'std-1', applies_to: standardAppliesTo }
+            : null,
+        ),
+      },
+      inspectionRecord: {
+        create: jest.fn().mockResolvedValue({ id: 'rec-1', items: [] }),
+      },
+      nonConformance: { create: jest.fn() },
+      $transaction: jest.fn(),
+    };
+    // Wire $transaction to pass the same prisma mock as TxClient
+    prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma));
+    const numberSequence = { generateNonConformanceNo: jest.fn() };
+    return { service: new InspectionRecordService(prisma as any, numberSequence as any), prisma };
+  }
+
+  const baseDto = {
+    company_id: 'tenant-1',
+    inspectedAt: new Date().toISOString(),
+    items: [{ itemName: '检验项', judgment: 'pass' }],
+  };
+
+  it.each([
+    // [objectType, standard.applies_to]
+    ['material', 'material'],
+    ['material_batch', 'material'],
+    ['product', 'product'],
+    ['production_batch', 'product'],
+    ['area_point', 'area_point'],
+    ['equipment', 'equipment'],
+    ['measuring_equipment', 'equipment'],
+    ['supplier', 'supplier'],
+    ['area_point', 'water'],
+    ['external_party', 'vehicle'],
+    ['delivery_note', 'vehicle'],
+    ['user', 'personnel'],
+    ['personnel', 'personnel'],
+    ['retained_sample', 'retained_sample'],
+    ['shelf_life_study', 'shelf_life_study'],
+  ])(
+    'allows object_type "%s" for standard applies_to "%s"',
+    async (objectType, appliesTo) => {
+      const { service } = makeService(appliesTo);
+      await expect(
+        service.create({
+          ...baseDto,
+          inspectionStandardId: 'std-1',
+          objectType,
+          objectId: 'obj-1',
+        } as any),
+      ).resolves.toBeDefined();
+    },
+  );
+
+  it('rejects incompatible object_type for a given standard applies_to', async () => {
+    // Standard is for 'material' but record uses 'area_point' — incompatible
+    const { service } = makeService('material');
+    await expect(
+      service.create({
+        ...baseDto,
+        inspectionStandardId: 'std-1',
+        objectType: 'area_point',
+        objectId: 'obj-1',
+      } as any),
+    ).rejects.toThrow();
+  });
+
+  it('skips compatibility check when no standard is linked', async () => {
+    const { service } = makeService(null);
+    await expect(
+      service.create({
+        ...baseDto,
+        objectType: 'area_point',
+        objectId: 'obj-1',
+      } as any),
+    ).resolves.toBeDefined();
   });
 });

@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
 import { CreateInspectionRecordDto } from './dto/create-inspection-record.dto';
+import { INSPECTION_OBJECT_COMPATIBILITY } from './inspection-record.constants';
 
 type InspectionRecordWithItems = Prisma.InspectionRecordGetPayload<{
   include: { items: true };
@@ -24,6 +25,10 @@ export class InspectionRecordService {
   }
 
   private async createInTransaction(tx: TxClient, dto: CreateInspectionRecordDto) {
+    if (dto.inspectionStandardId) {
+      await this.validateObjectTypeCompatibility(tx, dto.inspectionStandardId, dto.objectType);
+    }
+
     const overallResult = dto.items.some((i) => i.judgment === 'fail') ? 'fail' : 'pass';
 
     const record = await tx.inspectionRecord.create({
@@ -82,5 +87,32 @@ export class InspectionRecordService {
     }
 
     return record;
+  }
+
+  private async validateObjectTypeCompatibility(
+    tx: TxClient,
+    standardId: string,
+    objectType: string,
+  ): Promise<void> {
+    const standard = await tx.inspectionStandard.findUnique({
+      where: { id: standardId },
+      select: { applies_to: true },
+    });
+
+    if (!standard) {
+      return;
+    }
+
+    const allowed = INSPECTION_OBJECT_COMPATIBILITY[standard.applies_to];
+    if (!allowed) {
+      return;
+    }
+
+    if (!allowed.includes(objectType)) {
+      throw new BadRequestException(
+        `object_type "${objectType}" is not compatible with standard applies_to "${standard.applies_to}". ` +
+          `Allowed: ${allowed.join(', ')}`,
+      );
+    }
   }
 }

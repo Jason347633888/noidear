@@ -2208,7 +2208,7 @@ model InspectionStandard {
   company_id    String
   code          String
   name          String
-  applies_to    String // 'material'|'product'
+  applies_to    String // see INSPECTION_APPLIES_TO constant for allowed values
   reference_doc String?
   version       String?
   status        String           @default("active")
@@ -2218,6 +2218,7 @@ model InspectionStandard {
   updated_at    DateTime         @updatedAt
 
   @@unique([company_id, code])
+  @@index([company_id, applies_to])
   @@map("inspection_standards")
 }
 
