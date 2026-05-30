@@ -33,6 +33,11 @@ export class ExternalPartyController {
     return this.service.findAll(req.user.companyId, partyType);
   }
 
+  @Get('evaluations')
+  findAllEvaluations(@Request() req: AuthenticatedRequest) {
+    return this.evaluationService.findAll(req.user.companyId);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.service.findOne(id, req.user.companyId);
@@ -51,11 +56,6 @@ export class ExternalPartyController {
   @Delete(':id')
   remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.service.remove(id, req.user.companyId);
-  }
-
-  @Get('evaluations')
-  findAllEvaluations(@Request() req: AuthenticatedRequest) {
-    return this.evaluationService.findAll(req.user.companyId);
   }
 
   @Get(':id/evaluations')
