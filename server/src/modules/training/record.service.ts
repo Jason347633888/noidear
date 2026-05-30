@@ -3,6 +3,15 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { OwnershipContext } from '../module-access/ownership-context';
 import { userIdsInDepts } from '../module-access/ownership-helpers';
 
+export interface TrainingRecordAlias {
+  trainingProjectId: string;
+  learningRecordId: string;
+  archiveId: string | null;
+  participantId: string;
+  completedAt: Date | null;
+  result: 'passed' | 'failed' | 'in_progress';
+}
+
 @Injectable()
 export class RecordService {
   constructor(private readonly prisma: PrismaService) {}
@@ -151,6 +160,41 @@ export class RecordService {
     return examRecords;
   }
 
+  /**
+   * UI "培训记录" alias — maps LearningRecord rows + project archive into a
+   * flat alias shape without introducing a separate TrainingRecord model.
+   *
+   * Alias shape:
+   *   { trainingProjectId, learningRecordId, archiveId, participantId,
+   *     completedAt, result }
+   */
+  async listTrainingRecordAliases(projectId: string): Promise<TrainingRecordAlias[]> {
+    const project = await this.prisma.trainingProject.findUnique({
+      where: { id: projectId },
+      include: { archive: true },
+    });
+
+    if (!project) {
+      throw new NotFoundException('培训项目不存在');
+    }
+
+    const records = await this.prisma.learningRecord.findMany({
+      where: { projectId },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const archiveId = (project as any).archive?.id ?? null;
+
+    return records.map((r) => ({
+      trainingProjectId: projectId,
+      learningRecordId: r.id,
+      archiveId,
+      participantId: r.userId,
+      completedAt: r.completedAt ?? null,
+      result: resolveResult(r),
+    }));
+  }
+
   // ==================== Private Helper Methods ====================
 
   private async getProjectById(id: string) {
@@ -164,4 +208,15 @@ export class RecordService {
 
     return project;
   }
+}
+
+/**
+ * Pure helper — derive the training record display result
+ * from a LearningRecord row without mutating the record.
+ */
+function resolveResult(
+  record: { passed: boolean; completedAt: Date | null | undefined },
+): 'passed' | 'failed' | 'in_progress' {
+  if (!record.completedAt) return 'in_progress';
+  return record.passed ? 'passed' : 'failed';
 }

@@ -38,4 +38,15 @@ export class RecordController {
   async findExamRecords(@Param('id') id: string, @Request() req: any) {
     return this.recordService.findExamRecords(id, req.user.id);
   }
+
+  /**
+   * UI "培训记录" — alias endpoint that maps LearningRecord rows to the
+   * TrainingRecordAlias shape.  Path stays under training/records, no
+   * separate /training-records route is created.
+   */
+  @Get('project/:projectId/training-summary')
+  @ApiOperation({ summary: '查询培训记录（培训记录 UI 视角别名）' })
+  async listTrainingRecordAliases(@Param('projectId') projectId: string) {
+    return this.recordService.listTrainingRecordAliases(projectId);
+  }
 }
