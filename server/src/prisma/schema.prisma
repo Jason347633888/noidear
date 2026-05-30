@@ -3652,3 +3652,48 @@ model RetainedSampleInspection {
   @@index([inspection_record_id])
   @@map("retained_sample_inspections")
 }
+
+// ── Phase 13 Task 4: ShelfLifeStudy ──────────────────────────────────────────
+
+model ShelfLifeStudy {
+  id                 String    @id @default(cuid())
+  company_id         String
+  product_id         String
+  retained_sample_id String?
+  study_type         String
+  storage_conditions Json
+  started_at         DateTime
+  planned_ended_at   DateTime
+  actual_ended_at    DateTime?
+  final_conclusion   String?
+  conclusion_by      String?
+  status             String    @default("active")
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  points             ShelfLifeStudyPoint[]
+
+  @@index([company_id, product_id, status])
+  @@map("shelf_life_studies")
+}
+
+model ShelfLifeStudyPoint {
+  id                  String         @id @default(cuid())
+  shelf_life_study_id String
+  shelf_life_study    ShelfLifeStudy @relation(fields: [shelf_life_study_id], references: [id], onDelete: Cascade)
+  point_code          String
+  sequence            Int
+  planned_at          DateTime
+  status              String    @default("pending")
+  skip_reason         String?
+  inspection_record_id String?
+  completed_at        DateTime?
+  completed_by        String?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  @@unique([shelf_life_study_id, point_code])
+  @@index([shelf_life_study_id, sequence])
+  @@index([status, planned_at])
+  @@index([inspection_record_id])
+  @@map("shelf_life_study_points")
+}

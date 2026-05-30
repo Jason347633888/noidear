@@ -1,0 +1,259 @@
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+
+export type CreateShelfLifeStudyInput = {
+  companyId: string;
+  productId: string;
+  retainedSampleId?: string;
+  studyType: 'initial' | 'periodic';
+  storageConditions: Record<string, unknown>;
+  startedAt: string;
+  plannedEndedAt: string;
+  points: Array<{
+    pointCode: string;
+    sequence: number;
+    plannedAt: string;
+  }>;
+};
+
+const SHELF_LIFE_STUDY_OBJECT_TYPE = 'shelf_life_study';
+
+type TxClient = Prisma.TransactionClient;
+
+function assertNonEmptyPoints(points: CreateShelfLifeStudyInput['points']): void {
+  if (!points || points.length === 0) {
+    throw new BadRequestException('At least one inspection point is required');
+  }
+}
+
+function assertUniquePointCodes(points: CreateShelfLifeStudyInput['points']): void {
+  const codes = points.map((p) => p.pointCode);
+  const unique = new Set(codes);
+  if (unique.size !== codes.length) {
+    throw new BadRequestException('Duplicate point codes are not allowed');
+  }
+}
+
+function assertStudyExists(
+  study: { id: string; status: string; points: unknown[] } | null,
+  studyId: string,
+): asserts study is { id: string; status: string; points: unknown[] } {
+  if (!study) {
+    throw new BadRequestException(`ShelfLifeStudy ${studyId} not found`);
+  }
+}
+
+@Injectable()
+export class ShelfLifeService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async createShelfLifeStudy(input: CreateShelfLifeStudyInput) {
+    assertNonEmptyPoints(input.points);
+    assertUniquePointCodes(input.points);
+
+    return this.prisma.$transaction(async (tx: TxClient) => {
+      return tx.shelfLifeStudy.create({
+        data: {
+          company_id: input.companyId,
+          product_id: input.productId,
+          retained_sample_id: input.retainedSampleId ?? null,
+          study_type: input.studyType,
+          storage_conditions: input.storageConditions as Prisma.InputJsonValue,
+          started_at: new Date(input.startedAt),
+          planned_ended_at: new Date(input.plannedEndedAt),
+          status: 'active',
+          points: {
+            create: input.points.map((p) => ({
+              point_code: p.pointCode,
+              sequence: p.sequence,
+              planned_at: new Date(p.plannedAt),
+              status: 'pending',
+            })),
+          },
+        },
+        include: { points: true },
+      });
+    });
+  }
+
+  async attachInspectionRecordToPoint(
+    studyId: string,
+    pointCode: string,
+    inspectionRecordId: string,
+  ) {
+    return this.prisma.$transaction(async (tx: TxClient) => {
+      const point = await tx.shelfLifeStudyPoint.findFirst({
+        where: { shelf_life_study_id: studyId, point_code: pointCode },
+      });
+
+      if (!point) {
+        throw new BadRequestException(
+          `ShelfLifeStudyPoint "${pointCode}" not found in study ${studyId}`,
+        );
+      }
+
+      if (point.status !== 'pending') {
+        throw new BadRequestException(
+          `Point "${pointCode}" is "${point.status}" and cannot have an inspection record attached`,
+        );
+      }
+
+      const ir = await tx.inspectionRecord.findFirst({
+        where: { id: inspectionRecordId },
+      });
+
+      if (!ir) {
+        throw new BadRequestException(
+          `InspectionRecord ${inspectionRecordId} not found`,
+        );
+      }
+
+      if (ir.object_type !== SHELF_LIFE_STUDY_OBJECT_TYPE) {
+        throw new BadRequestException(
+          `InspectionRecord ${inspectionRecordId} object_type must be "${SHELF_LIFE_STUDY_OBJECT_TYPE}", got "${ir.object_type}"`,
+        );
+      }
+
+      if (ir.object_id !== studyId) {
+        throw new BadRequestException(
+          `InspectionRecord ${inspectionRecordId} object_id does not match study ${studyId}`,
+        );
+      }
+
+      return tx.shelfLifeStudyPoint.update({
+        where: { id: point.id },
+        data: {
+          status: 'done',
+          inspection_record_id: inspectionRecordId,
+          completed_at: new Date(),
+        },
+      });
+    });
+  }
+
+  async skipShelfLifeStudyPoint(
+    studyId: string,
+    pointCode: string,
+    skipReason: string,
+    skippedBy: string,
+  ) {
+    if (!skipReason?.trim()) {
+      throw new BadRequestException('skip_reason is required to skip a point');
+    }
+
+    return this.prisma.$transaction(async (tx: TxClient) => {
+      const point = await tx.shelfLifeStudyPoint.findFirst({
+        where: { shelf_life_study_id: studyId, point_code: pointCode },
+      });
+
+      if (!point) {
+        throw new BadRequestException(
+          `ShelfLifeStudyPoint "${pointCode}" not found in study ${studyId}`,
+        );
+      }
+
+      if (point.status !== 'pending') {
+        throw new BadRequestException(
+          `Point "${pointCode}" is "${point.status}" and cannot be skipped`,
+        );
+      }
+
+      return tx.shelfLifeStudyPoint.update({
+        where: { id: point.id },
+        data: {
+          status: 'skipped',
+          skip_reason: skipReason.trim(),
+          completed_at: new Date(),
+          completed_by: skippedBy,
+        },
+      });
+    });
+  }
+
+  async concludeShelfLifeStudy(
+    studyId: string,
+    conclusion: string,
+    conclusionBy: string,
+  ) {
+    return this.prisma.$transaction(async (tx: TxClient) => {
+      const study = await tx.shelfLifeStudy.findFirst({
+        where: { id: studyId },
+        include: { points: true },
+      });
+
+      assertStudyExists(study, studyId);
+
+      if (study.status === 'concluded') {
+        throw new BadRequestException(
+          `Study ${studyId} is already concluded`,
+        );
+      }
+
+      const points = study.points as Array<{
+        status: string;
+        skip_reason: string | null;
+        inspection_record_id: string | null;
+        point_code: string;
+      }>;
+
+      const pendingPoints = points.filter((p) => p.status === 'pending');
+      if (pendingPoints.length > 0) {
+        const codes = pendingPoints.map((p) => p.point_code).join(', ');
+        throw new BadRequestException(
+          `Cannot conclude: points still pending — ${codes}`,
+        );
+      }
+
+      const skippedWithoutReason = points.filter(
+        (p) => p.status === 'skipped' && !p.skip_reason?.trim(),
+      );
+      if (skippedWithoutReason.length > 0) {
+        const codes = skippedWithoutReason.map((p) => p.point_code).join(', ');
+        throw new BadRequestException(
+          `Skipped points must have a skip_reason — missing for: ${codes}`,
+        );
+      }
+
+      const doneWithoutIr = points.filter(
+        (p) => p.status === 'done' && !p.inspection_record_id,
+      );
+      if (doneWithoutIr.length > 0) {
+        const codes = doneWithoutIr.map((p) => p.point_code).join(', ');
+        throw new BadRequestException(
+          `Done points must have an inspection_record_id — missing for: ${codes}`,
+        );
+      }
+
+      if (conclusion === 'pass') {
+        const irIds = points
+          .filter((p) => p.inspection_record_id)
+          .map((p) => p.inspection_record_id as string);
+
+        if (irIds.length > 0) {
+          const failedIrs = await tx.inspectionRecord.findMany({
+            where: { id: { in: irIds }, overall_result: 'fail' },
+            select: { id: true },
+          });
+
+          if (failedIrs.length > 0) {
+            throw new BadRequestException(
+              `Cannot conclude as "pass": ${failedIrs.length} linked inspection record(s) have overall_result="fail"`,
+            );
+          }
+        }
+      }
+
+      return tx.shelfLifeStudy.update({
+        where: { id: studyId },
+        data: {
+          status: 'concluded',
+          final_conclusion: conclusion,
+          conclusion_by: conclusionBy,
+          actual_ended_at: new Date(),
+        },
+        include: { points: true },
+      });
+    });
+  }
+}
