@@ -1,14 +1,23 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { forwardRef, Inject, Module, OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
 import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
 import { ProductRecallController } from './product-recall.controller';
-import { ProductRecallService } from './product-recall.service';
+import { ProductRecallService, TRACE_CONTEXT_SNAPSHOT_TOKEN } from './product-recall.service';
+import { TraceabilityModule } from '../traceability/traceability.module';
+import { TraceabilityService } from '../traceability/traceability.service';
 
 @Module({
-  imports: [PrismaModule, UnifiedApprovalModule],
+  imports: [PrismaModule, UnifiedApprovalModule, forwardRef(() => TraceabilityModule)],
   controllers: [ProductRecallController],
-  providers: [ProductRecallService],
+  providers: [
+    ProductRecallService,
+    {
+      provide: TRACE_CONTEXT_SNAPSHOT_TOKEN,
+      useFactory: (traceService: TraceabilityService) => traceService,
+      inject: [{ token: TraceabilityService, optional: true }],
+    },
+  ],
   exports: [ProductRecallService],
 })
 export class ProductRecallModule implements OnModuleInit {

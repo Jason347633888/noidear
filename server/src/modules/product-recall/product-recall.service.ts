@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException, Optional, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalEngineService } from '../unified-approval/approval-engine.service';
 import { CreateProductRecallDto, CreateProductRecallNotificationDto } from './dto/create-product-recall.dto';
@@ -6,6 +6,15 @@ import { QueryProductRecallDto } from './dto/query-product-recall.dto';
 import { MarkNotificationSentDto, RecallCancelDto, RecallCompleteDto } from './dto/transition-product-recall.dto';
 
 type CurrentUser = { id: string; companyId: string };
+
+interface TraceContextSnapshotPort {
+  createTraceContextSnapshot(input: {
+    company_id: string;
+    rootObjectType: string;
+    rootObjectId: string;
+    requesterId?: string;
+  }): Promise<{ id: string; snapshotPurpose?: string }>;
+}
 
 const allowedTransitions: Record<string, string[]> = {
   draft: ['pending_review', 'cancelled'],
@@ -18,11 +27,14 @@ const allowedTransitions: Record<string, string[]> = {
   cancelled: [],
 };
 
+export const TRACE_CONTEXT_SNAPSHOT_TOKEN = 'TRACE_CONTEXT_SNAPSHOT_TOKEN';
+
 @Injectable()
 export class ProductRecallService {
   constructor(
     private prisma: PrismaService,
     private readonly approvalEngine: ApprovalEngineService,
+    @Optional() @Inject(TRACE_CONTEXT_SNAPSHOT_TOKEN) private readonly traceService?: TraceContextSnapshotPort,
   ) {}
 
   async create(dto: CreateProductRecallDto, currentUser: CurrentUser) {
@@ -234,6 +246,121 @@ export class ProductRecallService {
       });
     }
     return this.findOne(id, currentUser.companyId);
+  }
+
+  // ── Phase 14 Task 4: Snapshot binding ──────────────────────────────────────
+
+  /**
+   * Creates a recall draft seeded from an existing TraceabilitySnapshot.
+   * The snapshot's production batch facts populate the initial recall scope.
+   */
+  async createRecallFromSnapshot(
+    input: { traceabilitySnapshotId: string; title: string; reason: string; risk_level?: 'low' | 'medium' | 'high' | 'critical' },
+    currentUser: CurrentUser,
+  ) {
+    const companyId = currentUser.companyId;
+    const count = await this.prisma.productRecall.count({ where: { company_id: companyId } });
+    const recall_no = `RC-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+
+    return this.prisma.$transaction(async (tx: any) => {
+      const snapshot = await tx.traceabilitySnapshot.findFirst({
+        where: { id: input.traceabilitySnapshotId, company_id: companyId },
+      });
+      if (!snapshot) {
+        throw new BadRequestException(`追溯快照不属于当前企业: ${input.traceabilitySnapshotId}`);
+      }
+
+      const recall = await tx.productRecall.create({
+        data: {
+          company_id: companyId,
+          recall_no,
+          title: input.title,
+          reason: input.reason,
+          risk_level: input.risk_level ?? 'medium',
+          status: 'draft',
+          source_traceability_snapshot_id: snapshot.id,
+          requested_by: currentUser.id,
+        },
+      });
+
+      const snapshotData = snapshot.snapshotData as any;
+      const rootBatchId = snapshot.rootObjectType === 'production_batch' ? snapshot.rootObjectId : null;
+      const batchIds: string[] = rootBatchId ? [rootBatchId] : [];
+
+      for (const batchId of batchIds) {
+        const productionBatch = await tx.productionBatch.findFirst({
+          where: { id: batchId },
+          select: { id: true, batchNumber: true, productName: true, product: { select: { company_id: true } } },
+        });
+        if (!productionBatch || productionBatch.product.company_id !== companyId) {
+          continue;
+        }
+        const displayFacts = snapshotData?.root?.display ?? {};
+        await tx.productRecallBatch.create({
+          data: {
+            company_id: companyId,
+            recall_id: recall.id,
+            production_batch_id: productionBatch.id,
+            batch_number_snapshot: displayFacts.batchNumber ?? productionBatch.batchNumber,
+            product_name_snapshot: displayFacts.productName ?? productionBatch.productName ?? '',
+          },
+        });
+      }
+
+      return recall;
+    });
+  }
+
+  /**
+   * Generates a fresh (preview) TraceabilitySnapshot for the recall without
+   * modifying any recall data. Useful for previewing scope changes before locking.
+   */
+  async refreshRecallPreview(recallId: string, companyId: string) {
+    const recall = await this.prisma.productRecall.findFirst({
+      where: { id: recallId, company_id: companyId },
+    });
+    if (!recall) throw new NotFoundException('召回记录不存在');
+
+    if (!this.traceService) {
+      throw new BadRequestException('TraceabilityService is not available for snapshot preview');
+    }
+
+    return this.traceService.createTraceContextSnapshot({
+      company_id: companyId,
+      rootObjectType: 'product_recall',
+      rootObjectId: recallId,
+    });
+  }
+
+  /**
+   * Persists an immutable snapshot that locks the recall scope.
+   * Once locked, live batch data changes do not alter the recall scope.
+   * Idempotent: returns the existing locked snapshot if already locked.
+   */
+  async lockRecallScope(recallId: string, companyId: string) {
+    const recall = await this.prisma.productRecall.findFirst({
+      where: { id: recallId, company_id: companyId },
+    });
+    if (!recall) throw new NotFoundException('召回记录不存在');
+
+    if ((recall as any).locked_snapshot_id) {
+      return recall;
+    }
+
+    if (!this.traceService) {
+      throw new BadRequestException('TraceabilityService is not available for scope locking');
+    }
+
+    const snapshot = await this.traceService.createTraceContextSnapshot({
+      company_id: companyId,
+      rootObjectType: 'product_recall',
+      rootObjectId: recallId,
+    });
+
+    return this.prisma.productRecall.update({
+      where: { id: recallId },
+      data: { locked_snapshot_id: snapshot.id },
+    });
   }
 
   private async transition(id: string, currentUser: CurrentUser, nextStatus: string, data: Record<string, unknown>) {

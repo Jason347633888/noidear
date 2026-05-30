@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TraceabilityController } from './traceability.controller';
 import { TraceabilityService } from './traceability.service';
 import { PrismaModule } from '../../prisma/prisma.module';
@@ -11,7 +11,7 @@ import { ProductRecallModule } from '../product-recall/product-recall.module';
 import { QualityNumberSequenceModule } from '../quality-number-sequence/quality-number-sequence.module';
 
 @Module({
-  imports: [PrismaModule, ProductRecallModule, QualityNumberSequenceModule],
+  imports: [PrismaModule, forwardRef(() => ProductRecallModule), QualityNumberSequenceModule],
   controllers: [TraceabilityController],
   providers: [
     TraceabilityService,

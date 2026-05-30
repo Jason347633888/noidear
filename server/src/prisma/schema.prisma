@@ -3176,7 +3176,8 @@ model TraceabilitySnapshot {
   readinessStatus  String  @default("complete") // complete | incomplete
   readinessReasons Json?
 
-  productRecalls ProductRecall[] @relation("ProductRecallTraceabilitySnapshot")
+  productRecalls       ProductRecall[] @relation("ProductRecallTraceabilitySnapshot")
+  lockedByProductRecalls ProductRecall[] @relation("ProductRecallLockedSnapshot")
 
   @@index([company_id])
   @@map("traceability_snapshots")
@@ -3236,6 +3237,8 @@ model ProductRecall {
   source_query_ref                String?
   source_traceability_snapshot_id String?
   source_traceability_snapshot    TraceabilitySnapshot? @relation("ProductRecallTraceabilitySnapshot", fields: [source_traceability_snapshot_id], references: [id], onDelete: SetNull)
+  locked_snapshot_id              String?
+  locked_snapshot                 TraceabilitySnapshot? @relation("ProductRecallLockedSnapshot", fields: [locked_snapshot_id], references: [id], onDelete: SetNull)
   requested_by                    String?
   requested_at                    DateTime              @default(now())
   reviewed_by                     String?
@@ -3258,6 +3261,7 @@ model ProductRecall {
   @@index([company_id, status])
   @@index([company_id, source_complaint_id])
   @@index([source_traceability_snapshot_id])
+  @@index([locked_snapshot_id])
   @@index([approvalInstanceId])
   @@map("product_recalls")
 }

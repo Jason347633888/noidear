@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { ProductRecallService } from './product-recall.service';
 import { CreateProductRecallDto, CreateProductRecallNotificationDto } from './dto/create-product-recall.dto';
+import { CreateRecallFromSnapshotDto } from './dto/create-recall-from-snapshot.dto';
 import { QueryProductRecallDto } from './dto/query-product-recall.dto';
 import { MarkNotificationSentDto, RecallCancelDto, RecallCompleteDto } from './dto/transition-product-recall.dto';
 
@@ -18,6 +19,11 @@ export class ProductRecallController {
     return this.service.create(dto, { id: req.user.id, companyId: req.user.companyId });
   }
 
+  @Post('from-snapshot')
+  createFromSnapshot(@Body() dto: CreateRecallFromSnapshotDto, @Request() req: AuthenticatedRequest) {
+    return this.service.createRecallFromSnapshot(dto, { id: req.user.id, companyId: req.user.companyId });
+  }
+
   @Get()
   findAll(@Query() query: QueryProductRecallDto, @Request() req: AuthenticatedRequest) {
     return this.service.findAll(req.user.companyId, query);
@@ -26,6 +32,16 @@ export class ProductRecallController {
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.service.findOne(id, req.user.companyId);
+  }
+
+  @Get(':id/snapshot-preview')
+  refreshSnapshotPreview(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.service.refreshRecallPreview(id, req.user.companyId);
+  }
+
+  @Post(':id/lock-scope')
+  lockScope(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.service.lockRecallScope(id, req.user.companyId);
   }
 
   @Post(':id/submit')
