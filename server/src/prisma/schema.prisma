@@ -2168,7 +2168,7 @@ model Recipe {
   product      Product       @relation(fields: [product_id], references: [id])
   version      Int           @default(1)
   version_note String?
-  status       String        @default("draft") // 'draft'|'active'|'archived'
+  status       String        @default("draft") // 'draft'|'active'|'retired' (legacy: 'archived' treated as retired)
   approved_by  String?
   approved_at  DateTime?
   lines        RecipeLine[]
