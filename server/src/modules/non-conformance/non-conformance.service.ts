@@ -196,8 +196,24 @@ export class NonConformanceService {
         throw new BadRequestException('金属探测记录来源不存在');
       }
     },
-    laundry_work_record: async () => {
-      throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');
+    // ── Phase 15 Task 7: LaundryWorkRecord ────────────────────────────────────
+    laundry_work_record: async (sourceId, companyId, db, sourceItemId) => {
+      const record = await db.laundryWorkRecord.findUnique({
+        where: { id: sourceId },
+        select: { id: true, company_id: true },
+      });
+      if (!record || record.company_id !== companyId) {
+        throw new BadRequestException('洗涤工作记录来源不存在');
+      }
+      if (sourceItemId) {
+        const item = await db.laundryWorkRecordItem.findUnique({
+          where: { id: sourceItemId },
+          select: { id: true, laundry_work_record_id: true },
+        });
+        if (!item || item.laundry_work_record_id !== sourceId) {
+          throw new BadRequestException('洗涤工作记录子项不存在');
+        }
+      }
     },
     // ── Phase 11 Task 6: EquipmentUsageRecord ────────────────────────────────
     equipment_usage_record: async (sourceId, companyId, db) => {

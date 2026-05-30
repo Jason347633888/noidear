@@ -70,6 +70,7 @@ import { ProductionPlanModule } from './modules/production-plan/production-plan.
 import { InspectionRecordModule } from './modules/inspection-record/inspection-record.module';
 import { RetainedSampleModule } from './modules/retained-sample/retained-sample.module';
 import { AccessDeclarationModule } from './modules/access-declaration/access-declaration.module';
+import { LaundryRecordModule } from './modules/laundry-record/laundry-record.module';
 
 @Module({
   imports: [
@@ -143,6 +144,7 @@ import { AccessDeclarationModule } from './modules/access-declaration/access-dec
     InspectionRecordModule,
     RetainedSampleModule,
     AccessDeclarationModule,
+    LaundryRecordModule,
     ModuleAccessModule,
   ],
   providers: [

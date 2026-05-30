@@ -101,6 +101,8 @@ export const REGISTRY_CONFIG: RegistryConfig = {
       { path: 'visitor-records', mode: 'exact' },
       { path: 'emergency-drills', mode: 'exact' },
       { path: 'food-safety-culture-records', mode: 'exact' },
+      { path: 'access-declarations', mode: 'prefix' },
+      { path: 'laundry-records', mode: 'prefix' },
     ],
     traceability_batch: [
       { path: 'traceability', mode: 'exact' },

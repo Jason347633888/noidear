@@ -39,6 +39,12 @@ describe('NonConformanceService', () => {
     maintenanceRecordItem: {
       findUnique: jest.fn(),
     },
+    laundryWorkRecord: {
+      findUnique: jest.fn(),
+    },
+    laundryWorkRecordItem: {
+      findUnique: jest.fn(),
+    },
   };
   const numberSequence = {
     generateNonConformanceNo: jest.fn(),
@@ -637,19 +643,80 @@ describe('NonConformanceService', () => {
     expect(prisma.nonConformance.create).not.toHaveBeenCalled();
   });
 
-  it.each([
-    'metal_detection_log',
-    'laundry_work_record',
-  ] as const)(
-    'rejects stub source type "%s" with a clear "not yet implemented" message',
-    async (sourceType) => {
-      await expect(
-        service.create({ source_type: sourceType, source_id: 'any-id', description: '测试' }, 'u1', '2'),
-      ).rejects.toThrow('不合格来源类型已登记，但对应业务模型尚未实现');
+  it('rejects metal_detection_log when record does not exist', async () => {
+    prisma.metalDetectionLog = { count: jest.fn().mockResolvedValue(0) };
 
-      expect(prisma.nonConformance.create).not.toHaveBeenCalled();
-    },
-  );
+    await expect(
+      service.create({ source_type: 'metal_detection_log', source_id: 'any-id', description: '测试' }, 'u1', '2'),
+    ).rejects.toThrow('金属探测记录来源不存在');
+
+    expect(prisma.nonConformance.create).not.toHaveBeenCalled();
+  });
+
+  // ─── laundry_work_record source-type contract (Phase 15 Task 7) ─────────────
+
+  it('accepts laundry_work_record source when company_id matches', async () => {
+    prisma.laundryWorkRecord.findUnique.mockResolvedValue({ id: 'lwr-1', company_id: '2' });
+    numberSequence.generateNonConformanceNo.mockResolvedValue('NC-2026-0060');
+    prisma.nonConformance.create.mockResolvedValue({ id: 'nc-lwr-1' });
+
+    await service.create(
+      { source_type: 'laundry_work_record', source_id: 'lwr-1', description: '洗涤不合格' },
+      'u1',
+      '2',
+    );
+
+    expect(prisma.laundryWorkRecord.findUnique).toHaveBeenCalledWith({
+      where: { id: 'lwr-1' },
+      select: { id: true, company_id: true },
+    });
+    expect(prisma.nonConformance.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          source_type: 'laundry_work_record',
+          source_id: 'lwr-1',
+          company_id: '2',
+        }),
+      }),
+    );
+  });
+
+  it('rejects laundry_work_record when record does not exist', async () => {
+    prisma.laundryWorkRecord.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.create(
+        { source_type: 'laundry_work_record', source_id: 'lwr-missing', description: '来源不存在' },
+        'u1',
+        '2',
+      ),
+    ).rejects.toThrow('洗涤工作记录来源不存在');
+
+    expect(prisma.nonConformance.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects laundry_work_record when source_item_id does not belong to the record', async () => {
+    prisma.laundryWorkRecord.findUnique.mockResolvedValue({ id: 'lwr-1', company_id: '2' });
+    prisma.laundryWorkRecordItem.findUnique.mockResolvedValue({
+      id: 'item-2',
+      laundry_work_record_id: 'different-record',
+    });
+
+    await expect(
+      service.create(
+        {
+          source_type: 'laundry_work_record',
+          source_id: 'lwr-1',
+          source_item_id: 'item-2',
+          description: '子项不属于该记录',
+        },
+        'u1',
+        '2',
+      ),
+    ).rejects.toThrow('洗涤工作记录子项不存在');
+
+    expect(prisma.nonConformance.create).not.toHaveBeenCalled();
+  });
 
   // ─── maintenance_record source-type contract (T5-2) ─────────────────────
 

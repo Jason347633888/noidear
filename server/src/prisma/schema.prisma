@@ -3825,3 +3825,65 @@ model VisitorAccessDeclaration {
   @@index([access_declaration_id])
   @@map("visitor_access_declarations")
 }
+
+// ── Phase 15 Task 7: GarmentInventory + LaundryWorkRecord + Items ─────────────
+
+model GarmentInventory {
+  id             String   @id @default(cuid())
+  company_id     String
+  code           String
+  garment_type   String
+  area_id        String?
+  quantity       Int
+  status         String   @default("active")
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  laundry_items  LaundryWorkRecordItem[]
+
+  @@unique([company_id, code])
+  @@index([company_id, garment_type, status])
+  @@map("garment_inventories")
+}
+
+model LaundryWorkRecord {
+  id                  String    @id @default(cuid())
+  company_id          String
+  work_date           DateTime  @db.Date
+  shift_type_id       String?
+  batch_no            String?
+  washing_method      String?
+  disinfection_method String?
+  disinfectant        String?
+  temperature         Decimal?  @db.Decimal(8, 2)
+  duration_min        Int?
+  operator_id         String?
+  verifier_id         String?
+  status              String    @default("draft")
+  notes               String?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  items               LaundryWorkRecordItem[]
+
+  @@index([company_id, work_date, status])
+  @@map("laundry_work_records")
+}
+
+model LaundryWorkRecordItem {
+  id                     String             @id @default(cuid())
+  laundry_work_record_id String
+  laundry_work_record    LaundryWorkRecord  @relation(fields: [laundry_work_record_id], references: [id], onDelete: Cascade)
+  garment_type           String
+  garment_inventory_id   String?
+  garment_inventory      GarmentInventory?  @relation(fields: [garment_inventory_id], references: [id], onDelete: SetNull)
+  area_id                String?
+  quantity               Int
+  action                 String
+  result                 String
+  notes                  String?
+  evidence_file_id       String?
+  created_at             DateTime           @default(now())
+
+  @@index([laundry_work_record_id])
+  @@index([garment_inventory_id])
+  @@map("laundry_work_record_items")
+}
