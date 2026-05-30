@@ -51,6 +51,10 @@ export class CreateEquipmentDto {
   @IsOptional()
   responsiblePersonId?: string;
 
+  @IsString()
+  @IsOptional()
+  areaPointId?: string;
+
   @IsObject()
   @IsOptional()
   maintenanceConfig?: Record<string, any>;
@@ -100,6 +104,10 @@ export class UpdateEquipmentDto {
   @IsString()
   @IsOptional()
   responsiblePersonId?: string;
+
+  @IsString()
+  @IsOptional()
+  areaPointId?: string;
 
   @IsObject()
   @IsOptional()

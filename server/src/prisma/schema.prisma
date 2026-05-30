@@ -1262,8 +1262,8 @@ model Equipment {
   code                  String          @unique // 设备编号 EQ-{YYYYMMDD}-{序号}
   name                  String // 设备名称
   model                 String? // 设备型号
-  category              String // 设备分类
-  location              String? // 设备位置
+  category              String // 设备分类: production|facility|measuring|utility|metal_detector|other
+  location              String? // 设备位置（展示快照，独立于 area_point）
   manufacturer          String? // 制造商
   purchaseDate          DateTime? // 购买日期
   activationDate        DateTime? // 启用日期
@@ -1271,6 +1271,8 @@ model Equipment {
   responsiblePerson     String? // 责任人姓名（旧 text 字段，保留兼容）
   responsiblePersonId   String? // 责任人 FK（Task 46 新增）
   responsiblePersonUser User?           @relation("EquipmentResponsible", fields: [responsiblePersonId], references: [id], onDelete: SetNull)
+  area_point_id         String? // 所属区域点 FK（Task 11 新增）
+  area_point            WorkshopArea?   @relation("EquipmentAreaPoint", fields: [area_point_id], references: [id], onDelete: SetNull)
   maintenanceConfig     Json? // 分级保养配置 JSON
   status                EquipmentStatus @default(active)
   description           String? // 设备描述
@@ -1289,6 +1291,7 @@ model Equipment {
   @@index([status])
   @@index([responsiblePerson])
   @@index([responsiblePersonId])
+  @@index([area_point_id])
   @@index([location])
   @@map("equipment")
 }
@@ -2012,6 +2015,8 @@ model WorkshopArea {
   cleaningPlans                 CleaningPlan[]                  @relation("CleaningPlanAreaPoint")
   cleaningRecords               CleaningRecord[]                @relation("CleaningRecordAreaPoint")
   environmentalSamplingRecords  EnvironmentalSamplingRecord[]   @relation("EnvironmentalSamplingAreaPoint")
+  equipment                     Equipment[]                     @relation("EquipmentAreaPoint")
+  measuringEquipments           MeasuringEquipment[]            @relation("MeasuringEquipmentAreaPoint")
 
   @@unique([company_id, code])
   @@unique([company_id, name])
@@ -2430,22 +2435,32 @@ model ReworkRecord {
 }
 
 model MeasuringEquipment {
-  id                     String              @id @default(cuid())
-  company_id             String
-  code                   String
-  name                   String
-  model                  String?
-  serial_no              String?
-  location               String?
-  calibration_cycle_days Int?
-  last_calibrated_at     DateTime?           @db.Date
-  next_calibration_at    DateTime?           @db.Date
-  status                 String              @default("normal") // 'normal'|'overdue'|'scrapped'
-  calibration_records    CalibrationRecord[]
-  created_at             DateTime            @default(now())
-  updated_at             DateTime            @updatedAt
+  id                           String              @id @default(cuid())
+  company_id                   String
+  code                         String
+  name                         String
+  model                        String?
+  serial_no                    String?
+  location                     String?
+  calibration_cycle_days       Int?
+  last_calibrated_at           DateTime?           @db.Date
+  next_calibration_at          DateTime?           @db.Date
+  status                       String              @default("normal") // 'normal'|'overdue'|'scrapped'|'failed'
+  measurement_type             String? // 测量类型
+  range_min                    Decimal?            @db.Decimal(14, 4) // 量程下限
+  range_max                    Decimal?            @db.Decimal(14, 4) // 量程上限
+  unit                         String? // 单位
+  accuracy                     String? // 精度描述
+  area_point_id                String? // 所属区域点 FK
+  area_point                   WorkshopArea?       @relation("MeasuringEquipmentAreaPoint", fields: [area_point_id], references: [id], onDelete: SetNull)
+  external_certificate_file_id String? // 外部证书文件ID
+  calibration_records          CalibrationRecord[]
+  created_at                   DateTime            @default(now())
+  updated_at                   DateTime            @updatedAt
 
   @@unique([company_id, code])
+  @@index([area_point_id])
+  @@map("measuring_equipments")
 }
 
 model CalibrationRecord {
