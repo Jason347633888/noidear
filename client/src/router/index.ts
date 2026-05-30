@@ -47,6 +47,13 @@ const routes: RouteRecordRaw[] = [
         path: 'documents/control/library',
         redirect: '/documents',
       },
+      // 文件周期审核
+      {
+        path: 'documents/reviews',
+        name: 'DocumentReviews',
+        component: () => import('@/views/documents/reviews/DocumentReviewList.vue'),
+        meta: { title: '文件周期审核' },
+      },
       {
         path: 'deviation-reports',
         name: 'DeviationReports',
@@ -709,6 +716,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/external-party/ExternalPartyList.vue'),
         meta: { title: '外部方档案' },
       },
+      // 外部方评价模块
+      {
+        path: 'external-parties/evaluations',
+        name: 'ExternalPartyEvaluations',
+        component: () => import('@/views/external-party/ExternalPartyEvaluationList.vue'),
+        meta: { title: '外部方评价' },
+      },
       // 包装材料用量记录模块
       {
         path: 'packaging-material-usages',
@@ -756,6 +770,27 @@ const routes: RouteRecordRaw[] = [
         name: 'BatchReleasePanel',
         component: () => import('@/views/retained-sample/BatchReleasePanel.vue'),
         meta: { title: '批次放行' },
+      },
+      // 访客管理模块（治理中心）
+      {
+        path: 'visitors',
+        name: 'VisitorList',
+        component: () => import('@/views/visitors/VisitorList.vue'),
+        meta: { title: '访客登记' },
+      },
+      // 访客声明模块
+      {
+        path: 'access-declarations',
+        name: 'AccessDeclarationList',
+        component: () => import('@/views/access-declaration/AccessDeclarationList.vue'),
+        meta: { title: '访客与声明' },
+      },
+      // 洗衣房记录模块
+      {
+        path: 'laundry/records',
+        name: 'LaundryRecordList',
+        component: () => import('@/views/laundry/LaundryRecordList.vue'),
+        meta: { title: '洗衣房记录' },
       },
     ],
   },

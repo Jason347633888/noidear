@@ -161,6 +161,18 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    title: '文控与治理',
+    moduleKey: 'document_approval',
+    icon: Files,
+    children: [
+      { path: '/documents/reviews', title: '文件周期审核', icon: Document },
+      { path: '/training/projects', title: '培训', icon: UserFilled, moduleKey: 'training' },
+      { path: '/visitors', title: '访客与声明', icon: UserFilled },
+      { path: '/external-parties/evaluations', title: '外部方评价', icon: Connection },
+      { path: '/laundry/records', title: '洗衣房', icon: Grid },
+    ],
+  },
+  {
     title: '培训',
     moduleKey: 'training',
     icon: UserFilled,
