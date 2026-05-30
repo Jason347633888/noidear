@@ -226,17 +226,24 @@ export class ProductionBatchService {
   async getReleaseReadiness(productionBatchId: string): Promise<ReleaseReadiness> {
     const batch = await this.prisma.productionBatch.findUnique({
       where: { id: productionBatchId },
-      include: { product: { select: { id: true, product_type: true } } },
+      include: { product: { select: { id: true, product_type: true, company_id: true } } },
     });
 
     if (!batch || batch.deletedAt) {
       throw new NotFoundException('Production batch not found');
     }
 
+    const companyId = batch.product?.company_id;
     const blockers: ReleaseBlocker[] = [];
 
+    // Only count submitted inspection records — drafts do not satisfy the gate.
     const inspectionRecords = await this.prisma.inspectionRecord.findMany({
-      where: { object_type: 'production_batch', object_id: productionBatchId },
+      where: {
+        ...(companyId ? { company_id: companyId } : {}),
+        object_type: 'production_batch',
+        object_id: productionBatchId,
+        status: 'submitted',
+      },
       include: {
         items: {
           include: { inspection_item: { select: { id: true, is_critical: true } } },
@@ -268,15 +275,19 @@ export class ProductionBatchService {
 
     const hasCriticalFailure = blockers.some(b => b.code === 'failed_safety_critical_inspection');
 
-    const openNCs = await this.prisma.nonConformance.findMany({
+    // Query NCs that are not yet closed — 'open' (undisposed) and 'dispositioned' both
+    // represent unresolved non-conformances. The dispose() flow always moves status from
+    // 'open' → 'dispositioned', so a concession NC will always be 'dispositioned'.
+    const unresolvedNCs = await this.prisma.nonConformance.findMany({
       where: {
+        ...(companyId ? { company_id: companyId } : {}),
         source_type: 'production_batch',
         source_id: productionBatchId,
-        status: 'open',
+        status: { in: ['open', 'dispositioned'] },
       },
     });
 
-    for (const nc of openNCs) {
+    for (const nc of unresolvedNCs) {
       if (!nc.disposition) {
         blockers.push({
           code: 'open_non_conformance_without_disposition',
@@ -322,7 +333,10 @@ export class ProductionBatchService {
     const isFinishedProduct = batch.product?.product_type === FINISHED_PRODUCT_TYPE;
     if (isFinishedProduct) {
       const retainedSample = await this.prisma.retainedSample.findFirst({
-        where: { production_batch_id: productionBatchId },
+        where: {
+          ...(companyId ? { company_id: companyId } : {}),
+          production_batch_id: productionBatchId,
+        },
       });
 
       if (!retainedSample) {
@@ -339,21 +353,37 @@ export class ProductionBatchService {
   }
 
   async releaseProductionBatch(productionBatchId: string, releasedBy: string) {
-    const readiness = await this.getReleaseReadiness(productionBatchId);
-
-    if (!readiness.ready) {
-      throw new BadRequestException({
-        message: '批次放行检查未通过',
-        blockers: readiness.blockers,
+    return this.prisma.$transaction(async (tx) => {
+      const batch = await tx.productionBatch.findUnique({
+        where: { id: productionBatchId },
+        select: { id: true, released_at: true, deletedAt: true },
       });
-    }
 
-    return this.prisma.productionBatch.update({
-      where: { id: productionBatchId },
-      data: {
-        released_at: new Date(),
-        released_by_id: releasedBy,
-      },
+      if (!batch || batch.deletedAt) {
+        throw new NotFoundException('Production batch not found');
+      }
+
+      if (batch.released_at) {
+        throw new ConflictException('批次已放行，不可重复操作');
+      }
+
+      // Re-check readiness inside the transaction to close the TOCTOU window.
+      const readiness = await this.getReleaseReadiness(productionBatchId);
+
+      if (!readiness.ready) {
+        throw new BadRequestException({
+          message: '批次放行检查未通过',
+          blockers: readiness.blockers,
+        });
+      }
+
+      return tx.productionBatch.update({
+        where: { id: productionBatchId },
+        data: {
+          released_at: new Date(),
+          released_by_id: releasedBy,
+        },
+      });
     });
   }
 }

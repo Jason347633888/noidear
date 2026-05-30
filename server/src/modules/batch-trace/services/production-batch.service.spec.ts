@@ -5,6 +5,11 @@ import { BatchNumberGeneratorService } from './batch-number-generator.service';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { OwnershipContext } from '../../module-access/ownership-context';
 
+// Helper: builds a minimal Prisma transaction mock that executes the callback immediately.
+function makeTxMock(prisma: any) {
+  return jest.fn().mockImplementation((cb: (tx: any) => Promise<any>) => cb(prisma));
+}
+
 const mockPrisma = {
   product: {
     findFirst: jest.fn(),
@@ -317,8 +322,10 @@ describe('ProductionBatchService', () => {
 });
 
 describe('ProductionBatchService — getReleaseReadiness + releaseProductionBatch', () => {
+  const COMPANY_ID = 'company-001';
+
   function buildPrisma(overrides: Partial<Record<string, any>> = {}) {
-    return {
+    const base = {
       product: { findFirst: jest.fn(), findUnique: jest.fn() },
       recipe: { findFirst: jest.fn() },
       productionBatch: {
@@ -334,6 +341,8 @@ describe('ProductionBatchService — getReleaseReadiness + releaseProductionBatc
       approvalInstance: { findFirst: jest.fn().mockResolvedValue(null) },
       ...overrides,
     } as any;
+    base.$transaction = makeTxMock(base);
+    return base;
   }
 
   const BATCH_ID = 'batch-release-001';
@@ -347,7 +356,7 @@ describe('ProductionBatchService — getReleaseReadiness + releaseProductionBatc
       productName: '成品A',
       deletedAt: null,
       released_at: null,
-      product: { id: PRODUCT_ID, product_type: productType },
+      product: { id: PRODUCT_ID, product_type: productType, company_id: COMPANY_ID },
     };
   }
 
@@ -423,8 +432,9 @@ describe('ProductionBatchService — getReleaseReadiness + releaseProductionBatc
       prisma.inspectionRecord.findMany.mockResolvedValue([
         { id: 'ir-1', overall_result: 'pass', items: [] },
       ]);
+      // dispose('rework') sets status → 'dispositioned'; 'open' + disposition is impossible in production
       prisma.nonConformance.findMany.mockResolvedValue([
-        { id: 'nc-1', status: 'open', disposition: 'rework', source_type: 'production_batch', source_id: BATCH_ID },
+        { id: 'nc-1', status: 'dispositioned', disposition: 'rework', nc_no: 'NC-001', source_type: 'production_batch', source_id: BATCH_ID },
       ]);
       prisma.retainedSample.findFirst.mockResolvedValue({ id: 'rs-1' });
 
@@ -441,11 +451,13 @@ describe('ProductionBatchService — getReleaseReadiness + releaseProductionBatc
       prisma.inspectionRecord.findMany.mockResolvedValue([
         { id: 'ir-1', overall_result: 'pass', items: [] },
       ]);
+      // Real state after dispose('concession'): status='dispositioned', disposition='concession'
       prisma.nonConformance.findMany.mockResolvedValue([
         {
           id: 'nc-1',
-          status: 'open',
+          status: 'dispositioned',
           disposition: 'concession',
+          nc_no: 'NC-002',
           source_type: 'production_batch',
           source_id: BATCH_ID,
         },
@@ -460,7 +472,9 @@ describe('ProductionBatchService — getReleaseReadiness + releaseProductionBatc
       expect(result.blockers.some(b => b.code === 'concession_without_approved_approval_instance')).toBe(true);
     });
 
-    it('conditional release: non-safety-critical NC with concession + approved ApprovalInstance → ready=true', async () => {
+    // Regression test: mirrors the real dispose() state machine output.
+    // A dispositioned-concession NC without an approved ApprovalInstance must still block release.
+    it('regression: dispositioned-concession NC without approved ApprovalInstance blocks 让步放行', async () => {
       const prisma = buildPrisma();
       prisma.productionBatch.findUnique.mockResolvedValue(batchBase());
       prisma.inspectionRecord.findMany.mockResolvedValue([
@@ -468,9 +482,41 @@ describe('ProductionBatchService — getReleaseReadiness + releaseProductionBatc
       ]);
       prisma.nonConformance.findMany.mockResolvedValue([
         {
-          id: 'nc-1',
-          status: 'open',
+          id: 'nc-reg',
+          // status='dispositioned' is the ONLY possible state after dispose('concession')
+          status: 'dispositioned',
           disposition: 'concession',
+          nc_no: 'NC-REG',
+          source_type: 'production_batch',
+          source_id: BATCH_ID,
+        },
+      ]);
+      prisma.retainedSample.findFirst.mockResolvedValue({ id: 'rs-1' });
+      // No approved ApprovalInstance
+      prisma.approvalInstance.findFirst.mockResolvedValue(null);
+
+      const svc = makeService(prisma);
+      const result = await svc.getReleaseReadiness(BATCH_ID);
+
+      expect(result.ready).toBe(false);
+      const blocker = result.blockers.find(b => b.code === 'concession_without_approved_approval_instance');
+      expect(blocker).toBeDefined();
+      expect(blocker?.resourceId).toBe('nc-reg');
+    });
+
+    it('conditional release: non-safety-critical NC with concession + approved ApprovalInstance → ready=true', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(batchBase());
+      prisma.inspectionRecord.findMany.mockResolvedValue([
+        { id: 'ir-1', overall_result: 'pass', items: [] },
+      ]);
+      // Real state after dispose('concession') with an approved instance
+      prisma.nonConformance.findMany.mockResolvedValue([
+        {
+          id: 'nc-1',
+          status: 'dispositioned',
+          disposition: 'concession',
+          nc_no: 'NC-003',
           source_type: 'production_batch',
           source_id: BATCH_ID,
         },
@@ -487,6 +533,29 @@ describe('ProductionBatchService — getReleaseReadiness + releaseProductionBatc
 
       expect(result.ready).toBe(true);
       expect(result.blockers).toHaveLength(0);
+    });
+
+    it('draft inspection records are not counted — only submitted records satisfy the gate', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(batchBase());
+      // The mock returns [] (simulating that the query filtered to status='submitted' and found none)
+      prisma.inspectionRecord.findMany.mockResolvedValue([]);
+      prisma.nonConformance.findMany.mockResolvedValue([]);
+      prisma.retainedSample.findFirst.mockResolvedValue({ id: 'rs-1' });
+
+      const svc = makeService(prisma);
+      const result = await svc.getReleaseReadiness(BATCH_ID);
+
+      // Gate must fire even though a draft record might exist in the DB
+      expect(result.ready).toBe(false);
+      expect(result.blockers.some(b => b.code === 'missing_product_inspection')).toBe(true);
+
+      // Confirm the query included status: 'submitted'
+      expect(prisma.inspectionRecord.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: 'submitted' }),
+        }),
+      );
     });
 
     it('returns ready=false with missing_retained_sample for finished_product batch without retained sample', async () => {
@@ -555,7 +624,11 @@ describe('ProductionBatchService — getReleaseReadiness + releaseProductionBatc
 
     it('fails with BadRequestException when blockers exist', async () => {
       const prisma = buildPrisma();
-      prisma.productionBatch.findUnique.mockResolvedValue(batchBase());
+      // First call (transaction guard): not released yet
+      // Second call (getReleaseReadiness inside tx): same batch
+      prisma.productionBatch.findUnique
+        .mockResolvedValueOnce(batchBase())   // transaction guard read
+        .mockResolvedValueOnce(batchBase());  // getReleaseReadiness inner read
       prisma.inspectionRecord.findMany.mockResolvedValue([]);
       prisma.nonConformance.findMany.mockResolvedValue([]);
       prisma.retainedSample.findFirst.mockResolvedValue({ id: 'rs-1' });
@@ -566,7 +639,9 @@ describe('ProductionBatchService — getReleaseReadiness + releaseProductionBatc
 
     it('writes released_at and released_by_id when all checks pass', async () => {
       const prisma = buildPrisma();
-      prisma.productionBatch.findUnique.mockResolvedValue(batchBase('finished_product'));
+      prisma.productionBatch.findUnique
+        .mockResolvedValueOnce(batchBase('finished_product'))  // transaction guard read
+        .mockResolvedValueOnce(batchBase('finished_product')); // getReleaseReadiness inner read
       prisma.inspectionRecord.findMany.mockResolvedValue([
         { id: 'ir-1', overall_result: 'pass', items: [] },
       ]);
@@ -595,7 +670,9 @@ describe('ProductionBatchService — getReleaseReadiness + releaseProductionBatc
 
     it('does NOT write the legacy released_by Int field', async () => {
       const prisma = buildPrisma();
-      prisma.productionBatch.findUnique.mockResolvedValue(batchBase('finished_product'));
+      prisma.productionBatch.findUnique
+        .mockResolvedValueOnce(batchBase('finished_product'))
+        .mockResolvedValueOnce(batchBase('finished_product'));
       prisma.inspectionRecord.findMany.mockResolvedValue([
         { id: 'ir-1', overall_result: 'pass', items: [] },
       ]);
@@ -608,6 +685,17 @@ describe('ProductionBatchService — getReleaseReadiness + releaseProductionBatc
 
       const updateCall = prisma.productionBatch.update.mock.calls[0][0];
       expect(updateCall.data).not.toHaveProperty('released_by');
+    });
+
+    it('throws ConflictException when batch is already released (double-release guard)', async () => {
+      const prisma = buildPrisma();
+      const alreadyReleased = { ...batchBase(), released_at: new Date('2026-05-01T10:00:00Z') };
+      prisma.productionBatch.findUnique.mockResolvedValue(alreadyReleased);
+
+      const svc = makeService(prisma);
+      await expect(svc.releaseProductionBatch(BATCH_ID, RELEASER_ID)).rejects.toThrow(ConflictException);
+      // Update must never be called for an already-released batch
+      expect(prisma.productionBatch.update).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException when batch does not exist', async () => {
