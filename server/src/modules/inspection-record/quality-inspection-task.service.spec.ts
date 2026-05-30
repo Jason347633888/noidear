@@ -1,3 +1,4 @@
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { QualityInspectionTaskService } from './quality-inspection-task.service';
 
 // ---------------------------------------------------------------------------
@@ -11,6 +12,15 @@ function makePrisma(overrides: Record<string, unknown> = {}) {
       findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn().mockResolvedValue(null),
     },
+    inspectionRecord: {
+      count: jest.fn().mockResolvedValue(1),
+    },
+    environmentRecord: {
+      count: jest.fn().mockResolvedValue(1),
+    },
+    sanitizerConcentrationCheck: {
+      count: jest.fn().mockResolvedValue(1),
+    },
     $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({
       qualityInspectionTask: {
         create: jest.fn().mockResolvedValue({ id: 'task-1', status: 'pending' }),
@@ -19,6 +29,15 @@ function makePrisma(overrides: Record<string, unknown> = {}) {
         findUnique: jest.fn().mockResolvedValue(null),
       },
     })),
+    ...overrides,
+  };
+}
+
+function makePendingTask(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'task-1',
+    status: 'pending',
+    company_id: 'company-1',
     ...overrides,
   };
 }
@@ -111,10 +130,11 @@ describe('QualityInspectionTaskService.completeInspectionTask', () => {
       completed_resource_id: 'record-99',
     });
     const prisma = makePrisma();
+    prisma.qualityInspectionTask.findUnique = jest.fn().mockResolvedValue(makePendingTask());
     prisma.qualityInspectionTask.update = mockUpdate;
 
     const service = new QualityInspectionTaskService(prisma as any);
-    await service.completeInspectionTask('task-1', 'inspection_record', 'record-99');
+    await service.completeInspectionTask('task-1', 'inspection_record', 'record-99', 'company-1');
 
     expect(mockUpdate).toHaveBeenCalledWith({
       where: { id: 'task-1' },
@@ -129,10 +149,11 @@ describe('QualityInspectionTaskService.completeInspectionTask', () => {
   it('can complete to an EnvironmentRecord (not just InspectionRecord)', async () => {
     const mockUpdate = jest.fn().mockResolvedValue({ id: 'task-2', status: 'done' });
     const prisma = makePrisma();
+    prisma.qualityInspectionTask.findUnique = jest.fn().mockResolvedValue(makePendingTask({ id: 'task-2' }));
     prisma.qualityInspectionTask.update = mockUpdate;
 
     const service = new QualityInspectionTaskService(prisma as any);
-    await service.completeInspectionTask('task-2', 'environment_record', 'env-55');
+    await service.completeInspectionTask('task-2', 'environment_record', 'env-55', 'company-1');
 
     expect(mockUpdate).toHaveBeenCalledWith({
       where: { id: 'task-2' },
@@ -147,10 +168,11 @@ describe('QualityInspectionTaskService.completeInspectionTask', () => {
   it('can complete to a SanitizerConcentrationCheck', async () => {
     const mockUpdate = jest.fn().mockResolvedValue({ id: 'task-3', status: 'done' });
     const prisma = makePrisma();
+    prisma.qualityInspectionTask.findUnique = jest.fn().mockResolvedValue(makePendingTask({ id: 'task-3' }));
     prisma.qualityInspectionTask.update = mockUpdate;
 
     const service = new QualityInspectionTaskService(prisma as any);
-    await service.completeInspectionTask('task-3', 'sanitizer_concentration_check', 'san-12');
+    await service.completeInspectionTask('task-3', 'sanitizer_concentration_check', 'san-12', 'company-1');
 
     expect(mockUpdate).toHaveBeenCalledWith({
       where: { id: 'task-3' },
@@ -166,14 +188,70 @@ describe('QualityInspectionTaskService.completeInspectionTask', () => {
     const mockUpdate = jest.fn().mockResolvedValue({ id: 'task-4', status: 'done' });
     const mockCreate = jest.fn();
     const prisma = makePrisma();
+    prisma.qualityInspectionTask.findUnique = jest.fn().mockResolvedValue(makePendingTask({ id: 'task-4' }));
     prisma.qualityInspectionTask.update = mockUpdate;
     prisma.qualityInspectionTask.create = mockCreate;
 
     const service = new QualityInspectionTaskService(prisma as any);
-    await service.completeInspectionTask('task-4', 'inspection_record', 'record-77');
+    await service.completeInspectionTask('task-4', 'inspection_record', 'record-77', 'company-1');
 
     // Only an update should have been called; no create for a duplicate fact row
     expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('throws NotFoundException when task does not exist', async () => {
+    const prisma = makePrisma();
+    prisma.qualityInspectionTask.findUnique = jest.fn().mockResolvedValue(null);
+
+    const service = new QualityInspectionTaskService(prisma as any);
+    await expect(
+      service.completeInspectionTask('missing-task', 'inspection_record', 'record-1', 'company-1'),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('throws NotFoundException when task belongs to a different company', async () => {
+    const prisma = makePrisma();
+    prisma.qualityInspectionTask.findUnique = jest.fn().mockResolvedValue(
+      makePendingTask({ company_id: 'other-company' }),
+    );
+
+    const service = new QualityInspectionTaskService(prisma as any);
+    await expect(
+      service.completeInspectionTask('task-1', 'inspection_record', 'record-1', 'company-1'),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('throws BadRequestException when task status is not pending', async () => {
+    const prisma = makePrisma();
+    prisma.qualityInspectionTask.findUnique = jest.fn().mockResolvedValue(
+      makePendingTask({ status: 'done' }),
+    );
+
+    const service = new QualityInspectionTaskService(prisma as any);
+    await expect(
+      service.completeInspectionTask('task-1', 'inspection_record', 'record-1', 'company-1'),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('throws BadRequestException for invalid completedResourceType', async () => {
+    const prisma = makePrisma();
+    prisma.qualityInspectionTask.findUnique = jest.fn().mockResolvedValue(makePendingTask());
+
+    const service = new QualityInspectionTaskService(prisma as any);
+    await expect(
+      service.completeInspectionTask('task-1', 'unknown_type', 'record-1', 'company-1'),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('throws NotFoundException when the completed resource does not exist', async () => {
+    const prisma = makePrisma();
+    prisma.qualityInspectionTask.findUnique = jest.fn().mockResolvedValue(makePendingTask());
+    prisma.inspectionRecord.count = jest.fn().mockResolvedValue(0);
+
+    const service = new QualityInspectionTaskService(prisma as any);
+    await expect(
+      service.completeInspectionTask('task-1', 'inspection_record', 'nonexistent-record', 'company-1'),
+    ).rejects.toThrow(NotFoundException);
   });
 });
 
@@ -184,10 +262,11 @@ describe('QualityInspectionTaskService.skipTask', () => {
   it('sets status=skipped and records the reason', async () => {
     const mockUpdate = jest.fn().mockResolvedValue({ id: 'task-5', status: 'skipped' });
     const prisma = makePrisma();
+    prisma.qualityInspectionTask.findUnique = jest.fn().mockResolvedValue(makePendingTask({ id: 'task-5' }));
     prisma.qualityInspectionTask.update = mockUpdate;
 
     const service = new QualityInspectionTaskService(prisma as any);
-    await service.skipTask('task-5', '设备停机，无法执行');
+    await service.skipTask('task-5', '设备停机，无法执行', 'company-1');
 
     expect(mockUpdate).toHaveBeenCalledWith({
       where: { id: 'task-5' },
@@ -196,6 +275,40 @@ describe('QualityInspectionTaskService.skipTask', () => {
         skipped_reason: '设备停机，无法执行',
       },
     });
+  });
+
+  it('throws NotFoundException when task does not exist', async () => {
+    const prisma = makePrisma();
+    prisma.qualityInspectionTask.findUnique = jest.fn().mockResolvedValue(null);
+
+    const service = new QualityInspectionTaskService(prisma as any);
+    await expect(
+      service.skipTask('missing-task', 'reason', 'company-1'),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('throws NotFoundException when task belongs to a different company', async () => {
+    const prisma = makePrisma();
+    prisma.qualityInspectionTask.findUnique = jest.fn().mockResolvedValue(
+      makePendingTask({ company_id: 'other-company' }),
+    );
+
+    const service = new QualityInspectionTaskService(prisma as any);
+    await expect(
+      service.skipTask('task-1', 'reason', 'company-1'),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('throws BadRequestException when task status is not pending', async () => {
+    const prisma = makePrisma();
+    prisma.qualityInspectionTask.findUnique = jest.fn().mockResolvedValue(
+      makePendingTask({ status: 'skipped' }),
+    );
+
+    const service = new QualityInspectionTaskService(prisma as any);
+    await expect(
+      service.skipTask('task-1', 'reason', 'company-1'),
+    ).rejects.toThrow(BadRequestException);
   });
 });
 

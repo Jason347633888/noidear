@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface AddInspectionTaskInput {
@@ -81,7 +81,48 @@ export class QualityInspectionTaskService {
     taskId: string,
     completedResourceType: string,
     completedResourceId: string,
+    companyId: string,
   ) {
+    const allowedResourceTypes = [
+      'inspection_record',
+      'environment_record',
+      'sanitizer_concentration_check',
+    ] as const;
+
+    if (!allowedResourceTypes.includes(completedResourceType as (typeof allowedResourceTypes)[number])) {
+      throw new BadRequestException(
+        `Invalid completedResourceType: "${completedResourceType}". Allowed: ${allowedResourceTypes.join(', ')}`,
+      );
+    }
+
+    const task = await this.prisma.qualityInspectionTask.findUnique({ where: { id: taskId } });
+    if (!task) {
+      throw new NotFoundException(`QualityInspectionTask ${taskId} not found`);
+    }
+    if (task.company_id !== companyId) {
+      throw new NotFoundException(`QualityInspectionTask ${taskId} not found`);
+    }
+    if (task.status !== 'pending') {
+      throw new BadRequestException(
+        `Task ${taskId} cannot be completed because its status is "${task.status}"`,
+      );
+    }
+
+    const resourceModelMap: Record<string, keyof typeof this.prisma> = {
+      inspection_record: 'inspectionRecord',
+      environment_record: 'environmentRecord',
+      sanitizer_concentration_check: 'sanitizerConcentrationCheck',
+    };
+    const modelName = resourceModelMap[completedResourceType];
+    const resourceCount = await (this.prisma[modelName] as any).count({
+      where: { id: completedResourceId },
+    });
+    if (resourceCount === 0) {
+      throw new NotFoundException(
+        `${completedResourceType} ${completedResourceId} does not exist`,
+      );
+    }
+
     return this.prisma.qualityInspectionTask.update({
       where: { id: taskId },
       data: {
@@ -95,7 +136,20 @@ export class QualityInspectionTaskService {
   /**
    * Skip a task and record the reason (e.g. equipment down, not applicable today).
    */
-  async skipTask(taskId: string, reason?: string) {
+  async skipTask(taskId: string, reason: string | undefined, companyId: string) {
+    const task = await this.prisma.qualityInspectionTask.findUnique({ where: { id: taskId } });
+    if (!task) {
+      throw new NotFoundException(`QualityInspectionTask ${taskId} not found`);
+    }
+    if (task.company_id !== companyId) {
+      throw new NotFoundException(`QualityInspectionTask ${taskId} not found`);
+    }
+    if (task.status !== 'pending') {
+      throw new BadRequestException(
+        `Task ${taskId} cannot be skipped because its status is "${task.status}"`,
+      );
+    }
+
     return this.prisma.qualityInspectionTask.update({
       where: { id: taskId },
       data: {
