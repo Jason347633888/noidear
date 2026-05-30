@@ -4,6 +4,12 @@ import { ProductAllergenSummaryService, AllergenEntry } from './product-allergen
 
 const COMPANY_ID = '1';
 
+/**
+ * Task 14-5: Default evidence export layout code for product specification exports.
+ * No ExportTemplate model is used; this code is stored in templateVersion on EvidenceExport.
+ */
+const DEFAULT_PRODUCT_SPECIFICATION_LAYOUT = 'product_specification_default_v1';
+
 export interface ManufacturerInfo {
   name: string | null;
   address: string | null;
@@ -117,6 +123,7 @@ export class ProductLabelService {
         resourceType: 'product_specification',
         resourceId: productId,
         snapshotId: productId,
+        templateVersion: DEFAULT_PRODUCT_SPECIFICATION_LAYOUT,
         exportScope: 'product_specification',
         dataSnapshot: dataSnapshot as object,
         summaryFormat: 'json',

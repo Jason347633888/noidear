@@ -18,6 +18,14 @@ import {
   type SnapshotData,
 } from './evidence-snapshot.helpers';
 
+/**
+ * Task 14-5: Default evidence export layout codes.
+ * No ExportTemplate model is used; the layout code is stored in templateVersion
+ * on EvidenceExport for auditability. These codes identify the fixed default
+ * layout that was active when the export was generated.
+ */
+const DEFAULT_TRACEABILITY_LAYOUT = 'traceability_default_v1';
+
 interface TraceCurrentUser {
   id?: string;
   companyId?: string;
@@ -652,7 +660,7 @@ export class TraceabilityService {
         resourceType: input.resourceType,
         resourceId: input.resourceId,
         snapshotId: input.snapshotId,
-        templateVersion: input.templateVersion ?? null,
+        templateVersion: input.templateVersion ?? DEFAULT_TRACEABILITY_LAYOUT,
         exportScope: 'main_chain_evidence',
         dataSnapshot: input.snapshotData as unknown as object,
         summaryFormat: 'pdf',

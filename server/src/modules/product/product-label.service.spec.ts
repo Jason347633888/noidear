@@ -319,5 +319,48 @@ describe('ProductLabelService', () => {
         }),
       );
     });
+
+    it('stores product_specification_default_v1 layout code in templateVersion (Task 14-5)', async () => {
+      mockPrisma.product.findFirst.mockResolvedValue(makeProduct());
+      mockPrisma.companyProfile.findUnique.mockResolvedValue(makeCompanyProfile());
+      mockAllergenSummaryService.deriveProductAllergenSummary.mockResolvedValue(makeAllergenSummary());
+      mockPrisma.evidenceExport.create.mockResolvedValue({
+        id: 'export-layout-ps',
+        resourceType: 'product_specification',
+        resourceId: PRODUCT_ID,
+        exportedAt: new Date(),
+        templateVersion: 'product_specification_default_v1',
+      });
+      mockPrisma.evidenceFile.create.mockResolvedValue({ id: 'file-layout-ps' });
+
+      await service.generateProductSpecificationExport(PRODUCT_ID);
+
+      expect(mockPrisma.evidenceExport.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            templateVersion: 'product_specification_default_v1',
+          }),
+        }),
+      );
+    });
+
+    it('does not reference ExportTemplate model — no templateId in evidenceExport.create call (Task 14-5)', async () => {
+      mockPrisma.product.findFirst.mockResolvedValue(makeProduct());
+      mockPrisma.companyProfile.findUnique.mockResolvedValue(makeCompanyProfile());
+      mockAllergenSummaryService.deriveProductAllergenSummary.mockResolvedValue(makeAllergenSummary());
+      mockPrisma.evidenceExport.create.mockResolvedValue({
+        id: 'export-no-template-ref',
+        resourceType: 'product_specification',
+        resourceId: PRODUCT_ID,
+        exportedAt: new Date(),
+      });
+      mockPrisma.evidenceFile.create.mockResolvedValue({ id: 'file-no-template-ref' });
+
+      await service.generateProductSpecificationExport(PRODUCT_ID);
+
+      const createArgs = mockPrisma.evidenceExport.create.mock.calls[0][0].data;
+      expect(createArgs).not.toHaveProperty('templateId');
+      expect(createArgs).not.toHaveProperty('exportTemplateId');
+    });
   });
 });

@@ -608,3 +608,194 @@ describe('TraceabilityService trace-context snapshot (Task 9)', () => {
     expect(savedData.approvals[0]).toMatchObject({ id: 'ai-1', approverId: 'user-1', status: 'APPROVED' });
   });
 });
+
+describe('TraceabilityService default evidence export layouts (Task 14-5)', () => {
+  const baseBatch = {
+    id: 'pb-layout-1',
+    company_id: 'co-1',
+    batchNumber: 'PB-LAYOUT-001',
+    status: 'completed',
+    actualQuantity: 50,
+    unit: 'kg',
+    productionDate: new Date('2026-05-30T00:00:00.000Z'),
+  };
+
+  const buildPrisma = (overrides: Record<string, any> = {}) => ({
+    traceabilitySnapshot: {
+      create: jest.fn().mockResolvedValue({
+        id: 'snapshot-layout-1',
+        rootObjectType: 'production_batch',
+        rootObjectId: 'pb-layout-1',
+        readinessStatus: 'complete',
+        snapshotPurpose: 'evidence_export',
+        snapshotData: {
+          root: { type: 'production_batch', id: 'pb-layout-1', display: { batchNumber: 'PB-LAYOUT-001', status: 'completed' } },
+          upstream: [],
+          downstream: [],
+          inspections: [],
+          nonConformances: [],
+          correctiveActions: [],
+          approvals: [],
+          evidenceFiles: [],
+          generatedAt: new Date().toISOString(),
+        },
+      }),
+    },
+    evidenceExport: {
+      create: jest.fn().mockResolvedValue({ id: 'export-layout-1', snapshotId: 'snapshot-layout-1', templateVersion: 'traceability_default_v1' }),
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    evidenceFile: {
+      create: jest.fn().mockResolvedValue({ id: 'file-layout-1', fileName: 'evidence.pdf' }),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    productionBatch: { findFirst: jest.fn().mockResolvedValue(baseBatch) },
+    // At least one material usage needed for hasMainChain to be true
+    batchMaterialUsage: { findMany: jest.fn().mockResolvedValue([{ materialBatchId: 'mb-layout-1', quantity: 10, usedAt: new Date() }]) },
+    materialBatch: { findMany: jest.fn().mockResolvedValue([{ id: 'mb-layout-1', batchNumber: 'MB-L-001', status: 'normal', materialId: 'm-1' }]) },
+    nonConformance: { findMany: jest.fn().mockResolvedValue([]) },
+    inspectionRecord: { findMany: jest.fn().mockResolvedValue([]) },
+    correctiveAction: { findMany: jest.fn().mockResolvedValue([]) },
+    approvalInstance: { findMany: jest.fn().mockResolvedValue([]) },
+    ...overrides,
+  });
+
+  it('does not require ExportTemplate prisma model — evidenceExport.create is called without templateId field', async () => {
+    const prisma = buildPrisma();
+    const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
+
+    await service.createTraceContextSnapshot({
+      company_id: 'co-1',
+      rootObjectType: 'production_batch',
+      rootObjectId: 'pb-layout-1',
+    } as any);
+
+    expect(prisma.evidenceExport.create).toHaveBeenCalled();
+    const createArgs = prisma.evidenceExport.create.mock.calls[0][0].data;
+    // Must NOT reference an ExportTemplate by id — no template lookup table
+    expect(createArgs).not.toHaveProperty('templateId');
+    expect(createArgs).not.toHaveProperty('exportTemplateId');
+  });
+
+  it('stores traceability_default_v1 layout code in templateVersion for production_batch exports', async () => {
+    const prisma = buildPrisma();
+    const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
+
+    await service.createTraceContextSnapshot({
+      company_id: 'co-1',
+      rootObjectType: 'production_batch',
+      rootObjectId: 'pb-layout-1',
+    } as any);
+
+    const createArgs = prisma.evidenceExport.create.mock.calls[0][0].data;
+    expect(createArgs.templateVersion).toBe('traceability_default_v1');
+  });
+
+  it('stores traceability_default_v1 layout code for material_batch exports', async () => {
+    const prisma = buildPrisma({
+      materialBatch: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'mb-layout-1',
+          batchNumber: 'MB-LAYOUT-001',
+          status: 'normal',
+          materialId: 'm-1',
+        }),
+      },
+      batchMaterialUsage: { findMany: jest.fn().mockResolvedValue([]) },
+      nonConformance: { findMany: jest.fn().mockResolvedValue([]) },
+      inspectionRecord: { findMany: jest.fn().mockResolvedValue([]) },
+      correctiveAction: { findMany: jest.fn().mockResolvedValue([]) },
+      approvalInstance: { findMany: jest.fn().mockResolvedValue([]) },
+      evidenceFile: {
+        create: jest.fn().mockResolvedValue({ id: 'file-mb-layout' }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      traceabilitySnapshot: {
+        create: jest.fn().mockResolvedValue({
+          id: 'snapshot-mb-layout',
+          rootObjectType: 'material_batch',
+          rootObjectId: 'mb-layout-1',
+          readinessStatus: 'complete',
+          snapshotPurpose: 'evidence_export',
+          snapshotData: {
+            root: { type: 'material_batch', id: 'mb-layout-1', label: 'MB-LAYOUT-001' },
+            upstream: [], downstream: [], inspections: [],
+            nonConformances: [], correctiveActions: [], approvals: [], evidenceFiles: [],
+            generatedAt: new Date().toISOString(),
+          },
+        }),
+      },
+      evidenceExport: {
+        create: jest.fn().mockResolvedValue({ id: 'export-mb-layout', snapshotId: 'snapshot-mb-layout', templateVersion: 'traceability_default_v1' }),
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      productionBatch: { findFirst: jest.fn().mockResolvedValue(null) },
+    });
+    const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
+
+    await service.createTraceContextSnapshot({
+      company_id: 'co-1',
+      rootObjectType: 'material_batch',
+      rootObjectId: 'mb-layout-1',
+    } as any);
+
+    const createArgs = prisma.evidenceExport.create.mock.calls[0][0].data;
+    expect(createArgs.templateVersion).toBe('traceability_default_v1');
+  });
+
+  it('preserves existing templateVersion when caller provides one (e.g., advanced page override)', async () => {
+    const prisma = buildPrisma({
+      traceabilitySnapshot: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'snap-adv-1',
+          company_id: 'co-1',
+          readinessStatus: 'complete',
+          rootObjectType: 'production_batch',
+          rootObjectId: 'pb-layout-1',
+          snapshotData: {
+            root: { type: 'production_batch', id: 'pb-layout-1', display: {} },
+            upstream: [], downstream: [], inspections: [],
+            nonConformances: [], correctiveActions: [], approvals: [], evidenceFiles: [],
+            generatedAt: new Date().toISOString(),
+          },
+        }),
+      },
+    });
+    const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
+
+    await service.exportFromExistingSnapshot('snap-adv-1', {
+      companyId: 'co-1',
+      requesterId: 'user-1',
+      templateVersion: 'custom_layout_v2',
+    });
+
+    const createArgs = prisma.evidenceExport.create.mock.calls[0][0].data;
+    expect(createArgs.templateVersion).toBe('custom_layout_v2');
+  });
+
+  it('uses traceability_default_v1 when no templateVersion is passed to exportFromExistingSnapshot', async () => {
+    const prisma = buildPrisma({
+      traceabilitySnapshot: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'snap-adv-2',
+          company_id: 'co-1',
+          readinessStatus: 'complete',
+          rootObjectType: 'production_batch',
+          rootObjectId: 'pb-layout-1',
+          snapshotData: {
+            root: { type: 'production_batch', id: 'pb-layout-1', display: {} },
+            upstream: [], downstream: [], inspections: [],
+            nonConformances: [], correctiveActions: [], approvals: [], evidenceFiles: [],
+            generatedAt: new Date().toISOString(),
+          },
+        }),
+      },
+    });
+    const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
+
+    await service.exportFromExistingSnapshot('snap-adv-2', { companyId: 'co-1', requesterId: 'user-1' });
+
+    const createArgs = prisma.evidenceExport.create.mock.calls[0][0].data;
+    expect(createArgs.templateVersion).toBe('traceability_default_v1');
+  });
+});
