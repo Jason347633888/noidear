@@ -157,3 +157,21 @@ export class QueryEquipmentDto {
   @IsOptional()
   location?: string;
 }
+
+export class AttachEvidenceFileDto {
+  @IsString()
+  @IsNotEmpty()
+  resourceType: string;
+
+  @IsString()
+  @IsNotEmpty()
+  resourceId: string;
+
+  @IsString()
+  @IsOptional()
+  resourceItemId?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  fileId: string;
+}

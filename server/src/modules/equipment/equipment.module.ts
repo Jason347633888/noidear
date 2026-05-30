@@ -20,6 +20,7 @@ import { TodoService } from './todo.service';
 import { SchedulerService } from './scheduler.service';
 import { EquipmentAcceptanceService } from './equipment-acceptance.service';
 import { EquipmentUsageService } from './equipment-usage.service';
+import { EvidenceAttachmentService } from './evidence-attachment.service';
 
 @Module({
   imports: [PrismaModule, NotificationModule, UnifiedApprovalModule, QualityNumberSequenceModule],
@@ -42,6 +43,7 @@ import { EquipmentUsageService } from './equipment-usage.service';
     SchedulerService,
     EquipmentAcceptanceService,
     EquipmentUsageService,
+    EvidenceAttachmentService,
   ],
   exports: [
     EquipmentService,
@@ -52,6 +54,7 @@ import { EquipmentUsageService } from './equipment-usage.service';
     TodoService,
     EquipmentAcceptanceService,
     EquipmentUsageService,
+    EvidenceAttachmentService,
   ],
 })
 export class EquipmentModule implements OnModuleInit {

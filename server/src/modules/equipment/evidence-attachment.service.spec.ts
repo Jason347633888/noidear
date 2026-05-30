@@ -224,6 +224,121 @@ describe('EvidenceAttachmentService', () => {
       );
     });
 
+    it('sets evidence_file_id on Equipment for resourceType=equipment', async () => {
+      const mockFile = { id: 'f-8', company_id: 'c-1', resourceType: 'equipment', resourceId: 'eq-1' };
+      prisma.evidenceFile.findUnique.mockResolvedValue(mockFile);
+      prisma.equipment.findUnique.mockResolvedValue({ id: 'eq-1', deletedAt: null });
+      prisma.equipment.update.mockResolvedValue({ id: 'eq-1', evidence_file_id: 'f-8' });
+
+      await service.attachEvidenceFile({
+        companyId: 'c-1',
+        resourceType: 'equipment',
+        resourceId: 'eq-1',
+        fileId: 'f-8',
+      });
+
+      expect(prisma.equipment.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'eq-1' },
+          data: { evidence_file_id: 'f-8' },
+        }),
+      );
+    });
+
+    it('sets evidence_file_id on CalibrationRecord for resourceType=calibration_record', async () => {
+      const mockFile = { id: 'f-9', company_id: 'c-1', resourceType: 'calibration_record', resourceId: 'cr-1' };
+      prisma.evidenceFile.findUnique.mockResolvedValue(mockFile);
+      prisma.calibrationRecord.findFirst.mockResolvedValue({ id: 'cr-1', company_id: 'c-1' });
+      prisma.calibrationRecord.update.mockResolvedValue({ id: 'cr-1', evidence_file_id: 'f-9' });
+
+      await service.attachEvidenceFile({
+        companyId: 'c-1',
+        resourceType: 'calibration_record',
+        resourceId: 'cr-1',
+        fileId: 'f-9',
+      });
+
+      expect(prisma.calibrationRecord.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'cr-1' },
+          data: { evidence_file_id: 'f-9' },
+        }),
+      );
+    });
+
+    it('sets evidence_file_id on MaintenanceRecord for resourceType=maintenance_record', async () => {
+      const mockFile = { id: 'f-10', company_id: 'c-1', resourceType: 'maintenance_record', resourceId: 'mr-1' };
+      prisma.evidenceFile.findUnique.mockResolvedValue(mockFile);
+      prisma.maintenanceRecord.findFirst.mockResolvedValue({ id: 'mr-1', company_id: 'c-1' });
+      prisma.maintenanceRecord.update.mockResolvedValue({ id: 'mr-1', evidence_file_id: 'f-10' });
+
+      await service.attachEvidenceFile({
+        companyId: 'c-1',
+        resourceType: 'maintenance_record',
+        resourceId: 'mr-1',
+        fileId: 'f-10',
+      });
+
+      expect(prisma.maintenanceRecord.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'mr-1' },
+          data: { evidence_file_id: 'f-10' },
+        }),
+      );
+    });
+
+    it('enforces company isolation for calibration_point_reading via parent calibration_record', async () => {
+      const mockFile = { id: 'f-11', company_id: 'c-1', resourceType: 'calibration_point_reading', resourceId: 'cpr-x' };
+      prisma.evidenceFile.findUnique.mockResolvedValue(mockFile);
+      prisma.calibrationPointReading.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.attachEvidenceFile({
+          companyId: 'c-1',
+          resourceType: 'calibration_point_reading',
+          resourceId: 'cpr-x',
+          fileId: 'f-11',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      // Must scope via parent relation, not bare id lookup
+      expect(prisma.calibrationPointReading.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: 'cpr-x',
+            calibration_record: { company_id: 'c-1' },
+          }),
+        }),
+      );
+      expect(prisma.calibrationPointReading.update).not.toHaveBeenCalled();
+    });
+
+    it('enforces company isolation for maintenance_record_item via parent maintenance_record', async () => {
+      const mockFile = { id: 'f-12', company_id: 'c-1', resourceType: 'maintenance_record_item', resourceId: 'mri-x' };
+      prisma.evidenceFile.findUnique.mockResolvedValue(mockFile);
+      prisma.maintenanceRecordItem.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.attachEvidenceFile({
+          companyId: 'c-1',
+          resourceType: 'maintenance_record_item',
+          resourceId: 'mri-x',
+          fileId: 'f-12',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      // Must scope via parent relation, not bare id lookup
+      expect(prisma.maintenanceRecordItem.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: 'mri-x',
+            maintenanceRecord: { company_id: 'c-1' },
+          }),
+        }),
+      );
+      expect(prisma.maintenanceRecordItem.update).not.toHaveBeenCalled();
+    });
+
     it('throws BadRequestException when target row not found (company isolation enforced)', async () => {
       const mockFile = { id: 'f-7', company_id: 'c-1', resourceType: 'measuring_equipment', resourceId: 'me-x' };
       prisma.evidenceFile.findUnique.mockResolvedValue(mockFile);
