@@ -70,6 +70,28 @@ interface CreateTraceContextSnapshotInput {
   rootObjectId?: string;
   maxDepth?: number;
   requesterId?: string;
+  skipExportCreation?: boolean;
+}
+
+/** Approval snapshot shape — only non-signature fields are stored. */
+export interface ApprovalSnapshot {
+  submittedBy: string | null;
+  submittedAt: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  conclusion: 'approved' | 'rejected' | 'not_required';
+  opinion: string | null;
+}
+
+interface CreateEvidenceExportInput {
+  companyId: string;
+  /** Currently only "production_batch" is supported for formal exports. */
+  resourceType: string;
+  resourceId: string;
+  /** "formal" = completed batch + no open blockers required; "preview" = always allowed. */
+  exportMode: 'formal' | 'preview';
+  requesterId: string;
+  approvalContext?: Partial<ApprovalSnapshot>;
 }
 
 interface ResolvedSnapshotInput {
@@ -79,6 +101,7 @@ interface ResolvedSnapshotInput {
   maxDepth?: number;
   requesterId?: string;
   depth: number;
+  skipExportCreation?: boolean;
 }
 
 
@@ -187,7 +210,15 @@ export class TraceabilityService {
     const rootObjectId = dto.rootObjectId as string;
     const requesterId = dto.requesterId;
 
-    const base = { company_id: companyId, rootObjectType, rootObjectId, maxDepth: dto.maxDepth, requesterId, depth };
+    const base = {
+      company_id: companyId,
+      rootObjectType,
+      rootObjectId,
+      maxDepth: dto.maxDepth,
+      requesterId,
+      depth,
+      skipExportCreation: dto.skipExportCreation,
+    };
 
     switch (rootObjectType) {
       case 'production_batch':
@@ -268,6 +299,7 @@ export class TraceabilityService {
       ready,
       reasons,
       requesterId: dto.requesterId ?? 'system',
+      skipExportCreation: dto.skipExportCreation,
     });
   }
 
@@ -302,6 +334,7 @@ export class TraceabilityService {
       ready,
       reasons,
       requesterId: dto.requesterId ?? 'system',
+      skipExportCreation: dto.skipExportCreation,
     });
   }
 
@@ -337,6 +370,7 @@ export class TraceabilityService {
       ready,
       reasons,
       requesterId: dto.requesterId ?? 'system',
+      skipExportCreation: dto.skipExportCreation,
     });
   }
 
@@ -371,6 +405,7 @@ export class TraceabilityService {
       ready,
       reasons,
       requesterId: dto.requesterId ?? 'system',
+      skipExportCreation: dto.skipExportCreation,
     });
   }
 
@@ -473,6 +508,10 @@ export class TraceabilityService {
 
   /**
    * Shared snapshot persistence + optional EvidenceExport creation.
+   *
+   * When `skipExportCreation` is true the snapshot row is persisted but NO
+   * EvidenceExport is created — callers that need richer export metadata
+   * (e.g. createEvidenceExport) handle that step themselves.
    */
   private async persistSnapshot(input: {
     companyId: string;
@@ -483,6 +522,7 @@ export class TraceabilityService {
     ready: boolean;
     reasons: string[];
     requesterId: string;
+    skipExportCreation?: boolean;
   }) {
     const sourceQueryHash = buildSourceQueryHash({
       rootObjectType: input.rootObjectType,
@@ -531,9 +571,9 @@ export class TraceabilityService {
       },
     });
 
-    // Create an EvidenceExport ONLY when ready. Preview snapshots return without one.
+    // Create an EvidenceExport ONLY when ready and not suppressed by caller.
     let evidenceExport: { id: string } | null = null;
-    if (input.ready) {
+    if (input.ready && !input.skipExportCreation) {
       evidenceExport = await this.createExportFromSnapshot({
         companyId: input.companyId,
         resourceType: input.rootObjectType,
@@ -549,6 +589,74 @@ export class TraceabilityService {
       evidenceExportId: evidenceExport?.id ?? null,
       readinessReasons: input.ready ? [] : input.reasons,
     };
+  }
+
+  /**
+   * Phase 14 Task 6: EvidenceExport package generation with approval snapshot.
+   *
+   * Always builds a FRESH immutable snapshot. For formal exports the batch must
+   * be completed and have no open blockers; preview exports are unconditional.
+   * Historical exports are never overwritten — every call creates a new row.
+   */
+  async createEvidenceExport(input: CreateEvidenceExportInput) {
+    // Step 1: build snapshot only — suppress automatic EvidenceExport creation so we
+    // can create it ourselves with approval + attachment metadata in steps 3-5.
+    const snapshot = await this.createTraceContextSnapshot({
+      company_id: input.companyId,
+      rootObjectType: input.resourceType,
+      rootObjectId: input.resourceId,
+      requesterId: input.requesterId,
+      skipExportCreation: true,
+    });
+
+    const readinessStatus: string = (snapshot as any).readinessStatus ?? 'incomplete';
+
+    // Step 2: readiness gate — formal exports require a complete snapshot.
+    if (input.exportMode === 'formal' && readinessStatus !== 'complete') {
+      const reasons: string[] = (snapshot as any).readinessReasons ?? [];
+      throw new ConflictException(
+        `Evidence export not ready: ${reasons.join('; ') || 'snapshot readiness is incomplete'}`,
+      );
+    }
+
+    // Preview mode: return snapshot with readiness status; no EvidenceExport row.
+    if (readinessStatus !== 'complete') {
+      return { ...snapshot, readinessStatus };
+    }
+
+    // Step 3: build approval snapshot — only the allowed fields, no signatures.
+    const approvalSnapshot: ApprovalSnapshot = {
+      submittedBy: input.approvalContext?.submittedBy ?? null,
+      submittedAt: input.approvalContext?.submittedAt ?? null,
+      reviewedBy: input.approvalContext?.reviewedBy ?? null,
+      reviewedAt: input.approvalContext?.reviewedAt ?? null,
+      conclusion: input.approvalContext?.conclusion ?? 'not_required',
+      opinion: input.approvalContext?.opinion ?? null,
+    };
+
+    // Step 4: build attachment index from evidence files linked to this resource.
+    const attachmentRefs = await this.loadEvidenceFiles(input.companyId, input.resourceType, [input.resourceId]);
+    const attachmentIndex = {
+      count: attachmentRefs.length,
+      refs: attachmentRefs.map((f: any) => ({
+        id: f.id,
+        fileName: f.fileName ?? null,
+        filePath: f.filePath ?? null,
+        mimeType: f.mimeType ?? null,
+      })),
+    };
+
+    // Step 5: create EvidenceFile + EvidenceExport — always creates new rows (immutable).
+    return this.createExportFromSnapshot({
+      companyId: input.companyId,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      snapshotId: snapshot.id,
+      snapshotData: (snapshot as any).snapshotData as SnapshotData,
+      exportedById: input.requesterId,
+      approvalSnapshot,
+      attachmentIndex,
+    });
   }
 
   /**
@@ -639,6 +747,8 @@ export class TraceabilityService {
     snapshotData: SnapshotData;
     exportedById: string;
     templateVersion?: string;
+    approvalSnapshot?: ApprovalSnapshot | null;
+    attachmentIndex?: { count: number; refs: unknown[] } | null;
   }) {
     const fileName = `evidence-${input.resourceType}-${input.resourceId}-${input.snapshotId}.pdf`;
     const evidenceFile = await this.prisma.evidenceFile.create({
@@ -663,6 +773,8 @@ export class TraceabilityService {
         templateVersion: input.templateVersion ?? DEFAULT_TRACEABILITY_LAYOUT,
         exportScope: 'main_chain_evidence',
         dataSnapshot: input.snapshotData as unknown as object,
+        approvalSnapshot: input.approvalSnapshot ? (input.approvalSnapshot as unknown as object) : undefined,
+        attachmentIndex: input.attachmentIndex ? (input.attachmentIndex as unknown as object) : undefined,
         summaryFormat: 'pdf',
         fileId: evidenceFile.id,
         exportedById: input.exportedById,

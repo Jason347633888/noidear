@@ -799,3 +799,307 @@ describe('TraceabilityService default evidence export layouts (Task 14-5)', () =
     expect(createArgs.templateVersion).toBe('traceability_default_v1');
   });
 });
+
+// ── Phase 14 Task 6: Enhanced EvidenceExport Package Generation ────────────────
+
+describe('TraceabilityService.createEvidenceExport (Task 14-6)', () => {
+  const baseBatch = {
+    id: 'pb-ev-1',
+    batchNumber: 'PB-EV-001',
+    status: 'completed',
+    productId: 'p-1',
+    productName: 'Cookie',
+    actualQuantity: 100,
+    unit: 'kg',
+    productionDate: new Date('2026-05-30T00:00:00.000Z'),
+  };
+
+  const buildPrisma = (overrides: Record<string, any> = {}) => ({
+    traceabilitySnapshot: {
+      create: jest.fn().mockResolvedValue({
+        id: 'snapshot-ev-1',
+        rootObjectType: 'production_batch',
+        rootObjectId: 'pb-ev-1',
+        readinessStatus: 'complete',
+        snapshotPurpose: 'evidence_export',
+        snapshotData: {
+          root: { type: 'production_batch', id: 'pb-ev-1', display: { batchNumber: 'PB-EV-001', status: 'completed' } },
+          upstream: [{ type: 'material_batch', id: 'mb-1' }],
+          downstream: [],
+          inspections: [],
+          nonConformances: [],
+          correctiveActions: [],
+          approvals: [],
+          evidenceFiles: [],
+          generatedAt: new Date().toISOString(),
+        },
+      }),
+    },
+    evidenceExport: {
+      create: jest.fn().mockResolvedValue({
+        id: 'export-ev-1',
+        snapshotId: 'snapshot-ev-1',
+        templateVersion: 'traceability_default_v1',
+        approvalSnapshot: null,
+        attachmentIndex: null,
+      }),
+    },
+    evidenceFile: {
+      create: jest.fn().mockResolvedValue({ id: 'file-ev-1', fileName: 'evidence.pdf' }),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    productionBatch: { findFirst: jest.fn().mockResolvedValue(baseBatch) },
+    batchMaterialUsage: {
+      findMany: jest.fn().mockResolvedValue([
+        { materialBatchId: 'mb-1', quantity: 10, usedAt: new Date('2026-05-30T00:00:00.000Z') },
+      ]),
+    },
+    materialBatch: {
+      findMany: jest.fn().mockResolvedValue([
+        { id: 'mb-1', batchNumber: 'MB-001', status: 'normal', materialId: 'm-1' },
+      ]),
+    },
+    nonConformance: { findMany: jest.fn().mockResolvedValue([]) },
+    inspectionRecord: { findMany: jest.fn().mockResolvedValue([]) },
+    correctiveAction: { findMany: jest.fn().mockResolvedValue([]) },
+    approvalInstance: { findMany: jest.fn().mockResolvedValue([]) },
+    ...overrides,
+  });
+
+  it('rejects formal export when production batch is not completed', async () => {
+    const prisma = buildPrisma({
+      productionBatch: {
+        findFirst: jest.fn().mockResolvedValue({ ...baseBatch, status: 'in_progress' }),
+      },
+      traceabilitySnapshot: {
+        create: jest.fn().mockResolvedValue({
+          id: 'snapshot-preview-1',
+          readinessStatus: 'incomplete',
+          snapshotPurpose: 'preview',
+        }),
+      },
+    });
+    const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
+
+    await expect(
+      service.createEvidenceExport({
+        companyId: 'co-1',
+        resourceType: 'production_batch',
+        resourceId: 'pb-ev-1',
+        exportMode: 'formal',
+        requesterId: 'user-1',
+      }),
+    ).rejects.toThrow(/not ready|incomplete|in_progress/i);
+  });
+
+  it('rejects formal export when there are open blockers (open non-conformances)', async () => {
+    const prisma = buildPrisma({
+      nonConformance: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'nc-1', nc_no: 'NC-001', status: 'open', source_type: 'production_batch', source_id: 'pb-ev-1' },
+        ]),
+      },
+      traceabilitySnapshot: {
+        create: jest.fn().mockResolvedValue({
+          id: 'snapshot-blocked-1',
+          readinessStatus: 'incomplete',
+          snapshotPurpose: 'preview',
+        }),
+      },
+    });
+    const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
+
+    await expect(
+      service.createEvidenceExport({
+        companyId: 'co-1',
+        resourceType: 'production_batch',
+        resourceId: 'pb-ev-1',
+        exportMode: 'formal',
+        requesterId: 'user-1',
+      }),
+    ).rejects.toThrow(/not ready|incomplete|open non-conformance/i);
+  });
+
+  it('allows preview export even when batch is not ready (status=incomplete returned)', async () => {
+    const prisma = buildPrisma({
+      productionBatch: {
+        findFirst: jest.fn().mockResolvedValue({ ...baseBatch, status: 'in_progress' }),
+      },
+      batchMaterialUsage: { findMany: jest.fn().mockResolvedValue([]) },
+      traceabilitySnapshot: {
+        create: jest.fn().mockResolvedValue({
+          id: 'snapshot-prev-2',
+          readinessStatus: 'incomplete',
+          snapshotPurpose: 'preview',
+        }),
+      },
+    });
+    const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
+
+    const result = await service.createEvidenceExport({
+      companyId: 'co-1',
+      resourceType: 'production_batch',
+      resourceId: 'pb-ev-1',
+      exportMode: 'preview',
+      requesterId: 'user-1',
+    }) as any;
+
+    expect(result.readinessStatus).toBe('incomplete');
+    // No EvidenceExport row created for preview
+    expect(prisma.evidenceExport.create).not.toHaveBeenCalled();
+  });
+
+  it('stores approvalSnapshot with only allowed fields (no handwritten/CA signature)', async () => {
+    const prisma = buildPrisma();
+    const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
+
+    await service.createEvidenceExport({
+      companyId: 'co-1',
+      resourceType: 'production_batch',
+      resourceId: 'pb-ev-1',
+      exportMode: 'formal',
+      requesterId: 'user-1',
+      approvalContext: {
+        submittedBy: 'user-submit',
+        submittedAt: '2026-05-30T09:00:00.000Z',
+        reviewedBy: 'user-review',
+        reviewedAt: '2026-05-30T10:00:00.000Z',
+        conclusion: 'approved',
+        opinion: 'All checks passed.',
+      },
+    });
+
+    const createArgs = prisma.evidenceExport.create.mock.calls[0][0].data;
+    expect(createArgs.approvalSnapshot).toMatchObject({
+      submittedBy: 'user-submit',
+      submittedAt: '2026-05-30T09:00:00.000Z',
+      reviewedBy: 'user-review',
+      reviewedAt: '2026-05-30T10:00:00.000Z',
+      conclusion: 'approved',
+      opinion: 'All checks passed.',
+    });
+    // Must NOT include handwritten or CA signature fields
+    expect(createArgs.approvalSnapshot).not.toHaveProperty('handwrittenSignature');
+    expect(createArgs.approvalSnapshot).not.toHaveProperty('caSignature');
+    expect(createArgs.approvalSnapshot).not.toHaveProperty('digitalSignature');
+  });
+
+  it('stores approvalSnapshot with nulls when no approval context is provided', async () => {
+    const prisma = buildPrisma();
+    const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
+
+    await service.createEvidenceExport({
+      companyId: 'co-1',
+      resourceType: 'production_batch',
+      resourceId: 'pb-ev-1',
+      exportMode: 'formal',
+      requesterId: 'user-1',
+    });
+
+    const createArgs = prisma.evidenceExport.create.mock.calls[0][0].data;
+    expect(createArgs.approvalSnapshot).toMatchObject({
+      submittedBy: null,
+      submittedAt: null,
+      reviewedBy: null,
+      reviewedAt: null,
+      conclusion: 'not_required',
+      opinion: null,
+    });
+  });
+
+  it('creates a new EvidenceFile for every export (historical exports are immutable, never overwritten)', async () => {
+    const prisma = buildPrisma();
+    const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
+
+    // First export
+    await service.createEvidenceExport({
+      companyId: 'co-1',
+      resourceType: 'production_batch',
+      resourceId: 'pb-ev-1',
+      exportMode: 'formal',
+      requesterId: 'user-1',
+    });
+
+    const firstFileArgs = prisma.evidenceFile.create.mock.calls[0][0].data;
+    const firstExportArgs = prisma.evidenceExport.create.mock.calls[0][0].data;
+
+    // Reset and run second export
+    prisma.traceabilitySnapshot.create.mockResolvedValueOnce({
+      id: 'snapshot-ev-2',
+      rootObjectType: 'production_batch',
+      rootObjectId: 'pb-ev-1',
+      readinessStatus: 'complete',
+      snapshotPurpose: 'evidence_export',
+      snapshotData: { root: {}, upstream: [], downstream: [], generatedAt: new Date().toISOString() },
+    });
+    prisma.evidenceFile.create.mockResolvedValueOnce({ id: 'file-ev-2', fileName: 'evidence2.pdf' });
+    prisma.evidenceExport.create.mockResolvedValueOnce({ id: 'export-ev-2', snapshotId: 'snapshot-ev-2' });
+
+    await service.createEvidenceExport({
+      companyId: 'co-1',
+      resourceType: 'production_batch',
+      resourceId: 'pb-ev-1',
+      exportMode: 'formal',
+      requesterId: 'user-2',
+    });
+
+    // Two separate EvidenceFile rows created (no overwrite)
+    expect(prisma.evidenceFile.create).toHaveBeenCalledTimes(2);
+    // Two separate EvidenceExport rows created (no overwrite)
+    expect(prisma.evidenceExport.create).toHaveBeenCalledTimes(2);
+
+    const secondFileArgs = prisma.evidenceFile.create.mock.calls[1][0].data;
+    const secondExportArgs = prisma.evidenceExport.create.mock.calls[1][0].data;
+
+    // Each export references a different snapshot (fresh immutable snapshot per call)
+    expect(firstExportArgs.snapshotId).not.toBe(secondExportArgs.snapshotId);
+    // Each EvidenceFile has a distinct fileName/path (includes snapshotId)
+    expect(firstFileArgs.filePath).not.toBe(secondFileArgs.filePath);
+  });
+
+  it('writes attachmentIndex with count and refs from snapshotData evidenceFiles', async () => {
+    const prisma = buildPrisma({
+      evidenceFile: {
+        create: jest.fn().mockResolvedValue({ id: 'file-ev-3', fileName: 'evidence.pdf' }),
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'att-1', fileName: 'batch-record.pdf', filePath: '/evidence/batch-record.pdf', mimeType: 'application/pdf' },
+          { id: 'att-2', fileName: 'inspection-report.pdf', filePath: '/evidence/inspection.pdf', mimeType: 'application/pdf' },
+        ]),
+      },
+    });
+    const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
+
+    await service.createEvidenceExport({
+      companyId: 'co-1',
+      resourceType: 'production_batch',
+      resourceId: 'pb-ev-1',
+      exportMode: 'formal',
+      requesterId: 'user-1',
+    });
+
+    const createArgs = prisma.evidenceExport.create.mock.calls[0][0].data;
+    expect(createArgs.attachmentIndex).toBeDefined();
+    expect(typeof createArgs.attachmentIndex).toBe('object');
+    expect(createArgs.attachmentIndex).toHaveProperty('count');
+    expect(createArgs.attachmentIndex).toHaveProperty('refs');
+    expect(Array.isArray(createArgs.attachmentIndex.refs)).toBe(true);
+  });
+
+  it('creates EvidenceExport with default layout traceability_default_v1', async () => {
+    const prisma = buildPrisma();
+    const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
+
+    await service.createEvidenceExport({
+      companyId: 'co-1',
+      resourceType: 'production_batch',
+      resourceId: 'pb-ev-1',
+      exportMode: 'formal',
+      requesterId: 'user-1',
+    });
+
+    const createArgs = prisma.evidenceExport.create.mock.calls[0][0].data;
+    expect(createArgs.templateVersion).toBe('traceability_default_v1');
+    expect(createArgs.exportScope).toBe('main_chain_evidence');
+    expect(createArgs.summaryFormat).toBe('pdf');
+  });
+});
