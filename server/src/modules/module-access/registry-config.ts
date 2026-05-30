@@ -79,6 +79,7 @@ export const REGISTRY_CONFIG: RegistryConfig = {
       { path: 'ccp', mode: 'exact' },
       { path: 'workshop-areas', mode: 'exact' },
       { path: 'inspection-records', mode: 'exact' },
+      { path: 'quality-inspection-tasks', mode: 'exact' },
     ],
     equipment_site: [
       { path: 'equipment', mode: 'exact' },
@@ -92,6 +93,7 @@ export const REGISTRY_CONFIG: RegistryConfig = {
       { path: 'waste', mode: 'exact' },
       { path: 'measuring-equipment', mode: 'exact' },
       { path: 'medication-records', mode: 'exact' },
+      { path: 'cleaning-plans', mode: 'exact' },
       { path: 'cleaning-records', mode: 'exact' },
       { path: 'sanitizer-concentration-checks', mode: 'prefix' },
       { path: 'fragile-item-inspections', mode: 'exact' },

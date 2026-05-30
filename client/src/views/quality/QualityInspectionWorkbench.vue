@@ -180,7 +180,7 @@
 import { ref, onMounted, defineComponent, h } from 'vue';
 import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
-import PageHeaderBlock from '@/components/PageHeaderBlock.vue';
+import PageHeaderBlock from '@/components/layout/PageHeaderBlock.vue';
 
 // ---------------------------------------------------------------------------
 // Types

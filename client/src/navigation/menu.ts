@@ -74,6 +74,26 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    title: '质量检验',
+    moduleKey: 'quality_compliance',
+    icon: CircleCheck,
+    children: [
+      { path: '/quality/workbench', title: '通用检验工作台', icon: CircleCheck },
+      { path: '/quality/inspection-records', title: '检验记录', icon: Document },
+      { path: '/environment-records', title: '环境监控', icon: Monitor },
+    ],
+  },
+  {
+    title: '清洁消毒',
+    moduleKey: 'equipment_site',
+    icon: Grid,
+    children: [
+      { path: '/cleaning/plans', title: '区域清洁方案', icon: Grid },
+      { path: '/cleaning/execution', title: '清洁执行', icon: List },
+      { path: '/cleaning/sanitizer-concentration', title: '消毒液浓度', icon: DataAnalysis },
+    ],
+  },
+  {
     title: '设备与现场',
     moduleKey: 'equipment_site',
     icon: SetUp,

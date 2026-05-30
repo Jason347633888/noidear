@@ -523,6 +523,38 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/inspection-record/InspectionRecordWorkbench.vue'),
         meta: { title: '通用检验工作台' },
       },
+      // 质量检验模块
+      {
+        path: 'quality/workbench',
+        name: 'QualityInspectionWorkbench',
+        component: () => import('@/views/quality/QualityInspectionWorkbench.vue'),
+        meta: { title: '通用检验工作台' },
+      },
+      {
+        path: 'quality/inspection-records',
+        name: 'QualityInspectionRecords',
+        component: () => import('@/views/inspection-record/InspectionRecordWorkbench.vue'),
+        meta: { title: '检验记录' },
+      },
+      // 清洁消毒模块
+      {
+        path: 'cleaning/plans',
+        name: 'CleaningPlans',
+        component: () => import('@/views/cleaning/CleaningPlanList.vue'),
+        meta: { title: '区域清洁方案' },
+      },
+      {
+        path: 'cleaning/execution',
+        name: 'CleaningExecution',
+        component: () => import('@/views/cleaning/CleaningExecution.vue'),
+        meta: { title: '清洁执行' },
+      },
+      {
+        path: 'cleaning/sanitizer-concentration',
+        name: 'SanitizerConcentration',
+        component: () => import('@/views/cleaning/SanitizerConcentrationList.vue'),
+        meta: { title: '消毒液浓度' },
+      },
       // 产品目录模块
       {
         path: 'products',
