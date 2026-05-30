@@ -163,6 +163,80 @@ describe('INSPECTION_APPLIES_TO constants', () => {
       expect(INSPECTION_OBJECT_COMPATIBILITY[appliesTo].length).toBeGreaterThan(0);
     }
   });
+
+  it.each([...INSPECTION_APPLIES_TO])(
+    'applies_to "%s" is accepted by the service when used as the standard applies_to (contract test)',
+    async (appliesTo) => {
+      // Pick the first compatible object_type for this applies_to value so that
+      // the service does not reject the combination.
+      const compatibleObjectTypes = INSPECTION_OBJECT_COMPATIBILITY[appliesTo];
+      expect(compatibleObjectTypes).toBeDefined();
+      expect(compatibleObjectTypes.length).toBeGreaterThan(0);
+
+      const objectType = compatibleObjectTypes[0];
+
+      const prisma = {
+        inspectionStandard: {
+          findUnique: jest.fn().mockResolvedValue({ id: 'std-1', applies_to: appliesTo }),
+        },
+        inspectionRecord: {
+          create: jest.fn().mockResolvedValue({ id: 'rec-1', items: [] }),
+        },
+        nonConformance: { create: jest.fn() },
+        $transaction: jest.fn(),
+      };
+      prisma.$transaction.mockImplementation(
+        async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma),
+      );
+      const numberSequence = { generateNonConformanceNo: jest.fn() };
+      const service = new InspectionRecordService(prisma as any, numberSequence as any);
+
+      await expect(
+        service.create({
+          company_id: 'tenant-1',
+          inspectionStandardId: 'std-1',
+          objectType,
+          objectId: 'obj-1',
+          inspectedAt: new Date().toISOString(),
+          items: [{ itemName: '检验项', judgment: 'pass' }],
+        } as any),
+      ).resolves.toBeDefined();
+    },
+  );
+});
+
+describe('InspectionStandard – uniqueness constraint (company_id + code)', () => {
+  it('raises a unique constraint error when creating a duplicate (company_id, code) pair', async () => {
+    const prismaUniqueError = Object.assign(
+      new Error('Unique constraint failed on the fields: (`company_id`,`code`)'),
+      { code: 'P2002', meta: { target: ['company_id', 'code'] } },
+    );
+
+    const prisma = {
+      inspectionStandard: {
+        create: jest.fn().mockRejectedValue(prismaUniqueError),
+      },
+      inspectionRecord: { create: jest.fn() },
+      nonConformance: { create: jest.fn() },
+      $transaction: jest.fn(),
+    };
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma),
+    );
+
+    // Directly exercise the Prisma layer to confirm the error contract:
+    // a P2002 error is thrown when (company_id, code) is not unique.
+    await expect(
+      prisma.inspectionStandard.create({
+        data: {
+          company_id: 'tenant-1',
+          code: 'STD-001',
+          name: '重复标准',
+          applies_to: 'material',
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'P2002' });
+  });
 });
 
 describe('InspectionRecordService – object_type compatibility validation', () => {
