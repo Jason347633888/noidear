@@ -6,9 +6,10 @@ import { SanitizerConcentrationService } from './sanitizer-concentration.service
 import { CleaningPlanController } from './cleaning-plan.controller';
 import { CleaningPlanService } from './cleaning-plan.service';
 import { NonConformanceModule } from '../non-conformance/non-conformance.module';
+import { QualityNumberSequenceModule } from '../quality-number-sequence/quality-number-sequence.module';
 
 @Module({
-  imports: [NonConformanceModule],
+  imports: [NonConformanceModule, QualityNumberSequenceModule],
   controllers: [CleaningRecordController, SanitizerConcentrationController, CleaningPlanController],
   providers: [CleaningRecordService, SanitizerConcentrationService, CleaningPlanService],
   exports: [CleaningRecordService, SanitizerConcentrationService, CleaningPlanService],

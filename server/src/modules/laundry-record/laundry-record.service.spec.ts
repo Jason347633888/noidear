@@ -1,6 +1,12 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { LaundryRecordService } from './laundry-record.service';
 
+function createNumberSequenceMock() {
+  return {
+    generateNonConformanceNo: jest.fn().mockResolvedValue('NC-2024-001'),
+  } as any;
+}
+
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 function makeRecord(overrides: Record<string, unknown> = {}) {
@@ -95,7 +101,7 @@ describe('LaundryRecordService', () => {
   describe('createLaundryWorkRecord', () => {
     it('creates a laundry work record in draft status via $transaction', async () => {
       const prisma = createPrismaMock();
-      const service = new LaundryRecordService(prisma);
+      const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
       await service.createLaundryWorkRecord({
         company_id: 'company-1',
@@ -120,7 +126,7 @@ describe('LaundryRecordService', () => {
 
     it('stores garment type and quantity as nested items in a single create', async () => {
       const prisma = createPrismaMock();
-      const service = new LaundryRecordService(prisma);
+      const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
       await service.createLaundryWorkRecord({
         company_id: 'company-1',
@@ -153,7 +159,7 @@ describe('LaundryRecordService', () => {
 
     it('item can link GarmentInventory by garment_inventory_id in the nested create', async () => {
       const prisma = createPrismaMock();
-      const service = new LaundryRecordService(prisma);
+      const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
       await service.createLaundryWorkRecord({
         company_id: 'company-1',
@@ -185,7 +191,7 @@ describe('LaundryRecordService', () => {
 
     it('does not re-fetch after creation (no extra findUnique)', async () => {
       const prisma = createPrismaMock();
-      const service = new LaundryRecordService(prisma);
+      const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
       await service.createLaundryWorkRecord({
         company_id: 'company-1',
@@ -211,7 +217,7 @@ describe('LaundryRecordService', () => {
           findMany: jest.fn(),
         },
       });
-      const service = new LaundryRecordService(prisma);
+      const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
       await service.submitLaundryWorkRecord('laundry-1');
 
@@ -231,7 +237,7 @@ describe('LaundryRecordService', () => {
           findMany: jest.fn(),
         },
       });
-      const service = new LaundryRecordService(prisma);
+      const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
       await expect(service.submitLaundryWorkRecord('nonexistent')).rejects.toThrow(NotFoundException);
     });
@@ -246,7 +252,7 @@ describe('LaundryRecordService', () => {
           findMany: jest.fn(),
         },
       });
-      const service = new LaundryRecordService(prisma);
+      const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
       await expect(service.submitLaundryWorkRecord('laundry-1')).rejects.toThrow(BadRequestException);
     });
@@ -265,7 +271,7 @@ describe('LaundryRecordService', () => {
           findMany: jest.fn(),
         },
       });
-      const service = new LaundryRecordService(prisma);
+      const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
       await service.verifyLaundryWorkRecord('laundry-1', 'verifier-1', true);
 
@@ -286,7 +292,7 @@ describe('LaundryRecordService', () => {
           findMany: jest.fn(),
         },
       });
-      const service = new LaundryRecordService(prisma);
+      const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
       await service.verifyLaundryWorkRecord('laundry-1', 'verifier-1', false);
 
@@ -306,7 +312,7 @@ describe('LaundryRecordService', () => {
           findMany: jest.fn(),
         },
       });
-      const service = new LaundryRecordService(prisma);
+      const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
       await expect(service.verifyLaundryWorkRecord('nonexistent', 'verifier-1', true)).rejects.toThrow(NotFoundException);
     });
@@ -321,7 +327,7 @@ describe('LaundryRecordService', () => {
           findMany: jest.fn(),
         },
       });
-      const service = new LaundryRecordService(prisma);
+      const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
       await expect(service.verifyLaundryWorkRecord('laundry-1', 'verifier-1', true)).rejects.toThrow(BadRequestException);
     });
@@ -346,9 +352,9 @@ describe('LaundryRecordService', () => {
           update: jest.fn(),
         },
       });
-      const service = new LaundryRecordService(prisma);
+      const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
-      await service.createNonConformanceFromLaundryItem('laundry-1', 'item-1', 'user-1', 'NC-2024-001');
+      await service.createNonConformanceFromLaundryItem('laundry-1', 'item-1', 'user-1');
 
       expect(prisma.nonConformance.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -371,10 +377,10 @@ describe('LaundryRecordService', () => {
           findMany: jest.fn(),
         },
       });
-      const service = new LaundryRecordService(prisma);
+      const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
       await expect(
-        service.createNonConformanceFromLaundryItem('nonexistent', 'item-1', 'user-1', 'NC-001'),
+        service.createNonConformanceFromLaundryItem('nonexistent', 'item-1', 'user-1'),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -394,10 +400,10 @@ describe('LaundryRecordService', () => {
           update: jest.fn(),
         },
       });
-      const service = new LaundryRecordService(prisma);
+      const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
       await expect(
-        service.createNonConformanceFromLaundryItem('laundry-1', 'item-1', 'user-1', 'NC-001'),
+        service.createNonConformanceFromLaundryItem('laundry-1', 'item-1', 'user-1'),
       ).rejects.toThrow(NotFoundException);
     });
   });

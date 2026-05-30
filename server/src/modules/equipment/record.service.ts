@@ -16,6 +16,7 @@ import { PlanService } from './plan.service';
 import { StatsService } from './stats.service';
 import { OwnershipContext } from '../module-access/ownership-context';
 import { userIdsInDepts } from '../module-access/ownership-helpers';
+import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
 
 @Injectable()
 export class RecordService {
@@ -25,6 +26,7 @@ export class RecordService {
     private readonly prisma: PrismaService,
     private readonly planService: PlanService,
     private readonly statsService: StatsService,
+    private readonly numberSequence: QualityNumberSequenceService,
     @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {}
 
@@ -150,12 +152,14 @@ export class RecordService {
   async createNonConformanceFromMaintenanceItem(
     recordId: string,
     itemId: string,
-    context: { companyId: string; userId: string; ncNo: string },
+    context: { companyId: string; userId: string },
   ) {
+    const nc_no = await this.numberSequence.generateNonConformanceNo(context.companyId);
+
     return this.prisma.nonConformance.create({
       data: {
         company_id: context.companyId,
-        nc_no: context.ncNo,
+        nc_no,
         source_type: 'maintenance_record',
         source_id: recordId,
         source_item_id: itemId,

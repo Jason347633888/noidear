@@ -1,6 +1,12 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CleaningRecordService } from './cleaning-record.service';
 
+function createNumberSequenceMock() {
+  return {
+    generateNonConformanceNo: jest.fn().mockResolvedValue('NC-2024-001'),
+  } as any;
+}
+
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 function makeArea(overrides: Record<string, unknown> = {}) {
@@ -146,7 +152,7 @@ describe('CleaningRecordService', () => {
   describe('createFromActivePlan', () => {
     it('copies plan items into CleaningRecordItem when creating from active plan', async () => {
       const prisma = createPrismaMock();
-      const service = new CleaningRecordService(prisma);
+      const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
       await service.createFromActivePlan('area-1', new Date('2024-06-01'), 'user-1', 'company-1');
 
@@ -160,7 +166,7 @@ describe('CleaningRecordService', () => {
           findUnique: jest.fn().mockResolvedValue(null),
         },
       });
-      const service = new CleaningRecordService(prisma);
+      const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
       await expect(
         service.createFromActivePlan('area-no-plan', new Date(), 'user-1', 'company-1'),
@@ -173,7 +179,7 @@ describe('CleaningRecordService', () => {
           findUnique: jest.fn().mockResolvedValue(null),
         },
       });
-      const service = new CleaningRecordService(prisma);
+      const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
       await expect(
         service.createFromActivePlan('nonexistent-area', new Date(), 'user-1', 'company-1'),
@@ -186,7 +192,7 @@ describe('CleaningRecordService', () => {
   describe('completeItem', () => {
     it('marks an item as completed with pass result', async () => {
       const prisma = createPrismaMock();
-      const service = new CleaningRecordService(prisma);
+      const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
       await service.completeItem('record-1', 'rec-item-1', { result: 'pass' });
 
@@ -206,7 +212,7 @@ describe('CleaningRecordService', () => {
           findMany: jest.fn().mockResolvedValue([makeRecordItem({ result: 'pass', completed: true })]),
         },
       });
-      const service = new CleaningRecordService(prisma);
+      const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
       await service.completeItem('record-1', 'rec-item-1', { result: 'fail', remark: '浓度不足' });
 
@@ -225,7 +231,7 @@ describe('CleaningRecordService', () => {
           findMany: jest.fn().mockResolvedValue([]),
         },
       });
-      const service = new CleaningRecordService(prisma);
+      const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
       await expect(
         service.completeItem('record-1', 'rec-item-1', { result: 'pass' }),
@@ -252,7 +258,7 @@ describe('CleaningRecordService', () => {
           findMany: jest.fn().mockResolvedValue([]),
         },
       });
-      const service = new CleaningRecordService(prisma);
+      const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
       await expect(service.submitRecord('record-1')).rejects.toThrow(BadRequestException);
     });
@@ -273,7 +279,7 @@ describe('CleaningRecordService', () => {
           findMany: jest.fn().mockResolvedValue([]),
         },
       });
-      const service = new CleaningRecordService(prisma);
+      const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
       const result = await service.submitRecord('record-1');
 
@@ -300,7 +306,7 @@ describe('CleaningRecordService', () => {
           findMany: jest.fn().mockResolvedValue([]),
         },
       });
-      const service = new CleaningRecordService(prisma);
+      const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
       const result = await service.submitRecord('record-1');
 
@@ -327,7 +333,7 @@ describe('CleaningRecordService', () => {
           findMany: jest.fn().mockResolvedValue([]),
         },
       });
-      const service = new CleaningRecordService(prisma);
+      const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
       await expect(service.submitRecord('record-1')).rejects.toThrow(BadRequestException);
     });
@@ -352,9 +358,9 @@ describe('CleaningRecordService', () => {
           findMany: jest.fn().mockResolvedValue([item]),
         },
       });
-      const service = new CleaningRecordService(prisma);
+      const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
-      await service.createNonConformanceFromItem('record-1', 'rec-item-1', 'user-1', 'NC-2024-001');
+      await service.createNonConformanceFromItem('record-1', 'rec-item-1', 'user-1');
 
       expect(prisma.nonConformance.create).toHaveBeenCalledWith(
         expect.objectContaining({

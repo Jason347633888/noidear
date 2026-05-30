@@ -3,6 +3,7 @@ import { RecordService } from './record.service';
 import { PlanService } from './plan.service';
 import { StatsService } from './stats.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 const mockRecord = {
@@ -44,13 +45,18 @@ function createMockStatsService() {
   return { clearCache: jest.fn().mockResolvedValue(undefined) };
 }
 
-async function buildModule(prisma: any, planSvc: any, statsSvc: any): Promise<TestingModule> {
+function createMockNumberSequenceService() {
+  return { generateNonConformanceNo: jest.fn().mockResolvedValue('NC-20260530-001') };
+}
+
+async function buildModule(prisma: any, planSvc: any, statsSvc: any, numSeqSvc?: any): Promise<TestingModule> {
   return Test.createTestingModule({
     providers: [
       RecordService,
       { provide: PrismaService, useValue: prisma },
       { provide: PlanService, useValue: planSvc },
       { provide: StatsService, useValue: statsSvc },
+      { provide: QualityNumberSequenceService, useValue: numSeqSvc ?? createMockNumberSequenceService() },
     ],
   }).compile();
 }
@@ -65,7 +71,7 @@ describe('RecordService', () => {
     prisma = createMockPrisma();
     planService = createMockPlanService();
     statsService = createMockStatsService();
-    const module = await buildModule(prisma, planService, statsService);
+    const module = await buildModule(prisma, planService, statsService, createMockNumberSequenceService());
     service = module.get<RecordService>(RecordService);
   });
 
@@ -215,7 +221,6 @@ describe('RecordService', () => {
       const result = await service.createNonConformanceFromMaintenanceItem('rec-1', 'item-1', {
         companyId: 'co-1',
         userId: 'user-1',
-        ncNo: 'NC-20260530-001',
       });
 
       expect(result.source_type).toBe('maintenance_record');

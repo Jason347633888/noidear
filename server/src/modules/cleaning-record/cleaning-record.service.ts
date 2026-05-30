@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCleaningRecordDto } from './dto/create-cleaning-record.dto';
+import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
 
 export interface CompleteItemPayload {
   result: 'pass' | 'fail';
@@ -12,7 +13,10 @@ export interface CompleteItemPayload {
 
 @Injectable()
 export class CleaningRecordService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly numberSequence: QualityNumberSequenceService,
+  ) {}
 
   // ── Simple create (legacy) ─────────────────────────────────────────────────
 
@@ -197,7 +201,6 @@ export class CleaningRecordService {
     recordId: string,
     itemId: string,
     userId: string,
-    ncNo: string,
   ) {
     const record = await this.prisma.cleaningRecord.findUnique({
       where: { id: recordId },
@@ -213,10 +216,12 @@ export class CleaningRecordService {
       throw new NotFoundException(`清洁记录项目不存在或不属于该记录: ${itemId}`);
     }
 
+    const nc_no = await this.numberSequence.generateNonConformanceNo(record.company_id);
+
     return this.prisma.nonConformance.create({
       data: {
         company_id: record.company_id,
-        nc_no: ncNo,
+        nc_no,
         source_type: 'cleaning_record',
         source_id: recordId,
         source_item_id: itemId,

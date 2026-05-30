@@ -33,10 +33,6 @@ class VerifyRecordDto {
   @IsBoolean() pass: boolean;
 }
 
-class CreateNcFromItemDto {
-  @IsString() nc_no: string;
-}
-
 @ModuleKey('equipment_site')
 @Controller('cleaning-records')
 @UseGuards(JwtAuthGuard)
@@ -94,9 +90,8 @@ export class CleaningRecordController {
   createNcFromItem(
     @Param('recordId') recordId: string,
     @Param('itemId') itemId: string,
-    @Body() dto: CreateNcFromItemDto,
     @Request() req: { user: { id: string } },
   ) {
-    return this.service.createNonConformanceFromItem(recordId, itemId, req.user.id, dto.nc_no);
+    return this.service.createNonConformanceFromItem(recordId, itemId, req.user.id);
   }
 }

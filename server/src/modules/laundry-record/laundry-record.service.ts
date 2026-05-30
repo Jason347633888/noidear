@@ -1,10 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateLaundryWorkRecordInput } from './dto/create-laundry-record.dto';
+import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
 
 @Injectable()
 export class LaundryRecordService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly numberSequence: QualityNumberSequenceService,
+  ) {}
 
   async createLaundryWorkRecord(input: CreateLaundryWorkRecordInput) {
     return this.prisma.$transaction(async (tx) => {
@@ -84,7 +88,6 @@ export class LaundryRecordService {
     recordId: string,
     itemId: string,
     userId: string,
-    ncNo: string,
   ) {
     const record = await this.prisma.laundryWorkRecord.findUnique({
       where: { id: recordId },
@@ -100,10 +103,12 @@ export class LaundryRecordService {
       throw new NotFoundException(`洗涤记录项目不存在或不属于该记录: ${itemId}`);
     }
 
+    const nc_no = await this.numberSequence.generateNonConformanceNo(record.company_id);
+
     return this.prisma.nonConformance.create({
       data: {
         company_id: record.company_id,
-        nc_no: ncNo,
+        nc_no,
         source_type: 'laundry_work_record',
         source_id: recordId,
         source_item_id: itemId,
