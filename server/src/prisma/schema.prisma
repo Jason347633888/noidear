@@ -2476,6 +2476,25 @@ model CalibrationRecord {
   notes                  String?
   created_by             String?
   created_at             DateTime           @default(now())
+
+  point_readings CalibrationPointReading[] @relation("CalibrationRecordReadings")
+}
+
+model CalibrationPointReading {
+  id                    String            @id @default(cuid())
+  calibration_record_id String
+  calibration_record    CalibrationRecord @relation("CalibrationRecordReadings", fields: [calibration_record_id], references: [id], onDelete: Cascade)
+  position              String
+  standard_value        Decimal           @db.Decimal(14, 4)
+  measured_value        Decimal           @db.Decimal(14, 4)
+  tolerance             Decimal?          @db.Decimal(14, 4)
+  error_value           Decimal?          @db.Decimal(14, 4)
+  judgment              String
+  evidence_file_id      String?
+  created_at            DateTime          @default(now())
+
+  @@index([calibration_record_id])
+  @@map("calibration_point_readings")
 }
 
 // ─── 过程监控 ─────────────────────────────────────

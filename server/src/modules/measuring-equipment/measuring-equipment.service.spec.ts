@@ -2,6 +2,10 @@ import { NotFoundException } from '@nestjs/common';
 import { MeasuringEquipmentService } from './measuring-equipment.service';
 
 describe('MeasuringEquipmentService', () => {
+  const ncServiceMock = {
+    createFromCalibrationReading: jest.fn(),
+  };
+
   const prisma = {
     measuringEquipment: {
       create: jest.fn(),
@@ -13,13 +17,18 @@ describe('MeasuringEquipmentService', () => {
       create: jest.fn(),
       findMany: jest.fn(),
     },
+    calibrationPointReading: {
+      create: jest.fn(),
+      createMany: jest.fn(),
+    },
+    $transaction: jest.fn(),
   };
 
   let service: MeasuringEquipmentService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new MeasuringEquipmentService(prisma as any);
+    service = new MeasuringEquipmentService(prisma as any, ncServiceMock as any);
   });
 
   it('creates equipment for the current company', async () => {
@@ -223,5 +232,108 @@ describe('MeasuringEquipmentService', () => {
 
     expect(result[0]).toHaveProperty('isOverdue', true);
     expect(result[1]).toHaveProperty('isOverdue', false);
+  });
+
+  // ── Phase 11 Task 4: CalibrationPointReading tests ────────────────────────
+
+  describe('createCalibrationRecordWithReadings', () => {
+    const baseDto = {
+      measuring_equipment_id: 'eq1',
+      calibrated_at: '2026-05-01',
+      valid_until: '2027-05-01',
+      calibration_body: '计量院',
+      certificate_no: 'CERT-001',
+      notes: null,
+    };
+
+    const passReadings = [
+      { position: 'P1', standard_value: 100, measured_value: 100.01, tolerance: 0.1, judgment: 'pass' },
+      { position: 'P2', standard_value: 200, measured_value: 199.98, tolerance: 0.1, judgment: 'pass' },
+    ];
+
+    const failReadings = [
+      { position: 'P1', standard_value: 100, measured_value: 100.01, tolerance: 0.1, judgment: 'pass' },
+      { position: 'P2', standard_value: 200, measured_value: 201.5, tolerance: 0.1, judgment: 'fail' },
+    ];
+
+    it('sets result to pass when all readings pass', async () => {
+      prisma.measuringEquipment.findFirst.mockResolvedValue({ id: 'eq1', company_id: 'company-1' });
+      const createdRecord = { id: 'cal1', result: 'pass' };
+      prisma.$transaction.mockImplementation(async (fn: (tx: any) => Promise<any>) =>
+        fn({
+          calibrationRecord: { create: jest.fn().mockResolvedValue(createdRecord) },
+          calibrationPointReading: { createMany: jest.fn().mockResolvedValue({ count: 2 }) },
+          measuringEquipment: { update: jest.fn().mockResolvedValue({}) },
+        }),
+      );
+
+      const result = await service.createCalibrationRecordWithReadings(
+        { ...baseDto, readings: passReadings },
+        'company-1',
+      );
+
+      expect(result.result).toBe('pass');
+    });
+
+    it('sets result to fail when any reading has judgment fail', async () => {
+      prisma.measuringEquipment.findFirst.mockResolvedValue({ id: 'eq1', company_id: 'company-1' });
+      const createdRecord = { id: 'cal2', result: 'fail' };
+      prisma.$transaction.mockImplementation(async (fn: (tx: any) => Promise<any>) =>
+        fn({
+          calibrationRecord: { create: jest.fn().mockResolvedValue(createdRecord) },
+          calibrationPointReading: { createMany: jest.fn().mockResolvedValue({ count: 2 }) },
+          measuringEquipment: { update: jest.fn().mockResolvedValue({}) },
+        }),
+      );
+
+      const result = await service.createCalibrationRecordWithReadings(
+        { ...baseDto, readings: failReadings },
+        'company-1',
+      );
+
+      expect(result.result).toBe('fail');
+    });
+
+    it('creates NonConformance for each failed reading when result is fail', async () => {
+      prisma.measuringEquipment.findFirst.mockResolvedValue({ id: 'eq1', company_id: 'company-1' });
+      const createdRecord = { id: 'cal3', result: 'fail' };
+      const mockCreateMany = jest.fn().mockResolvedValue({ count: 2 });
+      prisma.$transaction.mockImplementation(async (fn: (tx: any) => Promise<any>) =>
+        fn({
+          calibrationRecord: { create: jest.fn().mockResolvedValue(createdRecord) },
+          calibrationPointReading: { createMany: mockCreateMany },
+          measuringEquipment: { update: jest.fn().mockResolvedValue({}) },
+        }),
+      );
+      ncServiceMock.createFromCalibrationReading.mockResolvedValue({ id: 'nc1' });
+
+      await service.createCalibrationRecordWithReadings(
+        { ...baseDto, readings: failReadings, userId: 'user1' },
+        'company-1',
+      );
+
+      // Called once for the one failed reading (P2)
+      expect(ncServiceMock.createFromCalibrationReading).toHaveBeenCalledTimes(1);
+      expect(ncServiceMock.createFromCalibrationReading).toHaveBeenCalledWith(
+        expect.objectContaining({
+          calibrationRecordId: 'cal3',
+          companyId: 'company-1',
+          userId: 'user1',
+        }),
+      );
+    });
+
+    it('throws NotFoundException when equipment does not belong to company', async () => {
+      prisma.measuringEquipment.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.createCalibrationRecordWithReadings(
+          { ...baseDto, readings: passReadings },
+          'other-company',
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
   });
 });

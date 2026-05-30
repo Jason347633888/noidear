@@ -156,8 +156,21 @@ export class NonConformanceService {
         }
       }
     },
-    calibration_record: async () => {
-      throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');
+    // ── Phase 11 Task 4: CalibrationRecord ───────────────────────────────────
+    calibration_record: async (sourceId, companyId, db, sourceItemId) => {
+      const exists = await db.calibrationRecord.count({ where: { id: sourceId, company_id: companyId } });
+      if (!exists) {
+        throw new BadRequestException('校准记录来源不存在');
+      }
+      if (sourceItemId) {
+        const reading = await db.calibrationPointReading.findUnique({
+          where: { id: sourceItemId },
+          select: { id: true, calibration_record_id: true },
+        });
+        if (!reading || reading.calibration_record_id !== sourceId) {
+          throw new BadRequestException('校准点读数不存在');
+        }
+      }
     },
     maintenance_record: async () => {
       throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');
@@ -289,6 +302,30 @@ export class NonConformanceService {
         rework_date: new Date(),
         operator_id: userId,
         quality_verdict: 'pending',
+      },
+    });
+  }
+
+  async createFromCalibrationReading(input: {
+    calibrationRecordId: string;
+    readingId: string;
+    companyId: string;
+    userId: string;
+    description?: string;
+  }) {
+    const nc_no = await this.numberSequence.generateNonConformanceNo(input.companyId);
+    return this.prisma.nonConformance.create({
+      data: {
+        company_id: input.companyId,
+        nc_no,
+        source_type: 'calibration_record',
+        source_id: input.calibrationRecordId,
+        source_item_id: input.readingId,
+        nc_type: 'calibration_failure',
+        description: input.description ?? '校准点读数不合格',
+        discovered_by: input.userId,
+        discoveredById: input.userId,
+        discovered_at: new Date(),
       },
     });
   }
