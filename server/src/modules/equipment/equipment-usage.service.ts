@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
 
@@ -29,7 +30,30 @@ export class EquipmentUsageService {
       await this.assertNotScrapped(dto.equipmentId);
     }
 
-    const record = await this.prisma.equipmentUsageRecord.create({
+    if (dto.equipment_status_after === 'fault') {
+      return this.prisma.$transaction(async (tx) => {
+        const record = await tx.equipmentUsageRecord.create({
+          data: {
+            company_id: dto.company_id,
+            equipmentId: dto.equipmentId ?? null,
+            measuringEquipmentId: dto.measuringEquipmentId ?? null,
+            used_from: new Date(dto.used_from),
+            used_to: dto.used_to ? new Date(dto.used_to) : null,
+            purpose: dto.purpose,
+            sample_reference: dto.sample_reference ?? null,
+            operatorId: dto.operatorId ?? null,
+            equipment_status_after: dto.equipment_status_after,
+            notes: dto.notes ?? null,
+          },
+        });
+
+        await this.createFaultNonConformance(tx, record.id, dto);
+
+        return record;
+      });
+    }
+
+    return this.prisma.equipmentUsageRecord.create({
       data: {
         company_id: dto.company_id,
         equipmentId: dto.equipmentId ?? null,
@@ -43,12 +67,6 @@ export class EquipmentUsageService {
         notes: dto.notes ?? null,
       },
     });
-
-    if (dto.equipment_status_after === 'fault') {
-      await this.createFaultNonConformance(record.id, dto);
-    }
-
-    return record;
   }
 
   async findByEquipment(equipmentId: string, companyId: string) {
@@ -87,6 +105,7 @@ export class EquipmentUsageService {
   }
 
   private async createFaultNonConformance(
+    tx: Prisma.TransactionClient,
     usageRecordId: string,
     dto: CreateUsageRecordDto,
   ): Promise<void> {
@@ -95,7 +114,7 @@ export class EquipmentUsageService {
       ? `设备使用后状态异常（故障）；使用记录ID：${usageRecordId}`
       : `计量设备使用后状态异常（故障）；使用记录ID：${usageRecordId}`;
 
-    await this.prisma.nonConformance.create({
+    await tx.nonConformance.create({
       data: {
         company_id: dto.company_id,
         nc_no,

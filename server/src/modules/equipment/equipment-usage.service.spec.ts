@@ -165,5 +165,41 @@ describe('EquipmentUsageService', () => {
 
       expect(prisma.nonConformance.create).toHaveBeenCalled();
     });
+
+    it('should use $transaction when equipment_status_after is fault so usage record and NC are atomic', async () => {
+      prisma.equipment.findUnique.mockResolvedValue(mockActiveEquipment);
+      prisma.equipmentUsageRecord.create.mockResolvedValue({
+        ...mockUsageRecord,
+        id: 'usage-fault',
+        equipment_status_after: 'fault',
+      });
+      prisma.nonConformance.create.mockResolvedValue({ id: 'nc-1' });
+
+      await service.createUsageRecord({
+        company_id: 'company-1',
+        equipmentId: 'eq-1',
+        used_from: '2026-05-30T08:00:00Z',
+        purpose: 'Test run',
+        equipment_status_after: 'fault',
+        operatorId: 'user-1',
+      });
+
+      expect(prisma.$transaction).toHaveBeenCalled();
+    });
+
+    it('should not use $transaction when equipment_status_after is normal since no NC is created', async () => {
+      prisma.equipment.findUnique.mockResolvedValue(mockActiveEquipment);
+      prisma.equipmentUsageRecord.create.mockResolvedValue(mockUsageRecord);
+
+      await service.createUsageRecord({
+        company_id: 'company-1',
+        equipmentId: 'eq-1',
+        used_from: '2026-05-30T08:00:00Z',
+        purpose: 'Production run #1',
+        equipment_status_after: 'normal',
+      });
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
   });
 });

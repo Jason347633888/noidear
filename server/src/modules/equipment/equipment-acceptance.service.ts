@@ -29,7 +29,35 @@ export class EquipmentAcceptanceService {
 
     const acceptedAt = new Date(dto.accepted_at);
 
-    const record = await this.prisma.equipmentAcceptanceRecord.create({
+    if (dto.result === 'pass') {
+      const activationDate = equipment.activationDate ? undefined : acceptedAt;
+      return this.prisma.$transaction(async (tx) => {
+        const record = await tx.equipmentAcceptanceRecord.create({
+          data: {
+            company_id: dto.company_id,
+            equipmentId: dto.equipmentId,
+            accepted_at: acceptedAt,
+            accepted_by: dto.accepted_by ?? null,
+            result: dto.result,
+            checklist_snapshot: dto.checklist_snapshot ?? Prisma.JsonNull,
+            evidence_file_id: dto.evidence_file_id ?? null,
+            approvalInstanceId: dto.approvalInstanceId ?? null,
+          },
+        });
+
+        await tx.equipment.update({
+          where: { id: dto.equipmentId },
+          data: {
+            status: 'active',
+            ...(activationDate !== undefined ? { activationDate } : {}),
+          },
+        });
+
+        return record;
+      });
+    }
+
+    return this.prisma.equipmentAcceptanceRecord.create({
       data: {
         company_id: dto.company_id,
         equipmentId: dto.equipmentId,
@@ -41,19 +69,6 @@ export class EquipmentAcceptanceService {
         approvalInstanceId: dto.approvalInstanceId ?? null,
       },
     });
-
-    if (dto.result === 'pass') {
-      const activationDate = equipment.activationDate ? undefined : acceptedAt;
-      await this.prisma.equipment.update({
-        where: { id: dto.equipmentId },
-        data: {
-          status: 'active',
-          ...(activationDate !== undefined ? { activationDate } : {}),
-        },
-      });
-    }
-
-    return record;
   }
 
   async findByEquipment(equipmentId: string, companyId: string) {

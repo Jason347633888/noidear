@@ -124,5 +124,35 @@ describe('EquipmentAcceptanceService', () => {
         }),
       ).rejects.toThrow();
     });
+
+    it('should use $transaction when result is pass so create and update are atomic', async () => {
+      prisma.equipment.findUnique.mockResolvedValue(mockEquipment);
+      prisma.equipmentAcceptanceRecord.create.mockResolvedValue(mockAcceptanceRecord);
+      prisma.equipment.update.mockResolvedValue({ ...mockEquipment, status: 'active' });
+
+      await service.createAcceptanceRecord({
+        company_id: 'company-1',
+        equipmentId: 'eq-1',
+        accepted_at: '2026-05-30T10:00:00Z',
+        accepted_by: 'user-1',
+        result: 'pass',
+      });
+
+      expect(prisma.$transaction).toHaveBeenCalled();
+    });
+
+    it('should not use $transaction when result is fail since no equipment update occurs', async () => {
+      prisma.equipment.findUnique.mockResolvedValue(mockEquipment);
+      prisma.equipmentAcceptanceRecord.create.mockResolvedValue({ ...mockAcceptanceRecord, result: 'fail' });
+
+      await service.createAcceptanceRecord({
+        company_id: 'company-1',
+        equipmentId: 'eq-1',
+        accepted_at: '2026-05-30T10:00:00Z',
+        result: 'fail',
+      });
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
   });
 });
