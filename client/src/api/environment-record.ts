@@ -23,7 +23,7 @@ export interface EnvironmentRecord {
   created_at: string;
 }
 
-export interface CreateEnvironmentRecordPayload {
+export interface CreateEnvironmentRecordRequest {
   productionBatchId?: string;
   locationId?: string;
   location?: string;
@@ -66,7 +66,7 @@ const environmentRecordApi = {
     });
   },
 
-  create(payload: CreateEnvironmentRecordPayload) {
+  create(payload: CreateEnvironmentRecordRequest) {
     return request.post<EnvironmentRecord>('/environment-records', {
       production_batch_id: payload.productionBatchId,
       location_id: payload.locationId,
