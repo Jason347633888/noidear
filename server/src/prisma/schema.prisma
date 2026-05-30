@@ -1333,6 +1333,7 @@ model MaintenancePlan {
 model MaintenanceRecord {
   id                 String                  @id @default(cuid())
   recordNumber       String                  @unique // 记录编号 MAINT-{YYYYMMDD}-{序号}
+  company_id         String                  @default("1") // 租户隔离字段（T5-2修复新增）
   equipmentId        String
   equipment          Equipment               @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
   planId             String? // 关联维护计划ID
@@ -1360,6 +1361,7 @@ model MaintenanceRecord {
 
   items              MaintenanceRecordItem[] @relation("MaintenanceRecordItems")
 
+  @@index([company_id])
   @@index([equipmentId])
   @@index([maintenanceLevel])
   @@index([maintenanceDate])
@@ -1371,11 +1373,12 @@ model MaintenanceRecord {
 }
 
 // Task 11-T5: 维保记录检查项表
+// item_name nullable: NULL = 可选检查项（失败→pending_verification），非NULL = 必填项（失败→阻断提交）
 model MaintenanceRecordItem {
   id                  String            @id @default(cuid())
   maintenanceRecordId String
   maintenanceRecord   MaintenanceRecord @relation("MaintenanceRecordItems", fields: [maintenanceRecordId], references: [id], onDelete: Cascade)
-  item_name           String
+  item_name           String?
   method_snapshot     String?
   result              String
   measured_value      String?

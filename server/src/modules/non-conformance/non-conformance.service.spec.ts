@@ -33,6 +33,12 @@ describe('NonConformanceService', () => {
     inspectionRecordItem: {
       findUnique: jest.fn(),
     },
+    maintenanceRecord: {
+      findUnique: jest.fn(),
+    },
+    maintenanceRecordItem: {
+      findUnique: jest.fn(),
+    },
   };
   const numberSequence = {
     generateNonConformanceNo: jest.fn(),
@@ -632,14 +638,10 @@ describe('NonConformanceService', () => {
   });
 
   it.each([
-    'sanitizer_concentration_check',
-    'cleaning_record',
-    'calibration_record',
-    'maintenance_record',
     'metal_detection_log',
     'laundry_work_record',
   ] as const)(
-    'rejects future source type "%s" with a clear "not yet implemented" message',
+    'rejects stub source type "%s" with a clear "not yet implemented" message',
     async (sourceType) => {
       await expect(
         service.create({ source_type: sourceType, source_id: 'any-id', description: '测试' }, 'u1', '2'),
@@ -648,6 +650,110 @@ describe('NonConformanceService', () => {
       expect(prisma.nonConformance.create).not.toHaveBeenCalled();
     },
   );
+
+  // ─── maintenance_record source-type contract (T5-2) ─────────────────────
+
+  it('accepts maintenance_record source when company_id matches', async () => {
+    prisma.maintenanceRecord.findUnique.mockResolvedValue({ id: 'mr-1', company_id: '2' });
+    numberSequence.generateNonConformanceNo.mockResolvedValue('NC-2026-0050');
+    prisma.nonConformance.create.mockResolvedValue({ id: 'nc-mr-1' });
+
+    await service.create(
+      { source_type: 'maintenance_record', source_id: 'mr-1', description: '维保项不合格' },
+      'u1',
+      '2',
+    );
+
+    expect(prisma.maintenanceRecord.findUnique).toHaveBeenCalledWith({
+      where: { id: 'mr-1' },
+      select: { id: true, company_id: true },
+    });
+    expect(prisma.nonConformance.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          source_type: 'maintenance_record',
+          source_id: 'mr-1',
+          company_id: '2',
+        }),
+      }),
+    );
+  });
+
+  it('rejects maintenance_record source when record does not exist', async () => {
+    prisma.maintenanceRecord.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.create(
+        { source_type: 'maintenance_record', source_id: 'mr-missing', description: '来源不存在' },
+        'u1',
+        '2',
+      ),
+    ).rejects.toThrow('维保记录来源不存在');
+
+    expect(prisma.nonConformance.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects maintenance_record source when record belongs to another tenant (T5-2 cross-tenant leak fix)', async () => {
+    prisma.maintenanceRecord.findUnique.mockResolvedValue({ id: 'mr-other', company_id: 'tenant-other' });
+
+    await expect(
+      service.create(
+        { source_type: 'maintenance_record', source_id: 'mr-other', description: '跨租户' },
+        'u1',
+        '2',
+      ),
+    ).rejects.toThrow('维保记录来源不存在');
+
+    expect(prisma.maintenanceRecord.findUnique).toHaveBeenCalledWith({
+      where: { id: 'mr-other' },
+      select: { id: true, company_id: true },
+    });
+    expect(prisma.nonConformance.create).not.toHaveBeenCalled();
+  });
+
+  it('accepts maintenance_record source with valid source_item_id', async () => {
+    prisma.maintenanceRecord.findUnique.mockResolvedValue({ id: 'mr-1', company_id: '2' });
+    prisma.maintenanceRecordItem.findUnique.mockResolvedValue({ id: 'mri-1', maintenanceRecordId: 'mr-1' });
+    numberSequence.generateNonConformanceNo.mockResolvedValue('NC-2026-0051');
+    prisma.nonConformance.create.mockResolvedValue({ id: 'nc-mr-2' });
+
+    await service.create(
+      {
+        source_type: 'maintenance_record',
+        source_id: 'mr-1',
+        source_item_id: 'mri-1',
+        description: '维保检查项不合格',
+      },
+      'u1',
+      '2',
+    );
+
+    expect(prisma.maintenanceRecordItem.findUnique).toHaveBeenCalledWith({
+      where: { id: 'mri-1' },
+      select: { id: true, maintenanceRecordId: true },
+    });
+    expect(prisma.nonConformance.create).toHaveBeenCalled();
+  });
+
+  it('rejects maintenance_record source when source_item_id belongs to different record', async () => {
+    prisma.maintenanceRecord.findUnique.mockResolvedValue({ id: 'mr-1', company_id: '2' });
+    prisma.maintenanceRecordItem.findUnique.mockResolvedValue({ id: 'mri-1', maintenanceRecordId: 'mr-OTHER' });
+
+    await expect(
+      service.create(
+        {
+          source_type: 'maintenance_record',
+          source_id: 'mr-1',
+          source_item_id: 'mri-1',
+          description: '子项不属于该记录',
+        },
+        'u1',
+        '2',
+      ),
+    ).rejects.toThrow('维保记录检查项不存在');
+
+    expect(prisma.nonConformance.create).not.toHaveBeenCalled();
+  });
 
   it('rejects CCP deviation NonConformance creation when the production batch belongs to another company', async () => {
     const tx: any = {

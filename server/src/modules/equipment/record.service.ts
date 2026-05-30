@@ -28,7 +28,7 @@ export class RecordService {
     @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {}
 
-  async create(dto: CreateRecordDto, creatorId?: string) {
+  async create(dto: CreateRecordDto, creatorId?: string, companyId?: string) {
     const recordNumber = await this.generateRecordNumber();
     const optional: Record<string, any> = {};
     this.applyOptionalFields(optional, dto, creatorId);
@@ -36,6 +36,7 @@ export class RecordService {
     const record = await this.prisma.maintenanceRecord.create({
       data: {
         recordNumber,
+        company_id: companyId ?? '1',
         equipmentId: dto.equipmentId,
         maintenanceLevel: dto.maintenanceLevel as any,
         maintenanceDate: new Date(dto.maintenanceDate),

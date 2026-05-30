@@ -172,9 +172,12 @@ export class NonConformanceService {
         }
       }
     },
-    maintenance_record: async (sourceId, _companyId, db, sourceItemId) => {
-      const exists = await db.maintenanceRecord.count({ where: { id: sourceId } });
-      if (!exists) {
+    maintenance_record: async (sourceId, companyId, db, sourceItemId) => {
+      const record = await db.maintenanceRecord.findUnique({
+        where: { id: sourceId },
+        select: { id: true, company_id: true },
+      });
+      if (!record || record.company_id !== companyId) {
         throw new BadRequestException('维保记录来源不存在');
       }
       if (sourceItemId) {
