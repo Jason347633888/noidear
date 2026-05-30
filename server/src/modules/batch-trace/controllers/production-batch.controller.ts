@@ -58,12 +58,12 @@ export class ProductionBatchController {
   }
 
   @Post(':id/release-readiness')
-  getReleaseReadiness(@Param('id') id: string) {
-    return this.productionBatchService.getReleaseReadiness(id);
+  getReleaseReadiness(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.productionBatchService.getReleaseReadiness(id, undefined, req.user.companyId);
   }
 
   @Post(':id/release')
   releaseBatch(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
-    return this.productionBatchService.releaseProductionBatch(id, req.user.id);
+    return this.productionBatchService.releaseProductionBatch(id, req.user.id, req.user.companyId);
   }
 }

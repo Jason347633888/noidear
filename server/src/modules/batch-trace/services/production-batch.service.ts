@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
@@ -227,6 +228,7 @@ export class ProductionBatchService {
   async getReleaseReadiness(
     productionBatchId: string,
     prismaClient?: PrismaClient | Prisma.TransactionClient,
+    callerCompanyId?: string,
   ): Promise<ReleaseReadiness> {
     const client = prismaClient ?? this.prisma;
 
@@ -237,6 +239,10 @@ export class ProductionBatchService {
 
     if (!batch || batch.deletedAt) {
       throw new NotFoundException('Production batch not found');
+    }
+
+    if (callerCompanyId && batch.product?.company_id !== callerCompanyId) {
+      throw new ForbiddenException('Access denied: batch does not belong to your company');
     }
 
     const companyId = batch.product?.company_id;
@@ -358,15 +364,19 @@ export class ProductionBatchService {
     return { ready: blockers.length === 0, blockers };
   }
 
-  async releaseProductionBatch(productionBatchId: string, releasedBy: string) {
+  async releaseProductionBatch(productionBatchId: string, releasedBy: string, companyId?: string) {
     return this.prisma.$transaction(async (tx) => {
       const batch = await tx.productionBatch.findUnique({
         where: { id: productionBatchId },
-        select: { id: true, released_at: true, deletedAt: true },
+        include: { product: { select: { company_id: true } } },
       });
 
       if (!batch || batch.deletedAt) {
         throw new NotFoundException('Production batch not found');
+      }
+
+      if (companyId && batch.product?.company_id !== companyId) {
+        throw new ForbiddenException('Access denied: batch does not belong to your company');
       }
 
       if (batch.released_at) {
@@ -374,7 +384,7 @@ export class ProductionBatchService {
       }
 
       // Re-check readiness inside the transaction to close the TOCTOU window.
-      const readiness = await this.getReleaseReadiness(productionBatchId, tx);
+      const readiness = await this.getReleaseReadiness(productionBatchId, tx, companyId);
 
       if (!readiness.ready) {
         throw new BadRequestException({

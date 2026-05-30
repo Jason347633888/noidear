@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ProductionBatchService } from './production-batch.service';
 import { BatchNumberGeneratorService } from './batch-number-generator.service';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { OwnershipContext } from '../../module-access/ownership-context';
 
 // Helper: builds a minimal Prisma transaction mock that executes the callback immediately.
@@ -617,6 +617,28 @@ describe('ProductionBatchService — getReleaseReadiness + releaseProductionBatc
       const svc = makeService(prisma);
       await expect(svc.getReleaseReadiness(BATCH_ID)).rejects.toThrow(NotFoundException);
     });
+
+    it('throws ForbiddenException when callerCompanyId does not match batch company', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(batchBase());
+
+      const svc = makeService(prisma);
+      await expect(svc.getReleaseReadiness(BATCH_ID, undefined, 'other-company')).rejects.toThrow(ForbiddenException);
+    });
+
+    it('does not throw ForbiddenException when callerCompanyId matches batch company', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(batchBase('finished_product'));
+      prisma.inspectionRecord.findMany.mockResolvedValue([
+        { id: 'ir-1', overall_result: 'pass', items: [] },
+      ]);
+      prisma.nonConformance.findMany.mockResolvedValue([]);
+      prisma.retainedSample.findFirst.mockResolvedValue({ id: 'rs-1' });
+
+      const svc = makeService(prisma);
+      const result = await svc.getReleaseReadiness(BATCH_ID, undefined, COMPANY_ID);
+      expect(result.ready).toBe(true);
+    });
   });
 
   describe('releaseProductionBatch', () => {
@@ -704,6 +726,37 @@ describe('ProductionBatchService — getReleaseReadiness + releaseProductionBatc
 
       const svc = makeService(prisma);
       await expect(svc.releaseProductionBatch(BATCH_ID, RELEASER_ID)).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws ForbiddenException when companyId does not match batch company during release', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique.mockResolvedValue(batchBase());
+
+      const svc = makeService(prisma);
+      await expect(svc.releaseProductionBatch(BATCH_ID, RELEASER_ID, 'wrong-company')).rejects.toThrow(ForbiddenException);
+      expect(prisma.productionBatch.update).not.toHaveBeenCalled();
+    });
+
+    it('releases batch when companyId matches batch company', async () => {
+      const prisma = buildPrisma();
+      prisma.productionBatch.findUnique
+        .mockResolvedValueOnce(batchBase('finished_product'))
+        .mockResolvedValueOnce(batchBase('finished_product'));
+      prisma.inspectionRecord.findMany.mockResolvedValue([
+        { id: 'ir-1', overall_result: 'pass', items: [] },
+      ]);
+      prisma.nonConformance.findMany.mockResolvedValue([]);
+      prisma.retainedSample.findFirst.mockResolvedValue({ id: 'rs-1' });
+      prisma.productionBatch.update.mockResolvedValue({
+        ...batchBase('finished_product'),
+        released_at: new Date(),
+        released_by_id: RELEASER_ID,
+      });
+
+      const svc = makeService(prisma);
+      const result = await svc.releaseProductionBatch(BATCH_ID, RELEASER_ID, COMPANY_ID);
+
+      expect(result.released_by_id).toBe(RELEASER_ID);
     });
   });
 });
