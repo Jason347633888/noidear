@@ -23,6 +23,13 @@ export class ProductValidationService {
       throw new NotFoundException(`产品 ${dto.product_id} 不存在`);
     }
 
+    if (dto.inspection_record_id) {
+      await this.validateInspectionRecordBelongsToCompany(
+        dto.inspection_record_id,
+        companyId,
+      );
+    }
+
     return this.prisma.productValidationRecord.create({
       data: {
         company_id: companyId,
@@ -50,6 +57,12 @@ export class ProductValidationService {
       throw new NotFoundException(`产品验证记录 ${recordId} 不存在`);
     }
 
+    if (record.conclusion !== 'pending') {
+      throw new BadRequestException(
+        `验证记录已完结（结论：${record.conclusion}），不可再次结论`,
+      );
+    }
+
     if (!(VALID_CONCLUSIONS as readonly string[]).includes(dto.conclusion)) {
       throw new BadRequestException(
         `结论必须是 ${VALID_CONCLUSIONS.join(', ')} 之一`,
@@ -59,6 +72,10 @@ export class ProductValidationService {
     const conclusion = dto.conclusion as ValidConclusion;
 
     if (conclusion === 'pass' && record.inspection_record_id) {
+      await this.validateInspectionRecordBelongsToCompany(
+        record.inspection_record_id,
+        companyId,
+      );
       await this.validateNoFailedItems(record.inspection_record_id);
     }
 
@@ -94,6 +111,28 @@ export class ProductValidationService {
       },
       orderBy: { created_at: 'desc' },
     });
+  }
+
+  private async validateInspectionRecordBelongsToCompany(
+    inspectionRecordId: string,
+    companyId: string,
+  ) {
+    const inspectionRecord = await this.prisma.inspectionRecord.findUnique({
+      where: { id: inspectionRecordId },
+      select: { id: true, company_id: true },
+    });
+
+    if (!inspectionRecord) {
+      throw new BadRequestException(
+        `关联检验记录 ${inspectionRecordId} 不存在`,
+      );
+    }
+
+    if (inspectionRecord.company_id !== companyId) {
+      throw new BadRequestException(
+        `关联检验记录 ${inspectionRecordId} 不属于当前企业`,
+      );
+    }
   }
 
   private async validateNoFailedItems(inspectionRecordId: string) {

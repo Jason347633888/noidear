@@ -61,6 +61,10 @@ describe('ProductValidationService', () => {
   describe('createValidationRecord', () => {
     it('creates a validation record linking product, recipe, inspection record, and evidence', async () => {
       mockPrisma.product.findFirst.mockResolvedValue({ id: PRODUCT_ID });
+      mockPrisma.inspectionRecord.findUnique.mockResolvedValue({
+        id: INSPECTION_RECORD_ID,
+        company_id: COMPANY_ID,
+      });
       mockPrisma.productValidationRecord.create.mockResolvedValue(
         makeRecord({
           recipe_id: RECIPE_ID,
@@ -115,6 +119,10 @@ describe('ProductValidationService', () => {
 
     it('does not store raw inspection item values', async () => {
       mockPrisma.product.findFirst.mockResolvedValue({ id: PRODUCT_ID });
+      mockPrisma.inspectionRecord.findUnique.mockResolvedValue({
+        id: INSPECTION_RECORD_ID,
+        company_id: COMPANY_ID,
+      });
       const created = makeRecord({ inspection_record_id: INSPECTION_RECORD_ID });
       mockPrisma.productValidationRecord.create.mockResolvedValue(created);
 
@@ -139,6 +147,35 @@ describe('ProductValidationService', () => {
         }),
       ).rejects.toThrow(NotFoundException);
     });
+
+    it('throws BadRequestException when inspection_record_id is provided but does not exist', async () => {
+      mockPrisma.product.findFirst.mockResolvedValue({ id: PRODUCT_ID });
+      mockPrisma.inspectionRecord.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.createValidationRecord(COMPANY_ID, {
+          product_id: PRODUCT_ID,
+          validation_type: 'initial',
+          inspection_record_id: INSPECTION_RECORD_ID,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when inspection_record_id belongs to a different company', async () => {
+      mockPrisma.product.findFirst.mockResolvedValue({ id: PRODUCT_ID });
+      mockPrisma.inspectionRecord.findUnique.mockResolvedValue({
+        id: INSPECTION_RECORD_ID,
+        company_id: 'other-company',
+      });
+
+      await expect(
+        service.createValidationRecord(COMPANY_ID, {
+          product_id: PRODUCT_ID,
+          validation_type: 'initial',
+          inspection_record_id: INSPECTION_RECORD_ID,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 
   // ── concludeValidation ────────────────────────────────────────────────────
@@ -147,6 +184,11 @@ describe('ProductValidationService', () => {
     it('allows pass conclusion when inspection record has no failed items', async () => {
       const record = makeRecord({ inspection_record_id: INSPECTION_RECORD_ID });
       mockPrisma.productValidationRecord.findUnique.mockResolvedValue(record);
+      // Inspection record exists and belongs to the same company
+      mockPrisma.inspectionRecord.findUnique.mockResolvedValue({
+        id: INSPECTION_RECORD_ID,
+        company_id: COMPANY_ID,
+      });
       // Service queries only items with judgment='fail'; return empty when none are failing
       mockPrisma.inspectionRecordItem.findMany.mockResolvedValue([]);
       mockPrisma.productValidationRecord.update.mockResolvedValue({
@@ -167,6 +209,11 @@ describe('ProductValidationService', () => {
     it('blocks pass conclusion when linked inspection record has failed items', async () => {
       const record = makeRecord({ inspection_record_id: INSPECTION_RECORD_ID });
       mockPrisma.productValidationRecord.findUnique.mockResolvedValue(record);
+      // Inspection record exists and belongs to the same company
+      mockPrisma.inspectionRecord.findUnique.mockResolvedValue({
+        id: INSPECTION_RECORD_ID,
+        company_id: COMPANY_ID,
+      });
       // Service queries only items with judgment='fail'; mock returns the failing items
       mockPrisma.inspectionRecordItem.findMany.mockResolvedValue([
         { id: 'item-2', judgment: 'fail' },
@@ -272,6 +319,52 @@ describe('ProductValidationService', () => {
       expect(result.conclusion).toBe('pass');
       // Should not have queried inspection items since no inspection_record_id
       expect(mockPrisma.inspectionRecordItem.findMany).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException when record is already concluded (re-conclusion guard)', async () => {
+      const record = makeRecord({
+        conclusion: 'pass',
+        concluded_at: new Date(),
+      });
+      mockPrisma.productValidationRecord.findUnique.mockResolvedValue(record);
+
+      await expect(
+        service.concludeValidation(RECORD_ID, COMPANY_ID, {
+          conclusion: 'fail',
+          conclusion_by: USER_ID,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when inspection_record_id points to a non-existent record', async () => {
+      const record = makeRecord({ inspection_record_id: INSPECTION_RECORD_ID });
+      mockPrisma.productValidationRecord.findUnique.mockResolvedValue(record);
+      // The InspectionRecord does not exist
+      mockPrisma.inspectionRecord.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.concludeValidation(RECORD_ID, COMPANY_ID, {
+          conclusion: 'pass',
+          conclusion_by: USER_ID,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when inspection_record_id belongs to a different company', async () => {
+      const record = makeRecord({ inspection_record_id: INSPECTION_RECORD_ID });
+      mockPrisma.productValidationRecord.findUnique.mockResolvedValue(record);
+      // InspectionRecord exists but belongs to a different company
+      mockPrisma.inspectionRecord.findUnique.mockResolvedValue({
+        id: INSPECTION_RECORD_ID,
+        company_id: 'other-company',
+      });
+
+      await expect(
+        service.concludeValidation(RECORD_ID, COMPANY_ID, {
+          conclusion: 'pass',
+          conclusion_by: USER_ID,
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

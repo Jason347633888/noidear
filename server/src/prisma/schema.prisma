@@ -2056,6 +2056,7 @@ model Product {
   productProcessChangePlans ProductProcessChangePlan[]
   productionBatches         ProductionBatch[]
   riskZones                 ProductRiskZone[]           @relation("ProductRiskZones")
+  validationRecords         ProductValidationRecord[]   @relation("ProductValidationRecords")
 
   @@unique([company_id, code])
   @@index([source])
@@ -3573,6 +3574,8 @@ model ProductValidationRecord {
   concluded_at         DateTime?
   evidence_file_id     String?
   created_at           DateTime  @default(now())
+
+  product Product @relation("ProductValidationRecords", fields: [product_id], references: [id])
 
   @@index([company_id, product_id, validation_type])
   @@map("product_validation_records")
