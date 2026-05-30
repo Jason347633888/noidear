@@ -11,8 +11,8 @@ export class MetalDetectionController {
   constructor(private service: MetalDetectionService) {}
 
   @Post()
-  create(@Body() dto: CreateMetalDetectionDto, @Request() req: { user: { id: string } }) {
-    return this.service.create(dto, req.user.id);
+  create(@Body() dto: CreateMetalDetectionDto, @Request() req: { user: { id: string; company_id: string } }) {
+    return this.service.create(dto, req.user.id, req.user.company_id);
   }
 
   @Get('batch/:batchId')

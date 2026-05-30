@@ -31,6 +31,12 @@ describe('ProductProcessChangeService', () => {
     changeEvent: {
       findUnique: jest.fn(),
     },
+    changeComplianceRecord: {
+      findFirst: jest.fn(),
+    },
+    changeVerificationRecord: {
+      findFirst: jest.fn(),
+    },
   };
 
   const prisma: any = {
@@ -135,6 +141,8 @@ describe('ProductProcessChangeService', () => {
     tx.material.findMany.mockResolvedValue([{ id: 'mat-1' }]);
     tx.workshopArea.findMany.mockResolvedValue([{ id: 'area-1' }]);
     tx.recipe.findFirst.mockResolvedValue({ id: 'recipe-1' });
+    // recipe scope requires a ChangeVerificationRecord
+    tx.changeVerificationRecord.findFirst.mockResolvedValue({ id: 'cvr-1' });
     tx.productProcessChangePlan.update.mockResolvedValue({ id: 'plan-1', status: 'pending_approval' });
 
     const service = createService();
@@ -243,6 +251,181 @@ describe('ProductProcessChangeService', () => {
       const service = createService();
       await expect(service.retryFailed('plan-x', 'u1')).rejects.toThrow('产品工艺变更不存在');
       expect(todoBridge.closeFailureTodo).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('compliance gates on submitForApproval', () => {
+    function primeBasicPlan(scopes: string[]) {
+      tx.productProcessChangePlan.findUnique.mockResolvedValue({
+        id: 'plan-gate',
+        product_id: 'prod-gate',
+        company_id: '1',
+        changeEventId: 'ce-gate',
+        status: 'draft',
+        scopes,
+        payloadJson: {},
+        changeEvent: { id: 'ce-gate' },
+      });
+      tx.product.findFirst.mockResolvedValue({ id: 'prod-gate', company_id: '1', deleted_at: null });
+      tx.productProcessChangePlan.update.mockResolvedValue({ id: 'plan-gate', status: 'pending_approval' });
+    }
+
+    it('blocks submitForApproval when label scope has no ChangeComplianceRecord', async () => {
+      primeBasicPlan(['label']);
+      tx.changeComplianceRecord.findFirst.mockResolvedValue(null);
+
+      const service = createService();
+      await expect(service.submitForApproval('plan-gate', 'u1')).rejects.toThrow(
+        '标签/过敏原/法规合规审查记录不能为空',
+      );
+      expect(approvalEngine.startApproval).not.toHaveBeenCalled();
+    });
+
+    it('blocks submitForApproval when allergen scope has no ChangeComplianceRecord', async () => {
+      primeBasicPlan(['allergen']);
+      tx.changeComplianceRecord.findFirst.mockResolvedValue(null);
+
+      const service = createService();
+      await expect(service.submitForApproval('plan-gate', 'u1')).rejects.toThrow(
+        '标签/过敏原/法规合规审查记录不能为空',
+      );
+      expect(approvalEngine.startApproval).not.toHaveBeenCalled();
+    });
+
+    it('allows submitForApproval when label scope has a ChangeComplianceRecord', async () => {
+      primeBasicPlan(['label']);
+      tx.changeComplianceRecord.findFirst.mockResolvedValue({ id: 'ccr-1', change_event_id: 'ce-gate' });
+
+      const service = createService();
+      await expect(service.submitForApproval('plan-gate', 'u1')).resolves.toBeDefined();
+      expect(approvalEngine.startApproval).toHaveBeenCalled();
+    });
+
+    it('blocks submitForApproval when recipe scope has no ChangeVerificationRecord', async () => {
+      // Override plan with valid recipe payload so content validation passes
+      tx.productProcessChangePlan.findUnique.mockResolvedValue({
+        id: 'plan-gate',
+        product_id: 'prod-gate',
+        company_id: '1',
+        changeEventId: 'ce-gate',
+        status: 'draft',
+        scopes: ['recipe'],
+        payloadJson: {
+          recipeLines: [
+            { material_id: 'mat-1', qty_per_batch: 5, unit: 'kg', area_id: 'area-1' },
+          ],
+          baseRecipeVersion: 1,
+        },
+        changeEvent: { id: 'ce-gate' },
+      });
+      tx.product.findFirst.mockResolvedValue({ id: 'prod-gate', company_id: '1', deleted_at: null });
+      tx.material.findMany.mockResolvedValue([{ id: 'mat-1' }]);
+      tx.workshopArea.findMany.mockResolvedValue([{ id: 'area-1' }]);
+      tx.recipe.findFirst.mockResolvedValue({ id: 'recipe-1' });
+      tx.changeComplianceRecord.findFirst.mockResolvedValue(null);
+      tx.changeVerificationRecord.findFirst.mockResolvedValue(null);
+      tx.productProcessChangePlan.update.mockResolvedValue({ id: 'plan-gate', status: 'pending_approval' });
+
+      const service = createService();
+      await expect(service.submitForApproval('plan-gate', 'u1')).rejects.toThrow(
+        '配方/工艺/试产验证记录不能为空',
+      );
+      expect(approvalEngine.startApproval).not.toHaveBeenCalled();
+    });
+
+    it('blocks submitForApproval when process scope has no ChangeVerificationRecord', async () => {
+      // Override plan with valid process payload so content validation passes
+      tx.productProcessChangePlan.findUnique.mockResolvedValue({
+        id: 'plan-gate',
+        product_id: 'prod-gate',
+        company_id: '1',
+        changeEventId: 'ce-gate',
+        status: 'draft',
+        scopes: ['process'],
+        payloadJson: {
+          processSteps: [{ step_no: 1, step_name: 'mix', name: 'mix' }],
+        },
+        changeEvent: { id: 'ce-gate' },
+      });
+      tx.product.findFirst.mockResolvedValue({ id: 'prod-gate', company_id: '1', deleted_at: null });
+      tx.changeComplianceRecord.findFirst.mockResolvedValue(null);
+      tx.changeVerificationRecord.findFirst.mockResolvedValue(null);
+      tx.productProcessChangePlan.update.mockResolvedValue({ id: 'plan-gate', status: 'pending_approval' });
+
+      const service = createService();
+      await expect(service.submitForApproval('plan-gate', 'u1')).rejects.toThrow(
+        '配方/工艺/试产验证记录不能为空',
+      );
+      expect(approvalEngine.startApproval).not.toHaveBeenCalled();
+    });
+
+    it('allows submitForApproval when recipe scope has a ChangeVerificationRecord', async () => {
+      primeBasicPlan(['recipe']);
+      tx.changeVerificationRecord.findFirst.mockResolvedValue({
+        id: 'cvr-1',
+        change_event_id: 'ce-gate',
+        verdict: 'pass',
+      });
+      tx.changeComplianceRecord.findFirst.mockResolvedValue(null);
+      // Recipe validation: recipeLines is empty in payloadJson → validation fails before gate
+      // Override plan payload to skip recipe-content validation
+      tx.productProcessChangePlan.findUnique.mockResolvedValue({
+        id: 'plan-gate',
+        product_id: 'prod-gate',
+        company_id: '1',
+        changeEventId: 'ce-gate',
+        status: 'draft',
+        scopes: ['recipe'],
+        payloadJson: {
+          recipeLines: [
+            { material_id: 'mat-1', qty_per_batch: 5, unit: 'kg', area_id: 'area-1' },
+          ],
+          baseRecipeVersion: 1,
+        },
+        changeEvent: { id: 'ce-gate' },
+      });
+      tx.product.findFirst.mockResolvedValue({ id: 'prod-gate', company_id: '1', deleted_at: null });
+      tx.material.findMany.mockResolvedValue([{ id: 'mat-1' }]);
+      tx.workshopArea.findMany.mockResolvedValue([{ id: 'area-1' }]);
+      tx.recipe.findFirst.mockResolvedValue({ id: 'recipe-1' });
+      tx.productProcessChangePlan.update.mockResolvedValue({ id: 'plan-gate', status: 'pending_approval' });
+
+      const service = createService();
+      await expect(service.submitForApproval('plan-gate', 'u1')).resolves.toBeDefined();
+      expect(approvalEngine.startApproval).toHaveBeenCalled();
+    });
+
+    it('does not require compliance/verification records for scopes that have no label or process triggers', async () => {
+      // 'haccp' scope alone does not trigger label OR recipe/process gates
+      tx.productProcessChangePlan.findUnique.mockResolvedValue({
+        id: 'plan-haccp',
+        product_id: 'prod-1',
+        company_id: '1',
+        changeEventId: 'ce-haccp',
+        status: 'draft',
+        scopes: ['haccp'],
+        payloadJson: {
+          ccpPoints: [
+            {
+              step_no: 1,
+              ccp_no: 'CCP-X1',
+              hazard_type: 'biological',
+              control_measure: 'cook',
+              critical_limit: '>= 75C',
+            },
+          ],
+        },
+        changeEvent: { id: 'ce-haccp' },
+      });
+      tx.product.findFirst.mockResolvedValue({ id: 'prod-1', company_id: '1', deleted_at: null });
+      tx.cCPPoint.findMany.mockResolvedValue([]);
+      tx.changeComplianceRecord.findFirst.mockResolvedValue(null);
+      tx.changeVerificationRecord.findFirst.mockResolvedValue(null);
+      tx.productProcessChangePlan.update.mockResolvedValue({ id: 'plan-haccp', status: 'pending_approval' });
+
+      const service = createService();
+      await expect(service.submitForApproval('plan-haccp', 'u1')).resolves.toBeDefined();
+      expect(approvalEngine.startApproval).toHaveBeenCalled();
     });
   });
 

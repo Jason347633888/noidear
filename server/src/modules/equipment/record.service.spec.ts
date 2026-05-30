@@ -3,6 +3,7 @@ import { RecordService } from './record.service';
 import { PlanService } from './plan.service';
 import { StatsService } from './stats.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 const mockRecord = {
@@ -27,6 +28,12 @@ function createMockPrisma() {
       update: jest.fn(),
       count: jest.fn(),
     },
+    maintenanceRecordItem: {
+      findMany: jest.fn(),
+    },
+    nonConformance: {
+      create: jest.fn(),
+    },
   };
 }
 
@@ -38,13 +45,18 @@ function createMockStatsService() {
   return { clearCache: jest.fn().mockResolvedValue(undefined) };
 }
 
-async function buildModule(prisma: any, planSvc: any, statsSvc: any): Promise<TestingModule> {
+function createMockNumberSequenceService() {
+  return { generateNonConformanceNo: jest.fn().mockResolvedValue('NC-20260530-001') };
+}
+
+async function buildModule(prisma: any, planSvc: any, statsSvc: any, numSeqSvc?: any): Promise<TestingModule> {
   return Test.createTestingModule({
     providers: [
       RecordService,
       { provide: PrismaService, useValue: prisma },
       { provide: PlanService, useValue: planSvc },
       { provide: StatsService, useValue: statsSvc },
+      { provide: QualityNumberSequenceService, useValue: numSeqSvc ?? createMockNumberSequenceService() },
     ],
   }).compile();
 }
@@ -59,7 +71,7 @@ describe('RecordService', () => {
     prisma = createMockPrisma();
     planService = createMockPlanService();
     statsService = createMockStatsService();
-    const module = await buildModule(prisma, planService, statsService);
+    const module = await buildModule(prisma, planService, statsService, createMockNumberSequenceService());
     service = module.get<RecordService>(RecordService);
   });
 
@@ -148,4 +160,81 @@ describe('RecordService', () => {
   // Approve/reject side effects are covered by the unified approval callbacks
   // registered in EquipmentModule; see Task 8 in the post-API-cleanup hardening
   // plan for the callback-pattern rewrite that replaces these direct route specs.
+
+  describe('submitMaintenanceRecord', () => {
+    const mockItems = [
+      { id: 'item-1', maintenanceRecordId: 'rec-1', item_name: 'Check oil level', result: 'pass' },
+      { id: 'item-2', maintenanceRecordId: 'rec-1', item_name: 'Inspect belts', result: 'pass' },
+    ];
+
+    it('maintenance record can have checklist items', async () => {
+      prisma.maintenanceRecord.findUnique.mockResolvedValue({ ...mockRecord, items: mockItems });
+      prisma.maintenanceRecordItem.findMany.mockResolvedValue(mockItems);
+      prisma.maintenanceRecord.update.mockResolvedValue({ ...mockRecord, status: 'approved' });
+
+      const result = await service.submitMaintenanceRecord('rec-1');
+      expect(result.status).toBe('approved');
+    });
+
+    it('failed mandatory item blocks submitMaintenanceRecord and throws BadRequestException', async () => {
+      const itemsWithFail = [
+        { id: 'item-1', maintenanceRecordId: 'rec-1', item_name: 'Check oil level', result: 'fail' },
+        { id: 'item-2', maintenanceRecordId: 'rec-1', item_name: 'Inspect belts', result: 'pass' },
+      ];
+      prisma.maintenanceRecord.findUnique.mockResolvedValue({ ...mockRecord, items: itemsWithFail });
+      prisma.maintenanceRecordItem.findMany.mockResolvedValue(itemsWithFail);
+
+      await expect(service.submitMaintenanceRecord('rec-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('sets status to pending_verification when no mandatory fail but some items fail', async () => {
+      const itemsMixed = [
+        { id: 'item-1', maintenanceRecordId: 'rec-1', item_name: null, result: 'fail' },
+        { id: 'item-2', maintenanceRecordId: 'rec-1', item_name: 'Required check', result: 'pass' },
+      ];
+      prisma.maintenanceRecord.findUnique.mockResolvedValue({ ...mockRecord, items: itemsMixed });
+      prisma.maintenanceRecordItem.findMany.mockResolvedValue(itemsMixed);
+      prisma.maintenanceRecord.update.mockResolvedValue({ ...mockRecord, status: 'pending_verification' });
+
+      const result = await service.submitMaintenanceRecord('rec-1');
+      expect(result.status).toBe('pending_verification');
+    });
+  });
+
+  describe('createNonConformanceFromMaintenanceItem', () => {
+    it('creates NC with source_type maintenance_record and source_item_id', async () => {
+      const mockItem = {
+        id: 'item-1',
+        maintenanceRecordId: 'rec-1',
+        item_name: 'Check oil level',
+        result: 'fail',
+      };
+      prisma.maintenanceRecord.findUnique.mockResolvedValue({ ...mockRecord, items: [mockItem] });
+      prisma.maintenanceRecordItem.findMany.mockResolvedValue([mockItem]);
+      prisma.nonConformance.create.mockResolvedValue({
+        id: 'nc-1',
+        source_type: 'maintenance_record',
+        source_id: 'rec-1',
+        source_item_id: 'item-1',
+      });
+
+      const result = await service.createNonConformanceFromMaintenanceItem('rec-1', 'item-1', {
+        companyId: 'co-1',
+        userId: 'user-1',
+      });
+
+      expect(result.source_type).toBe('maintenance_record');
+      expect(result.source_id).toBe('rec-1');
+      expect(result.source_item_id).toBe('item-1');
+      expect(prisma.nonConformance.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            source_type: 'maintenance_record',
+            source_id: 'rec-1',
+            source_item_id: 'item-1',
+          }),
+        }),
+      );
+    });
+  });
 });

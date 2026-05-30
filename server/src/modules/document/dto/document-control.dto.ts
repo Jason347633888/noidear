@@ -196,6 +196,43 @@ export interface WorkbenchIssueListResponse {
   totalPages: number;
 }
 
+// ─── Record Form Landing DTOs ─────────────────────────────────────────────────
+
+export class BatchConfirmRecordFormLandingDto {
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  @IsString({ each: true })
+  codes!: string[];
+}
+
+export class ConfirmRecordFormLandingDto {
+  @ApiProperty()
+  @IsString()
+  landingStatus!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  targetTemplateId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
+export class UpdateRecordFormLandingEntryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  targetTemplateId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
 export class UpsertNumberRuleDto {
   @IsIn(NUMBER_RULE_SCOPES)
   scope!: string;

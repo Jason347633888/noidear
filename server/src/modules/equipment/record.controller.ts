@@ -32,7 +32,7 @@ export class RecordController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: CreateRecordDto, @Request() req: AuthenticatedRequest) {
-    return this.recordService.create(dto, req.user.id);
+    return this.recordService.create(dto, req.user.id, req.user.companyId);
   }
 
   @Get()

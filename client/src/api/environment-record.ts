@@ -4,12 +4,12 @@ import request from './request';
 // Types
 // =========================================================================
 
-export type RecordType = 'temperature_humidity' | 'pressure_differential' | 'other';
+export type RecordType = 'temperature_humidity' | 'pressure_differential' | 'fridge_temperature' | 'other';
 
 export interface EnvironmentRecord {
   id: string;
   company_id: string;
-  production_batch_id: string;
+  production_batch_id: string | null;
   location_id: string | null;
   location: string;
   record_type: RecordType;
@@ -23,15 +23,18 @@ export interface EnvironmentRecord {
   created_at: string;
 }
 
-export interface CreateEnvironmentRecordPayload {
-  location_id: string;
-  record_type: RecordType;
+export interface CreateEnvironmentRecordRequest {
+  productionBatchId?: string;
+  locationId?: string;
+  location?: string;
+  recordType: RecordType;
   temperature?: number;
   humidity?: number;
-  pressure_diff?: number;
-  is_within_spec: boolean;
-  abnormal_action?: string;
-  production_batch_id: string;
+  pressureDiff?: number;
+  isWithinSpec: boolean;
+  abnormalAction?: string;
+  measuredAt?: string;
+  operatorId?: string;
 }
 
 // =========================================================================
@@ -41,6 +44,7 @@ export interface CreateEnvironmentRecordPayload {
 const RECORD_TYPE_MAP: Record<string, string> = {
   temperature_humidity: '温湿度',
   pressure_differential: '压差',
+  fridge_temperature: '冷藏温度',
   other: '其他',
 };
 
@@ -62,8 +66,18 @@ const environmentRecordApi = {
     });
   },
 
-  create(payload: CreateEnvironmentRecordPayload) {
-    return request.post<EnvironmentRecord>('/environment-records', payload);
+  create(payload: CreateEnvironmentRecordRequest) {
+    return request.post<EnvironmentRecord>('/environment-records', {
+      production_batch_id: payload.productionBatchId,
+      location_id: payload.locationId,
+      location: payload.location,
+      record_type: payload.recordType,
+      temperature: payload.temperature,
+      humidity: payload.humidity,
+      pressure_diff: payload.pressureDiff,
+      is_within_spec: payload.isWithinSpec,
+      abnormal_action: payload.abnormalAction,
+    });
   },
 };
 

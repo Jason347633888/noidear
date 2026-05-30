@@ -389,4 +389,156 @@ describe('ProductRecallService', () => {
   // Product recall direct approve/reject routes have been removed. The
   // notifyRequester side effect is handled by the unified approval callback
   // wiring described in the post-API-cleanup hardening plan (Task 4 / Task 8).
+
+  // ── Phase 14 Task 4: Snapshot binding ─────────────────────────────────────
+
+  describe('createRecallFromSnapshot', () => {
+    it('creates a recall draft seeded from snapshot upstream production batch ids', async () => {
+      const snapshot = {
+        id: 'snap-1',
+        company_id: 'company-1',
+        rootObjectType: 'production_batch',
+        rootObjectId: 'batch-1',
+        snapshotData: {
+          upstream: [],
+          downstream: [],
+          root: { id: 'batch-1', display: { batchNumber: 'PB-001', productName: '蛋糕' } },
+        },
+      };
+      prisma.traceabilitySnapshot.findFirst.mockResolvedValue(snapshot);
+      prisma.productRecall.count.mockResolvedValue(0);
+      prisma.productionBatch.findFirst.mockResolvedValue({
+        id: 'batch-1',
+        batchNumber: 'PB-001',
+        productName: '蛋糕',
+        product: { company_id: 'company-1' },
+      });
+      prisma.$transaction.mockImplementation(async (fn: any) => fn(prisma));
+      prisma.productRecall.create.mockResolvedValue({
+        id: 'recall-snap-1',
+        recall_no: 'RC-2026-0001',
+        source_traceability_snapshot_id: 'snap-1',
+      });
+
+      const result = await service.createRecallFromSnapshot(
+        {
+          traceabilitySnapshotId: 'snap-1',
+          title: '快照召回',
+          reason: '质量问题',
+        },
+        { id: 'user-1', companyId: 'company-1' },
+      );
+
+      expect(prisma.traceabilitySnapshot.findFirst).toHaveBeenCalledWith({
+        where: { id: 'snap-1', company_id: 'company-1' },
+      });
+      expect(prisma.productRecall.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          source_traceability_snapshot_id: 'snap-1',
+          status: 'draft',
+        }),
+      }));
+      expect(result.source_traceability_snapshot_id).toBe('snap-1');
+    });
+
+    it('throws when snapshot does not belong to the company', async () => {
+      prisma.traceabilitySnapshot.findFirst.mockResolvedValue(null);
+      prisma.$transaction.mockImplementation(async (fn: any) => fn(prisma));
+
+      await expect(
+        service.createRecallFromSnapshot(
+          { traceabilitySnapshotId: 'snap-other', title: '跨企业', reason: '测试' },
+          { id: 'user-1', companyId: 'company-1' },
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(prisma.productRecall.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('refreshRecallPreview', () => {
+    it('returns a fresh snapshot for the recall without modifying recall data', async () => {
+      const recall = { id: 'recall-1', company_id: 'company-1', status: 'draft' };
+      prisma.productRecall.findFirst.mockResolvedValue(recall);
+
+      const traceService: any = {
+        createTraceContextSnapshot: jest.fn().mockResolvedValue({
+          id: 'snap-preview-1',
+          snapshotPurpose: 'preview',
+        }),
+      };
+
+      const svcWithTrace = new (service.constructor as any)(prisma, approvalEngine, traceService);
+
+      const result = await svcWithTrace.refreshRecallPreview('recall-1', 'company-1');
+
+      expect(traceService.createTraceContextSnapshot).toHaveBeenCalledWith(expect.objectContaining({
+        rootObjectType: 'product_recall',
+        rootObjectId: 'recall-1',
+        company_id: 'company-1',
+      }));
+      expect(result.snapshotPurpose).toBe('preview');
+      // recall record should NOT be updated
+      expect(prisma.productRecall.update).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when recall does not exist', async () => {
+      prisma.productRecall.findFirst.mockResolvedValue(null);
+
+      await expect(service.refreshRecallPreview('missing', 'company-1')).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('lockRecallScope', () => {
+    it('creates an immutable snapshot and stores locked_snapshot_id on the recall', async () => {
+      const recall = { id: 'recall-1', company_id: 'company-1', status: 'draft', locked_snapshot_id: null };
+      prisma.productRecall.findFirst.mockResolvedValue(recall);
+      prisma.productRecall.update.mockResolvedValue({ ...recall, locked_snapshot_id: 'snap-locked-1' });
+
+      const traceService: any = {
+        createTraceContextSnapshot: jest.fn().mockResolvedValue({
+          id: 'snap-locked-1',
+          snapshotPurpose: 'evidence_export',
+        }),
+      };
+
+      const svcWithTrace = new (service.constructor as any)(prisma, approvalEngine, traceService);
+
+      const result = await svcWithTrace.lockRecallScope('recall-1', 'company-1');
+
+      expect(traceService.createTraceContextSnapshot).toHaveBeenCalledWith(expect.objectContaining({
+        rootObjectType: 'product_recall',
+        rootObjectId: 'recall-1',
+        company_id: 'company-1',
+      }));
+      expect(prisma.productRecall.update).toHaveBeenCalledWith({
+        where: { id: 'recall-1' },
+        data: { locked_snapshot_id: 'snap-locked-1' },
+      });
+      expect(result.locked_snapshot_id).toBe('snap-locked-1');
+    });
+
+    it('throws when recall does not exist', async () => {
+      prisma.productRecall.findFirst.mockResolvedValue(null);
+
+      await expect(service.lockRecallScope('missing', 'company-1')).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('returns early when scope is already locked without re-snapshotting', async () => {
+      const recall = { id: 'recall-1', company_id: 'company-1', status: 'draft', locked_snapshot_id: 'already-snap' };
+      prisma.productRecall.findFirst.mockResolvedValue(recall);
+
+      const traceService: any = {
+        createTraceContextSnapshot: jest.fn(),
+      };
+
+      const svcWithTrace = new (service.constructor as any)(prisma, approvalEngine, traceService);
+
+      const result = await svcWithTrace.lockRecallScope('recall-1', 'company-1');
+
+      expect(traceService.createTraceContextSnapshot).not.toHaveBeenCalled();
+      expect(prisma.productRecall.update).not.toHaveBeenCalled();
+      expect(result.locked_snapshot_id).toBe('already-snap');
+    });
+  });
 });

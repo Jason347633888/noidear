@@ -139,7 +139,8 @@ model User {
   documentsApproved  Document[]        @relation("DocumentApprover")
   documentsArchived  Document[]        @relation("DocumentArchiver")
   documentsObsoleted Document[]        @relation("DocumentObsoleter")
-  versionsCreated    DocumentVersion[] @relation("VersionCreator")
+  versionsCreated        DocumentVersion[]        @relation("VersionCreator")
+  periodicReviewsOwned   DocumentPeriodicReview[] @relation("PeriodicReviewReviewer")
   operationLogs      OperationLog[]
   notifications      Notification[]
   managedDepartments Department[]      @relation("DepartmentManager")
@@ -183,6 +184,9 @@ model User {
   discoveredNonConformances   NonConformance[]      @relation("NonConformanceDiscoverer")
   createdComplaints           CustomerComplaint[]   @relation("CustomerComplaintCreator")
   materialRequisitions        MaterialRequisition[] @relation("MaterialRequisitionApplicant")
+
+  // Phase 13 Task 6: 批次放行反向关系
+  releasedProductionBatches ProductionBatch[] @relation("ProductionBatchReleasedBy")
 
   @@map("users")
 }
@@ -278,7 +282,8 @@ model Document {
   obsoleter      User?     @relation("DocumentObsoleter", fields: [obsoletedBy], references: [id], onDelete: SetNull)
 
   // 反向关系
-  versions DocumentVersion[]
+  versions        DocumentVersion[]
+  periodicReviews DocumentPeriodicReview[] @relation("DocumentPeriodicReviews")
 
   // P2: 跨文档引用（BR-305/306）
   sourceReferences DocumentReference[] @relation("SourceRefs")
@@ -343,9 +348,30 @@ model DocumentVersion {
   fileSize   Int
   creatorId  String
   creator    User     @relation("VersionCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+  notes      String?
   createdAt  DateTime @default(now())
 
   @@map("document_versions")
+}
+
+model DocumentPeriodicReview {
+  id          String    @id @default(cuid())
+  documentId  String
+  document    Document  @relation("DocumentPeriodicReviews", fields: [documentId], references: [id], onDelete: Cascade)
+  dueAt       DateTime
+  reviewerId  String
+  reviewer    User      @relation("PeriodicReviewReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  status      String    @default("pending") // pending | completed
+  reviewedAt  DateTime?
+  conclusion  String?   // continue_use | revise | retire
+  opinion     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([documentId])
+  @@index([reviewerId])
+  @@index([status])
+  @@map("document_periodic_reviews")
 }
 
 // ========================================
@@ -578,6 +604,7 @@ model Material {
   packagingMaterialUsages PackagingMaterialUsage[]
   mixingExecutionLines    MixingExecutionLine[]
   recipeLines             RecipeLine[]             @relation("RecipeLineMaterial")
+  allergenProfiles        MaterialAllergenProfile[] @relation("MaterialAllergenProfileMaterial")
 
   @@index([materialCode])
   @@index([categoryId])
@@ -737,6 +764,8 @@ model Supplier {
 
   // 供应商评估
   evaluations SupplierEvaluation[]
+
+  allergenProfiles MaterialAllergenProfile[] @relation("MaterialAllergenProfileSupplier")
 
   @@index([supplierCode])
   @@index([status])
@@ -1159,6 +1188,10 @@ model ProductionBatch {
   planItemId String?
   planItem   ProductionPlanItem? @relation("PlanItemProductionBatches", fields: [planItemId], references: [id])
 
+  // Phase 13 Task 6: 批次放行操作人 FK（不写旧 released_by Int? 字段）
+  released_by_id String?
+  releasedByUser User?   @relation("ProductionBatchReleasedBy", fields: [released_by_id], references: [id], onDelete: SetNull)
+
   @@index([batchNumber])
   @@index([productionDate])
   @@index([status])
@@ -1166,6 +1199,7 @@ model ProductionBatch {
   @@index([productId])
   @@index([recipeId])
   @@index([planItemId])
+  @@index([released_by_id])
   @@map("production_batches")
 }
 
@@ -1262,8 +1296,8 @@ model Equipment {
   code                  String          @unique // 设备编号 EQ-{YYYYMMDD}-{序号}
   name                  String // 设备名称
   model                 String? // 设备型号
-  category              String // 设备分类
-  location              String? // 设备位置
+  category              String // 设备分类: production|facility|measuring|utility|metal_detector|other
+  location              String? // 设备位置（展示快照，独立于 area_point）
   manufacturer          String? // 制造商
   purchaseDate          DateTime? // 购买日期
   activationDate        DateTime? // 启用日期
@@ -1271,9 +1305,12 @@ model Equipment {
   responsiblePerson     String? // 责任人姓名（旧 text 字段，保留兼容）
   responsiblePersonId   String? // 责任人 FK（Task 46 新增）
   responsiblePersonUser User?           @relation("EquipmentResponsible", fields: [responsiblePersonId], references: [id], onDelete: SetNull)
+  area_point_id         String? // 所属区域点 FK（Task 11 新增）
+  area_point            WorkshopArea?   @relation("EquipmentAreaPoint", fields: [area_point_id], references: [id], onDelete: SetNull)
   maintenanceConfig     Json? // 分级保养配置 JSON
   status                EquipmentStatus @default(active)
   description           String? // 设备描述
+  evidence_file_id      String? // 验收/交接证明文件ID
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
   deletedAt             DateTime?
@@ -1283,12 +1320,16 @@ model Equipment {
   maintenanceRecords   MaintenanceRecord[]
   equipmentFaults      EquipmentFault[]
   materialRequisitions MaterialRequisition[]
+  acceptanceRecords    EquipmentAcceptanceRecord[] @relation("EquipmentAcceptanceRecords")
+  usageRecords         EquipmentUsageRecord[]      @relation("EquipmentUsageRecords")
+  metalDetectionLogs   MetalDetectionLog[]         @relation("MetalDetectionEquipment")
 
   @@index([code])
   @@index([category])
   @@index([status])
   @@index([responsiblePerson])
   @@index([responsiblePersonId])
+  @@index([area_point_id])
   @@index([location])
   @@map("equipment")
 }
@@ -1330,6 +1371,7 @@ model MaintenancePlan {
 model MaintenanceRecord {
   id                 String                  @id @default(cuid())
   recordNumber       String                  @unique // 记录编号 MAINT-{YYYYMMDD}-{序号}
+  company_id         String                  @default("1") // 租户隔离字段（T5-2修复新增）
   equipmentId        String
   equipment          Equipment               @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
   planId             String? // 关联维护计划ID
@@ -1351,10 +1393,14 @@ model MaintenanceRecord {
   rejectedAt         DateTime?
   rejectReason       String?
   cost               Float? // 维保成本
+  evidence_file_id   String? // 维保完成证明文件ID
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
   deletedAt          DateTime?
 
+  items              MaintenanceRecordItem[] @relation("MaintenanceRecordItems")
+
+  @@index([company_id])
   @@index([equipmentId])
   @@index([maintenanceLevel])
   @@index([maintenanceDate])
@@ -1363,6 +1409,24 @@ model MaintenanceRecord {
   @@index([performerId])
   @@index([approvalInstanceId])
   @@map("maintenance_records")
+}
+
+// Task 11-T5: 维保记录检查项表
+// item_name nullable: NULL = 可选检查项（失败→pending_verification），非NULL = 必填项（失败→阻断提交）
+model MaintenanceRecordItem {
+  id                  String            @id @default(cuid())
+  maintenanceRecordId String
+  maintenanceRecord   MaintenanceRecord @relation("MaintenanceRecordItems", fields: [maintenanceRecordId], references: [id], onDelete: Cascade)
+  item_name           String?
+  method_snapshot     String?
+  result              String
+  measured_value      String?
+  remark              String?
+  evidence_file_id    String?
+  createdAt           DateTime          @default(now())
+
+  @@index([maintenanceRecordId])
+  @@map("maintenance_record_items")
 }
 
 // TASK-212: 设备报修表
@@ -1397,6 +1461,45 @@ model EquipmentFault {
   @@index([reportTime])
   @@index([assigneeId])
   @@map("equipment_faults")
+}
+
+// Task 6: 设备验收记录表
+model EquipmentAcceptanceRecord {
+  id                  String    @id @default(cuid())
+  company_id          String
+  equipmentId         String
+  equipment           Equipment @relation("EquipmentAcceptanceRecords", fields: [equipmentId], references: [id], onDelete: Restrict)
+  accepted_at         DateTime
+  accepted_by         String?
+  result              String
+  checklist_snapshot  Json?
+  evidence_file_id    String?
+  approvalInstanceId  String?
+  created_at          DateTime  @default(now())
+
+  @@index([company_id, equipmentId, accepted_at])
+  @@map("equipment_acceptance_records")
+}
+
+// Task 6: 设备使用记录表
+model EquipmentUsageRecord {
+  id                     String     @id @default(cuid())
+  company_id             String
+  equipmentId            String?
+  equipment              Equipment? @relation("EquipmentUsageRecords", fields: [equipmentId], references: [id], onDelete: SetNull)
+  measuringEquipmentId   String?
+  used_from              DateTime
+  used_to                DateTime?
+  purpose                String
+  sample_reference       String?
+  operatorId             String?
+  equipment_status_after String
+  notes                  String?
+  created_at             DateTime   @default(now())
+
+  @@index([company_id, equipmentId, used_from])
+  @@index([company_id, measuringEquipmentId, used_from])
+  @@map("equipment_usage_records")
 }
 
 // ========================================
@@ -1983,6 +2086,8 @@ model Product {
   mixingExecutions          MixingExecution[]
   productProcessChangePlans ProductProcessChangePlan[]
   productionBatches         ProductionBatch[]
+  riskZones                 ProductRiskZone[]           @relation("ProductRiskZones")
+  validationRecords         ProductValidationRecord[]   @relation("ProductValidationRecords")
 
   @@unique([company_id, code])
   @@index([source])
@@ -2002,12 +2107,19 @@ model WorkshopArea {
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
 
-  recipeLines        RecipeLine[]           @relation("RecipeLineArea")
-  materialUsages     BatchMaterialUsage[]   @relation("BatchUsageArea")
-  stagingStocks      StagingAreaStock[]
-  stocktakes         StagingAreaStocktake[]
-  mixingExecutions   MixingExecution[]
-  environmentRecords EnvironmentRecord[]    @relation("EnvironmentRecordLocation")
+  recipeLines                   RecipeLine[]                    @relation("RecipeLineArea")
+  materialUsages                BatchMaterialUsage[]            @relation("BatchUsageArea")
+  stagingStocks                 StagingAreaStock[]
+  stocktakes                    StagingAreaStocktake[]
+  mixingExecutions              MixingExecution[]
+  environmentRecords            EnvironmentRecord[]             @relation("EnvironmentRecordLocation")
+  sanitizerConcentrationChecks  SanitizerConcentrationCheck[]   @relation("SanitizerCheckAreaPoint")
+  cleaningPlans                 CleaningPlan[]                  @relation("CleaningPlanAreaPoint")
+  cleaningRecords               CleaningRecord[]                @relation("CleaningRecordAreaPoint")
+  environmentalSamplingRecords  EnvironmentalSamplingRecord[]   @relation("EnvironmentalSamplingAreaPoint")
+  equipment                     Equipment[]                     @relation("EquipmentAreaPoint")
+  measuringEquipments           MeasuringEquipment[]            @relation("MeasuringEquipmentAreaPoint")
+  fragileItemLedgers            FragileItemLedger[]             @relation("FragileItemLedgerAreaPoint")
 
   @@unique([company_id, code])
   @@unique([company_id, name])
@@ -2088,7 +2200,7 @@ model Recipe {
   product      Product       @relation(fields: [product_id], references: [id])
   version      Int           @default(1)
   version_note String?
-  status       String        @default("draft") // 'draft'|'active'|'archived'
+  status       String        @default("draft") // 'draft'|'active'|'retired' (legacy: 'archived' treated as retired)
   approved_by  String?
   approved_at  DateTime?
   lines        RecipeLine[]
@@ -2208,7 +2320,7 @@ model InspectionStandard {
   company_id    String
   code          String
   name          String
-  applies_to    String // 'material'|'product'
+  applies_to    String // see INSPECTION_APPLIES_TO constant for allowed values
   reference_doc String?
   version       String?
   status        String           @default("active")
@@ -2218,6 +2330,7 @@ model InspectionStandard {
   updated_at    DateTime         @updatedAt
 
   @@unique([company_id, code])
+  @@index([company_id, applies_to])
   @@map("inspection_standards")
 }
 
@@ -2279,15 +2392,38 @@ model InspectionRecordItem {
   @@map("inspection_record_items")
 }
 
+// ─── 环境微生物采样 (两阶段: 采样→培养→检验) ─────────────────────────────────────
+// Captures the physical sampling step. A follow-up QualityInspectionTask is
+// scheduled after incubation; the result links back via follow_up_inspection_record_id.
+
+model EnvironmentalSamplingRecord {
+  id                            String       @id @default(cuid())
+  company_id                    String
+  area_point_id                 String
+  area_point                    WorkshopArea @relation("EnvironmentalSamplingAreaPoint", fields: [area_point_id], references: [id], onDelete: Restrict)
+  standard_id                   String?
+  sample_code                   String
+  sample_method                 String
+  exposure_time                 Int?
+  sampler_id                    String?
+  sampled_at                    DateTime
+  follow_up_inspection_record_id String?
+  created_at                    DateTime     @default(now())
+
+  @@unique([company_id, sample_code])
+  @@index([company_id, area_point_id, sampled_at])
+  @@map("environmental_sampling_records")
+}
+
 // ─── 质量合规 ─────────────────────────────────────
 
 model NonConformance {
   id               String    @id @default(cuid())
   company_id       String
   nc_no            String
-  source_type      String // 'material_batch'|'production_batch'|'product'|'inspection_record'
+  source_type      String // 'material_batch'|'production_batch'|'product'|'inspection_record'|'sanitizer_concentration_check'|'cleaning_record'|'calibration_record'|'maintenance_record'|'metal_detection_log'|'laundry_work_record'
   source_id        String
-  source_item_id   String? // FK to InspectionRecordItem.id when source_type='inspection_record'
+  source_item_id   String? // 来源子项 id；具体子表由 source_type 决定；无数据库外键，由 service 校验
   nc_type          String?
   description      String
   qty              Decimal?  @db.Decimal(14, 4)
@@ -2402,22 +2538,32 @@ model ReworkRecord {
 }
 
 model MeasuringEquipment {
-  id                     String              @id @default(cuid())
-  company_id             String
-  code                   String
-  name                   String
-  model                  String?
-  serial_no              String?
-  location               String?
-  calibration_cycle_days Int?
-  last_calibrated_at     DateTime?           @db.Date
-  next_calibration_at    DateTime?           @db.Date
-  status                 String              @default("normal") // 'normal'|'overdue'|'scrapped'
-  calibration_records    CalibrationRecord[]
-  created_at             DateTime            @default(now())
-  updated_at             DateTime            @updatedAt
+  id                           String              @id @default(cuid())
+  company_id                   String
+  code                         String
+  name                         String
+  model                        String?
+  serial_no                    String?
+  location                     String?
+  calibration_cycle_days       Int?
+  last_calibrated_at           DateTime?           @db.Date
+  next_calibration_at          DateTime?           @db.Date
+  status                       String              @default("normal") // 'normal'|'overdue'|'scrapped'|'failed'
+  measurement_type             String? // 测量类型
+  range_min                    Decimal?            @db.Decimal(14, 4) // 量程下限
+  range_max                    Decimal?            @db.Decimal(14, 4) // 量程上限
+  unit                         String? // 单位
+  accuracy                     String? // 精度描述
+  area_point_id                String? // 所属区域点 FK
+  area_point                   WorkshopArea?       @relation("MeasuringEquipmentAreaPoint", fields: [area_point_id], references: [id], onDelete: SetNull)
+  external_certificate_file_id String? // 外部证书文件ID
+  calibration_records          CalibrationRecord[]
+  created_at                   DateTime            @default(now())
+  updated_at                   DateTime            @updatedAt
 
   @@unique([company_id, code])
+  @@index([area_point_id])
+  @@map("measuring_equipments")
 }
 
 model CalibrationRecord {
@@ -2432,7 +2578,27 @@ model CalibrationRecord {
   result                 String // 'pass'|'fail'|'conditional'
   notes                  String?
   created_by             String?
+  evidence_file_id       String?
   created_at             DateTime           @default(now())
+
+  point_readings CalibrationPointReading[] @relation("CalibrationRecordReadings")
+}
+
+model CalibrationPointReading {
+  id                    String            @id @default(cuid())
+  calibration_record_id String
+  calibration_record    CalibrationRecord @relation("CalibrationRecordReadings", fields: [calibration_record_id], references: [id], onDelete: Cascade)
+  position              String
+  standard_value        Decimal           @db.Decimal(14, 4)
+  measured_value        Decimal           @db.Decimal(14, 4)
+  tolerance             Decimal?          @db.Decimal(14, 4)
+  error_value           Decimal?          @db.Decimal(14, 4)
+  judgment              String
+  evidence_file_id      String?
+  created_at            DateTime          @default(now())
+
+  @@index([calibration_record_id])
+  @@map("calibration_point_readings")
 }
 
 // ─── 过程监控 ─────────────────────────────────────
@@ -2440,12 +2606,12 @@ model CalibrationRecord {
 model EnvironmentRecord {
   id                  String          @id @default(cuid())
   company_id          String
-  production_batch_id String
-  production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id], onDelete: Restrict)
+  production_batch_id String?
+  production_batch    ProductionBatch? @relation(fields: [production_batch_id], references: [id], onDelete: SetNull)
   location_id         String?
-  location_ref        WorkshopArea?   @relation("EnvironmentRecordLocation", fields: [location_id], references: [id], onDelete: Restrict)
+  location_ref        WorkshopArea?    @relation("EnvironmentRecordLocation", fields: [location_id], references: [id], onDelete: Restrict)
   location            String
-  record_type         String // 'temperature_humidity'|'pressure_differential'|'other'
+  record_type         String // 'temperature_humidity'|'pressure_differential'|'fridge_temperature'|'other'
   temperature         Decimal?        @db.Decimal(8, 2)
   humidity            Decimal?        @db.Decimal(8, 2)
   pressure_diff       Decimal?        @db.Decimal(8, 2)
@@ -2483,6 +2649,8 @@ model MetalDetectionLog {
   company_id          String
   production_batch_id String
   production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id])
+  equipment_id        String?
+  equipment           Equipment?      @relation("MetalDetectionEquipment", fields: [equipment_id], references: [id], onDelete: SetNull)
   fe_ball_spec        String?
   sus_ball_spec       String?
   al_ball_spec        String?
@@ -2493,23 +2661,118 @@ model MetalDetectionLog {
   rejection_action    String?
   tested_at           DateTime
   operator_id         String?
+  evidence_file_id    String?
   created_at          DateTime        @default(now())
 }
 
 model CleaningRecord {
-  id              String   @id @default(cuid())
-  company_id      String
-  target_type     String // 'area'|'equipment'|'utensil'|'facility'
-  target_name     String
-  cleaning_method String?
-  disinfectant    String?
-  concentration   String?
-  cleaning_date   DateTime @db.Date
-  operator_id     String?
-  verifier_id     String?
-  is_pass         Boolean
-  notes           String?
-  created_at      DateTime @default(now())
+  id               String        @id @default(cuid())
+  company_id       String
+  target_type      String // 'area'|'equipment'|'utensil'|'facility'
+  target_name      String
+  area_point_id    String?
+  area_point       WorkshopArea? @relation("CleaningRecordAreaPoint", fields: [area_point_id], references: [id], onDelete: SetNull)
+  equipment_id     String?
+  cleaning_plan_id String?
+  cleaning_plan    CleaningPlan? @relation(fields: [cleaning_plan_id], references: [id], onDelete: SetNull)
+  cleaning_date    DateTime      @db.Date
+  operator_id      String?
+  verifier_id      String?
+  is_pass          Boolean
+  status           String        @default("draft")
+  notes            String?
+  items            CleaningRecordItem[]
+  created_at       DateTime      @default(now())
+
+  @@index([company_id, area_point_id, cleaning_date])
+  @@map("cleaning_records")
+}
+
+model CleaningRecordItem {
+  id                   String         @id @default(cuid())
+  record_id            String
+  record               CleaningRecord @relation(fields: [record_id], references: [id], onDelete: Cascade)
+  plan_item_id         String?
+  plan_item            CleaningPlanItem? @relation(fields: [plan_item_id], references: [id], onDelete: SetNull)
+  target_name          String
+  target_type          String
+  method_snapshot      String?
+  requires_disinfection Boolean       @default(false)
+  is_mandatory         Boolean        @default(true)
+  completed            Boolean        @default(false)
+  completed_at         DateTime?
+  actual_concentration Decimal?       @db.Decimal(14, 4)
+  sanitizer_check_id   String?
+  result               String         @default("pending")
+  remark               String?
+  evidence_file_id     String?
+  created_at           DateTime       @default(now())
+
+  @@index([record_id])
+  @@index([sanitizer_check_id])
+  @@map("cleaning_record_items")
+}
+
+model CleaningPlanTemplate {
+  id             String    @id @default(cuid())
+  company_id     String
+  name           String
+  area_type      String
+  version        String
+  status         String    @default("draft")
+  effective_from DateTime?
+  items          Json
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+  plans          CleaningPlan[]
+
+  @@unique([company_id, name, version])
+  @@index([company_id, area_type, status])
+  @@map("cleaning_plan_templates")
+}
+
+model CleaningPlan {
+  id                 String                @id @default(cuid())
+  company_id         String
+  area_point_id      String
+  area_point         WorkshopArea          @relation("CleaningPlanAreaPoint", fields: [area_point_id], references: [id], onDelete: Restrict)
+  template_id        String?
+  template           CleaningPlanTemplate? @relation(fields: [template_id], references: [id], onDelete: SetNull)
+  version            String
+  frequency          String
+  trigger_condition  String?
+  effective_from     DateTime
+  effective_to       DateTime?
+  status             String                @default("draft")
+  approvalInstanceId String?
+  items              CleaningPlanItem[]
+  records            CleaningRecord[]
+  created_at         DateTime              @default(now())
+  updated_at         DateTime              @updatedAt
+
+  @@index([company_id, area_point_id, status])
+  @@map("cleaning_plans")
+}
+
+model CleaningPlanItem {
+  id                   String               @id @default(cuid())
+  plan_id              String
+  plan                 CleaningPlan         @relation(fields: [plan_id], references: [id], onDelete: Cascade)
+  target_name          String
+  target_type          String
+  method               String?
+  requires_disinfection Boolean             @default(false)
+  disinfectant         String?
+  target_concentration Decimal?             @db.Decimal(14, 4)
+  normal_range         String?
+  is_mandatory         Boolean              @default(true)
+  requires_verification Boolean             @default(false)
+  sequence             Int                  @default(0)
+  created_at           DateTime             @default(now())
+  cleaningRecordItems  CleaningRecordItem[]
+
+  @@index([plan_id])
+  @@map("cleaning_plan_items")
 }
 
 // ─── 人员合规 ─────────────────────────────────────
@@ -2554,10 +2817,13 @@ model VisitorRecord {
   escort        String?
   health_status String?
   notes         String?
+  check_in_time DateTime?
+  exit_time     DateTime?
   created_by    String?
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
   deleted_at    DateTime?
+  access_declarations VisitorAccessDeclaration[] @relation("VisitorRecordDeclarations")
 
   @@map("visitor_records")
 }
@@ -2832,6 +3098,26 @@ model ExternalParty {
 
   product_recall_notifications ProductRecallNotification[]
   customer_complaints          CustomerComplaint[]
+  evaluations                  ExternalPartyEvaluation[]
+}
+
+model ExternalPartyEvaluation {
+  id                String    @id @default(cuid())
+  company_id        String
+  external_party_id String
+  external_party    ExternalParty @relation(fields: [external_party_id], references: [id], onDelete: Cascade)
+  evaluation_type   String    // contractor_food_safety, logistics, outsourced_service, other
+  evaluation_date   DateTime  @db.Date
+  score             Decimal?  @db.Decimal(14, 4)
+  result            String
+  risk_level        String?
+  evaluator_id      String?
+  evidence_file_id  String?
+  next_review_at    DateTime?
+  created_at        DateTime  @default(now())
+
+  @@index([company_id, external_party_id, evaluation_date])
+  @@map("external_party_evaluations")
 }
 
 model PackagingMaterialUsage {
@@ -2936,7 +3222,8 @@ model TraceabilitySnapshot {
   readinessStatus  String  @default("complete") // complete | incomplete
   readinessReasons Json?
 
-  productRecalls ProductRecall[] @relation("ProductRecallTraceabilitySnapshot")
+  productRecalls       ProductRecall[] @relation("ProductRecallTraceabilitySnapshot")
+  lockedByProductRecalls ProductRecall[] @relation("ProductRecallLockedSnapshot")
 
   @@index([company_id])
   @@map("traceability_snapshots")
@@ -2996,6 +3283,8 @@ model ProductRecall {
   source_query_ref                String?
   source_traceability_snapshot_id String?
   source_traceability_snapshot    TraceabilitySnapshot? @relation("ProductRecallTraceabilitySnapshot", fields: [source_traceability_snapshot_id], references: [id], onDelete: SetNull)
+  locked_snapshot_id              String?
+  locked_snapshot                 TraceabilitySnapshot? @relation("ProductRecallLockedSnapshot", fields: [locked_snapshot_id], references: [id], onDelete: SetNull)
   requested_by                    String?
   requested_at                    DateTime              @default(now())
   reviewed_by                     String?
@@ -3018,6 +3307,7 @@ model ProductRecall {
   @@index([company_id, status])
   @@index([company_id, source_complaint_id])
   @@index([source_traceability_snapshot_id])
+  @@index([locked_snapshot_id])
   @@index([approvalInstanceId])
   @@map("product_recalls")
 }
@@ -3093,6 +3383,35 @@ model BusinessNumberSequence {
   @@unique([company_id, scope, period])
   @@index([scope, period])
   @@map("business_number_sequences")
+}
+
+// Phase 14 Task 2: Traceability Drill workflow
+model TraceabilityDrill {
+  id                       String    @id @default(cuid())
+  company_id               String
+  drill_type               String
+  drill_date               DateTime  @db.Date
+  planned_start            DateTime?
+  planned_end              DateTime?
+  actual_start             DateTime?
+  actual_end               DateTime?
+  simulated_case           String?
+  root_object_type         String
+  root_object_id           String
+  traceability_snapshot_id String?
+  participants             String[]
+  reviewer_id              String?
+  approver_id              String?
+  conclusion               String?
+  conclusion_at            DateTime?
+  capa_id                  String?
+  status                   String    @default("planned")
+  created_at               DateTime  @default(now())
+  updated_at               DateTime  @updatedAt
+
+  @@index([company_id, drill_date, status])
+  @@index([root_object_type, root_object_id])
+  @@map("traceability_drills")
 }
 
 // ========================================
@@ -3208,4 +3527,363 @@ model ProductionTask {
   @@unique([planItemId, taskType, resourceType, resourceId])
   @@index([status, dueAt])
   @@map("production_tasks")
+}
+
+model SanitizerConcentrationCheck {
+  id                       String       @id @default(cuid())
+  company_id               String
+  area_point_id            String
+  area_point               WorkshopArea @relation("SanitizerCheckAreaPoint", fields: [area_point_id], references: [id], onDelete: Restrict)
+  disinfectant_type        String
+  target_concentration     Decimal?     @db.Decimal(14, 4)
+  actual_concentration     Decimal      @db.Decimal(14, 4)
+  unit                     String
+  judgment                 String
+  checked_at               DateTime
+  operator_id              String?
+  verifier_id              String?
+  notes                    String?
+  appeared_in_source_forms String[]     @default([])
+  source_form_version      String?
+  source_form_field_group  String?
+  created_at               DateTime     @default(now())
+  updated_at               DateTime     @updatedAt
+
+  @@index([company_id, area_point_id, checked_at])
+  @@map("sanitizer_concentration_checks")
+}
+
+model QualityInspectionTask {
+  id                     String    @id @default(cuid())
+  company_id             String
+  work_date              DateTime  @db.Date
+  shift_type             String?
+  area_point_id          String?
+  production_batch_id    String?
+  task_type              String
+  target_resource_type   String
+  target_resource_id     String?
+  standard_id            String?
+  assignee_role          String?
+  assignee_user_id       String?
+  due_at                 DateTime?
+  status                 String    @default("pending")
+  completed_resource_type String?
+  completed_resource_id  String?
+  skipped_reason         String?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  @@index([company_id, work_date, status])
+  @@index([area_point_id, work_date])
+  @@index([production_batch_id, status])
+  @@index([target_resource_type, target_resource_id])
+  @@map("quality_inspection_tasks")
+}
+
+// ── Phase 11 Task 7: Fragile Item Ledger ─────────────────────────────────────
+
+model FragileItemLedger {
+  id                 String       @id @default(cuid())
+  company_id         String
+  code               String
+  name               String
+  material_type      String
+  area_point_id      String
+  area_point         WorkshopArea @relation("FragileItemLedgerAreaPoint", fields: [area_point_id], references: [id], onDelete: Restrict)
+  location_desc      String?
+  risk_level         String
+  status             String       @default("active")
+  risk_assessment_id String?
+  created_at         DateTime     @default(now())
+  updated_at         DateTime     @updatedAt
+  usageReturns       FragileItemUsageReturn[]
+
+  @@unique([company_id, code])
+  @@index([company_id, area_point_id, status])
+  @@map("fragile_item_ledgers")
+}
+
+model FragileItemUsageReturn {
+  id               String            @id @default(cuid())
+  company_id       String
+  fragile_item_id  String
+  fragile_item     FragileItemLedger @relation(fields: [fragile_item_id], references: [id], onDelete: Restrict)
+  used_by          String?
+  used_at          DateTime
+  returned_at      DateTime?
+  return_condition String?
+  result           String
+  evidence_file_id String?
+  created_at       DateTime          @default(now())
+
+  @@index([company_id, fragile_item_id, used_at])
+  @@map("fragile_item_usage_returns")
+}
+
+// ── Phase 12 Task 2: MaterialAllergenProfile ──────────────────────────────────
+
+model MaterialAllergenProfile {
+  id                String    @id @default(cuid())
+  company_id        String
+  material_id       String
+  supplier_id       String?
+  allergen_code     String
+  allergen_name     String
+  contains_allergen Boolean
+  cross_contact_risk String?
+  evidence_file_id  String?
+  effective_from    DateTime
+  effective_to      DateTime?
+  status            String    @default("active")
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  material Material  @relation("MaterialAllergenProfileMaterial", fields: [material_id], references: [id], onDelete: Restrict)
+  supplier Supplier? @relation("MaterialAllergenProfileSupplier", fields: [supplier_id], references: [id], onDelete: SetNull)
+
+  @@index([company_id, material_id, supplier_id, status], map: "material_allergen_profiles_company_id_material_id_supplier__idx")
+  @@map("material_allergen_profiles")
+}
+
+// ── Phase 12 Task 6: ProductValidationRecord ─────────────────────────────────
+
+model ProductValidationRecord {
+  id                   String    @id @default(cuid())
+  company_id           String
+  product_id           String
+  recipe_id            String?
+  validation_type      String
+  inspection_record_id String?
+  change_event_id      String?
+  conclusion           String
+  conclusion_by        String?
+  concluded_at         DateTime?
+  evidence_file_id     String?
+  created_at           DateTime  @default(now())
+
+  product Product @relation("ProductValidationRecords", fields: [product_id], references: [id])
+
+  @@index([company_id, product_id, validation_type])
+  @@map("product_validation_records")
+}
+
+// ── Phase 12 Task 4: ProductRiskZone ──────────────────────────────────────────
+
+model ProductRiskZone {
+  id                 String    @id @default(cuid())
+  company_id         String
+  product_id         String
+  risk_zone          String
+  basis              String?
+  effective_from     DateTime
+  effective_to       DateTime?
+  status             String    @default("active")
+  approvalInstanceId String?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  product Product @relation("ProductRiskZones", fields: [product_id], references: [id])
+
+  @@index([company_id, product_id, status])
+  @@map("product_risk_zones")
+}
+
+// ── Phase 13 Task 2: RetainedSample ──────────────────────────────────────────
+
+model RetainedSample {
+  id                       String    @id @default(cuid())
+  company_id               String
+  sample_type              String
+  product_id               String?
+  material_batch_id        String?
+  production_batch_id      String?
+  sample_code              String
+  sample_qty               Decimal   @db.Decimal(14, 4)
+  unit                     String
+  retained_at              DateTime
+  retention_period         String?
+  expires_at               DateTime?
+  storage_condition        String?
+  storage_area_id          String?
+  status                   String    @default("retained")
+  disposal_action          String?
+  disposed_at              DateTime?
+  appeared_in_source_forms String[]  @default([])
+  source_form_version      String?
+  source_form_field_group  String?
+  created_at               DateTime  @default(now())
+  updated_at               DateTime  @updatedAt
+  inspections              RetainedSampleInspection[]
+
+  @@unique([company_id, sample_code])
+  @@index([company_id, sample_type, status])
+  @@index([company_id, production_batch_id])
+  @@map("retained_samples")
+}
+
+// ── Phase 13 Task 3: RetainedSampleInspection (revised) ──────────────────────
+
+model RetainedSampleInspection {
+  id                    String    @id @default(cuid())
+  retained_sample_id    String
+  retained_sample       RetainedSample @relation(fields: [retained_sample_id], references: [id], onDelete: Cascade)
+  inspection_type       String
+  inspection_record_id  String
+  processed_disposition String?
+  processed_at          DateTime?
+  processed_by          String?
+  created_at            DateTime  @default(now())
+
+  @@index([retained_sample_id])
+  @@index([inspection_record_id])
+  @@map("retained_sample_inspections")
+}
+
+// ── Phase 13 Task 4: ShelfLifeStudy ──────────────────────────────────────────
+
+model ShelfLifeStudy {
+  id                 String    @id @default(cuid())
+  company_id         String
+  product_id         String
+  retained_sample_id String?
+  study_type         String
+  storage_conditions Json
+  started_at         DateTime
+  planned_ended_at   DateTime
+  actual_ended_at    DateTime?
+  final_conclusion   String?
+  conclusion_by      String?
+  status             String    @default("active")
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  points             ShelfLifeStudyPoint[]
+
+  @@index([company_id, product_id, status])
+  @@map("shelf_life_studies")
+}
+
+model ShelfLifeStudyPoint {
+  id                  String         @id @default(cuid())
+  shelf_life_study_id String
+  shelf_life_study    ShelfLifeStudy @relation(fields: [shelf_life_study_id], references: [id], onDelete: Cascade)
+  point_code          String
+  sequence            Int
+  planned_at          DateTime
+  status              String    @default("pending")
+  skip_reason         String?
+  inspection_record_id String?
+  completed_at        DateTime?
+  completed_by        String?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  @@unique([shelf_life_study_id, point_code])
+  @@index([shelf_life_study_id, sequence])
+  @@index([status, planned_at])
+  @@index([inspection_record_id])
+  @@map("shelf_life_study_points")
+}
+
+// ── Phase 15 Task 4: AccessDeclaration ───────────────────────────────────────
+
+model AccessDeclaration {
+  id                  String   @id @default(cuid())
+  company_id          String
+  declaration_type    String
+  subject_type        String
+  subject_id          String?
+  subject_snapshot    Json?
+  declaration_content Json
+  declared_by         String?
+  declared_at         DateTime
+  approved_by         String?
+  approved_at         DateTime?
+  approval_conclusion String?
+  approval_opinion    String?
+  evidence_file_id    String?
+  status              String   @default("declared")
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+  visitor_links       VisitorAccessDeclaration[] @relation("AccessDeclarationLinks")
+
+  @@index([company_id, declaration_type, status])
+  @@index([subject_type, subject_id])
+  @@map("access_declarations")
+}
+
+// ── Phase 15 Task 5: VisitorRecord + VisitorAccessDeclaration join ────────────
+model VisitorAccessDeclaration {
+  visitor_record_id     String
+  access_declaration_id String
+  declaration_type      String
+  visitor_record        VisitorRecord     @relation("VisitorRecordDeclarations", fields: [visitor_record_id], references: [id], onDelete: Cascade)
+  access_declaration    AccessDeclaration @relation("AccessDeclarationLinks", fields: [access_declaration_id], references: [id], onDelete: Cascade)
+
+  @@id([visitor_record_id, access_declaration_id])
+  @@index([visitor_record_id])
+  @@index([access_declaration_id])
+  @@map("visitor_access_declarations")
+}
+
+// ── Phase 15 Task 7: GarmentInventory + LaundryWorkRecord + Items ─────────────
+
+model GarmentInventory {
+  id             String   @id @default(cuid())
+  company_id     String
+  code           String
+  garment_type   String
+  area_id        String?
+  quantity       Int
+  status         String   @default("active")
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  laundry_items  LaundryWorkRecordItem[]
+
+  @@unique([company_id, code])
+  @@index([company_id, garment_type, status])
+  @@map("garment_inventories")
+}
+
+model LaundryWorkRecord {
+  id                  String    @id @default(cuid())
+  company_id          String
+  work_date           DateTime  @db.Date
+  shift_type_id       String?
+  batch_no            String?
+  washing_method      String?
+  disinfection_method String?
+  disinfectant        String?
+  temperature         Decimal?  @db.Decimal(8, 2)
+  duration_min        Int?
+  operator_id         String?
+  verifier_id         String?
+  status              String    @default("draft")
+  notes               String?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  items               LaundryWorkRecordItem[]
+
+  @@index([company_id, work_date, status])
+  @@map("laundry_work_records")
+}
+
+model LaundryWorkRecordItem {
+  id                     String             @id @default(cuid())
+  laundry_work_record_id String
+  laundry_work_record    LaundryWorkRecord  @relation(fields: [laundry_work_record_id], references: [id], onDelete: Cascade)
+  garment_type           String
+  garment_inventory_id   String?
+  garment_inventory      GarmentInventory?  @relation(fields: [garment_inventory_id], references: [id], onDelete: SetNull)
+  area_id                String?
+  quantity               Int
+  action                 String
+  result                 String
+  notes                  String?
+  evidence_file_id       String?
+  created_at             DateTime           @default(now())
+
+  @@index([laundry_work_record_id])
+  @@index([garment_inventory_id])
+  @@map("laundry_work_record_items")
 }

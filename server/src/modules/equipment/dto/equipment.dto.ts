@@ -51,6 +51,10 @@ export class CreateEquipmentDto {
   @IsOptional()
   responsiblePersonId?: string;
 
+  @IsString()
+  @IsOptional()
+  areaPointId?: string;
+
   @IsObject()
   @IsOptional()
   maintenanceConfig?: Record<string, any>;
@@ -101,6 +105,10 @@ export class UpdateEquipmentDto {
   @IsOptional()
   responsiblePersonId?: string;
 
+  @IsString()
+  @IsOptional()
+  areaPointId?: string;
+
   @IsObject()
   @IsOptional()
   maintenanceConfig?: Record<string, any>;
@@ -148,4 +156,22 @@ export class QueryEquipmentDto {
   @IsString()
   @IsOptional()
   location?: string;
+}
+
+export class AttachEvidenceFileDto {
+  @IsString()
+  @IsNotEmpty()
+  resourceType: string;
+
+  @IsString()
+  @IsNotEmpty()
+  resourceId: string;
+
+  @IsString()
+  @IsOptional()
+  resourceItemId?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  fileId: string;
 }

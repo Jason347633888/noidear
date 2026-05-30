@@ -10,4 +10,5 @@ export class CreateMetalDetectionDto {
   @IsBoolean() al_test_pass: boolean;
   @IsBoolean() overall_pass: boolean;
   @IsOptional() @IsString() rejection_action?: string;
+  @IsOptional() @IsString() evidence_file_id?: string;
 }

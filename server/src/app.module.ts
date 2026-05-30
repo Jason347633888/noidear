@@ -68,6 +68,9 @@ import { OrgBootstrapModule } from './modules/org-bootstrap/org-bootstrap.module
 import { CompanyModule } from './modules/company/company.module';
 import { ProductionPlanModule } from './modules/production-plan/production-plan.module';
 import { InspectionRecordModule } from './modules/inspection-record/inspection-record.module';
+import { RetainedSampleModule } from './modules/retained-sample/retained-sample.module';
+import { AccessDeclarationModule } from './modules/access-declaration/access-declaration.module';
+import { LaundryRecordModule } from './modules/laundry-record/laundry-record.module';
 
 @Module({
   imports: [
@@ -139,6 +142,9 @@ import { InspectionRecordModule } from './modules/inspection-record/inspection-r
     CompanyModule,
     ProductionPlanModule,
     InspectionRecordModule,
+    RetainedSampleModule,
+    AccessDeclarationModule,
+    LaundryRecordModule,
     ModuleAccessModule,
   ],
   providers: [

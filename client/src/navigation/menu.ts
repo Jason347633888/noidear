@@ -60,6 +60,18 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    title: '产品开发',
+    moduleKey: 'product_rd',
+    icon: Goods,
+    children: [
+      { path: '/products/profiles', title: '产品画像', icon: Document },
+      { path: '/products/profiles', title: '产品过敏原', icon: WarnTriangleFilled },
+      { path: '/products/profiles', title: '产品风险区', icon: Monitor },
+      { path: '/products/profiles', title: '产品验证', icon: CircleCheck },
+      { path: '/products', title: '配方版本', icon: List },
+    ],
+  },
+  {
     title: '质量与合规',
     moduleKey: 'quality_compliance',
     icon: CircleCheck,
@@ -71,6 +83,29 @@ export const menuGroups: MenuGroup[] = [
       { path: '/product-recalls', title: '产品召回', icon: WarnTriangleFilled },
       { path: '/supplier-evaluations', title: '供应商评估', icon: Goods },
       { path: '/change-events', title: '变更管理', icon: Connection, moduleKey: 'product_rd' },
+    ],
+  },
+  {
+    title: '质量检验',
+    moduleKey: 'quality_compliance',
+    icon: CircleCheck,
+    children: [
+      { path: '/quality/workbench', title: '通用检验工作台', icon: CircleCheck },
+      { path: '/quality/inspection-records', title: '检验记录', icon: Document },
+      { path: '/environment-records', title: '环境监控', icon: Monitor },
+      { path: '/retained-samples', title: '留样管理', icon: Box },
+      { path: '/shelf-life-studies', title: '货架寿命研究', icon: DataAnalysis },
+      { path: '/batch-release', title: '批次放行', icon: CircleCheck },
+    ],
+  },
+  {
+    title: '清洁消毒',
+    moduleKey: 'equipment_site',
+    icon: Grid,
+    children: [
+      { path: '/cleaning/plans', title: '区域清洁方案', icon: Grid },
+      { path: '/cleaning/execution', title: '清洁执行', icon: List },
+      { path: '/cleaning/sanitizer-concentration', title: '消毒液浓度', icon: DataAnalysis },
     ],
   },
   {
@@ -107,7 +142,10 @@ export const menuGroups: MenuGroup[] = [
     children: [
       { path: '/batch-trace', title: '批次列表', icon: Box, moduleKey: 'production_execution' },
       { path: '/warehouse/batches', title: '批次管理', icon: Goods, moduleKey: 'warehouse' },
-      { path: '/traceability', title: '追溯查询', icon: Search },
+      { path: '/traceability/query', title: '追溯查询', icon: Search },
+      { path: '/traceability/drills', title: '追溯演练', icon: RefreshLeft },
+      { path: '/recalls', title: '产品召回', icon: WarnTriangleFilled },
+      { path: '/evidence/exports', title: '证据导出中心', icon: Files },
       { path: '/warehouse/material-balance', title: '物料平衡', icon: Goods },
       { path: '/incoming-inspections', title: '来料检验', icon: Document },
       { path: '/packaging-material-usages', title: '包装材料用量', icon: Grid },
@@ -120,6 +158,18 @@ export const menuGroups: MenuGroup[] = [
     children: [
       { path: '/warehouse/materials', title: '物料管理', icon: Goods },
       { path: '/warehouse/suppliers', title: '供应商', icon: Goods },
+    ],
+  },
+  {
+    title: '文控与治理',
+    moduleKey: 'document_approval',
+    icon: Files,
+    children: [
+      { path: '/documents/reviews', title: '文件周期审核', icon: Document },
+      { path: '/training/projects', title: '培训', icon: UserFilled, moduleKey: 'training' },
+      { path: '/visitors', title: '访客与声明', icon: UserFilled },
+      { path: '/external-parties/evaluations', title: '外部方评价', icon: Connection },
+      { path: '/laundry/records', title: '洗衣房', icon: Grid },
     ],
   },
   {

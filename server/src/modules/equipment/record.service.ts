@@ -16,6 +16,7 @@ import { PlanService } from './plan.service';
 import { StatsService } from './stats.service';
 import { OwnershipContext } from '../module-access/ownership-context';
 import { userIdsInDepts } from '../module-access/ownership-helpers';
+import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
 
 @Injectable()
 export class RecordService {
@@ -25,10 +26,11 @@ export class RecordService {
     private readonly prisma: PrismaService,
     private readonly planService: PlanService,
     private readonly statsService: StatsService,
+    private readonly numberSequence: QualityNumberSequenceService,
     @Optional() private readonly approvalEngine?: ApprovalEngineService,
   ) {}
 
-  async create(dto: CreateRecordDto, creatorId?: string) {
+  async create(dto: CreateRecordDto, creatorId?: string, companyId?: string) {
     const recordNumber = await this.generateRecordNumber();
     const optional: Record<string, any> = {};
     this.applyOptionalFields(optional, dto, creatorId);
@@ -36,6 +38,7 @@ export class RecordService {
     const record = await this.prisma.maintenanceRecord.create({
       data: {
         recordNumber,
+        company_id: companyId ?? '1',
         equipmentId: dto.equipmentId,
         maintenanceLevel: dto.maintenanceLevel as any,
         maintenanceDate: new Date(dto.maintenanceDate),
@@ -117,6 +120,56 @@ export class RecordService {
     }
 
     return this.prisma.maintenanceRecord.update({ where: { id }, data });
+  }
+
+  async submitMaintenanceRecord(recordId: string): Promise<{ status: string; [key: string]: any }> {
+    const record = await this.findOne(recordId);
+    if (!record) {
+      throw new NotFoundException('Maintenance record not found');
+    }
+
+    const items = await this.prisma.maintenanceRecordItem.findMany({
+      where: { maintenanceRecordId: recordId },
+    });
+
+    const hasMandatoryFail = items.some(
+      (item) => item.item_name !== null && item.result === 'fail',
+    );
+
+    if (hasMandatoryFail) {
+      throw new BadRequestException('mandatory checklist item failed');
+    }
+
+    const hasAnyFail = items.some((item) => item.result === 'fail');
+    const newStatus = hasAnyFail ? 'pending_verification' : 'approved';
+
+    return this.prisma.maintenanceRecord.update({
+      where: { id: recordId },
+      data: { status: newStatus as any },
+    });
+  }
+
+  async createNonConformanceFromMaintenanceItem(
+    recordId: string,
+    itemId: string,
+    context: { companyId: string; userId: string },
+  ) {
+    const nc_no = await this.numberSequence.generateNonConformanceNo(context.companyId);
+
+    return this.prisma.nonConformance.create({
+      data: {
+        company_id: context.companyId,
+        nc_no,
+        source_type: 'maintenance_record',
+        source_id: recordId,
+        source_item_id: itemId,
+        nc_type: 'maintenance_item_failure',
+        description: '维保检查项不合格',
+        discovered_by: context.userId,
+        discoveredById: context.userId,
+        discovered_at: new Date(),
+      },
+    });
   }
 
   async submit(id: string, userId?: string) {

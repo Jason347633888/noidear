@@ -41,6 +41,17 @@ interface CcpPointInput {
 
 const CCP_HAZARD_TYPES = new Set(['biological', 'chemical', 'physical']);
 
+const LABEL_COMPLIANCE_SCOPES = new Set([
+  'label',
+  'allergen',
+  'nutrition',
+  'origin',
+  'shelf_life',
+  'regulatory',
+]);
+
+const VERIFICATION_REQUIRED_SCOPES = new Set(['recipe', 'process', 'trial']);
+
 interface ProductProcessChangePayload {
   recipeLines?: RecipeLineInput[];
   processSteps?: ProcessStepInput[];
@@ -136,6 +147,7 @@ export class ProductProcessChangeService {
       }
 
       await this.validatePayload(plan, tx);
+      await this.validateComplianceGates(plan, tx);
 
       await tx.productProcessChangePlan.update({
         where: { id: plan.id },
@@ -188,6 +200,47 @@ export class ProductProcessChangeService {
     });
     if (!plan) throw new NotFoundException('产品工艺变更不存在');
     return plan;
+  }
+
+  /**
+   * Enforces compliance and verification gates before a plan can advance to approval:
+   * - Label/allergen/nutrition/origin/shelf-life/regulatory scopes require at least one
+   *   ChangeComplianceRecord (label and allergen impact review).
+   * - Recipe/process/trial scopes require at least one ChangeVerificationRecord
+   *   (sensory or trial evaluation).
+   */
+  private async validateComplianceGates(
+    plan: { changeEventId: string; scopes: Prisma.JsonValue },
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    const scopes = Array.isArray(plan.scopes) ? (plan.scopes as string[]) : [];
+    const scopeSet = new Set(scopes);
+
+    const needsCompliance = scopes.some((s) => LABEL_COMPLIANCE_SCOPES.has(s));
+    if (needsCompliance) {
+      const record = await tx.changeComplianceRecord.findFirst({
+        where: { change_event_id: plan.changeEventId },
+        select: { id: true },
+      });
+      if (!record) {
+        throw new BadRequestException('标签/过敏原/法规合规审查记录不能为空');
+      }
+    }
+
+    const needsVerification = scopes.some((s) => VERIFICATION_REQUIRED_SCOPES.has(s));
+    if (needsVerification) {
+      const record = await tx.changeVerificationRecord.findFirst({
+        where: { change_event_id: plan.changeEventId },
+        select: { id: true },
+      });
+      if (!record) {
+        throw new BadRequestException('配方/工艺/试产验证记录不能为空');
+      }
+    }
+
+    // Suppress TypeScript unused-variable warning while keeping scopeSet available
+    // for future gate expansions without lint noise.
+    void scopeSet;
   }
 
   /**

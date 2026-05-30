@@ -199,4 +199,87 @@ describe('EquipmentService', () => {
       );
     });
   });
+
+  // Task 11-T2: area point linkage + category enum + inactive guard
+  describe('area point linkage and category validation', () => {
+    it('should create equipment linked to an areaPointId', async () => {
+      const equipmentWithArea = { ...mockEquipment, area_point_id: 'area-1' };
+      prisma.equipment.findFirst.mockResolvedValue(null);
+      prisma.equipment.create.mockResolvedValue(equipmentWithArea);
+
+      const result = await service.create({
+        name: 'Test Equipment',
+        category: 'production',
+        areaPointId: 'area-1',
+      });
+
+      expect(result.area_point_id).toBe('area-1');
+      const createCall = prisma.equipment.create.mock.calls[0][0];
+      expect(createCall.data.area_point_id).toBe('area-1');
+    });
+
+    it('should accept all valid category values', async () => {
+      const categories = ['production', 'facility', 'measuring', 'utility', 'metal_detector', 'other'];
+      for (const category of categories) {
+        prisma.equipment.findFirst.mockResolvedValue(null);
+        prisma.equipment.create.mockResolvedValue({ ...mockEquipment, category });
+        const result = await service.create({ name: 'Test', category });
+        expect(result.category).toBe(category);
+      }
+    });
+
+    it('should reject invalid category value', async () => {
+      prisma.equipment.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.create({ name: 'Test', category: 'invalid_category' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject new maintenance plan creation on inactive/scrapped equipment', async () => {
+      const inactiveEquipment = { ...mockEquipment, status: 'inactive' };
+      prisma.equipment.findUnique.mockResolvedValue(inactiveEquipment);
+
+      await expect(
+        service.guardNewMaintenancePlan('eq-1'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject new maintenance plan creation on scrapped equipment', async () => {
+      const scrappedEquipment = { ...mockEquipment, status: 'scrapped' };
+      prisma.equipment.findUnique.mockResolvedValue(scrappedEquipment);
+
+      await expect(
+        service.guardNewMaintenancePlan('eq-1'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should allow new maintenance plan on active equipment', async () => {
+      prisma.equipment.findUnique.mockResolvedValue(mockEquipment);
+
+      await expect(
+        service.guardNewMaintenancePlan('eq-1'),
+      ).resolves.not.toThrow();
+    });
+
+    it('should preserve location text as display snapshot when areaPointId is set', async () => {
+      const equipmentWithBoth = {
+        ...mockEquipment,
+        area_point_id: 'area-1',
+        location: 'Warehouse A, Row 3',
+      };
+      prisma.equipment.findFirst.mockResolvedValue(null);
+      prisma.equipment.create.mockResolvedValue(equipmentWithBoth);
+
+      const result = await service.create({
+        name: 'Test Equipment',
+        category: 'production',
+        areaPointId: 'area-1',
+        location: 'Warehouse A, Row 3',
+      });
+
+      expect(result.location).toBe('Warehouse A, Row 3');
+      expect(result.area_point_id).toBe('area-1');
+    });
+  });
 });

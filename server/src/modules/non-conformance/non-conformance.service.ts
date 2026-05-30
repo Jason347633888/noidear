@@ -6,6 +6,10 @@ import { QualityNumberSequenceService } from '../quality-number-sequence/quality
 import { OwnershipContext } from '../module-access/ownership-context';
 import { userIdsInDepts } from '../module-access/ownership-helpers';
 
+type Db = Prisma.TransactionClient | PrismaService;
+
+type SourceValidator = (sourceId: string, companyId: string, db: Db, sourceItemId?: string) => Promise<void>;
+
 type CcpDeviationInput = {
   companyId: string;
   userId: string;
@@ -29,7 +33,7 @@ export class NonConformanceService {
   ) {}
 
   async create(dto: CreateNcDto, userId: string, companyId: string) {
-    await this.validateSourceExists(dto.source_type, dto.source_id, companyId);
+    await this.validateSourceExists(dto.source_type, dto.source_id, companyId, this.prisma, dto.source_item_id);
 
     const nc_no = await this.numberSequence.generateNonConformanceNo(companyId);
     return this.prisma.nonConformance.create({
@@ -66,37 +70,25 @@ export class NonConformanceService {
     });
   }
 
-  private async validateSourceExists(
-    sourceType: NcSourceType,
-    sourceId: string,
-    companyId: string,
-    db: Prisma.TransactionClient | PrismaService = this.prisma,
-  ) {
-    const trimmedSourceId = sourceId?.trim();
-    if (!trimmedSourceId) {
-      throw new BadRequestException('不合格来源不能为空');
-    }
-
-    if (sourceType === 'material_batch') {
+  private readonly sourceValidators: Partial<Record<NcSourceType, SourceValidator>> = {
+    material_batch: async (sourceId, _companyId, db) => {
       const materialBatch = await db.materialBatch.findUnique({
-        where: { id: trimmedSourceId },
+        where: { id: sourceId },
         select: { id: true, deletedAt: true },
       });
       if (!materialBatch || materialBatch.deletedAt != null) {
         throw new BadRequestException('物料批次来源不存在');
       }
-      return;
-    }
+    },
 
-    if (sourceType === 'production_batch') {
+    production_batch: async (sourceId, companyId, db) => {
       const productionBatch = await db.productionBatch.findUnique({
-        where: { id: trimmedSourceId },
+        where: { id: sourceId },
         select: { id: true, productId: true, deletedAt: true },
       });
       if (!productionBatch?.productId || productionBatch.deletedAt != null) {
         throw new BadRequestException('生产批次来源不存在');
       }
-
       const product = await db.product.findFirst({
         where: { id: productionBatch.productId, company_id: companyId, deleted_at: null },
         select: { id: true },
@@ -104,21 +96,165 @@ export class NonConformanceService {
       if (!product) {
         throw new BadRequestException('生产批次来源不存在');
       }
-      return;
-    }
+    },
 
-    if (sourceType === 'product') {
+    product: async (sourceId, companyId, db) => {
       const product = await db.product.findFirst({
-        where: { id: trimmedSourceId, company_id: companyId, deleted_at: null },
+        where: { id: sourceId, company_id: companyId, deleted_at: null },
         select: { id: true },
       });
       if (!product) {
         throw new BadRequestException('产品来源不存在');
       }
-      return;
+    },
+
+    inspection_record: async (sourceId, companyId, db, sourceItemId) => {
+      const record = await db.inspectionRecord.findUnique({
+        where: { id: sourceId },
+        select: { id: true, company_id: true },
+      });
+      if (!record || record.company_id !== companyId) {
+        throw new BadRequestException('检验记录来源不存在');
+      }
+      if (sourceItemId) {
+        const item = await db.inspectionRecordItem.findUnique({
+          where: { id: sourceItemId },
+          select: { id: true, record_id: true },
+        });
+        if (!item || item.record_id !== sourceId) {
+          throw new BadRequestException('检验记录子项不存在');
+        }
+      }
+    },
+
+    // ── Phase 10 Task 4: SanitizerConcentrationCheck ──────────────────────
+    sanitizer_concentration_check: async (sourceId, companyId, db) => {
+      const check = await db.sanitizerConcentrationCheck.findUnique({
+        where: { id: sourceId },
+        select: { id: true, company_id: true },
+      });
+      if (!check || check.company_id !== companyId) {
+        throw new BadRequestException('消毒液浓度检查记录来源不存在');
+      }
+    },
+    // ── Phase 10 Task 6: CleaningRecord ───────────────────────────────────────
+    cleaning_record: async (sourceId, companyId, db, sourceItemId) => {
+      const record = await db.cleaningRecord.findUnique({
+        where: { id: sourceId },
+        select: { id: true, company_id: true },
+      });
+      if (!record || record.company_id !== companyId) {
+        throw new BadRequestException('清洁记录来源不存在');
+      }
+      if (sourceItemId) {
+        const item = await db.cleaningRecordItem.findUnique({
+          where: { id: sourceItemId },
+          select: { id: true, record_id: true },
+        });
+        if (!item || item.record_id !== sourceId) {
+          throw new BadRequestException('清洁记录子项不存在');
+        }
+      }
+    },
+    // ── Phase 11 Task 4: CalibrationRecord ───────────────────────────────────
+    calibration_record: async (sourceId, companyId, db, sourceItemId) => {
+      const exists = await db.calibrationRecord.count({ where: { id: sourceId, company_id: companyId } });
+      if (!exists) {
+        throw new BadRequestException('校准记录来源不存在');
+      }
+      if (sourceItemId) {
+        const reading = await db.calibrationPointReading.findUnique({
+          where: { id: sourceItemId },
+          select: { id: true, calibration_record_id: true },
+        });
+        if (!reading || reading.calibration_record_id !== sourceId) {
+          throw new BadRequestException('校准点读数不存在');
+        }
+      }
+    },
+    maintenance_record: async (sourceId, companyId, db, sourceItemId) => {
+      const record = await db.maintenanceRecord.findUnique({
+        where: { id: sourceId },
+        select: { id: true, company_id: true },
+      });
+      if (!record || record.company_id !== companyId) {
+        throw new BadRequestException('维保记录来源不存在');
+      }
+      if (sourceItemId) {
+        const item = await db.maintenanceRecordItem.findUnique({
+          where: { id: sourceItemId },
+          select: { id: true, maintenanceRecordId: true },
+        });
+        if (!item || item.maintenanceRecordId !== sourceId) {
+          throw new BadRequestException('维保记录检查项不存在');
+        }
+      }
+    },
+    metal_detection_log: async (sourceId, _companyId, db) => {
+      const count = await db.metalDetectionLog.count({ where: { id: sourceId } });
+      if (!count) {
+        throw new BadRequestException('金属探测记录来源不存在');
+      }
+    },
+    // ── Phase 15 Task 7: LaundryWorkRecord ────────────────────────────────────
+    laundry_work_record: async (sourceId, companyId, db, sourceItemId) => {
+      const record = await db.laundryWorkRecord.findUnique({
+        where: { id: sourceId },
+        select: { id: true, company_id: true },
+      });
+      if (!record || record.company_id !== companyId) {
+        throw new BadRequestException('洗涤工作记录来源不存在');
+      }
+      if (sourceItemId) {
+        const item = await db.laundryWorkRecordItem.findUnique({
+          where: { id: sourceItemId },
+          select: { id: true, laundry_work_record_id: true },
+        });
+        if (!item || item.laundry_work_record_id !== sourceId) {
+          throw new BadRequestException('洗涤工作记录子项不存在');
+        }
+      }
+    },
+    // ── Phase 11 Task 6: EquipmentUsageRecord ────────────────────────────────
+    equipment_usage_record: async (sourceId, companyId, db) => {
+      const record = await db.equipmentUsageRecord.findUnique({
+        where: { id: sourceId },
+        select: { id: true, company_id: true },
+      });
+      if (!record || record.company_id !== companyId) {
+        throw new BadRequestException('设备使用记录来源不存在');
+      }
+    },
+    // ── Phase 11 Task 7: FragileItemUsageReturn ──────────────────────────────
+    fragile_item_usage_return: async (sourceId, companyId, db) => {
+      const record = await db.fragileItemUsageReturn.findUnique({
+        where: { id: sourceId },
+        select: { id: true, company_id: true },
+      });
+      if (!record || record.company_id !== companyId) {
+        throw new BadRequestException('易碎品使用归还记录来源不存在');
+      }
+    },
+  };
+
+  private async validateSourceExists(
+    sourceType: NcSourceType,
+    sourceId: string,
+    companyId: string,
+    db: Db = this.prisma,
+    sourceItemId?: string,
+  ) {
+    const trimmedSourceId = sourceId?.trim();
+    if (!trimmedSourceId) {
+      throw new BadRequestException('不合格来源不能为空');
     }
 
-    throw new BadRequestException('不支持的不合格来源类型');
+    const validator = this.sourceValidators[sourceType];
+    if (!validator) {
+      throw new BadRequestException('不支持的不合格来源类型');
+    }
+
+    await validator(trimmedSourceId, companyId, db, sourceItemId);
   }
 
   private buildCcpDeviationDescription(record: CcpDeviationInput['ccpRecord']) {
@@ -220,6 +356,30 @@ export class NonConformanceService {
         rework_date: new Date(),
         operator_id: userId,
         quality_verdict: 'pending',
+      },
+    });
+  }
+
+  async createFromCalibrationReading(input: {
+    calibrationRecordId: string;
+    readingId: string;
+    companyId: string;
+    userId: string;
+    description?: string;
+  }) {
+    const nc_no = await this.numberSequence.generateNonConformanceNo(input.companyId);
+    return this.prisma.nonConformance.create({
+      data: {
+        company_id: input.companyId,
+        nc_no,
+        source_type: 'calibration_record',
+        source_id: input.calibrationRecordId,
+        source_item_id: input.readingId,
+        nc_type: 'calibration_failure',
+        description: input.description ?? '校准点读数不合格',
+        discovered_by: input.userId,
+        discoveredById: input.userId,
+        discovered_at: new Date(),
       },
     });
   }

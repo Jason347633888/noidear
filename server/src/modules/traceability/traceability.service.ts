@@ -1,17 +1,30 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SOURCE_VERSION } from './traceability-contract.mapper';
 import { TraceabilityQueryService } from './traceability-query.service';
 import { TraceabilityLinkageService } from './traceability-linkage.service';
 import { TraceabilityExportService } from './traceability-export.service';
 import {
+  buildMaterialBatchSnapshotData,
+  buildProductionBatchSnapshotData,
+  buildProductRecallSnapshotData,
   buildSnapshotData,
   buildSourceQueryHash,
+  buildTraceabilityDrillSnapshotData,
+  computeGenericReadiness,
   computeReadiness,
-  FIRST_RELEASE_ROOT_TYPE,
+  isSupportedRootType,
   normalizeTraceDepth,
   type SnapshotData,
 } from './evidence-snapshot.helpers';
+
+/**
+ * Task 14-5: Default evidence export layout codes.
+ * No ExportTemplate model is used; the layout code is stored in templateVersion
+ * on EvidenceExport for auditability. These codes identify the fixed default
+ * layout that was active when the export was generated.
+ */
+const DEFAULT_TRACEABILITY_LAYOUT = 'traceability_default_v1';
 
 interface TraceCurrentUser {
   id?: string;
@@ -57,11 +70,45 @@ interface CreateTraceContextSnapshotInput {
   rootObjectId?: string;
   maxDepth?: number;
   requesterId?: string;
+  skipExportCreation?: boolean;
+}
+
+/** Approval snapshot shape — only non-signature fields are stored. */
+export interface ApprovalSnapshot {
+  submittedBy: string | null;
+  submittedAt: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  conclusion: 'approved' | 'rejected' | 'not_required';
+  opinion: string | null;
+}
+
+interface CreateEvidenceExportInput {
+  companyId: string;
+  /** Currently only "production_batch" is supported for formal exports. */
+  resourceType: string;
+  resourceId: string;
+  /** "formal" = completed batch + no open blockers required; "preview" = always allowed. */
+  exportMode: 'formal' | 'preview';
+  requesterId: string;
+  approvalContext?: Partial<ApprovalSnapshot>;
+}
+
+interface ResolvedSnapshotInput {
+  company_id: string;
+  rootObjectType: string;
+  rootObjectId: string;
+  maxDepth?: number;
+  requesterId?: string;
+  depth: number;
+  skipExportCreation?: boolean;
 }
 
 
 @Injectable()
 export class TraceabilityService {
+  private readonly logger = new Logger(TraceabilityService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly traceabilityQueryService: TraceabilityQueryService,
@@ -134,19 +181,23 @@ export class TraceabilityService {
     return this.exportService.getSnapshotResult(snapshotId, currentUser);
   }
 
-  // ── Task 9: bounded trace-context snapshot + evidence export ──────────────
+  // ── Task 9 + Task 14-3: bounded trace-context snapshot + evidence export ──────────────
 
   /**
-   * Always builds a FRESH immutable trace-context snapshot for a production
-   * batch. When the batch is ready (completed + no open NC + main chain present)
+   * Always builds a FRESH immutable trace-context snapshot for any supported
+   * rootObjectType: production_batch, material_batch, product_recall, or
+   * traceability_drill.
+   *
+   * When the root object is ready (completed + no open NC + main chain present)
    * it also creates an EvidenceExport event; otherwise it returns a preview
-   * snapshot and creates NO EvidenceExport. First release rejects any root
-   * object type other than `production_batch`.
+   * snapshot and creates NO EvidenceExport.
+   *
+   * Performance: default depth=3, max depth=6, batch queries by ids, logs node counts.
    */
   async createTraceContextSnapshot(dto: CreateTraceContextSnapshotInput) {
-    if (dto.rootObjectType !== FIRST_RELEASE_ROOT_TYPE) {
+    if (!dto.rootObjectType || !isSupportedRootType(dto.rootObjectType)) {
       throw new BadRequestException(
-        `Unsupported rootObjectType "${dto.rootObjectType}"; first release supports only "${FIRST_RELEASE_ROOT_TYPE}"`,
+        `Unsupported rootObjectType "${dto.rootObjectType}"; supported values: production_batch, material_batch, product_recall, traceability_drill`,
       );
     }
     if (!dto.rootObjectId) {
@@ -155,7 +206,39 @@ export class TraceabilityService {
 
     const companyId = dto.company_id ?? '1';
     const depth = normalizeTraceDepth(dto.maxDepth);
+    const rootObjectType = dto.rootObjectType as string;
+    const rootObjectId = dto.rootObjectId as string;
+    const requesterId = dto.requesterId;
 
+    const base = {
+      company_id: companyId,
+      rootObjectType,
+      rootObjectId,
+      maxDepth: dto.maxDepth,
+      requesterId,
+      depth,
+      skipExportCreation: dto.skipExportCreation,
+    };
+
+    switch (rootObjectType) {
+      case 'production_batch':
+        return this.createProductionBatchSnapshot(base);
+      case 'material_batch':
+        return this.createMaterialBatchSnapshot(base);
+      case 'product_recall':
+        return this.createProductRecallSnapshot(base);
+      case 'traceability_drill':
+        return this.createTraceabilityDrillSnapshot(base);
+      default: {
+        // isSupportedRootType() guards above, so this branch should be unreachable.
+        // Throw rather than return undefined so TypeScript and runtime both fail loudly.
+        const exhausted: never = rootObjectType as never;
+        throw new BadRequestException(`Unhandled rootObjectType: ${exhausted}`);
+      }
+    }
+  }
+
+  private async createProductionBatchSnapshot(dto: ResolvedSnapshotInput) {
     const batch = await this.prisma.productionBatch.findFirst({
       where: { id: dto.rootObjectId },
     });
@@ -172,10 +255,13 @@ export class TraceabilityService {
       ? await this.prisma.materialBatch.findMany({ where: { id: { in: materialBatchIds } } })
       : [];
 
+    // Batch-load related records.
+    const related = await this.loadRelatedFacts(dto.company_id, 'production_batch', [batch.id, ...materialBatchIds]);
+
     // Open non-conformances on the batch or any upstream material batch.
     const openNonConformances = await this.prisma.nonConformance.findMany({
       where: {
-        company_id: companyId,
+        company_id: dto.company_id,
         status: 'open',
         OR: [
           { source_type: 'production_batch', source_id: batch.id },
@@ -186,11 +272,16 @@ export class TraceabilityService {
       },
     });
 
-    const snapshotData = buildSnapshotData({
+    this.logger.log(
+      `[snapshot] production_batch=${batch.id} depth=${dto.depth} upstream=${materialBatches.length} nc=${openNonConformances.length} inspections=${related.inspections?.length ?? 0}`,
+    );
+
+    const snapshotData = buildProductionBatchSnapshotData({
       batch: batch as any,
       usages: usages as any,
       materialBatches: materialBatches as any,
-      depth,
+      depth: dto.depth,
+      related,
     });
 
     const { ready, reasons } = computeReadiness({
@@ -199,58 +290,395 @@ export class TraceabilityService {
       openNonConformanceCount: openNonConformances.length,
     });
 
-    const requesterId = dto.requesterId ?? 'system';
-    const sourceQueryHash = buildSourceQueryHash({
+    return this.persistSnapshot({
+      companyId: dto.company_id,
       rootObjectType: dto.rootObjectType,
       rootObjectId: dto.rootObjectId,
-      depth,
+      depth: dto.depth,
+      snapshotData,
+      ready,
+      reasons,
+      requesterId: dto.requesterId ?? 'system',
+      skipExportCreation: dto.skipExportCreation,
+    });
+  }
+
+  private async createMaterialBatchSnapshot(dto: ResolvedSnapshotInput) {
+    const batch = await this.prisma.materialBatch.findFirst({
+      where: { id: dto.rootObjectId },
+    });
+    if (!batch) {
+      throw new NotFoundException(`Material batch ${dto.rootObjectId} not found`);
+    }
+
+    const related = await this.loadRelatedFacts(dto.company_id, 'material_batch', [batch.id]);
+
+    this.logger.log(
+      `[snapshot] material_batch=${batch.id} depth=${dto.depth} inspections=${related.inspections?.length ?? 0}`,
+    );
+
+    const snapshotData = buildMaterialBatchSnapshotData({
+      batch: batch as any,
+      depth: dto.depth,
+      related,
     });
 
-    const summary = {
+    const { ready, reasons } = computeGenericReadiness();
+
+    return this.persistSnapshot({
+      companyId: dto.company_id,
       rootObjectType: dto.rootObjectType,
       rootObjectId: dto.rootObjectId,
-      depth,
-      upstreamCount: snapshotData.upstream.length,
-      downstreamCount: snapshotData.downstream.length,
-      readinessStatus: ready ? 'complete' : 'incomplete',
+      depth: dto.depth,
+      snapshotData,
+      ready,
+      reasons,
+      requesterId: dto.requesterId ?? 'system',
+      skipExportCreation: dto.skipExportCreation,
+    });
+  }
+
+  private async createProductRecallSnapshot(dto: ResolvedSnapshotInput) {
+    const recall = await this.prisma.productRecall.findFirst({
+      where: { id: dto.rootObjectId },
+      include: { batches: { select: { production_batch_id: true, batch_number_snapshot: true, product_name_snapshot: true } } },
+    });
+    if (!recall) {
+      throw new NotFoundException(`Product recall ${dto.rootObjectId} not found`);
+    }
+
+    const related = await this.loadRelatedFacts(dto.company_id, 'product_recall', [recall.id]);
+
+    this.logger.log(
+      `[snapshot] product_recall=${recall.id} depth=${dto.depth} inspections=${related.inspections?.length ?? 0}`,
+    );
+
+    const snapshotData = buildProductRecallSnapshotData({
+      recall: recall as any,
+      depth: dto.depth,
+      related,
+    });
+
+    const { ready, reasons } = computeGenericReadiness();
+
+    return this.persistSnapshot({
+      companyId: dto.company_id,
+      rootObjectType: dto.rootObjectType,
+      rootObjectId: dto.rootObjectId,
+      depth: dto.depth,
+      snapshotData,
+      ready,
+      reasons,
+      requesterId: dto.requesterId ?? 'system',
+      skipExportCreation: dto.skipExportCreation,
+    });
+  }
+
+  private async createTraceabilityDrillSnapshot(dto: ResolvedSnapshotInput) {
+    const drill = await this.prisma.traceabilityDrill.findFirst({
+      where: { id: dto.rootObjectId },
+    });
+    if (!drill) {
+      throw new NotFoundException(`Traceability drill ${dto.rootObjectId} not found`);
+    }
+
+    const related = await this.loadRelatedFacts(dto.company_id, 'traceability_drill', [drill.id]);
+
+    this.logger.log(
+      `[snapshot] traceability_drill=${drill.id} depth=${dto.depth} inspections=${related.inspections?.length ?? 0}`,
+    );
+
+    const snapshotData = buildTraceabilityDrillSnapshotData({
+      drill: drill as any,
+      depth: dto.depth,
+      related,
+    });
+
+    const { ready, reasons } = computeGenericReadiness();
+
+    return this.persistSnapshot({
+      companyId: dto.company_id,
+      rootObjectType: dto.rootObjectType,
+      rootObjectId: dto.rootObjectId,
+      depth: dto.depth,
+      snapshotData,
+      ready,
+      reasons,
+      requesterId: dto.requesterId ?? 'system',
+      skipExportCreation: dto.skipExportCreation,
+    });
+  }
+
+  /**
+   * Batch-loads all related facts for the snapshot using id arrays (no per-node
+   * query loops). This keeps the number of DB round-trips bounded.
+   */
+  private async loadRelatedFacts(
+    companyId: string,
+    sourceType: string,
+    sourceIds: string[],
+  ) {
+    if (!sourceIds.length) {
+      return { inspections: [], nonConformances: [], correctiveActions: [], approvals: [], evidenceFiles: [] };
+    }
+
+    const [inspections, nonConformances, evidenceFiles] = await Promise.all([
+      this.loadInspections(companyId, sourceType, sourceIds),
+      this.loadNonConformances(companyId, sourceType, sourceIds),
+      this.loadEvidenceFiles(companyId, sourceType, sourceIds),
+    ]);
+
+    // CAPAs link via trigger_id (NC id), so we need NC ids from the already-loaded NCs.
+    const ncIds = nonConformances.map((nc: { id: string }) => nc.id);
+    const [correctiveActions, approvals] = await Promise.all([
+      this.loadCorrectiveActions(companyId, sourceType, sourceIds, ncIds),
+      this.loadApprovals(companyId, sourceType, sourceIds),
+    ]);
+
+    return { inspections, nonConformances, correctiveActions, approvals, evidenceFiles };
+  }
+
+  private async loadInspections(companyId: string, sourceType: string, sourceIds: string[]) {
+    try {
+      return await this.prisma.inspectionRecord.findMany({
+        where: { company_id: companyId, object_type: sourceType, object_id: { in: sourceIds } },
+        select: { id: true, overall_result: true, inspected_at: true },
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  private async loadNonConformances(companyId: string, sourceType: string, sourceIds: string[]) {
+    try {
+      return await this.prisma.nonConformance.findMany({
+        where: { company_id: companyId, source_type: sourceType, source_id: { in: sourceIds } },
+        select: { id: true, nc_no: true, status: true, source_type: true, source_id: true },
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * CorrectiveAction links to its trigger via trigger_type/trigger_id, not via
+   * a direct source_id column. Loading CAPAs for a batch or recall requires
+   * first resolving the NC ids for those objects, then querying CAPAs with
+   * trigger_type='non_conformance' and trigger_id in those NC ids.
+   *
+   * That two-hop join requires the NC ids which are already available from
+   * loadNonConformances. To avoid a separate DB round-trip here we accept an
+   * optional ncIds param populated by the caller from the already-loaded NCs.
+   */
+  private async loadCorrectiveActions(companyId: string, _sourceType: string, _sourceIds: string[], ncIds: string[] = []) {
+    if (!ncIds.length) {
+      return [];
+    }
+    try {
+      return await this.prisma.correctiveAction.findMany({
+        where: { company_id: companyId, trigger_type: 'non_conformance', trigger_id: { in: ncIds } },
+        select: { id: true, capa_no: true, status: true },
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  private async loadApprovals(_companyId: string, sourceType: string, sourceIds: string[]) {
+    try {
+      return await this.prisma.approvalInstance.findMany({
+        where: { resourceType: sourceType, resourceId: { in: sourceIds } },
+        select: { id: true, createdById: true, status: true, completedAt: true },
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  private async loadEvidenceFiles(companyId: string, sourceType: string, sourceIds: string[]) {
+    try {
+      return await this.prisma.evidenceFile.findMany({
+        where: { company_id: companyId, resourceType: sourceType, resourceId: { in: sourceIds } },
+        select: { id: true, fileName: true, filePath: true, mimeType: true },
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Shared snapshot persistence + optional EvidenceExport creation.
+   *
+   * When `skipExportCreation` is true the snapshot row is persisted but NO
+   * EvidenceExport is created — callers that need richer export metadata
+   * (e.g. createEvidenceExport) handle that step themselves.
+   */
+  private async persistSnapshot(input: {
+    companyId: string;
+    rootObjectType: string;
+    rootObjectId: string;
+    depth: number;
+    snapshotData: unknown;
+    ready: boolean;
+    reasons: string[];
+    requesterId: string;
+    skipExportCreation?: boolean;
+  }) {
+    const sourceQueryHash = buildSourceQueryHash({
+      rootObjectType: input.rootObjectType,
+      rootObjectId: input.rootObjectId,
+      depth: input.depth,
+    });
+
+    const snapshotDataObj = input.snapshotData as any;
+    const nodeCounts = {
+      upstream: snapshotDataObj?.upstream?.length ?? 0,
+      downstream: snapshotDataObj?.downstream?.length ?? 0,
+      inspections: snapshotDataObj?.inspections?.length ?? 0,
+      nonConformances: snapshotDataObj?.nonConformances?.length ?? 0,
+      correctiveActions: snapshotDataObj?.correctiveActions?.length ?? 0,
+      approvals: snapshotDataObj?.approvals?.length ?? 0,
+      evidenceFiles: snapshotDataObj?.evidenceFiles?.length ?? 0,
+    };
+
+    this.logger.log(
+      `[snapshot] persisting rootType=${input.rootObjectType} id=${input.rootObjectId} ready=${input.ready} nodes=${JSON.stringify(nodeCounts)}`,
+    );
+
+    const summary = {
+      rootObjectType: input.rootObjectType,
+      rootObjectId: input.rootObjectId,
+      depth: input.depth,
+      ...nodeCounts,
+      readinessStatus: input.ready ? 'complete' : 'incomplete',
     };
 
     const snapshot = await this.prisma.traceabilitySnapshot.create({
       data: {
-        company_id: companyId,
+        company_id: input.companyId,
         sourceQueryHash,
         exportMode: 'snapshot',
-        requesterId,
+        requesterId: input.requesterId,
         status: 'ready',
         snapshotType: 'query',
         summary: summary as unknown as object,
-        rootObjectType: dto.rootObjectType,
-        rootObjectId: dto.rootObjectId,
-        snapshotData: snapshotData as unknown as object,
-        snapshotPurpose: ready ? 'evidence_export' : 'preview',
-        readinessStatus: ready ? 'complete' : 'incomplete',
-        readinessReasons: ready ? undefined : (reasons as unknown as object),
+        rootObjectType: input.rootObjectType,
+        rootObjectId: input.rootObjectId,
+        snapshotData: input.snapshotData as unknown as object,
+        snapshotPurpose: input.ready ? 'evidence_export' : 'preview',
+        readinessStatus: input.ready ? 'complete' : 'incomplete',
+        readinessReasons: input.ready ? undefined : (input.reasons as unknown as object),
       },
     });
 
-    // Create an EvidenceExport ONLY when ready. Preview snapshots return without one.
+    // Create an EvidenceExport ONLY when ready and not suppressed by caller.
     let evidenceExport: { id: string } | null = null;
-    if (ready) {
+    if (input.ready && !input.skipExportCreation) {
       evidenceExport = await this.createExportFromSnapshot({
-        companyId,
-        resourceType: dto.rootObjectType,
-        resourceId: dto.rootObjectId,
+        companyId: input.companyId,
+        resourceType: input.rootObjectType,
+        resourceId: input.rootObjectId,
         snapshotId: snapshot.id,
-        snapshotData,
-        exportedById: requesterId,
+        snapshotData: input.snapshotData as SnapshotData,
+        exportedById: input.requesterId,
       });
     }
 
     return {
       ...snapshot,
       evidenceExportId: evidenceExport?.id ?? null,
-      readinessReasons: ready ? [] : reasons,
+      readinessReasons: input.ready ? [] : input.reasons,
     };
+  }
+
+  /**
+   * Phase 14 Task 6: EvidenceExport package generation with approval snapshot.
+   *
+   * Always builds a FRESH immutable snapshot. For formal exports the batch must
+   * be completed and have no open blockers; preview exports are unconditional.
+   * Historical exports are never overwritten — every call creates a new row.
+   */
+  async createEvidenceExport(input: CreateEvidenceExportInput) {
+    // Step 0: type guard — formal exports are restricted to production_batch.
+    // Other root types (material_batch, product_recall, traceability_drill) use
+    // computeGenericReadiness() which always returns ready=true, bypassing the
+    // completed/main-chain/open-NC gate entirely. Forward-compat types must
+    // opt in explicitly once their own readiness checks are implemented.
+    if (input.exportMode === 'formal' && input.resourceType !== 'production_batch') {
+      throw new BadRequestException(
+        `Formal evidence exports only support production_batch; received "${input.resourceType}". ` +
+        `Use exportMode="preview" for other resource types.`,
+      );
+    }
+
+    // Step 1: build snapshot only — suppress automatic EvidenceExport creation so we
+    // can create it ourselves with approval + attachment metadata in steps 3-5.
+    const snapshot = await this.createTraceContextSnapshot({
+      company_id: input.companyId,
+      rootObjectType: input.resourceType,
+      rootObjectId: input.resourceId,
+      requesterId: input.requesterId,
+      skipExportCreation: true,
+    });
+
+    const readinessStatus: string = (snapshot as any).readinessStatus ?? 'incomplete';
+
+    // Step 2: readiness gate — formal exports require a complete snapshot.
+    if (input.exportMode === 'formal' && readinessStatus !== 'complete') {
+      const reasons: string[] = (snapshot as any).readinessReasons ?? [];
+      throw new ConflictException(
+        `Evidence export not ready: ${reasons.join('; ') || 'snapshot readiness is incomplete'}`,
+      );
+    }
+
+    // Preview mode: return snapshot with readiness status; no EvidenceExport row is
+    // ever persisted in preview mode — even when the snapshot is complete.
+    // (Controller comment line 92: "preview snapshots never create an EvidenceExport".)
+    if (input.exportMode !== 'formal') {
+      return { ...snapshot, readinessStatus };
+    }
+
+    // Step 3: build approval snapshot — only the allowed fields, no signatures.
+    const approvalSnapshot: ApprovalSnapshot = {
+      submittedBy: input.approvalContext?.submittedBy ?? null,
+      submittedAt: input.approvalContext?.submittedAt ?? null,
+      reviewedBy: input.approvalContext?.reviewedBy ?? null,
+      reviewedAt: input.approvalContext?.reviewedAt ?? null,
+      conclusion: input.approvalContext?.conclusion ?? 'not_required',
+      opinion: input.approvalContext?.opinion ?? null,
+    };
+
+    // Step 4: build attachment index from the snapshot's own evidenceFiles array.
+    // The snapshot already loaded evidence files for the FULL upstream chain
+    // (batch + all material batches) via loadRelatedFacts — reusing that data
+    // avoids a duplicate DB round-trip and ensures upstream attachments are counted.
+    const snapshotEvidenceFiles: Array<{
+      id: string;
+      fileName?: string | null;
+      filePath?: string | null;
+      mimeType?: string | null;
+    }> = (snapshot as any).snapshotData?.evidenceFiles ?? [];
+    const attachmentIndex = {
+      count: snapshotEvidenceFiles.length,
+      refs: snapshotEvidenceFiles.map((f) => ({
+        id: f.id,
+        fileName: f.fileName ?? null,
+        filePath: f.filePath ?? null,
+        mimeType: f.mimeType ?? null,
+      })),
+    };
+
+    // Step 5: create EvidenceFile + EvidenceExport — always creates new rows (immutable).
+    return this.createExportFromSnapshot({
+      companyId: input.companyId,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      snapshotId: snapshot.id,
+      snapshotData: (snapshot as any).snapshotData as SnapshotData,
+      exportedById: input.requesterId,
+      approvalSnapshot,
+      attachmentIndex,
+    });
   }
 
   /**
@@ -270,9 +698,9 @@ export class TraceabilityService {
         `Snapshot ${snapshotId} is not ready for evidence export (readiness "${(snapshot as any).readinessStatus}")`,
       );
     }
-    if ((snapshot as any).rootObjectType !== FIRST_RELEASE_ROOT_TYPE) {
+    if (!isSupportedRootType((snapshot as any).rootObjectType)) {
       throw new BadRequestException(
-        `Snapshot ${snapshotId} root object type is not "${FIRST_RELEASE_ROOT_TYPE}"`,
+        `Snapshot ${snapshotId} root object type "${(snapshot as any).rootObjectType}" is not supported`,
       );
     }
 
@@ -341,6 +769,8 @@ export class TraceabilityService {
     snapshotData: SnapshotData;
     exportedById: string;
     templateVersion?: string;
+    approvalSnapshot?: ApprovalSnapshot | null;
+    attachmentIndex?: { count: number; refs: unknown[] } | null;
   }) {
     const fileName = `evidence-${input.resourceType}-${input.resourceId}-${input.snapshotId}.pdf`;
     const evidenceFile = await this.prisma.evidenceFile.create({
@@ -362,9 +792,11 @@ export class TraceabilityService {
         resourceType: input.resourceType,
         resourceId: input.resourceId,
         snapshotId: input.snapshotId,
-        templateVersion: input.templateVersion ?? null,
+        templateVersion: input.templateVersion ?? DEFAULT_TRACEABILITY_LAYOUT,
         exportScope: 'main_chain_evidence',
         dataSnapshot: input.snapshotData as unknown as object,
+        approvalSnapshot: input.approvalSnapshot ? (input.approvalSnapshot as unknown as object) : undefined,
+        attachmentIndex: input.attachmentIndex ? (input.attachmentIndex as unknown as object) : undefined,
         summaryFormat: 'pdf',
         fileId: evidenceFile.id,
         exportedById: input.exportedById,

@@ -88,6 +88,7 @@
           <el-select v-model="createForm.record_type" placeholder="请选择" style="width: 100%">
             <el-option label="温湿度" value="temperature_humidity" />
             <el-option label="压差" value="pressure_differential" />
+            <el-option label="冷藏温度" value="fridge_temperature" />
             <el-option label="其他" value="other" />
           </el-select>
         </el-form-item>
@@ -182,10 +183,20 @@ const createForm = reactive({
 });
 
 const createRules: FormRules = {
-  location_id: [{ required: true, message: '请选择监测位置', trigger: 'change' }],
+  location_id: [
+    {
+      validator: (_rule: unknown, value: string, callback: (err?: Error) => void) => {
+        if (!createForm.production_batch_id && !value) {
+          callback(new Error('未选择生产批次时，必须选择监测位置'));
+        } else {
+          callback();
+        }
+      },
+      trigger: 'change',
+    },
+  ],
   record_type: [{ required: true, message: '请选择记录类型', trigger: 'change' }],
   is_within_spec: [{ required: true, message: '请选择是否达标', trigger: 'change' }],
-  production_batch_id: [{ required: true, message: '请选择生产批次', trigger: 'change' }],
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -244,14 +255,14 @@ async function handleCreate() {
   submitting.value = true;
   try {
     await environmentRecordApi.create({
-      location_id: createForm.location_id,
-      record_type: createForm.record_type as RecordType,
+      locationId: createForm.location_id || undefined,
+      recordType: createForm.record_type as RecordType,
       temperature: createForm.temperature,
       humidity: createForm.humidity,
-      pressure_diff: createForm.pressure_diff,
-      is_within_spec: createForm.is_within_spec,
-      abnormal_action: createForm.abnormal_action || undefined,
-      production_batch_id: createForm.production_batch_id,
+      pressureDiff: createForm.pressure_diff,
+      isWithinSpec: createForm.is_within_spec,
+      abnormalAction: createForm.abnormal_action || undefined,
+      productionBatchId: createForm.production_batch_id || undefined,
     });
     ElMessage.success('新建成功');
     createDialogVisible.value = false;

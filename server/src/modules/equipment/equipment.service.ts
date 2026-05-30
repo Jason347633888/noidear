@@ -15,6 +15,15 @@ import {
 import { OwnershipContext } from '../module-access/ownership-context';
 import { userIdsInDepts } from '../module-access/ownership-helpers';
 
+const VALID_EQUIPMENT_CATEGORIES = [
+  'production',
+  'facility',
+  'measuring',
+  'utility',
+  'metal_detector',
+  'other',
+] as const;
+
 @Injectable()
 export class EquipmentService {
   private readonly logger = new Logger(EquipmentService.name);
@@ -24,6 +33,7 @@ export class EquipmentService {
   ) {}
 
   async create(dto: CreateEquipmentDto, creatorId?: string) {
+    this.validateCategory(dto.category);
     try {
       const code = await this.generateCode();
       // Always set responsiblePersonId to the authenticated creatorId to prevent FK forgery.
@@ -148,6 +158,9 @@ export class EquipmentService {
   }
 
   async update(id: string, dto: UpdateEquipmentDto, ownership?: OwnershipContext) {
+    if (dto.category !== undefined) {
+      this.validateCategory(dto.category);
+    }
     await this.findOne(id);
     // Non-admin users cannot change responsiblePersonId to prevent ownership hijacking.
     const sanitizedDto: UpdateEquipmentDto =
@@ -185,6 +198,15 @@ export class EquipmentService {
 
   // --- Private helpers ---
 
+  private validateCategory(category: string): void {
+    const valid = VALID_EQUIPMENT_CATEGORIES as readonly string[];
+    if (!valid.includes(category)) {
+      throw new BadRequestException(
+        `Invalid equipment category: "${category}". Must be one of: ${valid.join(', ')}`,
+      );
+    }
+  }
+
   private async handleScrapEquipment(id: string, equipment: any) {
     return this.prisma.$transaction(async (tx) => {
       await tx.maintenancePlan.updateMany({
@@ -221,6 +243,25 @@ export class EquipmentService {
     return `${prefix}${String(lastSeq + 1).padStart(3, '0')}`;
   }
 
+  /**
+   * Guard: inactive or scrapped equipment cannot receive new maintenance plans.
+   * Call this from MaintenancePlan creation logic.
+   */
+  async guardNewMaintenancePlan(equipmentId: string): Promise<void> {
+    const equipment = await this.prisma.equipment.findUnique({
+      where: { id: equipmentId },
+      select: { id: true, status: true, deletedAt: true },
+    });
+    if (!equipment || equipment.deletedAt) {
+      throw new NotFoundException('Equipment not found');
+    }
+    if (equipment.status === 'inactive' || equipment.status === 'scrapped') {
+      throw new BadRequestException(
+        'Cannot create maintenance plan for inactive or scrapped equipment',
+      );
+    }
+  }
+
   private mapDtoToData(dto: CreateEquipmentDto | UpdateEquipmentDto): Record<string, any> {
     const dateFields = ['purchaseDate', 'activationDate', 'warrantyExpiry'] as const;
     const directFields = [
@@ -240,6 +281,11 @@ export class EquipmentService {
       if ((dto as any)[field] !== undefined) {
         data[field] = new Date((dto as any)[field]);
       }
+    }
+
+    // Map areaPointId -> area_point_id (snake_case column)
+    if ((dto as any).areaPointId !== undefined) {
+      data.area_point_id = (dto as any).areaPointId;
     }
 
     return data;

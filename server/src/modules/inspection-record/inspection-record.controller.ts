@@ -1,11 +1,10 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { InspectionRecordService } from './inspection-record.service';
 import { CreateInspectionRecordDto } from './dto/create-inspection-record.dto';
-
-const DEFAULT_COMPANY_ID = '1';
 
 @UseGuards(JwtAuthGuard)
 @Controller('inspection-records')
@@ -15,10 +14,10 @@ export class InspectionRecordController {
   @Post()
   @UseGuards(RolesGuard)
   @Roles('admin')
-  create(@Body() dto: CreateInspectionRecordDto) {
+  create(@Body() dto: CreateInspectionRecordDto, @Request() req: AuthenticatedRequest) {
     const dtoWithCompany: CreateInspectionRecordDto = {
       ...dto,
-      company_id: DEFAULT_COMPANY_ID,
+      company_id: req.user.companyId,
     };
     return this.service.create(dtoWithCompany);
   }

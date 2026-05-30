@@ -15,11 +15,13 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { EquipmentService } from './equipment.service';
+import { EvidenceAttachmentService } from './evidence-attachment.service';
 import {
   CreateEquipmentDto,
   UpdateEquipmentDto,
   UpdateEquipmentStatusDto,
   QueryEquipmentDto,
+  AttachEvidenceFileDto,
 } from './dto/equipment.dto';
 import { Ownership } from '../../shared/decorators/ownership.decorator';
 import { OwnershipContext } from '../module-access/ownership-context';
@@ -28,7 +30,10 @@ import { OwnershipContext } from '../module-access/ownership-context';
 @ModuleKey('equipment_site')
 @Controller('equipment')
 export class EquipmentController {
-  constructor(private readonly equipmentService: EquipmentService) {}
+  constructor(
+    private readonly equipmentService: EquipmentService,
+    private readonly evidenceAttachmentService: EvidenceAttachmentService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -71,5 +76,17 @@ export class EquipmentController {
   ) {
     await this.equipmentService.assertOwnership(id, ownership);
     return this.equipmentService.updateStatus(id, dto);
+  }
+
+  @Post('evidence-attach')
+  @HttpCode(HttpStatus.OK)
+  attachEvidence(@Body() dto: AttachEvidenceFileDto, @Request() req: any) {
+    return this.evidenceAttachmentService.attachEvidenceFile({
+      companyId: req.user.companyId,
+      resourceType: dto.resourceType,
+      resourceId: dto.resourceId,
+      resourceItemId: dto.resourceItemId,
+      fileId: dto.fileId,
+    });
   }
 }

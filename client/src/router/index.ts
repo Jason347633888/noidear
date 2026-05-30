@@ -47,6 +47,13 @@ const routes: RouteRecordRaw[] = [
         path: 'documents/control/library',
         redirect: '/documents',
       },
+      // 文件周期审核
+      {
+        path: 'documents/reviews',
+        name: 'DocumentReviews',
+        component: () => import('@/views/documents/reviews/DocumentReviewList.vue'),
+        meta: { title: '文件周期审核' },
+      },
       {
         path: 'deviation-reports',
         name: 'DeviationReports',
@@ -213,6 +220,46 @@ const routes: RouteRecordRaw[] = [
         name: 'TraceabilityQuery',
         component: () => import('@/views/traceability/TraceabilityQuery.vue'),
         meta: { title: '追溯查询', requiresAuth: true },
+      },
+      // 追溯查询工作台（Task 7: Phase 14）
+      {
+        path: 'traceability/query',
+        name: 'TraceabilityQueryPage',
+        component: () => import('@/views/traceability/TraceabilityQueryPage.vue'),
+        meta: { title: '追溯查询工作台', requiresAuth: true },
+      },
+      // 追溯演练模块
+      {
+        path: 'traceability/drills',
+        name: 'TraceabilityDrillList',
+        component: () => import('@/views/traceability/TraceabilityDrillList.vue'),
+        meta: { title: '追溯演练', requiresAuth: true },
+      },
+      {
+        path: 'traceability/drills/:id',
+        name: 'TraceabilityDrillDetail',
+        component: () => import('@/views/traceability/TraceabilityDrillDetail.vue'),
+        meta: { title: '演练详情', requiresAuth: true },
+      },
+      // 召回模块（新路径）
+      {
+        path: 'recalls',
+        name: 'RecallList',
+        component: () => import('@/views/recall/RecallList.vue'),
+        meta: { title: '产品召回', requiresAuth: true },
+      },
+      {
+        path: 'recalls/:id',
+        name: 'RecallDetail',
+        component: () => import('@/views/recall/RecallDetail.vue'),
+        meta: { title: '召回详情', requiresAuth: true },
+      },
+      // 证据导出中心
+      {
+        path: 'evidence/exports',
+        name: 'EvidenceExportCenter',
+        component: () => import('@/views/evidence/EvidenceExportCenter.vue'),
+        meta: { title: '证据导出中心', requiresAuth: true },
       },
       // 设备管理模块
       {
@@ -523,12 +570,50 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/inspection-record/InspectionRecordWorkbench.vue'),
         meta: { title: '通用检验工作台' },
       },
+      // 质量检验模块
+      {
+        path: 'quality/workbench',
+        name: 'QualityInspectionWorkbench',
+        component: () => import('@/views/quality/QualityInspectionWorkbench.vue'),
+        meta: { title: '通用检验工作台' },
+      },
+      {
+        path: 'quality/inspection-records',
+        name: 'QualityInspectionRecords',
+        component: () => import('@/views/inspection-record/InspectionRecordWorkbench.vue'),
+        meta: { title: '检验记录' },
+      },
+      // 清洁消毒模块
+      {
+        path: 'cleaning/plans',
+        name: 'CleaningPlans',
+        component: () => import('@/views/cleaning/CleaningPlanList.vue'),
+        meta: { title: '区域清洁方案' },
+      },
+      {
+        path: 'cleaning/execution',
+        name: 'CleaningExecution',
+        component: () => import('@/views/cleaning/CleaningExecution.vue'),
+        meta: { title: '清洁执行' },
+      },
+      {
+        path: 'cleaning/sanitizer-concentration',
+        name: 'SanitizerConcentration',
+        component: () => import('@/views/cleaning/SanitizerConcentrationList.vue'),
+        meta: { title: '消毒液浓度' },
+      },
       // 产品目录模块
       {
         path: 'products',
         name: 'ProductList',
         component: () => import('@/views/product/ProductList.vue'),
         meta: { title: '产品目录' },
+      },
+      {
+        path: 'products/profiles',
+        name: 'ProductProfiles',
+        component: () => import('@/views/product-development/ProductProfileList.vue'),
+        meta: { title: '产品画像列表' },
       },
       {
         path: 'products/by-plan/:planId',
@@ -541,6 +626,44 @@ const routes: RouteRecordRaw[] = [
         name: 'ProductDetail',
         component: () => import('@/views/product/ProductDetail.vue'),
         meta: { title: '产品详情' },
+      },
+      {
+        path: 'products/:id/profile',
+        name: 'ProductProfile',
+        component: () => import('@/views/product-development/ProductProfileDetail.vue'),
+        meta: { title: '产品画像' },
+      },
+      {
+        path: 'products/:id/allergens',
+        name: 'ProductAllergens',
+        component: () => import('@/views/product-development/ProductAllergens.vue'),
+        meta: { title: '产品过敏原' },
+      },
+      {
+        path: 'products/:id/risk-zone',
+        name: 'ProductRiskZone',
+        component: () => import('@/views/product-development/ProductRiskZone.vue'),
+        meta: { title: '产品风险区' },
+      },
+      {
+        path: 'products/:id/validation',
+        name: 'ProductValidation',
+        component: () => import('@/views/product-development/ProductValidation.vue'),
+        meta: { title: '产品验证' },
+      },
+      // 产品工艺变更模块
+      {
+        path: 'product-process-changes/:id/impact',
+        name: 'ProductProcessChangeImpact',
+        component: () => import('@/views/product-development/ProductProcessChangeImpact.vue'),
+        meta: { title: '工艺变更影响分析' },
+      },
+      // 配方版本详情
+      {
+        path: 'recipes/:id/version',
+        name: 'RecipeVersion',
+        component: () => import('@/views/product-development/RecipeVersion.vue'),
+        meta: { title: '配方版本' },
       },
       // 配方管理 / 工序步骤管理已合并至产品信息页面，旧路由跳转到产品列表
       {
@@ -593,6 +716,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/external-party/ExternalPartyList.vue'),
         meta: { title: '外部方档案' },
       },
+      // 外部方评价模块
+      {
+        path: 'external-parties/evaluations',
+        name: 'ExternalPartyEvaluations',
+        component: () => import('@/views/external-party/ExternalPartyEvaluationList.vue'),
+        meta: { title: '外部方评价' },
+      },
       // 包装材料用量记录模块
       {
         path: 'packaging-material-usages',
@@ -613,6 +743,54 @@ const routes: RouteRecordRaw[] = [
         name: 'FirstReleaseSmoke',
         component: () => import('@/views/first-release/FirstReleaseSmoke.vue'),
         meta: { title: '首发闭环检查', requiresAuth: true },
+      },
+      // 留样管理模块
+      {
+        path: 'retained-samples',
+        name: 'RetainedSampleList',
+        component: () => import('@/views/retained-sample/RetainedSampleList.vue'),
+        meta: { title: '留样管理' },
+      },
+      {
+        path: 'retained-samples/:id',
+        name: 'RetainedSampleDetail',
+        component: () => import('@/views/retained-sample/RetainedSampleDetail.vue'),
+        meta: { title: '留样详情' },
+      },
+      // 货架寿命研究模块
+      {
+        path: 'shelf-life-studies',
+        name: 'ShelfLifeStudyList',
+        component: () => import('@/views/shelf-life-study/ShelfLifeStudyList.vue'),
+        meta: { title: '货架寿命研究' },
+      },
+      // 批次放行模块
+      {
+        path: 'batch-release',
+        name: 'BatchReleasePanel',
+        component: () => import('@/views/retained-sample/BatchReleasePanel.vue'),
+        meta: { title: '批次放行' },
+      },
+      // 访客管理模块（治理中心）
+      {
+        path: 'visitors',
+        name: 'VisitorList',
+        component: () => import('@/views/visitors/VisitorList.vue'),
+        meta: { title: '访客登记' },
+      },
+      // 访客声明模块
+      {
+        path: 'access-declarations',
+        name: 'AccessDeclarationList',
+        component: () => import('@/views/access-declaration/AccessDeclarationList.vue'),
+        meta: { title: '访客与声明' },
+      },
+      // 洗衣房记录模块
+      {
+        path: 'laundry/records',
+        name: 'LaundryRecordList',
+        component: () => import('@/views/laundry/LaundryRecordList.vue'),
+        meta: { title: '洗衣房记录' },
       },
     ],
   },
