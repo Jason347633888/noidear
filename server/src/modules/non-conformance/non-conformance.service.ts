@@ -190,8 +190,11 @@ export class NonConformanceService {
         }
       }
     },
-    metal_detection_log: async () => {
-      throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');
+    metal_detection_log: async (sourceId, _companyId, db) => {
+      const count = await db.metalDetectionLog.count({ where: { id: sourceId } });
+      if (!count) {
+        throw new BadRequestException('金属探测记录来源不存在');
+      }
     },
     laundry_work_record: async () => {
       throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');

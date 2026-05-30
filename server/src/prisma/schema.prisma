@@ -1287,6 +1287,7 @@ model Equipment {
   materialRequisitions MaterialRequisition[]
   acceptanceRecords    EquipmentAcceptanceRecord[] @relation("EquipmentAcceptanceRecords")
   usageRecords         EquipmentUsageRecord[]      @relation("EquipmentUsageRecords")
+  metalDetectionLogs   MetalDetectionLog[]         @relation("MetalDetectionEquipment")
 
   @@index([code])
   @@index([category])
@@ -2609,6 +2610,8 @@ model MetalDetectionLog {
   company_id          String
   production_batch_id String
   production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id])
+  equipment_id        String?
+  equipment           Equipment?      @relation("MetalDetectionEquipment", fields: [equipment_id], references: [id], onDelete: SetNull)
   fe_ball_spec        String?
   sus_ball_spec       String?
   al_ball_spec        String?
