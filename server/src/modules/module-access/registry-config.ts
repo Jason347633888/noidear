@@ -93,6 +93,7 @@ export const REGISTRY_CONFIG: RegistryConfig = {
       { path: 'measuring-equipment', mode: 'exact' },
       { path: 'medication-records', mode: 'exact' },
       { path: 'cleaning-records', mode: 'exact' },
+      { path: 'sanitizer-concentration-checks', mode: 'prefix' },
       { path: 'fragile-item-inspections', mode: 'exact' },
       { path: 'violation-records', mode: 'exact' },
       { path: 'visitor-records', mode: 'exact' },

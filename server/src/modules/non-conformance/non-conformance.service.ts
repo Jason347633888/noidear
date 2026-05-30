@@ -127,11 +127,15 @@ export class NonConformanceService {
       }
     },
 
-    // ── Future source types (models not yet created) ──────────────────────
-    // Each phase implementing a new module must replace this placeholder
-    // with a real validator once its Prisma model exists.
-    sanitizer_concentration_check: async () => {
-      throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');
+    // ── Phase 10 Task 4: SanitizerConcentrationCheck ──────────────────────
+    sanitizer_concentration_check: async (sourceId, companyId, db) => {
+      const check = await db.sanitizerConcentrationCheck.findUnique({
+        where: { id: sourceId },
+        select: { id: true, company_id: true },
+      });
+      if (!check || check.company_id !== companyId) {
+        throw new BadRequestException('消毒液浓度检查记录来源不存在');
+      }
     },
     cleaning_record: async () => {
       throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');

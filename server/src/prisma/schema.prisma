@@ -2002,12 +2002,13 @@ model WorkshopArea {
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
 
-  recipeLines        RecipeLine[]           @relation("RecipeLineArea")
-  materialUsages     BatchMaterialUsage[]   @relation("BatchUsageArea")
-  stagingStocks      StagingAreaStock[]
-  stocktakes         StagingAreaStocktake[]
-  mixingExecutions   MixingExecution[]
-  environmentRecords EnvironmentRecord[]    @relation("EnvironmentRecordLocation")
+  recipeLines                   RecipeLine[]                    @relation("RecipeLineArea")
+  materialUsages                BatchMaterialUsage[]            @relation("BatchUsageArea")
+  stagingStocks                 StagingAreaStock[]
+  stocktakes                    StagingAreaStocktake[]
+  mixingExecutions              MixingExecution[]
+  environmentRecords            EnvironmentRecord[]             @relation("EnvironmentRecordLocation")
+  sanitizerConcentrationChecks  SanitizerConcentrationCheck[]   @relation("SanitizerCheckAreaPoint")
 
   @@unique([company_id, code])
   @@unique([company_id, name])
@@ -3209,4 +3210,28 @@ model ProductionTask {
   @@unique([planItemId, taskType, resourceType, resourceId])
   @@index([status, dueAt])
   @@map("production_tasks")
+}
+
+model SanitizerConcentrationCheck {
+  id                       String       @id @default(cuid())
+  company_id               String
+  area_point_id            String
+  area_point               WorkshopArea @relation("SanitizerCheckAreaPoint", fields: [area_point_id], references: [id], onDelete: Restrict)
+  disinfectant_type        String
+  target_concentration     Decimal?     @db.Decimal(14, 4)
+  actual_concentration     Decimal      @db.Decimal(14, 4)
+  unit                     String
+  judgment                 String
+  checked_at               DateTime
+  operator_id              String?
+  verifier_id              String?
+  notes                    String?
+  appeared_in_source_forms String[]     @default([])
+  source_form_version      String?
+  source_form_field_group  String?
+  created_at               DateTime     @default(now())
+  updated_at               DateTime     @updatedAt
+
+  @@index([company_id, area_point_id, checked_at])
+  @@map("sanitizer_concentration_checks")
 }
