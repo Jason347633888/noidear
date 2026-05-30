@@ -1276,6 +1276,7 @@ model Equipment {
   maintenanceConfig     Json? // 分级保养配置 JSON
   status                EquipmentStatus @default(active)
   description           String? // 设备描述
+  evidence_file_id      String? // 验收/交接证明文件ID
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
   deletedAt             DateTime?
@@ -1358,6 +1359,7 @@ model MaintenanceRecord {
   rejectedAt         DateTime?
   rejectReason       String?
   cost               Float? // 维保成本
+  evidence_file_id   String? // 维保完成证明文件ID
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
   deletedAt          DateTime?
@@ -2540,6 +2542,7 @@ model CalibrationRecord {
   result                 String // 'pass'|'fail'|'conditional'
   notes                  String?
   created_by             String?
+  evidence_file_id       String?
   created_at             DateTime           @default(now())
 
   point_readings CalibrationPointReading[] @relation("CalibrationRecordReadings")
@@ -2622,6 +2625,7 @@ model MetalDetectionLog {
   rejection_action    String?
   tested_at           DateTime
   operator_id         String?
+  evidence_file_id    String?
   created_at          DateTime        @default(now())
 }
 
