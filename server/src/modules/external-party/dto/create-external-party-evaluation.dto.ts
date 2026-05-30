@@ -2,9 +2,9 @@ import { IsString, IsNotEmpty, IsIn, IsOptional, IsNumber, IsDateString } from '
 import { Type } from 'class-transformer';
 
 export class CreateExternalPartyEvaluationDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  external_party_id: string;
+  external_party_id?: string;
 
   @IsString()
   @IsIn(['contractor_food_safety', 'logistics', 'outsourced_service', 'other'])
@@ -19,11 +19,11 @@ export class CreateExternalPartyEvaluationDto {
   score?: number;
 
   @IsString()
-  @IsNotEmpty()
+  @IsIn(['pass', 'conditional', 'fail'])
   result: string;
 
   @IsOptional()
-  @IsString()
+  @IsIn(['low', 'medium', 'high'])
   risk_level?: string;
 
   @IsOptional()

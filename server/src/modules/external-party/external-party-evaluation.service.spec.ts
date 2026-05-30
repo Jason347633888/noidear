@@ -113,12 +113,95 @@ describe('ExternalPartyEvaluationService', () => {
     });
   });
 
+  describe('create — result derives risk_level', () => {
+    beforeEach(() => {
+      prisma.externalParty.findFirst.mockResolvedValue({ id: 'party-1', party_type: 'carrier' });
+    });
+
+    it('derives risk_level=low when result=pass and no risk_level supplied', async () => {
+      prisma.externalPartyEvaluation.create.mockResolvedValue({ ...baseEval, risk_level: 'low' });
+
+      await service.create('company-a', {
+        external_party_id: 'party-1',
+        evaluation_type: 'logistics',
+        evaluation_date: new Date(),
+        result: 'pass',
+      } as any);
+
+      expect(prisma.externalPartyEvaluation.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ result: 'pass', risk_level: 'low' }),
+      });
+    });
+
+    it('derives risk_level=medium when result=conditional', async () => {
+      prisma.externalPartyEvaluation.create.mockResolvedValue({
+        ...baseEval,
+        result: 'conditional',
+        risk_level: 'medium',
+      });
+
+      await service.create('company-a', {
+        external_party_id: 'party-1',
+        evaluation_type: 'logistics',
+        evaluation_date: new Date(),
+        result: 'conditional',
+      } as any);
+
+      expect(prisma.externalPartyEvaluation.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ result: 'conditional', risk_level: 'medium' }),
+      });
+    });
+
+    it('derives risk_level=high when result=fail', async () => {
+      prisma.externalPartyEvaluation.create.mockResolvedValue({
+        ...baseEval,
+        result: 'fail',
+        risk_level: 'high',
+      });
+
+      await service.create('company-a', {
+        external_party_id: 'party-1',
+        evaluation_type: 'logistics',
+        evaluation_date: new Date(),
+        result: 'fail',
+      } as any);
+
+      expect(prisma.externalPartyEvaluation.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ result: 'fail', risk_level: 'high' }),
+      });
+    });
+
+    it('uses caller-supplied risk_level over derivation when explicitly provided', async () => {
+      prisma.externalPartyEvaluation.create.mockResolvedValue({
+        ...baseEval,
+        result: 'pass',
+        risk_level: 'high',
+      });
+
+      await service.create('company-a', {
+        external_party_id: 'party-1',
+        evaluation_type: 'logistics',
+        evaluation_date: new Date(),
+        result: 'pass',
+        risk_level: 'high',
+      } as any);
+
+      expect(prisma.externalPartyEvaluation.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ result: 'pass', risk_level: 'high' }),
+      });
+    });
+  });
+
   describe('findByParty', () => {
     it('returns evaluations for the given party scoped to company', async () => {
+      prisma.externalParty.findFirst.mockResolvedValue({ id: 'party-1' });
       prisma.externalPartyEvaluation.findMany.mockResolvedValue([baseEval]);
 
       const result = await service.findByParty('party-1', 'company-a');
 
+      expect(prisma.externalParty.findFirst).toHaveBeenCalledWith({
+        where: { id: 'party-1', company_id: 'company-a', deleted_at: null },
+      });
       expect(prisma.externalPartyEvaluation.findMany).toHaveBeenCalledWith({
         where: { external_party_id: 'party-1', company_id: 'company-a' },
         orderBy: { evaluation_date: 'desc' },
@@ -126,12 +209,12 @@ describe('ExternalPartyEvaluationService', () => {
       expect(result).toEqual([baseEval]);
     });
 
-    it('returns empty array when no evaluations exist', async () => {
-      prisma.externalPartyEvaluation.findMany.mockResolvedValue([]);
+    it('throws NotFoundException when party does not exist or is soft-deleted', async () => {
+      prisma.externalParty.findFirst.mockResolvedValue(null);
 
-      const result = await service.findByParty('party-99', 'company-a');
+      await expect(service.findByParty('party-99', 'company-a')).rejects.toThrow(NotFoundException);
 
-      expect(result).toEqual([]);
+      expect(prisma.externalPartyEvaluation.findMany).not.toHaveBeenCalled();
     });
   });
 
