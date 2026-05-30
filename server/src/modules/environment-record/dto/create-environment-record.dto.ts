@@ -1,16 +1,20 @@
 import { IsString, IsOptional, IsBoolean, IsNumber, IsNotEmpty } from 'class-validator';
 
 export class CreateEnvironmentRecordDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  location_id: string;
+  production_batch_id?: string;
+
+  @IsOptional()
+  @IsString()
+  location_id?: string;
 
   @IsOptional()
   @IsString()
   location?: string;
 
   @IsString()
-  record_type: string; // 'temperature_humidity'|'pressure_differential'|'other'
+  record_type: string; // 'temperature_humidity'|'pressure_differential'|'fridge_temperature'|'other'
 
   @IsOptional()
   @IsNumber()
@@ -30,8 +34,4 @@ export class CreateEnvironmentRecordDto {
   @IsOptional()
   @IsString()
   abnormal_action?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  production_batch_id: string;
 }

@@ -2441,12 +2441,12 @@ model CalibrationRecord {
 model EnvironmentRecord {
   id                  String          @id @default(cuid())
   company_id          String
-  production_batch_id String
-  production_batch    ProductionBatch @relation(fields: [production_batch_id], references: [id], onDelete: Restrict)
+  production_batch_id String?
+  production_batch    ProductionBatch? @relation(fields: [production_batch_id], references: [id], onDelete: SetNull)
   location_id         String?
-  location_ref        WorkshopArea?   @relation("EnvironmentRecordLocation", fields: [location_id], references: [id], onDelete: Restrict)
+  location_ref        WorkshopArea?    @relation("EnvironmentRecordLocation", fields: [location_id], references: [id], onDelete: Restrict)
   location            String
-  record_type         String // 'temperature_humidity'|'pressure_differential'|'other'
+  record_type         String // 'temperature_humidity'|'pressure_differential'|'fridge_temperature'|'other'
   temperature         Decimal?        @db.Decimal(8, 2)
   humidity            Decimal?        @db.Decimal(8, 2)
   pressure_diff       Decimal?        @db.Decimal(8, 2)
