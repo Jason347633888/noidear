@@ -206,6 +206,16 @@ export class NonConformanceService {
         throw new BadRequestException('设备使用记录来源不存在');
       }
     },
+    // ── Phase 11 Task 7: FragileItemUsageReturn ──────────────────────────────
+    fragile_item_usage_return: async (sourceId, companyId, db) => {
+      const record = await db.fragileItemUsageReturn.findUnique({
+        where: { id: sourceId },
+        select: { id: true, company_id: true },
+      });
+      if (!record || record.company_id !== companyId) {
+        throw new BadRequestException('易碎品使用归还记录来源不存在');
+      }
+    },
   };
 
   private async validateSourceExists(

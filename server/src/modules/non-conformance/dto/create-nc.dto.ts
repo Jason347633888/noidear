@@ -12,6 +12,7 @@ export const NC_SOURCE_TYPES = [
   'metal_detection_log',
   'laundry_work_record',
   'equipment_usage_record',
+  'fragile_item_usage_return',
 ] as const;
 export type NcSourceType = (typeof NC_SOURCE_TYPES)[number];
 

@@ -2080,6 +2080,7 @@ model WorkshopArea {
   environmentalSamplingRecords  EnvironmentalSamplingRecord[]   @relation("EnvironmentalSamplingAreaPoint")
   equipment                     Equipment[]                     @relation("EquipmentAreaPoint")
   measuringEquipments           MeasuringEquipment[]            @relation("MeasuringEquipmentAreaPoint")
+  fragileItemLedgers            FragileItemLedger[]             @relation("FragileItemLedgerAreaPoint")
 
   @@unique([company_id, code])
   @@unique([company_id, name])
@@ -3479,4 +3480,44 @@ model QualityInspectionTask {
   @@index([production_batch_id, status])
   @@index([target_resource_type, target_resource_id])
   @@map("quality_inspection_tasks")
+}
+
+// ── Phase 11 Task 7: Fragile Item Ledger ─────────────────────────────────────
+
+model FragileItemLedger {
+  id                 String       @id @default(cuid())
+  company_id         String
+  code               String
+  name               String
+  material_type      String
+  area_point_id      String
+  area_point         WorkshopArea @relation("FragileItemLedgerAreaPoint", fields: [area_point_id], references: [id], onDelete: Restrict)
+  location_desc      String?
+  risk_level         String
+  status             String       @default("active")
+  risk_assessment_id String?
+  created_at         DateTime     @default(now())
+  updated_at         DateTime     @updatedAt
+  usageReturns       FragileItemUsageReturn[]
+
+  @@unique([company_id, code])
+  @@index([company_id, area_point_id, status])
+  @@map("fragile_item_ledgers")
+}
+
+model FragileItemUsageReturn {
+  id               String            @id @default(cuid())
+  company_id       String
+  fragile_item_id  String
+  fragile_item     FragileItemLedger @relation(fields: [fragile_item_id], references: [id], onDelete: Restrict)
+  used_by          String?
+  used_at          DateTime
+  returned_at      DateTime?
+  return_condition String?
+  result           String
+  evidence_file_id String?
+  created_at       DateTime          @default(now())
+
+  @@index([company_id, fragile_item_id, used_at])
+  @@map("fragile_item_usage_returns")
 }
