@@ -44,11 +44,12 @@ export class AccessDeclarationService {
 
   async approveDeclaration(
     id: string,
+    companyId: string,
     approverId: string,
     conclusion: string,
     opinion?: string,
   ) {
-    const declaration = await this.findOneOrFail(id);
+    const declaration = await this.findOneOrFail(id, companyId);
 
     if (declaration.status !== 'declared') {
       throw new BadRequestException(
@@ -68,8 +69,8 @@ export class AccessDeclarationService {
     });
   }
 
-  async expireDeclaration(id: string) {
-    const declaration = await this.findOneOrFail(id);
+  async expireDeclaration(id: string, companyId: string) {
+    const declaration = await this.findOneOrFail(id, companyId);
 
     if (declaration.status !== 'declared') {
       throw new BadRequestException(
@@ -86,12 +87,12 @@ export class AccessDeclarationService {
   async linkToVisitorRecord(
     declarationId: string,
     visitorRecordId: string,
-    declarationType?: string,
+    companyId: string,
   ) {
-    const declaration = await this.findOneOrFail(declarationId);
+    const declaration = await this.findOneOrFail(declarationId, companyId);
 
-    const visitorRecord = await this.prisma.visitorRecord.findUnique({
-      where: { id: visitorRecordId },
+    const visitorRecord = await this.prisma.visitorRecord.findFirst({
+      where: { id: visitorRecordId, company_id: companyId },
     });
 
     if (!visitorRecord) {
@@ -117,7 +118,7 @@ export class AccessDeclarationService {
       data: {
         visitor_record_id: visitorRecordId,
         access_declaration_id: declarationId,
-        declaration_type: declarationType ?? declaration.declaration_type,
+        declaration_type: declaration.declaration_type,
       },
     });
   }
@@ -139,13 +140,13 @@ export class AccessDeclarationService {
     });
   }
 
-  async findOne(id: string) {
-    return this.findOneOrFail(id);
+  async findOne(id: string, companyId: string) {
+    return this.findOneOrFail(id, companyId);
   }
 
-  private async findOneOrFail(id: string) {
-    const declaration = await this.prisma.accessDeclaration.findUnique({
-      where: { id },
+  private async findOneOrFail(id: string, companyId: string) {
+    const declaration = await this.prisma.accessDeclaration.findFirst({
+      where: { id, company_id: companyId },
     });
 
     if (!declaration) {

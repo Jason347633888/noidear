@@ -10,6 +10,7 @@ import {
   Patch,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import { AccessDeclarationService } from './access-declaration.service';
 import {
@@ -28,11 +29,12 @@ export class AccessDeclarationController {
   @Post()
   create(
     @Body() dto: CreateAccessDeclarationDto,
-    @Request() req: { user: { id: string } },
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.service.createDeclaration({
       ...dto,
-      declared_by: dto.declared_by ?? req.user.id,
+      company_id: req.user.companyId,
+      declared_by: req.user.id,
       declared_at: new Date(dto.declared_at),
     });
   }
@@ -40,40 +42,42 @@ export class AccessDeclarationController {
   @Get()
   findAll(
     @Query() query: QueryAccessDeclarationDto,
-    @Request() req: { user: { companyId?: string } },
+    @Request() req: AuthenticatedRequest,
   ) {
-    const companyId = query.company_id ?? req.user.companyId ?? '1';
-    return this.service.findAll(companyId, query.declaration_type, query.status);
+    return this.service.findAll(req.user.companyId, query.declaration_type, query.status);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.service.findOne(id);
+  findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.service.findOne(id, req.user.companyId);
   }
 
   @Patch(':id/approve')
   approve(
     @Param('id') id: string,
     @Body() dto: ApproveAccessDeclarationDto,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.service.approveDeclaration(
       id,
-      dto.approver_id,
+      req.user.companyId,
+      req.user.id,
       dto.conclusion,
       dto.opinion,
     );
   }
 
   @Patch(':id/expire')
-  expire(@Param('id') id: string) {
-    return this.service.expireDeclaration(id);
+  expire(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.service.expireDeclaration(id, req.user.companyId);
   }
 
   @Post(':id/visitor-links')
   linkToVisitor(
     @Param('id') id: string,
     @Body() dto: LinkToVisitorRecordDto,
+    @Request() req: AuthenticatedRequest,
   ) {
-    return this.service.linkToVisitorRecord(id, dto.visitor_record_id);
+    return this.service.linkToVisitorRecord(id, dto.visitor_record_id, req.user.companyId);
   }
 }

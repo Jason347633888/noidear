@@ -16,10 +16,6 @@ export type DeclarationType = (typeof VALID_DECLARATION_TYPES)[number];
 export class CreateAccessDeclarationDto {
   @IsString()
   @IsNotEmpty()
-  company_id: string;
-
-  @IsString()
-  @IsNotEmpty()
   declaration_type: string;
 
   @IsString()
@@ -37,10 +33,6 @@ export class CreateAccessDeclarationDto {
   @IsObject()
   declaration_content: Prisma.InputJsonValue;
 
-  @IsString()
-  @IsOptional()
-  declared_by?: string;
-
   @IsDateString()
   declared_at: string;
 
@@ -50,10 +42,6 @@ export class CreateAccessDeclarationDto {
 }
 
 export class ApproveAccessDeclarationDto {
-  @IsString()
-  @IsNotEmpty()
-  approver_id: string;
-
   @IsString()
   @IsNotEmpty()
   conclusion: string;
@@ -70,10 +58,6 @@ export class LinkToVisitorRecordDto {
 }
 
 export class QueryAccessDeclarationDto {
-  @IsString()
-  @IsOptional()
-  company_id?: string;
-
   @IsString()
   @IsOptional()
   declaration_type?: string;

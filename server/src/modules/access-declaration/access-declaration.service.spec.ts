@@ -31,7 +31,7 @@ describe('AccessDeclarationService', () => {
     prisma = {
       accessDeclaration: {
         create: jest.fn(),
-        findUnique: jest.fn(),
+        findFirst: jest.fn(),
         update: jest.fn(),
         findMany: jest.fn(),
         count: jest.fn(),
@@ -41,7 +41,7 @@ describe('AccessDeclarationService', () => {
         findUnique: jest.fn(),
       },
       visitorRecord: {
-        findUnique: jest.fn(),
+        findFirst: jest.fn(),
       },
     };
 
@@ -220,11 +220,12 @@ describe('AccessDeclarationService', () => {
         status: 'approved',
       };
 
-      prisma.accessDeclaration.findUnique.mockResolvedValue(mockDeclaration);
+      prisma.accessDeclaration.findFirst.mockResolvedValue(mockDeclaration);
       prisma.accessDeclaration.update.mockResolvedValue(approvedDeclaration);
 
       const result = await service.approveDeclaration(
         'decl-1',
+        'company-1',
         'approver-1',
         'approved',
         'All conditions met',
@@ -248,32 +249,32 @@ describe('AccessDeclarationService', () => {
     });
 
     it('should throw NotFoundException when declaration not found', async () => {
-      prisma.accessDeclaration.findUnique.mockResolvedValue(null);
+      prisma.accessDeclaration.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.approveDeclaration('nonexistent', 'approver-1', 'approved', 'Opinion'),
+        service.approveDeclaration('nonexistent', 'company-1', 'approver-1', 'approved', 'Opinion'),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException when declaration is already approved', async () => {
-      prisma.accessDeclaration.findUnique.mockResolvedValue({
+      prisma.accessDeclaration.findFirst.mockResolvedValue({
         ...mockDeclaration,
         status: 'approved',
       });
 
       await expect(
-        service.approveDeclaration('decl-1', 'approver-1', 'approved', 'Opinion'),
+        service.approveDeclaration('decl-1', 'company-1', 'approver-1', 'approved', 'Opinion'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when trying to approve an expired declaration', async () => {
-      prisma.accessDeclaration.findUnique.mockResolvedValue({
+      prisma.accessDeclaration.findFirst.mockResolvedValue({
         ...mockDeclaration,
         status: 'expired',
       });
 
       await expect(
-        service.approveDeclaration('decl-1', 'approver-1', 'approved', 'Opinion'),
+        service.approveDeclaration('decl-1', 'company-1', 'approver-1', 'approved', 'Opinion'),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -285,10 +286,10 @@ describe('AccessDeclarationService', () => {
         status: 'expired',
       };
 
-      prisma.accessDeclaration.findUnique.mockResolvedValue(mockDeclaration);
+      prisma.accessDeclaration.findFirst.mockResolvedValue(mockDeclaration);
       prisma.accessDeclaration.update.mockResolvedValue(expiredDeclaration);
 
-      const result = await service.expireDeclaration('decl-1');
+      const result = await service.expireDeclaration('decl-1', 'company-1');
 
       expect(result.status).toBe('expired');
       expect(prisma.accessDeclaration.update).toHaveBeenCalledWith({
@@ -298,27 +299,27 @@ describe('AccessDeclarationService', () => {
     });
 
     it('should throw NotFoundException when declaration not found', async () => {
-      prisma.accessDeclaration.findUnique.mockResolvedValue(null);
+      prisma.accessDeclaration.findFirst.mockResolvedValue(null);
 
-      await expect(service.expireDeclaration('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.expireDeclaration('nonexistent', 'company-1')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException when trying to expire an already expired declaration', async () => {
-      prisma.accessDeclaration.findUnique.mockResolvedValue({
+      prisma.accessDeclaration.findFirst.mockResolvedValue({
         ...mockDeclaration,
         status: 'expired',
       });
 
-      await expect(service.expireDeclaration('decl-1')).rejects.toThrow(BadRequestException);
+      await expect(service.expireDeclaration('decl-1', 'company-1')).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when trying to expire an already approved declaration', async () => {
-      prisma.accessDeclaration.findUnique.mockResolvedValue({
+      prisma.accessDeclaration.findFirst.mockResolvedValue({
         ...mockDeclaration,
         status: 'approved',
       });
 
-      await expect(service.expireDeclaration('decl-1')).rejects.toThrow(BadRequestException);
+      await expect(service.expireDeclaration('decl-1', 'company-1')).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -330,12 +331,12 @@ describe('AccessDeclarationService', () => {
         declaration_type: 'visitor_health',
       };
 
-      prisma.accessDeclaration.findUnique.mockResolvedValue(mockDeclaration);
-      prisma.visitorRecord.findUnique.mockResolvedValue({ id: 'vr-1' });
+      prisma.accessDeclaration.findFirst.mockResolvedValue(mockDeclaration);
+      prisma.visitorRecord.findFirst.mockResolvedValue({ id: 'vr-1', company_id: 'company-1' });
       prisma.visitorAccessDeclaration.findUnique.mockResolvedValue(null);
       prisma.visitorAccessDeclaration.create.mockResolvedValue(link);
 
-      const result = await service.linkToVisitorRecord('decl-1', 'vr-1');
+      const result = await service.linkToVisitorRecord('decl-1', 'vr-1', 'company-1');
 
       expect(result).toEqual(link);
       expect(prisma.visitorAccessDeclaration.create).toHaveBeenCalledWith({
@@ -348,32 +349,32 @@ describe('AccessDeclarationService', () => {
     });
 
     it('should throw NotFoundException when declaration not found', async () => {
-      prisma.accessDeclaration.findUnique.mockResolvedValue(null);
+      prisma.accessDeclaration.findFirst.mockResolvedValue(null);
 
-      await expect(service.linkToVisitorRecord('nonexistent', 'vr-1')).rejects.toThrow(
+      await expect(service.linkToVisitorRecord('nonexistent', 'vr-1', 'company-1')).rejects.toThrow(
         NotFoundException,
       );
     });
 
     it('should throw NotFoundException when visitor record not found', async () => {
-      prisma.accessDeclaration.findUnique.mockResolvedValue(mockDeclaration);
-      prisma.visitorRecord.findUnique.mockResolvedValue(null);
+      prisma.accessDeclaration.findFirst.mockResolvedValue(mockDeclaration);
+      prisma.visitorRecord.findFirst.mockResolvedValue(null);
 
-      await expect(service.linkToVisitorRecord('decl-1', 'nonexistent')).rejects.toThrow(
+      await expect(service.linkToVisitorRecord('decl-1', 'nonexistent', 'company-1')).rejects.toThrow(
         NotFoundException,
       );
     });
 
     it('should throw BadRequestException when link already exists', async () => {
-      prisma.accessDeclaration.findUnique.mockResolvedValue(mockDeclaration);
-      prisma.visitorRecord.findUnique.mockResolvedValue({ id: 'vr-1' });
+      prisma.accessDeclaration.findFirst.mockResolvedValue(mockDeclaration);
+      prisma.visitorRecord.findFirst.mockResolvedValue({ id: 'vr-1', company_id: 'company-1' });
       prisma.visitorAccessDeclaration.findUnique.mockResolvedValue({
         visitor_record_id: 'vr-1',
         access_declaration_id: 'decl-1',
         declaration_type: 'visitor_health',
       });
 
-      await expect(service.linkToVisitorRecord('decl-1', 'vr-1')).rejects.toThrow(
+      await expect(service.linkToVisitorRecord('decl-1', 'vr-1', 'company-1')).rejects.toThrow(
         BadRequestException,
       );
     });
