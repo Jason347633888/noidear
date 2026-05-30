@@ -1358,6 +1358,8 @@ model MaintenanceRecord {
   updatedAt          DateTime                @updatedAt
   deletedAt          DateTime?
 
+  items              MaintenanceRecordItem[] @relation("MaintenanceRecordItems")
+
   @@index([equipmentId])
   @@index([maintenanceLevel])
   @@index([maintenanceDate])
@@ -1366,6 +1368,23 @@ model MaintenanceRecord {
   @@index([performerId])
   @@index([approvalInstanceId])
   @@map("maintenance_records")
+}
+
+// Task 11-T5: 维保记录检查项表
+model MaintenanceRecordItem {
+  id                  String            @id @default(cuid())
+  maintenanceRecordId String
+  maintenanceRecord   MaintenanceRecord @relation("MaintenanceRecordItems", fields: [maintenanceRecordId], references: [id], onDelete: Cascade)
+  item_name           String
+  method_snapshot     String?
+  result              String
+  measured_value      String?
+  remark              String?
+  evidence_file_id    String?
+  createdAt           DateTime          @default(now())
+
+  @@index([maintenanceRecordId])
+  @@map("maintenance_record_items")
 }
 
 // TASK-212: 设备报修表

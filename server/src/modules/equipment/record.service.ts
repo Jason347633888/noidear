@@ -119,6 +119,54 @@ export class RecordService {
     return this.prisma.maintenanceRecord.update({ where: { id }, data });
   }
 
+  async submitMaintenanceRecord(recordId: string): Promise<{ status: string; [key: string]: any }> {
+    const record = await this.findOne(recordId);
+    if (!record) {
+      throw new NotFoundException('Maintenance record not found');
+    }
+
+    const items = await this.prisma.maintenanceRecordItem.findMany({
+      where: { maintenanceRecordId: recordId },
+    });
+
+    const hasMandatoryFail = items.some(
+      (item) => item.item_name !== null && item.result === 'fail',
+    );
+
+    if (hasMandatoryFail) {
+      throw new BadRequestException('mandatory checklist item failed');
+    }
+
+    const hasAnyFail = items.some((item) => item.result === 'fail');
+    const newStatus = hasAnyFail ? 'pending_verification' : 'approved';
+
+    return this.prisma.maintenanceRecord.update({
+      where: { id: recordId },
+      data: { status: newStatus as any },
+    });
+  }
+
+  async createNonConformanceFromMaintenanceItem(
+    recordId: string,
+    itemId: string,
+    context: { companyId: string; userId: string; ncNo: string },
+  ) {
+    return this.prisma.nonConformance.create({
+      data: {
+        company_id: context.companyId,
+        nc_no: context.ncNo,
+        source_type: 'maintenance_record',
+        source_id: recordId,
+        source_item_id: itemId,
+        nc_type: 'maintenance_item_failure',
+        description: '维保检查项不合格',
+        discovered_by: context.userId,
+        discoveredById: context.userId,
+        discovered_at: new Date(),
+      },
+    });
+  }
+
   async submit(id: string, userId?: string) {
     const record = await this.findOne(id);
     this.assertDraftStatus(record.status, 'submitted');

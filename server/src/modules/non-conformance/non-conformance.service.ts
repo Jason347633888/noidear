@@ -172,8 +172,20 @@ export class NonConformanceService {
         }
       }
     },
-    maintenance_record: async () => {
-      throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');
+    maintenance_record: async (sourceId, _companyId, db, sourceItemId) => {
+      const exists = await db.maintenanceRecord.count({ where: { id: sourceId } });
+      if (!exists) {
+        throw new BadRequestException('维保记录来源不存在');
+      }
+      if (sourceItemId) {
+        const item = await db.maintenanceRecordItem.findUnique({
+          where: { id: sourceItemId },
+          select: { id: true, maintenanceRecordId: true },
+        });
+        if (!item || item.maintenanceRecordId !== sourceId) {
+          throw new BadRequestException('维保记录检查项不存在');
+        }
+      }
     },
     metal_detection_log: async () => {
       throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');
