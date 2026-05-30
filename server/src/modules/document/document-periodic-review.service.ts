@@ -66,7 +66,7 @@ export class DocumentPeriodicReviewService {
       );
     }
 
-    return (this.prisma as any).documentPeriodicReview.create({
+    return this.prisma.documentPeriodicReview.create({
       data: {
         documentId,
         dueAt,
@@ -81,7 +81,7 @@ export class DocumentPeriodicReviewService {
     conclusion: PeriodicReviewConclusion,
     opinion: string | null,
   ) {
-    const task = await (this.prisma as any).documentPeriodicReview.findFirst({
+    const task = await this.prisma.documentPeriodicReview.findFirst({
       where: { id: reviewTaskId },
     });
     if (!task) {
@@ -97,7 +97,7 @@ export class DocumentPeriodicReviewService {
       );
     }
 
-    return (this.prisma as any).documentPeriodicReview.update({
+    return this.prisma.documentPeriodicReview.update({
       where: { id: reviewTaskId },
       data: {
         status: 'completed',
