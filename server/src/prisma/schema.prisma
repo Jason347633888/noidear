@@ -2285,9 +2285,9 @@ model NonConformance {
   id               String    @id @default(cuid())
   company_id       String
   nc_no            String
-  source_type      String // 'material_batch'|'production_batch'|'product'|'inspection_record'
+  source_type      String // 'material_batch'|'production_batch'|'product'|'inspection_record'|'sanitizer_concentration_check'|'cleaning_record'|'calibration_record'|'maintenance_record'|'metal_detection_log'|'laundry_work_record'
   source_id        String
-  source_item_id   String? // FK to InspectionRecordItem.id when source_type='inspection_record'
+  source_item_id   String? // 来源子项 id；具体子表由 source_type 决定；无数据库外键，由 service 校验
   nc_type          String?
   description      String
   qty              Decimal?  @db.Decimal(14, 4)

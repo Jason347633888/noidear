@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+import { NC_SOURCE_ITEM_TABLE, NC_SOURCE_TYPES } from './dto/create-nc.dto';
 import { NonConformanceService } from './non-conformance.service';
 
 describe('NonConformanceService', () => {
@@ -24,6 +25,12 @@ describe('NonConformanceService', () => {
     reworkRecord: {
       findFirst: jest.fn(),
       create: jest.fn(),
+    },
+    inspectionRecord: {
+      findUnique: jest.fn(),
+    },
+    inspectionRecordItem: {
+      findUnique: jest.fn(),
     },
   };
   const numberSequence = {
@@ -465,6 +472,163 @@ describe('NonConformanceService', () => {
     expect(prisma.product.findFirst).not.toHaveBeenCalled();
     expect(prisma.nonConformance.create).not.toHaveBeenCalled();
   });
+
+  // ─── Source-type contract tests ──────────────────────────────────────────
+
+  it('NC_SOURCE_TYPES contains all required source types', () => {
+    const required = [
+      'material_batch',
+      'production_batch',
+      'product',
+      'inspection_record',
+      'sanitizer_concentration_check',
+      'cleaning_record',
+      'calibration_record',
+      'maintenance_record',
+      'metal_detection_log',
+      'laundry_work_record',
+    ] as const;
+    for (const t of required) {
+      expect(NC_SOURCE_TYPES).toContain(t);
+    }
+  });
+
+  it('NC_SOURCE_ITEM_TABLE maps child-detail sources to the correct table names', () => {
+    expect(NC_SOURCE_ITEM_TABLE['inspection_record']).toBe('InspectionRecordItem');
+    expect(NC_SOURCE_ITEM_TABLE['cleaning_record']).toBe('CleaningRecordItem');
+    expect(NC_SOURCE_ITEM_TABLE['calibration_record']).toBe('CalibrationPointReading');
+    expect(NC_SOURCE_ITEM_TABLE['maintenance_record']).toBe('MaintenanceRecordItem');
+    expect(NC_SOURCE_ITEM_TABLE['laundry_work_record']).toBe('LaundryWorkRecordItem');
+    // Sources that have no detail row must NOT appear in the map
+    expect(NC_SOURCE_ITEM_TABLE['material_batch']).toBeUndefined();
+    expect(NC_SOURCE_ITEM_TABLE['production_batch']).toBeUndefined();
+    expect(NC_SOURCE_ITEM_TABLE['product']).toBeUndefined();
+    expect(NC_SOURCE_ITEM_TABLE['sanitizer_concentration_check']).toBeUndefined();
+    expect(NC_SOURCE_ITEM_TABLE['metal_detection_log']).toBeUndefined();
+  });
+
+  it('accepts inspection_record source with valid source_id and source_item_id', async () => {
+    prisma.inspectionRecord.findUnique.mockResolvedValue({ id: 'ir-1', company_id: '2' });
+    prisma.inspectionRecordItem.findUnique.mockResolvedValue({ id: 'iri-1', record_id: 'ir-1' });
+    numberSequence.generateNonConformanceNo.mockResolvedValue('NC-2026-0010');
+    prisma.nonConformance.create.mockResolvedValue({ id: 'nc-ir-1' });
+
+    await service.create(
+      {
+        source_type: 'inspection_record',
+        source_id: 'ir-1',
+        source_item_id: 'iri-1',
+        description: '检验项目不合格',
+      },
+      'u1',
+      '2',
+    );
+
+    expect(prisma.inspectionRecord.findUnique).toHaveBeenCalledWith({
+      where: { id: 'ir-1' },
+      select: { id: true, company_id: true },
+    });
+    expect(prisma.inspectionRecordItem.findUnique).toHaveBeenCalledWith({
+      where: { id: 'iri-1' },
+      select: { id: true, record_id: true },
+    });
+    expect(prisma.nonConformance.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          source_type: 'inspection_record',
+          source_id: 'ir-1',
+          source_item_id: 'iri-1',
+          company_id: '2',
+        }),
+      }),
+    );
+  });
+
+  it('rejects inspection_record source when the record does not exist', async () => {
+    prisma.inspectionRecord.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.create(
+        { source_type: 'inspection_record', source_id: 'ir-missing', description: '来源不存在' },
+        'u1',
+        '2',
+      ),
+    ).rejects.toThrow('检验记录来源不存在');
+
+    expect(prisma.nonConformance.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects inspection_record source when the record belongs to another company', async () => {
+    prisma.inspectionRecord.findUnique.mockResolvedValue({ id: 'ir-1', company_id: 'other-company' });
+
+    await expect(
+      service.create(
+        { source_type: 'inspection_record', source_id: 'ir-1', description: '跨公司' },
+        'u1',
+        '2',
+      ),
+    ).rejects.toThrow('检验记录来源不存在');
+
+    expect(prisma.nonConformance.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects inspection_record source when source_item_id provided but item does not exist', async () => {
+    prisma.inspectionRecord.findUnique.mockResolvedValue({ id: 'ir-1', company_id: '2' });
+    prisma.inspectionRecordItem.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.create(
+        {
+          source_type: 'inspection_record',
+          source_id: 'ir-1',
+          source_item_id: 'iri-missing',
+          description: '子项不存在',
+        },
+        'u1',
+        '2',
+      ),
+    ).rejects.toThrow('检验记录子项不存在');
+
+    expect(prisma.nonConformance.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects inspection_record source when source_item_id belongs to a different inspection record', async () => {
+    prisma.inspectionRecord.findUnique.mockResolvedValue({ id: 'ir-1', company_id: '2' });
+    prisma.inspectionRecordItem.findUnique.mockResolvedValue({ id: 'iri-1', record_id: 'ir-OTHER' });
+
+    await expect(
+      service.create(
+        {
+          source_type: 'inspection_record',
+          source_id: 'ir-1',
+          source_item_id: 'iri-1',
+          description: '子项不属于该记录',
+        },
+        'u1',
+        '2',
+      ),
+    ).rejects.toThrow('检验记录子项不存在');
+
+    expect(prisma.nonConformance.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'sanitizer_concentration_check',
+    'cleaning_record',
+    'calibration_record',
+    'maintenance_record',
+    'metal_detection_log',
+    'laundry_work_record',
+  ] as const)(
+    'rejects future source type "%s" with a clear "not yet implemented" message',
+    async (sourceType) => {
+      await expect(
+        service.create({ source_type: sourceType, source_id: 'any-id', description: '测试' }, 'u1', '2'),
+      ).rejects.toThrow('不合格来源类型已登记，但对应业务模型尚未实现');
+
+      expect(prisma.nonConformance.create).not.toHaveBeenCalled();
+    },
+  );
 
   it('rejects CCP deviation NonConformance creation when the production batch belongs to another company', async () => {
     const tx: any = {

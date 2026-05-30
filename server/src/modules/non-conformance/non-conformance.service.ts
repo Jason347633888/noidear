@@ -6,6 +6,10 @@ import { QualityNumberSequenceService } from '../quality-number-sequence/quality
 import { OwnershipContext } from '../module-access/ownership-context';
 import { userIdsInDepts } from '../module-access/ownership-helpers';
 
+type Db = Prisma.TransactionClient | PrismaService;
+
+type SourceValidator = (sourceId: string, companyId: string, db: Db, sourceItemId?: string) => Promise<void>;
+
 type CcpDeviationInput = {
   companyId: string;
   userId: string;
@@ -29,7 +33,7 @@ export class NonConformanceService {
   ) {}
 
   async create(dto: CreateNcDto, userId: string, companyId: string) {
-    await this.validateSourceExists(dto.source_type, dto.source_id, companyId);
+    await this.validateSourceExists(dto.source_type, dto.source_id, companyId, this.prisma, dto.source_item_id);
 
     const nc_no = await this.numberSequence.generateNonConformanceNo(companyId);
     return this.prisma.nonConformance.create({
@@ -47,7 +51,7 @@ export class NonConformanceService {
 
   async createFromCcpDeviation(input: CcpDeviationInput, tx?: Prisma.TransactionClient) {
     const db = tx ?? this.prisma;
-    await this.validateSourceExists('production_batch', input.ccpRecord.production_batch_id, input.companyId, db);
+    await this.validateSourceExists('production_batch', input.ccpRecord.production_batch_id, input.companyId, db, undefined);
 
     const nc_no = await this.numberSequence.generateNonConformanceNo(input.companyId, new Date(), tx);
 
@@ -66,37 +70,25 @@ export class NonConformanceService {
     });
   }
 
-  private async validateSourceExists(
-    sourceType: NcSourceType,
-    sourceId: string,
-    companyId: string,
-    db: Prisma.TransactionClient | PrismaService = this.prisma,
-  ) {
-    const trimmedSourceId = sourceId?.trim();
-    if (!trimmedSourceId) {
-      throw new BadRequestException('不合格来源不能为空');
-    }
-
-    if (sourceType === 'material_batch') {
+  private readonly sourceValidators: Partial<Record<NcSourceType, SourceValidator>> = {
+    material_batch: async (sourceId, _companyId, db) => {
       const materialBatch = await db.materialBatch.findUnique({
-        where: { id: trimmedSourceId },
+        where: { id: sourceId },
         select: { id: true, deletedAt: true },
       });
       if (!materialBatch || materialBatch.deletedAt != null) {
         throw new BadRequestException('物料批次来源不存在');
       }
-      return;
-    }
+    },
 
-    if (sourceType === 'production_batch') {
+    production_batch: async (sourceId, companyId, db) => {
       const productionBatch = await db.productionBatch.findUnique({
-        where: { id: trimmedSourceId },
+        where: { id: sourceId },
         select: { id: true, productId: true, deletedAt: true },
       });
       if (!productionBatch?.productId || productionBatch.deletedAt != null) {
         throw new BadRequestException('生产批次来源不存在');
       }
-
       const product = await db.product.findFirst({
         where: { id: productionBatch.productId, company_id: companyId, deleted_at: null },
         select: { id: true },
@@ -104,21 +96,78 @@ export class NonConformanceService {
       if (!product) {
         throw new BadRequestException('生产批次来源不存在');
       }
-      return;
-    }
+    },
 
-    if (sourceType === 'product') {
+    product: async (sourceId, companyId, db) => {
       const product = await db.product.findFirst({
-        where: { id: trimmedSourceId, company_id: companyId, deleted_at: null },
+        where: { id: sourceId, company_id: companyId, deleted_at: null },
         select: { id: true },
       });
       if (!product) {
         throw new BadRequestException('产品来源不存在');
       }
-      return;
+    },
+
+    inspection_record: async (sourceId, companyId, db, sourceItemId) => {
+      const record = await db.inspectionRecord.findUnique({
+        where: { id: sourceId },
+        select: { id: true, company_id: true },
+      });
+      if (!record || record.company_id !== companyId) {
+        throw new BadRequestException('检验记录来源不存在');
+      }
+      if (sourceItemId) {
+        const item = await db.inspectionRecordItem.findUnique({
+          where: { id: sourceItemId },
+          select: { id: true, record_id: true },
+        });
+        if (!item || item.record_id !== sourceId) {
+          throw new BadRequestException('检验记录子项不存在');
+        }
+      }
+    },
+
+    // ── Future source types (models not yet created) ──────────────────────
+    // Each phase implementing a new module must replace this placeholder
+    // with a real validator once its Prisma model exists.
+    sanitizer_concentration_check: async () => {
+      throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');
+    },
+    cleaning_record: async () => {
+      throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');
+    },
+    calibration_record: async () => {
+      throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');
+    },
+    maintenance_record: async () => {
+      throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');
+    },
+    metal_detection_log: async () => {
+      throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');
+    },
+    laundry_work_record: async () => {
+      throw new BadRequestException('不合格来源类型已登记，但对应业务模型尚未实现');
+    },
+  };
+
+  private async validateSourceExists(
+    sourceType: NcSourceType,
+    sourceId: string,
+    companyId: string,
+    db: Db = this.prisma,
+    sourceItemId?: string,
+  ) {
+    const trimmedSourceId = sourceId?.trim();
+    if (!trimmedSourceId) {
+      throw new BadRequestException('不合格来源不能为空');
     }
 
-    throw new BadRequestException('不支持的不合格来源类型');
+    const validator = this.sourceValidators[sourceType];
+    if (!validator) {
+      throw new BadRequestException('不支持的不合格来源类型');
+    }
+
+    await validator(trimmedSourceId, companyId, db, sourceItemId);
   }
 
   private buildCcpDeviationDescription(record: CcpDeviationInput['ccpRecord']) {
