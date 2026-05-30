@@ -23,6 +23,8 @@ module.exports = {
     'src/modules/training/exam.service.spec.ts',
     'src/modules/training/question.service.spec.ts',
     // Old schema tests (template/task/taskRecord models no longer exist in schema)
+    // record-template module retired (dynamic form platform retired) — orphan spec, no source files remain
+    'src/modules/record-template/template-alias.controller.spec.ts',
     'test/recycle-bin.e2e-spec.ts',
     'test/export.e2e-spec.ts',
     'test/statistics.e2e-spec.ts',
