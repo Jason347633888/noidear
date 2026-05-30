@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ShelfLifeService } from './shelf-life.service';
 
 const COMPANY_ID = 'company-1';
+const OTHER_COMPANY_ID = 'company-2';
 const STUDY_ID = 'study-1';
 const PRODUCT_ID = 'product-1';
 
@@ -189,14 +190,14 @@ describe('ShelfLifeService', () => {
         completed_at: new Date(),
       };
 
+      prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(mockStudy);
       prisma._txMock.shelfLifeStudyPoint.findFirst.mockResolvedValue(pendingPoint);
       prisma._txMock.inspectionRecord.findFirst.mockResolvedValue(irRecord);
       prisma._txMock.shelfLifeStudyPoint.update.mockResolvedValue(updatedPoint);
-      // findFirst for study
-      prisma.shelfLifeStudy = { findFirst: jest.fn().mockResolvedValue(mockStudy) };
 
       const result = await service.attachInspectionRecordToPoint(
         STUDY_ID,
+        COMPANY_ID,
         'D7',
         'ir-1',
       );
@@ -213,20 +214,45 @@ describe('ShelfLifeService', () => {
       );
     });
 
-    it('should throw BadRequestException when point is not found', async () => {
+    it('should throw BadRequestException when study does not belong to the company (tenant isolation)', async () => {
+      prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.attachInspectionRecordToPoint(STUDY_ID, OTHER_COMPANY_ID, 'D7', 'ir-1'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should scope study lookup with company_id', async () => {
+      prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(mockStudy);
       prisma._txMock.shelfLifeStudyPoint.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.attachInspectionRecordToPoint(STUDY_ID, 'D99', 'ir-1'),
+        service.attachInspectionRecordToPoint(STUDY_ID, COMPANY_ID, 'D99', 'ir-1'),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma._txMock.shelfLifeStudy.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id: STUDY_ID, company_id: COMPANY_ID }),
+        }),
+      );
+    });
+
+    it('should throw BadRequestException when point is not found', async () => {
+      prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(mockStudy);
+      prisma._txMock.shelfLifeStudyPoint.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.attachInspectionRecordToPoint(STUDY_ID, COMPANY_ID, 'D99', 'ir-1'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when point is not pending', async () => {
       const donePoint = { ...mockPoint1, status: 'done', inspection_record_id: 'ir-old' };
+      prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(mockStudy);
       prisma._txMock.shelfLifeStudyPoint.findFirst.mockResolvedValue(donePoint);
 
       await expect(
-        service.attachInspectionRecordToPoint(STUDY_ID, 'D7', 'ir-1'),
+        service.attachInspectionRecordToPoint(STUDY_ID, COMPANY_ID, 'D7', 'ir-1'),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -239,11 +265,12 @@ describe('ShelfLifeService', () => {
         overall_result: 'pass',
       };
 
+      prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(mockStudy);
       prisma._txMock.shelfLifeStudyPoint.findFirst.mockResolvedValue(pendingPoint);
       prisma._txMock.inspectionRecord.findFirst.mockResolvedValue(wrongTypeIR);
 
       await expect(
-        service.attachInspectionRecordToPoint(STUDY_ID, 'D7', 'ir-1'),
+        service.attachInspectionRecordToPoint(STUDY_ID, COMPANY_ID, 'D7', 'ir-1'),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -256,21 +283,23 @@ describe('ShelfLifeService', () => {
         overall_result: 'pass',
       };
 
+      prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(mockStudy);
       prisma._txMock.shelfLifeStudyPoint.findFirst.mockResolvedValue(pendingPoint);
       prisma._txMock.inspectionRecord.findFirst.mockResolvedValue(wrongStudyIR);
 
       await expect(
-        service.attachInspectionRecordToPoint(STUDY_ID, 'D7', 'ir-1'),
+        service.attachInspectionRecordToPoint(STUDY_ID, COMPANY_ID, 'D7', 'ir-1'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when InspectionRecord is not found', async () => {
       const pendingPoint = { ...mockPoint1, status: 'pending' };
+      prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(mockStudy);
       prisma._txMock.shelfLifeStudyPoint.findFirst.mockResolvedValue(pendingPoint);
       prisma._txMock.inspectionRecord.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.attachInspectionRecordToPoint(STUDY_ID, 'D7', 'ir-missing'),
+        service.attachInspectionRecordToPoint(STUDY_ID, COMPANY_ID, 'D7', 'ir-missing'),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -284,11 +313,13 @@ describe('ShelfLifeService', () => {
         skip_reason: 'Equipment unavailable',
       };
 
+      prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(mockStudy);
       prisma._txMock.shelfLifeStudyPoint.findFirst.mockResolvedValue(pendingPoint);
       prisma._txMock.shelfLifeStudyPoint.update.mockResolvedValue(skippedPoint);
 
       const result = await service.skipShelfLifeStudyPoint(
         STUDY_ID,
+        COMPANY_ID,
         'D7',
         'Equipment unavailable',
         'user-1',
@@ -306,26 +337,51 @@ describe('ShelfLifeService', () => {
       );
     });
 
+    it('should throw BadRequestException when study does not belong to the company (tenant isolation)', async () => {
+      prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.skipShelfLifeStudyPoint(STUDY_ID, OTHER_COMPANY_ID, 'D7', 'reason', 'user-1'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should scope study lookup with company_id', async () => {
+      prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(mockStudy);
+      prisma._txMock.shelfLifeStudyPoint.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.skipShelfLifeStudyPoint(STUDY_ID, COMPANY_ID, 'D99', 'reason', 'user-1'),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma._txMock.shelfLifeStudy.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id: STUDY_ID, company_id: COMPANY_ID }),
+        }),
+      );
+    });
+
     it('should throw BadRequestException when skip_reason is empty', async () => {
       await expect(
-        service.skipShelfLifeStudyPoint(STUDY_ID, 'D7', '   ', 'user-1'),
+        service.skipShelfLifeStudyPoint(STUDY_ID, COMPANY_ID, 'D7', '   ', 'user-1'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when point is not found', async () => {
+      prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(mockStudy);
       prisma._txMock.shelfLifeStudyPoint.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.skipShelfLifeStudyPoint(STUDY_ID, 'D99', 'reason', 'user-1'),
+        service.skipShelfLifeStudyPoint(STUDY_ID, COMPANY_ID, 'D99', 'reason', 'user-1'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when point is already done', async () => {
       const donePoint = { ...mockPoint1, status: 'done' };
+      prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(mockStudy);
       prisma._txMock.shelfLifeStudyPoint.findFirst.mockResolvedValue(donePoint);
 
       await expect(
-        service.skipShelfLifeStudyPoint(STUDY_ID, 'D7', 'reason', 'user-1'),
+        service.skipShelfLifeStudyPoint(STUDY_ID, COMPANY_ID, 'D7', 'reason', 'user-1'),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -348,18 +404,47 @@ describe('ShelfLifeService', () => {
       };
 
       prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(studyWithDonePoints);
-      // findMany is called with where: { overall_result: 'fail' } — returns empty = no failures
       prisma._txMock.inspectionRecord.findMany.mockResolvedValue([]);
       prisma._txMock.shelfLifeStudy.update.mockResolvedValue(concludedStudy);
 
       const result = await service.concludeShelfLifeStudy(
         STUDY_ID,
+        COMPANY_ID,
         'pass',
         'user-1',
       );
 
       expect(result.status).toBe('concluded');
       expect(result.final_conclusion).toBe('pass');
+    });
+
+    it('should scope study lookup with company_id', async () => {
+      prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.concludeShelfLifeStudy(STUDY_ID, OTHER_COMPANY_ID, 'pass', 'user-1'),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma._txMock.shelfLifeStudy.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id: STUDY_ID, company_id: OTHER_COMPANY_ID }),
+        }),
+      );
+    });
+
+    it('should throw BadRequestException for an invalid conclusion value', async () => {
+      const studyWithDonePoints = {
+        ...mockStudy,
+        points: [
+          { ...mockPoint1, status: 'done', inspection_record_id: 'ir-1' },
+        ],
+      };
+      prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(studyWithDonePoints);
+      prisma._txMock.inspectionRecord.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.concludeShelfLifeStudy(STUDY_ID, COMPANY_ID, 'maybe', 'user-1'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should reject pass conclusion when any linked InspectionRecord has overall_result=fail', async () => {
@@ -372,13 +457,12 @@ describe('ShelfLifeService', () => {
       };
 
       prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(studyWithDonePoints);
-      // findMany is called with where: { overall_result: 'fail' } — returns the failing records
       prisma._txMock.inspectionRecord.findMany.mockResolvedValue([
         { id: 'ir-2' },
       ]);
 
       await expect(
-        service.concludeShelfLifeStudy(STUDY_ID, 'pass', 'user-1'),
+        service.concludeShelfLifeStudy(STUDY_ID, COMPANY_ID, 'pass', 'user-1'),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -396,10 +480,9 @@ describe('ShelfLifeService', () => {
       };
 
       prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(studyWithDonePoints);
-      // for 'fail' conclusion, findMany is NOT called (only checked for 'pass')
       prisma._txMock.shelfLifeStudy.update.mockResolvedValue(concludedStudy);
 
-      const result = await service.concludeShelfLifeStudy(STUDY_ID, 'fail', 'user-1');
+      const result = await service.concludeShelfLifeStudy(STUDY_ID, COMPANY_ID, 'fail', 'user-1');
 
       expect(result.final_conclusion).toBe('fail');
     });
@@ -416,7 +499,7 @@ describe('ShelfLifeService', () => {
       prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(studyWithPendingPoints);
 
       await expect(
-        service.concludeShelfLifeStudy(STUDY_ID, 'pass', 'user-1'),
+        service.concludeShelfLifeStudy(STUDY_ID, COMPANY_ID, 'pass', 'user-1'),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -431,7 +514,7 @@ describe('ShelfLifeService', () => {
       prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(studyWithBadSkip);
 
       await expect(
-        service.concludeShelfLifeStudy(STUDY_ID, 'pass', 'user-1'),
+        service.concludeShelfLifeStudy(STUDY_ID, COMPANY_ID, 'pass', 'user-1'),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -446,7 +529,7 @@ describe('ShelfLifeService', () => {
       prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(studyWithBadDone);
 
       await expect(
-        service.concludeShelfLifeStudy(STUDY_ID, 'pass', 'user-1'),
+        service.concludeShelfLifeStudy(STUDY_ID, COMPANY_ID, 'pass', 'user-1'),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -454,7 +537,7 @@ describe('ShelfLifeService', () => {
       prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.concludeShelfLifeStudy('nonexistent', 'pass', 'user-1'),
+        service.concludeShelfLifeStudy('nonexistent', COMPANY_ID, 'pass', 'user-1'),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -463,7 +546,7 @@ describe('ShelfLifeService', () => {
       prisma._txMock.shelfLifeStudy.findFirst.mockResolvedValue(concludedStudy);
 
       await expect(
-        service.concludeShelfLifeStudy(STUDY_ID, 'pass', 'user-1'),
+        service.concludeShelfLifeStudy(STUDY_ID, COMPANY_ID, 'pass', 'user-1'),
       ).rejects.toThrow(BadRequestException);
     });
   });

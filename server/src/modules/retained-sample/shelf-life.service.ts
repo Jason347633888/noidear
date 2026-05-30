@@ -18,8 +18,17 @@ export type CreateShelfLifeStudyInput = {
 };
 
 const SHELF_LIFE_STUDY_OBJECT_TYPE = 'shelf_life_study';
+const ALLOWED_CONCLUSIONS = ['pass', 'fail'] as const;
+type AllowedConclusion = (typeof ALLOWED_CONCLUSIONS)[number];
 
 type TxClient = Prisma.TransactionClient;
+
+type StudyPoint = {
+  status: string;
+  skip_reason: string | null;
+  inspection_record_id: string | null;
+  point_code: string;
+};
 
 function assertNonEmptyPoints(points: CreateShelfLifeStudyInput['points']): void {
   if (!points || points.length === 0) {
@@ -35,12 +44,48 @@ function assertUniquePointCodes(points: CreateShelfLifeStudyInput['points']): vo
   }
 }
 
-function assertStudyExists(
-  study: { id: string; status: string; points: unknown[] } | null,
+function assertStudyExists<T extends { id: string }>(
+  study: T | null,
   studyId: string,
-): asserts study is { id: string; status: string; points: unknown[] } {
+): asserts study is T {
   if (!study) {
     throw new BadRequestException(`ShelfLifeStudy ${studyId} not found`);
+  }
+}
+
+function assertValidConclusion(conclusion: string): asserts conclusion is AllowedConclusion {
+  if (!(ALLOWED_CONCLUSIONS as readonly string[]).includes(conclusion)) {
+    throw new BadRequestException(
+      `Invalid conclusion "${conclusion}". Allowed values: ${ALLOWED_CONCLUSIONS.join(', ')}`,
+    );
+  }
+}
+
+function assertNoPendingPoints(points: StudyPoint[]): void {
+  const pending = points.filter((p) => p.status === 'pending');
+  if (pending.length > 0) {
+    const codes = pending.map((p) => p.point_code).join(', ');
+    throw new BadRequestException(`Cannot conclude: points still pending — ${codes}`);
+  }
+}
+
+function assertSkippedPointsHaveReason(points: StudyPoint[]): void {
+  const missing = points.filter((p) => p.status === 'skipped' && !p.skip_reason?.trim());
+  if (missing.length > 0) {
+    const codes = missing.map((p) => p.point_code).join(', ');
+    throw new BadRequestException(
+      `Skipped points must have a skip_reason — missing for: ${codes}`,
+    );
+  }
+}
+
+function assertDonePointsHaveInspectionRecord(points: StudyPoint[]): void {
+  const missing = points.filter((p) => p.status === 'done' && !p.inspection_record_id);
+  if (missing.length > 0) {
+    const codes = missing.map((p) => p.point_code).join(', ');
+    throw new BadRequestException(
+      `Done points must have an inspection_record_id — missing for: ${codes}`,
+    );
   }
 }
 
@@ -79,10 +124,17 @@ export class ShelfLifeService {
 
   async attachInspectionRecordToPoint(
     studyId: string,
+    companyId: string,
     pointCode: string,
     inspectionRecordId: string,
   ) {
     return this.prisma.$transaction(async (tx: TxClient) => {
+      const study = await tx.shelfLifeStudy.findFirst({
+        where: { id: studyId, company_id: companyId },
+      });
+
+      assertStudyExists(study, studyId);
+
       const point = await tx.shelfLifeStudyPoint.findFirst({
         where: { shelf_life_study_id: studyId, point_code: pointCode },
       });
@@ -134,6 +186,7 @@ export class ShelfLifeService {
 
   async skipShelfLifeStudyPoint(
     studyId: string,
+    companyId: string,
     pointCode: string,
     skipReason: string,
     skippedBy: string,
@@ -143,6 +196,12 @@ export class ShelfLifeService {
     }
 
     return this.prisma.$transaction(async (tx: TxClient) => {
+      const study = await tx.shelfLifeStudy.findFirst({
+        where: { id: studyId, company_id: companyId },
+      });
+
+      assertStudyExists(study, studyId);
+
       const point = await tx.shelfLifeStudyPoint.findFirst({
         where: { shelf_life_study_id: studyId, point_code: pointCode },
       });
@@ -173,75 +232,32 @@ export class ShelfLifeService {
 
   async concludeShelfLifeStudy(
     studyId: string,
+    companyId: string,
     conclusion: string,
     conclusionBy: string,
   ) {
+    assertValidConclusion(conclusion);
+
     return this.prisma.$transaction(async (tx: TxClient) => {
       const study = await tx.shelfLifeStudy.findFirst({
-        where: { id: studyId },
+        where: { id: studyId, company_id: companyId },
         include: { points: true },
       });
 
       assertStudyExists(study, studyId);
 
       if (study.status === 'concluded') {
-        throw new BadRequestException(
-          `Study ${studyId} is already concluded`,
-        );
+        throw new BadRequestException(`Study ${studyId} is already concluded`);
       }
 
-      const points = study.points as Array<{
-        status: string;
-        skip_reason: string | null;
-        inspection_record_id: string | null;
-        point_code: string;
-      }>;
+      const points = study.points as StudyPoint[];
 
-      const pendingPoints = points.filter((p) => p.status === 'pending');
-      if (pendingPoints.length > 0) {
-        const codes = pendingPoints.map((p) => p.point_code).join(', ');
-        throw new BadRequestException(
-          `Cannot conclude: points still pending — ${codes}`,
-        );
-      }
-
-      const skippedWithoutReason = points.filter(
-        (p) => p.status === 'skipped' && !p.skip_reason?.trim(),
-      );
-      if (skippedWithoutReason.length > 0) {
-        const codes = skippedWithoutReason.map((p) => p.point_code).join(', ');
-        throw new BadRequestException(
-          `Skipped points must have a skip_reason — missing for: ${codes}`,
-        );
-      }
-
-      const doneWithoutIr = points.filter(
-        (p) => p.status === 'done' && !p.inspection_record_id,
-      );
-      if (doneWithoutIr.length > 0) {
-        const codes = doneWithoutIr.map((p) => p.point_code).join(', ');
-        throw new BadRequestException(
-          `Done points must have an inspection_record_id — missing for: ${codes}`,
-        );
-      }
+      assertNoPendingPoints(points);
+      assertSkippedPointsHaveReason(points);
+      assertDonePointsHaveInspectionRecord(points);
 
       if (conclusion === 'pass') {
-        const irIds = points
-          .filter((p) => p.inspection_record_id)
-          .map((p) => p.inspection_record_id as string);
-
-        if (irIds.length > 0) {
-          const failedIrs = await tx.inspectionRecord.findMany({
-            where: { id: { in: irIds }, overall_result: 'fail' },
-            select: { id: true },
-          });
-
-          if (failedIrs.length > 0) {
-            throw new BadRequestException(
-              `Cannot conclude as "pass": ${failedIrs.length} linked inspection record(s) have overall_result="fail"`,
-            );
-          }
-        }
+        await assertNoFailedInspectionRecords(tx, points);
       }
 
       return tx.shelfLifeStudy.update({
@@ -255,5 +271,29 @@ export class ShelfLifeService {
         include: { points: true },
       });
     });
+  }
+}
+
+async function assertNoFailedInspectionRecords(
+  tx: TxClient,
+  points: StudyPoint[],
+): Promise<void> {
+  const irIds = points
+    .filter((p) => p.inspection_record_id)
+    .map((p) => p.inspection_record_id as string);
+
+  if (irIds.length === 0) {
+    return;
+  }
+
+  const failedIrs = await tx.inspectionRecord.findMany({
+    where: { id: { in: irIds }, overall_result: 'fail' },
+    select: { id: true },
+  });
+
+  if (failedIrs.length > 0) {
+    throw new BadRequestException(
+      `Cannot conclude as "pass": ${failedIrs.length} linked inspection record(s) have overall_result="fail"`,
+    );
   }
 }
