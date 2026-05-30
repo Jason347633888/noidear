@@ -381,6 +381,42 @@ describe('CleaningRecordService', () => {
     });
   });
 
+  // ── findAll company isolation ─────────────────────────────────────────────
+
+  describe('findAll', () => {
+    it('passes company_id filter to prisma query', async () => {
+      const prisma = createPrismaMock();
+      const service = new CleaningRecordService(prisma, createNumberSequenceMock());
+
+      await service.findAll('company-a');
+
+      expect(prisma.cleaningRecord.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ company_id: 'company-a' }),
+        }),
+      );
+    });
+
+    it('company-a cannot see company-b records', async () => {
+      const companyBRecord = makeRecord({ id: 'record-b', company_id: 'company-b' });
+      const prisma = createPrismaMock({
+        cleaningRecord: {
+          ...createPrismaMock().cleaningRecord,
+          findMany: jest.fn().mockImplementation(({ where }: { where?: { company_id?: string } }) => {
+            const records = [makeRecord({ company_id: 'company-a' }), companyBRecord];
+            return Promise.resolve(records.filter(r => r.company_id === where?.company_id));
+          }),
+        },
+      });
+      const service = new CleaningRecordService(prisma, createNumberSequenceMock());
+
+      const result = await service.findAll('company-a');
+
+      expect(result.every((r: { company_id: string }) => r.company_id === 'company-a')).toBe(true);
+      expect(result.find((r: { id: string }) => r.id === 'record-b')).toBeUndefined();
+    });
+  });
+
   // ── plan deletion does not delete record item snapshots ───────────────────
 
   describe('snapshot isolation', () => {

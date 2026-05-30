@@ -35,9 +35,9 @@ export class CleaningRecordService {
     });
   }
 
-  async findAll(targetType?: string) {
+  async findAll(companyId: string, targetType?: string) {
     return this.prisma.cleaningRecord.findMany({
-      where: targetType ? { target_type: targetType } : {},
+      where: { company_id: companyId, ...(targetType ? { target_type: targetType } : {}) },
       include: { items: true },
       orderBy: { created_at: 'desc' },
       take: 100,

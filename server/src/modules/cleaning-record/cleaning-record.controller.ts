@@ -58,8 +58,8 @@ export class CleaningRecordController {
   }
 
   @Get()
-  findAll(@Query('target_type') targetType?: string) {
-    return this.service.findAll(targetType);
+  findAll(@Request() req: AuthenticatedRequest, @Query('target_type') targetType?: string) {
+    return this.service.findAll(req.user.companyId, targetType);
   }
 
   @Patch(':recordId/items/:itemId/complete')
