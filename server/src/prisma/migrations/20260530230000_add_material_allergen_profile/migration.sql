@@ -19,4 +19,4 @@ CREATE TABLE "material_allergen_profiles" (
 );
 
 -- CreateIndex
-CREATE INDEX "material_allergen_profiles_company_id_material_id_supplier_id_status_idx" ON "material_allergen_profiles"("company_id", "material_id", "supplier_id", "status");
+CREATE INDEX "material_allergen_profiles_company_id_material_id_supplier__idx" ON "material_allergen_profiles"("company_id", "material_id", "supplier_id", "status");

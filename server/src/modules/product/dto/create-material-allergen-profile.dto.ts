@@ -1,5 +1,4 @@
 import { IsBoolean, IsDateString, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import { Type } from 'class-transformer';
 
 export class CreateMaterialAllergenProfileDto {
   @IsString()
@@ -31,11 +30,9 @@ export class CreateMaterialAllergenProfileDto {
   evidence_file_id?: string;
 
   @IsDateString()
-  @Type(() => Date)
-  effective_from: Date;
+  effective_from: string;
 
   @IsOptional()
   @IsDateString()
-  @Type(() => Date)
-  effective_to?: Date;
+  effective_to?: string;
 }

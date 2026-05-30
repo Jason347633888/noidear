@@ -578,6 +578,7 @@ model Material {
   packagingMaterialUsages PackagingMaterialUsage[]
   mixingExecutionLines    MixingExecutionLine[]
   recipeLines             RecipeLine[]             @relation("RecipeLineMaterial")
+  allergenProfiles        MaterialAllergenProfile[] @relation("MaterialAllergenProfileMaterial")
 
   @@index([materialCode])
   @@index([categoryId])
@@ -737,6 +738,8 @@ model Supplier {
 
   // 供应商评估
   evaluations SupplierEvaluation[]
+
+  allergenProfiles MaterialAllergenProfile[] @relation("MaterialAllergenProfileSupplier")
 
   @@index([supplierCode])
   @@index([status])
@@ -3547,6 +3550,9 @@ model MaterialAllergenProfile {
   created_at        DateTime  @default(now())
   updated_at        DateTime  @updatedAt
 
-  @@index([company_id, material_id, supplier_id, status])
+  material Material  @relation("MaterialAllergenProfileMaterial", fields: [material_id], references: [id], onDelete: Restrict)
+  supplier Supplier? @relation("MaterialAllergenProfileSupplier", fields: [supplier_id], references: [id], onDelete: SetNull)
+
+  @@index([company_id, material_id, supplier_id, status], map: "material_allergen_profiles_company_id_material_id_supplier__idx")
   @@map("material_allergen_profiles")
 }
