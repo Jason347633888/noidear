@@ -17,6 +17,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ProductService } from './product.service';
+import { ProductLabelService } from './product-label.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductReportDocumentDto } from './dto/product-report-document.dto';
@@ -29,7 +30,10 @@ import { OwnershipContext } from '../module-access/ownership-context';
 @Controller('products')
 @UseGuards(JwtAuthGuard)
 export class ProductController {
-  constructor(private service: ProductService) {}
+  constructor(
+    private service: ProductService,
+    private labelService: ProductLabelService,
+  ) {}
 
   @Get()
   findAll() {
@@ -50,6 +54,17 @@ export class ProductController {
   @Get(':id/workbench')
   getWorkbench(@Param('id') id: string) {
     return this.service.getWorkbench(id);
+  }
+
+  @Get(':id/label-preview')
+  getLabelPreview(@Param('id') id: string) {
+    return this.labelService.generateProductLabelPreview(id);
+  }
+
+  @Post(':id/specification-export')
+  @HttpCode(HttpStatus.CREATED)
+  exportSpecification(@Param('id') id: string) {
+    return this.labelService.generateProductSpecificationExport(id);
   }
 
   @Get(':id/reports')
