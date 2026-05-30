@@ -1,6 +1,7 @@
 import { ModuleKey } from '../../shared/decorators/module-key.decorator';
 import {
   Controller,
+  ForbiddenException,
   Get,
   Post,
   Put,
@@ -26,10 +27,14 @@ import { DocumentLifecycleService } from './document-lifecycle.service';
 import { FilePreviewService } from './services';
 import { DocumentReferenceService } from './services/document-reference.service';
 import { DocumentReferenceHealthService } from './services/document-reference-health.service';
+import { RecordFormLandingService } from './services/record-form-landing.service';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, ArchiveDocumentDto, CreateGenericDocumentReferenceDto, UpdateMarkdownDto } from './dto';
 import { RestoreDocumentDto } from './dto/archive-document.dto';
 import { PublishDocumentDto } from './dto/document-lifecycle.dto';
+import { BatchConfirmRecordFormLandingDto, ConfirmRecordFormLandingDto, UpdateRecordFormLandingEntryDto } from './dto/document-control.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Ownership } from '../../shared/decorators/ownership.decorator';
+import { OwnershipContext } from '../module-access/ownership-context';
 
 @ApiTags('文档管理')
 @ApiBearerAuth()
@@ -43,6 +48,7 @@ export class DocumentController {
     private readonly filePreviewService: FilePreviewService,
     private readonly documentReferenceService: DocumentReferenceService,
     private readonly referenceHealthService: DocumentReferenceHealthService,
+    private readonly recordFormLandingService: RecordFormLandingService,
   ) {}
 
   @Post('upload')
@@ -252,5 +258,49 @@ export class DocumentController {
   @ApiOperation({ summary: '发起文件修订草稿' })
   createRevision(@Param('id') id: string, @Req() req: any) {
     return this.documentService.createRevisionDraft(id, req.user.id);
+  }
+
+  // =============================
+  // Record Form Landing Index (admin-only write operations)
+  // =============================
+
+  @Post('record-form-index/batch-confirm-suggested')
+  @ApiOperation({ summary: '批量确认表单着陆建议（仅限管理员）' })
+  batchConfirmRecordFormLanding(
+    @Body() dto: BatchConfirmRecordFormLandingDto,
+    @Req() req: any,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    if (ownership.roleCode !== 'admin') {
+      throw new ForbiddenException('Only admin can confirm record form landing');
+    }
+    return this.recordFormLandingService.batchConfirmSuggested(dto.codes, req.user.id);
+  }
+
+  @Post('record-form-index/:code/confirm')
+  @ApiOperation({ summary: '确认单条表单着陆（仅限管理员）' })
+  confirmRecordFormLanding(
+    @Param('code') code: string,
+    @Body() dto: ConfirmRecordFormLandingDto,
+    @Req() req: any,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    if (ownership.roleCode !== 'admin') {
+      throw new ForbiddenException('Only admin can confirm record form landing');
+    }
+    return this.recordFormLandingService.confirm(code, dto, req.user.id);
+  }
+
+  @Patch('record-form-index/:code')
+  @ApiOperation({ summary: '更新表单着陆条目（仅限管理员）' })
+  updateRecordFormIndexEntry(
+    @Param('code') code: string,
+    @Body() dto: UpdateRecordFormLandingEntryDto,
+    @Ownership() ownership: OwnershipContext,
+  ) {
+    if (ownership.roleCode !== 'admin') {
+      throw new ForbiddenException('Only admin can update record form landing entry');
+    }
+    return this.recordFormLandingService.upsertTarget(code, dto);
   }
 }
