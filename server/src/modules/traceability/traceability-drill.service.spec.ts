@@ -1,19 +1,52 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { TraceabilityDrillService } from './traceability-drill.service';
 
-const createPrisma = () => ({
-  traceabilityDrill: {
-    create: jest.fn(),
-    findFirst: jest.fn(),
-    update: jest.fn(),
-  },
-  traceabilitySnapshot: {
-    findFirst: jest.fn(),
-  },
-  correctiveAction: {
-    create: jest.fn(),
-  },
+// Shared realistic snapshot fixture — matches the Prisma-generated shape for TraceabilitySnapshot
+const baseSnapshot = {
+  id: 'snap-1',
+  company_id: 'company-1',
+  sourceQueryHash: 'hash-abc',
+  exportMode: 'snapshot',
+  requesterId: 'user-1',
+  status: 'ready',
+  snapshotType: 'query',
+  summary: {},
+  filePath: null,
+  createdAt: new Date('2026-05-30T00:00:00Z'),
+  updatedAt: new Date('2026-05-30T00:00:00Z'),
+  rootObjectType: 'production_batch',
+  rootObjectId: 'batch-1',
+  snapshotData: null,
+  fileId: null,
+  snapshotPurpose: 'evidence_export',
+  readinessStatus: 'complete',
+  readinessReasons: null,
+};
+
+const createTxClient = () => ({
+  correctiveAction: { create: jest.fn() },
+  traceabilityDrill: { update: jest.fn() },
 });
+
+const createPrisma = () => {
+  const txClient = createTxClient();
+  const mock = {
+    traceabilityDrill: {
+      create: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+    },
+    traceabilitySnapshot: {
+      findFirst: jest.fn(),
+    },
+    correctiveAction: {
+      create: jest.fn(),
+    },
+    $transaction: jest.fn((fn: (tx: typeof txClient) => Promise<unknown>) => fn(txClient)),
+    _txClient: txClient,
+  };
+  return mock;
+};
 
 const createNumberSequence = () => ({
   generateCorrectiveActionNo: jest.fn().mockResolvedValue('CAPA-2026-0099'),
@@ -149,11 +182,7 @@ describe('TraceabilityDrillService', () => {
   describe('attachSnapshot', () => {
     it('links a traceability snapshot to an in_progress drill', async () => {
       prisma.traceabilityDrill.findFirst.mockResolvedValue({ ...baseDrill, status: 'in_progress' });
-      prisma.traceabilitySnapshot.findFirst.mockResolvedValue({
-        id: 'snap-1',
-        company_id: 'company-1',
-        status: 'ready',
-      });
+      prisma.traceabilitySnapshot.findFirst.mockResolvedValue({ ...baseSnapshot });
       prisma.traceabilityDrill.update.mockResolvedValue({
         ...baseDrill,
         status: 'in_progress',
@@ -162,6 +191,9 @@ describe('TraceabilityDrillService', () => {
 
       const result = await service.attachSnapshot('drill-1', 'snap-1', 'company-1');
 
+      expect(prisma.traceabilitySnapshot.findFirst).toHaveBeenCalledWith({
+        where: { id: 'snap-1', company_id: 'company-1' },
+      });
       expect(prisma.traceabilityDrill.update).toHaveBeenCalledWith({
         where: { id: 'drill-1' },
         data: { traceability_snapshot_id: 'snap-1' },
@@ -175,6 +207,17 @@ describe('TraceabilityDrillService', () => {
 
       await expect(
         service.attachSnapshot('drill-1', 'missing-snap', 'company-1'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('throws ForbiddenException when snapshot belongs to a different tenant', async () => {
+      prisma.traceabilityDrill.findFirst.mockResolvedValue({ ...baseDrill, status: 'in_progress' });
+      // Snapshot belongs to company-2 but caller is company-1 — findFirst returns null because
+      // company_id filter excludes it
+      prisma.traceabilitySnapshot.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.attachSnapshot('drill-1', 'snap-other-tenant', 'company-1'),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
@@ -194,11 +237,7 @@ describe('TraceabilityDrillService', () => {
         status: 'in_progress',
         traceability_snapshot_id: 'snap-1',
       });
-      prisma.traceabilitySnapshot.findFirst.mockResolvedValue({
-        id: 'snap-1',
-        company_id: 'company-1',
-        readinessStatus: 'complete',
-      });
+      prisma.traceabilitySnapshot.findFirst.mockResolvedValue({ ...baseSnapshot });
       prisma.traceabilityDrill.update.mockResolvedValue({
         ...baseDrill,
         status: 'completed',
@@ -209,6 +248,9 @@ describe('TraceabilityDrillService', () => {
 
       const result = await service.concludeDrill('drill-1', 'passed', 'company-1', 'reviewer-1');
 
+      expect(prisma.traceabilitySnapshot.findFirst).toHaveBeenCalledWith({
+        where: { id: 'snap-1', company_id: 'company-1' },
+      });
       expect(prisma.traceabilityDrill.update).toHaveBeenCalledWith({
         where: { id: 'drill-1' },
         data: expect.objectContaining({
@@ -220,6 +262,20 @@ describe('TraceabilityDrillService', () => {
         }),
       });
       expect(result.status).toBe('completed');
+    });
+
+    it('rejects an invalid conclusion value', async () => {
+      prisma.traceabilityDrill.findFirst.mockResolvedValue({
+        ...baseDrill,
+        status: 'in_progress',
+        traceability_snapshot_id: 'snap-1',
+      });
+
+      await expect(
+        service.concludeDrill('drill-1', 'fail', 'company-1'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(prisma.traceabilityDrill.update).not.toHaveBeenCalled();
     });
 
     it('rejects concluding a drill without an attached snapshot', async () => {
@@ -238,13 +294,26 @@ describe('TraceabilityDrillService', () => {
       prisma.traceabilityDrill.findFirst.mockResolvedValue({
         ...baseDrill,
         status: 'in_progress',
-        traceability_snapshot_id: 'snap-incomplete',
+        traceability_snapshot_id: 'snap-1',
       });
       prisma.traceabilitySnapshot.findFirst.mockResolvedValue({
-        id: 'snap-incomplete',
-        company_id: 'company-1',
+        ...baseSnapshot,
         readinessStatus: 'incomplete',
       });
+
+      await expect(
+        service.concludeDrill('drill-1', 'passed', 'company-1'),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('rejects concluding when snapshot belongs to a different tenant (not found with company filter)', async () => {
+      prisma.traceabilityDrill.findFirst.mockResolvedValue({
+        ...baseDrill,
+        status: 'in_progress',
+        traceability_snapshot_id: 'snap-1',
+      });
+      // company_id filter returns null — cross-tenant snapshot excluded
+      prisma.traceabilitySnapshot.findFirst.mockResolvedValue(null);
 
       await expect(
         service.concludeDrill('drill-1', 'passed', 'company-1'),
@@ -265,7 +334,7 @@ describe('TraceabilityDrillService', () => {
   });
 
   describe('createCapaForFailedDrill', () => {
-    it('creates a CorrectiveAction for a failed drill and links it', async () => {
+    it('creates a CorrectiveAction for a failed drill and links it atomically in a transaction', async () => {
       const failedDrill = {
         ...baseDrill,
         status: 'completed',
@@ -273,23 +342,25 @@ describe('TraceabilityDrillService', () => {
         capa_id: null,
       };
       prisma.traceabilityDrill.findFirst.mockResolvedValue(failedDrill);
-      prisma.correctiveAction.create.mockResolvedValue({ id: 'capa-1' });
-      prisma.traceabilityDrill.update.mockResolvedValue({
+      const txClient = prisma._txClient;
+      txClient.correctiveAction.create.mockResolvedValue({ id: 'capa-1' });
+      txClient.traceabilityDrill.update.mockResolvedValue({
         ...failedDrill,
         capa_id: 'capa-1',
       });
 
       const result = await service.createCapaForFailedDrill('drill-1', 'user-1', 'company-1');
 
-      expect(numberSequence.generateCorrectiveActionNo).toHaveBeenCalledWith('company-1', expect.any(Date), undefined);
-      expect(prisma.correctiveAction.create).toHaveBeenCalledWith({
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(numberSequence.generateCorrectiveActionNo).toHaveBeenCalledWith('company-1', expect.any(Date), txClient);
+      expect(txClient.correctiveAction.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           company_id: 'company-1',
           trigger_type: 'other',
           description: expect.stringContaining('drill-1'),
         }),
       });
-      expect(prisma.traceabilityDrill.update).toHaveBeenCalledWith({
+      expect(txClient.traceabilityDrill.update).toHaveBeenCalledWith({
         where: { id: 'drill-1' },
         data: { capa_id: 'capa-1' },
       });

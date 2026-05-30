@@ -1,9 +1,13 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
 
 const ALLOWED_DRILL_TYPES = ['forward', 'backward', 'both'] as const;
 type DrillType = (typeof ALLOWED_DRILL_TYPES)[number];
+
+const ALLOWED_CONCLUSIONS = ['passed', 'failed'] as const;
+type DrillConclusion = (typeof ALLOWED_CONCLUSIONS)[number];
 
 export interface PlanDrillInput {
   company_id: string;
@@ -23,6 +27,14 @@ function assertValidDrillType(value: string): asserts value is DrillType {
   if (!ALLOWED_DRILL_TYPES.includes(value as DrillType)) {
     throw new BadRequestException(
       `drill_type must be one of: ${ALLOWED_DRILL_TYPES.join(', ')}; got "${value}"`,
+    );
+  }
+}
+
+function assertValidConclusion(value: string): asserts value is DrillConclusion {
+  if (!ALLOWED_CONCLUSIONS.includes(value as DrillConclusion)) {
+    throw new BadRequestException(
+      `conclusion must be one of: ${ALLOWED_CONCLUSIONS.join(', ')}; got "${value}"`,
     );
   }
 }
@@ -87,7 +99,7 @@ export class TraceabilityDrillService {
     }
 
     const snapshot = await this.prisma.traceabilitySnapshot.findFirst({
-      where: { id: snapshotId },
+      where: { id: snapshotId, company_id: companyId },
     });
     if (!snapshot) {
       throw new NotFoundException(`Traceability snapshot "${snapshotId}" not found`);
@@ -100,6 +112,8 @@ export class TraceabilityDrillService {
   }
 
   async concludeDrill(drillId: string, conclusion: string, companyId: string, reviewerId?: string) {
+    assertValidConclusion(conclusion);
+
     const drill = await this.findDrillOrThrow(drillId, companyId);
 
     if (drill.status !== 'in_progress') {
@@ -113,11 +127,11 @@ export class TraceabilityDrillService {
     }
 
     const snapshot = await this.prisma.traceabilitySnapshot.findFirst({
-      where: { id: drill.traceability_snapshot_id },
+      where: { id: drill.traceability_snapshot_id, company_id: companyId },
     });
 
-    if (!snapshot || (snapshot as any).readinessStatus !== 'complete') {
-      const readiness = snapshot ? (snapshot as any).readinessStatus : 'not_found';
+    if (!snapshot || snapshot.readinessStatus !== 'complete') {
+      const readiness = snapshot ? snapshot.readinessStatus : 'not_found';
       throw new ConflictException(
         `Cannot conclude drill; snapshot readiness is "${readiness}", expected "complete"`,
       );
@@ -150,21 +164,25 @@ export class TraceabilityDrillService {
       );
     }
 
-    const capaNo = await this.numberSequence.generateCorrectiveActionNo(companyId, new Date(), undefined);
+    const now = new Date();
 
-    const capa = await this.prisma.correctiveAction.create({
-      data: {
-        company_id: companyId,
-        capa_no: capaNo,
-        trigger_type: 'other',
-        description: `Traceability drill "${drillId}" failed — CAPA auto-generated`,
-        responsible_id: userId,
-      },
-    });
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const capaNo = await this.numberSequence.generateCorrectiveActionNo(companyId, now, tx);
 
-    return this.prisma.traceabilityDrill.update({
-      where: { id: drillId },
-      data: { capa_id: capa.id },
+      const capa = await tx.correctiveAction.create({
+        data: {
+          company_id: companyId,
+          capa_no: capaNo,
+          trigger_type: 'other',
+          description: `Traceability drill "${drillId}" failed — CAPA auto-generated`,
+          responsible_id: userId,
+        },
+      });
+
+      return tx.traceabilityDrill.update({
+        where: { id: drillId },
+        data: { capa_id: capa.id },
+      });
     });
   }
 
