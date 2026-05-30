@@ -198,7 +198,6 @@ describe('SanitizerConcentrationService', () => {
         expect.objectContaining({
           source_type: 'sanitizer_concentration_check',
           source_id: 'sc-1',
-          source_item_id: null,
         }),
         'user-1',
         'company-1',

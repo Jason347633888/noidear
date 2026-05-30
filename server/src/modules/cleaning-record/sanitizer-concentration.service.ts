@@ -96,9 +96,8 @@ export class SanitizerConcentrationService {
       {
         source_type: 'sanitizer_concentration_check',
         source_id: check.id,
-        source_item_id: null,
         description: `消毒液浓度不合格：${check.actual_concentration}${check.unit}`,
-      } as any,
+      },
       userId,
       companyId,
     );
