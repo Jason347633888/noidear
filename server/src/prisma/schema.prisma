@@ -2055,6 +2055,7 @@ model Product {
   mixingExecutions          MixingExecution[]
   productProcessChangePlans ProductProcessChangePlan[]
   productionBatches         ProductionBatch[]
+  riskZones                 ProductRiskZone[]           @relation("ProductRiskZones")
 
   @@unique([company_id, code])
   @@index([source])
@@ -3570,6 +3571,9 @@ model ProductRiskZone {
   status             String    @default("active")
   approvalInstanceId String?
   created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  product Product @relation("ProductRiskZones", fields: [product_id], references: [id])
 
   @@index([company_id, product_id, status])
   @@map("product_risk_zones")

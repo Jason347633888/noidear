@@ -62,7 +62,15 @@ describe('ProductRiskZoneService', () => {
           }),
         }),
       );
-      expect(mockPrisma.productRiskZone.create).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.productRiskZone.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: 'active',
+            effective_from: expect.any(Date),
+            basis: 'BRCGS 8.0 clause 4.3',
+          }),
+        }),
+      );
       expect(result.status).toBe('active');
       expect(result.risk_zone).toBe('HIGH_CARE');
     });
