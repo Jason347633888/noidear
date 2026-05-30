@@ -115,7 +115,7 @@ export class QualityInspectionTaskService {
     };
     const modelName = resourceModelMap[completedResourceType];
     const resourceCount = await (this.prisma[modelName] as any).count({
-      where: { id: completedResourceId },
+      where: { id: completedResourceId, company_id: companyId },
     });
     if (resourceCount === 0) {
       throw new NotFoundException(

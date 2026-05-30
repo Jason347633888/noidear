@@ -253,6 +253,32 @@ describe('QualityInspectionTaskService.completeInspectionTask', () => {
       service.completeInspectionTask('task-1', 'inspection_record', 'nonexistent-record', 'company-1'),
     ).rejects.toThrow(NotFoundException);
   });
+
+  it('should reject completing task with a resource from a different company', async () => {
+    // Resource belongs to 'other-company' but task belongs to 'company-a'
+    // count returns 0 because company_id filter excludes the resource
+    const prisma = makePrisma();
+    prisma.qualityInspectionTask.findUnique = jest.fn().mockResolvedValue(
+      makePendingTask({ company_id: 'company-a' }),
+    );
+    // Simulate: resource exists but with a different company_id — count with company_id='company-a' returns 0
+    prisma.inspectionRecord.count = jest.fn().mockResolvedValue(0);
+
+    const service = new QualityInspectionTaskService(prisma as any);
+    await expect(
+      service.completeInspectionTask('task-1', 'inspection_record', 'record-other-company', 'company-a'),
+    ).rejects.toThrow(NotFoundException);
+
+    // Verify the count was called with company_id scoping
+    expect(prisma.inspectionRecord.count).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'record-other-company',
+          company_id: 'company-a',
+        }),
+      }),
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
