@@ -563,6 +563,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '产品目录' },
       },
       {
+        path: 'products/profiles',
+        name: 'ProductProfiles',
+        component: () => import('@/views/product-development/ProductProfileList.vue'),
+        meta: { title: '产品画像列表' },
+      },
+      {
         path: 'products/by-plan/:planId',
         name: 'ProductByPlanRedirect',
         component: () => import('@/views/product/ProductByPlanRedirect.vue'),
@@ -573,6 +579,44 @@ const routes: RouteRecordRaw[] = [
         name: 'ProductDetail',
         component: () => import('@/views/product/ProductDetail.vue'),
         meta: { title: '产品详情' },
+      },
+      {
+        path: 'products/:id/profile',
+        name: 'ProductProfile',
+        component: () => import('@/views/product-development/ProductProfileDetail.vue'),
+        meta: { title: '产品画像' },
+      },
+      {
+        path: 'products/:id/allergens',
+        name: 'ProductAllergens',
+        component: () => import('@/views/product-development/ProductAllergens.vue'),
+        meta: { title: '产品过敏原' },
+      },
+      {
+        path: 'products/:id/risk-zone',
+        name: 'ProductRiskZone',
+        component: () => import('@/views/product-development/ProductRiskZone.vue'),
+        meta: { title: '产品风险区' },
+      },
+      {
+        path: 'products/:id/validation',
+        name: 'ProductValidation',
+        component: () => import('@/views/product-development/ProductValidation.vue'),
+        meta: { title: '产品验证' },
+      },
+      // 产品工艺变更模块
+      {
+        path: 'product-process-changes/:id/impact',
+        name: 'ProductProcessChangeImpact',
+        component: () => import('@/views/product-development/ProductProcessChangeImpact.vue'),
+        meta: { title: '工艺变更影响分析' },
+      },
+      // 配方版本详情
+      {
+        path: 'recipes/:id/version',
+        name: 'RecipeVersion',
+        component: () => import('@/views/product-development/RecipeVersion.vue'),
+        meta: { title: '配方版本' },
       },
       // 配方管理 / 工序步骤管理已合并至产品信息页面，旧路由跳转到产品列表
       {

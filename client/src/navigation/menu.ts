@@ -60,6 +60,18 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    title: '产品开发',
+    moduleKey: 'product_rd',
+    icon: Goods,
+    children: [
+      { path: '/products/profiles', title: '产品画像', icon: Document },
+      { path: '/products/profiles', title: '产品过敏原', icon: WarnTriangleFilled },
+      { path: '/products/profiles', title: '产品风险区', icon: Monitor },
+      { path: '/products/profiles', title: '产品验证', icon: CircleCheck },
+      { path: '/products', title: '配方版本', icon: List },
+    ],
+  },
+  {
     title: '质量与合规',
     moduleKey: 'quality_compliance',
     icon: CircleCheck,
