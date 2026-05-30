@@ -13,12 +13,12 @@ import {
 import { CleaningRecordService } from './cleaning-record.service';
 import { CreateCleaningRecordDto } from './dto/create-cleaning-record.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthenticatedRequest } from '../auth/authenticated-user';
 import { IsString, IsBoolean, IsOptional, IsNumber, IsDateString } from 'class-validator';
 
 class CreateFromPlanDto {
   @IsString() area_point_id: string;
   @IsDateString() cleaning_date: string;
-  @IsString() @IsOptional() company_id?: string;
 }
 
 class CompleteItemDto {
@@ -40,21 +40,20 @@ export class CleaningRecordController {
   constructor(private service: CleaningRecordService) {}
 
   @Post()
-  create(@Body() dto: CreateCleaningRecordDto, @Request() req: { user: { id: string } }) {
-    return this.service.create(dto, req.user.id);
+  create(@Body() dto: CreateCleaningRecordDto, @Request() req: AuthenticatedRequest) {
+    return this.service.create(dto, req.user.id, req.user.companyId);
   }
 
   @Post('from-plan')
   createFromPlan(
     @Body() dto: CreateFromPlanDto,
-    @Request() req: { user: { id: string; company_id?: string } },
+    @Request() req: AuthenticatedRequest,
   ) {
-    const companyId = dto.company_id ?? req.user.company_id ?? '1';
     return this.service.createFromActivePlan(
       dto.area_point_id,
       new Date(dto.cleaning_date),
       req.user.id,
-      companyId,
+      req.user.companyId,
     );
   }
 
@@ -68,30 +67,34 @@ export class CleaningRecordController {
     @Param('recordId') recordId: string,
     @Param('itemId') itemId: string,
     @Body() dto: CompleteItemDto,
+    @Request() req: AuthenticatedRequest,
   ) {
-    return this.service.completeItem(recordId, itemId, dto);
+    return this.service.completeItem(recordId, itemId, dto, req.user.companyId);
   }
 
   @Post(':recordId/submit')
-  submitRecord(@Param('recordId') recordId: string) {
-    return this.service.submitRecord(recordId);
+  submitRecord(
+    @Param('recordId') recordId: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.service.submitRecord(recordId, req.user.companyId);
   }
 
   @Post(':recordId/verify')
   verifyRecord(
     @Param('recordId') recordId: string,
     @Body() dto: VerifyRecordDto,
-    @Request() req: { user: { id: string } },
+    @Request() req: AuthenticatedRequest,
   ) {
-    return this.service.verifyRecord(recordId, req.user.id, dto.pass);
+    return this.service.verifyRecord(recordId, req.user.id, dto.pass, req.user.companyId);
   }
 
   @Post(':recordId/items/:itemId/non-conformance')
   createNcFromItem(
     @Param('recordId') recordId: string,
     @Param('itemId') itemId: string,
-    @Request() req: { user: { id: string } },
+    @Request() req: AuthenticatedRequest,
   ) {
-    return this.service.createNonConformanceFromItem(recordId, itemId, req.user.id);
+    return this.service.createNonConformanceFromItem(recordId, itemId, req.user.id, req.user.companyId);
   }
 }

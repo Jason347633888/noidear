@@ -20,14 +20,14 @@ export class CleaningRecordService {
 
   // ── Simple create (legacy) ─────────────────────────────────────────────────
 
-  async create(dto: CreateCleaningRecordDto, userId: string) {
+  async create(dto: CreateCleaningRecordDto, userId: string, companyId: string) {
     return this.prisma.cleaningRecord.create({
       data: {
         target_type: dto.target_type,
         target_name: dto.target_name,
         is_pass: dto.is_pass,
         notes: dto.notes ?? null,
-        company_id: '1',
+        company_id: companyId,
         operator_id: userId,
         cleaning_date: new Date(),
         status: 'draft',
@@ -109,7 +109,14 @@ export class CleaningRecordService {
     });
   }
 
-  async completeItem(recordId: string, itemId: string, payload: CompleteItemPayload) {
+  async completeItem(recordId: string, itemId: string, payload: CompleteItemPayload, companyId: string) {
+    const record = await this.prisma.cleaningRecord.findFirst({
+      where: { id: recordId, company_id: companyId },
+    });
+    if (!record) {
+      throw new NotFoundException(`清洁记录不存在: ${recordId}`);
+    }
+
     const item = await this.prisma.cleaningRecordItem.findUnique({
       where: { id: itemId },
     });
@@ -136,9 +143,9 @@ export class CleaningRecordService {
     });
   }
 
-  async submitRecord(recordId: string) {
-    const record = await this.prisma.cleaningRecord.findUnique({
-      where: { id: recordId },
+  async submitRecord(recordId: string, companyId: string) {
+    const record = await this.prisma.cleaningRecord.findFirst({
+      where: { id: recordId, company_id: companyId },
       include: { items: true },
     });
     if (!record) {
@@ -175,9 +182,9 @@ export class CleaningRecordService {
     });
   }
 
-  async verifyRecord(recordId: string, verifierId: string, pass: boolean) {
-    const record = await this.prisma.cleaningRecord.findUnique({
-      where: { id: recordId },
+  async verifyRecord(recordId: string, verifierId: string, pass: boolean, companyId: string) {
+    const record = await this.prisma.cleaningRecord.findFirst({
+      where: { id: recordId, company_id: companyId },
     });
     if (!record) {
       throw new NotFoundException(`清洁记录不存在: ${recordId}`);
@@ -201,9 +208,10 @@ export class CleaningRecordService {
     recordId: string,
     itemId: string,
     userId: string,
+    companyId: string,
   ) {
-    const record = await this.prisma.cleaningRecord.findUnique({
-      where: { id: recordId },
+    const record = await this.prisma.cleaningRecord.findFirst({
+      where: { id: recordId, company_id: companyId },
     });
     if (!record) {
       throw new NotFoundException(`清洁记录不存在: ${recordId}`);

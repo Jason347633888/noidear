@@ -116,6 +116,7 @@ function createPrismaMock(overrides: Partial<Record<string, unknown>> = {}) {
     cleaningRecord: {
       create: jest.fn().mockResolvedValue(defaultRecord),
       findUnique: jest.fn().mockResolvedValue(defaultRecord),
+      findFirst: jest.fn().mockResolvedValue(defaultRecord),
       update: jest.fn().mockResolvedValue(defaultRecord),
       findMany: jest.fn().mockResolvedValue([defaultRecord]),
     },
@@ -194,7 +195,7 @@ describe('CleaningRecordService', () => {
       const prisma = createPrismaMock();
       const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
-      await service.completeItem('record-1', 'rec-item-1', { result: 'pass' });
+      await service.completeItem('record-1', 'rec-item-1', { result: 'pass' }, 'company-1');
 
       expect(prisma.cleaningRecordItem.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -214,7 +215,7 @@ describe('CleaningRecordService', () => {
       });
       const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
-      await service.completeItem('record-1', 'rec-item-1', { result: 'fail', remark: '浓度不足' });
+      await service.completeItem('record-1', 'rec-item-1', { result: 'fail', remark: '浓度不足' }, 'company-1');
 
       expect(prisma.cleaningRecordItem.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -234,7 +235,7 @@ describe('CleaningRecordService', () => {
       const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
       await expect(
-        service.completeItem('record-1', 'rec-item-1', { result: 'pass' }),
+        service.completeItem('record-1', 'rec-item-1', { result: 'pass' }, 'company-1'),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -253,6 +254,7 @@ describe('CleaningRecordService', () => {
         },
         cleaningRecord: {
           findUnique: jest.fn().mockResolvedValue(makeRecord({ status: 'draft', items: [makeRecordItem({ result: 'pending', completed: false })] })),
+          findFirst: jest.fn().mockResolvedValue(makeRecord({ status: 'draft', items: [makeRecordItem({ result: 'pending', completed: false })] })),
           update: jest.fn(),
           create: jest.fn(),
           findMany: jest.fn().mockResolvedValue([]),
@@ -260,7 +262,7 @@ describe('CleaningRecordService', () => {
       });
       const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
-      await expect(service.submitRecord('record-1')).rejects.toThrow(BadRequestException);
+      await expect(service.submitRecord('record-1', 'company-1')).rejects.toThrow(BadRequestException);
     });
 
     it('allows submit when only optional items are pending', async () => {
@@ -274,6 +276,7 @@ describe('CleaningRecordService', () => {
         },
         cleaningRecord: {
           findUnique: jest.fn().mockResolvedValue(makeRecord({ status: 'draft', items: [mandatoryPass, optionalPending] })),
+          findFirst: jest.fn().mockResolvedValue(makeRecord({ status: 'draft', items: [mandatoryPass, optionalPending] })),
           update: jest.fn().mockResolvedValue(makeRecord({ status: 'submitted', is_pass: true })),
           create: jest.fn(),
           findMany: jest.fn().mockResolvedValue([]),
@@ -281,7 +284,7 @@ describe('CleaningRecordService', () => {
       });
       const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
-      const result = await service.submitRecord('record-1');
+      const result = await service.submitRecord('record-1', 'company-1');
 
       expect(prisma.cleaningRecord.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -301,6 +304,7 @@ describe('CleaningRecordService', () => {
         },
         cleaningRecord: {
           findUnique: jest.fn().mockResolvedValue(makeRecord({ status: 'draft', items: [passItem] })),
+          findFirst: jest.fn().mockResolvedValue(makeRecord({ status: 'draft', items: [passItem] })),
           update: jest.fn().mockResolvedValue(makeRecord({ status: 'submitted', is_pass: true })),
           create: jest.fn(),
           findMany: jest.fn().mockResolvedValue([]),
@@ -308,7 +312,7 @@ describe('CleaningRecordService', () => {
       });
       const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
-      const result = await service.submitRecord('record-1');
+      const result = await service.submitRecord('record-1', 'company-1');
 
       expect(prisma.cleaningRecord.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -328,6 +332,7 @@ describe('CleaningRecordService', () => {
         },
         cleaningRecord: {
           findUnique: jest.fn().mockResolvedValue(makeRecord({ status: 'draft', items: [failItem] })),
+          findFirst: jest.fn().mockResolvedValue(makeRecord({ status: 'draft', items: [failItem] })),
           update: jest.fn(),
           create: jest.fn(),
           findMany: jest.fn().mockResolvedValue([]),
@@ -335,7 +340,7 @@ describe('CleaningRecordService', () => {
       });
       const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
-      await expect(service.submitRecord('record-1')).rejects.toThrow(BadRequestException);
+      await expect(service.submitRecord('record-1', 'company-1')).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -348,6 +353,7 @@ describe('CleaningRecordService', () => {
       const prisma = createPrismaMock({
         cleaningRecord: {
           findUnique: jest.fn().mockResolvedValue(record),
+          findFirst: jest.fn().mockResolvedValue(record),
           update: jest.fn(),
           create: jest.fn(),
           findMany: jest.fn().mockResolvedValue([record]),
@@ -360,7 +366,7 @@ describe('CleaningRecordService', () => {
       });
       const service = new CleaningRecordService(prisma, createNumberSequenceMock());
 
-      await service.createNonConformanceFromItem('record-1', 'rec-item-1', 'user-1');
+      await service.createNonConformanceFromItem('record-1', 'rec-item-1', 'user-1', 'company-1');
 
       expect(prisma.nonConformance.create).toHaveBeenCalledWith(
         expect.objectContaining({
