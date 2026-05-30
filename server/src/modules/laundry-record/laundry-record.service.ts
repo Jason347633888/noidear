@@ -44,9 +44,9 @@ export class LaundryRecordService {
     });
   }
 
-  async submitLaundryWorkRecord(recordId: string) {
-    const record = await this.prisma.laundryWorkRecord.findUnique({
-      where: { id: recordId },
+  async submitLaundryWorkRecord(recordId: string, companyId: string) {
+    const record = await this.prisma.laundryWorkRecord.findFirst({
+      where: { id: recordId, company_id: companyId },
       include: { items: true },
     });
     if (!record) {
@@ -63,9 +63,9 @@ export class LaundryRecordService {
     });
   }
 
-  async verifyLaundryWorkRecord(recordId: string, verifierId: string, pass: boolean) {
-    const record = await this.prisma.laundryWorkRecord.findUnique({
-      where: { id: recordId },
+  async verifyLaundryWorkRecord(recordId: string, verifierId: string, pass: boolean, companyId: string) {
+    const record = await this.prisma.laundryWorkRecord.findFirst({
+      where: { id: recordId, company_id: companyId },
     });
     if (!record) {
       throw new NotFoundException(`洗涤工作记录不存在: ${recordId}`);
@@ -88,9 +88,10 @@ export class LaundryRecordService {
     recordId: string,
     itemId: string,
     userId: string,
+    companyId: string,
   ) {
-    const record = await this.prisma.laundryWorkRecord.findUnique({
-      where: { id: recordId },
+    const record = await this.prisma.laundryWorkRecord.findFirst({
+      where: { id: recordId, company_id: companyId },
     });
     if (!record) {
       throw new NotFoundException(`洗涤工作记录不存在: ${recordId}`);
@@ -132,9 +133,9 @@ export class LaundryRecordService {
     });
   }
 
-  async findOne(recordId: string) {
-    const record = await this.prisma.laundryWorkRecord.findUnique({
-      where: { id: recordId },
+  async findOne(recordId: string, companyId: string) {
+    const record = await this.prisma.laundryWorkRecord.findFirst({
+      where: { id: recordId, company_id: companyId },
       include: { items: true },
     });
     if (!record) {

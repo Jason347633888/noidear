@@ -27,13 +27,13 @@ export class LaundryRecordController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.service.findOne(id);
+  findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.service.findOne(id, req.user.companyId);
   }
 
   @Post(':id/submit')
-  submit(@Param('id') id: string) {
-    return this.service.submitLaundryWorkRecord(id);
+  submit(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.service.submitLaundryWorkRecord(id, req.user.companyId);
   }
 
   @Post(':id/verify')
@@ -42,6 +42,6 @@ export class LaundryRecordController {
     @Body('pass') pass: boolean,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.service.verifyLaundryWorkRecord(id, req.user.id, pass);
+    return this.service.verifyLaundryWorkRecord(id, req.user.id, pass, req.user.companyId);
   }
 }

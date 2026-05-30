@@ -70,6 +70,7 @@ function createPrismaMock(overrides: Partial<Record<string, unknown>> = {}) {
     laundryWorkRecord: {
       create: jest.fn().mockResolvedValue(defaultRecord),
       findUnique: jest.fn().mockResolvedValue(defaultRecord),
+      findFirst: jest.fn().mockResolvedValue(defaultRecord),
       update: jest.fn().mockResolvedValue(defaultRecord),
       findMany: jest.fn().mockResolvedValue([defaultRecord]),
     },
@@ -211,7 +212,7 @@ describe('LaundryRecordService', () => {
       const record = makeRecord({ status: 'draft', items: [makeItem({ result: 'pass' })] });
       const prisma = createPrismaMock({
         laundryWorkRecord: {
-          findUnique: jest.fn().mockResolvedValue(record),
+          findFirst: jest.fn().mockResolvedValue(record),
           update: jest.fn().mockResolvedValue({ ...record, status: 'submitted' }),
           create: jest.fn(),
           findMany: jest.fn(),
@@ -219,7 +220,7 @@ describe('LaundryRecordService', () => {
       });
       const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
-      await service.submitLaundryWorkRecord('laundry-1');
+      await service.submitLaundryWorkRecord('laundry-1', 'company-1');
 
       expect(prisma.laundryWorkRecord.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -231,7 +232,7 @@ describe('LaundryRecordService', () => {
     it('throws NotFoundException when record does not exist', async () => {
       const prisma = createPrismaMock({
         laundryWorkRecord: {
-          findUnique: jest.fn().mockResolvedValue(null),
+          findFirst: jest.fn().mockResolvedValue(null),
           update: jest.fn(),
           create: jest.fn(),
           findMany: jest.fn(),
@@ -239,14 +240,14 @@ describe('LaundryRecordService', () => {
       });
       const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
-      await expect(service.submitLaundryWorkRecord('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.submitLaundryWorkRecord('nonexistent', 'company-1')).rejects.toThrow(NotFoundException);
     });
 
     it('throws BadRequestException when record is not in draft status', async () => {
       const record = makeRecord({ status: 'submitted' });
       const prisma = createPrismaMock({
         laundryWorkRecord: {
-          findUnique: jest.fn().mockResolvedValue(record),
+          findFirst: jest.fn().mockResolvedValue(record),
           update: jest.fn(),
           create: jest.fn(),
           findMany: jest.fn(),
@@ -254,7 +255,7 @@ describe('LaundryRecordService', () => {
       });
       const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
-      await expect(service.submitLaundryWorkRecord('laundry-1')).rejects.toThrow(BadRequestException);
+      await expect(service.submitLaundryWorkRecord('laundry-1', 'company-1')).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -265,7 +266,7 @@ describe('LaundryRecordService', () => {
       const record = makeRecord({ status: 'submitted' });
       const prisma = createPrismaMock({
         laundryWorkRecord: {
-          findUnique: jest.fn().mockResolvedValue(record),
+          findFirst: jest.fn().mockResolvedValue(record),
           update: jest.fn().mockResolvedValue({ ...record, status: 'verified', verifier_id: 'verifier-1' }),
           create: jest.fn(),
           findMany: jest.fn(),
@@ -273,7 +274,7 @@ describe('LaundryRecordService', () => {
       });
       const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
-      await service.verifyLaundryWorkRecord('laundry-1', 'verifier-1', true);
+      await service.verifyLaundryWorkRecord('laundry-1', 'verifier-1', true, 'company-1');
 
       expect(prisma.laundryWorkRecord.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -286,7 +287,7 @@ describe('LaundryRecordService', () => {
       const record = makeRecord({ status: 'submitted' });
       const prisma = createPrismaMock({
         laundryWorkRecord: {
-          findUnique: jest.fn().mockResolvedValue(record),
+          findFirst: jest.fn().mockResolvedValue(record),
           update: jest.fn().mockResolvedValue({ ...record, status: 'rejected', verifier_id: 'verifier-1' }),
           create: jest.fn(),
           findMany: jest.fn(),
@@ -294,7 +295,7 @@ describe('LaundryRecordService', () => {
       });
       const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
-      await service.verifyLaundryWorkRecord('laundry-1', 'verifier-1', false);
+      await service.verifyLaundryWorkRecord('laundry-1', 'verifier-1', false, 'company-1');
 
       expect(prisma.laundryWorkRecord.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -306,7 +307,7 @@ describe('LaundryRecordService', () => {
     it('throws NotFoundException when record does not exist', async () => {
       const prisma = createPrismaMock({
         laundryWorkRecord: {
-          findUnique: jest.fn().mockResolvedValue(null),
+          findFirst: jest.fn().mockResolvedValue(null),
           update: jest.fn(),
           create: jest.fn(),
           findMany: jest.fn(),
@@ -314,14 +315,14 @@ describe('LaundryRecordService', () => {
       });
       const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
-      await expect(service.verifyLaundryWorkRecord('nonexistent', 'verifier-1', true)).rejects.toThrow(NotFoundException);
+      await expect(service.verifyLaundryWorkRecord('nonexistent', 'verifier-1', true, 'company-1')).rejects.toThrow(NotFoundException);
     });
 
     it('throws BadRequestException when record is not submitted', async () => {
       const record = makeRecord({ status: 'draft' });
       const prisma = createPrismaMock({
         laundryWorkRecord: {
-          findUnique: jest.fn().mockResolvedValue(record),
+          findFirst: jest.fn().mockResolvedValue(record),
           update: jest.fn(),
           create: jest.fn(),
           findMany: jest.fn(),
@@ -329,7 +330,7 @@ describe('LaundryRecordService', () => {
       });
       const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
-      await expect(service.verifyLaundryWorkRecord('laundry-1', 'verifier-1', true)).rejects.toThrow(BadRequestException);
+      await expect(service.verifyLaundryWorkRecord('laundry-1', 'verifier-1', true, 'company-1')).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -341,7 +342,7 @@ describe('LaundryRecordService', () => {
       const record = makeRecord({ company_id: 'company-1', items: [item] });
       const prisma = createPrismaMock({
         laundryWorkRecord: {
-          findUnique: jest.fn().mockResolvedValue(record),
+          findFirst: jest.fn().mockResolvedValue(record),
           update: jest.fn(),
           create: jest.fn(),
           findMany: jest.fn(),
@@ -354,7 +355,7 @@ describe('LaundryRecordService', () => {
       });
       const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
-      await service.createNonConformanceFromLaundryItem('laundry-1', 'item-1', 'user-1');
+      await service.createNonConformanceFromLaundryItem('laundry-1', 'item-1', 'user-1', 'company-1');
 
       expect(prisma.nonConformance.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -371,7 +372,7 @@ describe('LaundryRecordService', () => {
     it('throws NotFoundException when record does not exist', async () => {
       const prisma = createPrismaMock({
         laundryWorkRecord: {
-          findUnique: jest.fn().mockResolvedValue(null),
+          findFirst: jest.fn().mockResolvedValue(null),
           update: jest.fn(),
           create: jest.fn(),
           findMany: jest.fn(),
@@ -380,7 +381,7 @@ describe('LaundryRecordService', () => {
       const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
       await expect(
-        service.createNonConformanceFromLaundryItem('nonexistent', 'item-1', 'user-1'),
+        service.createNonConformanceFromLaundryItem('nonexistent', 'item-1', 'user-1', 'company-1'),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -389,7 +390,7 @@ describe('LaundryRecordService', () => {
       const record = makeRecord({ items: [item] });
       const prisma = createPrismaMock({
         laundryWorkRecord: {
-          findUnique: jest.fn().mockResolvedValue(record),
+          findFirst: jest.fn().mockResolvedValue(record),
           update: jest.fn(),
           create: jest.fn(),
           findMany: jest.fn(),
@@ -403,7 +404,7 @@ describe('LaundryRecordService', () => {
       const service = new LaundryRecordService(prisma, createNumberSequenceMock());
 
       await expect(
-        service.createNonConformanceFromLaundryItem('laundry-1', 'item-1', 'user-1'),
+        service.createNonConformanceFromLaundryItem('laundry-1', 'item-1', 'user-1', 'company-1'),
       ).rejects.toThrow(NotFoundException);
     });
   });
