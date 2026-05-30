@@ -215,6 +215,19 @@ export class RetainedSampleService {
     });
   }
 
+  async getRetainedSampleById(id: string, companyId: string) {
+    const sample = await this.prisma.retainedSample.findFirst({
+      where: { id, company_id: companyId },
+      include: { inspections: true },
+    });
+
+    if (!sample) {
+      throw new NotFoundException(`Retained sample ${id} not found`);
+    }
+
+    return sample;
+  }
+
   async listRetainedSamples(query: ListRetainedSamplesDto) {
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 20);

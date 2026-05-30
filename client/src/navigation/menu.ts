@@ -93,6 +93,9 @@ export const menuGroups: MenuGroup[] = [
       { path: '/quality/workbench', title: '通用检验工作台', icon: CircleCheck },
       { path: '/quality/inspection-records', title: '检验记录', icon: Document },
       { path: '/environment-records', title: '环境监控', icon: Monitor },
+      { path: '/retained-samples', title: '留样管理', icon: Box },
+      { path: '/shelf-life-studies', title: '货架寿命研究', icon: DataAnalysis },
+      { path: '/batch-release', title: '批次放行', icon: CircleCheck },
     ],
   },
   {

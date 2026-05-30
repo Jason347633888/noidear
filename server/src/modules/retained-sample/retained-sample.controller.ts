@@ -14,8 +14,10 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthenticatedRequest } from '../auth/authenticated-user';
 import { RetainedSampleService } from './retained-sample.service';
+import { ShelfLifeService, CreateShelfLifeStudyInput } from './shelf-life.service';
 import {
   CreateRetainedSampleDto,
+  CreateRetainedSampleInspectionDto,
   DisposeRetainedSampleDto,
   ListRetainedSamplesDto,
 } from './dto/retained-sample.dto';
@@ -23,7 +25,10 @@ import {
 @UseGuards(JwtAuthGuard)
 @Controller('retained-samples')
 export class RetainedSampleController {
-  constructor(private readonly service: RetainedSampleService) {}
+  constructor(
+    private readonly service: RetainedSampleService,
+    private readonly shelfLifeService: ShelfLifeService,
+  ) {}
 
   @Post()
   @UseGuards(RolesGuard)
@@ -34,8 +39,12 @@ export class RetainedSampleController {
 
   @Get()
   list(@Query() query: ListRetainedSamplesDto, @Request() req: AuthenticatedRequest) {
-    const companyId = req.user.companyId;
-    return this.service.listRetainedSamples({ ...query, company_id: companyId });
+    return this.service.listRetainedSamples({ ...query, company_id: req.user.companyId });
+  }
+
+  @Get(':id')
+  getById(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.service.getRetainedSampleById(id, req.user.companyId);
   }
 
   @Patch(':id/dispose')
@@ -52,5 +61,14 @@ export class RetainedSampleController {
       dto.disposal_action,
       dto.disposed_at instanceof Date ? dto.disposed_at : new Date(dto.disposed_at),
     );
+  }
+
+  @Post(':id/inspections')
+  createInspection(
+    @Param('id') id: string,
+    @Body() dto: CreateRetainedSampleInspectionDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.service.createInspectionForSample(id, dto, req.user.companyId);
   }
 }

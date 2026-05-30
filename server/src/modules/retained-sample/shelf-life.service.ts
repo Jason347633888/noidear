@@ -93,6 +93,35 @@ function assertDonePointsHaveInspectionRecord(points: StudyPoint[]): void {
 export class ShelfLifeService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async listShelfLifeStudies(params: {
+    companyId: string;
+    page?: number;
+    limit?: number;
+    productId?: string;
+    status?: string;
+  }) {
+    const page = Number(params.page ?? 1);
+    const limit = Number(params.limit ?? 20);
+    const skip = (page - 1) * limit;
+
+    const where: Record<string, unknown> = { company_id: params.companyId };
+    if (params.productId) where.product_id = params.productId;
+    if (params.status) where.status = params.status;
+
+    const [list, total] = await Promise.all([
+      this.prisma.shelfLifeStudy.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { started_at: 'desc' },
+        include: { points: true },
+      }),
+      this.prisma.shelfLifeStudy.count({ where }),
+    ]);
+
+    return { list, total, page, limit };
+  }
+
   async createShelfLifeStudy(input: CreateShelfLifeStudyInput) {
     assertNonEmptyPoints(input.points);
     assertUniquePointCodes(input.points);

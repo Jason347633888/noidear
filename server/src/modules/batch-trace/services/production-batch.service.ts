@@ -18,14 +18,14 @@ import { userIdsInDepts } from '../../module-access/ownership-helpers';
 
 const FINISHED_PRODUCT_TYPE = 'finished_product';
 
-interface ReleaseBlocker {
+export interface ReleaseBlocker {
   code: string;
   message: string;
   resourceType: string;
   resourceId: string;
 }
 
-interface ReleaseReadiness {
+export interface ReleaseReadiness {
   ready: boolean;
   blockers: ReleaseBlocker[];
 }

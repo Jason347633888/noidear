@@ -690,6 +690,33 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/first-release/FirstReleaseSmoke.vue'),
         meta: { title: '首发闭环检查', requiresAuth: true },
       },
+      // 留样管理模块
+      {
+        path: 'retained-samples',
+        name: 'RetainedSampleList',
+        component: () => import('@/views/retained-sample/RetainedSampleList.vue'),
+        meta: { title: '留样管理' },
+      },
+      {
+        path: 'retained-samples/:id',
+        name: 'RetainedSampleDetail',
+        component: () => import('@/views/retained-sample/RetainedSampleDetail.vue'),
+        meta: { title: '留样详情' },
+      },
+      // 货架寿命研究模块
+      {
+        path: 'shelf-life-studies',
+        name: 'ShelfLifeStudyList',
+        component: () => import('@/views/shelf-life-study/ShelfLifeStudyList.vue'),
+        meta: { title: '货架寿命研究' },
+      },
+      // 批次放行模块
+      {
+        path: 'batch-release',
+        name: 'BatchReleasePanel',
+        component: () => import('@/views/retained-sample/BatchReleasePanel.vue'),
+        meta: { title: '批次放行' },
+      },
     ],
   },
   // 打印页（无 Layout）
