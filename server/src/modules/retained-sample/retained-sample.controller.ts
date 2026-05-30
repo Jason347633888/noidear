@@ -7,7 +7,12 @@ import {
   Post,
   Query,
   Request,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import type { AuthenticatedRequest } from '../auth/authenticated-user';
 import { RetainedSampleService } from './retained-sample.service';
 import {
   CreateRetainedSampleDto,
@@ -15,31 +20,35 @@ import {
   ListRetainedSamplesDto,
 } from './dto/retained-sample.dto';
 
+@UseGuards(JwtAuthGuard)
 @Controller('retained-samples')
 export class RetainedSampleController {
   constructor(private readonly service: RetainedSampleService) {}
 
   @Post()
-  create(@Body() dto: CreateRetainedSampleDto) {
-    return this.service.createRetainedSample(dto);
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  create(@Body() dto: CreateRetainedSampleDto, @Request() req: AuthenticatedRequest) {
+    return this.service.createRetainedSample(dto, req.user.companyId);
   }
 
   @Get()
-  list(@Query() query: ListRetainedSamplesDto, @Request() req: any) {
-    const companyId = query.company_id ?? req.user?.companyId;
+  list(@Query() query: ListRetainedSamplesDto, @Request() req: AuthenticatedRequest) {
+    const companyId = req.user.companyId;
     return this.service.listRetainedSamples({ ...query, company_id: companyId });
   }
 
   @Patch(':id/dispose')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
   dispose(
     @Param('id') id: string,
     @Body() dto: DisposeRetainedSampleDto,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
-    const companyId = req.user?.companyId ?? '';
     return this.service.disposeRetainedSample(
       id,
-      companyId,
+      req.user.companyId,
       dto.disposal_action,
       dto.disposed_at instanceof Date ? dto.disposed_at : new Date(dto.disposed_at),
     );

@@ -71,17 +71,20 @@ describe('RetainedSampleService', () => {
     it('should create a product-type sample with product_id', async () => {
       prisma.retainedSample.create.mockResolvedValue(mockProductSample);
 
-      const result = await service.createRetainedSample({
-        company_id: COMPANY_ID,
-        sample_type: 'product',
-        product_id: 'prod-1',
-        sample_code: 'RS-20260530-001',
-        sample_qty: 0.5,
-        unit: 'kg',
-        retained_at: new Date('2026-05-30T08:00:00Z'),
-        retention_period: '90d',
-        storage_condition: 'refrigerated',
-      });
+      const result = await service.createRetainedSample(
+        {
+          company_id: COMPANY_ID,
+          sample_type: 'product',
+          product_id: 'prod-1',
+          sample_code: 'RS-20260530-001',
+          sample_qty: 0.5,
+          unit: 'kg',
+          retained_at: new Date('2026-05-30T08:00:00Z'),
+          retention_period: '90d',
+          storage_condition: 'refrigerated',
+        },
+        COMPANY_ID,
+      );
 
       expect(result).toEqual(mockProductSample);
       expect(prisma.retainedSample.create).toHaveBeenCalled();
@@ -95,71 +98,86 @@ describe('RetainedSampleService', () => {
       };
       prisma.retainedSample.create.mockResolvedValue(sampleWithBatch);
 
-      const result = await service.createRetainedSample({
-        company_id: COMPANY_ID,
-        sample_type: 'product',
-        production_batch_id: 'pb-1',
-        sample_code: 'RS-20260530-001',
-        sample_qty: 0.5,
-        unit: 'kg',
-        retained_at: new Date('2026-05-30T08:00:00Z'),
-      });
+      const result = await service.createRetainedSample(
+        {
+          company_id: COMPANY_ID,
+          sample_type: 'product',
+          production_batch_id: 'pb-1',
+          sample_code: 'RS-20260530-001',
+          sample_qty: 0.5,
+          unit: 'kg',
+          retained_at: new Date('2026-05-30T08:00:00Z'),
+        },
+        COMPANY_ID,
+      );
 
       expect(result.production_batch_id).toBe('pb-1');
     });
 
     it('should throw BadRequestException when product-type sample has no product_id or production_batch_id', async () => {
       await expect(
-        service.createRetainedSample({
-          company_id: COMPANY_ID,
-          sample_type: 'product',
-          sample_code: 'RS-BAD',
-          sample_qty: 0.5,
-          unit: 'kg',
-          retained_at: new Date('2026-05-30T08:00:00Z'),
-        }),
+        service.createRetainedSample(
+          {
+            company_id: COMPANY_ID,
+            sample_type: 'product',
+            sample_code: 'RS-BAD',
+            sample_qty: 0.5,
+            unit: 'kg',
+            retained_at: new Date('2026-05-30T08:00:00Z'),
+          },
+          COMPANY_ID,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should create a material-type sample with material_batch_id', async () => {
       prisma.retainedSample.create.mockResolvedValue(mockMaterialSample);
 
-      const result = await service.createRetainedSample({
-        company_id: COMPANY_ID,
-        sample_type: 'material',
-        material_batch_id: 'mb-1',
-        sample_code: 'RS-20260530-002',
-        sample_qty: 0.2,
-        unit: 'kg',
-        retained_at: new Date('2026-05-30T08:00:00Z'),
-      });
+      const result = await service.createRetainedSample(
+        {
+          company_id: COMPANY_ID,
+          sample_type: 'material',
+          material_batch_id: 'mb-1',
+          sample_code: 'RS-20260530-002',
+          sample_qty: 0.2,
+          unit: 'kg',
+          retained_at: new Date('2026-05-30T08:00:00Z'),
+        },
+        COMPANY_ID,
+      );
 
       expect(result).toEqual(mockMaterialSample);
     });
 
     it('should throw BadRequestException when material-type sample has no material_batch_id', async () => {
       await expect(
-        service.createRetainedSample({
-          company_id: COMPANY_ID,
-          sample_type: 'material',
-          sample_code: 'RS-BAD',
-          sample_qty: 0.2,
-          unit: 'kg',
-          retained_at: new Date('2026-05-30T08:00:00Z'),
-        }),
+        service.createRetainedSample(
+          {
+            company_id: COMPANY_ID,
+            sample_type: 'material',
+            sample_code: 'RS-BAD',
+            sample_qty: 0.2,
+            unit: 'kg',
+            retained_at: new Date('2026-05-30T08:00:00Z'),
+          },
+          COMPANY_ID,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when packaging-type sample has no material_batch_id', async () => {
       await expect(
-        service.createRetainedSample({
-          company_id: COMPANY_ID,
-          sample_type: 'packaging',
-          sample_code: 'RS-BAD',
-          sample_qty: 0.1,
-          unit: 'piece',
-          retained_at: new Date('2026-05-30T08:00:00Z'),
-        }),
+        service.createRetainedSample(
+          {
+            company_id: COMPANY_ID,
+            sample_type: 'packaging',
+            sample_code: 'RS-BAD',
+            sample_qty: 0.1,
+            unit: 'piece',
+            retained_at: new Date('2026-05-30T08:00:00Z'),
+          },
+          COMPANY_ID,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -170,16 +188,19 @@ describe('RetainedSampleService', () => {
         return Promise.resolve({ ...mockProductSample, expires_at: capturedData.expires_at });
       });
 
-      await service.createRetainedSample({
-        company_id: COMPANY_ID,
-        sample_type: 'product',
-        product_id: 'prod-1',
-        sample_code: 'RS-20260530-001',
-        sample_qty: 0.5,
-        unit: 'kg',
-        retained_at: new Date('2026-05-30T00:00:00Z'),
-        retention_period: '90d',
-      });
+      await service.createRetainedSample(
+        {
+          company_id: COMPANY_ID,
+          sample_type: 'product',
+          product_id: 'prod-1',
+          sample_code: 'RS-20260530-001',
+          sample_qty: 0.5,
+          unit: 'kg',
+          retained_at: new Date('2026-05-30T00:00:00Z'),
+          retention_period: '90d',
+        },
+        COMPANY_ID,
+      );
 
       // expires_at should be retained_at + 90 days
       const expectedExpiry = new Date('2026-05-30T00:00:00Z');
@@ -195,19 +216,73 @@ describe('RetainedSampleService', () => {
         return Promise.resolve({ ...mockProductSample, expires_at: capturedData.expires_at });
       });
 
-      await service.createRetainedSample({
-        company_id: COMPANY_ID,
-        sample_type: 'product',
-        product_id: 'prod-1',
-        sample_code: 'RS-20260530-001',
-        sample_qty: 0.5,
-        unit: 'kg',
-        retained_at: new Date('2026-05-30T00:00:00Z'),
-        retention_period: '90d',
-        expires_at: explicitExpiry,
-      });
+      await service.createRetainedSample(
+        {
+          company_id: COMPANY_ID,
+          sample_type: 'product',
+          product_id: 'prod-1',
+          sample_code: 'RS-20260530-001',
+          sample_qty: 0.5,
+          unit: 'kg',
+          retained_at: new Date('2026-05-30T00:00:00Z'),
+          retention_period: '90d',
+          expires_at: explicitExpiry,
+        },
+        COMPANY_ID,
+      );
 
       expect(capturedData.expires_at.getTime()).toBe(explicitExpiry.getTime());
+    });
+
+    it('should coerce string retained_at to Date when retention_period provided', async () => {
+      let capturedData: any;
+      prisma.retainedSample.create.mockImplementation((args: any) => {
+        capturedData = args.data;
+        return Promise.resolve({ ...mockProductSample, expires_at: capturedData.expires_at });
+      });
+
+      await service.createRetainedSample(
+        {
+          company_id: COMPANY_ID,
+          sample_type: 'product',
+          product_id: 'prod-1',
+          sample_code: 'RS-STR-001',
+          sample_qty: 0.5,
+          unit: 'kg',
+          // Simulates HTTP string arriving before @Type(() => Date) coerces it
+          retained_at: '2026-05-30T00:00:00Z' as unknown as Date,
+          retention_period: '30d',
+        },
+        COMPANY_ID,
+      );
+
+      expect(capturedData.expires_at).toBeInstanceOf(Date);
+      const expectedExpiry = new Date('2026-05-30T00:00:00Z');
+      expectedExpiry.setDate(expectedExpiry.getDate() + 30);
+      expect(capturedData.expires_at.getTime()).toBe(expectedExpiry.getTime());
+    });
+
+    it('should set company_id from the companyId parameter, not dto.company_id', async () => {
+      let capturedData: any;
+      prisma.retainedSample.create.mockImplementation((args: any) => {
+        capturedData = args.data;
+        return Promise.resolve({ ...mockProductSample, company_id: capturedData.company_id });
+      });
+
+      await service.createRetainedSample(
+        {
+          company_id: 'injected-company',
+          sample_type: 'product',
+          product_id: 'prod-1',
+          sample_code: 'RS-TENANT-001',
+          sample_qty: 0.5,
+          unit: 'kg',
+          retained_at: new Date('2026-05-30T00:00:00Z'),
+        },
+        COMPANY_ID,
+      );
+
+      expect(capturedData.company_id).toBe(COMPANY_ID);
     });
   });
 
@@ -309,6 +384,50 @@ describe('RetainedSampleService', () => {
           where: expect.objectContaining({ status: 'retained' }),
         }),
       );
+    });
+
+    it('should filter by production_batch_id', async () => {
+      const batchSample = { ...mockProductSample, production_batch_id: 'pb-1' };
+      prisma.retainedSample.findMany.mockResolvedValue([batchSample]);
+      prisma.retainedSample.count.mockResolvedValue(1);
+
+      await service.listRetainedSamples({
+        company_id: COMPANY_ID,
+        production_batch_id: 'pb-1',
+      });
+
+      expect(prisma.retainedSample.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ production_batch_id: 'pb-1' }),
+        }),
+      );
+    });
+
+    it('should filter by material_batch_id', async () => {
+      prisma.retainedSample.findMany.mockResolvedValue([mockMaterialSample]);
+      prisma.retainedSample.count.mockResolvedValue(1);
+
+      await service.listRetainedSamples({
+        company_id: COMPANY_ID,
+        material_batch_id: 'mb-1',
+      });
+
+      expect(prisma.retainedSample.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ material_batch_id: 'mb-1' }),
+        }),
+      );
+    });
+
+    it('should not include production_batch_id in where clause when not provided', async () => {
+      prisma.retainedSample.findMany.mockResolvedValue([mockProductSample]);
+      prisma.retainedSample.count.mockResolvedValue(1);
+
+      await service.listRetainedSamples({ company_id: COMPANY_ID });
+
+      const call = prisma.retainedSample.findMany.mock.calls[0][0];
+      expect(call.where).not.toHaveProperty('production_batch_id');
+      expect(call.where).not.toHaveProperty('material_batch_id');
     });
   });
 });

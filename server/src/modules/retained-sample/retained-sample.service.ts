@@ -61,18 +61,24 @@ function validateSourceIdentity(dto: CreateRetainedSampleDto): void {
 export class RetainedSampleService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createRetainedSample(dto: CreateRetainedSampleDto) {
+  async createRetainedSample(dto: CreateRetainedSampleDto, companyId: string) {
     validateSourceIdentity(dto);
 
+    const retainedAt =
+      dto.retained_at instanceof Date ? dto.retained_at : new Date(dto.retained_at);
+
     const expiresAt =
-      dto.expires_at ??
-      (dto.retention_period
-        ? deriveExpiry(dto.retained_at, dto.retention_period)
-        : undefined);
+      dto.expires_at != null
+        ? dto.expires_at instanceof Date
+          ? dto.expires_at
+          : new Date(dto.expires_at)
+        : dto.retention_period
+          ? deriveExpiry(retainedAt, dto.retention_period)
+          : undefined;
 
     return this.prisma.retainedSample.create({
       data: {
-        company_id: dto.company_id,
+        company_id: companyId,
         sample_type: dto.sample_type,
         product_id: dto.product_id ?? null,
         material_batch_id: dto.material_batch_id ?? null,
@@ -80,7 +86,7 @@ export class RetainedSampleService {
         sample_code: dto.sample_code,
         sample_qty: dto.sample_qty,
         unit: dto.unit,
-        retained_at: dto.retained_at,
+        retained_at: retainedAt,
         retention_period: dto.retention_period ?? null,
         expires_at: expiresAt ?? null,
         storage_condition: dto.storage_condition ?? null,
