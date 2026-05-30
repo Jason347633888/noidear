@@ -177,8 +177,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, defineComponent, h } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ref, onMounted, defineComponent, h } from 'vue';
+import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import PageHeaderBlock from '@/components/PageHeaderBlock.vue';
 
@@ -343,8 +343,8 @@ const completeRules: FormRules = {
 // ---------------------------------------------------------------------------
 // Computed
 // ---------------------------------------------------------------------------
-const sectionTasks = (taskType: string) =>
-  computed(() => tasks.value.filter((t) => t.task_type === taskType));
+const sectionTasks = (taskType: string): QualityInspectionTask[] =>
+  tasks.value.filter((t) => t.task_type === taskType);
 
 // ---------------------------------------------------------------------------
 // API helpers

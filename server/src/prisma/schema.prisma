@@ -2011,6 +2011,7 @@ model WorkshopArea {
   sanitizerConcentrationChecks  SanitizerConcentrationCheck[]   @relation("SanitizerCheckAreaPoint")
   cleaningPlans                 CleaningPlan[]                  @relation("CleaningPlanAreaPoint")
   cleaningRecords               CleaningRecord[]                @relation("CleaningRecordAreaPoint")
+  environmentalSamplingRecords  EnvironmentalSamplingRecord[]   @relation("EnvironmentalSamplingAreaPoint")
 
   @@unique([company_id, code])
   @@unique([company_id, name])
@@ -2281,6 +2282,29 @@ model InspectionRecordItem {
   @@index([record_id])
   @@index([inspection_item_id])
   @@map("inspection_record_items")
+}
+
+// ─── 环境微生物采样 (两阶段: 采样→培养→检验) ─────────────────────────────────────
+// Captures the physical sampling step. A follow-up QualityInspectionTask is
+// scheduled after incubation; the result links back via follow_up_inspection_record_id.
+
+model EnvironmentalSamplingRecord {
+  id                            String       @id @default(cuid())
+  company_id                    String
+  area_point_id                 String
+  area_point                    WorkshopArea @relation("EnvironmentalSamplingAreaPoint", fields: [area_point_id], references: [id], onDelete: Restrict)
+  standard_id                   String?
+  sample_code                   String
+  sample_method                 String
+  exposure_time                 Int?
+  sampler_id                    String?
+  sampled_at                    DateTime
+  follow_up_inspection_record_id String?
+  created_at                    DateTime     @default(now())
+
+  @@unique([company_id, sample_code])
+  @@index([company_id, area_point_id, sampled_at])
+  @@map("environmental_sampling_records")
 }
 
 // ─── 质量合规 ─────────────────────────────────────

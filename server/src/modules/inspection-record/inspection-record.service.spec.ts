@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { InspectionRecordService } from './inspection-record.service';
 import { INSPECTION_APPLIES_TO, INSPECTION_OBJECT_COMPATIBILITY } from './inspection-record.constants';
 
@@ -309,5 +310,143 @@ describe('InspectionRecordService – object_type compatibility validation', () 
         objectId: 'obj-1',
       } as any),
     ).resolves.toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createFromPreset() — specialty inspection preset tests
+// ---------------------------------------------------------------------------
+
+describe('InspectionRecordService.createFromPreset()', () => {
+  const PRESETS = [
+    { code: 'WATER_QUALITY',      objectType: 'area_point'     },
+    { code: 'ENV_MICROBIOLOGY',   objectType: 'area_point'     },
+    { code: 'PEST_CONTROL',       objectType: 'area_point'     },
+    { code: 'HYGIENE_INSPECTION', objectType: 'area_point'     },
+    { code: 'VEHICLE_SANITATION', objectType: 'external_party' },
+    { code: 'ALLERGEN_TEST',      objectType: 'area_point'     },
+  ] as const;
+
+  function makePresetService(presetCode: string, appliesTo: string) {
+    const mockStandard = { id: 'std-preset', code: presetCode, applies_to: appliesTo, status: 'active' };
+    const prisma = {
+      inspectionStandard: {
+        findFirst: jest.fn().mockResolvedValue(mockStandard),
+        findUnique: jest.fn().mockResolvedValue(mockStandard),
+      },
+      inspectionRecord: {
+        create: jest.fn().mockResolvedValue({
+          id: 'rec-preset',
+          items: [{ id: 'item-preset', judgment: 'pass' }],
+        }),
+      },
+      nonConformance: { create: jest.fn() },
+      $transaction: jest.fn(),
+    };
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma),
+    );
+    const numberSequence = { generateNonConformanceNo: jest.fn() };
+    return { service: new InspectionRecordService(prisma as any, numberSequence as any), prisma };
+  }
+
+  it.each(PRESETS)(
+    'creates InspectionRecord for preset code "$code" with objectType "$objectType"',
+    async ({ code, objectType }) => {
+      // Map preset code to the standard applies_to value
+      const PRESET_APPLIES_TO_MAP: Record<string, string> = {
+        WATER_QUALITY:      'water',
+        ENV_MICROBIOLOGY:   'area_point',
+        PEST_CONTROL:       'area_point',
+        HYGIENE_INSPECTION: 'area_point',
+        VEHICLE_SANITATION: 'vehicle',
+        ALLERGEN_TEST:      'area_point',
+      };
+      const appliesTo = PRESET_APPLIES_TO_MAP[code];
+      const { service, prisma } = makePresetService(code, appliesTo);
+
+      const result = await service.createFromPreset(
+        'tenant-1',
+        code,
+        objectType,
+        'obj-1',
+        {
+          company_id: 'tenant-1',
+          objectType,
+          objectId: 'obj-1',
+          inspectedAt: new Date().toISOString(),
+          items: [{ itemName: '检验项', judgment: 'pass' }],
+        } as any,
+      );
+
+      expect(result).toBeDefined();
+      expect(prisma.inspectionStandard.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ company_id: 'tenant-1', code, status: 'active' }),
+        }),
+      );
+      expect(prisma.inspectionRecord.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            object_type: objectType,
+            object_id: 'obj-1',
+          }),
+        }),
+      );
+    },
+  );
+
+  it('throws BadRequestException when no active standard found for preset code', async () => {
+    const prisma = {
+      inspectionStandard: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      inspectionRecord: { create: jest.fn() },
+      nonConformance: { create: jest.fn() },
+      $transaction: jest.fn(),
+    };
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma),
+    );
+    const numberSequence = { generateNonConformanceNo: jest.fn() };
+    const service = new InspectionRecordService(prisma as any, numberSequence as any);
+
+    await expect(
+      service.createFromPreset(
+        'tenant-1',
+        'WATER_QUALITY',
+        'area_point',
+        'obj-1',
+        {
+          company_id: 'tenant-1',
+          objectType: 'area_point',
+          objectId: 'obj-1',
+          inspectedAt: new Date().toISOString(),
+          items: [{ itemName: '检验项', judgment: 'pass' }],
+        } as any,
+      ),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('throws BadRequestException when objectType is incompatible with preset standard', async () => {
+    // WATER_QUALITY applies_to 'water', compatible with 'area_point' only
+    // Using 'production_batch' should fail
+    const { service } = makePresetService('WATER_QUALITY', 'water');
+
+    await expect(
+      service.createFromPreset(
+        'tenant-1',
+        'WATER_QUALITY',
+        'production_batch', // incompatible
+        'obj-1',
+        {
+          company_id: 'tenant-1',
+          objectType: 'production_batch',
+          objectId: 'obj-1',
+          inspectedAt: new Date().toISOString(),
+          items: [{ itemName: '检验项', judgment: 'pass' }],
+        } as any,
+      ),
+    ).rejects.toThrow(BadRequestException);
   });
 });

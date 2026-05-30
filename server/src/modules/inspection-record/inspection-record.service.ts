@@ -5,6 +5,21 @@ import { QualityNumberSequenceService } from '../quality-number-sequence/quality
 import { CreateInspectionRecordDto } from './dto/create-inspection-record.dto';
 import { INSPECTION_OBJECT_COMPATIBILITY } from './inspection-record.constants';
 
+/**
+ * Maps each specialty preset code to the InspectionStandard.applies_to value
+ * that is expected for the corresponding standard. This allows callers to
+ * supply a human-readable preset code (e.g. "WATER_QUALITY") instead of
+ * looking up the standard_id themselves.
+ */
+const PRESET_CODE_APPLIES_TO: Record<string, string> = {
+  WATER_QUALITY:      'water',
+  ENV_MICROBIOLOGY:   'area_point',
+  PEST_CONTROL:       'area_point',
+  HYGIENE_INSPECTION: 'area_point',
+  VEHICLE_SANITATION: 'vehicle',
+  ALLERGEN_TEST:      'area_point',
+};
+
 type InspectionRecordWithItems = Prisma.InspectionRecordGetPayload<{
   include: { items: true };
 }>;
@@ -20,6 +35,55 @@ export class InspectionRecordService {
 
   async create(dto: CreateInspectionRecordDto) {
     return this.prisma.$transaction(async (tx) => {
+      return this.createInTransaction(tx, dto);
+    });
+  }
+
+  /**
+   * Resolves an active InspectionStandard by company_id + preset code, validates
+   * object-type compatibility, then delegates to the standard create() path.
+   *
+   * @param companyId    Tenant identifier
+   * @param presetCode   One of the PRESET_CODE_APPLIES_TO keys (e.g. "WATER_QUALITY")
+   * @param objectType   The object_type for the InspectionRecord
+   * @param objectId     The target object identifier
+   * @param input        Remaining CreateInspectionRecordDto fields (items, dates, etc.)
+   */
+  async createFromPreset(
+    companyId: string,
+    presetCode: string,
+    objectType: string,
+    objectId: string,
+    input: CreateInspectionRecordDto,
+  ): Promise<InspectionRecordWithItems> {
+    return this.prisma.$transaction(async (tx) => {
+      const standard = await tx.inspectionStandard.findFirst({
+        where: { company_id: companyId, code: presetCode, status: 'active' },
+        select: { id: true, applies_to: true },
+      });
+
+      if (!standard) {
+        throw new BadRequestException(
+          `No active InspectionStandard found for preset code "${presetCode}" in company "${companyId}"`,
+        );
+      }
+
+      const allowed = INSPECTION_OBJECT_COMPATIBILITY[standard.applies_to];
+      if (allowed && !allowed.includes(objectType)) {
+        throw new BadRequestException(
+          `object_type "${objectType}" is not compatible with preset "${presetCode}" ` +
+            `(standard applies_to "${standard.applies_to}"). Allowed: ${allowed.join(', ')}`,
+        );
+      }
+
+      const dto: CreateInspectionRecordDto = {
+        ...input,
+        company_id: companyId,
+        inspectionStandardId: standard.id,
+        objectType,
+        objectId,
+      };
+
       return this.createInTransaction(tx, dto);
     });
   }
