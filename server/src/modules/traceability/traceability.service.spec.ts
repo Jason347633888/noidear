@@ -866,6 +866,31 @@ describe('TraceabilityService.createEvidenceExport (Task 14-6)', () => {
     ...overrides,
   });
 
+  it('rejects formal export for non-production_batch resource types', async () => {
+    const prisma = buildPrisma();
+    const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
+
+    await expect(
+      service.createEvidenceExport({
+        companyId: 'co-1',
+        resourceType: 'material_batch',
+        resourceId: 'mb-1',
+        exportMode: 'formal',
+        requesterId: 'user-1',
+      }),
+    ).rejects.toThrow(/production_batch/i);
+
+    await expect(
+      service.createEvidenceExport({
+        companyId: 'co-1',
+        resourceType: 'product_recall',
+        resourceId: 'recall-1',
+        exportMode: 'formal',
+        requesterId: 'user-1',
+      }),
+    ).rejects.toThrow(/production_batch/i);
+  });
+
   it('rejects formal export when production batch is not completed', async () => {
     const prisma = buildPrisma({
       productionBatch: {
@@ -918,6 +943,25 @@ describe('TraceabilityService.createEvidenceExport (Task 14-6)', () => {
         requesterId: 'user-1',
       }),
     ).rejects.toThrow(/not ready|incomplete|open non-conformance/i);
+  });
+
+  it('does not persist EvidenceExport row for a complete preview (exportMode=preview)', async () => {
+    const prisma = buildPrisma(); // snapshot returns readinessStatus='complete'
+    const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
+
+    const result = await service.createEvidenceExport({
+      companyId: 'co-1',
+      resourceType: 'production_batch',
+      resourceId: 'pb-ev-1',
+      exportMode: 'preview',
+      requesterId: 'user-1',
+    }) as any;
+
+    // Preview mode must never persist an EvidenceExport row, even if the snapshot is complete.
+    expect(prisma.evidenceExport.create).not.toHaveBeenCalled();
+    expect(prisma.evidenceFile.create).not.toHaveBeenCalled();
+    // Should return snapshot data with readinessStatus
+    expect(result).toHaveProperty('readinessStatus');
   });
 
   it('allows preview export even when batch is not ready (status=incomplete returned)', async () => {
@@ -1057,14 +1101,38 @@ describe('TraceabilityService.createEvidenceExport (Task 14-6)', () => {
     expect(firstFileArgs.filePath).not.toBe(secondFileArgs.filePath);
   });
 
-  it('writes attachmentIndex with count and refs from snapshotData evidenceFiles', async () => {
+  it('builds attachmentIndex from snapshotData.evidenceFiles (full chain, no extra DB query)', async () => {
+    // The snapshot already contains evidence files for the full upstream chain
+    // (batch + material batches). attachmentIndex must read from snapshotData, not
+    // issue a fresh loadEvidenceFiles call that would only see the root batch.
     const prisma = buildPrisma({
+      traceabilitySnapshot: {
+        create: jest.fn().mockResolvedValue({
+          id: 'snapshot-ev-att',
+          rootObjectType: 'production_batch',
+          rootObjectId: 'pb-ev-1',
+          readinessStatus: 'complete',
+          snapshotPurpose: 'evidence_export',
+          snapshotData: {
+            root: { type: 'production_batch', id: 'pb-ev-1', display: { batchNumber: 'PB-EV-001', status: 'completed' } },
+            upstream: [{ type: 'material_batch', id: 'mb-1' }],
+            downstream: [],
+            inspections: [],
+            nonConformances: [],
+            correctiveActions: [],
+            approvals: [],
+            evidenceFiles: [
+              { id: 'att-1', fileName: 'batch-record.pdf', filePath: '/evidence/batch-record.pdf', mimeType: 'application/pdf' },
+              { id: 'att-2', fileName: 'inspection-report.pdf', filePath: '/evidence/inspection.pdf', mimeType: 'application/pdf' },
+            ],
+            generatedAt: new Date().toISOString(),
+          },
+        }),
+      },
       evidenceFile: {
         create: jest.fn().mockResolvedValue({ id: 'file-ev-3', fileName: 'evidence.pdf' }),
-        findMany: jest.fn().mockResolvedValue([
-          { id: 'att-1', fileName: 'batch-record.pdf', filePath: '/evidence/batch-record.pdf', mimeType: 'application/pdf' },
-          { id: 'att-2', fileName: 'inspection-report.pdf', filePath: '/evidence/inspection.pdf', mimeType: 'application/pdf' },
-        ]),
+        // findMany should NOT be called for building attachmentIndex
+        findMany: jest.fn().mockResolvedValue([]),
       },
     });
     const service = new TraceabilityService(prisma as any, {} as any, {} as any, {} as any);
@@ -1078,11 +1146,29 @@ describe('TraceabilityService.createEvidenceExport (Task 14-6)', () => {
     });
 
     const createArgs = prisma.evidenceExport.create.mock.calls[0][0].data;
-    expect(createArgs.attachmentIndex).toBeDefined();
-    expect(typeof createArgs.attachmentIndex).toBe('object');
-    expect(createArgs.attachmentIndex).toHaveProperty('count');
-    expect(createArgs.attachmentIndex).toHaveProperty('refs');
-    expect(Array.isArray(createArgs.attachmentIndex.refs)).toBe(true);
+    // count and refs must reflect the snapshotData.evidenceFiles (2 entries)
+    expect(createArgs.attachmentIndex.count).toBe(2);
+    expect(createArgs.attachmentIndex.refs).toHaveLength(2);
+    expect(createArgs.attachmentIndex.refs[0]).toMatchObject({
+      id: 'att-1',
+      fileName: 'batch-record.pdf',
+      filePath: '/evidence/batch-record.pdf',
+      mimeType: 'application/pdf',
+    });
+    expect(createArgs.attachmentIndex.refs[1]).toMatchObject({
+      id: 'att-2',
+      fileName: 'inspection-report.pdf',
+      filePath: '/evidence/inspection.pdf',
+      mimeType: 'application/pdf',
+    });
+    // loadRelatedFacts calls findMany once for the full upstream chain during snapshot build.
+    // createEvidenceExport must NOT issue a second findMany call (for just [resourceId])
+    // to build the attachmentIndex — it must reuse snapshotData.evidenceFiles instead.
+    const findManyCalls = prisma.evidenceFile.findMany.mock.calls;
+    expect(findManyCalls.length).toBe(1);
+    // The one allowed call must cover the full chain (batch + material batches), not only [resourceId]
+    const calledIds: string[] = findManyCalls[0][0].where.resourceId.in;
+    expect(calledIds.length).toBeGreaterThan(1);
   });
 
   it('creates EvidenceExport with default layout traceability_default_v1', async () => {

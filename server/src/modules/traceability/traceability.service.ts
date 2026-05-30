@@ -599,6 +599,18 @@ export class TraceabilityService {
    * Historical exports are never overwritten — every call creates a new row.
    */
   async createEvidenceExport(input: CreateEvidenceExportInput) {
+    // Step 0: type guard — formal exports are restricted to production_batch.
+    // Other root types (material_batch, product_recall, traceability_drill) use
+    // computeGenericReadiness() which always returns ready=true, bypassing the
+    // completed/main-chain/open-NC gate entirely. Forward-compat types must
+    // opt in explicitly once their own readiness checks are implemented.
+    if (input.exportMode === 'formal' && input.resourceType !== 'production_batch') {
+      throw new BadRequestException(
+        `Formal evidence exports only support production_batch; received "${input.resourceType}". ` +
+        `Use exportMode="preview" for other resource types.`,
+      );
+    }
+
     // Step 1: build snapshot only — suppress automatic EvidenceExport creation so we
     // can create it ourselves with approval + attachment metadata in steps 3-5.
     const snapshot = await this.createTraceContextSnapshot({
@@ -619,8 +631,10 @@ export class TraceabilityService {
       );
     }
 
-    // Preview mode: return snapshot with readiness status; no EvidenceExport row.
-    if (readinessStatus !== 'complete') {
+    // Preview mode: return snapshot with readiness status; no EvidenceExport row is
+    // ever persisted in preview mode — even when the snapshot is complete.
+    // (Controller comment line 92: "preview snapshots never create an EvidenceExport".)
+    if (input.exportMode !== 'formal') {
       return { ...snapshot, readinessStatus };
     }
 
@@ -634,11 +648,19 @@ export class TraceabilityService {
       opinion: input.approvalContext?.opinion ?? null,
     };
 
-    // Step 4: build attachment index from evidence files linked to this resource.
-    const attachmentRefs = await this.loadEvidenceFiles(input.companyId, input.resourceType, [input.resourceId]);
+    // Step 4: build attachment index from the snapshot's own evidenceFiles array.
+    // The snapshot already loaded evidence files for the FULL upstream chain
+    // (batch + all material batches) via loadRelatedFacts — reusing that data
+    // avoids a duplicate DB round-trip and ensures upstream attachments are counted.
+    const snapshotEvidenceFiles: Array<{
+      id: string;
+      fileName?: string | null;
+      filePath?: string | null;
+      mimeType?: string | null;
+    }> = (snapshot as any).snapshotData?.evidenceFiles ?? [];
     const attachmentIndex = {
-      count: attachmentRefs.length,
-      refs: attachmentRefs.map((f: any) => ({
+      count: snapshotEvidenceFiles.length,
+      refs: snapshotEvidenceFiles.map((f) => ({
         id: f.id,
         fileName: f.fileName ?? null,
         filePath: f.filePath ?? null,
