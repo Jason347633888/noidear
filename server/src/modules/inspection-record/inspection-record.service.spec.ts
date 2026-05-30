@@ -450,3 +450,135 @@ describe('InspectionRecordService.createFromPreset()', () => {
     ).rejects.toThrow(BadRequestException);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Product / Semifinished Inspection Presets (Phase 13 Task 5)
+// ---------------------------------------------------------------------------
+
+describe('InspectionRecordService – product inspection preset codes', () => {
+  const PRODUCT_PRESET_CODES = [
+    'PRODUCT_INSPECTION',
+    'SEMIFINISHED_INSPECTION',
+    'PRE_RELEASE_INSPECTION',
+    'SHELF_LIFE_POINT',
+  ] as const;
+
+  it('exports PRODUCT_INSPECTION_PRESET_CODES constant with all four codes', () => {
+    // This import will fail (RED) until the constant is exported from the service module
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { PRODUCT_INSPECTION_PRESET_CODES } = require('./inspection-record.constants');
+    expect(PRODUCT_INSPECTION_PRESET_CODES).toBeDefined();
+    const codes = [...PRODUCT_INSPECTION_PRESET_CODES] as string[];
+    expect(codes.sort()).toEqual([...PRODUCT_PRESET_CODES].sort());
+  });
+
+  function makeProductPresetService(presetCode: string, appliesTo: string) {
+    const mockStandard = { id: 'std-product', code: presetCode, applies_to: appliesTo, status: 'active' };
+    const prisma = {
+      inspectionStandard: {
+        findFirst: jest.fn().mockResolvedValue(mockStandard),
+        findUnique: jest.fn().mockResolvedValue(mockStandard),
+      },
+      inspectionRecord: {
+        create: jest.fn().mockResolvedValue({
+          id: 'rec-product',
+          items: [{ id: 'item-product', judgment: 'pass' }],
+        }),
+      },
+      nonConformance: { create: jest.fn() },
+      $transaction: jest.fn(),
+    };
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma),
+    );
+    const numberSequence = { generateNonConformanceNo: jest.fn() };
+    return { service: new InspectionRecordService(prisma as any, numberSequence as any), prisma };
+  }
+
+  it('createProductInspectionRecord creates InspectionRecord with object_type production_batch', async () => {
+    const { service, prisma } = makeProductPresetService('PRODUCT_INSPECTION', 'product');
+
+    const result = await (service as any).createProductInspectionRecord(
+      'batch-001',
+      'PRODUCT_INSPECTION',
+      {
+        company_id: 'tenant-1',
+        inspectedAt: new Date().toISOString(),
+        items: [{ itemName: '外观', judgment: 'pass' }],
+      } as any,
+    );
+
+    expect(result).toBeDefined();
+    expect(prisma.inspectionStandard.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ code: 'PRODUCT_INSPECTION', status: 'active' }),
+      }),
+    );
+    expect(prisma.inspectionRecord.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          object_type: 'production_batch',
+          object_id: 'batch-001',
+        }),
+      }),
+    );
+  });
+
+  it('createSemifinishedInspectionRecord creates InspectionRecord with object_type production_batch', async () => {
+    const { service, prisma } = makeProductPresetService('SEMIFINISHED_INSPECTION', 'product');
+
+    const result = await (service as any).createSemifinishedInspectionRecord(
+      'batch-002',
+      'SEMIFINISHED_INSPECTION',
+      {
+        company_id: 'tenant-1',
+        inspectedAt: new Date().toISOString(),
+        items: [{ itemName: '半成品检验项', judgment: 'pass' }],
+      } as any,
+    );
+
+    expect(result).toBeDefined();
+    expect(prisma.inspectionRecord.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          object_type: 'production_batch',
+          object_id: 'batch-002',
+        }),
+      }),
+    );
+  });
+
+  it.each([
+    { code: 'PRODUCT_INSPECTION',      objectType: 'production_batch' },
+    { code: 'SEMIFINISHED_INSPECTION', objectType: 'production_batch' },
+    { code: 'PRE_RELEASE_INSPECTION',  objectType: 'production_batch' },
+    { code: 'SHELF_LIFE_POINT',        objectType: 'shelf_life_study' },
+  ])(
+    'preset "$code" resolves to standard applies_to compatible with "$objectType"',
+    async ({ code, objectType }) => {
+      const appliesTo = objectType === 'shelf_life_study' ? 'shelf_life_study' : 'product';
+      const { service, prisma } = makeProductPresetService(code, appliesTo);
+
+      const result = await service.createFromPreset(
+        'tenant-1',
+        code,
+        objectType,
+        'obj-preset',
+        {
+          company_id: 'tenant-1',
+          objectType,
+          objectId: 'obj-preset',
+          inspectedAt: new Date().toISOString(),
+          items: [{ itemName: '检验项', judgment: 'pass' }],
+        } as any,
+      );
+
+      expect(result).toBeDefined();
+      expect(prisma.inspectionRecord.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ object_type: objectType }),
+        }),
+      );
+    },
+  );
+});

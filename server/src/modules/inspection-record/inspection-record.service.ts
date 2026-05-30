@@ -3,7 +3,11 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QualityNumberSequenceService } from '../quality-number-sequence/quality-number-sequence.service';
 import { CreateInspectionRecordDto } from './dto/create-inspection-record.dto';
-import { INSPECTION_OBJECT_COMPATIBILITY } from './inspection-record.constants';
+import {
+  INSPECTION_OBJECT_COMPATIBILITY,
+  PRODUCT_PRESET_OBJECT_TYPE,
+  ProductInspectionPresetCode,
+} from './inspection-record.constants';
 
 /**
  * Maps each specialty preset code to the InspectionStandard.applies_to value
@@ -86,6 +90,46 @@ export class InspectionRecordService {
 
       return this.createInTransaction(tx, dto);
     });
+  }
+
+  /**
+   * Creates a product inspection record for the given production batch.
+   * The standardCode must be one of the PRODUCT_INSPECTION_PRESET_CODES values
+   * (e.g. "PRODUCT_INSPECTION", "PRE_RELEASE_INSPECTION").
+   * The record is always created with object_type derived from PRODUCT_PRESET_OBJECT_TYPE.
+   */
+  async createProductInspectionRecord(
+    productionBatchId: string,
+    standardCode: ProductInspectionPresetCode,
+    input: CreateInspectionRecordDto,
+  ): Promise<InspectionRecordWithItems> {
+    const objectType = PRODUCT_PRESET_OBJECT_TYPE[standardCode];
+    return this.createFromPreset(
+      input.company_id,
+      standardCode,
+      objectType,
+      productionBatchId,
+      input,
+    );
+  }
+
+  /**
+   * Creates a semifinished product inspection record for the given production batch.
+   * Delegates to createFromPreset using object_type derived from PRODUCT_PRESET_OBJECT_TYPE.
+   */
+  async createSemifinishedInspectionRecord(
+    productionBatchId: string,
+    standardCode: ProductInspectionPresetCode,
+    input: CreateInspectionRecordDto,
+  ): Promise<InspectionRecordWithItems> {
+    const objectType = PRODUCT_PRESET_OBJECT_TYPE[standardCode];
+    return this.createFromPreset(
+      input.company_id,
+      standardCode,
+      objectType,
+      productionBatchId,
+      input,
+    );
   }
 
   private async createInTransaction(tx: TxClient, dto: CreateInspectionRecordDto) {
