@@ -60,7 +60,7 @@ function makeGarmentInventory(overrides: Record<string, unknown> = {}) {
 
 function createPrismaMock(overrides: Partial<Record<string, unknown>> = {}) {
   const defaultRecord = makeRecord({ items: [makeItem()] });
-  return {
+  const mock = {
     laundryWorkRecord: {
       create: jest.fn().mockResolvedValue(defaultRecord),
       findUnique: jest.fn().mockResolvedValue(defaultRecord),
@@ -80,6 +80,9 @@ function createPrismaMock(overrides: Partial<Record<string, unknown>> = {}) {
     },
     ...overrides,
   } as any;
+  // $transaction executes the callback with the same mock as the tx client
+  mock.$transaction = jest.fn().mockImplementation((fn: (tx: unknown) => unknown) => fn(mock));
+  return mock;
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -90,7 +93,7 @@ describe('LaundryRecordService', () => {
   // ── createLaundryWorkRecord ─────────────────────────────────────────────────
 
   describe('createLaundryWorkRecord', () => {
-    it('creates a laundry work record in draft status', async () => {
+    it('creates a laundry work record in draft status via $transaction', async () => {
       const prisma = createPrismaMock();
       const service = new LaundryRecordService(prisma);
 
@@ -103,26 +106,20 @@ describe('LaundryRecordService', () => {
         items: [],
       });
 
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
       expect(prisma.laundryWorkRecord.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             company_id: 'company-1',
             status: 'draft',
           }),
+          include: { items: true },
         }),
       );
     });
 
-    it('stores garment type and quantity in items', async () => {
-      const createdRecord = makeRecord({ id: 'laundry-1', items: [] });
-      const prisma = createPrismaMock({
-        laundryWorkRecord: {
-          create: jest.fn().mockResolvedValue(createdRecord),
-          findUnique: jest.fn().mockResolvedValue(makeRecord({ items: [makeItem()] })),
-          update: jest.fn(),
-          findMany: jest.fn().mockResolvedValue([createdRecord]),
-        },
-      });
+    it('stores garment type and quantity as nested items in a single create', async () => {
+      const prisma = createPrismaMock();
       const service = new LaundryRecordService(prisma);
 
       await service.createLaundryWorkRecord({
@@ -134,30 +131,28 @@ describe('LaundryRecordService', () => {
         ],
       });
 
-      expect(prisma.laundryWorkRecordItem.create).toHaveBeenCalledWith(
+      expect(prisma.laundryWorkRecord.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            garment_type: 'uniform',
-            quantity: 10,
-            action: 'wash',
-            result: 'pass',
+            items: {
+              create: expect.arrayContaining([
+                expect.objectContaining({
+                  garment_type: 'uniform',
+                  quantity: 10,
+                  action: 'wash',
+                  result: 'pass',
+                }),
+              ]),
+            },
           }),
         }),
       );
+      // No separate per-item inserts
+      expect(prisma.laundryWorkRecordItem.create).not.toHaveBeenCalled();
     });
 
-    it('item can link GarmentInventory by garment_inventory_id', async () => {
-      const createdRecord = makeRecord({ id: 'laundry-1', items: [] });
-      const prisma = createPrismaMock({
-        laundryWorkRecord: {
-          create: jest.fn().mockResolvedValue(createdRecord),
-          findUnique: jest.fn().mockResolvedValue(
-            makeRecord({ items: [makeItem({ garment_inventory_id: 'inv-1' })] }),
-          ),
-          update: jest.fn(),
-          findMany: jest.fn().mockResolvedValue([createdRecord]),
-        },
-      });
+    it('item can link GarmentInventory by garment_inventory_id in the nested create', async () => {
+      const prisma = createPrismaMock();
       const service = new LaundryRecordService(prisma);
 
       await service.createLaundryWorkRecord({
@@ -175,11 +170,31 @@ describe('LaundryRecordService', () => {
         ],
       });
 
-      expect(prisma.laundryWorkRecordItem.create).toHaveBeenCalledWith(
+      expect(prisma.laundryWorkRecord.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ garment_inventory_id: 'inv-1' }),
+          data: expect.objectContaining({
+            items: {
+              create: expect.arrayContaining([
+                expect.objectContaining({ garment_inventory_id: 'inv-1' }),
+              ]),
+            },
+          }),
         }),
       );
+    });
+
+    it('does not re-fetch after creation (no extra findUnique)', async () => {
+      const prisma = createPrismaMock();
+      const service = new LaundryRecordService(prisma);
+
+      await service.createLaundryWorkRecord({
+        company_id: 'company-1',
+        work_date: new Date('2024-06-01'),
+        operator_id: 'user-1',
+        items: [],
+      });
+
+      expect(prisma.laundryWorkRecord.findUnique).not.toHaveBeenCalled();
     });
   });
 

@@ -7,42 +7,36 @@ export class LaundryRecordService {
   constructor(private prisma: PrismaService) {}
 
   async createLaundryWorkRecord(input: CreateLaundryWorkRecordInput) {
-    const record = await this.prisma.laundryWorkRecord.create({
-      data: {
-        company_id: input.company_id,
-        work_date: new Date(input.work_date),
-        shift_type_id: input.shift_type_id ?? null,
-        batch_no: input.batch_no ?? null,
-        washing_method: input.washing_method ?? null,
-        disinfection_method: input.disinfection_method ?? null,
-        disinfectant: input.disinfectant ?? null,
-        temperature: input.temperature ?? null,
-        duration_min: input.duration_min ?? null,
-        operator_id: input.operator_id,
-        notes: input.notes ?? null,
-        status: 'draft',
-      },
-    });
-
-    for (const item of input.items) {
-      await this.prisma.laundryWorkRecordItem.create({
+    return this.prisma.$transaction(async (tx) => {
+      return tx.laundryWorkRecord.create({
         data: {
-          laundry_work_record_id: record.id,
-          garment_type: item.garment_type,
-          garment_inventory_id: item.garment_inventory_id ?? null,
-          area_id: item.area_id ?? null,
-          quantity: item.quantity,
-          action: item.action,
-          result: item.result,
-          notes: item.notes ?? null,
-          evidence_file_id: item.evidence_file_id ?? null,
+          company_id: input.company_id,
+          work_date: new Date(input.work_date),
+          shift_type_id: input.shift_type_id ?? null,
+          batch_no: input.batch_no ?? null,
+          washing_method: input.washing_method ?? null,
+          disinfection_method: input.disinfection_method ?? null,
+          disinfectant: input.disinfectant ?? null,
+          temperature: input.temperature ?? null,
+          duration_min: input.duration_min ?? null,
+          operator_id: input.operator_id,
+          notes: input.notes ?? null,
+          status: 'draft',
+          items: {
+            create: input.items.map((item) => ({
+              garment_type: item.garment_type,
+              garment_inventory_id: item.garment_inventory_id ?? null,
+              area_id: item.area_id ?? null,
+              quantity: item.quantity,
+              action: item.action,
+              result: item.result,
+              notes: item.notes ?? null,
+              evidence_file_id: item.evidence_file_id ?? null,
+            })),
+          },
         },
+        include: { items: true },
       });
-    }
-
-    return this.prisma.laundryWorkRecord.findUnique({
-      where: { id: record.id },
-      include: { items: true },
     });
   }
 
