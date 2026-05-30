@@ -18,6 +18,7 @@ import { DocumentReferenceHealthService } from './services/document-reference-he
 import { BusinessDocumentLinkService } from './services/business-document-link.service';
 import { DocumentExpiryService } from './services/document-expiry.service';
 import { NumberRuleService } from './services/number-rule.service';
+import { DocumentPeriodicReviewService } from './document-periodic-review.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { UnifiedApprovalModule } from '../unified-approval/unified-approval.module';
 import { ApprovalCallbackRegistry } from '../unified-approval/approval-callback.registry';
@@ -27,8 +28,8 @@ import { CANONICAL_DOCUMENT_STATUS } from './constants/document-control.constant
 @Module({
   imports: [ConfigModule, PrismaModule, NotificationModule, OperationLogModule, RoleModule, SearchModule, UnifiedApprovalModule],
   controllers: [DocumentController],
-  providers: [DocumentService, DocumentCronService, DocumentReferenceService, MarkdownWikilinkService, DocumentReferenceHealthService, BusinessDocumentLinkService, DocumentExpiryService, DocumentLifecycleService, DocumentControlMetadataService, FilePreviewService, StorageService, DocumentsListener, NumberRuleService],
-  exports: [DocumentService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, BusinessDocumentLinkService, DocumentExpiryService],
+  providers: [DocumentService, DocumentCronService, DocumentReferenceService, MarkdownWikilinkService, DocumentReferenceHealthService, BusinessDocumentLinkService, DocumentExpiryService, DocumentLifecycleService, DocumentControlMetadataService, FilePreviewService, StorageService, DocumentsListener, NumberRuleService, DocumentPeriodicReviewService],
+  exports: [DocumentService, DocumentReferenceService, DocumentLifecycleService, DocumentControlMetadataService, BusinessDocumentLinkService, DocumentExpiryService, DocumentPeriodicReviewService],
 })
 export class DocumentModule implements OnModuleInit {
   constructor(

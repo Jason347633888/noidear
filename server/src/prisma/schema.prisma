@@ -139,7 +139,8 @@ model User {
   documentsApproved  Document[]        @relation("DocumentApprover")
   documentsArchived  Document[]        @relation("DocumentArchiver")
   documentsObsoleted Document[]        @relation("DocumentObsoleter")
-  versionsCreated    DocumentVersion[] @relation("VersionCreator")
+  versionsCreated        DocumentVersion[]        @relation("VersionCreator")
+  periodicReviewsOwned   DocumentPeriodicReview[] @relation("PeriodicReviewReviewer")
   operationLogs      OperationLog[]
   notifications      Notification[]
   managedDepartments Department[]      @relation("DepartmentManager")
@@ -281,7 +282,8 @@ model Document {
   obsoleter      User?     @relation("DocumentObsoleter", fields: [obsoletedBy], references: [id], onDelete: SetNull)
 
   // 反向关系
-  versions DocumentVersion[]
+  versions        DocumentVersion[]
+  periodicReviews DocumentPeriodicReview[] @relation("DocumentPeriodicReviews")
 
   // P2: 跨文档引用（BR-305/306）
   sourceReferences DocumentReference[] @relation("SourceRefs")
@@ -346,9 +348,30 @@ model DocumentVersion {
   fileSize   Int
   creatorId  String
   creator    User     @relation("VersionCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+  notes      String?
   createdAt  DateTime @default(now())
 
   @@map("document_versions")
+}
+
+model DocumentPeriodicReview {
+  id          String    @id @default(cuid())
+  documentId  String
+  document    Document  @relation("DocumentPeriodicReviews", fields: [documentId], references: [id], onDelete: Cascade)
+  dueAt       DateTime
+  reviewerId  String
+  reviewer    User      @relation("PeriodicReviewReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  status      String    @default("pending") // pending | completed
+  reviewedAt  DateTime?
+  conclusion  String?   // continue_use | revise | retire
+  opinion     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([documentId])
+  @@index([reviewerId])
+  @@index([status])
+  @@map("document_periodic_reviews")
 }
 
 // ========================================
