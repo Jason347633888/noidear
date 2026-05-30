@@ -50,8 +50,10 @@ export class AccessDeclarationService {
   ) {
     const declaration = await this.findOneOrFail(id);
 
-    if (declaration.status === 'approved') {
-      throw new BadRequestException('Declaration is already approved');
+    if (declaration.status !== 'declared') {
+      throw new BadRequestException(
+        `Cannot approve declaration with status "${declaration.status}". Only declared declarations can be approved.`,
+      );
     }
 
     return this.prisma.accessDeclaration.update({
@@ -67,7 +69,13 @@ export class AccessDeclarationService {
   }
 
   async expireDeclaration(id: string) {
-    await this.findOneOrFail(id);
+    const declaration = await this.findOneOrFail(id);
+
+    if (declaration.status !== 'declared') {
+      throw new BadRequestException(
+        `Cannot expire declaration with status "${declaration.status}". Only declared declarations can be expired.`,
+      );
+    }
 
     return this.prisma.accessDeclaration.update({
       where: { id },
@@ -75,8 +83,12 @@ export class AccessDeclarationService {
     });
   }
 
-  async linkToVisitorRecord(declarationId: string, visitorRecordId: string) {
-    await this.findOneOrFail(declarationId);
+  async linkToVisitorRecord(
+    declarationId: string,
+    visitorRecordId: string,
+    declarationType?: string,
+  ) {
+    const declaration = await this.findOneOrFail(declarationId);
 
     const visitorRecord = await this.prisma.visitorRecord.findUnique({
       where: { id: visitorRecordId },
@@ -86,21 +98,26 @@ export class AccessDeclarationService {
       throw new NotFoundException(`VisitorRecord not found: ${visitorRecordId}`);
     }
 
-    const existing = await this.prisma.visitorAccessDeclaration.findFirst({
+    const existing = await this.prisma.visitorAccessDeclaration.findUnique({
       where: {
-        visitor_record_id: visitorRecordId,
-        access_declaration_id: declarationId,
+        visitor_record_id_access_declaration_id: {
+          visitor_record_id: visitorRecordId,
+          access_declaration_id: declarationId,
+        },
       },
     });
 
     if (existing) {
-      throw new BadRequestException('Link between declaration and visitor record already exists');
+      throw new BadRequestException(
+        'Link between declaration and visitor record already exists',
+      );
     }
 
     return this.prisma.visitorAccessDeclaration.create({
       data: {
         visitor_record_id: visitorRecordId,
         access_declaration_id: declarationId,
+        declaration_type: declarationType ?? declaration.declaration_type,
       },
     });
   }

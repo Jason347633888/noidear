@@ -2817,6 +2817,8 @@ model VisitorRecord {
   escort        String?
   health_status String?
   notes         String?
+  check_in_time DateTime?
+  exit_time     DateTime?
   created_by    String?
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
@@ -3783,22 +3785,22 @@ model AccessDeclaration {
   status              String   @default("declared")
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
-  visitor_links       VisitorAccessDeclaration[]
+  visitor_links       VisitorAccessDeclaration[] @relation("AccessDeclarationLinks")
 
   @@index([company_id, declaration_type, status])
   @@index([subject_type, subject_id])
   @@map("access_declarations")
 }
 
+// ── Phase 15 Task 5: VisitorRecord + VisitorAccessDeclaration join ────────────
 model VisitorAccessDeclaration {
-  id                   String            @id @default(cuid())
-  visitor_record_id    String
+  visitor_record_id     String
   access_declaration_id String
-  created_at           DateTime          @default(now())
-  visitor_record       VisitorRecord     @relation("VisitorRecordDeclarations", fields: [visitor_record_id], references: [id], onDelete: Cascade)
-  access_declaration   AccessDeclaration @relation(fields: [access_declaration_id], references: [id], onDelete: Cascade)
+  declaration_type      String
+  visitor_record        VisitorRecord     @relation("VisitorRecordDeclarations", fields: [visitor_record_id], references: [id], onDelete: Cascade)
+  access_declaration    AccessDeclaration @relation("AccessDeclarationLinks", fields: [access_declaration_id], references: [id], onDelete: Cascade)
 
-  @@unique([visitor_record_id, access_declaration_id])
+  @@id([visitor_record_id, access_declaration_id])
   @@index([visitor_record_id])
   @@index([access_declaration_id])
   @@map("visitor_access_declarations")
