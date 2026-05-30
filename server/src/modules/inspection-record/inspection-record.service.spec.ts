@@ -452,6 +452,45 @@ describe('InspectionRecordService.createFromPreset()', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Controller – companyId from auth context (PR #220 round-2 Finding 4)
+// ---------------------------------------------------------------------------
+
+describe('InspectionRecordService – company_id from auth context', () => {
+  it('should use company from auth context, not hardcoded "1"', async () => {
+    const prisma = {
+      inspectionStandard: { findUnique: jest.fn().mockResolvedValue(null) },
+      inspectionRecord: {
+        create: jest.fn().mockResolvedValue({ id: 'rec-auth', items: [] }),
+      },
+      nonConformance: { create: jest.fn() },
+      $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)),
+    };
+    const numberSequence = { generateNonConformanceNo: jest.fn() };
+    const service = new InspectionRecordService(prisma as any, numberSequence as any);
+
+    await service.create({
+      company_id: 'company-test',
+      objectType: 'area_point',
+      objectId: 'obj-1',
+      inspectedAt: new Date().toISOString(),
+      items: [{ itemName: '外观', judgment: 'pass' }],
+    } as any);
+
+    expect(prisma.inspectionRecord.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ company_id: 'company-test' }),
+      }),
+    );
+    // Ensure the hardcoded default '1' was NOT used
+    expect(prisma.inspectionRecord.create).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ company_id: '1' }),
+      }),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Product / Semifinished Inspection Presets (Phase 13 Task 5)
 // ---------------------------------------------------------------------------
 
