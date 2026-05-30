@@ -20,9 +20,13 @@ export type NcSourceType = (typeof NC_SOURCE_TYPES)[number];
  */
 export const NC_SOURCE_ITEM_TABLE: Partial<Record<NcSourceType, string>> = {
   inspection_record: 'InspectionRecordItem',
+  // PROVISIONAL: model not yet implemented — verify actual Prisma model name when Phase 10 lands
   cleaning_record: 'CleaningRecordItem',
+  // PROVISIONAL: model not yet implemented — verify actual Prisma model name when Phase 11 lands
   calibration_record: 'CalibrationPointReading',
+  // PROVISIONAL: model not yet implemented — verify actual Prisma model name when Phase 11 lands
   maintenance_record: 'MaintenanceRecordItem',
+  // PROVISIONAL: model not yet implemented — verify actual Prisma model name when Phase 15 lands
   laundry_work_record: 'LaundryWorkRecordItem',
 };
 
@@ -36,6 +40,7 @@ export class CreateNcDto {
 
   @IsOptional()
   @IsString()
+  @IsNotEmpty()
   source_item_id?: string;
 
   @IsString()

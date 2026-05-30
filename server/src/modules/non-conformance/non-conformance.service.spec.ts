@@ -1,5 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
-import { NC_SOURCE_ITEM_TABLE, NC_SOURCE_TYPES } from './dto/create-nc.dto';
+import { validate } from 'class-validator';
+import { CreateNcDto, NC_SOURCE_ITEM_TABLE, NC_SOURCE_TYPES } from './dto/create-nc.dto';
 import { NonConformanceService } from './non-conformance.service';
 
 describe('NonConformanceService', () => {
@@ -88,6 +89,24 @@ describe('NonConformanceService', () => {
 
     expect(prisma.productionBatch.findUnique).not.toHaveBeenCalled();
     expect(prisma.nonConformance.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects empty-string source_item_id at the DTO validation layer', async () => {
+    // @IsNotEmpty() on source_item_id ensures "" fails class-validator before reaching the service.
+    // Without it, "" is falsy so `if (sourceItemId)` skips the child-item check, and "" gets
+    // persisted to the DB. This test confirms the decorator rejects empty strings.
+    const dto = Object.assign(new CreateNcDto(), {
+      source_type: 'inspection_record',
+      source_id: 'ir-1',
+      source_item_id: '',
+      description: '空字符串 source_item_id 不应通过验证',
+    });
+
+    const errors = await validate(dto);
+
+    const sourceItemIdErrors = errors.filter((e) => e.property === 'source_item_id');
+    expect(sourceItemIdErrors.length).toBeGreaterThan(0);
+    expect(Object.keys(sourceItemIdErrors[0].constraints ?? {})).toContain('isNotEmpty');
   });
 
   it('rejects a missing production batch source', async () => {

@@ -51,7 +51,7 @@ export class NonConformanceService {
 
   async createFromCcpDeviation(input: CcpDeviationInput, tx?: Prisma.TransactionClient) {
     const db = tx ?? this.prisma;
-    await this.validateSourceExists('production_batch', input.ccpRecord.production_batch_id, input.companyId, db, undefined);
+    await this.validateSourceExists('production_batch', input.ccpRecord.production_batch_id, input.companyId, db);
 
     const nc_no = await this.numberSequence.generateNonConformanceNo(input.companyId, new Date(), tx);
 
