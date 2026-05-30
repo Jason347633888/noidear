@@ -142,7 +142,7 @@ describe('EquipmentService.create writes responsiblePersonId', () => {
     // dto provides a different user ID — it must be overridden by creatorId
     const dto: CreateEquipmentDto = {
       name: 'Test Eq',
-      category: 'machine',
+      category: 'production',
       responsiblePersonId: 'other-user',
     };
     await svc.create(dto, 'creator-1');
@@ -166,7 +166,7 @@ describe('EquipmentService.create writes responsiblePersonId', () => {
     const svc = new EquipmentService(prisma);
     const dto: CreateEquipmentDto = {
       name: 'Test Eq',
-      category: 'machine',
+      category: 'production',
       responsiblePersonId: 'dto-user',
     };
     await svc.create(dto);
