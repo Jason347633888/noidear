@@ -3528,3 +3528,25 @@ model FragileItemUsageReturn {
   @@index([company_id, fragile_item_id, used_at])
   @@map("fragile_item_usage_returns")
 }
+
+// ── Phase 12 Task 2: MaterialAllergenProfile ──────────────────────────────────
+
+model MaterialAllergenProfile {
+  id                String    @id @default(cuid())
+  company_id        String
+  material_id       String
+  supplier_id       String?
+  allergen_code     String
+  allergen_name     String
+  contains_allergen Boolean
+  cross_contact_risk String?
+  evidence_file_id  String?
+  effective_from    DateTime
+  effective_to      DateTime?
+  status            String    @default("active")
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  @@index([company_id, material_id, supplier_id, status])
+  @@map("material_allergen_profiles")
+}
