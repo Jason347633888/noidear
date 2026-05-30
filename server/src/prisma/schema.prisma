@@ -3556,3 +3556,21 @@ model MaterialAllergenProfile {
   @@index([company_id, material_id, supplier_id, status], map: "material_allergen_profiles_company_id_material_id_supplier__idx")
   @@map("material_allergen_profiles")
 }
+
+// ── Phase 12 Task 4: ProductRiskZone ──────────────────────────────────────────
+
+model ProductRiskZone {
+  id                 String    @id @default(cuid())
+  company_id         String
+  product_id         String
+  risk_zone          String
+  basis              String?
+  effective_from     DateTime
+  effective_to       DateTime?
+  status             String    @default("active")
+  approvalInstanceId String?
+  created_at         DateTime  @default(now())
+
+  @@index([company_id, product_id, status])
+  @@map("product_risk_zones")
+}
