@@ -11,8 +11,6 @@ export const INSPECTION_APPLIES_TO = [
   'shelf_life_study',
 ] as const;
 
-export type InspectionAppliesTo = (typeof INSPECTION_APPLIES_TO)[number];
-
 /**
  * Maps each applies_to value to the object_type values an InspectionRecord
  * may use when that standard is applied. If a key is absent the default
@@ -24,7 +22,7 @@ export const INSPECTION_OBJECT_COMPATIBILITY: Record<string, readonly string[]> 
   area_point: ['area_point'],
   equipment: ['equipment', 'measuring_equipment'],
   supplier: ['supplier'],
-  water: ['area_point'],
+  water: ['area_point'], // water quality inspections are tied to a physical location represented as area_point
   vehicle: ['external_party', 'delivery_note'],
   personnel: ['user', 'personnel'],
   retained_sample: ['retained_sample'],

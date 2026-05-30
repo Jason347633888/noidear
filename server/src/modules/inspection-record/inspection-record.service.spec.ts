@@ -125,21 +125,6 @@ describe('InspectionRecordService', () => {
 // InspectionStandard applies_to expansion tests
 // ---------------------------------------------------------------------------
 
-function makeStandardPrisma(stdRecord: Record<string, unknown>) {
-  return {
-    inspectionStandard: {
-      findUnique: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockResolvedValue(stdRecord),
-      findFirst: jest.fn().mockResolvedValue(null),
-    },
-    inspectionRecord: {
-      create: jest.fn().mockResolvedValue({ id: 'rec-1', items: [] }),
-    },
-    nonConformance: { create: jest.fn() },
-    $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(makeStandardPrisma(stdRecord))),
-  };
-}
-
 describe('INSPECTION_APPLIES_TO constants', () => {
   it('exports all required applies_to values', () => {
     const expected = [
@@ -206,7 +191,7 @@ describe('INSPECTION_APPLIES_TO constants', () => {
 });
 
 describe('InspectionStandard – uniqueness constraint (company_id + code)', () => {
-  it('raises a unique constraint error when creating a duplicate (company_id, code) pair', async () => {
+  it('propagates a P2002 error thrown by the database during record creation', async () => {
     const prismaUniqueError = Object.assign(
       new Error('Unique constraint failed on the fields: (`company_id`,`code`)'),
       { code: 'P2002', meta: { target: ['company_id', 'code'] } },
@@ -214,27 +199,30 @@ describe('InspectionStandard – uniqueness constraint (company_id + code)', () 
 
     const prisma = {
       inspectionStandard: {
+        findUnique: jest.fn().mockResolvedValue(null),
+      },
+      inspectionRecord: {
+        // Simulate the DB rejecting with a uniqueness violation
         create: jest.fn().mockRejectedValue(prismaUniqueError),
       },
-      inspectionRecord: { create: jest.fn() },
       nonConformance: { create: jest.fn() },
       $transaction: jest.fn(),
     };
     prisma.$transaction.mockImplementation(
       async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma),
     );
+    const numberSequence = { generateNonConformanceNo: jest.fn() };
+    const service = new InspectionRecordService(prisma as any, numberSequence as any);
 
-    // Directly exercise the Prisma layer to confirm the error contract:
-    // a P2002 error is thrown when (company_id, code) is not unique.
+    // The service must re-throw the P2002 error — it does not swallow DB errors.
     await expect(
-      prisma.inspectionStandard.create({
-        data: {
-          company_id: 'tenant-1',
-          code: 'STD-001',
-          name: '重复标准',
-          applies_to: 'material',
-        },
-      }),
+      service.create({
+        company_id: 'tenant-1',
+        objectType: 'material',
+        objectId: 'batch-1',
+        inspectedAt: new Date().toISOString(),
+        items: [{ itemName: '水分', judgment: 'pass' }],
+      } as any),
     ).rejects.toMatchObject({ code: 'P2002' });
   });
 });
